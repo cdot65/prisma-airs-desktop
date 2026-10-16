@@ -1,0 +1,23 @@
+[
+  "claude",
+  "-p",
+  "--safe-mode",
+  "--restricted",
+  "--permission-mode",
+  "plan",
+  "--permission-prompts",
+  "none",
+  "--tools",
+  "Read,Grep,Glob",
+  "--allowedTools",
+  "Read",
+  "Grep",
+  "Glob",
+  "--strict-mcp-config",
+  "--no-chrome",
+  "--no-session-persistence",
+  "--output-format",
+  "json",
+  "--json-schema",
+  "{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"source_fingerprint\", \"scores\", \"required_fixes\", \"blockers\", \"evidence_gaps\", \"optional_suggestions\", \"limitations\", \"inspected_files\", \"recommendation\"], \"properties\": {\"source_fingerprint\": {\"type\": \"string\"}, \"scores\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"architecture\", \"behavior\", \"authority_security\", \"validation\", \"overall\"], \"properties\": {\"architecture\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}, \"behavior\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}, \"authority_security\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}, \"validation\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}, \"overall\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}}}, \"required_fixes\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"blockers\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"evidence_gaps\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"optional_suggestions\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"limitations\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"inspected_files\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"recommendation\": {\"type\": \"string\", \"enum\": [\"pass\", \"fail\"]}}}"
+]

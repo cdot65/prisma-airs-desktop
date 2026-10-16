@@ -1,0 +1,50 @@
+{
+  "source_fingerprint": "1dbec2da890ffdc91ecafb5b83a87f9ef7acdb89b60a1b6a378c5e78efa485f7",
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [
+    "Hash comparison against the prior manifest. I compared all 50 source_files entries in attempt-03/input-manifest.json with attempt-02/input-manifest.json. The path set, modes and symlink flags are identical. Exactly 28 hashes differ: C01\u2013C26, chunks/README.md, distribution.md and live-checks.md. They are the same 28 entries listed in delta.json. Each delta before_sha256 equals the attempt-02 manifest hash and each after_sha256 equals the attempt-03 manifest hash; I checked all 28 pairs. The other 22 hashes, including AGENTS.md, CLAUDE.md, IMPLEMENTATION-PLAN.md, decisions.md, test-catalogue.md, review-protocol.md, dependencies.md and all prompts, are byte-identical. So other_source_changes=false is consistent with the manifests.",
+    "Checking the end-of-file state. I ran read-only multiline ripgrep across every *.md file. `\\n\\z` matches every planning Markdown file, which confirms the anchor works. `\\n\\n\\z`, `\\s\\s\\z` and `[^\\n]\\z` match nothing, and there are no `\\r` bytes under docs/planning. Every file therefore ends with exactly one LF and no trailing blank or whitespace-only line. This matches the stated after = before.rstrip(newline) + one newline.",
+    "Checking that nothing semantic changed. I re-read changed files at locations the attempt-02 verdict cited: C02.md milestones 5\u20136 and acceptance line 34; C24.md:11 and :31; C03.md milestones 4\u20135 and the T23 evidence clause; live-checks.md L01\u2013L18, N01\u2013N04 and F01\u2013F09 with the required/not_required versus blocked-by-access separation; distribution.md's G01 manifest, its C26 precondition, Q24 still unselected and the informational-only Apache-2.0 note. All of them read as the prior review described. No planning requirement, decision, gate or prompt changed. Trailing LF bytes have no meaning in CommonMark rendering.",
+    "Make the normalization proof reproducible. delta.json says content_equal_after_eof_normalization is true but does not record how many LF bytes were removed from each file. Add removed_trailing_lf_count (k) per file. A third party could then confirm sha256(after_bytes + '\\n'*k) == before_sha256 without the pre-edit bytes. Optionally, also record the git index or blob IDs used as the pre-edit source.",
+    "Add an explicit EOF-normalization assertion to checks.json, such as single_trailing_newline: true over the fingerprinted files. That way the formatting invariant is checked mechanically rather than only described in delta.json.",
+    "Update status.md and reviews/G00/summary.md, both excluded from the fingerprint, after the attempt-03 receipt is recorded. Both still cite fa2a6455\u2026 as the reviewed planning fingerprint, which goes stale once this delta is accepted.",
+    "The attempt-02 nonrequired follow-ups are still open. They are the C24.md:11 input wording, separating C03 calibration runs from acceptance runs, the Harness managed-CLI/Node wording in dependencies.md, inference no-replay ownership for C19/C20, and Q24 in the interview-exit section of decisions.md. That is expected, since this delta is formatting-only. Carry them into G01 or the next plan revision as summary.md says."
+  ],
+  "limitations": [
+    "This is a planning-only G00 delta review. No application source, tests, native, live, signing or package evidence exists or was expected. The scores rate the plan and how well its future gates are defined, not readiness to implement.",
+    "Prior assessment carried forward: my architecture/behavior/authority_security/validation scores repeat the full-plan judgment from attempt-02. That carry-forward is justified only because the manifest comparison shows that the 22 unchanged files are byte-identical and that the 28 changed files differ only in EOF bytes, per the delta's claim and my end-of-file and content spot checks. In this attempt I did not re-review every changed chunk line by line against its prior bytes.",
+    "I could not recompute SHA-256 hashes, the aggregate source fingerprint or checks_sha256: I had no shell. The pre-edit bytes are not stored in the review records, so I could not byte-diff before and after. The claim that each file equals its prior content once EOF is normalized is self-attested by the delta. My independent evidence is the manifest hash pairing, the end-of-file regex checks and the content spot reads. A per-file removed-LF count would make the claim verifiable by a third party.",
+    "No attempt-03 receipt or raw output existed when I reviewed. Binding this verdict to a receipt, including the raw hash, the verdict hash and source-unchanged confirmation, is still the orchestrator's job.",
+    "Q24, the licence for newly authored v2 code, and the owner's confirmation of the full concrete plan are still pending. A passing score here does not satisfy the owner part of G00. G01 has not started, and implementation remains blocked under AGENTS.md.",
+    "status.md and reviews/ are excluded from the fingerprint by design. I read them for context only. Facts in source-evidence.md about other checkouts (V1, Academy, SDK, Harness, framework) were not re-verified."
+  ],
+  "inspected_files": [
+    "AGENTS.md",
+    "docs/planning/review-protocol.md",
+    "docs/planning/status.md",
+    "docs/planning/reviews/G00/summary.md",
+    "docs/planning/reviews/G00/attempt-02/input-manifest.json",
+    "docs/planning/reviews/G00/attempt-02/verdict.json",
+    "docs/planning/reviews/G00/attempt-02/receipt.json",
+    "docs/planning/reviews/G00/attempt-03/delta.json",
+    "docs/planning/reviews/G00/attempt-03/input-manifest.json",
+    "docs/planning/reviews/G00/attempt-03/checks.json",
+    "docs/planning/reviews/G00/attempt-03/input.md",
+    "docs/planning/chunks/C02.md",
+    "docs/planning/chunks/C03.md",
+    "docs/planning/chunks/C24.md",
+    "docs/planning/distribution.md",
+    "docs/planning/live-checks.md",
+    "(regex EOF scan) all *.md under repository incl. docs/planning/chunks/C01\u2013C26.md and chunks/README.md"
+  ],
+  "recommendation": "pass"
+}
