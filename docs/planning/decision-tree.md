@@ -23,13 +23,13 @@ delivery order, multidimensional review, native/measured quality, diagnostics,
 stable/preview release criteria, and manual updates.
 
 Independent review exposed an additional distribution choice: Q24 (newly authored
-v2 source license), asked asynchronously. It remains pending until answered.
+v2 source license), answered as Apache-2.0 in D024.
 Academy redistribution scope and framework disposition are explicit G01 outputs,
 with owner records before source extraction; C26 checks exact shipped notices.
 
-G00 still needs the owner's final shared-understanding confirmation of the
-concrete completed planning package. G01 has its own explicit candidate selection
-and design interview; do not pretend those interface decisions are already made.
+The owner selected all four G01 candidates and confirmed report rendering in
+D025. Continue concrete design/review without another blanket product question.
+Candidate selection does not itself approve implementation or package evidence.
 
 ## Decisions delegated to evidence and architecture work
 
@@ -57,6 +57,6 @@ within the accepted plan do not require repetitive permission requests.
 
 The detailed plan, C01–C26 instructions, dependency/evidence matrices, independent
 harness prompts and architecture handoff are now drafted. Obtain the actual
-independent plan review, then present the scope/evidence dependencies for final
-confirmation. Run the requested architecture improvement workflow after that
-confirmation and incorporate the selected design before implementation.
+independent plan review (passed). The owner then selected all four architecture
+candidates and source terms. Complete selected designs and their independent
+review before implementation; settled product questions stay settled.

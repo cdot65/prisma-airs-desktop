@@ -253,6 +253,23 @@ Accepted in interview round 5, Q23.
 The initial release uses manually installed signed DMG updates with documented
 rollback. An in-app updater is a separate later design/signing/validation milestone.
 
+## D024 — New-source distribution terms
+
+Accepted on 2026-10-16 through the architecture-work question:
+"Apache-2.0: public source with upstream notices retained (Recommended)".
+Apply Apache-2.0 to newly authored owner-controlled v2 material. Upstream code
+retains its own terms/notices; this does not relicense Academy or the framework.
+The product still has no billing/monetization requirement.
+
+## D025 — Architecture selection and report rendering
+
+Accepted on 2026-10-16: "All four: Rust authority → shared presentation → native
+Harness → workbench admission (Recommended)". The owner also confirmed "Yes,
+it renders" for the four candidate cards and before/after diagrams. This is
+owner visual confirmation; browser automation remained unable to inspect local
+HTML. Record implementation recommendations and independent review separately;
+candidate selection is not a passing implementation/package test.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a
@@ -268,9 +285,11 @@ rollback. An in-app updater is a separate later design/signing/validation milest
 
 ## Interview exit and remaining evidence
 
-The product/process frontier through Q23 is settled. The owner still needs to
-confirm shared understanding of the concrete completed plan at G00. G01 then
-settles selected architecture candidates and concrete interfaces/commands.
+The product/process frontier through Q23 is settled; D024/D025 subsequently
+settle source terms and all four architecture candidates. Continue the requested
+architecture work from those decisions. The prior extra blanket scope-confirmation
+request must not prevent already authorized design/research. G01 still requires
+concrete interfaces/commands and independent review before implementation.
 Exact identity strings, dependency pins, import compatibility, named numeric
 budgets, and designated live environments require explicit evidence/specification
 at their declared gates. They are not secretly assumed complete or reasons to

@@ -35,7 +35,9 @@ preview/stub into required live behavior without an explicit scope decision.
 
 ## Required per-workflow ledger
 
-Expand each family into individual existing workflow/operation rows in G01/C01.
+The [workflow ledger](../architecture/workflows.md) expands these families into
+66 operation/workflow classes. C01 records machine-readable evidence rows and
+consuming chunks map exact supported operations/options before implementation.
 Every row needs an ID, baseline source, current classification, responsible chunk,
 exact SDK/shared dependency contract, and independent expectations. Preserve four
 evidence categories separately: source implementation, fixture/contract results,
@@ -72,3 +74,9 @@ the final frozen input set. A required blocked check blocks stable completion.
 - The generic SCM workbench catalogue does not prove all 193 requests were live
   tested. Classify its supported execution/admission separately from dedicated
   workflows and bind its request metadata to a reviewed source snapshot.
+
+Managed scan/identity HTTP deliberately defaults to Direct rather than v1's
+ambient system proxy behavior. On mandatory-proxy networks, onboarding/settings
+shows Direct/System/Explicit policy and requires operator selection; a failed
+first request must surface proxy setup rather than an unexplained regression.
+Generic workbench remains System by default. C02/C15 qualify all modes.

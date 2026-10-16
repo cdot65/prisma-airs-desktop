@@ -7,7 +7,7 @@ ADRs, concrete interface/command/provenance decisions, and architecture evidence
 Independently review the Prisma AIRS Desktop v2 planning package in this checkout.
 Read all non-review Markdown files, AGENTS.md/CLAUDE.md and GLOSSARY.md, including
 every chunk instruction and canonical harness prompt. Review the user's accepted
-D001-D023 decisions against plan coverage and sequencing. Read-only; do not edit,
+D001-D025 decisions against plan coverage and sequencing. Read-only; do not edit,
 run shell commands, call endpoints, or open secrets.
 
 For G00, evaluate the plan, dependency/test/acceptance design, and executable future

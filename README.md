@@ -10,7 +10,10 @@ Start with the [implementation plan](docs/planning/IMPLEMENTATION-PLAN.md),
 [planning record](docs/planning/README.md),
 [accepted decisions](docs/planning/decisions.md),
 [v1 feature baseline](docs/planning/feature-baseline.md), and
-[source evidence](docs/planning/source-evidence.md).
+[source evidence](docs/planning/source-evidence.md). The selected architecture
+is documented in [the design](docs/architecture/DESIGN.md) and
+[ADRs](docs/adr/0001-native-operation-authority.md). Newly authored material uses
+[Apache-2.0](LICENSE); upstream terms remain intact.
 
 The sequence is interview and detailed Markdown plan, architecture improvement
 review, then implementation and independent reviews, testing, installed-artifact

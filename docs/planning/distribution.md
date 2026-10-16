@@ -1,43 +1,45 @@
-# Source and binary distribution gate
+# Source and binary distribution record
 
-D001 calls for public noncommercial application distribution with no billing.
-That does not itself select an outbound source license. Q24 asks the owner to
-choose newly authored v2 terms; no blanket license has been applied yet.
+The owner selected Apache-2.0 for newly authored v2 material on 2026-10-16
+(D024). The root LICENSE contains the authoritative Apache-2.0 text. NOTICE
+identifies the project and preserves the distinction between newly authored
+material and upstream inputs. The application has no billing/monetization goal;
+Apache-2.0 does not impose a noncommercial-use restriction on recipients.
 
-## Required G01 output before code extraction
+## Source disposition
 
-Record an owner-approved distribution/provenance manifest covering:
+| Input | Intended use / authorization basis | Disposition |
+|---|---|---|
+| Newly authored v2 code/docs | D024 public-source Apache-2.0 choice | Apache-2.0; root LICENSE/NOTICE |
+| cdot-framework first-party source | D008 selective evaluation; observed fair-source terms | Excluded from copying; independently author desktop implementation/patterns |
+| Academy presentation | D001 public application + D004/D005 owner-directed shared React reuse | Academy-owned controls/themes/shell and client-safe learner presentation only; retain upstream ownership/third-party terms |
+| Academy hosted/private content | No requirement to redistribute hosted authority | Exclude server/manager/assessor source, raw answer truth and evaluation material |
+| Rust SDK/native Harness | Owner-specified independently maintained inputs | Pinned dependency/source artifacts; inspect/retain their actual LICENSE/NOTICE at consuming chunk |
+| Fonts/icons/JS/Rust/native dependencies | Only resolved consumed inputs | C01 and introducing chunks build exact source/binary notice inventory |
 
-1. Source license and binary distribution terms for newly authored v2 code.
-   Record the exact decision; do not infer terms from an intention not to charge.
-2. Written authorization/ownership basis and scope for redistributing shared
-   Academy presentation inside v2, retaining third-party terms/notices.
-   D001/D004/D005 establish intended public application/shared-source reuse;
-   confirm actual redistribution scope with the owner at G01 before extracting
-   or publishing packages. Do not assume `private: true` is a license or relicense
-   all Academy source by implication.
-3. Every planned framework-derived import and its disposition: eligible under
-   verified terms/permission, separately licensed third-party dependency, or
-   excluded in favor of independently authored implementation/patterns. Initially
-   no ArtCraft first-party source is approved for copying. Root fair-source
-   billing/link retention terms remain intact in the learning fork.
-4. SDK/Harness/native/font/icon/JS/Rust distribution obligations, modified-file
-   notices where required, and the package/binary notice inventory.
+D004/D005 already authorize the shared presentation work; do not repeat that
+permission request. They do not relicense the whole Academy repository. The
+Academy extraction stays Academy-owned and its source package is consumed at a
+reviewed immutable input. Publishing that package independently or applying
+Apache-2.0 to legacy Academy source is not implied. If public source builds need
+that private input, document access rather than silently embedding/relicensing
+it. Public DMGs retain required upstream notices and owner-directed reuse scope.
 
-Unresolved provenance/redistribution blocks G01 and relevant extraction. This is
-an observed source constraint, not a presumption that every private package is
-unusable. Do not re-ask permission where a recorded owner decision already grants
-the exact needed scope.
+No first-party framework file has been copied. Keep its learning-fork license,
+retention conditions and historical rebrand evidence untouched. Selecting its
+architectural patterns does not import its media/billing/server implementation.
 
-## C26 precondition and check
+## Per-chunk and final checks
 
-The approved terms/permission manifest must match exact shipped source,
-dependency, native and resource inventories. Check required LICENSE/NOTICE/
-attribution and modification notices in distributed source/binary forms; no
-unapproved framework code or relicensed private Academy source may slip into the
-bundle. Hash the manifest/notices with the final artifact. Missing permission,
-terms or notices block public delivery even when signing/notarization passes.
+Before direct extraction, record the actual source file/package list, ownership
+basis, exact revision/hash, retained notices and modified-file notices where
+required. Newly added dependencies must have a real manifest entry; unknown
+terms block that import, not unrelated independently authored work.
 
-If selected, Apache-2.0 covers newly authored owner-controlled code only;
-it permits redistribution/commercial reuse subject to its terms. Upstream code
-keeps its own terms. [Authoritative Apache-2.0 text](https://www.apache.org/licenses/LICENSE-2.0)
+C26 verifies that approved source/binary terms, permissions, attribution and
+modification notices match the exact shipped dependency/resource inventory.
+Hash that inventory and notices with the signed artifact. A favorable review or
+signature cannot substitute for a missing source permission/notice.
+
+The selected license applies only to owner-controlled newly authored work;
+upstream files retain their own terms. [Apache-2.0 text](https://www.apache.org/licenses/LICENSE-2.0)

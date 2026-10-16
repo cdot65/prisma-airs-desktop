@@ -1,6 +1,7 @@
 # G01 architecture improvement handoff
 
-Run only after G00's concrete plan confirmation. This is design/exploration work
+The product interview and independent G00 plan review are complete; D024/D025
+authorize the selected architecture work. This is design/exploration work
 before application implementation, not permission to scaffold a prototype first.
 
 ## Workflow and source inputs
@@ -39,6 +40,7 @@ For each real friction point, identify actual source files/callers, the deletion
 test, depth/locality/leverage, a before/after visual, test improvements and
 recommendation strength. Clearly distinguish observed source from proposed v2
 structure. Do not invent concrete interfaces before the owner selects candidates.
+D025 now records selection of all four, so selected-design work proceeds.
 
 Write the skill's fresh timestamped HTML report to the OS temp directory, using
 its Tailwind/Mermaid guidance with inline essential styling/static visual fallback.
@@ -85,6 +87,15 @@ Use the domain-modeling skill if selected design vocabulary requires it; discove
 and read its exact skill source then. No new module term should remain undefined
 in the glossary. If existing behavior is deliberately changed, record the reason,
 product impact and owner decision rather than silently weakening it.
+
+## Qualification timing
+
+G01 fixes architecture interfaces, ownership, first-slice version choices, the
+command/test contract and expanded workflow classes. C01 resolves/qualifies actual
+locks and shared source; later accepted SDK family pins/options map before their
+consuming chunks. This preserves D009 first-slice independence while retaining
+every required later gate. G01 does not claim native compilation, live access,
+third-party inventory for unconsumed dependencies or final package qualification.
 
 ## Exit
 

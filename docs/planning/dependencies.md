@@ -1,8 +1,9 @@
 # Dependency and source gates
 
-No dependency versions have been selected or installed in this v2 checkout.
-The following are inspected source inputs and gates, not a claim of ready
-release dependencies. C01 records immutable source/package hashes and lockfiles.
+Architecture proposes exact first-slice versions in docs/architecture/qualification.md.
+No application dependencies have been installed or compiled in this checkout.
+Inspected source inputs and version choices are not ready release dependencies;
+C01 records compatible resolved inputs, source/package hashes and lockfiles.
 
 ## Source ownership
 

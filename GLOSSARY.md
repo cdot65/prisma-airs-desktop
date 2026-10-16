@@ -1,7 +1,9 @@
 # Prisma AIRS Desktop v2 domain vocabulary
 
-These terms describe accepted product concepts. Concrete Rust/TypeScript
-interfaces and module decomposition remain architecture-review work.
+These terms name the desktop product and its native authority concepts.
+Mechanisms, wire formats and transition rules belong in the selected design.
+
+## Language
 
 **Tenant profile**: An application-owned configuration for a Prisma AIRS tenant,
 including its label, endpoints, and protected credential references. A scan-only
@@ -65,3 +67,75 @@ tooling and React JavaScript executing in the WebView are separate concepts.
 implementation, retained fixture/contract results, retained live evidence, and
 v2 installed-artifact results are distinct. Replacing a preview/stub with a live
 feature is scope expansion, not implicit parity work.
+
+**Authority principal**: The native-established operator or restricted Harness
+identity on whose behalf desktop work is requested. A claimed identity in a
+request is not an Authority principal.
+
+**Authority handle**: A principal-scoped entry to native desktop operations and
+observations. Possessing an operation reference does not expand its authority.
+
+**Intent**: A typed request for a specific desktop action under the caller's
+current authority. It is distinct from a Harness proposal or an arbitrary remote
+request.
+
+**Receipt**: Native acknowledgement that an Intent was admitted, with its request
+or operation reference. It is not evidence of operator confirmation or remote
+completion.
+
+**Refusal**: Native rejection of an Intent before admission under the requested
+authority. A remote action's failure is a Remote outcome instead.
+
+**ViewScope**: The product context a caller asks to observe, such as a learner
+account, tenant workspace or Harness conversation. Native authority determines
+which part is visible to that caller.
+
+**Observation**: A scoped redacted view of native desktop state and operation
+progress. It confers no execution or credential authority.
+
+**ContextRef**: A native reference to the particular product context presented
+to the caller. Returning to the same tenant or account does not revive retired
+authority.
+
+**Delivery session**: The current native-registered channel for one caller's
+Intent deliveries. It is separate from tenant, learner or inference identity.
+
+**Delivery sequence**: The order identity of an Intent within its Delivery session,
+used to distinguish duplicate delivery from an explicit new action.
+_Avoid_: Business retry, authorization token
+
+**Native-owned payload reference**: A scoped reference to staged desktop input
+whose ownership and content are known natively. It is not permission to read an
+arbitrary filesystem path.
+
+**Reviewed**: A Configuration review whose captured proposal remains eligible for
+operator confirmation.
+
+**Confirming**: A Configuration review currently awaiting the native operator's
+answer for that specific proposal.
+
+**Consumed**: A Configuration review already committed to its single admitted
+operation. Failure of that operation does not make the review reusable.
+
+**Queued**: An admitted desktop operation whose remote dispatch has not been
+claimed.
+
+**DispatchClaimed**: A desktop operation for which remote dispatch may have begun.
+Local cancellation at this stage does not prove NotSent.
+
+**Settled**: A desktop operation with a recorded terminal local result and its
+current Remote outcome. Later reconciliation may refine knowledge of that outcome.
+
+**Harness grant**: Native authority for one verified inference identity and its
+approved tenant/workspace/origin context. Rotating that identity's token material
+is distinct from replacing or revoking the Harness grant.
+
+**Grant epoch**: The particular lifetime of a native grant's authority. Retired
+authority stays retired even when an equivalent identity is selected again.
+
+**One-time secret receipt**: The operator-scoped acknowledgement holding newly
+issued secret material for its explicit transient reveal. It is separate from a
+stored credential lookup.
+
+**Editor lease**: The hold on the reviewed document while native operator
+confirmation is pending. A changed document or context invalidates that hold.

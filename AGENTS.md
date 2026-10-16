@@ -5,10 +5,12 @@
 This checkout contains planning records, not an application. The owner requested
 an explicit interview, a detailed Markdown implementation plan and harness
 prompts, then the improve-codebase-architecture workflow, before implementation.
-Product interview decisions D001–D023 are accepted. Read the concrete plan and
-current gate state in `docs/planning/status.md`; final G00 shared-understanding
-confirmation and G01 architecture selection/review remain prerequisites.
-The added Q24 source-license preference is pending; do not select terms silently.
+Product interview decisions D001–D023 are accepted. D024 selects Apache-2.0 for
+newly authored v2 material; D025 selects all four architecture candidates and
+records owner confirmation that their report renders. Read the concrete plan
+and current gate state in `docs/planning/status.md`. Continue G01 design/review
+under that authorization without repeating blanket product questions.
+G01's selected-design review and declared outputs remain prerequisites.
 Do not scaffold, port,
 install application dependencies, run product endpoints, migrate real data, or
 start implementation while those gates are unfinished. Planning documentation

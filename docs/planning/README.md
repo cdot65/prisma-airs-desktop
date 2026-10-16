@@ -1,8 +1,8 @@
 # Prisma AIRS Desktop v2 planning
 
-Status: product interview complete through D023; concrete plan prepared for G00
-review and final shared-understanding confirmation. G01 architecture work remains
-unstarted. Application implementation is not yet authorized to begin.
+Status: product interview complete, G00 plan review passed, all four G01
+candidates selected and concrete design underway. Apache-2.0 is selected for
+newly authored v2 material. Application implementation has not started.
 
 The intended product is a fresh Prisma AIRS desktop application with React
 presentation and a Rust application implementation using `scm-sdk-rs`, hosted
@@ -66,6 +66,8 @@ to translate wholesale.
 - Harness prompts: [implement](prompts/implement-chunk.md), [review](prompts/review-chunk.md),
   [remediate](prompts/remediate.md), [plan review](prompts/review-plan.md),
   [architecture](prompts/architecture.md), [installed release review](prompts/release.md).
+- [Concrete architecture](../architecture/DESIGN.md), [qualification](../architecture/qualification.md),
+  [workflow ledger](../architecture/workflows.md) and [candidate findings](architecture-candidates.md).
 - [Status](status.md): current gate/review state; planned work is not implemented.
 - [Decisions](decisions.md) separates accepted decisions from proposals.
 - [Source evidence](source-evidence.md) records inspected revisions and constraints.
@@ -76,8 +78,8 @@ to translate wholesale.
 
 ## Remaining gates
 
-G00 needs final confirmation of shared understanding of this concrete plan.
-G01 runs the requested visual architecture exploration, owner candidate selection
+G00 has its independent passing plan review and accepted product direction.
+G01 records the completed candidate exploration/selection and proceeds with
 and design grilling, ADR/interface/command specification and independent review.
 Only then can C01 begin. SDK/native/live/import/signing dependencies are explicit
 future gates; none is represented as already verified by the planning documents.

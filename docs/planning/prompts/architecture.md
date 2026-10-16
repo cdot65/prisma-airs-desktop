@@ -2,7 +2,8 @@
 
 ```text
 Execute only the architecture improvement stage for Prisma AIRS Desktop v2.
-Verify G00 confirmation. Read AGENTS.md, GLOSSARY.md, the accepted decisions,
+Verify the G00 plan review and accepted D001–D025 decisions. Read AGENTS.md,
+GLOSSARY.md, the accepted decisions,
 implementation plan, architecture-handoff.md, and source reference guidance/ADRs.
 Load the explicitly requested improve-codebase-architecture, codebase-design,
 and grilling skills using their exact local sources.

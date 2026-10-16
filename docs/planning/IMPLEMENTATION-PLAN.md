@@ -1,7 +1,7 @@
 # Prisma AIRS Desktop v2 implementation plan
 
-Status: product interview decisions accepted through D023; plan awaits final
-shared-understanding confirmation and the architecture gate. No application
+Status: product interview decisions D001–D023 accepted; D024/D025 settle source
+terms and all four architecture candidates. G01 design/review is active. No application
 implementation has started. A passing plan review is not a passing architecture,
 SDK, application, live-tenant, or package review.
 
@@ -82,9 +82,10 @@ change updates predecessors, plan and review evidence before execution.
 
 Finish the decision ledger, baseline coverage, chunk instructions, review/test
 protocols, dependency gates, and architecture handoff. Obtain an actual independent
-plan review meeting D019. Ask the owner to confirm shared understanding of this
-concrete plan. Record the answer; do not infer confirmation from silence or the
-fact that individual interview questions were accepted.
+plan review meeting D019. Product decisions are accepted and the owner explicitly
+selected the architecture candidates and source terms in D024/D025. Continue the
+requested design work; no further blanket scope question is needed. Architecture
+review and implementation evidence remain distinct gates.
 
 ### G01 — Architecture improvement workflow
 
@@ -129,13 +130,13 @@ product endpoint calls, or packaging implementation begins before G01 passes.
 These commands are a required future interface, not tools that exist today:
 
 ```text
-python3 scripts/workflow.py check Cxx
-python3 scripts/workflow.py test Cxx
-python3 scripts/workflow.py native Cxx
-python3 scripts/workflow.py review Cxx --reviewer claude
-python3 scripts/workflow.py complete Cxx
-python3 scripts/workflow.py package preview
-python3 scripts/workflow.py package release-candidate
+cargo run --locked -p xtask -- check --chunk Cxx --manifest docs/architecture/checks.json
+cargo run --locked -p xtask -- test --chunk Cxx --manifest docs/architecture/checks.json
+cargo run --locked -p xtask -- native --chunk Cxx --manifest docs/architecture/checks.json
+cargo run --locked -p xtask -- review --chunk Cxx --reviewer claude --manifest docs/architecture/checks.json
+cargo run --locked -p xtask -- complete --chunk Cxx --manifest docs/architecture/checks.json
+cargo run --locked -p xtask -- package --kind preview --manifest docs/architecture/checks.json
+cargo run --locked -p xtask -- package --kind release-candidate --manifest docs/architecture/checks.json
 ```
 
 C01 creates the controller and a versioned manifest of exact commands, working
