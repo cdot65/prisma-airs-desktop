@@ -1,7 +1,7 @@
 # Current state
 
-G00 and G01 passed (historical Claude reviews). C01 completed on
-2026-10-17; implementation is active at **C02**. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+G00 and G01 passed (historical Claude reviews). C01 and C02 completed on
+2026-10-17; implementation is next at **C03**. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps.
 
@@ -10,7 +10,7 @@ five dimensions with empty required fixes, blockers and evidence gaps.
 | G00 | Passed (historical) | Attempt03 scored 9 in all five dimensions |
 | G01 | Passed (historical) | Attempt05 scored 9 in all five dimensions; fingerprint covers commit 931916b inputs only |
 | C01 | **Complete** (generation 1): Codex attempt-04 scored 9 in all five dimensions; bootstrap agreement passed (52 adversarial cases including 16 typed, 2 controls); committed as ce5bd8d and verified against the reviewed source fingerprint | Attempts 01–03 failed and were remediated (records retained) |
-| C02 | Implemented; Codex attempt-01 (8/7/7/8/7) and attempt-02 (8/8/8/8/8: confirmed write-ahead barrier) remediated (`reviews/C02/remediation-attempt-0{1,2}.md`); context_credentials 44, core lib 23, ipc_admission 12, keychain_access 6, SDK package 164, frontend 48 pass; 20 mutation probes; native acceptance 12/12 on f06662a1… | Codex review attempt-03 |
+| C02 | **Complete** (generation 1): Codex attempt-03 scored 9 in all five dimensions; committed as dfcf9bb and verified against the reviewed source fingerprint | Attempts 01–02 failed and were remediated (records retained) |
 | C03–C26 | Planned | Ordered predecessors required; P01 phase review after C03 |
 
 ## C01 evidence (docs/planning/evidence/C01)
