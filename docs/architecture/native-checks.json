@@ -160,6 +160,56 @@
         "id": "C03-N13",
         "check": "After the scans, no file in the fixture data root other than the fixture keychain contains the synthetic key or any submitted prompt marker, and no AX snapshot contains the key."
       }
+    ],
+    "C04": [
+      {
+        "id": "C04-N01",
+        "check": "Settings shows a labelled 'Academy account' group, separate from Tenants, stating the learner account is independent of AIRS tenants; signed out it offers 'Sign in to Academy', reachable by Tab."
+      },
+      {
+        "id": "C04-N02",
+        "check": "Starting sign-in shows the device code (accessible name 'Sign-in code \u2026') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL."
+      },
+      {
+        "id": "C04-N03",
+        "check": "After approval in the browser the window shows 'Signed in to Academy as <name>'; the endpoint saw a public-client device flow (client_id, no client secret, no Authorization on identity requests); the learner Keychain namespace holds exactly one item and the scan namespace none; no token appears in the data root or any AX snapshot."
+      },
+      {
+        "id": "C04-N04",
+        "check": "After quit and relaunch the Academy account is still signed in (from the Keychain) under the same name."
+      },
+      {
+        "id": "C04-N05",
+        "check": "Creating and switching AIRS tenants leaves the Academy account signed in under the same name."
+      },
+      {
+        "id": "C04-N06",
+        "check": "Signing out shows 'Not signed in to Academy', empties the learner Keychain namespace and revokes the refresh token at the issuer."
+      },
+      {
+        "id": "C04-N07",
+        "check": "A sign-in declined in the browser shows 'Sign-in was declined in the browser.' with 'Sign in again', and saves nothing."
+      },
+      {
+        "id": "C04-N08",
+        "check": "With the Academy endpoint unreachable, sign-in reports that Academy could not be reached, and nothing is saved."
+      },
+      {
+        "id": "C04-N09",
+        "check": "Cancelling a sign-in that is waiting for approval returns to 'Not signed in to Academy'; a grant issued afterwards does not sign in and nothing is saved."
+      },
+      {
+        "id": "C04-N10",
+        "check": "Keyboard only: Tab reaches 'Sign in to Academy', Space starts sign-in, Tab reaches 'Open sign-in page' and 'Cancel sign-in'; state changes are exposed through a live status region."
+      },
+      {
+        "id": "C04-N11",
+        "check": "At 200% zoom and at the minimum window size, the Academy sign-in control is reachable by Tab and lies inside the window clear of the bottom fade."
+      },
+      {
+        "id": "C04-N12",
+        "check": "Reset local data signs the Academy account out and empties the learner Keychain namespace."
+      }
     ]
   }
 }

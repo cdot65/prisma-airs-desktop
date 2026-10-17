@@ -111,6 +111,7 @@ impl Desk {
     fn snap(&self) -> ShellSnapshot {
         match self.handle.observe(ViewScope::Shell).expect("observe") {
             Observation::Shell { snapshot, .. } => snapshot,
+            _ => unreachable!("shell scope"),
         }
     }
 

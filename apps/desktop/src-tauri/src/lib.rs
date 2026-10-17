@@ -186,8 +186,15 @@ pub fn install<R: Runtime>(builder: tauri::Builder<R>, core: &Core) -> tauri::Bu
 /// A core over deterministic fixture adapters, for host tests.
 #[cfg(feature = "test-fixtures")]
 pub fn fixture_core() -> (Core, desktop_core::fixtures::Handles) {
+    fixture_core_with(CoreConfig::default())
+}
+
+/// A fixture core with a given configuration (for example the synthetic
+/// Academy origin).
+#[cfg(feature = "test-fixtures")]
+pub fn fixture_core_with(config: CoreConfig) -> (Core, desktop_core::fixtures::Handles) {
     let (adapters, handles) = desktop_core::fixtures::adapters();
-    (Core::new(CoreConfig::default(), adapters), handles)
+    (Core::new(config, adapters), handles)
 }
 
 /// Builds the packaged main window with its navigation policy: it may only
@@ -281,7 +288,10 @@ async fn desktop_observe<R: Runtime>(
             let Observation::Shell {
                 snapshot,
                 updates: mut subscription,
-            } = host.operator.observe(ViewScope::Shell)?;
+            } = host.operator.observe(ViewScope::Shell)?
+            else {
+                return Err(Refusal::InvalidInput);
+            };
             let mut menu = host.menu.subscribe();
             host.register(webview.label(), &updates, move |id, registry| {
                 tauri::async_runtime::spawn(async move {
@@ -315,6 +325,16 @@ async fn desktop_observe<R: Runtime>(
             host.close(webview.label(), &updates);
             Ok(ObserveResponse::Closed)
         }
+        WireScope::AcademyCall { operation } => {
+            let Observation::AcademyCall(handle) =
+                host.operator.observe(ViewScope::AcademyCall(operation))?
+            else {
+                return Err(Refusal::InvalidInput);
+            };
+            Ok(ObserveResponse::AcademyCall {
+                result: handle.result().await,
+            })
+        }
     }
 }
 
@@ -331,7 +351,13 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             }
         })
         .setup(|app| {
-            let core = Core::new(CoreConfig::default(), adapters::production(app.handle()));
+            #[allow(unused_mut)]
+            let mut config = CoreConfig::default();
+            #[cfg(feature = "test-fixtures")]
+            if let Some(origin) = adapters::fixture_academy_origin(app.handle()) {
+                config.academy_origin = origin;
+            }
+            let core = Core::new(config, adapters::production(app.handle()));
             #[cfg(feature = "test-fixtures")]
             if let Some(policy) = adapters::fixture_transport(app.handle()) {
                 core.set_transport_policy(policy)

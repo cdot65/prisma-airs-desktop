@@ -22,6 +22,9 @@ fn bounded_ascii(text: &str, prefix: &str, max: usize) -> bool {
 pub struct ContextRef(String);
 
 impl ContextRef {
+    /// The operations-runtime domain of tenant contexts.
+    pub const PREFIX: &'static str = "cx-";
+
     pub(crate) fn issue(salt: &[u8; 16], epoch: u64) -> Self {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
@@ -42,6 +45,41 @@ impl<'de> Deserialize<'de> for ContextRef {
         bounded_ascii(&text, "cx-", 64)
             .then_some(Self(text))
             .ok_or_else(|| serde::de::Error::custom("not a context reference"))
+    }
+}
+
+/// A native-issued reference to one Academy learner account generation.
+/// It is independent of the tenant context: tenant switches never change
+/// it; sign-in, sign-out and account changes issue a new one, retiring
+/// every learner operation bound to the previous value.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(transparent)]
+pub struct LearnerRef(String);
+
+impl LearnerRef {
+    /// The operations-runtime domain of learner contexts.
+    pub const PREFIX: &'static str = "lx-";
+
+    pub(crate) fn issue(salt: &[u8; 16], epoch: u64) -> Self {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(b"prisma-airs-desktop-v2/learner");
+        hasher.update(salt);
+        hasher.update(epoch.to_be_bytes());
+        Self(format!("lx-{}", hex::encode(&hasher.finalize()[..12])))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for LearnerRef {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        bounded_ascii(&text, "lx-", 64)
+            .then_some(Self(text))
+            .ok_or_else(|| serde::de::Error::custom("not a learner reference"))
     }
 }
 

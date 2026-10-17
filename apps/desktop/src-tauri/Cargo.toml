@@ -35,6 +35,7 @@ tauri-build = { version = "=2.7.3", default-features = false, features = ["confi
 
 [dependencies]
 desktop-core = { path = "../../../crates/desktop-core" }
+url = "=2.5.8"
 tauri = { version = "=2.12.4", default-features = false, features = ["wry", "common-controls-v6", "compression"] }
 serde.workspace = true
 serde_json.workspace = true
@@ -63,8 +64,13 @@ objc2-web-kit = { version = "=0.3.2", optional = true, default-features = false,
 block2 = { version = "=0.6.2", optional = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["sync", "macros", "rt"] }
+tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time"] }
 getrandom = "=0.4.3"
+# The synthetic Academy endpoint for browser_callback (same pins as desktop-core).
+rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "pem"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws_lc_rs", "tls12"] }
+time = "=0.3.55"
 
 [lints]
 workspace = true
@@ -80,4 +86,8 @@ required-features = ["test-fixtures"]
 
 [[test]]
 name = "keychain_access"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "browser_callback"
 required-features = ["test-fixtures"]

@@ -86,7 +86,7 @@ describe('desktop shell', () => {
         expect(nav().getByRole('button', { name: /^Academy.*Not available in this build/ })).toBeInTheDocument()
         expect(screen.getByRole('heading', { level: 1, name: 'Academy' })).toBeInTheDocument()
         expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C04')).toBeInTheDocument()
+        expect(screen.getByText('Planned in C05')).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
         // The rail must scroll rather than clip destinations at high zoom or
         // the minimum window size.

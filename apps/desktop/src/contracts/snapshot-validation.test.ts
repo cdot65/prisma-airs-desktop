@@ -100,6 +100,11 @@ describe('shell snapshot validation', () => {
         ['an unknown failure kind', withScan({ outcome: 'rejected', result: null, failure: { kind: 'teapot', status: 418 } })],
         ['a non-HTTP failure status', withScan({ outcome: 'rejected', result: null, failure: { kind: 'httpOther', status: 42 } })],
         ['a detection without its flag', withScan({ result: { ...scan.result, promptDetected: [{ detector: 'dlp' }] } })],
+        ['academy missing', { ...valid, academy: undefined }],
+        ['an unknown academy state', { ...valid, academy: { state: 'hacked' } }],
+        ['a non-HTTPS verification page', { ...valid, academy: { state: 'awaitingApproval', userCode: 'A', verificationUri: 'http://x', expiresIn: 1 } }],
+        ['a malformed learner reference', { ...valid, academy: { state: 'signedIn', displayName: 'A', learner: 'cx-1' } }],
+        ['an unknown academy failure', { ...valid, academy: { state: 'failed', failure: 'oops', vault: null, displayName: null } }],
         ['active context with a malformed reference', { ...valid, active: { tenant: tenant().id, context: 'not a context' } }],
     ])('rejects %s', (_case, snapshot) => {
         expect(() => parseShellSnapshot(snapshot)).toThrow(ContractViolation)

@@ -36,6 +36,10 @@ use zeroize::Zeroizing;
 pub const SCAN_SERVICE: &str = "io.cdot.prisma-airs-desktop.v2.scan";
 /// The fixture build's namespace, used only in its dedicated test keychain.
 pub const FIXTURE_SCAN_SERVICE: &str = "io.cdot.prisma-airs-desktop.v2.fixture.scan";
+/// The Academy learner namespace (refresh token of the signed-in learner).
+pub const ACADEMY_SERVICE: &str = "io.cdot.prisma-airs-desktop.v2.academy";
+/// The fixture build's Academy learner namespace.
+pub const FIXTURE_ACADEMY_SERVICE: &str = "io.cdot.prisma-airs-desktop.v2.fixture.academy";
 
 const ERR_SEC_ITEM_NOT_FOUND: OSStatus = -25300;
 const ERR_SEC_INTERACTION_NOT_ALLOWED: OSStatus = -25308;
@@ -80,11 +84,16 @@ unsafe impl Send for KeychainStore {}
 unsafe impl Sync for KeychainStore {}
 
 impl KeychainStore {
-    /// The login Keychain with the production namespace.
+    /// The login Keychain with the production scan namespace.
     pub fn login() -> Result<Self, VaultError> {
+        Self::login_service(SCAN_SERVICE)
+    }
+
+    /// The login Keychain with one of this build's production namespaces.
+    pub fn login_service(service: &'static str) -> Result<Self, VaultError> {
         Ok(Self {
             keychain: SecKeychain::default().map_err(|e| map(e.code(), None))?,
-            service: SCAN_SERVICE,
+            service,
             interaction: Interaction::Allowed,
         })
     }

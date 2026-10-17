@@ -94,6 +94,8 @@ pub enum Reply {
     Close,
     /// Wait, then reply.
     Delayed { millis: u64, then: Box<Reply> },
+    /// Choose the reply from the request (routing fixtures).
+    Route(Arc<dyn Fn(&Seen) -> Reply + Send + Sync>),
 }
 
 impl Reply {
@@ -194,8 +196,11 @@ impl TlsServer {
                     let Some(seen) = read_request(&mut tls).await else {
                         return;
                     };
-                    log.lock().expect("log").seen.push(seen);
                     let mut reply = reply;
+                    if let Reply::Route(route) = &reply {
+                        reply = route(&seen);
+                    }
+                    log.lock().expect("log").seen.push(seen);
                     while let Reply::Delayed { millis, then } = reply {
                         tokio::time::sleep(Duration::from_millis(millis)).await;
                         reply = *then;
@@ -220,7 +225,7 @@ impl TlsServer {
                         Reply::Close => {
                             let _ = tls.shutdown().await;
                         }
-                        Reply::Delayed { .. } => {}
+                        Reply::Delayed { .. } | Reply::Route(_) => {}
                     }
                 });
             }

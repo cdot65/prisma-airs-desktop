@@ -1,0 +1,41 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+ ✓ src/features/academy/desktop-link.test.ts (10 tests) 22ms
+ ✓ src/contracts/invoke.test.ts (10 tests) 80ms
+ ✓ src/features/academy/learner-provider.test.tsx (2 tests) 53ms
+ ✓ src/contracts/snapshot-validation.test.ts (24 tests) 6ms
+ ✓ src/features/tenants/reset.test.tsx (5 tests) 1477ms
+   ✓ reset local data > asks for confirmation before dispatching a reset  609ms
+ ✓ src/features/academy/academy-account.test.tsx (8 tests) 1936ms
+   ✓ Academy account > starts device sign-in, shows the code, opens only the native page and signs out  696ms
+ ✓ src/features/tenants/profile-import.test.tsx (6 tests) 1993ms
+   ✓ profile import > asks the desktop for its native sheet and never reads files in the page  642ms
+   ✓ profile import > shows the native preview faithfully and sends only the explicit selection  363ms
+ ✓ src/shell/desktop-shell.test.tsx (8 tests) 2373ms
+   ✓ desktop shell > lists every native feature and shows unavailable destinations explicitly  638ms
+   ✓ desktop shell > scrolls a control into view when arrow keys move focus within a radio group  368ms
+   ✓ desktop shell > handles native menu commands and restores focus when the palette closes  345ms
+   ✓ desktop shell > treats appearance as Rust-owned: dispatches, then applies the native snapshot  328ms
+   ✓ desktop shell > reports refusals and unconfirmed outcomes without claiming the change applied  353ms
+ ✓ src/features/tenants/credential-entry.test.tsx (9 tests) 3808ms
+   ✓ scan-key entry > captures the key typed at submission time and clears the field before awaiting  906ms
+   ✓ scan-key entry > keeps the key out of snapshots, observations, the page and browser storage  397ms
+   ✓ scan-key entry > sends the session-only choice when selected  512ms
+   ✓ scan-key entry > reports a refusal without claiming the key was saved  395ms
+   ✓ scan-key entry > reports an unconfirmed delivery as unknown  413ms
+   ✓ scan-key entry > refuses an empty key locally and focuses the field  357ms
+   ✓ scan-key entry > discards a partially typed key when the context changes  324ms
+ ✓ src/features/runtime/scan-submit.test.tsx (15 tests) 4752ms
+   ✓ runtime scan submission > captures the values present at click time and sends one literal scan intent  851ms
+   ✓ runtime scan submission > sends a profile by ID only when it is a UUID  558ms
+   ✓ runtime scan submission > sends working v1 inputs and the largest accepted request, and refuses past the 2 MiB and 8 MiB ceilings  1413ms
+   ✓ runtime scan submission > cancels a running scan by its operation and blocks a second submission while one is in flight  337ms
+
+ Test Files  10 passed (10)
+      Tests  97 passed (97)
+   Start at  15:42:58
+   Duration  7.44s (transform 546ms, setup 4.10s, collect 5.09s, tests 16.50s, environment 10.84s, prepare 1.70s)
+
+
+--- stderr ---

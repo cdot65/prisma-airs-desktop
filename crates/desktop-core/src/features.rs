@@ -48,7 +48,7 @@ pub struct FeatureEntry {
 }
 
 const PLANNED: [(FeatureId, &str, &str); 9] = [
-    (FeatureId::Academy, "Academy", "C04"),
+    (FeatureId::Academy, "Academy", "C05"),
     (FeatureId::Administration, "Administration", "C08"),
     (FeatureId::Sessions, "Sessions & Reports", "C11"),
     (FeatureId::Library, "Case Library", "C12"),

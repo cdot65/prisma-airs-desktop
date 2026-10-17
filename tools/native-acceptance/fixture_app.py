@@ -323,3 +323,82 @@ class ScanEndpoint:
             return []
         with open(path) as f:
             return [json.loads(line) for line in f if line.strip()]
+
+
+class AcademyEndpoint:
+    """The synthetic Academy + Clerk endpoint (academy_server.py)."""
+
+    def __init__(self, directory):
+        self.dir = directory
+        self.port = free_port()
+        self.proc = None
+        made = sh(["python3", "-I", os.path.join(TOOLS, "scan_server.py"), "--dir", directory, "--port", "0", "--key", "unused", "--make-certs"])
+        if made.returncode != 0:
+            raise SystemExit(f"fixture certificates were not generated: {made.stderr}")
+        self.mode(approval="pending")
+
+    @property
+    def origin(self):
+        return f"https://localhost:{self.port}"
+
+    def install(self):
+        """Trust the test CA and point the fixture build at this endpoint
+        (both read at launch)."""
+        os.makedirs(DATA, exist_ok=True)
+        shutil.copy(os.path.join(self.dir, "ca.pem"), ROOTS)
+        with open(os.path.join(DATA, "fixture-academy-origin"), "w") as f:
+            f.write(self.origin)
+
+    def start(self):
+        if self.proc:
+            return
+        self.proc = subprocess.Popen(
+            ["python3", "-I", os.path.join(TOOLS, "academy_server.py"), "--dir", self.dir, "--port", str(self.port)],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        if self.proc.stdout.readline().strip() != "ready":
+            raise SystemExit("the synthetic Academy endpoint did not start")
+
+    def stop(self):
+        if self.proc:
+            self.proc.terminate()
+            self.proc.wait(timeout=5)
+            self.proc = None
+
+    def mode(self, **values):
+        with open(os.path.join(self.dir, "mode.json"), "w") as f:
+            json.dump(values, f)
+
+    def requests(self):
+        path = os.path.join(self.dir, "requests.jsonl")
+        if not os.path.exists(path):
+            return []
+        with open(path) as f:
+            return [json.loads(line) for line in f if line.strip()]
+
+
+def opened_urls():
+    path = os.path.join(DATA, "fixture-opened-urls.log")
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        return [line.strip() for line in f if line.strip()]
+
+
+def keychain_accounts(service):
+    """Accounts of items in one namespace of the fixture keychain
+    (attributes only; secrets are never read)."""
+    if not os.path.exists(KEYCHAIN):
+        return []
+    out = sh(["security", "dump-keychain", KEYCHAIN]).stdout
+    accounts, account, svc = [], None, None
+    for line in out.splitlines() + ["keychain:"]:
+        line = line.strip()
+        if line.startswith("keychain:") or line.startswith("class:"):
+            if svc == service and account:
+                accounts.append(account)
+            account, svc = None, None
+        if line.startswith('"acct"<blob>='):
+            account = line.split("=", 1)[1].strip('"')
+        if line.startswith('"svce"<blob>='):
+            svc = line.split("=", 1)[1].strip('"')
+    return sorted(accounts)

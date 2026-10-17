@@ -497,6 +497,57 @@
           "test-fixtures",
           "--test",
           "browser_callback"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "sync_scan"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/features/academy/desktop-link.test.ts",
+          "src/features/academy/learner-provider.test.tsx",
+          "src/features/academy/academy-account.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/contracts/invoke.test.ts",
+          "src/shell/desktop-shell.test.tsx"
         ]
       ]
     },

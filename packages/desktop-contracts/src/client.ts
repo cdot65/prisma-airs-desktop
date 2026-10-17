@@ -10,6 +10,7 @@
  * - Native responses are validated at runtime; generated declarations alone
  *   do not validate anything.
  */
+import type { AcademyCallResult } from './generated/AcademyCallResult'
 import type { DispatchResponse } from './generated/DispatchResponse'
 import type { Intent } from './generated/Intent'
 import type { MenuCommand } from './generated/MenuCommand'
@@ -98,6 +99,20 @@ const TENANT_ID = /^tn-[0-9a-f]{16}$/
 const CONTEXT_REF = /^cx-[A-Za-z0-9-]{1,61}$/
 const REVIEW_ID = /^rv-[A-Za-z0-9-]{1,61}$/
 const OPERATION_ID = /^op-[0-9]{1,20}$/
+const LEARNER_REF = /^lx-[A-Za-z0-9-]{1,61}$/
+const ACADEMY_FAILURES: readonly string[] = [
+    'notConfigured',
+    'invalidConfig',
+    'network',
+    'invalidResponse',
+    'denied',
+    'expired',
+    'sessionExpired',
+    'scopeMissing',
+    'accountChanged',
+    'authFailed',
+]
+const CALL_FAILURES: readonly string[] = ['network', 'timeout', 'invalidResponse', 'sessionExpired', 'credentialUnavailable', 'cancelled']
 const SCAN_PROGRESS: readonly string[] = ['queued', 'running', 'settled']
 const OUTCOMES: readonly string[] = ['notSent', 'rejected', 'completed', 'unknown']
 const STOP_REASONS: readonly string[] = ['cancelled', 'contextRetired', 'deadline', 'shuttingDown']
@@ -239,6 +254,52 @@ function isScanRecord(value: unknown): boolean {
     return (value.progress === 'settled') === (value.outcome !== null)
 }
 
+function isAcademyView(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    switch (value.state) {
+        case 'signedOut':
+        case 'starting':
+        case 'completing':
+            return true
+        case 'awaitingApproval':
+            return (
+                isString(value.userCode) &&
+                typeof value.verificationUri === 'string' &&
+                value.verificationUri.startsWith('https://') &&
+                isCount(value.expiresIn)
+            )
+        case 'signedIn':
+            return isString(value.displayName) && typeof value.learner === 'string' && LEARNER_REF.test(value.learner)
+        case 'failed':
+            return (
+                oneOf(ACADEMY_FAILURES, value.failure) &&
+                optional((v) => oneOf(VAULT_ERRORS, v), value.vault) &&
+                optional(isString, value.displayName)
+            )
+        default:
+            return false
+    }
+}
+
+/** Validates a learner call result (its tRPC payloads are parsed later). */
+export function parseAcademyCallResult(value: unknown): AcademyCallResult {
+    if (isRecord(value)) {
+        if (value.kind === 'data' && typeof value.data === 'string') return { kind: 'data', data: value.data }
+        if (
+            value.kind === 'error' &&
+            typeof value.error === 'string' &&
+            Number.isInteger(value.httpStatus) &&
+            oneOf(OUTCOMES, value.outcome)
+        ) {
+            return value as unknown as AcademyCallResult
+        }
+        if (value.kind === 'failed' && oneOf(CALL_FAILURES, value.failure) && oneOf(OUTCOMES, value.outcome)) {
+            return value as unknown as AcademyCallResult
+        }
+    }
+    throw new ContractViolation('academy call result')
+}
+
 function isDecimalU64(value: unknown): value is string {
     return typeof value === 'string' && DECIMAL_U64.test(value) && BigInt(value) <= U64_MAX
 }
@@ -325,7 +386,8 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         ) ||
         typeof value.durabilityUnconfirmed !== 'boolean' ||
         !Array.isArray(value.scans) ||
-        !value.scans.every(isScanRecord)
+        !value.scans.every(isScanRecord) ||
+        !isAcademyView(value.academy)
     ) {
         throw new ContractViolation('shell snapshot')
     }
@@ -417,6 +479,29 @@ export class DesktopClient {
         const run = this.#queue.then(() => this.#deliver(intent))
         this.#queue = run.catch(() => undefined)
         return run
+    }
+
+    /**
+     * Waits for the single result of an admitted learner call. Not an
+     * admission: it may be called concurrently with dispatches.
+     */
+    async observeAcademyCall(operation: string): Promise<AcademyCallResult> {
+        if (!OPERATION_ID.test(operation)) throw new ContractViolation('operation reference')
+        let response: unknown
+        try {
+            response = await this.#transport.observe(
+                encode({ protocol: PROTOCOL, scope: { kind: 'academyCall', operation } })
+            )
+        } catch (error) {
+            // The native command rejects with a refusal name.
+            if (typeof error === 'string' && (REFUSALS as readonly string[]).includes(error)) {
+                throw new RefusedError(error as Refusal)
+            }
+            throw error
+        }
+        if (isRecord(response) && response.kind === 'academyCall') return parseAcademyCallResult(response.result)
+        if (isRecord(response) && response.kind === 'refusal') throw new RefusedError(asRefusal(response.refusal))
+        throw new ContractViolation('academy call observation')
     }
 
     async #register(): Promise<Session> {

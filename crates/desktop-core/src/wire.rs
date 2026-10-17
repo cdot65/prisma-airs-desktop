@@ -59,6 +59,10 @@ pub enum WireScope {
     Shell { updates: String },
     /// Stop the observation delivered on `updates`.
     CloseShell { updates: String },
+    /// Wait for the single result of an admitted learner call.
+    AcademyCall {
+        operation: crate::runtime::OperationId,
+    },
 }
 
 /// A native menu selection forwarded to the presentation.
@@ -101,6 +105,10 @@ pub enum ObserveResponse {
     },
     /// The named observation was stopped (or was not active).
     Closed,
+    /// A learner call's result (observed once).
+    AcademyCall {
+        result: crate::AcademyCallResult,
+    },
     Refusal {
         refusal: Refusal,
     },

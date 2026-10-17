@@ -256,7 +256,7 @@ def evaluate_flows(run):
                           f"Cmd+2 focused heading {ga['label']!r}; Cmd+K then Cmd+, focused {gs['focused']['label']!r} with palette open={gs['dialogOpen']}")
     # Runtime Security is available since C03 (its view's heading is shown);
     # every other product destination is still unavailable.
-    expected = {"Academy": "C04", "Administration": "C08", "Sessions & Reports": "C11",
+    expected = {"Academy": "C05", "Administration": "C08", "Sessions & Reports": "C11",
                 "Case Library": "C12", "Red Team & Models": "C13", "API Client": "C14", "AI Gateway": "C16",
                 "Harness": "C19", "Import from v1": "C23"}
     available = {"Scan a prompt or response"}

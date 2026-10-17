@@ -38,6 +38,19 @@ pub struct StoredCredential {
     pub destination: String,
 }
 
+/// The signed-in Academy learner account (nonsecret; the refresh token is in
+/// the learner Keychain namespace under `record`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredLearner {
+    pub account_id: String,
+    pub display_name: String,
+    pub record: RecordId,
+    /// The issuer and public client the session was granted by.
+    pub issuer: String,
+    pub client_id: String,
+}
+
 /// The persisted document.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -49,6 +62,13 @@ pub struct PersistedState {
     pub credentials: Vec<StoredCredential>,
     /// Keychain records to delete (replaced, signed out, orphaned or reset).
     pub pending_cleanup: Vec<RecordId>,
+    /// The Academy learner account, if signed in (C04; absent before).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learner: Option<StoredLearner>,
+    /// Learner-namespace records to delete (write-ahead entries, replaced,
+    /// signed out or abandoned), drained only after a confirmed save.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub learner_cleanup: Vec<RecordId>,
 }
 
 impl Default for PersistedState {
@@ -60,6 +80,8 @@ impl Default for PersistedState {
             active_tenant: None,
             credentials: Vec::new(),
             pending_cleanup: Vec::new(),
+            learner: None,
+            learner_cleanup: Vec::new(),
         }
     }
 }
@@ -95,7 +117,14 @@ impl PersistedState {
                 .iter()
                 .all(|c| seen.insert(c.tenant.clone()))
         };
+        let learner_ok = self.learner.as_ref().is_none_or(|l| {
+            l.account_id.starts_with("user_")
+                && !l.display_name.trim().is_empty()
+                && crate::academy::origin_of(&l.issuer).as_deref() == Some(l.issuer.as_str())
+                && !l.client_id.is_empty()
+        });
         self.schema == STATE_SCHEMA
+            && learner_ok
             && tenants_ok
             && credentials_ok
             && one_per_tenant

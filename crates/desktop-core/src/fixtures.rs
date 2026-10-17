@@ -359,11 +359,35 @@ impl ImportPicker for ScriptedPicker {
     }
 }
 
+/// Records the pages the core asked to open; opens nothing.
+#[derive(Default)]
+pub struct ScriptedOpener {
+    opened: Mutex<Vec<String>>,
+}
+
+impl ScriptedOpener {
+    pub fn opened(&self) -> Vec<String> {
+        self.opened.lock().map(|o| o.clone()).unwrap_or_default()
+    }
+}
+
+impl crate::UrlOpener for ScriptedOpener {
+    fn open(&self, url: &url::Url) -> bool {
+        self.opened
+            .lock()
+            .map(|mut o| o.push(url.to_string()))
+            .is_ok()
+    }
+}
+
 /// Handles to the scripted adapters behind an [`Adapters`] value.
 pub struct Handles {
     pub vault: Arc<ScriptedVault>,
+    /// The Academy learner namespace.
+    pub learner_vault: Arc<ScriptedVault>,
     pub store: Arc<ScriptedStore>,
     pub picker: Arc<ScriptedPicker>,
+    pub opener: Arc<ScriptedOpener>,
 }
 
 /// Fresh scripted adapters with empty storage.
@@ -374,14 +398,18 @@ pub fn adapters() -> (Adapters, Handles) {
 pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
     let handles = Handles {
         vault: Arc::new(ScriptedVault::default()),
+        learner_vault: Arc::new(ScriptedVault::default()),
         store: Arc::new(store),
         picker: Arc::new(ScriptedPicker::default()),
+        opener: Arc::new(ScriptedOpener::default()),
     };
     (
         Adapters {
             keychain: handles.vault.clone(),
+            learner_keychain: handles.learner_vault.clone(),
             store: handles.store.clone(),
             picker: handles.picker.clone(),
+            opener: handles.opener.clone(),
         },
         handles,
     )

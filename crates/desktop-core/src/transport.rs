@@ -172,6 +172,12 @@ impl NativeTransport {
     pub fn revision(&self) -> u64 {
         self.revision
     }
+
+    /// The policy's HTTP client, for the Academy identity and learner
+    /// adapter (same trust, proxy, redirect and retry policy).
+    pub(crate) fn http(&self) -> &reqwest::Client {
+        &self.client
+    }
 }
 
 impl std::fmt::Debug for NativeTransport {

@@ -17,10 +17,17 @@ use tokio::time::Instant;
 use ts_rs::TS;
 use zeroize::Zeroizing;
 
-use crate::context::{ContextRef, EnteredSecret, ReviewId};
+mod learner_domain;
+
+pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
+use learner_domain::{LearnerPhase, LearnerSession};
+
+use crate::academy::AcademyClient;
+use crate::context::{ContextRef, EnteredSecret, LearnerRef, ReviewId};
 use crate::delivery::{Admit, Delivery, DeliverySession, Sessions};
 use crate::features::{self, FeatureEntry};
 use crate::import::{self, Discarded, ImportCandidate, ImportError, ImportFormat, ImportPreview};
+use crate::learner::{AcademyView, ProcedureKind};
 use crate::observe::{Subscribers, Subscription, Update};
 use crate::runtime::{
     self, OperationId, OperationLimits, OperationState, Operations, Outcome, StopReason,
@@ -28,7 +35,7 @@ use crate::runtime::{
 use crate::scanning::{
     HISTORY_PER_TENANT, PayloadSlot, ScanDraft, ScanFailure, ScanJob, ScanPayload, ScanResultView,
 };
-use crate::store::{AppStore, PersistedState, StoreError, StoredCredential};
+use crate::store::{AppStore, PersistedState, StoreError, StoredCredential, StoredLearner};
 use crate::tenants::{Destination, ProfileDraft, TenantId, TenantProfile};
 use crate::transport::{PolicyError, TransportFactory, TransportPolicy};
 use crate::vault::{MAX_SECRET_BYTES, RecordId, SessionVault, StorageMode, Vault, VaultError};
@@ -100,6 +107,26 @@ pub enum Intent {
     /// Cancel a scan: queued work is not sent; a running request is
     /// cancelled and its outcome reported as the service left it.
     CancelScan { operation: OperationId },
+    /// Start Academy device sign-in (the learner account is independent of
+    /// the selected tenant).
+    StartAcademySignIn,
+    /// Abandon an Academy sign-in in progress; a late grant is revoked.
+    CancelAcademySignIn,
+    /// Open the current sign-in's verification page in the browser. The URL
+    /// is the one Academy's issuer returned; the presentation supplies none.
+    OpenAcademyVerification,
+    /// Sign the Academy learner out: retire learner work, delete the saved
+    /// session and revoke its refresh token.
+    SignOutAcademy,
+    /// Call one allowed learner procedure for the current learner account.
+    /// `input` is the tRPC client's serialized (SuperJSON) input.
+    #[serde(rename_all = "camelCase")]
+    AcademyCall {
+        learner: LearnerRef,
+        procedure: String,
+        procedure_kind: ProcedureKind,
+        input: Option<String>,
+    },
 }
 
 /// Native acknowledgement that an Intent was admitted. It is not evidence of
@@ -144,18 +171,23 @@ pub enum Refusal {
 }
 
 /// The product context a caller asks to observe.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ViewScope {
     Shell,
+    /// The single result of an admitted learner call.
+    AcademyCall(OperationId),
 }
 
 /// A scoped, redacted view of desktop state plus its ordered updates.
+// Shell is the common observation; the call handle is a small pointer.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Observation {
     Shell {
         snapshot: ShellSnapshot,
         updates: Subscription,
     },
+    AcademyCall(AcademyCallHandle),
 }
 
 /// Health of Rust-owned local storage.
@@ -280,6 +312,8 @@ pub struct ShellSnapshot {
     pub durability_unconfirmed: bool,
     /// The active tenant's scans this session, newest first.
     pub scans: Vec<ScanRecordView>,
+    /// The Academy learner account (independent of the tenant).
+    pub academy: AcademyView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -318,14 +352,19 @@ struct ScanRecord {
 }
 
 /// Bounds for the core's in-memory structures.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct CoreConfig {
     /// Settled admission results retained per delivery session.
     pub retained_results: usize,
     /// Notifications queued per observer before it must resynchronize.
     pub observer_queue: usize,
     pub operations: OperationLimits,
+    /// The Academy server origin (fixture builds may point it elsewhere).
+    pub academy_origin: String,
 }
+
+/// The production Academy origin.
+pub const ACADEMY_ORIGIN: &str = "https://academy.cdot.io";
 
 impl Default for CoreConfig {
     fn default() -> Self {
@@ -333,8 +372,15 @@ impl Default for CoreConfig {
             retained_results: 256,
             observer_queue: 256,
             operations: OperationLimits::default(),
+            academy_origin: ACADEMY_ORIGIN.to_owned(),
         }
     }
+}
+
+/// Opens a verified HTTPS page in the operator's browser.
+pub trait UrlOpener: Send + Sync + 'static {
+    /// True when the page was handed to the browser (or recorded).
+    fn open(&self, url: &url::Url) -> bool;
 }
 
 /// A file chosen in the native import sheet.
@@ -361,8 +407,12 @@ pub trait CredentialStore: Vault {
 /// OS adapters injected by the native host.
 pub struct Adapters {
     pub keychain: Arc<dyn CredentialStore>,
+    /// The Academy learner namespace (refresh token of the signed-in
+    /// learner); purged with the scan namespace on reset.
+    pub learner_keychain: Arc<dyn CredentialStore>,
     pub store: Arc<dyn AppStore>,
     pub picker: Arc<dyn ImportPicker>,
+    pub opener: Arc<dyn UrlOpener>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -397,6 +447,8 @@ struct Data {
     tenants: Vec<Tenant>,
     active: Option<TenantId>,
     pending_cleanup: Vec<RecordId>,
+    learner: Option<StoredLearner>,
+    learner_cleanup: Vec<RecordId>,
 }
 
 struct EndpointReview {
@@ -445,6 +497,20 @@ struct State {
     scans: Vec<ScanRecord>,
     /// One SDK session per issued context; cancelled when it retires.
     scan_sessions: Vec<(ContextRef, Session)>,
+    academy_origin: String,
+    learner: LearnerPhase,
+    learner_ref: Option<LearnerRef>,
+    learner_epoch: u64,
+    /// Sign-in flows are numbered; a newer one supersedes older tasks.
+    learner_flow: u64,
+    learner_session: Option<Arc<LearnerSession>>,
+    academy_calls: Vec<learner_domain::CallRecord>,
+    /// Learner records being written or revoked; cleanup leaves them alone
+    /// and reset waits for their writes.
+    learner_busy: Vec<RecordId>,
+    /// Learner records whose Keychain write has not settled (reset waits).
+    learner_writes: Vec<RecordId>,
+    learner_cleaning: bool,
 }
 
 impl State {
@@ -497,6 +563,7 @@ impl State {
             reset_failure: self.reset_failure,
             durability_unconfirmed: self.durability_unconfirmed,
             scans: self.scan_views(),
+            academy: self.academy_view(),
         }
     }
 
@@ -536,6 +603,8 @@ impl State {
                 })
                 .collect(),
             pending_cleanup: self.data.pending_cleanup.clone(),
+            learner: self.data.learner.clone(),
+            learner_cleanup: self.data.learner_cleanup.clone(),
             ..PersistedState::default()
         }
     }
@@ -548,6 +617,7 @@ impl State {
     fn changed(&mut self) {
         // Every published snapshot reflects settled scans' outcomes.
         self.sync_scans();
+        self.sync_academy_calls();
         self.revision += 1;
         let update = Update::Shell(Box::new(self.snapshot()));
         self.subscribers.publish(&update);
@@ -570,9 +640,9 @@ impl State {
             self.endpoint_review = None;
         }
         let keep = self.active_ref.as_ref().map(|c| c.as_str().to_owned());
-        let starts = self
-            .operations
-            .retire_contexts(keep.as_deref(), Instant::now());
+        let starts =
+            self.operations
+                .retire_contexts(ContextRef::PREFIX, keep.as_deref(), Instant::now());
         self.retire_scan_sessions();
         self.sync_scans();
         starts
@@ -774,7 +844,7 @@ impl State {
         self.epoch += 1;
         self.active_ref = None;
         self.endpoint_review = None;
-        let starts = self.operations.retire_contexts(None, Instant::now());
+        let starts = self.operations.retire_contexts("", None, Instant::now());
         self.retire_scan_sessions();
         self.sync_scans();
         starts
@@ -827,6 +897,15 @@ enum Effect {
     },
     Reset,
     Start(Vec<runtime::Start>),
+    AcademySignIn {
+        flow: u64,
+        client: AcademyClient,
+    },
+    AcademySignedOut {
+        session: Option<Arc<LearnerSession>>,
+        record: Option<RecordId>,
+    },
+    Open(url::Url),
 }
 
 struct Inner {
@@ -886,15 +965,32 @@ impl Core {
             store: Arc::clone(&adapters.store),
             scans: Vec::new(),
             scan_sessions: Vec::new(),
+            academy_origin: config.academy_origin,
+            learner: LearnerPhase::SignedOut,
+            learner_ref: None,
+            learner_epoch: 0,
+            learner_flow: 0,
+            learner_session: None,
+            academy_calls: Vec::new(),
+            learner_busy: Vec::new(),
+            learner_writes: Vec::new(),
+            learner_cleaning: false,
         };
         let _ = state.reissue_context();
-        Self {
-            inner: Arc::new(Inner {
-                state: Mutex::new(state),
-                adapters,
-                session: Arc::new(SessionVault::new()),
-            }),
+        let inner = Arc::new(Inner {
+            state: Mutex::new(state),
+            adapters,
+            session: Arc::new(SessionVault::new()),
+        });
+        if let Ok(mut state) = lock(&inner) {
+            // A saved learner resumes signed in; its session renews the
+            // access token from the Keychain on first use.
+            if state.data.learner.is_some() {
+                state.learner = LearnerPhase::SignedIn;
+                state.restore_learner_session(&inner);
+            }
         }
+        Self { inner }
     }
 
     /// Resumes durable work after launch (pending Keychain cleanup). Call on
@@ -918,7 +1014,11 @@ impl Core {
         let starts = {
             let mut state = lock(&self.inner).map_err(|_| PolicyError::Client)?;
             state.transport = Some(factory);
-            let starts = state.reissue_context();
+            let mut starts = state.reissue_context();
+            // Learner work moves to a client under the new policy.
+            if matches!(state.learner, LearnerPhase::SignedIn) {
+                starts.extend(state.restore_learner_session(&self.inner));
+            }
             state.changed();
             starts
         };
@@ -950,6 +1050,8 @@ fn data_from(doc: PersistedState) -> Data {
         tenants,
         active: doc.active_tenant,
         pending_cleanup: doc.pending_cleanup,
+        learner: doc.learner,
+        learner_cleanup: doc.learner_cleanup,
     }
 }
 
@@ -998,6 +1100,11 @@ impl AuthorityHandle {
                     if result.is_err() {
                         effects.clear();
                     }
+                    // Learner records wait in the ledger for a confirmed
+                    // save; once one has happened, let cleanup resume.
+                    if !state.durability_unconfirmed && !state.data.learner_cleanup.is_empty() {
+                        effects.push(Effect::Cleanup);
+                    }
                     state
                         .operator_sessions
                         .record(&delivery, digest, result.clone());
@@ -1019,6 +1126,9 @@ impl AuthorityHandle {
                 let updates = state.subscribers.subscribe().ok_or(Refusal::Busy)?;
                 Ok(Observation::Shell { snapshot, updates })
             }
+            ViewScope::AcademyCall(operation) => Ok(Observation::AcademyCall(
+                state.observe_academy_call(&operation)?,
+            )),
         }
     }
 
@@ -1454,9 +1564,17 @@ fn admit(
                 .iter()
                 .filter_map(|id| state.retire_credential(id))
                 .collect();
+            // The Academy learner is signed out with everything else; its
+            // namespace is purged by the reset below (after admitted learner
+            // writes settle).
+            if let Some(stored) = state.data.learner.take() {
+                state.data.learner_cleanup.push(stored.record);
+            }
             if state.storage == StorageHealth::Ready {
                 state.save_with(&before)?;
             }
+            let (learner_starts, _) = state.sign_out_learner();
+            effects.push(Effect::Start(learner_starts));
             for record in retired_sessions {
                 let _ = session.delete(&record);
             }
@@ -1467,6 +1585,69 @@ fn admit(
             effects.push(Effect::Start(state.retire_all_contexts()));
             effects.push(Effect::Reset);
             state.changed();
+        }
+        Intent::StartAcademySignIn => {
+            state.require_storage()?;
+            if state.learner.flow().is_some() {
+                return Err(Refusal::Busy);
+            }
+            if matches!(state.learner, LearnerPhase::SignedIn) {
+                return Err(Refusal::CapabilityMissing);
+            }
+            let client = state.academy_client().ok_or(Refusal::CapabilityMissing)?;
+            // Signing in again over a saved account whose session failed
+            // first signs that account out (its record joins the ledger).
+            let retired = state.retire_saved_learner()?;
+            let (starts, old) = state.sign_out_learner();
+            effects.push(Effect::Start(starts));
+            if old.is_some() || retired.is_some() {
+                effects.push(Effect::AcademySignedOut {
+                    session: old,
+                    record: retired,
+                });
+            }
+            let flow = state.learner_flow;
+            state.learner = LearnerPhase::Starting { flow };
+            effects.push(Effect::AcademySignIn { flow, client });
+            state.changed();
+        }
+        Intent::CancelAcademySignIn => {
+            if state.learner.flow().is_none() {
+                return Err(Refusal::InvalidInput);
+            }
+            state.learner_flow += 1;
+            state.learner = LearnerPhase::SignedOut;
+            state.changed();
+        }
+        Intent::OpenAcademyVerification => match &state.learner {
+            LearnerPhase::Awaiting { verification, .. } => {
+                effects.push(Effect::Open(verification.clone()));
+            }
+            _ => return Err(Refusal::StaleContext),
+        },
+        Intent::SignOutAcademy => {
+            let active = state.data.learner.is_some()
+                || state.learner_session.is_some()
+                || !matches!(state.learner, LearnerPhase::SignedOut);
+            if !active {
+                return Err(Refusal::InvalidInput);
+            }
+            let record = state.retire_saved_learner()?;
+            let (starts, session) = state.sign_out_learner();
+            effects.push(Effect::Start(starts));
+            effects.push(Effect::AcademySignedOut { session, record });
+            state.changed();
+        }
+        Intent::AcademyCall {
+            learner,
+            procedure,
+            procedure_kind,
+            input,
+        } => {
+            let (operation, starts) =
+                state.admit_academy_call(learner, &procedure, procedure_kind, input)?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
         }
         Intent::Scan { context, draft } => {
             let tenant = state.check_context(&context)?;
@@ -1594,7 +1775,26 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     settle_store(&inner, &tenant, lease, record, mode, result);
                 });
             }
-            Effect::Cleanup => drain_cleanup(inner),
+            Effect::Cleanup => {
+                drain_cleanup(inner);
+                learner_domain::drain_learner_cleanup(inner);
+            }
+            Effect::AcademySignIn { flow, client } => {
+                tokio::spawn(learner_domain::sign_in(Arc::clone(inner), flow, client));
+            }
+            Effect::AcademySignedOut { session, record } => {
+                tokio::spawn(learner_domain::signed_out(
+                    Arc::clone(inner),
+                    session,
+                    record,
+                ));
+            }
+            Effect::Open(url) => {
+                let inner = Arc::clone(inner);
+                tokio::task::spawn_blocking(move || {
+                    let _ = inner.adapters.opener.open(&url);
+                });
+            }
             Effect::ChooseImport { lease } => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
@@ -1608,7 +1808,9 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     // No new credential write can start while resetting; wait
                     // for admitted ones to settle so none lands after the purge.
                     loop {
-                        let pending = lock(&inner).map(|s| s.writes_in_flight.len()).unwrap_or(0);
+                        let pending = lock(&inner)
+                            .map(|s| s.writes_in_flight.len() + s.learner_writes.len())
+                            .unwrap_or(0);
                         if pending == 0 {
                             break;
                         }
@@ -1616,14 +1818,14 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     }
                     let worker = Arc::clone(&inner);
                     let result = tokio::task::spawn_blocking(move || {
-                        worker
-                            .adapters
-                            .keychain
-                            .purge()
-                            .map_err(|reason| ResetFailure {
+                        for namespace in
+                            [&worker.adapters.keychain, &worker.adapters.learner_keychain]
+                        {
+                            namespace.purge().map_err(|reason| ResetFailure {
                                 stage: ResetStage::Credentials,
                                 reason,
                             })?;
+                        }
                         match worker.adapters.store.reset() {
                             Ok(()) => Ok(false),
                             Err(StoreError::Unconfirmed) => Ok(true),
@@ -1916,8 +2118,9 @@ mod tests {
             ..CoreConfig::default()
         });
         let handle = core.operator();
-        let Observation::Shell { mut updates, .. } =
-            handle.observe(ViewScope::Shell).expect("observe");
+        let Ok(Observation::Shell { mut updates, .. }) = handle.observe(ViewScope::Shell) else {
+            panic!("shell observation");
+        };
         let session = handle.register_delivery_session().expect("session");
         let themes = [Theme::Dark, Theme::Light, Theme::Dark, Theme::Light];
         for (i, theme) in themes.into_iter().enumerate() {

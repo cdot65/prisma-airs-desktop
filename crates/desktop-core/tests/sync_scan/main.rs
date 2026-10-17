@@ -98,6 +98,7 @@ impl Desk {
     fn snap(&self) -> ShellSnapshot {
         match self.handle.observe(ViewScope::Shell).expect("observe") {
             Observation::Shell { snapshot, .. } => snapshot,
+            _ => unreachable!("shell scope"),
         }
     }
 
@@ -616,6 +617,7 @@ async fn a_restart_resubmits_nothing() {
     tokio::time::sleep(Duration::from_millis(300)).await;
     let snapshot = match core.operator().observe(ViewScope::Shell).expect("observe") {
         Observation::Shell { snapshot, .. } => snapshot,
+        _ => unreachable!("shell scope"),
     };
     assert!(
         snapshot.scans.is_empty(),

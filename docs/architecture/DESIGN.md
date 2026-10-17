@@ -562,6 +562,96 @@ raw source course content, answer keys/private evaluation and assessor credentia
 never enter the desktop build. Account-specific QueryClient state is retired
 on sign-out/switch; tenant switching does not change Academy account identity.
 
+### C04 implementation: Academy identity and learner transport
+
+Implemented in `crates/desktop-core` (`academy`, `learner`,
+`authority/learner_domain`), `apps/desktop/src-tauri` (Academy Keychain
+namespace, browser opener) and `apps/desktop/src/features/academy`.
+
+- **Device sign-in** (D028). `StartAcademySignIn` reads Academy's public
+  `/api/desktop/config` (issuer must be a bare HTTPS origin; client ID
+  `[A-Za-z0-9_-]{1,256}`; scope containing `academy:learn` and
+  `offline_access`), the issuer's RFC 8414 metadata (its `issuer` must equal
+  the configured one and every endpoint must be HTTPS on that origin), then
+  starts an RFC 8628 device authorization as a public client (no secret).
+  Polling honors `interval`, adds 5 s on `slow_down` and stops on
+  `access_denied`, `expired_token` or local expiry. A grant must be Bearer,
+  carry `academy:learn` when a scope is returned and include a refresh token;
+  the account is bound through `desktop.me` (`user_…` ID, display name).
+  Flows are numbered: cancel, a new start, sign-out or reset supersede a
+  flow, and a grant that lands afterwards is revoked, never kept.
+  Replies are bounded (128 KiB), redirects refused, transient 5xx read as
+  network. Clerk/Academy text is never shown.
+- **Browser hand-off.** `OpenAcademyVerification` carries no URL: the host
+  opens the HTTPS page the issuer returned for the flow in progress
+  (`/usr/bin/open`; the fixture build records it in its data root instead).
+- **Protected session.** The refresh token is stored in the learner Keychain
+  namespace (`io.cdot.prisma-airs-desktop.v2.academy`; fixture
+  `.v2.fixture.academy`) under the same write-ahead discipline as scan keys:
+  each record joins a durable learner cleanup ledger (confirmed save, one
+  confirming retry) before it is written and is marked in flight; the
+  account takes ownership in a later save that removes it from the ledger.
+  Abandoned, replaced, signed-out and superseded records stay in the ledger
+  and are deleted by record (never by purging the namespace outside reset),
+  only when no write or revocation uses them and the document naming their
+  replacement is durably confirmed; failures retry at the next launch. The
+  state document keeps only account ID, display name, record, issuer and
+  client ID. Access tokens live only in memory. A Keychain
+  failure fails sign-in visibly (the grant is revoked); there is no
+  plaintext or session fallback. On restart the saved account resumes signed
+  in and renews its access token from the Keychain on first use; a missing,
+  unreadable or refused credential reads as an expired session that names
+  the account and offers sign-in again or sign-out.
+- **Renewal** is single-flight per account generation and runs to
+  completion even if its caller is cancelled, so a rotated refresh token is
+  either saved (write-ahead record, account moved to it, old record ledgered
+  and deleted once confirmed) or, when the account changed meanwhile or the
+  save failed, revoked.
+- **Learner reference.** `LearnerRef` (`lx-…`) names one account
+  generation, issued on sign-in, restart and transport revision and retired
+  on sign-out, account change and reset. It is independent of tenant
+  contexts: the operations runtime retires contexts per domain prefix
+  (`cx-` tenants, `lx-` learner, all on reset), so tenant switches never touch
+  learner work.
+- **Learner calls.** `AcademyCall { learner, procedure, procedureKind, input }`
+  admits only the 99 procedures pinned from Academy 891f65ee/7f3a28c4
+  (`LEARNER_PROCEDURES` with each router's kind; manager, assessor and admin
+  procedures other than the learner `admin.feedback.submit` are refused
+  before any request). Inputs stay in SuperJSON wire form (≤ 1 MiB, valid
+  JSON); queries GET `/api/trpc/<p>?input=…`, mutations POST it, never
+  batched, with the access token. A refused token is renewed once; a query
+  is then asked again, a mutation never. Replies (≤ 16 MiB) must be tRPC
+  envelopes; server-private assessment fields (`answerKey`, `serverSpec`,
+  `rubric`, `goldens`, `evaluation`) are refused in results and in error
+  envelopes alike, except the orientation drill's numeric practice
+  `answerKey` in its result. Error results carry their remote outcome
+  (Rejected for 4xx, Unknown for 5xx). Results are read once through
+  `ViewScope::AcademyCall` (`desktop_observe` scope `academyCall`); a reply
+  for a retired learner reference is never delivered, and settled replies an
+  earlier account never observed are withdrawn on account change.
+- **Presentation.** Settings holds the Academy account (code, issuer page,
+  open, cancel, sign out, failure recovery). `desktopLink` is a terminating
+  tRPC link that admits each operation natively and rebuilds the envelope for
+  tRPC's own `transformResult`, so Academy hooks see the same values and
+  errors as over HTTP; every error also carries the native remote outcome
+  (`data.outcome`), and an unknown mutation (lost reply, timeout or
+  cancellation after dispatch, 5xx, unconfirmed admission) is described as
+  possibly applied, with a server's own message and codes kept in `data`
+  (`serverMessage`) — nothing is resent; `LearnerProvider` keys React Query and tRPC clients by
+  learner reference and remounts the learner subtree on account change.
+  Literal SuperJSON/envelope fixtures in
+  `packages/desktop-contracts/fixtures/academy` drive both the Rust and the
+  TypeScript suites. Academy content arrives in C05; the Academy destination
+  states "Planned in C05".
+- **Sign-out** moves the saved record into the ledger in one save (a save
+  failure refuses sign-out before anything changes), retires learner work,
+  revokes the refresh token (read from the Keychain first when this launch
+  never loaded it) and then lets cleanup delete that record; a newer
+  sign-in's record is never touched.
+- **Reset** signs the learner out, waits for admitted learner writes like
+  scan writes, and purges the learner namespace with the scan namespace
+  (stage `credentials`).
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

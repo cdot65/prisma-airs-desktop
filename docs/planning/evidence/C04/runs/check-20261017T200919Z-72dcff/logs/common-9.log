@@ -1,0 +1,37 @@
+
+--- stderr ---
+    Checking desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+error: using `clone` on type `Result<(), VaultError>` which implements the `Copy` trait
+   --> crates/desktop-core/src/authority/learner_domain.rs:877:9
+    |
+877 |         put.clone().map_err(Abandon::Failed)?;
+    |         ^^^^^^^^^^^ help: try removing the `clone` call: `put`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#clone_on_copy
+    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::clone_on_copy)]`
+
+error: this `if` statement can be collapsed
+   --> crates/desktop-core/src/authority/learner_domain.rs:948:5
+    |
+948 | /     if let Some(record) = record {
+949 | |         if let Ok(mut state) = lock(&inner) {
+950 | |             state.learner_busy.retain(|r| r != &record);
+951 | |         }
+952 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+948 ~     if let Some(record) = record
+949 ~         && let Ok(mut state) = lock(&inner) {
+950 |             state.learner_busy.retain(|r| r != &record);
+951 ~         }
+    |
+
+error: could not compile `desktop-core` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `desktop-core` (lib test) due to 2 previous errors

@@ -16,7 +16,7 @@ use std::sync::Arc;
 use desktop_core::import::{ImportError, MAX_IMPORT_BYTES};
 use desktop_core::store::{AppStore, FileStore, UnavailableStore};
 use desktop_core::vault::UnavailableVault;
-use desktop_core::{Adapters, CredentialStore, ImportFile, ImportPicker};
+use desktop_core::{Adapters, CredentialStore, ImportFile, ImportPicker, UrlOpener};
 use futures_util::future::BoxFuture;
 use tauri::{AppHandle, Manager, Runtime};
 use zeroize::Zeroizing;
@@ -39,9 +39,94 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         .unwrap_or_else(|| Arc::new(UnavailableStore));
     Adapters {
         keychain: credential_store(root.as_deref()),
+        learner_keychain: learner_store(root.as_deref()),
         store,
         picker: Arc::new(NativePicker { app: app.clone() }),
+        opener: opener(root.as_deref()),
     }
+}
+
+/// Opens a verified HTTPS page with LaunchServices (`/usr/bin/open`). The
+/// core passes only URLs the Academy issuer returned; the presentation
+/// never supplies one.
+#[cfg(not(feature = "test-fixtures"))]
+fn opener(_root: Option<&Path>) -> Arc<dyn UrlOpener> {
+    struct SystemOpener;
+    impl UrlOpener for SystemOpener {
+        fn open(&self, url: &url::Url) -> bool {
+            url.scheme() == "https"
+                && std::process::Command::new("/usr/bin/open")
+                    .arg(url.as_str())
+                    .env_clear()
+                    .status()
+                    .is_ok_and(|s| s.success())
+        }
+    }
+    Arc::new(SystemOpener)
+}
+
+/// The fixture build records requested pages in its data root instead of
+/// launching a browser, so acceptance can verify the exact URL.
+#[cfg(feature = "test-fixtures")]
+fn opener(root: Option<&Path>) -> Arc<dyn UrlOpener> {
+    struct RecordingOpener(Option<PathBuf>);
+    impl UrlOpener for RecordingOpener {
+        fn open(&self, url: &url::Url) -> bool {
+            use std::io::Write;
+            self.0.as_ref().is_some_and(|path| {
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(path)
+                    .and_then(|mut file| writeln!(file, "{url}"))
+                    .is_ok()
+            })
+        }
+    }
+    Arc::new(RecordingOpener(root.map(|r| r.join(FIXTURE_OPENED_URLS))))
+}
+
+/// Pages the fixture build was asked to open, one per line.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_OPENED_URLS: &str = "fixture-opened-urls.log";
+/// The fixture build's Academy origin for the synthetic endpoint.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_ACADEMY_ORIGIN: &str = "fixture-academy-origin";
+
+/// The fixture Academy origin, when the acceptance driver installed one.
+#[cfg(feature = "test-fixtures")]
+pub fn fixture_academy_origin<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    let path = app.path().app_data_dir().ok()?.join(FIXTURE_ACADEMY_ORIGIN);
+    let text = std::fs::read_to_string(path).ok()?;
+    desktop_core::academy::origin_of(text.trim())
+}
+
+#[cfg(all(target_os = "macos", not(feature = "test-fixtures")))]
+fn learner_store(_root: Option<&Path>) -> Arc<dyn CredentialStore> {
+    crate::keychain::KeychainStore::login_service(crate::keychain::ACADEMY_SERVICE)
+        .map(|k| Arc::new(k) as Arc<dyn CredentialStore>)
+        .unwrap_or_else(|_| Arc::new(UnavailableVault))
+}
+
+#[cfg(all(target_os = "macos", feature = "test-fixtures"))]
+fn learner_store(root: Option<&Path>) -> Arc<dyn CredentialStore> {
+    use crate::keychain::{FIXTURE_ACADEMY_SERVICE, Interaction, KeychainStore};
+    root.and_then(|dir| {
+        KeychainStore::file(
+            &dir.join(FIXTURE_KEYCHAIN),
+            FIXTURE_KEYCHAIN_PASSWORD,
+            FIXTURE_ACADEMY_SERVICE,
+            Interaction::Disallowed,
+        )
+        .ok()
+    })
+    .map(|k| Arc::new(k) as Arc<dyn CredentialStore>)
+    .unwrap_or_else(|| Arc::new(UnavailableVault))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn learner_store(_root: Option<&Path>) -> Arc<dyn CredentialStore> {
+    Arc::new(UnavailableVault)
 }
 
 #[cfg(all(target_os = "macos", not(feature = "test-fixtures")))]

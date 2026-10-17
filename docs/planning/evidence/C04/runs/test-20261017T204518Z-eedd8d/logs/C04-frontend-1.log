@@ -1,0 +1,22 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+ ✓ src/contracts/snapshot-validation.test.ts (24 tests) 6ms
+ ✓ src/contracts/invoke.test.ts (10 tests) 78ms
+ ✓ src/features/academy/desktop-link.test.ts (10 tests) 13ms
+ ✓ src/features/academy/learner-provider.test.tsx (2 tests) 72ms
+ ✓ src/features/academy/academy-account.test.tsx (8 tests) 1868ms
+   ✓ Academy account > starts device sign-in, shows the code, opens only the native page and signs out  584ms
+ ✓ src/shell/desktop-shell.test.tsx (8 tests) 1932ms
+   ✓ desktop shell > lists every native feature and shows unavailable destinations explicitly  412ms
+   ✓ desktop shell > handles native menu commands and restores focus when the palette closes  317ms
+   ✓ desktop shell > treats appearance as Rust-owned: dispatches, then applies the native snapshot  364ms
+   ✓ desktop shell > reports refusals and unconfirmed outcomes without claiming the change applied  360ms
+
+ Test Files  6 passed (6)
+      Tests  62 passed (62)
+   Start at  15:47:07
+   Duration  4.48s (transform 388ms, setup 2.32s, collect 1.89s, tests 3.97s, environment 6.13s, prepare 1.04s)
+
+
+--- stderr ---

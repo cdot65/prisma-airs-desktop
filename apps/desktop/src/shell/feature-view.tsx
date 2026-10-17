@@ -3,6 +3,7 @@ import { Callout, Kicker } from '@ai-security-academy/presentation'
 import { Info } from 'lucide-react'
 import type { FeatureEntry, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../features/tenants/dispatch'
+import { AcademyAccount } from '../features/academy/academy-account'
 import { TenantsSettings } from '../features/tenants/tenants-settings'
 
 interface HeadingProps {
@@ -93,6 +94,9 @@ export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(functi
                     </label>
                 ))}
             </fieldset>
+            <div className='mt-6'>
+                <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
+            </div>
             <div className='mt-6'>
                 <TenantsSettings snapshot={snapshot} dispatch={dispatch} />
             </div>

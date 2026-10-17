@@ -269,17 +269,25 @@ impl Operations {
         (false, Vec::new())
     }
 
-    /// Retires every operation not bound to `keep`: queued work settles
-    /// NotSent, claimed work is cancelled (its outcome then comes from the
-    /// work, normally Unknown once dispatch began).
-    pub fn retire_contexts(&mut self, keep: Option<&str>, now: Instant) -> Vec<Start> {
+    /// Retires every operation in `domain` (a context prefix such as `cx-`
+    /// for tenants or `lx-` for the Academy learner; empty for all) that is
+    /// not bound to `keep`: queued work settles NotSent, claimed work is
+    /// cancelled (its outcome then comes from the work, normally Unknown once
+    /// dispatch began). Other domains are untouched.
+    pub fn retire_contexts(
+        &mut self,
+        domain: &str,
+        keep: Option<&str>,
+        now: Instant,
+    ) -> Vec<Start> {
+        let retired = |context: &str| context.starts_with(domain) && keep != Some(context);
         for queued in self.queue.iter_mut() {
-            if keep != Some(queued.context.as_str()) {
+            if retired(&queued.context) {
                 queued.cancelled.get_or_insert(StopReason::ContextRetired);
             }
         }
         for active in self.active.values_mut() {
-            if keep != Some(active.context.as_str()) {
+            if retired(&active.context) {
                 active.stop.get_or_insert(StopReason::ContextRetired);
                 active.cancel.cancel();
             }
@@ -413,7 +421,7 @@ mod tests {
         let token = starts[0].claim.cancel.clone();
         let (queued, _) = ops.admit("old", 1, idle(), now).expect("queued");
         let (other, _) = ops.admit("new", 1, idle(), now).expect("queued");
-        let started = ops.retire_contexts(Some("new"), now);
+        let started = ops.retire_contexts("", Some("new"), now);
         assert!(token.is_cancelled());
         assert_eq!(
             ops.state(&queued),

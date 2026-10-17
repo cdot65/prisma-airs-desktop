@@ -326,6 +326,30 @@ https://crates.io/crates/scm-sdk".
   reusing the earlier evaluation.
 - Changing the version is a reviewed dependency change under the same rules.
 
+## D028 — Academy device sign-in over the app-owned client, not oauth2/openidconnect
+
+Decided in C04 (implementer decision, recorded for review).
+
+- The qualification table's initial OIDC/OAuth selection (openidconnect 4.0.1,
+  oauth2 5.0.0) is not adopted for C04. Academy's desktop sign-in is a public
+  client RFC 8628 device flow whose endpoints come from the issuer's RFC 8414
+  metadata (`/.well-known/oauth-authorization-server`, as working v1 uses),
+  not OIDC discovery; it needs no ID-token validation (the account is bound
+  through the learner `desktop.me` procedure, as v1 does).
+- oauth2 5.0.0's device flow owns the polling loop and timing, which the
+  authority must own (cancellation, supersession by flow number, revocation
+  of a grant that lands after cancel), and its bundled HTTP integration
+  targets reqwest 0.12, while the desktop's trust/proxy/redirect policy lives
+  in the app-owned reqwest 0.13.5 client (C02).
+- C04 therefore implements the small, fully bounded request/response set
+  directly (`crates/desktop-core/src/academy.rs`) with the validations of
+  working v1's `bridge/src/academy-auth.ts` (74754c02): HTTPS, issuer-origin
+  endpoints, client ID shape, required `academy:learn` and `offline_access`
+  scopes, Bearer token type, 128 KiB replies, redirects refused, transient
+  5xx as network, RFC 8628 `slow_down` (+5 s).
+- C20/C22 (company SSO, MCP) re-evaluate openidconnect/oauth2 for their own
+  contracts; this decision covers Academy device sign-in only.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a
