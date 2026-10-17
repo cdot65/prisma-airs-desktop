@@ -1,7 +1,7 @@
 # Current state
 
-G00 and G01 passed (historical Claude reviews). Implementation is active at
-**C01**. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+G00 and G01 passed (historical Claude reviews). C01 completed on
+2026-10-17; implementation is next at **C02**. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps.
 
@@ -9,8 +9,9 @@ five dimensions with empty required fixes, blockers and evidence gaps.
 |---|---|---|
 | G00 | Passed (historical) | Attempt03 scored 9 in all five dimensions |
 | G01 | Passed (historical) | Attempt05 scored 9 in all five dimensions; fingerprint covers commit 931916b inputs only |
-| C01 | Implemented; Codex attempt-01 (8/8/7/6/7), attempt-02 (8/8/8/7/8) and attempt-03 (9/9/9/8/8, one required fix: typed bootstrap validation) failed and were remediated; automated native acceptance 13/13 on executable a796d514…; superseded native runs retained under `evidence/C01/native-failed/` | Regenerate check/test/native, clean checkout and mutation probes, then Codex review attempt-04; then bootstrap validation, completion, commit and push |
-| C02–C26 | Planned | Ordered predecessors required; P01 phase review after C03 |
+| C01 | **Complete** (generation 1): Codex attempt-04 scored 9 in all five dimensions; bootstrap agreement passed (52 adversarial cases including 16 typed, 2 controls); committed as ce5bd8d and verified against the reviewed source fingerprint | Attempts 01–03 failed and were remediated (records retained) |
+| C02 | Next | Pin the published `scm-sdk = "=0.1.0"` crate as a reviewed change and re-evaluate it on macOS; persist appearance; keychain and context/credential work; make the clean-checkout script propagate check/test failures (attempt-04 optional suggestion) |
+| C03–C26 | Planned | Ordered predecessors required; P01 phase review after C03 |
 
 ## C01 evidence (docs/planning/evidence/C01)
 
