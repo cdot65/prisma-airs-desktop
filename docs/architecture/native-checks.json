@@ -1,0 +1,61 @@
+{
+  "schema": "airs-v2/native-checks/1",
+  "description": "Versioned required native acceptance checks per chunk. xtask requires a native-acceptance record to report exactly this ID set, each with result pass, a nonempty observation and at least one evidence file listed in the review packet. Changing a list is a reviewed source change.",
+  "fixture_identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+  "chunks": {
+    "C01": [
+      {
+        "id": "C01-N01",
+        "check": "Fixture app launches from the prepared bundle; window title 'Prisma AIRS Desktop v2 (Fixture)'; rail shows 'Fixture build'."
+      },
+      {
+        "id": "C01-N02",
+        "check": "Native menus: app menu (About, Settings\u2026 Cmd+,, Hide, Quit), Edit, View (Command Palette\u2026 Cmd+K, Appearance, zoom), Go (destinations Cmd+1\u2013Cmd+9), Window."
+      },
+      {
+        "id": "C01-N03",
+        "check": "Keyboard only: Tab reaches the Features navigation; Enter on a destination moves focus to its heading and marks it current; a visible focus ring is rendered on focused controls (fixture WebView self-capture)."
+      },
+      {
+        "id": "C01-N04",
+        "check": "Cmd+K opens the palette with focus in the field; typing filters; Enter navigates and closes; Escape closes and restores focus to the previously focused control."
+      },
+      {
+        "id": "C01-N05",
+        "check": "Go-menu shortcuts (Cmd+2 Academy, Cmd+, Settings) navigate through the native menu and observation channel, including while the palette is open (palette closes, heading receives focus)."
+      },
+      {
+        "id": "C01-N06",
+        "check": "Every product destination states it is not available in this build with its planned chunk; none shows data or contacts a service."
+      },
+      {
+        "id": "C01-N07",
+        "check": "Settings > Appearance and View > Appearance change the general theme (Paper light / Gruvbox dark / match system) only after the native snapshot arrives."
+      },
+      {
+        "id": "C01-N08",
+        "check": "Accessibility tree: 'Features' navigation landmark; destination buttons expose names (including 'Not available in this build'); the current destination is exposed; page headings are in reading order. Records which AX attributes were inspected; spoken VoiceOver output is not claimed unless separately recorded."
+      },
+      {
+        "id": "C01-N09",
+        "check": "Resizing to the minimum window size (900x600) keeps rail, topbar and content usable without overlap or clipping of controls."
+      },
+      {
+        "id": "C01-N10",
+        "check": "Zoom/large text: View zoom in to 150% and 200% (Cmd+=) keeps navigation, headings and settings readable and operable; Cmd+0 restores."
+      },
+      {
+        "id": "C01-N11",
+        "check": "Reduced motion: with macOS Reduce Motion enabled, every automated C01 flow still passes (no control depends on motion), and the stylesheet built into the same native-prepare run contains the shared prefers-reduced-motion clamp."
+      },
+      {
+        "id": "C01-N12",
+        "check": "No Academy learner or gamification element (XP, credits, streak, notifications, earned skins) appears on general screens."
+      },
+      {
+        "id": "C01-N13",
+        "check": "Startup makes no internet connection (referencing evidence/C01/native/startup-network.json for the same executable)."
+      }
+    ]
+  }
+}

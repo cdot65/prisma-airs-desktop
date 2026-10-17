@@ -1,0 +1,1194 @@
+{
+  "schema": "airs-v2/workflow-ledger/1",
+  "source": "docs/architecture/workflows.md",
+  "rows": [
+    {
+      "id": "W01",
+      "workflow": "Create/edit/select/remove scan-only tenant",
+      "chunks": "C02",
+      "dependency_contract": "v1 settings.rs/workspace.rs; independent v2 vault/context",
+      "live_column": "N01 local; credential success L01",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W02",
+      "workflow": "Protected versus session-only credentials, verify/reset",
+      "chunks": "C02",
+      "dependency_contract": "settings.rs/local_state.rs; capability-specific adapters",
+      "live_column": "L01/L02 for verification; storage N01",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W03",
+      "workflow": "Reviewed custom endpoints and nonsecret metadata import",
+      "chunks": "C02",
+      "dependency_contract": "C02 whitelist/destination contract; no secret/file-reference transfer",
+      "live_column": "L18 destination/isolation; import N01",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W04",
+      "workflow": "Prompt/response/profile/application synchronous scan",
+      "chunks": "C03",
+      "dependency_contract": "SDK ec6230d2 Scanner::sync_scan + SyncScanOptions",
+      "live_column": "required L01/F01",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W05",
+      "workflow": "Denied, cancel, timeout, unknown/partial verdict and explicit retry",
+      "chunks": "C03",
+      "dependency_contract": "SDK RequestOptions/Session/RemoteOutcome; native context",
+      "live_column": "L01 representative denial; races N03/F01",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W06",
+      "workflow": "Save/load/edit/delete named scan cases and expected outcomes",
+      "chunks": "C03,C12",
+      "dependency_contract": "case_library.rs/settings.rs; only Runtime execution",
+      "live_column": "N01; execution L01/F07",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W07",
+      "workflow": "Profile list/detail/create/update/delete, guided/JSON editor",
+      "chunks": "C08,C09",
+      "dependency_contract": "runtime.rs/bridge runtime.ts; accepted Phase4 exact operations/options at C08",
+      "live_column": "required L02/L03/F03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W08",
+      "workflow": "Topic list/detail/create/update/delete",
+      "chunks": "C08,C09",
+      "dependency_contract": "runtime.rs can_create/edit/delete subset; Phase4",
+      "live_column": "required L02/L03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W09",
+      "workflow": "Application list/detail/update/delete; no inferred dedicated create",
+      "chunks": "C08,C09",
+      "dependency_contract": "runtime.rs Kind::Apps; Phase4",
+      "live_column": "required L02/L03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W10",
+      "workflow": "API key list/detail/create/additional-version/rotation/delete; no dedicated update",
+      "chunks": "C08,C09",
+      "dependency_contract": "protocol.ts key operations + runtime.rs key_version_body; Phase4",
+      "live_column": "required L02/L03/F03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W11",
+      "workflow": "One-time secret reveal/copy/retirement after key operation",
+      "chunks": "C09",
+      "dependency_contract": "Rust reviewed operation + native protected store",
+      "live_column": "L03 real receipt; native confinement/F03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W12",
+      "workflow": "DLP catalogue/list/detail and deployment-profile browse",
+      "chunks": "C08,C10",
+      "dependency_contract": "runtime.rs DlpCatalog/Deployments; no deployment writes",
+      "live_column": "required L02/L04",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W13",
+      "workflow": "Data-pattern create/update/delete",
+      "chunks": "C10",
+      "dependency_contract": "runtime.rs Patterns + actual DLP bridge contract",
+      "live_column": "required L04",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W14",
+      "workflow": "Data-profile create/update; no inferred delete",
+      "chunks": "C10",
+      "dependency_contract": "runtime.rs DataProfiles",
+      "live_column": "required L04",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W15",
+      "workflow": "Filter profile update; no inferred create/delete",
+      "chunks": "C10",
+      "dependency_contract": "runtime.rs Filters",
+      "live_column": "required L04",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W16",
+      "workflow": "Dictionary create/replace/delete and multipart semantics",
+      "chunks": "C10",
+      "dependency_contract": "runtime.rs Dictionaries + actual bridge multipart contract",
+      "live_column": "required L04",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W17",
+      "workflow": "Sessions inventory/filter/detail/transactions",
+      "chunks": "C11",
+      "dependency_contract": "workspace.rs/runtime.rs + accepted Phase4 reads",
+      "live_column": "required L05",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W18",
+      "workflow": "Scan/session/detector searches with 1000-session/100-match bounds",
+      "chunks": "C11",
+      "dependency_contract": "existing investigation/search contract; visible completeness",
+      "live_column": "required L05; bound permutations N03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W19",
+      "workflow": "Explicit content reveal/hide and protected investigation cache",
+      "chunks": "C11",
+      "dependency_contract": "investigation_cache.rs; authorization independent of cache",
+      "live_column": "required L05; storage N01",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W20",
+      "workflow": "FP/FN metadata edit/remove/undo/CSV export",
+      "chunks": "C11",
+      "dependency_contract": "reports stay metadata-only, no suppression/policy writes",
+      "live_column": "N01/F07",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/F07",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W21",
+      "workflow": "Home/Inbox Runtime source facts/charts/freshness/attention",
+      "chunks": "C12",
+      "dependency_contract": "cache.rs/observability worker source semantics",
+      "live_column": "required L10",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W22",
+      "workflow": "Five-product case Library author/import/export/starters/catalog",
+      "chunks": "C12",
+      "dependency_contract": "case_library.rs; non-Runtime entries are specifications",
+      "live_column": "N01/F07; Runtime execution L01",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W23",
+      "workflow": "Existing Red Team inventory/statistics/static reports",
+      "chunks": "C13",
+      "dependency_contract": "accepted read-only SDK family pin before C13",
+      "live_column": "required L06",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W24",
+      "workflow": "Existing Model/skill inventory/summaries/partial-source status",
+      "chunks": "C13",
+      "dependency_contract": "accepted read-only SDK family pin before C13",
+      "live_column": "required L06",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W25",
+      "workflow": "HTTP request/document edit/undo/validity/save/restart",
+      "chunks": "C14",
+      "dependency_contract": "RequestDocument fresh-snapshot/protection contract, ADR27",
+      "live_column": "N01/F06",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/F06",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W26",
+      "workflow": "Conflict/Disk/Discard/Rename/Duplicate while newer input exists",
+      "chunks": "C14",
+      "dependency_contract": "ADR27 native production-handler ordering",
+      "live_column": "N01/N03",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/N03",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W27",
+      "workflow": "Collections/environments/variables/private secrets",
+      "chunks": "C14",
+      "dependency_contract": "rusty-core document/session contracts; explicit secret classes",
+      "live_column": "N01; execution L15",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W28",
+      "workflow": "Collection/import/schema/Git/Rusty profile adoption",
+      "chunks": "C14",
+      "dependency_contract": "existing path/version/body/conflict guards; no imported grants",
+      "live_column": "N01/F06",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/F06",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W29",
+      "workflow": "HTTP headers/query/body/multipart/cookies/redirects",
+      "chunks": "C15",
+      "dependency_contract": "scoped native HTTP adapter + existing workbench transport subset",
+      "live_column": "required L15/F06",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W30",
+      "workflow": "History/download/cancel/large body/error recovery",
+      "chunks": "C15",
+      "dependency_contract": "native owned files/history; explicit uncertainty",
+      "live_column": "required L15 representative transfer; extremes N03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W31",
+      "workflow": "Built-in SCM 193 request specifications and options",
+      "chunks": "C15",
+      "dependency_contract": "pinned catalog.json literal metadata; 81 mutation-method specs",
+      "live_column": "N04; representative execution L15",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W32",
+      "workflow": "Managed workbench read/mutation admission, edited/imported IDs/URLs",
+      "chunks": "C15",
+      "dependency_contract": "ADR0004; exact request/review/destination/credential binding",
+      "live_column": "required L15/L18/F03/F06",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W33",
+      "workflow": "Workbench 401/lost-response/reconnect no automatic resend",
+      "chunks": "C15",
+      "dependency_contract": "v2 stricter no-replay; preserve history/outcome",
+      "live_column": "L15 representative 401; lost-response timing N03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W34",
+      "workflow": "Gateway workspace list/detail/select",
+      "chunks": "C16",
+      "dependency_contract": "gateway/mod.rs/bridge gateway.ts + accepted Gateway SDK pin",
+      "live_column": "required L07",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W35",
+      "workflow": "Provider/integration/config/config-version/guardrail/key inventories/details",
+      "chunks": "C16",
+      "dependency_contract": "exact shipped read subset; no universal resource CRUD inference",
+      "live_column": "required L07",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W36",
+      "workflow": "Routing/model/catalog/limit prerequisites",
+      "chunks": "C16",
+      "dependency_contract": "selected Gateway workspace and capability contract",
+      "live_column": "required L07",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W37",
+      "workflow": "Reviewed workspace/config/provider/integration/guardrail changes; integration models/workspace bindings",
+      "chunks": "C17",
+      "dependency_contract": "exact v1 GatewayOperation subset + accepted SDK options",
+      "live_column": "required L08/F03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W38",
+      "workflow": "Service/user key create/update/rotate/delete/limits where supported",
+      "chunks": "C17",
+      "dependency_contract": "exact key/IAM subset; rotation returns one-time secret",
+      "live_column": "required L08",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W39",
+      "workflow": "Multi-step workspace/IAM provisioning and reconciliation",
+      "chunks": "C17",
+      "dependency_contract": "partial/unknown steps recorded; no remote rollback claim",
+      "live_column": "required L08",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W40",
+      "workflow": "Gateway Playground streaming/model/route/cancel",
+      "chunks": "C18",
+      "dependency_contract": "intended Gateway only, accepted streaming SDK input",
+      "live_column": "required L09/F04",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W41",
+      "workflow": "Gateway logs/telemetry/usage/cost/budget/limits/charts",
+      "chunks": "C18",
+      "dependency_contract": "operational administration retained; freshness/partial states",
+      "live_column": "required L10/F04",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W42",
+      "workflow": "Harness start/stream/model routing/stop/crash/restart",
+      "chunks": "C19",
+      "dependency_contract": "native engine pin/protocol + new resource seal",
+      "live_column": "required L16/F05; process faults N03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W43",
+      "workflow": "Harness scoped key setup/company SSO/refresh-restart/history restore/sign-out",
+      "chunks": "C20",
+      "dependency_contract": "Rust native identity, stricter JWT/JWKS validation",
+      "live_column": "required L16/F05",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W44",
+      "workflow": "Protected Harness history inspect/export/delete/resume",
+      "chunks": "C20",
+      "dependency_contract": "fresh context/protocol/grants; no pending approval restoration",
+      "live_column": "N01/F05; resumed inference L16",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W45",
+      "workflow": "Typed investigation/read and configuration proposal",
+      "chunks": "C21",
+      "dependency_contract": "principal-restricted native authority; no engine Apply",
+      "live_column": "required L16/F05",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W46",
+      "workflow": "Selected-project read/default and approved single-process tool",
+      "chunks": "C21",
+      "dependency_contract": "existing sandbox restrictions; no descendants/pipelines",
+      "live_column": "N01 native sandbox/F05",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01 native sandbox/F05",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W47",
+      "workflow": "MCP sign-in/discovery/server selection/fixed conversation scope",
+      "chunks": "C22",
+      "dependency_contract": "separate native grant; at most 8 servers/64KiB bootstrap",
+      "live_column": "required L17",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W48",
+      "workflow": "MCP call-item approve-once/deny, token-only restart/expiry/grant retirement",
+      "chunks": "C22",
+      "dependency_contract": "call item + server revision/grant + arguments/context",
+      "live_column": "required L17/F05",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W49",
+      "workflow": "Academy guest/device sign-in/account/organization selection",
+      "chunks": "C04",
+      "dependency_contract": "hosted desktop config/allowlist; no manager role",
+      "live_column": "required L11/F02",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W50",
+      "workflow": "Academy catalog/path/course/unit/handbook client-safe reads",
+      "chunks": "C05",
+      "dependency_contract": "Academy-owned shared learner presentation + hosted desktop projection",
+      "live_column": "required L12/F02",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W51",
+      "workflow": "Knowledge check/lab/sandbox/progress/hosted grading",
+      "chunks": "C05",
+      "dependency_contract": "hosted attempt/progress authority; no tenant credentials in sandbox",
+      "live_column": "required L12",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W52",
+      "workflow": "Academy feature-local gamification/cosmetics/awards/notifications",
+      "chunks": "C05,C06",
+      "dependency_contract": "actual desktop learner procedure allowlist; no global effects",
+      "live_column": "required L12/L13 as hosted behavior; isolation native",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W53",
+      "workflow": "Program/exams/practical/certificates with hosted timing/access",
+      "chunks": "C06",
+      "dependency_contract": "same hosted learner contracts; synthetic coursework only",
+      "live_column": "required L13",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W54",
+      "workflow": "Academy preferences/avatar/export/account workflows",
+      "chunks": "C06",
+      "dependency_contract": "allowed learner procedures and scoped upload/download destinations",
+      "live_column": "required L13",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W55",
+      "workflow": "Client-safe download/lease/encrypted read/draft save/restart",
+      "chunks": "C07",
+      "dependency_contract": "hosted desktop bundle/draft/access contracts",
+      "live_column": "required L14/F02; local encryption N01",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W56",
+      "workflow": "Academy explicit submit/receipt/conflict/access/account retirement",
+      "chunks": "C07",
+      "dependency_contract": "no offline grading/replay; account/revision/lease ownership",
+      "live_column": "required L14",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W57",
+      "workflow": "Reviewed user work/settings import, fresh credentials",
+      "chunks": "C23",
+      "dependency_contract": "versioned dry run/re-encryption/new v2 generation",
+      "live_column": "N01/F08",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/F08",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W58",
+      "workflow": "Interrupted import/restart/duplicate/conflict/rollback/source preservation",
+      "chunks": "C23",
+      "dependency_contract": "atomic manifest + receipt and retained v2 generation",
+      "live_column": "N01/N03/F08",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/N03/F08",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W59",
+      "workflow": "Native menus/shortcuts/focus/VoiceOver/themes/resizing",
+      "chunks": "C01–C24",
+      "dependency_contract": "per-UI-chunk T09 plus cumulative native quality",
+      "live_column": "N01/F09",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/F09",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W60",
+      "workflow": "Local redacted diagnostics/explicit export/no telemetry",
+      "chunks": "C01–C24",
+      "dependency_contract": "canary secret/customer content tests; protected work separate",
+      "live_column": "N01/F01/F09",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/F01/F09",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W61",
+      "workflow": "Cross-feature offline local work and no business replay",
+      "chunks": "C03–C24",
+      "dependency_contract": "T23; valid cached content versus authoritative remote state",
+      "live_column": "N01/N03/F07; actual remote paths owning L-family",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/N03/F07; actual remote paths owning L-family",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W62",
+      "workflow": "Named performance and installed-package footprint",
+      "chunks": "C03–C26",
+      "dependency_contract": "pre-registered budgets; measured native process tree",
+      "live_column": "N01/F09",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/F09",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W63",
+      "workflow": "Signed/notarized/stapled DMG, quarantine install and tamper denial",
+      "chunks": "C26",
+      "dependency_contract": "exact source/dependency/build/resource/installed-byte inventory",
+      "live_column": "required final-artifact F01–F09",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W64",
+      "workflow": "v1 coexistence/reset/uninstall/manual update/rollback",
+      "chunks": "C23–C26",
+      "dependency_contract": "distinct namespaces, source preservation and schema compatibility",
+      "live_column": "N01/F08/F09",
+      "live": {
+        "requirement": "not_required",
+        "reason": "non-live evidence classes only: N01/F08/F09",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W65",
+      "workflow": "Academy Shift/Daily Incident start/serve/answer/decide/debrief/history/boards/context",
+      "chunks": "C06",
+      "dependency_contract": "bridge academy.ts + src/ui/academy.rs; slow optional briefing/ghost cannot block timed answer/serve",
+      "live_column": "required L12/L13; scheduling/account races N03",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    },
+    {
+      "id": "W66",
+      "workflow": "Academy course reset/removal with affected-course confirmation; earned certificates remain valid",
+      "chunks": "C06",
+      "dependency_contract": "src/ui/academy/workflow.rs + hosted learner allowlist",
+      "live_column": "required L13 on synthetic coursework/account",
+      "live": {
+        "requirement": "required",
+        "reason": "Live column names an L-family representative operation",
+        "access_status": "not-assessed"
+      },
+      "evidence": {
+        "source_implementation": "unrun",
+        "fixture_contract": "unrun",
+        "native_live": "unrun",
+        "installed_artifact": "unrun"
+      }
+    }
+  ]
+}

@@ -1,0 +1,508 @@
+{
+  "schema": "airs-v2/bootstrap/1",
+  "receipt_sha256": "24019109dc1e7f34668920990cde5ecf406880df08f39a15d3440a59c73fdb3c",
+  "reference_accepted": true,
+  "reference_reasons": [],
+  "controller_accepted": true,
+  "controller_output": "receipt valid against current inputs",
+  "resealed_controls_accepted_by_both": true,
+  "adversarial_cases": 52,
+  "typed_cases": 16,
+  "adversarial_agreement": true,
+  "controls": [
+    {
+      "control": "unchanged",
+      "reference_accepted": true,
+      "reference_reasons": [],
+      "controller_accepted": true,
+      "controller_output": "receipt valid against current inputs"
+    },
+    {
+      "control": "transport model omitted and keys reordered",
+      "reference_accepted": true,
+      "reference_reasons": [],
+      "controller_accepted": true,
+      "controller_output": "receipt valid against current inputs"
+    }
+  ],
+  "cases": [
+    {
+      "case": "score architecture=8",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "architecture score 8 < 9"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - score architecture=8 is below 9"
+    },
+    {
+      "case": "score behavior=8",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "behavior score 8 < 9"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - score behavior=8 is below 9"
+    },
+    {
+      "case": "score authority_security=8",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "authority_security score 8 < 9"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - score authority_security=8 is below 9"
+    },
+    {
+      "case": "score validation=8",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "validation score 8 < 9"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - score validation=8 is below 9"
+    },
+    {
+      "case": "score overall=8",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "overall score 8 < 9"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - score overall=8 is below 9"
+    },
+    {
+      "case": "required fix with nines",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "required_fixes not empty"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - 1 required fixes remain"
+    },
+    {
+      "case": "blocker",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "blockers not empty"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - 1 blockers remain"
+    },
+    {
+      "case": "evidence gap",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "evidence_gaps not empty"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - 1 evidence gaps remain"
+    },
+    {
+      "case": "recommendation fail",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "recommendation fail"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - reviewer recommendation is fail"
+    },
+    {
+      "case": "extra verdict field",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "schema: $.approved: not allowed"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - verdict does not match the strict schema: unknown field `approved`, expected one of `request_id`, `attempt_id`, `subject`, `fingerprints`, `scores`, `required_fixes`, `blockers`, `evidence_gaps`, `optional_suggestions`, `limitations`, `inspected_files`, `recommendation` at line 80 column 12"
+    },
+    {
+      "case": "score 11",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "schema: $.scores.overall: above maximum"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - verdict score overall=11 is outside 1..=10"
+    },
+    {
+      "case": "request id mismatch",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "verdict request_id mismatch"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - verdict request_id does not match the packet"
+    },
+    {
+      "case": "receipt score mismatch",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "receipt scores differ from verdict"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - receipt scores differ from the verdict"
+    },
+    {
+      "case": "current source differs",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "current source differs from packet",
+        "run check-20261017T101406Z-53e8d3 used other inputs",
+        "run test-20261017T101755Z-668178 used other inputs",
+        "run native-prepare-20261017T101917Z-17617a used other inputs"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - source changed since review (stale receipt)\n  - run check-20261017T101406Z-53e8d3 executed against different inputs\n  - run test-20261017T101755Z-668178 executed against different inputs\n  - run native-prepare-20261017T101917Z-17617a executed against different inputs"
+    },
+    {
+      "case": "current dependencies differ",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "current dependencies differs from packet",
+        "run check-20261017T101406Z-53e8d3 used other inputs",
+        "run test-20261017T101755Z-668178 used other inputs",
+        "run native-prepare-20261017T101917Z-17617a used other inputs"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - dependencies or toolchain changed since review\n  - run check-20261017T101406Z-53e8d3 executed against different inputs\n  - run test-20261017T101755Z-668178 executed against different inputs\n  - run native-prepare-20261017T101917Z-17617a executed against different inputs"
+    },
+    {
+      "case": "current build flags differ",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "current build_flags differs from packet",
+        "run check-20261017T101406Z-53e8d3 used other inputs",
+        "run test-20261017T101755Z-668178 used other inputs",
+        "run native-prepare-20261017T101917Z-17617a used other inputs"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - build flags/features changed since review\n  - run check-20261017T101406Z-53e8d3 executed against different inputs\n  - run test-20261017T101755Z-668178 executed against different inputs\n  - run native-prepare-20261017T101917Z-17617a executed against different inputs"
+    },
+    {
+      "case": "current evidence differs",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "current evidence differs from packet"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - evidence changed since review"
+    },
+    {
+      "case": "final output disagrees",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "final reviewer output differs from verdict.json"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - the reviewer's final output does not equal verdict.json"
+    },
+    {
+      "case": "transport exit nonzero",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "transport did not complete successfully"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - the reviewer transport exited with Some(1)"
+    },
+    {
+      "case": "transport timed out",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "transport did not complete successfully"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - the reviewer transport timed out"
+    },
+    {
+      "case": "no completed turn",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "no completed reviewer turn"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - no completed reviewer turn with a final output was observed"
+    },
+    {
+      "case": "inputs changed during review",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "inputs changed during review"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - inputs changed while the review was active"
+    },
+    {
+      "case": "test run missing",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "expected exactly one test run"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - expected exactly one Test run in the packet"
+    },
+    {
+      "case": "predecessor hash changed",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "predecessor G01 receipt missing or changed"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - predecessor G01 receipt was changed"
+    },
+    {
+      "case": "native check removed",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native checks do not match the required inventory"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - required native check C01-N13 is missing"
+    },
+    {
+      "case": "native duplicate check",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native checks do not match the required inventory"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - native check C01-N01 appears more than once"
+    },
+    {
+      "case": "native wrong identity",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native record identity mismatch"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - native acceptance must use the fixture identity io.cdot.prisma-airs-desktop.v2.fixture (record names io.cdot.prisma-airs-desktop.v2)"
+    },
+    {
+      "case": "native blank observation",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native check C01-N01 incomplete"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - native check C01-N01 has no observation"
+    },
+    {
+      "case": "native other bundle",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native record names another bundle"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - native record names a bundle other than the prepared fixture"
+    },
+    {
+      "case": "native unknown field",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native shape: native unknown field approved"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - native acceptance record is malformed: unknown field `approved`, expected one of `schema`, `subject`, `recorded_utc`, `method`, `performed_by`, `host`, `app`, `checks`, `limitations` at line 151 column 12"
+    },
+    {
+      "case": "receipt schema changed",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt has the wrong schema"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - receipt has the wrong schema"
+    },
+    {
+      "case": "receipt unknown field",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt unknown field approved"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt is malformed: unknown field `approved`, expected one of `schema`, `receipt_id`, `subject`, `request_id`, `attempt_id`, `transport`, `packet_sha256`, `verdict_sha256`, `fingerprints`, `fingerprints_after`, `scores`, `required_fixes`, `blockers`, `evidence_gaps`, `passed`, `failures`, `created_utc` at line 50 column 12"
+    },
+    {
+      "case": "transport unknown field",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt.transport unknown field approved"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt is malformed: unknown field `approved`, expected one of `kind`, `thread`, `codex_path`, `codex_version`, `codex_sha256`, `submitted_utc`, `completed_utc`, `exit_code`, `timed_out`, `raw_output`, `model` at line 22 column 14"
+    },
+    {
+      "case": "packet schema changed",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: packet has the wrong schema"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - request packet has the wrong schema"
+    },
+    {
+      "case": "packet unknown field",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: packet unknown field approved"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: request packet is malformed: unknown field `approved`, expected one of `schema`, `request_id`, `attempt_id`, `subject`, `kind`, `created_utc`, `repository`, `base_commit`, `scope`, `instructions`, `predecessors`, `fingerprints`, `source_inventory`, `runs`, `evidence_files`, `native_acceptance`, `native_executable_sha256`, `diff`, `limitations`, `verdict_schema`, `verdict_path`, `review_instructions` at line 734 column 12"
+    },
+    {
+      "case": "packet missing field",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: packet missing diff"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: request packet is malformed: missing field `diff` at line 730 column 1"
+    },
+    {
+      "case": "transport timed_out integer 0",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt.transport.timed_out is not a boolean"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt is malformed: invalid type: integer `0`, expected a boolean at line 16 column 18"
+    },
+    {
+      "case": "transport exit_code float 0.0",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt.transport.exit_code is not an integer"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt is malformed: invalid type: floating point `0.0`, expected i32 at line 15 column 20"
+    },
+    {
+      "case": "receipt passed string",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt.passed is not a boolean"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt is malformed: invalid type: string \"yes\", expected a boolean at line 47 column 17"
+    },
+    {
+      "case": "receipt required_fixes string",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt.required_fixes is not an integer"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt is malformed: invalid type: string \"0\", expected usize at line 44 column 23"
+    },
+    {
+      "case": "receipt score float",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt.scores.overall is not an integer"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt is malformed: invalid type: floating point `9.0`, expected u8 at line 42 column 18"
+    },
+    {
+      "case": "receipt duplicate field",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: receipt repeats field passed"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt is malformed: duplicate field `passed` at line 48 column 10"
+    },
+    {
+      "case": "packet run kind outside enum",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: packet.runs[0].kind is not one of ['check', 'native-prepare', 'test']"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: request packet is malformed: unknown variant `Check`, expected one of `check`, `test`, `native-prepare` at line 35 column 21"
+    },
+    {
+      "case": "packet executable hash integer",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: packet.native_executable_sha256 is not a string"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: request packet is malformed: invalid type: integer `1`, expected a string at line 715 column 31"
+    },
+    {
+      "case": "packet nested unknown field",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "record shape: packet.diff unknown field approved"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: request packet is malformed: unknown field `approved`, expected `path` or `sha256` at line 719 column 14"
+    },
+    {
+      "case": "native method invented",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native shape: native.method is not one of ['cua', 'operator']"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - native acceptance record is malformed: unknown variant `invented`, expected `cua` or `operator` at line 5 column 22"
+    },
+    {
+      "case": "native app fixture integer 1",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native shape: native.app.fixture is not a boolean"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - native acceptance record is malformed: invalid type: integer `1`, expected a boolean at line 12 column 16"
+    },
+    {
+      "case": "native check result wrong case",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "native shape: native.checks[0].result is not one of ['blocked', 'fail', 'pass']"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - native acceptance record is malformed: unknown variant `PASS`, expected one of `pass`, `fail`, `blocked` at line 18 column 22"
+    },
+    {
+      "case": "run status wrong case",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "run check-20261017T101406Z-53e8d3 shape: run.status is not one of ['blocked', 'failed', 'passed']"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - run check-20261017T101406Z-53e8d3 is malformed: unknown variant `Passed`, expected one of `passed`, `failed`, `blocked` at line 521 column 20"
+    },
+    {
+      "case": "run command exit_code string",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "run check-20261017T101406Z-53e8d3 shape: run.commands[0].exit_code is not an integer"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - run check-20261017T101406Z-53e8d3 is malformed: invalid type: string \"0\", expected i32 at line 91 column 22"
+    },
+    {
+      "case": "run tests passed boolean",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "run test-20261017T101755Z-668178 shape: run.commands[2].tests.passed is not an integer"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - run test-20261017T101755Z-668178 is malformed: invalid type: boolean `true`, expected u64 at line 134 column 22"
+    },
+    {
+      "case": "run env value integer",
+      "reference_rejected": true,
+      "reference_reasons": [
+        "run check-20261017T101406Z-53e8d3 shape: run.env.CI is not a string"
+      ],
+      "controller_rejected": true,
+      "controller_output": "xtask: receipt rejected:\n  - run check-20261017T101406Z-53e8d3 is malformed: invalid type: integer `1`, expected a string at line 48 column 11"
+    }
+  ],
+  "validator_sha256": "9d84e84cdf5cb41ad827e3555c6b7126fd2a38ade5a2284503879f25af1b76da"
+}

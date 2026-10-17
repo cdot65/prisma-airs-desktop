@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+/* Self-hosted fonts: the packaged CSP allows only bundled font files. */
+@import '@fontsource-variable/inter/index.css';
+@import '@fontsource-variable/jetbrains-mono/index.css';
+
+/* Academy-owned shared presentation (ADR 0002): general tokens and themes,
+ * the base focus ring/interaction helpers, and the Tailwind token layer.
+ * Earned Academy skins are gamification and are not imported here. */
+@import '@ai-security-academy/presentation/tokens.css';
+@import '@ai-security-academy/presentation/base.css';
+@import '@ai-security-academy/presentation/theme.css';
+
+@source '../node_modules/@ai-security-academy/presentation/src';
+
+/* The shared frame scrolls the document under a sticky 56px topbar and a
+ * fixed 60px decorative bottom fade. Focused controls scrolled into view stay
+ * clear of both, including at 200% zoom (C01-N10). */
+html {
+    scroll-padding-top: 72px;
+    scroll-padding-bottom: 76px;
+}

@@ -1,0 +1,218 @@
+{
+  "schema": "prisma-airs-desktop-v2/clean-checkout/1",
+  "procedure": "fresh clone of the Academy branch v2/desktop-presentation from origin; fresh v2 tree from the reviewed working tree's tracked and unignored files (excluding evidence/ and reviews/, plus the G01 predecessor receipt) with a fresh git init configured with the same origin remote and branch tracking; corepack pnpm shim; xtask fetch-inputs from the clone; xtask check and xtask test for C01",
+  "academy_clone_head": "891f65eef76b53eb87155d0f0f5622228e217a2d",
+  "source_files_compared": 179,
+  "source_files_mismatched": [],
+  "reviewed_check_run": "check-20261017T101406Z-53e8d3",
+  "reviewed_check_inputs_after": {
+    "source": "dcefaa125c6c295c838912af75f3742a014124d8bc37e833496fa4be4b23acea",
+    "dependencies": "d6a466fb406ac4393a84aac4c2e694789a4b0586b2069213c1ad8a4fa60b6c79",
+    "build_flags": "0bb12224c27399cd293e29622a6323dd1ef7f3c1bad17df6bfebd28ea436ffbb"
+  },
+  "runs": [
+    {
+      "run": "check-20261017T102158Z-3b8ca2",
+      "kind": "check",
+      "result": "passed",
+      "failure": null,
+      "inputs_after": {
+        "source": "dcefaa125c6c295c838912af75f3742a014124d8bc37e833496fa4be4b23acea",
+        "dependencies": "d6a466fb406ac4393a84aac4c2e694789a4b0586b2069213c1ad8a4fa60b6c79",
+        "build_flags": "0bb12224c27399cd293e29622a6323dd1ef7f3c1bad17df6bfebd28ea436ffbb"
+      },
+      "commands": [
+        {
+          "label": "setup/1",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "setup/2",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/1",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/2",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/3",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/4",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/5",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/6",
+          "status": "passed",
+          "tests": {
+            "passed": 18,
+            "failed": 0
+          }
+        },
+        {
+          "label": "common/7",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/8",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/9",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/10",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "common/11",
+          "status": "passed",
+          "tests": {
+            "passed": 2,
+            "failed": 0
+          }
+        },
+        {
+          "label": "shared/1",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "shared/2",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "shared/3",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "shared/4",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "shared/5",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "shared/6",
+          "status": "passed",
+          "tests": {
+            "passed": 207,
+            "failed": 0
+          }
+        },
+        {
+          "label": "shared/7",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "shared/8",
+          "status": "passed",
+          "tests": null
+        }
+      ],
+      "inputs_after_equal_reviewed_check": true
+    },
+    {
+      "run": "test-20261017T102711Z-e650e9",
+      "kind": "test",
+      "result": "passed",
+      "failure": null,
+      "inputs_after": {
+        "source": "dcefaa125c6c295c838912af75f3742a014124d8bc37e833496fa4be4b23acea",
+        "dependencies": "d6a466fb406ac4393a84aac4c2e694789a4b0586b2069213c1ad8a4fa60b6c79",
+        "build_flags": "0bb12224c27399cd293e29622a6323dd1ef7f3c1bad17df6bfebd28ea436ffbb"
+      },
+      "commands": [
+        {
+          "label": "setup/1",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "setup/2",
+          "status": "passed",
+          "tests": null
+        },
+        {
+          "label": "C01/fixture",
+          "status": "passed",
+          "tests": {
+            "passed": 42,
+            "failed": 0
+          }
+        },
+        {
+          "label": "C01/host/1",
+          "status": "passed",
+          "tests": {
+            "passed": 10,
+            "failed": 0
+          }
+        },
+        {
+          "label": "C01/host/2",
+          "status": "passed",
+          "tests": {
+            "passed": 5,
+            "failed": 0
+          }
+        },
+        {
+          "label": "C01/frontend/1",
+          "status": "passed",
+          "tests": {
+            "passed": 18,
+            "failed": 0
+          }
+        }
+      ],
+      "inputs_after_equal_reviewed_check": true
+    }
+  ],
+  "log_tail": [
+    "Passed shared/8 pnpm --dir .work/academy exec vite build",
+    "run check-20261017T102158Z-3b8ca2 Passed",
+    "check exit 0",
+    "== test",
+    "Passed setup/1 cargo run --locked -p xtask -- shared-prepare --input .inputs/academy --scratch .work/academy",
+    "Passed setup/2 pnpm install --frozen-lockfile --ignore-scripts",
+    "Passed C01/fixture cargo test --locked -p xtask --features test-fixtures --test shell_controller tests passed=42 failed=0",
+    "Passed C01/host/1 cargo test --locked -p desktop-host --features test-fixtures --test ipc_admission tests passed=10 failed=0",
+    "Passed C01/host/2 cargo test --locked -p desktop-host --features test-fixtures --test permission_manifest tests passed=5 failed=0",
+    "Passed C01/frontend/1 pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.config.ts src/contracts/invoke.test.ts src/shell/desktop-shell.test.tsx tests passed=18 failed=0",
+    "run test-20261017T102711Z-e650e9 Passed",
+    "test exit 0"
+  ],
+  "retained_runs": [
+    "docs/planning/evidence/C01/clean-checkout/runs/check-20261017T102158Z-3b8ca2/run.json",
+    "docs/planning/evidence/C01/clean-checkout/runs/test-20261017T102711Z-e650e9/run.json"
+  ],
+  "reproduction_script": "docs/planning/evidence/C01/clean-checkout/reproduce.sh"
+}

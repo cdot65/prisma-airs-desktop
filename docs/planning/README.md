@@ -50,8 +50,8 @@ to translate wholesale.
 - Complete the interview and Markdown implementation instructions/prompts, then
   run the architecture improvement review, then implement, review, test, validate,
   and sign the selected design.
-- Require independent Claude Code scores of at least 9/10 overall and in every
-  critical dimension. Passing reviews do
+- Require independent scores of at least 9/10 overall and in every critical
+  dimension (Claude Code for G00/G01; Codex for every chunk and phase, D026). Passing reviews do
   not replace executable acceptance tests, artifact verification, or resolution
   of blocking findings.
 
@@ -64,7 +64,8 @@ to translate wholesale.
 - [Release contract](release-contract.md) and [architecture handoff](architecture-handoff.md).
 - [Mandatory live/final-artifact checks](live-checks.md) and [distribution gate](distribution.md).
 - Harness prompts: [implement](prompts/implement-chunk.md), [review](prompts/review-chunk.md),
-  [remediate](prompts/remediate.md), [plan review](prompts/review-plan.md),
+  [remediate](prompts/remediate.md), [phase review](prompts/review-phase.md),
+  [plan review](prompts/review-plan.md),
   [architecture](prompts/architecture.md), [installed release review](prompts/release.md).
 - [Concrete architecture](../architecture/DESIGN.md), [qualification](../architecture/qualification.md),
   [workflow ledger](../architecture/workflows.md) and [candidate findings](architecture-candidates.md).

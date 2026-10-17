@@ -1,0 +1,13 @@
+{
+  "schema": "airs-v2/startup-network/1",
+  "executable_sha256": "cf5eb086600e0b323b62516cd50a0717db0f65bcdecea1af9f5155278aef5d32",
+  "samples": 30,
+  "interval_seconds": 0.5,
+  "internet_sockets_observed": 0,
+  "webkit_processes": 3,
+  "raw_log": "docs/planning/evidence/C01/native/startup-network-samples.log",
+  "limitations": [
+    "0.5s polling can miss short connections",
+    "mDNSResponder DNS lookups are not attributed per process"
+  ]
+}

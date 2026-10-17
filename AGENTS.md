@@ -2,19 +2,15 @@
 
 ## Current stage
 
-This checkout contains planning records, not an application. The owner requested
-an explicit interview, a detailed Markdown implementation plan and harness
-prompts, then the improve-codebase-architecture workflow, before implementation.
-Product interview decisions D001–D023 are accepted. D024 selects Apache-2.0 for
-newly authored v2 material; D025 selects all four architecture candidates and
-records owner confirmation that their report renders. Read the concrete plan
-and current gate state in `docs/planning/status.md`. Continue G01 design/review
-under that authorization without repeating blanket product questions.
-G01's selected-design review and declared outputs remain prerequisites.
-Do not scaffold, port,
-install application dependencies, run product endpoints, migrate real data, or
-start implementation while those gates are unfinished. Planning documentation
-and read-only source research are authorized.
+Planning (G00) and architecture (G01) gates passed. Implementation of the ordered
+chunks C01–C26 is authorized and proceeds in numeric order; see
+`docs/planning/status.md` for the active chunk and receipts. Product decisions
+D001–D023, source terms D024, architecture selection D025 and the Codex review
+policy D026 are accepted; do not re-ask settled questions.
+A chunk may scaffold, install pinned build dependencies, and add tests only
+within its own instructions. Product endpoints are called only under C25's
+controlled live scope; real user data is never migrated outside C23's reviewed
+import flow.
 
 ## Accepted direction
 
@@ -57,13 +53,15 @@ qualification. Never read or log credentials for planning.
 
 ## Reviews and completion
 
-Each future implementation chunk requires the agreed checks and a real independent
-Claude Code review scoring at least 9/10 overall and in architecture, behavior,
-authority/security, and validation, with no blocking/required fixes or missing
-mandatory evidence.
+Claude Code implements. Under D026, every implementation chunk and every phase
+(cumulatively) requires a real independent Codex review scoring at least 9/10 in
+architecture, behavior, authority_security, validation and overall, with empty
+required_fixes, blockers and evidence_gaps. Historical G00/G01 Claude reviews
+are retained unchanged and cover only their recorded inputs.
 Retain source/dependency fingerprints, raw verdicts, commands, test results, and
 remediation attempts. Re-review changed source. Never fabricate a score, substitute
-self-review, or treat favorable scores as evidence that unrun tests passed.
+self-review, edit a verdict, or treat favorable scores as evidence that unrun tests
+passed. A queue acknowledgement or process exit status is not a verdict.
 
 Follow `docs/planning/IMPLEMENTATION-PLAN.md`, the ordered C01–C26 instructions,
 review/test/dependency/release contracts and canonical prompts. G01 specifies

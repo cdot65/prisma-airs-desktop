@@ -26,6 +26,13 @@ mandatory checks fail the gate. No empty tests or synthetic passing receipts.
 | Native Harness | 9331a5839bc6a763d94dee7584746f58bbbe1181 | C19 native protocol/new resource seal |
 | Academy shared source | 7f3a28c4082a5bb278bbff5d79fab106c240155a extraction baseline | C01 reviewed shared revision |
 
+C01 resolution (see docs/planning/dependencies.md "C01 resolved inputs"): the
+Rust toolchain is corrected to 1.99.0 because Rust 1.90/1.95 proc-macro dylibs
+linked at Tauri's 13.0 deployment target fail dyld validation on macOS 27
+(evidence/C01/toolchain-correction.json). Frontend build tools follow Academy's
+resolved lock so both consumers share one stack: Tailwind 4.3.2, Vite 7.3.6,
+Vitest 3.2.6, @vitejs/plugin-react 5.2.0, TypeScript 5.9.3, React 19.2.3.
+
 These choices are not a claim the combined graph compiles. C01 resolves and
 commits Cargo/pnpm locks, compatible tauri-build/transitive versions, source and
 package integrity hashes; incompatibility blocks C01 and triggers a documented
@@ -104,9 +111,11 @@ Do not claim these commands run before the runner/targets exist.
 
 check validates manifests and common checks; test executes named Rust/frontend
 fixtures; native builds/launches via native-prepare then requires actual acceptance
-records. review freezes those inputs/evidence and invokes the manifest's actual
-Claude argv with prompt on stdin and strict schema; pin executable/version/hash,
-disable hooks/plugins, and verify source/dependencies/checks unchanged afterward.
+records. review freezes those inputs/evidence, writes an immutable request
+packet and delivers it to Codex (D026) through the preferred thread or the fresh
+read-only `codex exec` fallback with the prompt on stdin and a strict output
+schema; pin executable/version/hash, and verify source/dependencies/checks
+unchanged afterward.
 C01 verifies every reviewer flag against the actual pinned CLI's --help/version
 and records executable hash; unsupported flags fail rather than weakening review.
 The three workspace members explicitly declare test-fixtures; clippy uses package-
@@ -133,7 +142,7 @@ T09 evidence. It does not fabricate keyboard/focus/VoiceOver acceptance from a
 CLI exit code. Each changed UI chunk checks relevant T09 paths; C24 repeats the
 cumulative matrix. Tests of Rust/Tauri handlers are additional evidence.
 
-Review execution uses the actual read-only Claude CLI protocol. The controller
+Review execution uses the actual Codex protocol in review-protocol.md. The controller
 checks all five >=9 scores plus no required fixes/missing evidence and matching
 source/dependency/check hashes. A separate reference validator bootstraps C01's
 controller review. Native/live/artifact results are distinct fields, never

@@ -1,9 +1,9 @@
 # Dependency and source gates
 
-Architecture proposes exact first-slice versions in docs/architecture/qualification.md.
-No application dependencies have been installed or compiled in this checkout.
-Inspected source inputs and version choices are not ready release dependencies;
-C01 records compatible resolved inputs, source/package hashes and lockfiles.
+Architecture proposed exact first-slice versions in docs/architecture/qualification.md.
+As of C01 (2026-10-17) the desktop graph is resolved, locked and compiled on
+the macOS ARM64 host; the resolved inputs are recorded below. Later SDK
+families and other inputs remain gated at their consuming chunks.
 
 ## Source ownership
 
@@ -22,6 +22,27 @@ snapshot/package without secrets or ignored local configuration. Manifest both
 its origin revision and actual source/package hash. A dependency update reopens
 the affected contract/native/artifact checks and review. Never fabricate SDK
 method parity from a similar TypeScript method name.
+
+## C01 resolved inputs
+
+Recorded by C01 and bound to its review. Locks: `Cargo.lock`, `pnpm-lock.yaml`,
+`rust-toolchain.toml`, `docs/architecture/toolchain.json`,
+`docs/architecture/inputs.lock.json`; the controller's dependency fingerprint
+hashes them with the consumed `.inputs/` bytes and tool identities.
+
+| Input | Resolved | Note |
+|---|---|---|
+| Rust toolchain | 1.99.0 (b940084d7 2026-09-28) | Corrected from 1.90.0; proc-macro dylib dyld failure at deployment target 13.0 on macOS 27 (evidence/C01/toolchain-correction.json). Release `strip` removed for the same failure. |
+| Tauri / tauri-build / Tauri CLI / @tauri-apps/api | 2.12.4 / 2.7.3 / 2.12.3 / 2.12.4 | `custom-protocol` added by the Tauri CLI for bundles |
+| ts-rs | 12.0.1 (serde-compat, no-serde-warnings) | Generated declarations committed; `xtask bindings --check` |
+| React / ReactDOM | 19.2.3 | Single instance per consumer (pnpm strict peers) |
+| Tailwind / Vite / Vitest / plugin-react / TypeScript | 4.3.2 / 7.3.6 / 3.2.6 / 5.2.0 / 5.9.3 | Matched to Academy's resolved lock instead of the earlier 4.1.18 / 7.3.0 proposal |
+| Build Node / pnpm | 24.21.0 / 10.6.5 (corepack shim in `.tools/bin`) | Build-only; never shipped |
+| Academy shared presentation | `ai-security-academy` 891f65eef76b53eb87155d0f0f5622228e217a2d on branch `v2/desktop-presentation` (base 7f3a28c4) | Pushed to the Academy origin on 2026-10-17 (owner-approved; main untouched). `xtask fetch-inputs --source <academy clone>` materializes `.inputs/academy` (tree sha256 1c4ce702…); a fresh clone from origin reproduces it (evidence/C01/clean-checkout). |
+
+Third-party notices for the shipped graph are in `docs/architecture/notice-inventory.json`
+(`xtask notices --check`). The Academy package is Academy-owned and recorded by
+its pinned commit, not relicensed.
 
 ## Required gates
 

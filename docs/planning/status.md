@@ -1,59 +1,54 @@
 # Current state
 
-Planning and architecture are complete. Application implementation has not started.
-Product decisions D001–D023 are accepted. D024 selects Apache-2.0 for newly
- authored v2 material, retaining upstream terms/notices. D025 selects all four
-architecture candidates and records the owner's report-rendering confirmation.
+G00 and G01 passed (historical Claude reviews). Implementation is active at
+**C01**. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+and of a cumulative review after every phase, each requiring at least 9 in all
+five dimensions with empty required fixes, blockers and evidence gaps.
 
 | Gate/chunk | State | Evidence/next action |
 |---|---|---|
-| G00 | Plan review passed | Historical attempt03 scored9 in all five dimensions |
-| G01 | Selected architecture and affected plan review passed | Attempt05 scored9 in all five dimensions; unchanged source; no required fixes/blockers/gaps |
-| C01 | Ready to begin | Reproducible Tauri/React workspace, xtask controller, Academy shared shell |
-| C02–C26 | Planned, ordered predecessors required | Complete and review each chunk before advancing |
+| G00 | Passed (historical) | Attempt03 scored 9 in all five dimensions |
+| G01 | Passed (historical) | Attempt05 scored 9 in all five dimensions; fingerprint covers commit 931916b inputs only |
+| C01 | Implemented; Codex attempt-01 (8/8/7/6/7), attempt-02 (8/8/8/7/8) and attempt-03 (9/9/9/8/8, one required fix: typed bootstrap validation) failed and were remediated; automated native acceptance 13/13 on executable a796d514…; superseded native runs retained under `evidence/C01/native-failed/` | Regenerate check/test/native, clean checkout and mutation probes, then Codex review attempt-04; then bootstrap validation, completion, commit and push |
+| C02–C26 | Planned | Ordered predecessors required; P01 phase review after C03 |
 
-Current G01 source fingerprint:
-`ba8fbfe5aea7818e59e472d007da0fbd070530ed9b3dbcc45710476036f156e0`.
-See the [passing receipt](reviews/G01/attempt-05/receipt.json),
-[actual Claude verdict](reviews/G01/attempt-05/verdict.json),
-[frozen input manifest](reviews/G01/attempt-05/input-manifest.json) and
-[structural checks](reviews/G01/attempt-05/checks.json).
-All scores are9: architecture, behavior, authority/security, validation, overall.
-The gate rates the design and planned validation contract. Application/native/
-live/package/signing tests have not run and are not implied by this score.
+## C01 evidence (docs/planning/evidence/C01)
 
-Read the [implementation plan](IMPLEMENTATION-PLAN.md),
-[selected design](../architecture/DESIGN.md), four ADRs, and
-[qualification contract](../architecture/qualification.md). There are26 ordered
-implementation chunks and66 workflow classes, with exact future command/target
-contracts. C01 resolves/compiles real dependency locks and implements the runner;
-C02 qualifies native SDK/storage; later chunks preserve parity; C25/C26 own live
-and exact signed installed-package qualification. No build tooling has been
-installed and no real data, identity registration or application endpoint changed.
+- Controller runs (`runs/`): `xtask check` (20 commands: install, bindings,
+  workflow ledger, notice inventory, contract/desktop typecheck, desktop Vitest,
+  production build, rustfmt, clippy in default and fixture feature sets, and the
+  Academy shared-source regressions: scratch install with no lifecycle scripts,
+  typecheck, package typecheck, 207 presentation tests, static web build);
+  `xtask test` (shell_controller 42, ipc_admission 10, permission_manifest 5,
+  frontend 18 tests); `xtask native-prepare` fixture bundle build. Failed
+  attempts are retained alongside passing runs.
+- `native-prepare.json`: fixture bundle identity and executable hash.
+- `native/startup-network.json`: no internet sockets from the app or its
+  WebKit processes over 15 s of startup (sampling evidence, limits recorded).
+- `mutation-probes/`: 15 deliberate violations (review threshold, verdict
+  hashing, attempt expiry, plan coverage, final reviewer output, native phase
+  members, bundle binding, web scratch drift, delivery duplicates, raw-body
+  ceiling, observation cap, focus scrolling, theme applied after paint,
+  sequence reuse, window admission) each make their guard test fail;
+  controls and the unmutated baseline pass.
+- `native-failed/`: superseded native runs with their causes (radio-group
+  driver defect; focus not scrolled into view at 200% zoom; rail destination
+  under the bottom fade at 200% zoom; a passing run superseded when the theme
+  moved into the snapshot's commit).
+- `toolchain-correction.json`: Rust 1.90.0 → 1.99.0 with the dyld test matrix.
+- `native-acceptance.json` + `native/`: all 13 C01 checks driven on the real
+  fixture window through macOS Accessibility with fixture WebView self-capture
+  (focus ring, themes, zoom, minimum size, Reduce Motion, menus, palette).
+- `clean-checkout/`: fresh Academy clone from origin and fresh v2 tree (same
+  origin configuration) pass check and test with the reviewed fingerprints;
+  raw run records, logs and the reproduction script are retained.
+- Review transport: preferred thread handshake confirmed
+  (`reviews/transport/hs-20261017T000308Z-2eb173d5/route-ready.json`).
 
-The temporary report was opened and the owner confirmed it renders. Browser
-automation refused local-file inspection; owner attestation is not an automated
-screenshot or native acceptance. Newly authored source terms are Apache-2.0;
-no first-party framework code has been copied into v2.
+Shared Academy input: branch `v2/desktop-presentation` at
+891f65eef76b53eb87155d0f0f5622228e217a2d, pushed to the Academy origin
+(owner-approved; main untouched). No product endpoint has been called, no user data written, and no
+signing, live or installed-package qualification has run.
 
-## Retained audit trail
-
-Historical G00 [attempt01](reviews/G00/attempt-01/receipt.json) failed overall8;
-[attempt02](reviews/G00/attempt-02/receipt.json) and formatting-only
-[attempt03](reviews/G00/attempt-03/receipt.json) passed all five scores at9.
-Historical G00 fingerprint:
-`1dbec2da890ffdc91ecafb5b83a87f9ef7acdb89b60a1b6a378c5e78efa485f7`.
-That receipt covers the earlier committed plan; G01 reviews the changed plan and
-architecture together rather than silently extending old evidence.
-
-G01 candidate reviews scored6 then7. Selected-design attempts01–04 failed overall8
-and their raw outputs remain unchanged; attempt05 passed after remediation.
-See [remediation](reviews/G01/remediation.md) and the passing verdict's optional
-suggestions for nonblocking implementation followups. The reference manifest
-hashes127 research/evidence files, including official dependency availability
-metadata; metadata is not compiled compatibility evidence.
-
-This state file and reviews/ are narrow mutable evidence exclusions from the
-source fingerprint. Each review independently hashes its evidence and verifies
-source/reference bytes before and after. Changing other planning/instruction/
-chunk files invalidates affected reviews and requires a new bound receipt.
+This state file, `reviews/` and `evidence/` are the narrow mutable exclusions
+from the source fingerprint; evidence is hashed separately per subject.

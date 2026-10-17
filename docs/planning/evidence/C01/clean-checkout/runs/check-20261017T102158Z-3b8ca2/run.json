@@ -1,0 +1,524 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "check-20261017T102158Z-3b8ca2",
+  "subject": "C01",
+  "kind": "check",
+  "started_utc": "2026-10-17T10:21:58Z",
+  "finished_utc": "2026-10-17T10:26:31Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/cdot/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/cdot/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "node",
+      "path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/clean/v2/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/clean/v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/",
+    "npm_package_version": "0.176.0"
+  },
+  "inputs_before": {
+    "source": "dcefaa125c6c295c838912af75f3742a014124d8bc37e833496fa4be4b23acea",
+    "dependencies": "d6a466fb406ac4393a84aac4c2e694789a4b0586b2069213c1ad8a4fa60b6c79",
+    "build_flags": "0bb12224c27399cd293e29622a6323dd1ef7f3c1bad17df6bfebd28ea436ffbb"
+  },
+  "inputs_after": {
+    "source": "dcefaa125c6c295c838912af75f3742a014124d8bc37e833496fa4be4b23acea",
+    "dependencies": "d6a466fb406ac4393a84aac4c2e694789a4b0586b2069213c1ad8a4fa60b6c79",
+    "build_flags": "0bb12224c27399cd293e29622a6323dd1ef7f3c1bad17df6bfebd28ea436ffbb"
+  },
+  "commands": [
+    {
+      "label": "setup/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 12369,
+      "output_sha256": "584635d04101ac1fb7b278439b8e09b0e53ae8eba1476f06d505c6612e6b2dec",
+      "log": "logs/setup-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "setup/2",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2246,
+      "output_sha256": "10cddcc5dc36d6728c348324bb43a7f58ccf081515772d062f2b2add6dc95cf1",
+      "log": "logs/setup-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "bindings",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 301,
+      "output_sha256": "ce83e95ff5f210dad294a0642f623d48d841ab5611782dd5a8dea8fa76d5d0e1",
+      "log": "logs/common-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/2",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "ledger",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 224,
+      "output_sha256": "a0a47a4a09bde6d7bd6fe65de6978a04b29f27aec025e39d25f58a466cbf305b",
+      "log": "logs/common-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/3",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "notices",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 11784,
+      "output_sha256": "488b0ac77f72f265abf09f732328b7ba62530caa1326fd7dbfb8e01aeeba9e37",
+      "log": "logs/common-3.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/4",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop-contracts",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 574,
+      "output_sha256": "b28f20cb988639e24ff910a7eb7d73a6d82ec8d65ff4f5411da76e417fe41dbd",
+      "log": "logs/common-4.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/5",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1579,
+      "output_sha256": "ec745ebd71417b7474c3f8d6ba9301c98e06091802433e5fdb8fb1eccf8b5eb7",
+      "log": "logs/common-5.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/6",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2793,
+      "output_sha256": "d79b325f3fbe74c333dace9ba3f6e31a396280c46edc8d240c85da1292da4641",
+      "log": "logs/common-6.log",
+      "tests": {
+        "passed": 18,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/7",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "build"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1981,
+      "output_sha256": "dd56788739a846637cd65600197827212e50db95d3f892d8924e866a1efca008",
+      "log": "logs/common-7.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/8",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 198,
+      "output_sha256": "d8760763be63067f00789fcf42648cb7e89259b37690e733415676ec0b8b6596",
+      "log": "logs/common-8.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/9",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--locked",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 48458,
+      "output_sha256": "818e581d07a6a02961ec95146c08e9b0be42ffa250250603a8dd04c80df6456d",
+      "log": "logs/common-9.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/10",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--locked",
+        "--all-targets",
+        "--features",
+        "desktop-core/test-fixtures,desktop-host/test-fixtures,xtask/test-fixtures",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 7774,
+      "output_sha256": "c809e01262f7b173c3dbcb6f127081752503896fe88f2560c8ceea5758e3fd48",
+      "log": "logs/common-10.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/11",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--lib"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 3984,
+      "output_sha256": "9d90cbbf7dcdd70a3872be1022e195ce80e80544c1de894c0cf976c130250f26",
+      "log": "logs/common-11.log",
+      "tests": {
+        "passed": 2,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 12859,
+      "output_sha256": "c0adc496bb1f3978b5366e12953ba5520c6a73ef8fd04c764d451a616c9339d3",
+      "log": "logs/shared-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/2",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 22956,
+      "output_sha256": "6d0b334043ad8d6826607e46e6f9ccee1b875f0e4385c61a31eec711a7b37351",
+      "log": "logs/shared-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/3",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-lifecycle",
+        "--allowlist",
+        "docs/architecture/shared-lifecycle.json",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 8824,
+      "output_sha256": "1993b291efda35b3fead21d4fa2bf343d6ce6113561d821426d0ef16ff424c60",
+      "log": "logs/shared-3.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/4",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "tsc",
+        "-p",
+        "tsconfig.typecheck.json",
+        "--noEmit"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 20710,
+      "output_sha256": "d8760763be63067f00789fcf42648cb7e89259b37690e733415676ec0b8b6596",
+      "log": "logs/shared-4.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/5",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "-r",
+        "--fail-if-no-match",
+        "--filter",
+        "@ai-security-academy/cli",
+        "--filter",
+        "@ai-security-academy/presentation",
+        "--filter",
+        "@ai-security-academy/rag-svc",
+        "--filter",
+        "@ai-security-academy/shared",
+        "--filter",
+        "@ai-security-academy/ui",
+        "--filter",
+        "@ai-security-academy/video",
+        "run",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 16944,
+      "output_sha256": "cb56ba3a55763ca48defa15e473a53083ddf072d42820957c18b52212c0cc24a",
+      "log": "logs/shared-5.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/6",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.presentation.config.ts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 6780,
+      "output_sha256": "8856f73a61640dd77da8c0f57efa19d45e578c4006c1f4a4b4d7973f06a6f2f6",
+      "log": "logs/shared-6.log",
+      "tests": {
+        "passed": 207,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/7",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "tsx",
+        "scripts/copy-excalidraw-assets.ts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 580,
+      "output_sha256": "d61a4e065e0c7e02d4eff1f066d809371ae1c190fe547016aac8605e579c97e1",
+      "log": "logs/shared-7.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/8",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "vite",
+        "build"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 54830,
+      "output_sha256": "9bbed90660f17c0895fe4d0544b30e42eed0fbc943b692e6f8ac4009d4c2cd91",
+      "log": "logs/shared-8.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "artifacts": []
+}

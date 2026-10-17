@@ -1,11 +1,90 @@
 {
   "schema_version": 1,
-  "status": "planned executable contract; runner and targets do not exist yet",
+  "status": "executable contract; C01 implements the runner and targets. Entries describe commands, not results.",
   "target": "aarch64-apple-darwin",
   "fixture_only_features": [
     "test-fixtures"
   ],
+  "setup_commands": [
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "shared-prepare",
+      "--input",
+      ".inputs/academy",
+      "--scratch",
+      ".work/academy"
+    ],
+    [
+      "pnpm",
+      "install",
+      "--frozen-lockfile",
+      "--ignore-scripts"
+    ]
+  ],
   "common_commands": [
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "bindings",
+      "--check"
+    ],
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "ledger",
+      "--check"
+    ],
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "notices",
+      "--check"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop-contracts",
+      "typecheck"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "typecheck"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "build"
+    ],
     [
       "cargo",
       "fmt",
@@ -36,36 +115,12 @@
       "warnings"
     ],
     [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "typecheck"
-    ],
-    [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts"
-    ],
-    [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "build"
-    ],
-    [
       "cargo",
-      "run",
+      "test",
       "--locked",
       "-p",
-      "xtask",
-      "--",
-      "bindings",
-      "--check"
+      "desktop-core",
+      "--lib"
     ]
   ],
   "controller": "controller_commands.check with a validated C01-C26 chunk substitution",
@@ -119,11 +174,21 @@
       "--dir",
       ".work/academy",
       "-r",
+      "--fail-if-no-match",
       "--filter",
-      "./packages/*",
-      "exec",
-      "tsc",
-      "--noEmit"
+      "@ai-security-academy/cli",
+      "--filter",
+      "@ai-security-academy/presentation",
+      "--filter",
+      "@ai-security-academy/rag-svc",
+      "--filter",
+      "@ai-security-academy/shared",
+      "--filter",
+      "@ai-security-academy/ui",
+      "--filter",
+      "@ai-security-academy/video",
+      "run",
+      "typecheck"
     ],
     [
       "pnpm",
@@ -195,7 +260,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "frontend_commands": [
         [
           "pnpm",
@@ -265,7 +329,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "host_commands": [
         [
           "cargo",
@@ -335,7 +398,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "frontend_commands": [
         [
           "pnpm",
@@ -380,7 +442,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "host_commands": [
         [
           "cargo",
@@ -425,7 +486,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "frontend_commands": [
         [
           "pnpm",
@@ -470,7 +530,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "frontend_commands": [
         [
           "pnpm",
@@ -514,8 +573,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C08": {
       "rust_target": "management_reads",
@@ -546,8 +604,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C09": {
       "rust_target": "runtime_changes",
@@ -579,7 +636,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "frontend_commands": [
         [
           "pnpm",
@@ -647,8 +703,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C11": {
       "rust_target": "sessions_reports",
@@ -679,8 +734,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C12": {
       "rust_target": "library_observation",
@@ -711,8 +765,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C13": {
       "rust_target": "redteam_model_reads",
@@ -743,8 +796,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C14": {
       "rust_target": "workbench_documents",
@@ -776,7 +828,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "frontend_commands": [
         [
           "pnpm",
@@ -821,7 +872,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "frontend_commands": [
         [
           "pnpm",
@@ -865,8 +915,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C17": {
       "rust_target": "gateway_changes",
@@ -897,8 +946,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C18": {
       "rust_target": "gateway_inference",
@@ -929,8 +977,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C19": {
       "rust_target": "harness_process",
@@ -962,7 +1009,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "host_commands": [
         [
           "cargo",
@@ -1007,7 +1053,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "host_commands": [
         [
           "cargo",
@@ -1051,8 +1096,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C22": {
       "rust_target": "workspace_mcp",
@@ -1084,7 +1128,6 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false,
       "host_commands": [
         [
           "cargo",
@@ -1128,8 +1171,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C24": {
       "rust_target": "native_quality",
@@ -1160,8 +1202,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
-      "passed": false
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C25": {
       "rust_target": "controlled_live",
@@ -1192,8 +1233,7 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "controlled L01-L18 manifest only",
-      "passed": false
+      "live_requirement": "controlled L01-L18 manifest only"
     },
     "C26": {
       "rust_target": "signed_artifact",
@@ -1224,16 +1264,75 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "final signed-byte F01-F09 manifest",
-      "passed": false
+      "live_requirement": "final signed-byte F01-F09 manifest"
     }
   },
+  "phases": {
+    "P01": [
+      "C01",
+      "C02",
+      "C03"
+    ],
+    "P02": [
+      "C04",
+      "C05",
+      "C06",
+      "C07"
+    ],
+    "P03": [
+      "C08",
+      "C09",
+      "C10",
+      "C11",
+      "C12"
+    ],
+    "P04": [
+      "C13",
+      "C14",
+      "C15"
+    ],
+    "P05": [
+      "C16",
+      "C17",
+      "C18"
+    ],
+    "P06": [
+      "C19",
+      "C20",
+      "C21",
+      "C22"
+    ],
+    "P07": [
+      "C23",
+      "C24"
+    ],
+    "P08": [
+      "C25",
+      "C26"
+    ]
+  },
+  "phase_native_prepare": [
+    "cargo",
+    "run",
+    "--locked",
+    "-p",
+    "xtask",
+    "--",
+    "native-prepare",
+    "--phase",
+    "{phase}",
+    "--target",
+    "aarch64-apple-darwin",
+    "--features",
+    "test-fixtures"
+  ],
   "invariants": [
     "missing targets/results block completion",
     "no application/native/live/artifact result claimed",
     "changed source/dependency/feature/build flags invalidate receipts",
     "live/final artifacts use production configuration; fixture flag prohibited",
-    "native_prepare exit does not prove UI acceptance"
+    "native_prepare exit does not prove UI acceptance",
+    "completion state lives only in the append-only completion ledger, never in this manifest"
   ],
   "requested_production_features": [],
   "effective_features": "Capture exact Cargo/Tauri effective features/defaults from each build; requested list alone is not proof",
@@ -1301,7 +1400,7 @@
       "--chunk",
       "{chunk}",
       "--reviewer",
-      "claude",
+      "codex",
       "--manifest",
       "docs/architecture/checks.json"
     ],
@@ -1330,34 +1429,111 @@
       "release-candidate",
       "--manifest",
       "docs/architecture/checks.json"
+    ],
+    "review_phase": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "review",
+      "--phase",
+      "{phase}",
+      "--reviewer",
+      "codex",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "complete_phase": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "complete",
+      "--phase",
+      "{phase}",
+      "--manifest",
+      "docs/architecture/checks.json"
     ]
   },
-  "reviewer_command": [
-    "claude",
-    "-p",
-    "--safe-mode",
-    "--restricted",
-    "--permission-mode",
-    "plan",
-    "--permission-prompts",
-    "none",
-    "--tools",
-    "Read,Grep,Glob",
-    "--allowedTools",
-    "Read",
-    "Grep",
-    "Glob",
-    "--strict-mcp-config",
-    "--no-chrome",
-    "--no-session-persistence",
-    "--output-format",
-    "json",
-    "--json-schema",
-    "{review_schema_json}",
-    "--add-dir",
-    "{frozen_input_dir}"
-  ],
-  "reviewer_stdin": "frozen approved review prompt; argv substitutions validated by xtask, never taken from reviewer output",
+  "reviewer": {
+    "decision": "D026",
+    "identity": "codex",
+    "executable": "codex (resolved absolute path, version and SHA-256 recorded per attempt; flags verified against its --help)",
+    "verdict_schema": "docs/architecture/review-verdict.schema.json",
+    "threshold": {
+      "architecture": 9,
+      "behavior": 9,
+      "authority_security": 9,
+      "validation": 9,
+      "overall": 9
+    },
+    "preferred_transport": {
+      "kind": "codex-thread",
+      "thread": "01a141e8-0412-7b30-8ebc-db2ade105d6d",
+      "argv": [
+        "{codex}",
+        "queue",
+        "--thread",
+        "01a141e8-0412-7b30-8ebc-db2ade105d6d",
+        "--message",
+        "{transport_message}"
+      ],
+      "submit_timeout_seconds": 30,
+      "requires": "reviewer-authored route-ready.json matching a fresh handshake request ID",
+      "forbidden": [
+        "--last"
+      ],
+      "note": "queue exit status is submission only; the verdict file is the only completion signal"
+    },
+    "fallback_transport": {
+      "kind": "codex-exec-fresh",
+      "argv": [
+        "{codex}",
+        "exec",
+        "--cd",
+        "{repo}",
+        "--sandbox",
+        "read-only",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "-c",
+        "approval_policy=\"never\"",
+        "-c",
+        "web_search=\"disabled\"",
+        "--ephemeral",
+        "--output-schema",
+        "{schema_path}",
+        "--json",
+        "--output-last-message",
+        "{verdict_path}",
+        "-"
+      ],
+      "stdin": "controller-rendered transport message plus packet path; never reviewer text",
+      "capture": [
+        "stdout.jsonl",
+        "stderr.log"
+      ],
+      "forbidden": [
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--dangerously-bypass-hook-trust",
+        "--approve-for-me",
+        "--last",
+        "workspace-write",
+        "danger-full-access"
+      ]
+    },
+    "wait": {
+      "poll_seconds": 15,
+      "max_wait_seconds": 7200,
+      "progress_every_seconds": 120
+    },
+    "freeze": "source, dependency, build-flag and evidence fingerprints are recomputed after the verdict arrives; any change fails the attempt",
+    "expiry": "switching transport or retrying creates a new attempt ID and writes expired.json into the prior attempt; verdicts for expired attempts are rejected"
+  },
   "shared_lifecycle_contract": "C01 creates the allowlist after exact consumed lock and script review. Absent/unknown hashes fail closed. No root prepare/prebuild or Git hook scripts; no automatic lifecycle execution.",
   "shared_source_required_chunks": [
     "C01",
@@ -1377,7 +1553,7 @@
     ],
     "build_values": {
       "PATH": "selected preflight tool directories only, fingerprinted in run manifest",
-      "RUSTUP_TOOLCHAIN": "1.90.0",
+      "RUSTUP_TOOLCHAIN": "1.99.0",
       "CI": "1",
       "SOURCEMAPS": "0",
       "VITE_BASE_PATH": "/",
@@ -1385,7 +1561,7 @@
       "npm_package_version": "verified Academy package.json version"
     },
     "synthetic_fixture_values": "C01 approved versioned test-environment manifest only; record nonsecret values/hash; no real Clerk/IdP/tenant credentials",
-    "review_auth": "actual Claude authenticated CLI profile, or explicitly selected private provider inputs; never inherit application secrets or record credential values",
+    "review_auth": "actual Codex authenticated CLI profile (CODEX_HOME auth only for the fresh fallback, user config ignored); never inherit application secrets or record credential values",
     "signing_and_live": "C25/C26 private execution manifests provide explicitly scoped secret inputs; public evidence records names/source references, never values",
     "enforcement": "xtask records command cwd, executable/version/hash, resolved nonsecret env and private-input references; missing required env or unexpected .env is a failed check"
   }

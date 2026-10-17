@@ -218,6 +218,8 @@ architecture, behavior, authority/security, and validation. No required fixes or
 missing mandatory evidence. Preserve reviewed revisions/dependency pins, raw
 verdicts, commands/results, remediation and review attempts. No aggregate score
 compensates for a weak critical dimension. Scores are not executable evidence.
+D026 changes the reviewer identity from C01 onward and adds phase reviews; the
+thresholds and evidence requirements of this decision are unchanged.
 
 ## D020 — Native quality and measured budgets
 
@@ -269,6 +271,38 @@ it renders" for the four candidate cards and before/after diagrams. This is
 owner visual confirmation; browser automation remained unable to inspect local
 HTML. Record implementation recommendations and independent review separately;
 candidate selection is not a passing implementation/package test.
+
+## D026 — Codex independent review of every chunk and phase
+
+Accepted on 2026-10-17 by explicit owner direction at the start of
+implementation: "Claude Code implements. Codex independently reviews every
+implementation chunk. Codex also performs a cumulative review after every phase.
+Every review must score at least 9/10 in all five dimensions."
+
+- Applies from C01 onward. It amends D019's reviewer identity only; D019's
+  thresholds, no-required-fix rule and evidence requirements are unchanged.
+- Every chunk C01–C26 needs an actual independent Codex verdict scoring at
+  least 9 in architecture, behavior, authority_security, validation and overall,
+  with empty required_fixes, blockers and evidence_gaps.
+- Every phase P01–P08 additionally needs a cumulative Codex review of the
+  integrated phase and the earlier features it affects, under the same
+  threshold. A collection of passing chunk verdicts is not a phase verdict.
+- The implementer never scores itself, edits a verdict, pressures the reviewer
+  or infers approval from a process exit status or queue acknowledgement.
+- Historical G00/G01 Claude reviews remain unchanged. Their fingerprints cover
+  only their recorded inputs, not this policy change. The C01 Codex review
+  covers this decision and the updated reviewer guidance, prompts and schemas.
+
+Transport is recorded per attempt. The preferred route is the owner-designated
+existing Codex thread `01a141e8-0412-7b30-8ebc-db2ade105d6d`, addressed only by
+that exact ID through `codex queue` (never `--last`) after a reviewer-authored
+handshake file confirms delivery. Queue acknowledgement is submission, not
+review. That thread runs under its own sandbox, so the read-only rule is an
+instruction there; the controller enforces it by verifying the frozen source,
+dependency and evidence fingerprints before and after the review. If delivery
+cannot be confirmed, a fresh ephemeral `codex exec` read-only reviewer is used,
+recorded as a fresh reviewer under a new attempt ID; the earlier attempt is
+expired so a late answer cannot advance the gate.
 
 ## Directions explicitly requested before round 1
 

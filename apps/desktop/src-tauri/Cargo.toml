@@ -1,0 +1,64 @@
+[package]
+name = "desktop-host"
+version = "0.1.0"
+description = "Prisma AIRS Desktop v2 native host: window/origin admission and OS adapters"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+default-run = "prisma-airs-desktop-v2"
+
+[lib]
+name = "desktop_host"
+path = "src/lib.rs"
+
+[[bin]]
+name = "prisma-airs-desktop-v2"
+path = "src/main.rs"
+
+[features]
+default = []
+# Distinct fixture identity and the Tauri mock runtime for admission tests.
+# Never enabled by the shipping artifact build.
+test-fixtures = [
+    "desktop-core/test-fixtures",
+    "tauri/test",
+    "dep:objc2",
+    "dep:objc2-foundation",
+    "dep:objc2-app-kit",
+    "dep:objc2-web-kit",
+    "dep:block2",
+]
+
+[build-dependencies]
+tauri-build = { version = "=2.7.3", default-features = false, features = ["config-json"] }
+
+[dependencies]
+desktop-core = { path = "../../../crates/desktop-core" }
+tauri = { version = "=2.12.4", default-features = false, features = ["wry", "common-controls-v6", "compression"] }
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["sync", "macros"] }
+
+# Fixture-only WebView self-capture for native acceptance (macOS).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "=0.6.5", optional = true }
+objc2-foundation = { version = "=0.3.2", optional = true, default-features = false, features = ["std", "NSData", "NSDictionary", "NSError"] }
+objc2-app-kit = { version = "=0.3.2", optional = true, default-features = false, features = ["std", "NSImage", "NSImageRep", "NSBitmapImageRep"] }
+objc2-web-kit = { version = "=0.3.2", optional = true, default-features = false, features = ["std", "WKWebView", "WKSnapshotConfiguration", "block2", "objc2-app-kit"] }
+block2 = { version = "=0.6.2", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["sync", "macros", "rt"] }
+
+[lints]
+workspace = true
+
+# Host admission tests use Tauri's mock runtime, available only with fixtures.
+[[test]]
+name = "ipc_admission"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "permission_manifest"
+required-features = ["test-fixtures"]

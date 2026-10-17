@@ -1,0 +1,56 @@
+{
+  "schema": "airs-v2/toolchain-correction/1",
+  "subject": "C01",
+  "recorded_utc": "2026-10-17T01:00:00Z",
+  "host": "Mac17,3 / Apple M5 / macOS 27.0.1 (26A434); CommandLineTools ld PROJECT:ld-27037.1",
+  "selected_in_G01": "Rust 1.90.0",
+  "corrected_to": "Rust 1.99.0 (b940084d7 2026-09-28)",
+  "trigger": "tauri build sets MACOSX_DEPLOYMENT_TARGET from bundle.macOS.minimumSystemVersion (13.0). Proc-macro dylibs linked under that target fail dyld validation ('mis-aligned LINKEDIT string pool'), so release builds fail with E0463 can't find crate for tauri_macros/phf_macros/serde_derive.",
+  "method": "cargo build --release -p serde_derive in an isolated CARGO_TARGET_DIR, then ctypes.CDLL(<libserde_derive.dylib>) on the host",
+  "matrix": [
+    {
+      "toolchain": "1.90.0",
+      "MACOSX_DEPLOYMENT_TARGET": "unset (rustc default 11.0)",
+      "dylib_loads": true
+    },
+    {
+      "toolchain": "1.90.0",
+      "MACOSX_DEPLOYMENT_TARGET": "11.0",
+      "dylib_loads": true
+    },
+    {
+      "toolchain": "1.90.0",
+      "MACOSX_DEPLOYMENT_TARGET": "13.0",
+      "dylib_loads": false
+    },
+    {
+      "toolchain": "1.90.0",
+      "MACOSX_DEPLOYMENT_TARGET": "14.0",
+      "dylib_loads": false
+    },
+    {
+      "toolchain": "1.90.0",
+      "MACOSX_DEPLOYMENT_TARGET": "15.0",
+      "dylib_loads": false
+    },
+    {
+      "toolchain": "1.90.0",
+      "MACOSX_DEPLOYMENT_TARGET": "26.0",
+      "dylib_loads": false
+    },
+    {
+      "toolchain": "1.95.0",
+      "MACOSX_DEPLOYMENT_TARGET": "13.0",
+      "dylib_loads": false
+    },
+    {
+      "toolchain": "1.99.0",
+      "MACOSX_DEPLOYMENT_TARGET": "13.0",
+      "dylib_loads": true
+    }
+  ],
+  "also": "profile.release strip=debuginfo produced the same dyld failure for proc-macro dylibs even without a deployment target; strip was removed.",
+  "alternative_rejected": "Lowering minimumSystemVersion to 11.0 would avoid the linker path but declare untested OS support; the qualification contract requires a documented version correction instead.",
+  "lockfile": "Cargo.lock unchanged; the existing resolution compiles under 1.99.0 with --locked.",
+  "review": "Bound to the C01 independent review; dependency fingerprint includes the toolchain identity."
+}

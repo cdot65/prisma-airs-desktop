@@ -1,0 +1,33 @@
+[workspace]
+resolver = "3"
+members = ["crates/desktop-core", "crates/xtask", "apps/desktop/src-tauri"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+license = "Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+thiserror = "=2.0.21"
+tokio = { version = "=1.53.3", default-features = false }
+ts-rs = { version = "=12.0.1", default-features = false, features = ["serde-compat", "no-serde-warnings"] }
+sha2 = "=0.10.9"
+hex = "=0.4.3"
+
+[workspace.lints.rust]
+# `deny`, not `forbid`: the fixture-only WebView capture module opts in locally.
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+# No `strip`: on macOS 27 the stripped proc-macro dylibs fail dyld validation
+# ("mis-aligned LINKEDIT string pool"). Release builds carry no debuginfo.

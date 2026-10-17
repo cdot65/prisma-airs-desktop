@@ -1,0 +1,453 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "check-20261017T004143Z-35e835",
+  "subject": "C01",
+  "kind": "check",
+  "started_utc": "2026-10-17T00:41:43Z",
+  "finished_utc": "2026-10-17T00:42:02Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/cdot/.cargo/bin/rustc",
+      "version": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/cdot/.cargo/bin/cargo",
+      "version": "cargo 1.90.0 (840b83a10 2025-07-30)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "node",
+      "path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.90.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/",
+    "npm_package_version": "0.176.0"
+  },
+  "inputs_before": {
+    "source": "9dcd787031ce18287947d1923eff491be353af280de077a071fa137adf2679e7",
+    "dependencies": "260928c50a9362739892029776a282e390f89c3cc46a726a89eded7e6e0e4a96",
+    "build_flags": "6de388f3aea54c05fb9090b0df8dfc0edde89a9a967b96f7210911e29123ffc4"
+  },
+  "inputs_after": {
+    "source": "9dcd787031ce18287947d1923eff491be353af280de077a071fa137adf2679e7",
+    "dependencies": "260928c50a9362739892029776a282e390f89c3cc46a726a89eded7e6e0e4a96",
+    "build_flags": "6de388f3aea54c05fb9090b0df8dfc0edde89a9a967b96f7210911e29123ffc4"
+  },
+  "commands": [
+    {
+      "label": "common/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 6731,
+      "output_sha256": "8030f2fee6e38ca2ae6f3ae0de3fdb07d0eed02640fb38da62abd001cb89c47e",
+      "log": "logs/common-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/2",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 248,
+      "output_sha256": "b5c35ada0dbf0c7457c1734d02300e89293e00305677ae702d76fb8d8226fd21",
+      "log": "logs/common-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/3",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "bindings",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 239,
+      "output_sha256": "420159b40b6ec7b696b360338ba44a61fb51c251733bcfb5d33cfec03e5b9679",
+      "log": "logs/common-3.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/4",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "ledger",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 168,
+      "output_sha256": "ca472a770b99e8487be21249aedccb98e0377ffcc6007b6fa3a92822e580b2a9",
+      "log": "logs/common-4.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/5",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop-contracts",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 384,
+      "output_sha256": "ea1f89278ca2ec572b90797e1d0b7f4afc91d449216d690b888124def371ff1f",
+      "log": "logs/common-5.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/6",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 2,
+      "duration_ms": 861,
+      "output_sha256": "10e3e6230a107303341c5214364b901c6cb01413698e3dc063b478a522d75cb3",
+      "log": "logs/common-6.log",
+      "tests": null,
+      "status": "failed",
+      "note": "exit status Some(2)"
+    },
+    {
+      "label": "common/7",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "common/8",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "build"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "common/9",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "common/10",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--locked",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "common/11",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--locked",
+        "--all-targets",
+        "--features",
+        "desktop-core/test-fixtures,desktop-host/test-fixtures,xtask/test-fixtures",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "shared/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "shared/2",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "shared/3",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-lifecycle",
+        "--allowlist",
+        "docs/architecture/shared-lifecycle.json",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "shared/4",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "tsc",
+        "-p",
+        "tsconfig.typecheck.json",
+        "--noEmit"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "shared/5",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "-r",
+        "--filter",
+        "./packages/*",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "shared/6",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.presentation.config.ts"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "shared/7",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "tsx",
+        "scripts/copy-excalidraw-assets.ts"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "shared/8",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "vite",
+        "build"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    }
+  ],
+  "status": "failed",
+  "failure": "common/6 exit status Some(2)",
+  "artifacts": []
+}

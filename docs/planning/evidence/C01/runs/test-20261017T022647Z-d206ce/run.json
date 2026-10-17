@@ -1,0 +1,220 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "test-20261017T022647Z-d206ce",
+  "subject": "C01",
+  "kind": "test",
+  "started_utc": "2026-10-17T02:26:47Z",
+  "finished_utc": "2026-10-17T02:27:19Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/cdot/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/cdot/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "node",
+      "path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/"
+  },
+  "inputs_before": {
+    "source": "601b807ab395336857a96754ac7bee2b2e0b228340592bfa99ddee5744e7175b",
+    "dependencies": "e0f56a0c5bff5677f47be3c1093bfe2629952608a735ed081d2f354130692e83",
+    "build_flags": "a4ff2d63adddbff462ec4dfced6910a308562f2cf3fcf85bfe200bcc0f3ceacb"
+  },
+  "inputs_after": {
+    "source": "601b807ab395336857a96754ac7bee2b2e0b228340592bfa99ddee5744e7175b",
+    "dependencies": "e0f56a0c5bff5677f47be3c1093bfe2629952608a735ed081d2f354130692e83",
+    "build_flags": "a4ff2d63adddbff462ec4dfced6910a308562f2cf3fcf85bfe200bcc0f3ceacb"
+  },
+  "commands": [
+    {
+      "label": "setup/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 11006,
+      "output_sha256": "8030f2fee6e38ca2ae6f3ae0de3fdb07d0eed02640fb38da62abd001cb89c47e",
+      "log": "logs/setup-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "setup/2",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 489,
+      "output_sha256": "2eb272d9e0da624d709bf0a714ce2968c3151cb8e134fc278fbafa41030bdca8",
+      "log": "logs/setup-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C01/fixture",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "shell_controller"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 248,
+      "output_sha256": "52343d2447db05a9da03453e4372f55256b01570684d7976dd22316c20fa68d1",
+      "log": "logs/C01-fixture.log",
+      "tests": {
+        "passed": 36,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C01/host/1",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-host",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ipc_admission"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 3030,
+      "output_sha256": "f7dbc5442d63392ce20802ebed0b3db80950a7a47906d5dec514bfd443b00f9b",
+      "log": "logs/C01-host-1.log",
+      "tests": {
+        "passed": 10,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C01/host/2",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-host",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "permission_manifest"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 195,
+      "output_sha256": "c7c45810f668d74d0fafba319b67b98a9cd758f212be1f85da80f3b143aed014",
+      "log": "logs/C01-host-2.log",
+      "tests": {
+        "passed": 5,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C01/frontend/1",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/contracts/invoke.test.ts",
+        "src/shell/desktop-shell.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2334,
+      "output_sha256": "f66376ba11972dfa6f86ef95bc453c690e6e48350c36c0c98da375e723ce4726",
+      "log": "logs/C01-frontend-1.log",
+      "tests": {
+        "passed": 16,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "artifacts": []
+}

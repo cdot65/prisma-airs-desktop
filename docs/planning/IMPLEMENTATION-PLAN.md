@@ -1,8 +1,8 @@
 # Prisma AIRS Desktop v2 implementation plan
 
 Status: product interview decisions D001–D023 accepted; D024/D025 settle source
-terms and all four architecture candidates. G01 design/review is active. No application
-implementation has started. A passing plan review is not a passing architecture,
+terms and all four architecture candidates; D026 makes Codex the independent
+chunk and phase reviewer. G00/G01 passed; implementation proceeds from C01. A passing plan review is not a passing architecture,
 SDK, application, live-tenant, or package review.
 
 ## Outcome and exclusions
@@ -115,12 +115,14 @@ product endpoint calls, or packaging implementation begins before G01 passes.
 5. Record commands, environments, inputs, results, failures, hashes, limitations,
    and rollback rehearsal. Save raw sensitive evidence privately; commit redacted
    summaries with references/hashes, not credentials or customer bodies.
-6. Freeze source and dependency inputs. Request actual read-only Claude Code
-   review through [the independent prompt](prompts/review-chunk.md).
+6. Freeze source and dependency inputs. Request actual independent Codex
+   review through [the independent prompt](prompts/review-chunk.md) (D026).
 7. If any critical dimension/overall score is below 9, required fixes remain,
    source changed, or mandatory evidence is absent: remediate, rerun affected
    checks, freeze a new snapshot, and request a new review of the same chunk.
 8. Complete only after the receipt and evidence validate against current inputs.
+   After a phase's last chunk, obtain the cumulative Codex phase review
+   ([prompt](prompts/review-phase.md)) before starting the next phase.
    Make a focused commit; revalidate that its tree matches the reviewed tree.
    Later edits invalidate affected receipts and trigger targeted regression
    checks/re-review. Preserve failed attempts; never pressure a reviewer to pass.
@@ -133,7 +135,8 @@ These commands are a required future interface, not tools that exist today:
 cargo run --locked -p xtask -- check --chunk Cxx --manifest docs/architecture/checks.json
 cargo run --locked -p xtask -- test --chunk Cxx --manifest docs/architecture/checks.json
 cargo run --locked -p xtask -- native --chunk Cxx --manifest docs/architecture/checks.json
-cargo run --locked -p xtask -- review --chunk Cxx --reviewer claude --manifest docs/architecture/checks.json
+cargo run --locked -p xtask -- review --chunk Cxx --reviewer codex --manifest docs/architecture/checks.json
+cargo run --locked -p xtask -- review --phase Pxx --reviewer codex --manifest docs/architecture/checks.json
 cargo run --locked -p xtask -- complete --chunk Cxx --manifest docs/architecture/checks.json
 cargo run --locked -p xtask -- package --kind preview --manifest docs/architecture/checks.json
 cargo run --locked -p xtask -- package --kind release-candidate --manifest docs/architecture/checks.json

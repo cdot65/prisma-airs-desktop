@@ -24,10 +24,13 @@ negative probes. Record actual commands, inputs/hashes, results and limitations.
 Required missing evidence is blocked. Do not print secrets or raw customer data.
 Use designated live scope only if this chunk and active instruction permit it.
 
-Freeze inputs and request actual independent Claude Code review with the canonical
-review prompt. Require >=9 overall and in architecture, behavior, authority/security,
-validation; no required fixes or missing evidence. Remediate and re-review the same
-chunk until passing. Do not self-score or edit reviewer verdicts.
+Freeze inputs and request actual independent Codex review (D026) through
+`xtask review` with the canonical review prompt. Require >=9 overall and in
+architecture, behavior, authority_security, validation; no required fixes,
+blockers or evidence gaps. Remediate and re-review the same chunk until passing.
+Do not self-score, edit reviewer verdicts, or treat queue acknowledgement or
+exit status as approval. After a phase's last chunk, obtain the cumulative
+phase review before the next phase.
 
 Complete through the source-bound controller only after all gates pass. Commit
 the reviewed tree and verify the tree matches the receipt. Update the parity and

@@ -1,0 +1,362 @@
+[
+  {
+    "mutation": "gate threshold lowered to 8",
+    "files": [
+      "crates/xtask/src/gate.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "shell_controller"
+    ],
+    "guard": "score_eight_in_any_dimension_is_rejected",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "verdict hash not checked",
+    "files": [
+      "crates/xtask/src/gate.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "shell_controller"
+    ],
+    "guard": "edited_verdict_after_receipt_is_rejected",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "expired attempts accepted",
+    "files": [
+      "crates/xtask/src/gate.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "shell_controller"
+    ],
+    "guard": "expired_attempts_cannot_advance",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "run command coverage not checked",
+    "files": [
+      "crates/xtask/src/gate.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "shell_controller"
+    ],
+    "guard": "run_records_must_cover_the_exact_approved_plan",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "final reviewer output not compared",
+    "files": [
+      "crates/xtask/src/gate.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "shell_controller"
+    ],
+    "guard": "failed_or_incomplete_reviewer_turns_cannot_complete",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "native status ignores phase members",
+    "files": [
+      "crates/xtask/src/native.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "shell_controller"
+    ],
+    "guard": "native_status_and_completion_resolve_phase_members_alike",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "bundle artifact not checked",
+    "files": [
+      "crates/xtask/src/gate.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "shell_controller"
+    ],
+    "guard": "prepared_bundle_bytes_path_and_identifier_are_bound",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "web scratch drift ignored",
+    "files": [
+      "crates/xtask/src/fingerprint.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "shell_controller"
+    ],
+    "guard": "edits_to_the_web_consumer_scratch_tree_are_detected",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "changed duplicate accepted",
+    "files": [
+      "crates/desktop-core/src/delivery.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "ipc_admission"
+    ],
+    "guard": "delivery_sequence_rules_hold_through_ipc",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "JSON body admitted without size ceiling",
+    "files": [
+      "apps/desktop/src-tauri/src/lib.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "ipc_admission"
+    ],
+    "guard": "json_bodies_and_oversized_payloads_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "observation cap evicts instead of refusing",
+    "files": [
+      "apps/desktop/src-tauri/src/lib.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "ipc_admission"
+    ],
+    "guard": "observations_per_webview_are_bounded_without_silent_eviction",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "focused control not scrolled into view",
+    "files": [
+      "apps/desktop/src/shell/desktop-shell.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "guard": "scrolls a control into view when arrow keys move focus within a radio group",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "theme applied after the shell is painted",
+    "files": [
+      "apps/desktop/src/app.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "guard": "applies the native theme in the same commit that first shows the shell",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "sequence reused after lost result",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/invoke.test.ts"
+    ],
+    "guard": "never reuses a sequence",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "non-main window admitted (capability and host check both relaxed)",
+    "files": [
+      "apps/desktop/src-tauri/capabilities/main.json",
+      "apps/desktop/src-tauri/src/lib.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "ipc_admission"
+    ],
+    "guard": "other_windows_and_remote_origins_cannot_reach_commands",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "control": "capability relaxed only (host window check still rejects)",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "ipc_admission"
+    ],
+    "exit_code": 0,
+    "still_passes": true
+  },
+  {
+    "mutation": "type error in a presentation-only file",
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "-r",
+      "--fail-if-no-match",
+      "--filter",
+      "@ai-security-academy/cli",
+      "--filter",
+      "@ai-security-academy/presentation",
+      "--filter",
+      "@ai-security-academy/rag-svc",
+      "--filter",
+      "@ai-security-academy/shared",
+      "--filter",
+      "@ai-security-academy/ui",
+      "--filter",
+      "@ai-security-academy/video",
+      "run",
+      "typecheck"
+    ],
+    "exit_code": 2,
+    "guard_failed": true
+  },
+  {
+    "control": "shared package typecheck without the injected error",
+    "exit_code": 0,
+    "still_passes": true,
+    "packages_reported": [
+      "packages/cli",
+      "packages/presentation",
+      "packages/rag-svc",
+      "packages/shared",
+      "packages/ui",
+      "packages/video"
+    ]
+  },
+  {
+    "baseline": "unmutated shell_controller",
+    "exit_code": 0
+  }
+]

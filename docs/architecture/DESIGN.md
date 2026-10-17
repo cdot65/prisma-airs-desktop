@@ -360,7 +360,8 @@ tenant controls, native shortcuts and app preferences. No universal plugin syste
 
 Theme rendering is shared, persistence is an adapter: Academy web continues its
 hosted learner preference; desktop global theme is an app preference persisted
-in Rust. Academy account appearance may inform its feature composition without
+in Rust. C01 keeps it in core memory (C01 writes no user data); C02's
+protected application storage persists it, with a restart test. Academy account appearance may inform its feature composition without
 silently writing a learner preference on every desktop theme toggle. Gamification
 providers/effects mount only in the Academy feature and retire on account change.
 

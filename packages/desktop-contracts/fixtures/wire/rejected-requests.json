@@ -1,0 +1,21 @@
+{
+  "dispatch": [
+    {"case": "unknown envelope field", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"setAppearance","theme":"dark"},"principal":"operator"}},
+    {"case": "unknown intent variant", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"applyConfiguration","theme":"dark"}}},
+    {"case": "unknown intent field", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"setAppearance","theme":"dark","operator":true}}},
+    {"case": "unknown theme", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"setAppearance","theme":"vegas"}}},
+    {"case": "future protocol", "body": {"protocol":2,"session":"ds-x","sequence":"1","intent":{"kind":"setAppearance","theme":"dark"}}},
+    {"case": "numeric sequence", "body": {"protocol":1,"session":"ds-x","sequence":1,"intent":{"kind":"setAppearance","theme":"dark"}}},
+    {"case": "leading zero sequence", "body": {"protocol":1,"session":"ds-x","sequence":"01","intent":{"kind":"setAppearance","theme":"dark"}}},
+    {"case": "negative sequence", "body": {"protocol":1,"session":"ds-x","sequence":"-1","intent":{"kind":"setAppearance","theme":"dark"}}},
+    {"case": "sequence beyond u64", "body": {"protocol":1,"session":"ds-x","sequence":"18446744073709551616","intent":{"kind":"setAppearance","theme":"dark"}}},
+    {"case": "empty session", "body": {"protocol":1,"session":"","sequence":"1","intent":{"kind":"setAppearance","theme":"dark"}}},
+    {"case": "not an object", "body": ["setAppearance"]}
+  ],
+  "observe": [
+    {"case": "unknown scope", "body": {"protocol":1,"scope":{"kind":"tenantSecrets"}}},
+    {"case": "unknown observe field", "body": {"protocol":1,"scope":{"kind":"deliverySession"},"principal":"harness"}},
+    {"case": "future protocol", "body": {"protocol":2,"scope":{"kind":"deliverySession"}}},
+    {"case": "malformed channel token", "body": {"protocol":1,"scope":{"kind":"shell","updates":"/etc/passwd"}}}
+  ]
+}

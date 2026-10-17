@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Prisma AIRS Desktop v2 independent review verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "attempt_id",
+    "subject",
+    "fingerprints",
+    "scores",
+    "required_fixes",
+    "blockers",
+    "evidence_gaps",
+    "optional_suggestions",
+    "limitations",
+    "inspected_files",
+    "recommendation"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "attempt_id": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Chunk C01-C26 or phase P01-P08 under review"
+    },
+    "fingerprints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "dependencies",
+        "build_flags",
+        "evidence"
+      ],
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "dependencies": {
+          "type": "string"
+        },
+        "build_flags": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "architecture",
+        "behavior",
+        "authority_security",
+        "validation",
+        "overall"
+      ],
+      "properties": {
+        "architecture": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "behavior": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "authority_security": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "validation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "overall": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "required_fixes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_gaps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "optional_suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "inspected_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    }
+  }
+}

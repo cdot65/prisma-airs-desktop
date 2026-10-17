@@ -1,0 +1,46 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+ ✓ src/contracts/invoke.test.ts (10 tests) 78ms
+ ❯ src/shell/desktop-shell.test.tsx (7 tests | 1 failed) 640ms
+   ✓ desktop shell > lists every native feature and shows unavailable destinations explicitly 167ms
+   ✓ desktop shell > supports keyboard-only navigation and moves focus to the new heading 93ms
+   ✓ desktop shell > scrolls a control into view when arrow keys move focus within a radio group 92ms
+   ✓ desktop shell > handles native menu commands and restores focus when the palette closes 144ms
+   × desktop shell > treats appearance as Rust-owned: dispatches, then applies the native snapshot 21ms
+     → expected undefined to be 'gruvbox' // Object.is equality
+   ✓ desktop shell > reports refusals and unconfirmed outcomes without claiming the change applied 107ms
+   ✓ desktop shell > mounts no Academy learner, gamification or persistence effects and makes no network calls 14ms
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 16 passed (17)
+   Start at  04:01:00
+   Duration  1.84s (transform 195ms, setup 379ms, collect 410ms, tests 718ms, environment 867ms, prepare 136ms)
+
+undefined
+/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.config.ts src/contracts/invoke.test.ts src/shell/desktop-shell.test.tsx
+
+--- stderr ---
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/shell/desktop-shell.test.tsx > desktop shell > treats appearance as Rust-owned: dispatches, then applies the native snapshot
+AssertionError: expected undefined to be 'gruvbox' // Object.is equality
+
+- Expected: 
+"gruvbox"
+
++ Received: 
+undefined
+
+ ❯ src/shell/desktop-shell.test.tsx:156:56
+    154|         const user = userEvent.setup()
+    155|         const s = await launch()
+    156|         expect(document.documentElement.dataset.theme).toBe('gruvbox')
+       |                                                        ^
+    157|         await user.click(nav().getByRole('button', { name: /Settings/ …
+    158|         const dark = screen.getByRole('radio', { name: /Dark/ })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

@@ -1,0 +1,29 @@
+[package]
+name = "desktop-core"
+version = "0.1.0"
+description = "Prisma AIRS Desktop v2 application core: native authority, context and outcomes"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Deterministic fixtures for integration tests. Never enabled by shipping builds.
+test-fixtures = []
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+ts-rs.workspace = true
+sha2.workspace = true
+hex.workspace = true
+getrandom = "=0.4.3"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["sync", "macros", "rt"] }
+
+[lints]
+workspace = true
