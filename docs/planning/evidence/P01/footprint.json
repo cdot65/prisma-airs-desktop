@@ -1,0 +1,47 @@
+{
+  "schema": "airs-v2-footprint/1",
+  "budgets_sha256": "aa268af3e8660f1165719f9938eef010bf8434ef9cda75da7d5f3e136756ae76",
+  "started_utc": "2026-10-17T18:39:03Z",
+  "finished_utc": "2026-10-17T18:39:57Z",
+  "identifier": "io.cdot.prisma-airs-desktop.v2",
+  "app": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2.app",
+  "app_tree_sha256": "013fa5ae23f3e98d7d2bdaa1fb1bf7c0de7b82f8280b16dc1bb9f1aca1905d31",
+  "dmg": "target/aarch64-apple-darwin/release/bundle/dmg/Prisma AIRS Desktop v2_0.1.0_aarch64.dmg",
+  "dmg_sha256": "0012a317cc5162f5c9dc7d34a2e1b41ec15a01d4751fc7d82667de1d29a70a5f",
+  "metrics": {
+    "app-bundle-bytes": {
+      "unit": "MiB",
+      "samples": [
+        15.992359161376953
+      ]
+    },
+    "dmg-bytes": {
+      "unit": "MiB",
+      "samples": [
+        5.973193168640137
+      ]
+    }
+  },
+  "commands": [
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "build"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "tauri",
+      "build",
+      "--ci",
+      "--no-sign",
+      "--target",
+      "aarch64-apple-darwin",
+      "--bundles",
+      "app,dmg"
+    ]
+  ]
+}

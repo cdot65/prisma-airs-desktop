@@ -1190,11 +1190,13 @@ fn admit(
             let was_active = state.data.active.as_ref() == Some(&tenant);
             let retired_session = state.retire_credential(&tenant);
             state.data.tenants.retain(|t| t.profile.id != tenant);
-            state.scans.retain(|r| r.tenant != tenant);
             if was_active {
                 state.data.active = None;
             }
             state.save_with(&before)?;
+            // Only an accepted deletion drops the tenant's scan records; a
+            // refused one keeps them observable and cancellable.
+            state.scans.retain(|r| r.tenant != tenant);
             if let Some(record) = retired_session {
                 let _ = session.delete(&record);
             }

@@ -1,0 +1,361 @@
+{
+  "schema": "airs-v2/review-request/1",
+  "request_id": "rq-P01-20261017T175855Z-bf6ac916",
+  "attempt_id": "attempt-01",
+  "subject": "P01",
+  "kind": "phase",
+  "created_utc": "2026-10-17T17:58:56Z",
+  "repository": "/Users/cdot/development/redtail/prisma-airs-desktop-v2",
+  "base_commit": "1b698522c5aff8703d9bfd6f4f1116116549efe7",
+  "scope": "cumulative phase review of P01 and the earlier features it affects",
+  "instructions": [
+    "docs/planning/chunks/C01.md",
+    "docs/planning/chunks/C02.md",
+    "docs/planning/chunks/C03.md"
+  ],
+  "predecessors": [
+    {
+      "subject": "C01",
+      "receipt": {
+        "path": "docs/planning/reviews/C01/attempt-04/receipt.json",
+        "sha256": "24019109dc1e7f34668920990cde5ecf406880df08f39a15d3440a59c73fdb3c"
+      }
+    },
+    {
+      "subject": "C02",
+      "receipt": {
+        "path": "docs/planning/reviews/C02/attempt-03/receipt.json",
+        "sha256": "5a8f64fb4ae38a0611360d5999cc84aebcdc1dbef03ac7dc714f281fc1abfc92"
+      }
+    },
+    {
+      "subject": "C03",
+      "receipt": {
+        "path": "docs/planning/reviews/C03/attempt-02/receipt.json",
+        "sha256": "578d77f8e34e481df8b7628164750bf900a4be5296861e16490181c06745c69b"
+      }
+    }
+  ],
+  "fingerprints": {
+    "source": "fdde5175cb58296123c3b385cfdccd543dbeb2cc079dacea22b8488cb84aab9f",
+    "dependencies": "be9ccfa19694654ecc838a1cf3eb50a96b8290bfbc49553215286dc61103e34a",
+    "build_flags": "8da110617618120366c513349cb2bf4d92698b3b2c44bd3088abf20b06c1ef94",
+    "evidence": "dc0ad347d31ce28fad501e66d1e112fc3b4f3d1362ad4a3722b038c6ff9e213a"
+  },
+  "source_inventory": {
+    "path": "docs/planning/reviews/P01/attempt-01/source-inventory.json",
+    "sha256": "20d68f2484b172f007b44f58dc19ada72a749475012d979969a916d8fc9dd133"
+  },
+  "runs": [
+    {
+      "kind": "check",
+      "run_id": "check-20261017T172256Z-bf5ff5",
+      "path": "docs/planning/evidence/P01/runs/check-20261017T172256Z-bf5ff5/run.json",
+      "sha256": "ebb2c6b79240a3a764f2fdea331ce1634186fb4926686b0cca2b02cf49386696"
+    },
+    {
+      "kind": "test",
+      "run_id": "test-20261017T172517Z-72476f",
+      "path": "docs/planning/evidence/P01/runs/test-20261017T172517Z-72476f/run.json",
+      "sha256": "b9548733caec88b2f27f5a3d1165398dd2f8212e5e74c9084a7935b659d60637"
+    },
+    {
+      "kind": "native-prepare",
+      "run_id": "native-prepare-20261017T175646Z-2b68c5",
+      "path": "docs/planning/evidence/P01/runs/native-prepare-20261017T175646Z-2b68c5/run.json",
+      "sha256": "c64dd61bc4f575955d2add55013ee1e0d33356471840ce4459f08460b8befac8"
+    }
+  ],
+  "evidence_files": [
+    {
+      "path": "docs/planning/evidence/P01/footprint.json",
+      "sha256": "34c809ba0acc51f080b2964fab4a85a023198e0a5ae5ab53fd77cd1199feb63d"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/focus-ring-academy.png",
+      "sha256": "bd01829490753eaba34513a2f5173a2f3af493d0e54479cf9808266bf9bce3a7"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/launch.png",
+      "sha256": "684f5a1e58b9973a4a5c249601a6f699e48941881aaea83da9b081ec3e4da26c"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/min-size-settings.png",
+      "sha256": "6f914d1bfdf0b20f233e6d86c950aa7366e3a6ba24cb86a366ab85aa391a5177"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/min-size.png",
+      "sha256": "a5475d1399a71fe6dacce02e250686529051461d787896dc3ceedd51bf659ff3"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/palette-filtered.png",
+      "sha256": "a9d07d232e9d522bd6ae35e0b7a8e4ab886eadd5f5dbecd07501d3c8b3784949"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/settings-dark.png",
+      "sha256": "8f9c17807b241490e8bae588e5adab854f12b95c8164bffd6335d39e74195cd9"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/settings-light.png",
+      "sha256": "9841fa90aa4acc6ce4ff0df4d25c4bf6ed5f6091934f87367964bfb65b7a6d06"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/zoom-200-settings.png",
+      "sha256": "35a7220c7441802f37edde186a6921a6526d6b177423da595c34bcee9c3c7737"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/reduced-motion/zoom-200.png",
+      "sha256": "2b54634aab6d99a9553957c52292bc6a5144889f35e01654ea9f4b861cc67aca"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/focus-ring-academy.png",
+      "sha256": "8c8be865341874542621bc08bb2e72c40c682337eceebfbf90ae161509085154"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/launch.png",
+      "sha256": "29a77332fde1ed72eaf6bbe531733a577b8419fc487efea90084e6a52b5daab4"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/min-size-settings.png",
+      "sha256": "e6d744dcde9cf7635bc039d632840e4669c9a0b90f94643baaffe6ece09f26f0"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/min-size.png",
+      "sha256": "a5475d1399a71fe6dacce02e250686529051461d787896dc3ceedd51bf659ff3"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/palette-filtered.png",
+      "sha256": "df1b4aef98ad6e72d086abec20650c4f3afca6f99c9691fdef88608d7b48699e"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/settings-dark.png",
+      "sha256": "8f9c17807b241490e8bae588e5adab854f12b95c8164bffd6335d39e74195cd9"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/settings-light.png",
+      "sha256": "9841fa90aa4acc6ce4ff0df4d25c4bf6ed5f6091934f87367964bfb65b7a6d06"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/zoom-200-settings.png",
+      "sha256": "35a7220c7441802f37edde186a6921a6526d6b177423da595c34bcee9c3c7737"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/captures/standard/zoom-200.png",
+      "sha256": "2b54634aab6d99a9553957c52292bc6a5144889f35e01654ea9f4b861cc67aca"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/colors-dark.json",
+      "sha256": "c87cc277ca916801c232b7e65dcda141a329a2b9bbfa9c8d92ca06ebf0f14ae3"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/colors-light.json",
+      "sha256": "0b43aedfb7ee5d831d40c175b98854f355431adffc8a73bca856ef3c481a5384"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/driver-reduced-motion.json",
+      "sha256": "fbf41cba600f8d0c7421e7634fc71a9b4e7d606d7489ec79c44d476582438841"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/driver-standard.json",
+      "sha256": "447e05b461fe459df813f7564e631caa26755e4849a2910ae383e60a924af98b"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/startup-network-samples.log",
+      "sha256": "bab818f34f184bfac29bbd74148c9d61ffa7a3d8ac23f9e3bff62ab217fd907b"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C01/startup-network.json",
+      "sha256": "49a4e82a2d79deae22e2c6d064b251ce8c7b8393b2aaca9ecd93a1ce6985071b"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/captures/corrupt-notice.png",
+      "sha256": "7fc6136753f8419000f57011ef0e173f69fea21aebbf48d5905d898ba663b68d"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/captures/endpoint-review.png",
+      "sha256": "de3ae59905dfbfb32b579c6a43d2e41cf2879830d468e1450bb91c2796eb99d6"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/captures/import-preview.png",
+      "sha256": "29eee81d8b581a2007173f681307a600887497af55391d930495f4919c93dfd8"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/captures/keychain-key-saved.png",
+      "sha256": "5f2ecdca4c9e18aa38d9806cc8d9c9fde33b85e87d7142b1d149e845e8174e66"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/captures/keychain-locked.png",
+      "sha256": "1df4bfce66a5a71d89841e9fd20672228392e5a7350f33a81215abb8ce554e82"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/captures/min-size-scan-key.png",
+      "sha256": "e5ca49edb0911381c945486abc3d533bbb52d593cf874cd33e91e56bcf98fbdd"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/captures/zoom-200-scan-key.png",
+      "sha256": "63a925361a10b5efe49879348c006f2b4ca2533ef7d461e56727a0b91c5385ef"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/observations.json",
+      "sha256": "1bef49944ac91dbfc2a5e26e45f0f8c5b348770756c5e3947b2a909cc2293373"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/startup-network-samples.log",
+      "sha256": "63de12c1dcc5132226edce1340f91a40663dc414567a53ae1d160b0365271d2e"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-after-second-relaunch.json",
+      "sha256": "4df603c59b3b52d6f5d95ed5aaeddc7dad817f2e4671810a559cdf180e115006"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-corrupt.json",
+      "sha256": "41bd0d101d881acaaa6184a8d37443d676283ee1d5698507c8905d0ed63d6e90"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-created.json",
+      "sha256": "75cec77a8dd93228fae655e5670cef6978824d9ce6c9f5883e60ffc6b1c313db"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-endpoint-review.json",
+      "sha256": "c77e1a737edb7fbee5f94b2737bf1e2f22fee23e63819fd60ca613261ac481c2"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-import-preview.json",
+      "sha256": "52f95305e64c4da18d57d7293a866a16f5c6fc73c17a75b53ad646c36402edb3"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-import-sheet.json",
+      "sha256": "77b5f6832316e723ac14802cc5d9410150fd6df05d6b14864b14886946883cbd"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-imported.json",
+      "sha256": "e73ee2c25fccb066f8d5d7479770af725e0c9a2ca4ad1b6b0a20442baa1e47be"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-keychain-saved.json",
+      "sha256": "df2a4aab1f40181b2bebefa54da5b002fb46b45e13ae26d8dc796552f038360c"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-locked.json",
+      "sha256": "8532b7e83fe64b659ff550fb69a552b2cf9da5101199327f8e7235eff7b32510"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-refusal-alert.json",
+      "sha256": "4e7ad586f3e8715ec783a1aa06c1a97fa6a196df2f21776e72e331009644ac3f"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-reset.json",
+      "sha256": "45d26e99c5249f624dac5e6aaca97bfe644a4c9e9474fc35529c289cd07d950f"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-restored.json",
+      "sha256": "b3aa8a4fdae30f66791cbc45f8c78cebe90a7a1a56cf468addcd4d618bac59b9"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C02/tree-session-held.json",
+      "sha256": "4c43782474ee220ace1cd454c9f335e90d368a8f74baacfc128dba7021aa8eab"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/observations.json",
+      "sha256": "3a33c3f5d9a3dd626e365534d190fca2ee88c893198cb648a6a1b1aee65e5c6c"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-blocked.json",
+      "sha256": "f0c76c39f1f7a4fe0686cbd2183dff68cd22929a1cd381994b7422e5d6e30cc0"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-cancelled.json",
+      "sha256": "cff82afc1a2d1ef3e462e51822c96053a4e9d6fa4beed542810b5e51ffe7c675"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-content-error.json",
+      "sha256": "f5c17f85028ee2a37de35d0d2b667fb00ead7461ceb30f9221b06d696870db98"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-denied.json",
+      "sha256": "1ec2cdcfdfa59d2b5058a7dd0fd18446dbbc20bb90d6715f6ac1fdf15130106b"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-keyboard.json",
+      "sha256": "332f20611a48fe4411f943fb69645cf6d2d9cf88e57c5367f722a25aebb91a34"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-landing-no-tenant.json",
+      "sha256": "5c4e2697f1bff3c4b1c6267b7bbacc6ab9c6cdfd6aadf99844ecec1eeff80599"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-lost.json",
+      "sha256": "ccd78bca2f7e6d9bbec83a442c5888caaa9bbf35011e8a03d5ad06320faad190"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-offline-unknown.json",
+      "sha256": "12e6bf095416d5c24d402e18e4efbaebc0fab1ca8310b752e734cb1ea1c32cb3"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-relaunch.json",
+      "sha256": "54eb243c52bcdbf2c3690905a67b2a19e99a77e1d7c7877b4f3a9e1784f11e45"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-tenant-a-after-switch.json",
+      "sha256": "1fff74e7362a2cdc03689708880e2326ad634a0ac308cdcd2711080764fcbb0a"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-tenant-b.json",
+      "sha256": "7b7c732f31dea34be930ceac008edfee9e624f52d4a2338743a5548d335fb958"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-unknown-action.json",
+      "sha256": "722e0d78ba442edda5397aceb51c22f7880b7c2a32916b56c1117651e7b527d6"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-C03/tree-v1-sized.json",
+      "sha256": "cb93dd37e007c2baa626223b5a089f6ed309b397ab9aeb5f38af6a05ce4c75f9"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-acceptance-C01.json",
+      "sha256": "3fe9da9c5b3cb4875368d5e3ccb954330771987fb1b1409b148b0d0af7c29f17"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-acceptance-C02.json",
+      "sha256": "6002eca75ae6ec843f3acfe431aa6b676f9e2fe040242cd546138f1c4a4908d8"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-acceptance-C03.json",
+      "sha256": "8c15ce1c5aee6d17390eb5db8ad460ecb9065efa05f53585d5c117e54056c4a7"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-acceptance.json",
+      "sha256": "fc19fcfee778526f2fddf52441ec6476fef4d220c2e95b21a07d00a13fea98bd"
+    },
+    {
+      "path": "docs/planning/evidence/P01/native-prepare.json",
+      "sha256": "91dc8ed78dcdd42d3889987b791134fc6ef4f6bdcb989f20e85fdf57131fd80c"
+    },
+    {
+      "path": "docs/planning/evidence/P01/perf.json",
+      "sha256": "e52dee146e61e180bed96e57cdeecf3d720642b9326c092893808733f976e980"
+    }
+  ],
+  "native_acceptance": {
+    "path": "docs/planning/evidence/P01/native-acceptance.json",
+    "sha256": "fc19fcfee778526f2fddf52441ec6476fef4d220c2e95b21a07d00a13fea98bd"
+  },
+  "native_executable_sha256": "14aad7d6ba6eedecf0b01d467c551790b9eaf93e3b7d27b3f6f94401b1b9d368",
+  "diff": {
+    "path": "docs/planning/reviews/P01/attempt-01/diff.patch",
+    "sha256": "04af43b80418737983cc456600993237d8aad709568b38f51bc69128b4f532e1"
+  },
+  "limitations": [
+    "P01 integrated native evidence: the C01, C02 and C03 drivers ran against the single P01-prepared fixture bundle with AIRS_NATIVE_SUBJECT=P01, writing native-<chunk>/ and native-acceptance-<chunk>.json under evidence/P01; tools/native-acceptance/merge_phase.py combined them (refusing on a different executable, bundle or host) into native-acceptance.json.",
+    "C01 evaluator updates since C01's completion, made for P01: N06/N08 now expect Runtime Security available (its scan view) and the nine other destinations unavailable; N07 scopes the checked-radio assertion to the Appearance group (Settings has held C02's 'AIRS region' radio since C02); N03's focus-ring metric counts any warm accent pixel (r>120, r-b>70, r-g>40) because the ring renders in Paper's rust accent (146,56,19), which the earlier r>180 threshold missed although the ring is drawn (the first P01 run failed N03 at 55 pixels; that capture is superseded by the rerun, which counts 3972 vs 0). native-checks.json C01-N06/N08 wording updated accordingly.",
+    "The xtask controller test that asserted C02/C03 inventories were absent now asserts P01 includes all three members' checks and that P02 (no inventories yet) still fails closed.",
+    "Budgets (registered by C03, version 3, acknowledged in C03 attempt-01/02) are re-measured on the P01 bundle: perf.json and footprint.json in evidence/P01; the C24 typed-input memory observation remains open.",
+    "Fixture endpoint only; live Prisma AIRS is C25; signed/notarized installed packages are C26."
+  ],
+  "verdict_schema": {
+    "path": "docs/architecture/review-verdict.schema.json",
+    "sha256": "446db12c809cbe91ea6af7ac622c3e029dbe5792828e1361d2b1f2af830375b4"
+  },
+  "verdict_path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/docs/planning/reviews/P01/attempt-01/verdict.json",
+  "review_instructions": "Independently review phase P01 (chunks C01, C02, C03) of Prisma AIRS Desktop\nv2 as an integrated whole. Read AGENTS.md, GLOSSARY.md, decisions, ADRs, the\nimplementation plan, each phase chunk instruction, review-protocol.md, and the\npacket's receipts and evidence. Assess how the phase's features compose with\neach other and with earlier phases they affect: authority boundaries across\nfeatures, shared state, regressions, outcome truthfulness, and whether the\nintegrated tests and native evidence exercise the combined behavior.\n\nHistorical chunk scores are evidence to assess, not a substitute for this\nreview. A defect visible only across chunks is a required fix even if every\nchunk passed alone. Do not edit application files, call endpoints, read\nsecrets, or implement fixes.\n\nScore architecture, behavior, authority_security, validation and overall 1-10.\nReturn the same verdict schema as chunk reviews with the phase as subject. A\npass requires every score >=9 and empty required_fixes/blockers/evidence_gaps.\nDo not inflate scores to meet the target."
+}

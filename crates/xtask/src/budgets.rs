@@ -129,13 +129,12 @@ pub fn footprint(
     env: &Environment,
     subject: Subject,
 ) -> Result<Footprint> {
-    let (budgets, record, sha) = registration(repo, &subject.to_string())?;
-    if budgets.registered_by_chunk != subject.to_string() {
+    let Some(chunk) = required(repo, manifest, subject)? else {
         return Err(invalid(format!(
-            "budgets are registered by {}",
-            budgets.registered_by_chunk
+            "{subject} does not contain the chunk that registered the budgets"
         )));
-    }
+    };
+    let (_, record, sha) = registration(repo, &chunk)?;
     let started_utc = now_utc();
     if started_utc < record.registered_utc {
         return Err(invalid("the clock is before the budget registration"));

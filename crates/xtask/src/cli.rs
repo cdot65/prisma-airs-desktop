@@ -29,7 +29,7 @@ const USAGE: &str = "usage: xtask <command> [options]
   shared-prepare    --input .inputs/academy --scratch .work/academy
   shared-lifecycle  --allowlist docs/architecture/shared-lifecycle.json --scratch .work/academy [--list]
   sdk-test          --package scm-sdk --features scan --scratch .work/scm-sdk
-  footprint         --chunk Cxx --manifest docs/architecture/checks.json
+  footprint         --chunk Cxx|--phase Pxx --manifest docs/architecture/checks.json
   package           --kind preview|release-candidate --manifest docs/architecture/checks.json";
 
 struct Args {
@@ -368,7 +368,7 @@ pub fn main(raw: Vec<String>) -> Result<()> {
             )
         }
         "footprint" => {
-            args.only(&["--chunk", "--manifest"])?;
+            args.only(&["--chunk", "--phase", "--manifest"])?;
             let manifest = args.manifest(&repo)?;
             let env = Environment::prepare(&repo)?;
             let record = crate::budgets::footprint(&repo, &manifest, &env, args.subject()?)?;

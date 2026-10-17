@@ -31,8 +31,13 @@ import time
 import zlib
 
 ROOT = os.getcwd()
-EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C01")
-NATIVE = os.path.join(EVIDENCE, "native")
+# A phase review runs every member chunk's checks into the phase's own
+# evidence (AIRS_NATIVE_SUBJECT=Pxx); tools/native-acceptance/merge_phase.py
+# then combines the per-chunk records.
+SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C01")
+EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
+NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C01" else "native-C01")
+RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C01" else "native-acceptance-C01.json")
 TOOLS = os.path.join(ROOT, "tools/native-acceptance")
 PROCESS = "Fixture.app/Contents/MacOS/prisma-airs-desktop-v2"
 CAPTURES = os.path.join(subprocess.run(["getconf", "DARWIN_USER_TEMP_DIR"], capture_output=True, text=True).stdout.strip(),
@@ -119,7 +124,9 @@ def ring_pixels(img, box, scale):
             if inside:
                 continue
             r, g, b = pixel(img, xx, yy)
-            if r > 180 and r - b > 70 and g < 200:
+            # Warm accent of either theme: Paper's rust ring (146, 56, 19)
+            # as well as brighter orange accents.
+            if r > 120 and r - b > 70 and r - g > 40:
                 count += 1
     return count
 
@@ -247,15 +254,23 @@ def evaluate_flows(run):
     gs = step(run, "go-settings-with-palette-open")["observation"]
     results["C01-N05"] = (ga["label"] == "Academy" and gs["focused"]["label"] == "Settings" and not gs["dialogOpen"],
                           f"Cmd+2 focused heading {ga['label']!r}; Cmd+K then Cmd+, focused {gs['focused']['label']!r} with palette open={gs['dialogOpen']}")
-    expected = {"Runtime Security": "C03", "Academy": "C04", "Administration": "C08", "Sessions & Reports": "C11",
+    # Runtime Security is available since C03 (its view's heading is shown);
+    # every other product destination is still unavailable.
+    expected = {"Academy": "C04", "Administration": "C08", "Sessions & Reports": "C11",
                 "Case Library": "C12", "Red Team & Models": "C13", "API Client": "C14", "AI Gateway": "C16",
                 "Harness": "C19", "Import from v1": "C23"}
+    available = {"Scan a prompt or response"}
     dests = step(run, "destinations")["observation"]
-    ok = len(dests) == 10 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in dests)
+    unavailable = [d for d in dests if d["heading"] not in available]
+    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 1
+          and len(unavailable) == 9 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
     results["C01-N06"] = (ok, "; ".join(f"{d['shortcut']}: {d['heading']} ({', '.join(d['planned'])})" for d in dests))
     dark = step(run, "appearance-view-dark")["observation"]
     light = step(run, "appearance-view-light")["observation"]
-    checked = lambda obs: [r["label"].split(" ")[0] for r in obs if r["checked"] == 1]
+    # Only the Appearance group: Settings also holds C02's checked
+    # destination radio ("AIRS region").
+    appearance = ("Match", "Light", "Dark")
+    checked = lambda obs: [r["label"].split(" ")[0] for r in obs if r["checked"] == 1 and r["label"].split(" ")[0] in appearance]
     results["C01-N07-state"] = (checked(dark) == ["Dark"] and checked(light) == ["Light"],
                                 f"after View > Appearance > Dark the checked radio is {checked(dark)}; after Light it is {checked(light)}")
     snap = step(run, "launch")["snapshot"]
@@ -263,7 +278,7 @@ def evaluate_flows(run):
     buttons = [n for n in snap if n["role"] == "AXButton" and n["depth"] > 3]
     named = [b for b in buttons if b["label"]]
     heads = [n for n in snap if n["role"] == "AXHeading"]
-    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 10 and len(heads) == 1
+    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 9 and len(heads) == 1
     results["C01-N08"] = (ok, f"inspected AXRole, AXSubrole, AXTitle/AXDescription/AXValue, AXARIACurrent, AXFocused and tree order: 'Features' navigation landmark present={bool(nav)}; {len(named)}/{len(buttons)} buttons named; {sum('Not available in this build' in (b['label'] or '') for b in buttons)} destinations announce 'Not available in this build'; headings {[h['label'] for h in heads]}. Spoken VoiceOver output was not recorded.")
     mn = step(run, "min-size")["observation"]
     last = mn["lastDestination"]
@@ -392,7 +407,7 @@ def main():
             "Startup network evidence is sampled lsof output, not a packet capture.",
         ],
     }
-    with open(os.path.join(EVIDENCE, "native-acceptance.json"), "w") as f:
+    with open(RECORD, "w") as f:
         json.dump(record, f, indent=2)
         f.write("\n")
     for c in checks:

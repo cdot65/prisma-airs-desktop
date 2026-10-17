@@ -720,3 +720,72 @@ async fn cancelling_a_claimed_scan_before_it_is_sent_sends_nothing() {
     tokio::time::sleep(Duration::from_millis(300)).await;
     assert!(server.seen().is_empty(), "nothing reached the endpoint");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_refused_tenant_deletion_keeps_its_scans_observable_and_cancellable() {
+    let slow = Reply::Delayed {
+        millis: 700,
+        then: Box::new(response("allow", "benign", json!({}))),
+    };
+    let (ca, server) = start(slow).await;
+    let config = CoreConfig {
+        operations: OperationLimits {
+            max_active: 1,
+            ..OperationLimits::default()
+        },
+        ..CoreConfig::default()
+    };
+    let mut desk = Desk::new(&ca, &server, config).await;
+    let settled = desk.scan("first", "").await.expect("settled scan");
+    desk.settled(&settled).await;
+    let running = desk.scan("second", "").await.expect("running");
+    let queued = desk.scan("third", "").await.expect("queued");
+    assert!(
+        eventually(|| server.seen().len() == 2).await,
+        "the running scan was sent"
+    );
+    let before = desk.snap();
+    let tenant = before.active.clone().expect("active").tenant;
+
+    desk.adapters.store.fail_saves(true);
+    assert_eq!(
+        desk.send(json!({"kind": "deleteTenant", "tenant": tenant}))
+            .await,
+        Err(Refusal::DeniedStore)
+    );
+    let after = desk.snap();
+    assert_eq!(after.tenants, before.tenants, "tenant and credential kept");
+    assert_eq!(after.active, before.active, "context kept");
+    let shown: Vec<OperationId> = after.scans.iter().map(|s| s.operation.clone()).collect();
+    for operation in [&settled, &running, &queued] {
+        assert!(shown.contains(operation), "{operation:?} still observable");
+    }
+    desk.adapters.store.fail_saves(false);
+
+    desk.send(json!({"kind": "cancelScan", "operation": queued.as_str()}))
+        .await
+        .expect("queued scan still cancellable");
+    let record = desk.settled(&queued).await;
+    assert_eq!(
+        (record.outcome, record.stop),
+        (Some(Outcome::NotSent), Some(StopReason::Cancelled))
+    );
+    desk.send(json!({"kind": "cancelScan", "operation": running.as_str()}))
+        .await
+        .expect("running scan still cancellable");
+    let record = desk.settled(&running).await;
+    assert_eq!(record.stop, Some(StopReason::Cancelled));
+    assert_eq!(
+        desk.record(&settled).and_then(|r| r.outcome),
+        Some(Outcome::Completed)
+    );
+
+    // An accepted deletion drops the tenant and its history.
+    desk.send(json!({"kind": "deleteTenant", "tenant": tenant}))
+        .await
+        .expect("deleted");
+    let gone = desk.snap();
+    assert!(gone.tenants.is_empty() && gone.active.is_none() && gone.scans.is_empty());
+    tokio::time::sleep(Duration::from_millis(900)).await;
+    assert_eq!(server.seen().len(), 2, "nothing was replayed");
+}

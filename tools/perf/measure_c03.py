@@ -34,7 +34,10 @@ sys.path.insert(0, os.path.join(HERE, "..", "native-acceptance"))
 import fixture_app as fx  # noqa: E402
 
 ROOT = os.getcwd()
-EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C03")
+# The registration lives with C03; a phase containing C03 measures into its
+# own evidence (AIRS_NATIVE_SUBJECT=Pxx) on its own prepared bundle.
+REGISTRATION = os.path.join(ROOT, "docs/planning/evidence/C03/budget-registration.json")
+EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", os.environ.get("AIRS_NATIVE_SUBJECT", "C03"))
 BUDGETS = os.path.join(ROOT, "docs/architecture/budgets.json")
 KEY = "synthetic-c03-perf-key"
 HEADING = "Scan a prompt or response"
@@ -89,7 +92,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--label", choices=["calibration", "acceptance"], required=True)
     args = parser.parse_args()
-    registration = json.load(open(os.path.join(EVIDENCE, "budget-registration.json")))
+    registration = json.load(open(REGISTRATION))
     budgets_sha = sha256_file(BUDGETS)
     if budgets_sha != registration["budgets_sha256"]:
         raise SystemExit("budgets.json does not match its registration; register a new version first")

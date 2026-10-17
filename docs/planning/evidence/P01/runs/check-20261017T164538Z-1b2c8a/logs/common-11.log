@@ -1,0 +1,35 @@
+
+running 26 tests
+test context::tests::entered_secrets_never_format_their_value ... ok
+test runtime::tests::cancelling_queued_work_is_not_sent_and_claimed_work_is_signalled ... ok
+test runtime::tests::settlement_is_single_use_and_queued_deadlines_are_not_sent ... ok
+test scanning::tests::drafts_never_format_their_text ... ok
+test runtime::tests::admission_is_bounded_by_count_and_bytes_without_dropping_work ... ok
+test scanning::tests::verdicts_follow_v1_and_never_default_to_allow ... ok
+test context::tests::references_are_unique_per_epoch_and_bounded_on_input ... ok
+test runtime::tests::retirement_settles_queued_not_sent_and_cancels_claimed ... ok
+test import::tests::airs_cli_registry_imports_names_and_tsg_ids_only ... ok
+test import::tests::profile_documents_keep_whitelisted_fields_and_flag_invalid_entries ... ok
+test tenants::tests::drafts_are_trimmed_and_bounded ... ok
+test tenants::tests::origins_are_https_hosts_without_extra_parts ... ok
+test tenants::tests::tenant_ids_have_the_issued_shape_only ... ok
+test transport::tests::chunks_are_bounded_without_losing_bytes ... ok
+test store::tests::a_second_instance_cannot_take_the_lease ... ok
+test vault::tests::record_ids_have_the_issued_shape_only ... ok
+test vault::tests::session_records_are_isolated_and_removable ... ok
+test import::tests::unsupported_oversized_and_empty_sources_are_refused ... ok
+test authority::tests::observers_beyond_the_cap_are_refused_not_evicted ... ok
+test authority::tests::observer_queue_overflow_ends_with_resync ... ok
+test transport::tests::invalid_policies_are_refused ... ok
+test store::tests::a_planted_symlink_is_not_written_through ... ok
+test store::tests::saves_atomically_with_owner_only_modes_and_reloads ... ok
+test store::tests::unreadable_or_inconsistent_documents_are_corrupt_and_untouched ... ok
+test store::tests::failures_before_the_rename_change_nothing_and_after_it_are_unconfirmed ... ok
+test scanning::tests::drafts_need_content_a_valid_profile_and_bounded_text ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-a4c2f89f43d53e89)

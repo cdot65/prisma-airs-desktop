@@ -1,0 +1,37 @@
+[
+  {
+    "mutation": "a refused tenant deletion drops its scan records",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "a_refused_tenant_deletion_keeps_its_scans_observable_and_cancellable",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

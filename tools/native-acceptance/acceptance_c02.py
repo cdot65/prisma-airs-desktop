@@ -33,8 +33,13 @@ import tempfile
 import time
 
 ROOT = os.getcwd()
-EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C02")
-NATIVE = os.path.join(EVIDENCE, "native")
+# A phase review runs every member chunk's checks into the phase's own
+# evidence (AIRS_NATIVE_SUBJECT=Pxx); tools/native-acceptance/merge_phase.py
+# then combines the per-chunk records.
+SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C02")
+EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
+NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C02" else "native-C02")
+RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C02" else "native-acceptance-C02.json")
 TOOLS = os.path.join(ROOT, "tools/native-acceptance")
 PROCESS = "Fixture.app/Contents/MacOS/prisma-airs-desktop-v2"
 HOME = os.path.expanduser("~")
@@ -664,7 +669,7 @@ def evaluate(prepared, o):
             "A trial run locked the fixture keychain from another process (`security lock-keychain`); the running app did not observe that lock and its writes still succeeded (macOS 27; retained under native-trial/). C02-N07 therefore locks through the app's own keychain reference (fixture-only menu item), which exercises the app's real locked-store path.",
         ],
     }
-    with open(os.path.join(EVIDENCE, "native-acceptance.json"), "w") as f:
+    with open(RECORD, "w") as f:
         json.dump(record, f, indent=2)
         f.write("\n")
     for c in checks:

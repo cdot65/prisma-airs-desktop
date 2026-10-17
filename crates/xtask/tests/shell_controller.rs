@@ -1470,13 +1470,28 @@ fn phases_require_integrated_native_runs_and_acceptance() {
         .iter()
         .map(Subject::to_string)
         .collect();
-    let error = xtask::evidence::required_checks(
-        &repo().join("docs/architecture/native-checks.json"),
-        &members,
-    )
-    .expect_err("C02/C03 inventories pending");
+    let inventory = repo().join("docs/architecture/native-checks.json");
+    let (required, _) =
+        xtask::evidence::required_checks(&inventory, &members).expect("P01 inventories");
+    for member in ["C01", "C02", "C03"] {
+        assert!(
+            required
+                .iter()
+                .any(|id| id.starts_with(&format!("{member}-N"))),
+            "{member}'s checks are part of P01: {required:?}"
+        );
+    }
+    // A phase fails closed while any member has no inventory yet.
+    let later: Vec<String> = manifest
+        .phase_chunks(Subject::Phase(2))
+        .expect("P02")
+        .iter()
+        .map(Subject::to_string)
+        .collect();
+    let error =
+        xtask::evidence::required_checks(&inventory, &later).expect_err("P02 inventories pending");
     assert!(
-        error.to_string().contains("C02"),
+        error.to_string().contains("C04"),
         "a phase fails closed until each member has an inventory: {error}"
     );
 }

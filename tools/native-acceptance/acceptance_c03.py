@@ -30,8 +30,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fixture_app as fx  # noqa: E402
 
 ROOT = os.getcwd()
-EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C03")
-NATIVE = os.path.join(EVIDENCE, "native")
+# A phase review runs every member chunk's checks into the phase's own
+# evidence (AIRS_NATIVE_SUBJECT=Pxx); tools/native-acceptance/merge_phase.py
+# then combines the per-chunk records.
+SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C03")
+EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
+NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C03" else "native-C03")
+RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C03" else "native-acceptance-C03.json")
 KEY_A = "synthetic-c03-native-key-alpha"
 PROFILE = "Production guardrails"
 APP_NAME = "Desktop workbench"
@@ -463,7 +468,7 @@ def evaluate(prepared, o):
             "Spoken VoiceOver output was not recorded; AX roles, names, focus and live status regions are inspected.",
         ],
     }
-    with open(os.path.join(EVIDENCE, "native-acceptance.json"), "w") as f:
+    with open(RECORD, "w") as f:
         json.dump(record, f, indent=2)
         f.write("\n")
     for c in checks:
