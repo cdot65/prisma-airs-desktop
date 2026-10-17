@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/desktop-core", "crates/xtask", "apps/desktop/src-tauri"]
+# Staged inputs (Academy scratch, the extracted SDK package) are standalone.
+exclude = [".work", ".inputs"]
 
 [workspace.package]
 edition = "2024"

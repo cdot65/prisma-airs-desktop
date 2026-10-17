@@ -351,6 +351,21 @@
           "test-fixtures",
           "--test",
           "keychain_access"
+        ],
+        [
+          "cargo",
+          "run",
+          "--locked",
+          "-p",
+          "xtask",
+          "--",
+          "sdk-test",
+          "--package",
+          "scm-sdk",
+          "--features",
+          "scan",
+          "--scratch",
+          ".work/scm-sdk"
         ]
       ],
       "frontend_commands": [
@@ -364,7 +379,9 @@
           "--config",
           "vitest.config.ts",
           "src/features/tenants/credential-entry.test.tsx",
-          "src/features/tenants/profile-import.test.tsx"
+          "src/features/tenants/profile-import.test.tsx",
+          "src/features/tenants/reset.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
         ]
       ]
     },

@@ -28,6 +28,7 @@ const USAGE: &str = "usage: xtask <command> [options]
   fetch-inputs      --source PATH_TO_ACADEMY_GIT_REPO
   shared-prepare    --input .inputs/academy --scratch .work/academy
   shared-lifecycle  --allowlist docs/architecture/shared-lifecycle.json --scratch .work/academy [--list]
+  sdk-test          --package scm-sdk --features scan --scratch .work/scm-sdk
   package           --kind preview|release-candidate --manifest docs/architecture/checks.json";
 
 struct Args {
@@ -361,6 +362,15 @@ pub fn main(raw: Vec<String>) -> Result<()> {
             shared::prepare(
                 &repo,
                 &PathBuf::from(args.require("--input")?),
+                &PathBuf::from(args.require("--scratch")?),
+            )
+        }
+        "sdk-test" => {
+            args.only(&["--package", "--features", "--scratch"])?;
+            crate::sdk::test(
+                &repo,
+                args.require("--package")?,
+                args.require("--features")?,
                 &PathBuf::from(args.require("--scratch")?),
             )
         }

@@ -10,7 +10,14 @@
     {"case": "negative sequence", "body": {"protocol":1,"session":"ds-x","sequence":"-1","intent":{"kind":"setAppearance","theme":"dark"}}},
     {"case": "sequence beyond u64", "body": {"protocol":1,"session":"ds-x","sequence":"18446744073709551616","intent":{"kind":"setAppearance","theme":"dark"}}},
     {"case": "empty session", "body": {"protocol":1,"session":"","sequence":"1","intent":{"kind":"setAppearance","theme":"dark"}}},
-    {"case": "not an object", "body": ["setAppearance"]}
+    {"case": "not an object", "body": ["setAppearance"]},
+    {"case": "secret inside a profile", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"createTenant","profile":{"label":"A","destination":{"kind":"region","region":"europe"},"apiKey":"synthetic"}}}},
+    {"case": "path-like tenant id", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"selectTenant","tenant":"../../etc/passwd"}}},
+    {"case": "unknown storage mode", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"configureScanCredential","context":"cx-0123","mode":"plaintext","key":"synthetic"}}},
+    {"case": "extra credential field", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"configureScanCredential","context":"cx-0123","mode":"session","key":"synthetic","persist":true}}},
+    {"case": "oversized context reference", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"removeScanCredential","context":"cx-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}}},
+    {"case": "selection is not a list", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"confirmProfileImport","review":"rv-0123","selected":"all"}}},
+    {"case": "unknown destination kind", "body": {"protocol":1,"session":"ds-x","sequence":"1","intent":{"kind":"createTenant","profile":{"label":"A","destination":{"kind":"file","path":"/tmp/x"}}}}}
   ],
   "observe": [
     {"case": "unknown scope", "body": {"protocol":1,"scope":{"kind":"tenantSecrets"}}},

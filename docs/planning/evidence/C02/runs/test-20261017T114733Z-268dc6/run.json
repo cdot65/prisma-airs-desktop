@@ -1,0 +1,249 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "test-20261017T114733Z-268dc6",
+  "subject": "C02",
+  "kind": "test",
+  "started_utc": "2026-10-17T11:47:33Z",
+  "finished_utc": "2026-10-17T11:48:19Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/cdot/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/cdot/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "node",
+      "path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/"
+  },
+  "inputs_before": {
+    "source": "ad05a055cc12b4d83e9665b97ccaa5a6fbbf2e8ac5d347feed786cbf07309336",
+    "dependencies": "be9ccfa19694654ecc838a1cf3eb50a96b8290bfbc49553215286dc61103e34a",
+    "build_flags": "e9c379c6724fe2b550cc3165e0b1d391d38eb99a6cf32e603adde54e6264a709"
+  },
+  "inputs_after": {
+    "source": "ad05a055cc12b4d83e9665b97ccaa5a6fbbf2e8ac5d347feed786cbf07309336",
+    "dependencies": "be9ccfa19694654ecc838a1cf3eb50a96b8290bfbc49553215286dc61103e34a",
+    "build_flags": "e9c379c6724fe2b550cc3165e0b1d391d38eb99a6cf32e603adde54e6264a709"
+  },
+  "commands": [
+    {
+      "label": "setup/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 8031,
+      "output_sha256": "b528ff954ff5751eac1902683b9bd025cb745a8e00e09621e5a81f1724950827",
+      "log": "logs/setup-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "setup/2",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 235,
+      "output_sha256": "4a7201c935d875c855051477fd75667039ff039d99155c56e67cff727fd17146",
+      "log": "logs/setup-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C02/fixture",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "context_credentials"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 4345,
+      "output_sha256": "4a82441fb1a096bb8dfc0c007a805d6ba984b7c77bf90257fa0b114308841607",
+      "log": "logs/C02-fixture.log",
+      "tests": {
+        "passed": 35,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C02/host/1",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-host",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ipc_admission"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 4951,
+      "output_sha256": "e624f6d5ad34e17bb06f9efa6d9c2d48c6fc64c4bb0ce99f367688878d2b73b2",
+      "log": "logs/C02-host-1.log",
+      "tests": {
+        "passed": 12,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C02/host/2",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-host",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "keychain_access"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1575,
+      "output_sha256": "49615229c048f2f5c1e43435e7ec8cf7c8f5925a886ad06ddaeefb6dd76e0c5a",
+      "log": "logs/C02-host-2.log",
+      "tests": {
+        "passed": 6,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C02/host/3",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "sdk-test",
+        "--package",
+        "scm-sdk",
+        "--features",
+        "scan",
+        "--scratch",
+        ".work/scm-sdk"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 877,
+      "output_sha256": "274499aa48eb1f033d002181e861375953611be8a0a9d0f06cb9ebe3435f3096",
+      "log": "logs/C02-host-3.log",
+      "tests": {
+        "passed": 164,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C02/frontend/1",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/features/tenants/credential-entry.test.tsx",
+        "src/features/tenants/profile-import.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1708,
+      "output_sha256": "0a317222ae04a88767022229670bc4ae3520cd30bc9887747d51f9c8823f78a8",
+      "log": "logs/C02-frontend-1.log",
+      "tests": {
+        "passed": 15,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "artifacts": []
+}

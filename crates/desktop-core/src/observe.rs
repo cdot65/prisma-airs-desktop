@@ -13,7 +13,7 @@ use crate::authority::ShellSnapshot;
 /// An ordered update delivered to one subscriber.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Update {
-    Shell(ShellSnapshot),
+    Shell(Box<ShellSnapshot>),
     /// Updates were dropped; observe again for a fresh snapshot.
     Resync,
 }

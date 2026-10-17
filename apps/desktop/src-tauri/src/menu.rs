@@ -175,6 +175,14 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                     .accelerator("CmdOrCtrl+Shift+9")
                     .build(app)?,
             )
+            .item(
+                &MenuItemBuilder::with_id("fixture:lock-store", "Lock Credential Store")
+                    .build(app)?,
+            )
+            .item(
+                &MenuItemBuilder::with_id("fixture:unlock-store", "Unlock Credential Store")
+                    .build(app)?,
+            )
             .build()?,
     );
     menu.build()
@@ -186,6 +194,17 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     if id == "fixture:capture" {
         if let Some(window) = app.get_webview_window(crate::MAIN_WINDOW) {
             crate::fixture_capture::capture(&window);
+        }
+        return;
+    }
+    #[cfg(all(feature = "test-fixtures", target_os = "macos"))]
+    if id == "fixture:lock-store" || id == "fixture:unlock-store" {
+        if let Some(store) = crate::adapters::FIXTURE_STORE.get() {
+            if id == "fixture:lock-store" {
+                store.lock_for_fixture();
+            } else {
+                store.unlock_for_fixture(crate::adapters::FIXTURE_KEYCHAIN_PASSWORD);
+            }
         }
         return;
     }

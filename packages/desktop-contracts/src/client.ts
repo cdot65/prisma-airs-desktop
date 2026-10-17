@@ -86,6 +86,83 @@ const FEATURE_IDS: readonly string[] = [
     'settings',
 ]
 const THEMES: readonly string[] = ['system', 'light', 'dark']
+const STORAGE: readonly string[] = ['ready', 'corrupt', 'unavailable', 'resetting']
+const SCAN_STATES: readonly string[] = ['missing', 'storing', 'ready', 'failed']
+const MODES: readonly string[] = ['keychain', 'session']
+const VAULT_ERRORS: readonly string[] = ['locked', 'denied', 'unavailable', 'notFound', 'corrupt']
+const REGIONS: readonly string[] = ['unitedStates', 'europe', 'india', 'singapore']
+const IMPORT_FORMATS: readonly string[] = ['profileDocument', 'airsCliRegistry']
+const IMPORT_ERRORS: readonly string[] = ['tooLarge', 'unsupported', 'empty']
+const CANDIDATE_PROBLEMS: readonly string[] = ['invalidLabel', 'invalidTsgId', 'invalidDestination']
+const TENANT_ID = /^tn-[0-9a-f]{16}$/
+const CONTEXT_REF = /^cx-[A-Za-z0-9-]{1,61}$/
+const REVIEW_ID = /^rv-[A-Za-z0-9-]{1,61}$/
+
+const oneOf = (allowed: readonly string[], value: unknown): boolean =>
+    typeof value === 'string' && allowed.includes(value)
+const optional = (check: (v: unknown) => boolean, value: unknown): boolean =>
+    value === null || check(value)
+const isString = (value: unknown): boolean => typeof value === 'string'
+const isCount = (value: unknown): boolean => Number.isSafeInteger(value) && (value as number) >= 0
+const RESET_STAGES: readonly string[] = ['credentials', 'document']
+
+function isDestination(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    if (value.kind === 'region') return oneOf(REGIONS, value.region)
+    return value.kind === 'custom' && typeof value.origin === 'string' && value.origin.startsWith('https://')
+}
+
+function isTenant(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        TENANT_ID.test(value.id) &&
+        isString(value.label) &&
+        optional(isString, value.tsgId) &&
+        isDestination(value.destination) &&
+        isString(value.origin) &&
+        isRecord(value.scan) &&
+        oneOf(SCAN_STATES, value.scan.state) &&
+        optional((m) => oneOf(MODES, m), value.scan.mode) &&
+        optional((f) => oneOf(VAULT_ERRORS, f), value.scan.failure)
+    )
+}
+
+function isImportView(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    switch (value.state) {
+        case 'idle':
+        case 'choosing':
+            return true
+        case 'failed':
+            return oneOf(IMPORT_ERRORS, value.error)
+        case 'review':
+            return (
+                typeof value.review === 'string' &&
+                REVIEW_ID.test(value.review) &&
+                oneOf(IMPORT_FORMATS, value.format) &&
+                isString(value.fileName) &&
+                isRecord(value.discarded) &&
+                isCount(value.discarded.secretFields) &&
+                isCount(value.discarded.fileReferences) &&
+                isCount(value.discarded.otherFields) &&
+                Array.isArray(value.candidates) &&
+                value.candidates.every(
+                    (c) =>
+                        isRecord(c) &&
+                        isCount(c.index) &&
+                        isString(c.label) &&
+                        optional(isString, c.tsgId) &&
+                        optional(isDestination, c.destination) &&
+                        typeof c.defaultDestination === 'boolean' &&
+                        typeof c.existingLabel === 'boolean' &&
+                        optional((p) => oneOf(CANDIDATE_PROBLEMS, p), c.problem)
+                )
+            )
+        default:
+            return false
+    }
+}
 
 function isDecimalU64(value: unknown): value is string {
     return typeof value === 'string' && DECIMAL_U64.test(value) && BigInt(value) <= U64_MAX
@@ -140,7 +217,33 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isDecimalU64(value.revision) ||
         !THEMES.includes(value.appearance as string) ||
         !Array.isArray(value.features) ||
-        typeof value.fixtureBuild !== 'boolean'
+        typeof value.fixtureBuild !== 'boolean' ||
+        !oneOf(STORAGE, value.storage) ||
+        !Array.isArray(value.tenants) ||
+        !value.tenants.every(isTenant) ||
+        !optional(
+            (a) => isRecord(a) && typeof a.tenant === 'string' && TENANT_ID.test(a.tenant) && typeof a.context === 'string' && CONTEXT_REF.test(a.context),
+            value.active
+        ) ||
+        !optional(
+            (r) =>
+                isRecord(r) &&
+                typeof r.review === 'string' &&
+                REVIEW_ID.test(r.review) &&
+                typeof r.tenant === 'string' &&
+                TENANT_ID.test(r.tenant) &&
+                isString(r.fromOrigin) &&
+                isString(r.toOrigin) &&
+                isDestination(r.to) &&
+                typeof r.removesScanCredential === 'boolean',
+            value.endpointReview
+        ) ||
+        !isImportView(value.import) ||
+        !optional(
+            (f) => isRecord(f) && oneOf(RESET_STAGES, f.stage) && oneOf(VAULT_ERRORS, f.reason),
+            value.resetFailure
+        ) ||
+        typeof value.durabilityUnconfirmed !== 'boolean'
     ) {
         throw new ContractViolation('shell snapshot')
     }

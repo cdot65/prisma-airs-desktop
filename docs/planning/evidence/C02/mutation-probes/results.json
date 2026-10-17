@@ -1,0 +1,465 @@
+[
+  {
+    "mutation": "a stale write completion attaches its record",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "a_switch_during_a_write_leaves_the_stale_record_unattached_and_cleaned",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "cleanup deletes a record whose write is in flight",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "a_switch_during_a_write_leaves_the_stale_record_unattached_and_cleaned",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "concurrent writes for one tenant admitted",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "a_switch_during_a_write_leaves_the_stale_record_unattached_and_cleaned",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "any context reference accepted",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "tenants_are_created_selected_and_contexts_never_revive",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "endpoint change keeps the old key",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "endpoint_changes_are_reviewed_and_never_carry_the_old_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "session-only keys persisted",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "session_only_keys_are_never_persisted_and_end_with_the_app",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset purges while a credential write is in flight",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "reset_waits_for_in_flight_writes_and_retires_authority_at_admission",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset leaves the prior context usable",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "reset_waits_for_in_flight_writes_and_retires_authority_at_admission",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset keeps credential bindings until it succeeds",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "a_failed_purge_retires_keys_durably_and_cleanup_finishes_after_restart",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a key is written before its write-ahead entry is confirmed durable",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "a_first_key_is_written_only_after_a_confirmed_write_ahead",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unconfirmed (written) save is rolled back and refused",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "saves_are_refused_only_when_nothing_was_written",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "snapshot validator accepts missing import counts",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/tenants/credential-entry.test.tsx",
+      "src/features/tenants/profile-import.test.tsx",
+      "src/features/tenants/reset.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects discarded counts missing",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "redirects followed",
+    "files": [
+      "crates/desktop-core/src/transport.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "redirects_are_returned_to_the_sdk_not_followed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Direct adopts the ambient proxy",
+    "files": [
+      "crates/desktop-core/src/transport.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "guard": "proxy_modes_follow_the_policy_not_ambient_settings",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "unparseable extra roots silently ignored",
+    "files": [
+      "crates/desktop-core/src/transport.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib"
+    ],
+    "guard": "invalid_policies_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "import takes a secret field as the label",
+    "files": [
+      "crates/desktop-core/src/import.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib"
+    ],
+    "guard": "airs_cli_registry_imports_names_and_tsg_ids_only",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a locked keychain reported as denied",
+    "files": [
+      "apps/desktop/src-tauri/src/keychain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "keychain_access"
+    ],
+    "guard": "a_locked_keychain_reports_locked_and_recovers_after_unlock",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "purge not limited to the v2 namespace",
+    "files": [
+      "apps/desktop/src-tauri/src/keychain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "keychain_access"
+    ],
+    "guard": "purge_removes_only_the_v2_namespace",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "entered key left in the field while awaiting",
+    "files": [
+      "apps/desktop/src/features/tenants/credential-entry.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/tenants/credential-entry.test.tsx",
+      "src/features/tenants/profile-import.test.tsx",
+      "src/features/tenants/reset.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "captures the key typed at submission time and clears the field before awaiting",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "invalid import entries preselected",
+    "files": [
+      "apps/desktop/src/features/tenants/profile-import.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/tenants/credential-entry.test.tsx",
+      "src/features/tenants/profile-import.test.tsx",
+      "src/features/tenants/reset.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "shows the native preview faithfully and sends only the explicit selection",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "context_credentials"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "keychain_access"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/tenants/credential-entry.test.tsx",
+      "src/features/tenants/profile-import.test.tsx",
+      "src/features/tenants/reset.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

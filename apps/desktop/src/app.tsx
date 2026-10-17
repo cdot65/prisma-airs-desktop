@@ -3,11 +3,13 @@ import {
     DeliveryOutcomeUnknown,
     type DesktopClient,
     type FeatureId,
+    type Intent,
     type MenuCommand,
     type ShellSnapshot,
     type Theme,
 } from '@prisma-airs/desktop-contracts'
 import { followAppearance } from './shell/appearance'
+import type { DispatchOutcome } from './features/tenants/dispatch'
 import { DesktopShell } from './shell/desktop-shell'
 
 export function App({ client }: { client: DesktopClient }) {
@@ -35,6 +37,20 @@ export function App({ client }: { client: DesktopClient }) {
                 )
             } finally {
                 setPending(false)
+            }
+        },
+        [client]
+    )
+
+    const dispatch = useCallback(
+        async (intent: Intent): Promise<DispatchOutcome> => {
+            try {
+                const response = await client.dispatch(intent)
+                return response.outcome === 'refusal'
+                    ? { kind: 'refused', refusal: response.refusal }
+                    : { kind: 'admitted' }
+            } catch (error) {
+                return error instanceof DeliveryOutcomeUnknown ? { kind: 'unknown' } : { kind: 'failed' }
             }
         },
         [client]
@@ -104,6 +120,7 @@ export function App({ client }: { client: DesktopClient }) {
             onOpenPalette={() => setPaletteOpen(true)}
             onClosePalette={() => setPaletteOpen(false)}
             onSetAppearance={(theme) => void setAppearance(theme)}
+            dispatch={dispatch}
         />
     )
 }

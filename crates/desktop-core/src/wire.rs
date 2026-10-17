@@ -97,7 +97,7 @@ pub enum ObserveResponse {
         next_sequence: String,
     },
     Shell {
-        snapshot: ShellSnapshot,
+        snapshot: Box<ShellSnapshot>,
     },
     /// The named observation was stopped (or was not active).
     Closed,
@@ -120,7 +120,7 @@ impl From<DeliverySession> for ObserveResponse {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ObservationUpdate {
     Shell {
-        snapshot: ShellSnapshot,
+        snapshot: Box<ShellSnapshot>,
     },
     Menu {
         command: MenuCommand,

@@ -56,6 +56,56 @@
         "id": "C01-N13",
         "check": "Startup makes no internet connection (referencing evidence/C01/native/startup-network.json for the same executable)."
       }
+    ],
+    "C02": [
+      {
+        "id": "C02-N01",
+        "check": "Settings > Tenants: the labelled Add tenant form (Label, TSG ID, destination radios, Region pop-up) is operated by keyboard and creates a tenant that appears in the tenant list and becomes the active tenant."
+      },
+      {
+        "id": "C02-N02",
+        "check": "Keychain scan key: the AIRS API key field is a secure text field whose AX value never exposes the key; saving stores one item under the fixture namespace in the dedicated fixture test keychain (item attributes inspected, secret never read) and reports 'Scan key saved in the Keychain.'; the key appears in no AX snapshot."
+      },
+      {
+        "id": "C02-N03",
+        "check": "Persistence across relaunch: after quitting and relaunching, the tenant, its active selection, its Keychain scan-key status and the Dark appearance are restored (C01 carry-over)."
+      },
+      {
+        "id": "C02-N04",
+        "check": "Session-only scan key: 'Scan key held for this session only.' with no Keychain item added; after relaunch that tenant reports a missing scan key."
+      },
+      {
+        "id": "C02-N05",
+        "check": "Reviewed endpoint override: Change destination with a custom HTTPS origin shows a review naming both origins and the key removal; confirming changes the destination, removes the scan key (its Keychain item is deleted) and requires a new key."
+      },
+      {
+        "id": "C02-N06",
+        "check": "Profile import through the native open sheet attached to the main window: a synthetic airs-cli registry with an embedded synthetic secret and a credential-file reference previews names, TSG IDs and discarded-field counts, the secret appears nowhere in the AX tree, and importing creates keyless tenants."
+      },
+      {
+        "id": "C02-N07",
+        "check": "Locked credential store: with the fixture keychain locked through the app's own keychain reference (fixture-only menu), saving a scan key reports that the Keychain is locked, shows no OS prompt and falls back to nothing; after unlocking, saving succeeds and the retired record is cleaned up."
+      },
+      {
+        "id": "C02-N08",
+        "check": "Reset local data (two-step confirmation) removes the v2 tenants, preference document and every fixture-namespace Keychain item; v1 Application Support data is unchanged."
+      },
+      {
+        "id": "C02-N09",
+        "check": "Corrupt local data: an unreadable state document is reported ('Local desktop data could not be read'), left byte-identical, creating a tenant is refused, and Reset recovers."
+      },
+      {
+        "id": "C02-N10",
+        "check": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make \u2026 active', 'Delete \u2026'); a refusal is exposed as an alert."
+      },
+      {
+        "id": "C02-N11",
+        "check": "No internet sockets during startup with tenants and stored scan keys present (C02 makes no scan or validation request)."
+      },
+      {
+        "id": "C02-N12",
+        "check": "At 200% zoom and at the minimum window size the scan-key field and its Save action are reachable by Tab and lie inside the window, clear of the bottom fade."
+      }
     ]
   }
 }

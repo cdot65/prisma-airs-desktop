@@ -1,0 +1,59 @@
+{
+  "schema": "airs-v2/review-receipt/1",
+  "receipt_id": "C02-attempt-01-rq-C02-20261017T131155Z-8389f391",
+  "subject": "C02",
+  "request_id": "rq-C02-20261017T131155Z-8389f391",
+  "attempt_id": "attempt-01",
+  "transport": {
+    "kind": "codex-thread",
+    "thread": "01a141e8-0412-7b30-8ebc-db2ade105d6d",
+    "codex_path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/codex",
+    "codex_version": "codex-cli 0.162.1",
+    "codex_sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+    "submitted_utc": "2026-10-17T13:12:06Z",
+    "completed_utc": "2026-10-17T13:20:52Z",
+    "exit_code": 0,
+    "timed_out": false,
+    "raw_output": {
+      "path": "docs/planning/reviews/C02/attempt-01/thread-reply.jsonl",
+      "sha256": "681b526d17047709f99525ec5fcce332d26c954555a6bd65529ac5be51fb545b"
+    },
+    "model": null
+  },
+  "packet_sha256": "fdc4a01daab4dce2285ff3620d29f188eb43096e4c46a50667035f7e2af6923c",
+  "verdict_sha256": "8515b84dfc1d3423ba634cc94b66d229807cb217156936dbc8e6591eef8f55a9",
+  "fingerprints": {
+    "source": "5b838f42cb6771fb873eb0085dcb69cb953285a19b6e5bf00e4b86292104ccba",
+    "dependencies": "be9ccfa19694654ecc838a1cf3eb50a96b8290bfbc49553215286dc61103e34a",
+    "build_flags": "730784af7d3426359494a7b9b3ce7e845963ea97b687458d32367aa3b4b65449",
+    "evidence": "907f71a3ee9f3096e15f92e2e35012fb6f5d663b5f774dbad7132a08dee1220d"
+  },
+  "fingerprints_after": {
+    "source": "5b838f42cb6771fb873eb0085dcb69cb953285a19b6e5bf00e4b86292104ccba",
+    "dependencies": "be9ccfa19694654ecc838a1cf3eb50a96b8290bfbc49553215286dc61103e34a",
+    "build_flags": "730784af7d3426359494a7b9b3ce7e845963ea97b687458d32367aa3b4b65449",
+    "evidence": "907f71a3ee9f3096e15f92e2e35012fb6f5d663b5f774dbad7132a08dee1220d"
+  },
+  "scores": {
+    "architecture": 8,
+    "behavior": 7,
+    "authority_security": 7,
+    "validation": 8,
+    "overall": 7
+  },
+  "required_fixes": 4,
+  "blockers": 0,
+  "evidence_gaps": 1,
+  "passed": false,
+  "failures": [
+    "score architecture=8 is below 9",
+    "score behavior=7 is below 9",
+    "score authority_security=7 is below 9",
+    "score validation=8 is below 9",
+    "score overall=7 is below 9",
+    "4 required fixes remain",
+    "1 evidence gaps remain",
+    "reviewer recommendation is fail"
+  ],
+  "created_utc": "2026-10-17T13:20:52Z"
+}

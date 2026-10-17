@@ -38,7 +38,21 @@ desktop-core = { path = "../../../crates/desktop-core" }
 tauri = { version = "=2.12.4", default-features = false, features = ["wry", "common-controls-v6", "compression"] }
 serde.workspace = true
 serde_json.workspace = true
-tokio = { workspace = true, features = ["sync", "macros"] }
+tokio = { workspace = true, features = ["sync", "macros", "rt"] }
+futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
+zeroize = { version = "=1.9.1", features = ["std"] }
+
+# Classic login Keychain credential adapter (DESIGN "protected storage") and
+# the native file sheet for profile import.
+[target.'cfg(target_os = "macos")'.dependencies.security-framework]
+version = "=3.7.0"
+[target.'cfg(target_os = "macos")'.dependencies.security-framework-sys]
+version = "=2.17.0"
+[target.'cfg(target_os = "macos")'.dependencies.core-foundation]
+version = "=0.10.1"
+[target.'cfg(target_os = "macos")'.dependencies.rfd]
+version = "=0.17.2"
+default-features = false
 
 # Fixture-only WebView self-capture for native acceptance (macOS).
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -50,6 +64,7 @@ block2 = { version = "=0.6.2", optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["sync", "macros", "rt"] }
+getrandom = "=0.4.3"
 
 [lints]
 workspace = true
@@ -61,4 +76,8 @@ required-features = ["test-fixtures"]
 
 [[test]]
 name = "permission_manifest"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "keychain_access"
 required-features = ["test-fixtures"]

@@ -1,0 +1,131 @@
+// Minimal macOS Accessibility helper for native acceptance (compiled once
+// by the acceptance script with swiftc). It reads the real window's AX tree
+// and performs AX actions; keystrokes are sent separately through System
+// Events so input arrives as real keyboard events.
+//
+// Usage:
+//   ax tree  <pid>                          JSON list of nodes in the app's windows
+//   ax press <pid> <role> <label> [nth]     AXPress the nth matching element
+//   ax focus <pid> <role> <label> [nth]     set AXFocused on the nth match
+//   ax raise <pid>                          raise the main window
+// A node matches when its role equals <role> and its label (title,
+// description or string value) starts with <label>. Secure text fields
+// report the value the OS exposes for them (so evidence can show the key is
+// not exposed).
+
+import AppKit
+import ApplicationServices
+import Foundation
+
+func attr(_ el: AXUIElement, _ name: String) -> AnyObject? {
+    var value: AnyObject?
+    return AXUIElementCopyAttributeValue(el, name as CFString, &value) == .success ? value : nil
+}
+
+func string(_ el: AXUIElement, _ name: String) -> String? {
+    attr(el, name) as? String
+}
+
+func point(_ el: AXUIElement) -> [Double]? {
+    guard let raw = attr(el, kAXPositionAttribute) else { return nil }
+    var p = CGPoint.zero
+    guard AXValueGetValue(raw as! AXValue, .cgPoint, &p) else { return nil }
+    return [Double(p.x), Double(p.y)]
+}
+
+func size(_ el: AXUIElement) -> [Double]? {
+    guard let raw = attr(el, kAXSizeAttribute) else { return nil }
+    var s = CGSize.zero
+    guard AXValueGetValue(raw as! AXValue, .cgSize, &s) else { return nil }
+    return [Double(s.width), Double(s.height)]
+}
+
+func children(_ el: AXUIElement) -> [AXUIElement] {
+    (attr(el, kAXChildrenAttribute) as? [AXUIElement]) ?? []
+}
+
+func label(_ el: AXUIElement) -> String {
+    for name in [kAXTitleAttribute, kAXDescriptionAttribute] {
+        if let s = string(el, name), !s.isEmpty { return s }
+    }
+    if let s = string(el, kAXValueAttribute) { return s }
+    return ""
+}
+
+struct Node {
+    let el: AXUIElement
+    let depth: Int
+}
+
+func walk(_ pid: pid_t) -> [Node] {
+    let app = AXUIElementCreateApplication(pid)
+    // WebKit builds a web page's accessibility tree only for an AX client
+    // that announces itself (as assistive technologies do).
+    AXUIElementSetAttributeValue(app, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+    var out: [Node] = []
+    func visit(_ el: AXUIElement, _ depth: Int) {
+        if out.count > 4000 || depth > 60 { return }
+        out.append(Node(el: el, depth: depth))
+        for child in children(el) { visit(child, depth + 1) }
+    }
+    for window in (attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [] { visit(window, 0) }
+    return out
+}
+
+func describe(_ node: Node) -> [String: Any] {
+    let el = node.el
+    var d: [String: Any] = ["depth": node.depth]
+    d["role"] = string(el, kAXRoleAttribute) ?? NSNull()
+    d["subrole"] = string(el, kAXSubroleAttribute) ?? NSNull()
+    d["label"] = label(el)
+    d["title"] = string(el, kAXTitleAttribute) ?? NSNull()
+    d["description"] = string(el, kAXDescriptionAttribute) ?? NSNull()
+    if let value = attr(el, kAXValueAttribute) {
+        if let s = value as? String { d["value"] = s }
+        else if let n = value as? NSNumber { d["value"] = n }
+    }
+    d["focused"] = (attr(el, kAXFocusedAttribute) as? Bool) ?? false
+    d["enabled"] = (attr(el, kAXEnabledAttribute) as? Bool) ?? true
+    d["current"] = string(el, "AXARIACurrent") ?? NSNull()
+    d["pos"] = point(el) ?? NSNull()
+    d["size"] = size(el) ?? NSNull()
+    return d
+}
+
+func matches(_ pid: pid_t, _ role: String, _ prefix: String) -> [AXUIElement] {
+    walk(pid).map(\.el).filter { string($0, kAXRoleAttribute) == role && label($0).hasPrefix(prefix) }
+}
+
+func fail(_ message: String) -> Never {
+    FileHandle.standardError.write((message + "\n").data(using: .utf8)!)
+    exit(1)
+}
+
+let args = CommandLine.arguments
+guard args.count >= 3, let pid = pid_t(args[2]) else { fail("usage: ax tree|press|focus|raise <pid> ...") }
+switch args[1] {
+case "tree":
+    let nodes = walk(pid).map(describe)
+    let data = try! JSONSerialization.data(withJSONObject: nodes, options: [])
+    FileHandle.standardOutput.write(data)
+case "press", "focus":
+    guard args.count >= 5 else { fail("\(args[1]) needs <role> <label>") }
+    let nth = args.count >= 6 ? Int(args[5]) ?? 0 : 0
+    let found = matches(pid, args[3], args[4])
+    guard nth < found.count else { fail("no \(args[3]) labelled \(args[4]) (\(found.count) found)") }
+    let el = found[nth]
+    let status = args[1] == "press"
+        ? AXUIElementPerformAction(el, kAXPressAction as CFString)
+        : AXUIElementSetAttributeValue(el, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+    guard status == .success else { fail("\(args[1]) failed: \(status.rawValue)") }
+    print("ok")
+case "raise":
+    let app = AXUIElementCreateApplication(pid)
+    if let window = (attr(app, kAXWindowsAttribute) as? [AXUIElement])?.first {
+        AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+    }
+    NSRunningApplication(processIdentifier: pid)?.activate()
+    print("ok")
+default:
+    fail("unknown command \(args[1])")
+}

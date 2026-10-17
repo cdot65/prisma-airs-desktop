@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ShellBrand, ShellFrame, ShellRail, ShellTopbar, type ShellNavItem } from '@ai-security-academy/presentation'
 import type { FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import type { Dispatch } from '../features/tenants/dispatch'
 import { CommandPalette } from './command-palette'
 import { SettingsView, UnavailableView } from './feature-view'
 import { FEATURE_ICONS } from './icons'
@@ -15,6 +16,7 @@ export interface DesktopShellProps {
     onOpenPalette: () => void
     onClosePalette: () => void
     onSetAppearance: (theme: Theme) => void
+    dispatch: Dispatch
 }
 
 function navItem(feature: FeatureEntry): ShellNavItem {
@@ -126,9 +128,10 @@ export function DesktopShell(props: DesktopShellProps) {
             {feature.id === 'settings' ? (
                 <SettingsView
                     ref={heading}
-                    appearance={snapshot.appearance}
+                    snapshot={snapshot}
                     pending={props.appearancePending}
                     onSetAppearance={props.onSetAppearance}
+                    dispatch={props.dispatch}
                 />
             ) : (
                 <UnavailableView ref={heading} feature={feature} />

@@ -1,0 +1,10 @@
+# C02 remediation after Codex review attempt-02
+
+Attempt-02 (thread transport) scored 8 in all five dimensions with one
+required fix and one evidence gap. Its packet, verdict, thread reply and
+receipt are unchanged in attempt-02/.
+
+| Finding | Cause | Change | Acceptance |
+|---|---|---|---|
+| RF05 write-ahead barrier for Keychain effects | attempt-01's remediation treated an unconfirmed (renamed but not directory-synced) write-ahead save as authorization for the Keychain put; a crash restoring the last confirmed document would leave the new secret with neither an index entry nor cleanup ownership | a Keychain secret is written only after its write-ahead save is confirmed durable: an unconfirmed save gets one confirming retry; if it stays unconfirmed, no secret is written, the record (never written) stays in the visible ledger and the capability fails visibly (`unavailable`). Already-visible metadata keeps the truthful unconfirmed handling. Session-only keys need no durability | `a_first_key_is_written_only_after_a_confirmed_write_ahead` and `a_replacement_is_written_only_after_a_confirmed_write_ahead` (unconfirmed write-ahead, no put, crash restores the last confirmed document with the synthetic vault retained: every vault record is owned by the durable document, the replacement never became durable); `a_confirming_retry_lets_the_write_proceed`; `an_unconfirmed_commit_after_a_landed_write_stays_owned_by_the_ledger` (put lands, commit unconfirmed, crash: the durable ledger owns the secret and restart cleanup deletes it); probe "a key is written before its write-ahead entry is confirmed durable" |
+| Evidence gap: combined unconfirmed save / write / crash | the scripted store kept only the visible document | `ScriptedStore` now separates the visible document from the last confirmed-durable one (`durable()`), and `crash_restart` restarts from the durable document while keeping the vault | the four tests above, fresh check/test/native runs and mutation probes bound to this source |

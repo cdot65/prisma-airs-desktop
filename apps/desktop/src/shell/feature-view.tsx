@@ -1,7 +1,9 @@
 import { forwardRef, useId } from 'react'
 import { Callout, Kicker } from '@ai-security-academy/presentation'
 import { Info } from 'lucide-react'
-import type { FeatureEntry, Theme } from '@prisma-airs/desktop-contracts'
+import type { FeatureEntry, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import type { Dispatch } from '../features/tenants/dispatch'
+import { TenantsSettings } from '../features/tenants/tenants-settings'
 
 interface HeadingProps {
     id: string
@@ -52,16 +54,18 @@ const THEMES: { value: Theme; label: string; hint: string }[] = [
 ]
 
 interface SettingsProps {
-    appearance: Theme
+    snapshot: ShellSnapshot
     pending: boolean
     onSetAppearance: (theme: Theme) => void
+    dispatch: Dispatch
 }
 
 export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(function SettingsView(
-    { appearance, pending, onSetAppearance },
+    { snapshot, pending, onSetAppearance, dispatch },
     ref
 ) {
     const legend = useId()
+    const appearance = snapshot.appearance
     return (
         <section aria-labelledby='settings-heading' data-slot='settings'>
             <PageHeading ref={ref} id='settings-heading' kicker='Desktop' title='Settings' />
@@ -89,6 +93,9 @@ export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(functi
                     </label>
                 ))}
             </fieldset>
+            <div className='mt-6'>
+                <TenantsSettings snapshot={snapshot} dispatch={dispatch} />
+            </div>
         </section>
     )
 })

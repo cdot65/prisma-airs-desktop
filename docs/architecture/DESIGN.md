@@ -171,7 +171,8 @@ path separately from the public DTO no-secret assertions; no old stored credenti
 can be fetched through it.
 
 For the first scan, use immutable SDK pin
-ec6230d2a19b9c835c9e4c9487795b38ad538af3. Its Scanner::sync_scan supplies
+ec6230d2a19b9c835c9e4c9487795b38ad538af3 (superseded by D027: the published
+`scm-sdk = "=0.1.0"` crate built from 4f65dc48, a descendant). Its Scanner::sync_scan supplies
 POST /v1/scan/sync/request; its ClientBuilder accepts injected Transport,
 destination policy, Limits and Session. Create an SDK Session per native
 credential/context generation and cancel it on retirement; do not reuse a
@@ -232,6 +233,113 @@ backed by this reqwest version, avoiding an accidental second reqwest major.
 C02/C15 qualify direct/system/explicit, env/macOS proxy changes, extra roots,
 wrong-host/untrusted certificates, redirects and cancellation using synthetic
 native endpoints; C04/C20/C22 repeat identity-specific destination cases.
+
+### C02 implementation: contexts, credentials and transport
+
+Implemented in `crates/desktop-core` (authority, `tenants`, `context`,
+`vault`, `store`, `runtime`, `transport`, `scan`, `import`) and
+`apps/desktop/src-tauri` (`keychain`, `adapters`).
+
+- **Tenant profiles** carry only a native-issued ID (`tn-` + 16 hex), an
+  operator label, an optional TSG ID and a scan destination: one of the four
+  SDK regions or a custom HTTPS origin (host required; no userinfo, path,
+  query or fragment; normalized to its ASCII origin). IDs deserialize only in
+  the issued shape.
+- **Contexts.** A `ContextRef` (`cx-` + 24 hex) is issued from a monotonic
+  epoch on every selection, credential replacement/removal, destination
+  change, transport-policy revision and reset; A→B→A issues a third value.
+  Tenant-scoped intents carry it and are refused `StaleContext` otherwise.
+  Reissue retires every operation bound to the previous reference (queued →
+  NotSent/ContextRetired; claimed → cancelled) and drops a pending endpoint
+  review bound to it.
+- **Scan credentials** are immutable records (`cr-` + 16 hex) bound to a
+  tenant and to the destination origin at the time of entry, stored in the
+  Keychain or, by explicit choice, session-only in memory (never persisted,
+  zeroized on removal and exit). Entry is `ConfigureScanCredential { context,
+  mode, key }`: the key is validated as an SDK scan header, the previous
+  record is retired first, the new record is written off the transition lock
+  under a lease, and only a completion holding the current lease attaches it.
+  Keychain writes are write-ahead: the record joins the durable cleanup
+  ledger before the write and leaves it in the same atomic save that commits
+  it, so a crash never leaves an untracked item. The secret is written only
+  after that write-ahead save is confirmed durable (one confirming retry); if
+  the directory sync stays unconfirmed, nothing is written and the capability
+  fails visibly (`unavailable`) for the operator to enter the key again; a stale successful write is
+  deleted, never attached elsewhere. Locked/denied/unavailable stores fail
+  the capability explicitly (`Failed { failure }`) with operator recovery
+  (enter again, or choose session-only); there is no plaintext or session
+  fallback. Delivery digests are salted per launch and the serialized intent
+  is zeroized, so no unsalted key hash is retained.
+- **Endpoint overrides** are reviewed: `ReviewEndpointChange` stores a review
+  (from/to origin, whether the key is removed) that the presentation shows;
+  `ConfirmEndpointChange` must present the same context and review. Confirming
+  retires the context and the current scan key: an existing credential is
+  never re-bound or forwarded to a new destination; the operator enters a key
+  for the new destination. The SDK client admits exactly the bound origin, so
+  a redirect or rebinding to another origin is refused before any request
+  carries the key.
+- **Profile import** opens the native open sheet attached to the main window
+  (rfd 0.17.2); the host reads at most 1 MiB from a regular file off the main
+  thread and passes only the bytes and base name to the core. The core
+  previews the v2 profile document (`prisma-airs-desktop-v2/tenant-profiles/1`)
+  or the airs-cli tenant registry, keeping label, TSG ID and destination
+  only, counting discarded secret fields, file references and other fields,
+  and never opening a referenced file. `ConfirmProfileImport` creates new,
+  keyless tenants from the explicitly selected valid entries; existing
+  tenants are never changed. File contents never reach the renderer.
+- **Storage.** Nonsecret state (appearance, tenants, active tenant, Keychain
+  index, cleanup ledger) is one versioned JSON document in the bundle
+  identifier's application-data directory: owner-only 0700/0600, atomic
+  replacement with fsync, `O_NOFOLLOW`, and an exclusive lock file held by
+  the running app. A failure before the rename changed nothing: memory is
+  restored and the intent is refused. A failure after the rename (the
+  directory sync) means the new document is in place but its durability is
+  unconfirmed: the change is kept, admitted and reported
+  (`durabilityUnconfirmed`) until a later save confirms; it is never rolled
+  back in memory while present on disk. A corrupt or inconsistent document
+  is reported (`storage: corrupt`) and left untouched; persisting intents
+  refuse `DeniedStore` until the operator resets. Appearance now persists
+  (C01 carry-over).
+- **Reset** (`ResetLocalData`) is ordered and durable. Admission retires all
+  authority at once (every context reference and operation, session
+  secrets, every credential binding, with Keychain records moved into the
+  cleanup ledger) and saves that retirement before anything is deleted; an
+  unavailable store (possibly another instance's) refuses. The reset then
+  waits until every admitted Keychain write has settled (no new write can
+  start while resetting), purges only this build's v2 namespace
+  (`io.cdot.prisma-airs-desktop.v2.scan`; fixture
+  `io.cdot.prisma-airs-desktop.v2.fixture.scan`) and removes the document. A
+  stop is reported by stage (`credentials` or `document`) with keys already
+  out of use and the ledger finishing deletion later (also after a crash or
+  restart); a fresh context is issued and no earlier reference revives.
+- **Keychain adapter.** Classic generic-password items (service = namespace,
+  account = record ID) via security-framework 3.7.0, every call serialized.
+  Production uses the login Keychain with OS prompts allowed; fixture builds
+  use a dedicated file keychain in the fixture data root with prompts
+  disabled. OS codes map to sanitized errors; a locked keychain is told apart
+  from an ACL denial by reading its lock state after the prompt guard is
+  released (macOS 27 answers -25293 for an open keychain locked externally).
+  `SecKeychainItemDelete` and `SecKeychainGetStatus` are called directly
+  because the crate drops the delete status and does not bind the status call.
+- **Operations runtime.** Queued → DispatchClaimed → Settled with 4 active,
+  64 queued and 64 MiB of queued input, an interactive deadline measured from
+  submission, single-use settlement and no retry or replay. C03's Scan intent
+  admits through it.
+- **Transport.** `NativeTransport` implements `scm_sdk::transport::Transport`
+  over reqwest 0.13.5 (rustls, platform verifier): redirects and retries off,
+  gzip only (SDK limits apply to decoded bytes), at most 128 response headers
+  and 64 KiB of header bytes, decoded chunks split to 1 MiB, sanitized
+  errors, connection released on drop. Direct (the default) ignores ambient
+  proxies; System builds a fresh client per admission from the proxy
+  environment and macOS HTTP/HTTPS proxy settings (no PAC/auto-discovery or
+  bypass list, which reqwest does not read); Explicit uses the reviewed proxy.
+  Extra roots must each parse as X.509 trust anchors (reqwest would otherwise
+  accept an unparseable root lazily). A policy revision retires contexts.
+  C02 has no operator UI for proxy policy; C15 adds it.
+- **SDK binding.** `ScanBinding` builds an SDK client per credential
+  generation with its own `Session`, an exact-origin `OriginPolicy`, the
+  first-scan limits (8 MiB request, 16 MiB decoded response, 60 s, no
+  retries) and per-request `with_retries(0)`.
 
 ## Fresh editor input and Configuration review
 

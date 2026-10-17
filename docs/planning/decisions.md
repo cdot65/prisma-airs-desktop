@@ -304,6 +304,28 @@ cannot be confirmed, a fresh ephemeral `codex exec` read-only reviewer is used,
 recorded as a fresh reviewer under a new attempt ID; the earlier attempt is
 expired so a late answer cannot advance the gate.
 
+## D027 — Published scm-sdk crate as the scan SDK input
+
+Accepted on 2026-10-17 by owner direction during C01: "our rust sdk is done.
+https://crates.io/crates/scm-sdk".
+
+- From C02 the scan SDK input is the published crates.io package
+  `scm-sdk = "=0.1.0"`, sha256
+  `6d555d955c3734dd5ee78f7173569bdecd4426095b2ffedc4b77d8f0f2c2e8d9` (equal to
+  the crates.io index checksum and recorded in Cargo.lock), built from SDK
+  commit `4f65dc48686a3b701ed0585812fcca46859f7e5a` (`.cargo_vcs_info.json`), a
+  descendant of the earlier source pin `ec6230d2`. It replaces that source pin
+  for the scan family; later families stay gated at their owning chunks.
+- Depend with `default-features = false, features = ["scan"]` and inject the
+  app-owned transport; the SDK's bundled reqwest transport is not compiled.
+- The pin is exact (`=`), lock-verified, and never a path or git dependency on
+  an active SDK worktree. C02 runs the package's own unit tests natively from
+  the checksum-verified `.crate` and its shipped Cargo.lock, separately from
+  the desktop adapter contracts; it re-evaluates the scan contracts against
+  this version (its error and engine code changed after `ec6230d2`) rather than
+  reusing the earlier evaluation.
+- Changing the version is a reviewed dependency change under the same rules.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

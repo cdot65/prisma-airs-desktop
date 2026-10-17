@@ -16,14 +16,39 @@ test-fixtures = []
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
 ts-rs.workspace = true
 sha2.workspace = true
 hex.workspace = true
 getrandom = "=0.4.3"
+zeroize = { version = "=1.9.1", features = ["std"] }
+# D027: the published scan SDK, scan family only, with the app-owned transport.
+scm-sdk = { version = "=0.1.0", default-features = false, features = ["scan"] }
+# DESIGN "Native transport policy": rustls with the platform verifier, explicit
+# proxy modes, gzip only; redirects and retries are disabled per client.
+reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "gzip", "stream", "system-proxy"] }
+bytes = "=1.12.1"
+http = "=1.5.0"
+futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
+url = "=2.5.8"
+tokio-util = { version = "=0.7.20", default-features = false }
+# Reviewed extra roots are validated as X.509 trust anchors before use.
+rustls-pki-types = { version = "=1.15.1", features = ["std"] }
+rustls-webpki = { version = "=0.103.15", default-features = false, features = ["std", "aws-lc-rs"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["sync", "macros", "rt"] }
+tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
+# Synthetic TLS endpoints and proxies for the native transport contracts.
+rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "pem"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws_lc_rs", "tls12"] }
+flate2 = "=1.1.10"
+time = "=0.3.55"
+
+[[test]]
+name = "context_credentials"
+path = "tests/context_credentials/main.rs"
+required-features = ["test-fixtures"]
 
 [lints]
 workspace = true

@@ -14,6 +14,7 @@ families and other inputs remain gated at their consuming chunks.
 | Academy        | 7f3a28c4082a5bb278bbff5d79fab106c240155a | Shared React source; hosted learning authority          |
 | Native Harness | 9331a5839bc6a763d94dee7584746f58bbbe1181 | Desktop-capable native engine/protocol input            |
 | SDK Phase 3    | ec6230d2a19b9c835c9e4c9487795b38ad538af3 | Accepted scan subset; native/live qualification pending |
+| scm-sdk crate  | crates.io 0.1.0, sha256 6d555d955c3734dd5ee78f7173569bdecd4426095b2ffedc4b77d8f0f2c2e8d9, from 4f65dc48686a3b701ed0585812fcca46859f7e5a | D027 scan input from C02 (scan feature only); 164 package unit tests pass natively; live qualification is C25 |
 | SDK Phase 4    | 32cbcb6d9b04478aeca21e767ed6ddb8949ec7bb | Accepted management/DLP/IAM subset; qualify exact uses  |
 
 Do not consume an active neighboring worktree via an unpinned path and later

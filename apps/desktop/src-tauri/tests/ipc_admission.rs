@@ -20,15 +20,20 @@ fn fixture(name: &str) -> Value {
 struct Harness {
     app: App<MockRuntime>,
     main: WebviewWindow<MockRuntime>,
+    adapters: desktop_core::fixtures::Handles,
 }
 
 fn harness() -> Harness {
-    let core = desktop_host::core();
+    let (core, adapters) = desktop_host::fixture_core();
     let app = desktop_host::install(mock_builder(), &core)
         .build(tauri::generate_context!())
         .expect("app builds with the production context");
     let main = desktop_host::main_window(&app).expect("main window");
-    Harness { app, main }
+    Harness {
+        app,
+        main,
+        adapters,
+    }
 }
 
 fn request(cmd: &str, body: InvokeBody, url: &str) -> InvokeRequest {
@@ -356,4 +361,113 @@ fn observations_per_webview_are_bounded_without_silent_eviction() {
         || host.active_observations("main") == desktop_host::MAX_OBSERVATIONS_PER_WEBVIEW - 1
     ));
     assert_eq!(observe_shell(&h, 100)["kind"], json!("shell"));
+}
+
+fn send(h: &Harness, session: &str, sequence: u64, intent: Value) -> Result<Value, Value> {
+    let body = json!({"protocol": 1, "session": session, "sequence": sequence.to_string(), "intent": intent});
+    call(&h.main, "desktop_dispatch", raw(&body))
+}
+
+fn snapshot(h: &Harness, token: u32) -> Value {
+    let observed = observe_shell(h, token);
+    let body = json!({"protocol": 1, "scope": {"kind": "closeShell", "updates": format!("__CHANNEL__:{token}")}});
+    call(&h.main, "desktop_observe", raw(&body)).expect("close");
+    observed["snapshot"].clone()
+}
+
+#[test]
+fn tenant_and_scan_key_intents_cross_ipc_without_echoing_the_key() {
+    let h = harness();
+    let session = register(&h);
+    let created = send(
+        &h,
+        &session,
+        1,
+        json!({"kind": "createTenant", "profile": {
+        "label": "Tenant A", "tsgId": "1234567890", "destination": {"kind": "region", "region": "europe"}}}),
+    );
+    assert_eq!(created.expect("created")["outcome"], "receipt");
+    let snap = snapshot(&h, 10);
+    let context = snap["active"]["context"]
+        .as_str()
+        .expect("context")
+        .to_owned();
+    assert_eq!(
+        snap["tenants"][0]["origin"],
+        "https://service-de.api.aisecurity.paloaltonetworks.com"
+    );
+    let key = "synthetic-ipc-scan-key-0042";
+    let stored = send(
+        &h,
+        &session,
+        2,
+        json!({"kind": "configureScanCredential",
+        "context": context, "mode": "session", "key": key}),
+    );
+    let stored = stored.expect("admitted");
+    assert_eq!(stored["outcome"], "receipt");
+    assert!(
+        !stored.to_string().contains(key),
+        "the receipt carries no key"
+    );
+    assert!(eventually(
+        || snapshot(&h, 11)["tenants"][0]["scan"]["state"] == "ready"
+    ));
+    let snap = snapshot(&h, 12);
+    assert_eq!(snap["tenants"][0]["scan"]["mode"], "session");
+    assert!(
+        !snap.to_string().contains(key),
+        "no snapshot carries the key"
+    );
+    assert!(
+        h.adapters.vault.calls().is_empty(),
+        "session-only never reaches the Keychain"
+    );
+    let stale = send(
+        &h,
+        &session,
+        3,
+        json!({"kind": "removeScanCredential", "context": context}),
+    );
+    assert_eq!(
+        stale.expect("refusal"),
+        json!({"outcome": "refusal", "refusal": "staleContext"})
+    );
+}
+
+#[test]
+#[allow(unsafe_code)]
+fn ambient_environment_credentials_are_never_adopted() {
+    // SAFETY: these SDK variable names are read by nothing else in this
+    // test binary; the desktop never consults them.
+    unsafe {
+        std::env::set_var("PANW_AI_SEC_API_KEY", "synthetic-ambient-key");
+        std::env::set_var("PANW_AI_SEC_API_ENDPOINT", "https://ambient.example.com");
+    }
+    let h = harness();
+    let session = register(&h);
+    send(
+        &h,
+        &session,
+        1,
+        json!({"kind": "createTenant", "profile": {
+        "label": "Tenant A", "destination": {"kind": "region", "region": "unitedStates"}}}),
+    )
+    .expect("created");
+    let snap = snapshot(&h, 20);
+    assert_eq!(
+        snap["tenants"][0]["scan"]["state"], "missing",
+        "no implicit credential"
+    );
+    assert_eq!(
+        snap["tenants"][0]["origin"],
+        "https://service.api.aisecurity.paloaltonetworks.com"
+    );
+    assert!(!snap.to_string().contains("ambient"));
+    assert!(h.adapters.vault.calls().is_empty());
+    // SAFETY: as above; only this test reads or writes these variables.
+    unsafe {
+        std::env::remove_var("PANW_AI_SEC_API_KEY");
+        std::env::remove_var("PANW_AI_SEC_API_ENDPOINT");
+    }
 }

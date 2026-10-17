@@ -21,6 +21,7 @@ pub mod package;
 pub mod paths;
 pub mod review;
 pub mod runner;
+pub mod sdk;
 pub mod shared;
 pub mod subject;
 pub mod transport;

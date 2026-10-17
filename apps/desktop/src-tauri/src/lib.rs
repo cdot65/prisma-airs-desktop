@@ -23,8 +23,11 @@ use tauri::{
 };
 use tokio::sync::broadcast;
 
+pub mod adapters;
 #[cfg(all(feature = "test-fixtures", target_os = "macos"))]
 pub mod fixture_capture;
+#[cfg(target_os = "macos")]
+pub mod keychain;
 mod menu;
 
 /// Label of the single packaged window allowed to call application commands.
@@ -169,16 +172,22 @@ impl Host {
     }
 }
 
-/// Installs host state, commands and window policy on a Tauri builder.
-pub fn install<R: Runtime>(builder: tauri::Builder<R>, core: &Core) -> tauri::Builder<R> {
-    builder
-        .manage(Host::new(core))
-        .invoke_handler(tauri::generate_handler![desktop_dispatch, desktop_observe])
+/// Registers the two application commands on a Tauri builder.
+pub fn commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
+    builder.invoke_handler(tauri::generate_handler![desktop_dispatch, desktop_observe])
 }
 
-/// The production core configuration.
-pub fn core() -> Core {
-    Core::new(CoreConfig::default())
+/// Installs host state for an existing core plus the commands (tests use
+/// this with fixture adapters; the app builds its core in `setup`).
+pub fn install<R: Runtime>(builder: tauri::Builder<R>, core: &Core) -> tauri::Builder<R> {
+    commands(builder.manage(Host::new(core)))
+}
+
+/// A core over deterministic fixture adapters, for host tests.
+#[cfg(feature = "test-fixtures")]
+pub fn fixture_core() -> (Core, desktop_core::fixtures::Handles) {
+    let (adapters, handles) = desktop_core::fixtures::adapters();
+    (Core::new(CoreConfig::default(), adapters), handles)
 }
 
 /// Builds the packaged main window with its navigation policy: it may only
@@ -298,7 +307,9 @@ async fn desktop_observe<R: Runtime>(
                 }
                 })
             })?;
-            Ok(ObserveResponse::Shell { snapshot })
+            Ok(ObserveResponse::Shell {
+                snapshot: Box::new(snapshot),
+            })
         }
         WireScope::CloseShell { updates } => {
             host.close(webview.label(), &updates);
@@ -307,10 +318,11 @@ async fn desktop_observe<R: Runtime>(
     }
 }
 
-/// Runs the application with the given generated context.
+/// Runs the application with the given generated context. The core is
+/// created in `setup`, where the OS data directory is known, with the
+/// production adapters; durable cleanup resumes on the async runtime.
 pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
-    let core = core();
-    install(tauri::Builder::default(), &core)
+    commands(tauri::Builder::default())
         .menu(menu::build)
         .on_menu_event(menu::on_event)
         .on_window_event(|window, event| {
@@ -319,6 +331,9 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             }
         })
         .setup(|app| {
+            let core = Core::new(CoreConfig::default(), adapters::production(app.handle()));
+            app.manage(Host::new(&core));
+            tauri::async_runtime::spawn(async move { core.start() });
             main_window(app)?;
             Ok(())
         })

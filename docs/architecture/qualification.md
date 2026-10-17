@@ -21,7 +21,7 @@ mandatory checks fail the gate. No empty tests or synthetic passing receipts.
 | macOS login Keychain | security-framework3.7.0 | C02 macOS27 API availability/ACL/lock/denial; C26 signed upgrade |
 | Native sheet / clipboard | objc2-app-kit0.3.2, objc2-foundation0.3.2, objc2 0.6.3, block2 0.6.2 | C09 private main-thread sheet/ownership tests |
 | Native HTTP / trust | reqwest0.13.5 rustls + platform verifier, system-proxy explicit | C02/C15 policy; C04/C20/C22 identity |
-| First scan SDK | ec6230d2a19b9c835c9e4c9487795b38ad538af3 | C02 native source/adapter tests |
+| First scan SDK | crates.io `scm-sdk = "=0.1.0"` (sha256 6d555d95…, from 4f65dc48; D027), replacing ec6230d2 | C02 native package tests (`xtask sdk-test`) and adapter contracts |
 | Later management SDK | 32cbcb6d9b04478aeca21e767ed6ddb8949ec7bb candidate | C08 exact accepted subset |
 | Native Harness | 9331a5839bc6a763d94dee7584746f58bbbe1181 | C19 native protocol/new resource seal |
 | Academy shared source | 7f3a28c4082a5bb278bbff5d79fab106c240155a extraction baseline | C01 reviewed shared revision |
