@@ -1,7 +1,7 @@
 # Current state
 
-G00 and G01 passed (historical Claude reviews). C01, C02 and C03 completed on
-2026-10-17; the **P01 cumulative review** is next. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+G00 and G01 passed (historical Claude reviews). C01, C02 and C03 and the P01 cumulative review completed on
+2026-10-17; implementation is next at **C04**. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps.
 
@@ -12,7 +12,7 @@ five dimensions with empty required fixes, blockers and evidence gaps.
 | C01 | **Complete** (generation 1): Codex attempt-04 scored 9 in all five dimensions; bootstrap agreement passed (52 adversarial cases including 16 typed, 2 controls); committed as ce5bd8d and verified against the reviewed source fingerprint | Attempts 01–03 failed and were remediated (records retained) |
 | C02 | **Complete** (generation 1): Codex attempt-03 scored 9 in all five dimensions; committed as dfcf9bb and verified against the reviewed source fingerprint | Attempts 01–02 failed and were remediated (records retained) |
 | C03 | **Complete** (generation 1): Codex attempt-02 scored 9 in all five dimensions; committed as 1b69852 and verified against the reviewed source fingerprint | Attempt-01 (9/8/8/8/8) remediated (`reviews/C03/remediation-attempt-01.md`); budgets v3 acknowledged; C24 owns the typed-input memory observation |
-| P01 | Cumulative review pending | Update C01 checks for Runtime Security, integrated native C01–C03, Codex phase review |
+| P01 | **Complete**: Codex phase attempt-02 scored 9 in all five dimensions; committed as 80d6c51 and verified against the reviewed source fingerprint | Attempt-01 (9/8/9/8/8) remediated (`reviews/P01/remediation-attempt-01.md`); 38/38 integrated native checks; budgets re-measured on the P01 bundle |
 | C04–C26 | Planned | Ordered predecessors required |
 
 ## C01 evidence (docs/planning/evidence/C01)
