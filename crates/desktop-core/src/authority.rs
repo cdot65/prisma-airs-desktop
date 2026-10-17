@@ -10,6 +10,7 @@
 
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use scm_sdk::Session;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::time::Instant;
@@ -23,6 +24,9 @@ use crate::import::{self, Discarded, ImportCandidate, ImportError, ImportFormat,
 use crate::observe::{Subscribers, Subscription, Update};
 use crate::runtime::{
     self, OperationId, OperationLimits, OperationState, Operations, Outcome, StopReason,
+};
+use crate::scanning::{
+    HISTORY_PER_TENANT, PayloadSlot, ScanDraft, ScanFailure, ScanJob, ScanPayload, ScanResultView,
 };
 use crate::store::{AppStore, PersistedState, StoreError, StoredCredential};
 use crate::tenants::{Destination, ProfileDraft, TenantId, TenantProfile};
@@ -88,6 +92,14 @@ pub enum Intent {
     },
     /// Remove all v2 local data and v2 credentials.
     ResetLocalData,
+    /// Run a Runtime Security synchronous scan for the active tenant.
+    Scan {
+        context: ContextRef,
+        draft: ScanDraft,
+    },
+    /// Cancel a scan: queued work is not sent; a running request is
+    /// cancelled and its outcome reported as the service left it.
+    CancelScan { operation: OperationId },
 }
 
 /// Native acknowledgement that an Intent was admitted. It is not evidence of
@@ -95,7 +107,11 @@ pub enum Intent {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Receipt {
-    Admitted { request: String },
+    /// `operation` names the admitted operation for operation intents.
+    Admitted {
+        request: String,
+        operation: Option<OperationId>,
+    },
 }
 
 /// Native rejection of an Intent before admission. Sanitized: it names the
@@ -262,6 +278,43 @@ pub struct ShellSnapshot {
     pub reset_failure: Option<ResetFailure>,
     /// The last change was written but the OS did not confirm it durable.
     pub durability_unconfirmed: bool,
+    /// The active tenant's scans this session, newest first.
+    pub scans: Vec<ScanRecordView>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ScanProgress {
+    Queued,
+    Running,
+    Settled,
+}
+
+/// One scan as the presentation may show it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanRecordView {
+    pub operation: OperationId,
+    pub progress: ScanProgress,
+    pub outcome: Option<Outcome>,
+    pub stop: Option<StopReason>,
+    pub result: Option<ScanResultView>,
+    pub failure: Option<ScanFailure>,
+    /// The tenant or credential changed before the reply; any result was
+    /// discarded and is never shown.
+    pub discarded: bool,
+}
+
+struct ScanRecord {
+    operation: OperationId,
+    tenant: TenantId,
+    context: ContextRef,
+    slot: PayloadSlot,
+    payload: Option<ScanPayload>,
+    discarded: bool,
+    /// Copied from the runtime when observed, so history never depends on
+    /// how long the runtime retains settled operations.
+    settlement: Option<runtime::Settlement>,
 }
 
 /// Bounds for the core's in-memory structures.
@@ -389,6 +442,9 @@ struct State {
     operations: Operations,
     transport: Option<Arc<TransportFactory>>,
     store: Arc<dyn AppStore>,
+    scans: Vec<ScanRecord>,
+    /// One SDK session per issued context; cancelled when it retires.
+    scan_sessions: Vec<(ContextRef, Session)>,
 }
 
 impl State {
@@ -440,6 +496,7 @@ impl State {
             },
             reset_failure: self.reset_failure,
             durability_unconfirmed: self.durability_unconfirmed,
+            scans: self.scan_views(),
         }
     }
 
@@ -489,6 +546,8 @@ impl State {
     }
 
     fn changed(&mut self) {
+        // Every published snapshot reflects settled scans' outcomes.
+        self.sync_scans();
         self.revision += 1;
         let update = Update::Shell(Box::new(self.snapshot()));
         self.subscribers.publish(&update);
@@ -511,8 +570,114 @@ impl State {
             self.endpoint_review = None;
         }
         let keep = self.active_ref.as_ref().map(|c| c.as_str().to_owned());
-        self.operations
-            .retire_contexts(keep.as_deref(), Instant::now())
+        let starts = self
+            .operations
+            .retire_contexts(keep.as_deref(), Instant::now());
+        self.retire_scan_sessions();
+        self.sync_scans();
+        starts
+    }
+
+    fn scan_session(&mut self, context: &ContextRef) -> Session {
+        if let Some((_, session)) = self.scan_sessions.iter().find(|(c, _)| c == context) {
+            return session.clone();
+        }
+        let session = Session::new();
+        self.scan_sessions.push((context.clone(), session.clone()));
+        session
+    }
+
+    fn retire_scan_sessions(&mut self) {
+        let keep = self.active_ref.clone();
+        self.scan_sessions.retain(|(context, session)| {
+            let current = Some(context) == keep.as_ref();
+            if !current {
+                session.cancel();
+            }
+            current
+        });
+    }
+
+    /// Moves settled operations' payloads into their records. A reply for a
+    /// context that is no longer current is discarded, never shown.
+    fn sync_scans(&mut self) {
+        let current = self.active_ref.clone();
+        for record in self.scans.iter_mut().filter(|r| r.settlement.is_none()) {
+            record.settlement = match self.operations.state(&record.operation) {
+                Some(OperationState::Settled(s)) => Some(s),
+                // Unknown to the runtime: nothing is known of its effect.
+                None => Some(runtime::Settlement {
+                    outcome: runtime::Outcome::Unknown,
+                    stop: None,
+                }),
+                Some(_) => continue,
+            };
+            let payload = record.slot.lock().ok().and_then(|mut s| s.take());
+            if Some(&record.context) == current.as_ref() {
+                record.payload = payload;
+            } else {
+                record.discarded = payload.is_some();
+            }
+        }
+        // Per tenant: every unsettled scan and the newest settled ones.
+        let mut kept: Vec<(TenantId, usize)> = Vec::new();
+        let mut keep = vec![true; self.scans.len()];
+        for (i, record) in self.scans.iter().enumerate().rev() {
+            if record.settlement.is_none() {
+                continue;
+            }
+            let count = match kept.iter_mut().find(|(t, _)| t == &record.tenant) {
+                Some((_, n)) => {
+                    *n += 1;
+                    *n
+                }
+                None => {
+                    kept.push((record.tenant.clone(), 1));
+                    1
+                }
+            };
+            keep[i] = count <= HISTORY_PER_TENANT;
+        }
+        let mut index = 0;
+        self.scans.retain(|_| {
+            index += 1;
+            keep[index - 1]
+        });
+    }
+
+    fn scan_views(&self) -> Vec<ScanRecordView> {
+        let Some(active) = &self.data.active else {
+            return Vec::new();
+        };
+        self.scans
+            .iter()
+            .rev()
+            .filter(|r| &r.tenant == active)
+            .map(|r| {
+                let (progress, outcome, stop) =
+                    match (r.settlement, self.operations.state(&r.operation)) {
+                        (Some(s), _) => (ScanProgress::Settled, Some(s.outcome), s.stop),
+                        (None, Some(OperationState::DispatchClaimed)) => {
+                            (ScanProgress::Running, None, None)
+                        }
+                        (None, _) => (ScanProgress::Queued, None, None),
+                    };
+                let (result, failure) = match &r.payload {
+                    Some(ScanPayload::Result(view)) => (Some((**view).clone()), None),
+                    Some(ScanPayload::Failure(failure)) => (None, Some(*failure)),
+                    None => (None, None),
+                };
+                ScanRecordView {
+                    operation: r.operation.clone(),
+                    progress,
+                    outcome,
+                    stop,
+                    result,
+                    failure,
+                    discarded: r.discarded,
+                }
+            })
+            .collect()
     }
 
     fn check_context(&self, context: &ContextRef) -> Result<TenantId, Refusal> {
@@ -609,7 +774,10 @@ impl State {
         self.epoch += 1;
         self.active_ref = None;
         self.endpoint_review = None;
-        self.operations.retire_contexts(None, Instant::now())
+        let starts = self.operations.retire_contexts(None, Instant::now());
+        self.retire_scan_sessions();
+        self.sync_scans();
+        starts
     }
 }
 
@@ -664,7 +832,7 @@ enum Effect {
 struct Inner {
     state: Mutex<State>,
     adapters: Adapters,
-    session: SessionVault,
+    session: Arc<SessionVault>,
 }
 
 /// The application core. The native host creates exactly one.
@@ -716,13 +884,15 @@ impl Core {
             operations: Operations::new(config.operations),
             transport,
             store: Arc::clone(&adapters.store),
+            scans: Vec::new(),
+            scan_sessions: Vec::new(),
         };
         let _ = state.reissue_context();
         Self {
             inner: Arc::new(Inner {
                 state: Mutex::new(state),
                 adapters,
-                session: SessionVault::new(),
+                session: Arc::new(SessionVault::new()),
             }),
         }
     }
@@ -818,7 +988,13 @@ impl AuthorityHandle {
                 Admit::Duplicate(result) => return result,
                 Admit::Fresh => {
                     let mut effects = Vec::new();
-                    let result = admit(&mut state, &self.inner.session, intent, &mut effects);
+                    let result = admit(
+                        &mut state,
+                        &self.inner.session,
+                        &self.inner.adapters.keychain,
+                        intent,
+                        &mut effects,
+                    );
                     if result.is_err() {
                         effects.clear();
                     }
@@ -948,10 +1124,12 @@ impl AuthorityHandle {
 
 fn admit(
     state: &mut State,
-    session: &SessionVault,
+    session: &Arc<SessionVault>,
+    keychain: &Arc<dyn CredentialStore>,
     intent: Intent,
     effects: &mut Vec<Effect>,
 ) -> Result<Receipt, Refusal> {
+    let mut operation_ref: Option<OperationId> = None;
     match intent {
         Intent::SetAppearance { theme } => {
             if state.appearance() != theme {
@@ -1012,6 +1190,7 @@ fn admit(
             let was_active = state.data.active.as_ref() == Some(&tenant);
             let retired_session = state.retire_credential(&tenant);
             state.data.tenants.retain(|t| t.profile.id != tenant);
+            state.scans.retain(|r| r.tenant != tenant);
             if was_active {
                 state.data.active = None;
             }
@@ -1287,10 +1466,77 @@ fn admit(
             effects.push(Effect::Reset);
             state.changed();
         }
+        Intent::Scan { context, draft } => {
+            let tenant = state.check_context(&context)?;
+            let draft = draft.validate().ok_or(Refusal::InvalidInput)?;
+            let (record, mode, origin) =
+                match &state.tenant(&tenant).ok_or(Refusal::StaleContext)?.scan {
+                    ScanCapability::Ready {
+                        record,
+                        mode,
+                        destination,
+                    } => (record.clone(), *mode, destination.clone()),
+                    _ => return Err(Refusal::CapabilityMissing),
+                };
+            // System proxy mode builds its client here, per admission.
+            let transport = state
+                .transport
+                .clone()
+                .ok_or(Refusal::CapabilityMissing)?
+                .for_admission()
+                .map_err(|_| Refusal::CapabilityMissing)?;
+            let slot: PayloadSlot = Arc::default();
+            let bytes = draft.queued_bytes();
+            let job = ScanJob {
+                keychain: Arc::clone(keychain),
+                session_vault: Arc::clone(session),
+                record,
+                mode,
+                origin,
+                transport,
+                session: state.scan_session(&context),
+                draft,
+                slot: Arc::clone(&slot),
+            };
+            let (operation, starts) =
+                state
+                    .operations
+                    .admit(context.as_str(), bytes, job.into_work(), Instant::now())?;
+            state.scans.push(ScanRecord {
+                operation: operation.clone(),
+                tenant,
+                context,
+                slot,
+                payload: None,
+                discarded: false,
+                settlement: None,
+            });
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::CancelScan { operation } => {
+            let record = state
+                .scans
+                .iter()
+                .find(|r| r.operation == operation)
+                .ok_or(Refusal::InvalidInput)?;
+            // Only the current context's scans can be cancelled; an earlier
+            // context's work was already retired with it.
+            state.check_context(&record.context)?;
+            let (_, starts) =
+                state
+                    .operations
+                    .cancel(&operation, StopReason::Cancelled, Instant::now());
+            state.sync_scans();
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
     }
     state.admitted += 1;
     Ok(Receipt::Admitted {
         request: format!("rq-{}", state.admitted),
+        operation: operation_ref,
     })
 }
 
@@ -1409,7 +1655,10 @@ fn complete_operation(
             if let Some(stop) = stop {
                 state.operations.cancel(id, stop, now);
             }
-            state.operations.complete(id, outcome, now)
+            let starts = state.operations.complete(id, outcome, now);
+            state.sync_scans();
+            state.changed();
+            starts
         }
         Err(_) => return,
     };
@@ -1599,6 +1848,7 @@ fn settle_reset(inner: &Arc<Inner>, result: Result<bool, ResetFailure>) {
                 state.reset_failure = None;
                 state.durability_unconfirmed = unconfirmed;
                 state.consumed_reviews.clear();
+                state.scans.clear();
                 let starts = state.reissue_context();
                 state.changed();
                 (starts, false)

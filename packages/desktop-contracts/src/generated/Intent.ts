@@ -2,8 +2,10 @@
 import type { ContextRef } from "./ContextRef";
 import type { Destination } from "./Destination";
 import type { EnteredSecret } from "./EnteredSecret";
+import type { OperationId } from "./OperationId";
 import type { ProfileDraft } from "./ProfileDraft";
 import type { ReviewId } from "./ReviewId";
+import type { ScanDraft } from "./ScanDraft";
 import type { StorageMode } from "./StorageMode";
 import type { TenantId } from "./TenantId";
 import type { Theme } from "./Theme";
@@ -15,4 +17,4 @@ import type { Theme } from "./Theme";
  * instructions; it never carries method names or arbitrary SDK payloads.
  * Tenant-scoped instructions carry the ContextRef the caller was viewing.
  */
-export type Intent = { "kind": "setAppearance", theme: Theme, } | { "kind": "createTenant", profile: ProfileDraft, } | { "kind": "selectTenant", tenant: TenantId, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" };
+export type Intent = { "kind": "setAppearance", theme: Theme, } | { "kind": "createTenant", profile: ProfileDraft, } | { "kind": "selectTenant", tenant: TenantId, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, };

@@ -29,6 +29,7 @@ struct VaultState {
     partial_purge: Option<(usize, VaultError)>,
     calls: Vec<VaultCall>,
     held: bool,
+    held_reads: bool,
     waiting: usize,
 }
 
@@ -61,9 +62,18 @@ impl ScriptedVault {
         }
     }
 
+    /// Reads block until [`ScriptedVault::release`] (a scan stays claimed
+    /// before anything is sent).
+    pub fn hold_reads(&self) {
+        if let Ok(mut s) = self.state.lock() {
+            s.held_reads = true;
+        }
+    }
+
     pub fn release(&self) {
         if let Ok(mut s) = self.state.lock() {
             s.held = false;
+            s.held_reads = false;
         }
         self.gate.notify_all();
     }
@@ -128,6 +138,11 @@ impl Vault for ScriptedVault {
     fn get(&self, record: &RecordId) -> Result<Zeroizing<Vec<u8>>, VaultError> {
         let mut s = self.state.lock().map_err(|_| VaultError::Unavailable)?;
         s.calls.push(VaultCall::Get(record.clone()));
+        s.waiting += 1;
+        while s.held_reads {
+            s = self.gate.wait(s).map_err(|_| VaultError::Unavailable)?;
+        }
+        s.waiting -= 1;
         if let Some(failure) = s.failure {
             return Err(failure);
         }

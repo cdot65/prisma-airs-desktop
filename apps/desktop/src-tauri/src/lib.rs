@@ -332,6 +332,11 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
         })
         .setup(|app| {
             let core = Core::new(CoreConfig::default(), adapters::production(app.handle()));
+            #[cfg(feature = "test-fixtures")]
+            if let Some(policy) = adapters::fixture_transport(app.handle()) {
+                core.set_transport_policy(policy)
+                    .map_err(|e| std::io::Error::other(e.to_string()))?;
+            }
             app.manage(Host::new(&core));
             tauri::async_runtime::spawn(async move { core.start() });
             main_window(app)?;

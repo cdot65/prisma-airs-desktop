@@ -157,6 +157,72 @@ Remote outcome remains NotSent, Rejected, Completed or Unknown, separately from
 local stop reason and freshness/completeness. Arbitrary HTTP 5xx is not proof
 that a mutation was rejected without effects. Unknown SDK enums remain unknown.
 
+### C03 implementation: the first synchronous scan
+
+Implemented in `crates/desktop-core` (`scanning`, authority `Scan` /
+`CancelScan`), `packages/desktop-contracts` (validators) and
+`apps/desktop/src/features/runtime`.
+
+- **Input.** `Scan { context, draft }` carries an explicit AI security
+  profile (by name, at most 100 UTF-16 units on one line, or by UUID), the
+  prompt and/or response and an optional application name (at most 256
+  characters), exactly v1's four inputs. Working v1 (74754c02, read-only)
+  caps a scan at 96 KiB of prompt plus response (`bridge/src/runtime.ts:193`,
+  `src/input.rs:396,554`) and has no context, file or other large-input path,
+  so the registered limits (2 MiB per text; escaped request plus a 16 KiB
+  envelope allowance within the 8 MiB SDK request ceiling) cover every
+  working v1 input without staged payloads. Admission re-validates and
+  refuses `InvalidInput`; the presentation checks the same limits first. The
+  React form is uncontrolled: values are read from the DOM when Scan is
+  pressed, never pre-captured or stored.
+- **Admission** requires the current context and a ready scan credential
+  (`CapabilityMissing` otherwise), then claims an operation (4 active, 64
+  queued, 64 MiB) whose receipt names the `OperationId`. Work runs off the
+  lock: the key is read from the Keychain on a blocking thread (a locked or
+  denied key settles `NotSent` with a credential failure), the SDK client is
+  bound to the credential generation's `Session` and exact origin, and the
+  request carries `RequestOptions` with the operation's cancel token, the
+  remaining interactive budget and `with_retries(0)`.
+- **Outcomes** preserve the SDK's `Error::remote_outcome`: a parsed 2xx is
+  `Completed`; 4xx and refused redirects are `Rejected`; 5xx, transport
+  errors (including connect failure and a closed connection), timeouts and
+  unreadable 2xx bodies are `Unknown`; `NotSent` only where the SDK or the
+  desktop knows nothing was sent. The failure kind (401, 403, 429, network,
+  malformed response, …) is shown separately; nothing is retried or replayed.
+  Cancelling a queued scan settles `NotSent`; cancelling a running one stops
+  waiting and settles `Unknown` (the request may have been processed).
+- **Verdicts** are the desktop's reading of a completed scan: `block` →
+  Block; `allow` + `benign` → Allow; `allow` + `malicious` → Alert; anything
+  else, a reported timeout, the global error flag or any content-level error
+  entry (whatever the global flags say) → Unknown, which is never presented
+  as allowed; content errors are always shown. Action, category, IDs and
+  detector flags (including unknown detector names) are shown verbatim,
+  truncated to 512 characters; no server message text is shown. Operator
+  text for an Unknown outcome never claims the request was sent: a connect
+  failure or a cancellation may or may not have reached the service.
+- **Context retirement.** Each scan record is bound to its tenant and
+  context. A reply that settles after its context was retired (tenant
+  switch, key or destination change, reset, policy revision) is discarded
+  and the record says so; snapshots list only the active tenant's records
+  (newest five settled per tenant plus any in flight). Records live in
+  memory only: nothing about a scan is persisted, and a restart neither
+  shows nor resubmits earlier scans. Retrying is pressing Scan again.
+- **Fixture endpoint.** Fixture builds may trust one extra PEM root from
+  `fixture-transport-roots.pem` in the fixture data root, so native
+  acceptance can reach the synthetic localhost TLS endpoint; production
+  builds have no such file read and trust only the OS store.
+- **Budgets** are registered in `docs/architecture/budgets.json` (hash-stamped
+  in `docs/planning/evidence/C03/budget-registration.json`) before any
+  acceptance measurement; `xtask native` recomputes each statistic from the
+  raw samples in `perf.json` (tools/perf) and `footprint.json` (`xtask
+  footprint`) and fails missing, retroactive or mismatched evidence. Version
+  3 changed only the scan workload's input method (paste-like insertion)
+  after the version 2 run failed on memory driven by its own per-keystroke
+  typing; the failing result, the diagnosis and the rationale are retained
+  (`perf-diagnosis/`). Long typed input under an active assistive client
+  raises WebKit's UI-process memory (about 270 MiB for 100 KiB typed); C24
+  owns measuring and budgeting it.
+
 Working one-time key reveal/copy is an explicit exception to redacted product
 presentation, not a renderer credential-read method. Rust retains the generated
 secret under an operator-only scoped receipt. RequestReveal opens a native

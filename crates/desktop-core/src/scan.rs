@@ -47,6 +47,9 @@ pub enum BindingError {
 pub struct ScanBinding {
     client: Client,
     session: Session,
+    /// Whether dropping the binding retires its session (a binding built on
+    /// a shared generation session leaves that to the generation).
+    owns_session: bool,
 }
 
 impl ScanBinding {
@@ -57,6 +60,19 @@ impl ScanBinding {
         key: Zeroizing<String>,
         transport: Arc<dyn Transport>,
     ) -> Result<Self, BindingError> {
+        let mut binding = Self::with_session(origin, key, transport, Session::new())?;
+        binding.owns_session = true;
+        Ok(binding)
+    }
+
+    /// Builds the binding on a given credential-generation session; the
+    /// session is cancelled when that generation retires.
+    pub fn with_session(
+        origin: &str,
+        key: Zeroizing<String>,
+        transport: Arc<dyn Transport>,
+        session: Session,
+    ) -> Result<Self, BindingError> {
         let endpoint = Endpoint::parse(origin).map_err(|_| BindingError::Destination)?;
         if endpoint.origin() != origin {
             return Err(BindingError::Destination);
@@ -65,7 +81,6 @@ impl ScanBinding {
         drop(key);
         let authentication =
             Authentication::scan(Some(secret), None).map_err(|_| BindingError::Credential)?;
-        let session = Session::new();
         let client = Client::builder(endpoint.clone())
             .authentication(authentication)
             .transport(transport)
@@ -74,7 +89,11 @@ impl ScanBinding {
             .session(session.clone())
             .build()
             .map_err(|_| BindingError::Client)?;
-        Ok(Self { client, session })
+        Ok(Self {
+            client,
+            session,
+            owns_session: false,
+        })
     }
 
     pub fn client(&self) -> &Client {
@@ -100,7 +119,9 @@ impl ScanBinding {
 
 impl Drop for ScanBinding {
     fn drop(&mut self) {
-        self.session.cancel();
+        if self.owns_session {
+            self.session.cancel();
+        }
     }
 }
 

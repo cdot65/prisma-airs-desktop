@@ -4,6 +4,7 @@ import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
 import type { ImportView } from "./ImportView";
 import type { ResetFailure } from "./ResetFailure";
+import type { ScanRecordView } from "./ScanRecordView";
 import type { StorageHealth } from "./StorageHealth";
 import type { TenantView } from "./TenantView";
 import type { Theme } from "./Theme";
@@ -29,4 +30,8 @@ resetFailure: ResetFailure | null,
 /**
  * The last change was written but the OS did not confirm it durable.
  */
-durabilityUnconfirmed: boolean, };
+durabilityUnconfirmed: boolean, 
+/**
+ * The active tenant's scans this session, newest first.
+ */
+scans: Array<ScanRecordView>, };

@@ -47,7 +47,7 @@ describe('scan-key entry', () => {
                 key: KEY,
             },
         ])
-        await act(async () => admit({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1' } }))
+        await act(async () => admit({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } }))
         expect(screen.queryByRole('alert')).toBeNull()
     })
 

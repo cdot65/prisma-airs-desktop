@@ -50,7 +50,7 @@ export function scriptedNative(initial: ShellSnapshot): Native {
         sent: [],
         delivered: [],
         current: initial,
-        respond: () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1' } }),
+        respond: () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } }),
         push: (next) =>
             act(async () => {
                 // Native revisions only increase; the client ignores others.

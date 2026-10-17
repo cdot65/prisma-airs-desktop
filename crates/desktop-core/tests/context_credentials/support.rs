@@ -90,6 +90,10 @@ pub enum Reply {
     Raw { head: String, body: Vec<u8> },
     /// Never answer; record when the client goes away.
     Hang,
+    /// Read the request, then close without any reply (a lost response).
+    Close,
+    /// Wait, then reply.
+    Delayed { millis: u64, then: Box<Reply> },
 }
 
 impl Reply {
@@ -191,6 +195,11 @@ impl TlsServer {
                         return;
                     };
                     log.lock().expect("log").seen.push(seen);
+                    let mut reply = reply;
+                    while let Reply::Delayed { millis, then } = reply {
+                        tokio::time::sleep(Duration::from_millis(millis)).await;
+                        reply = *then;
+                    }
                     match reply {
                         Reply::Raw { head, body } => {
                             let _ = tls.write_all(format!("{head}\r\n\r\n").as_bytes()).await;
@@ -208,6 +217,10 @@ impl TlsServer {
                             }
                             log.lock().expect("log").closed_by_client += 1;
                         }
+                        Reply::Close => {
+                            let _ = tls.shutdown().await;
+                        }
+                        Reply::Delayed { .. } => {}
                     }
                 });
             }

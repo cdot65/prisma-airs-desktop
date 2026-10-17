@@ -1,0 +1,14 @@
+Diff in /Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core/tests/sync_scan/main.rs:469:
+         "a reply for a retired context is never shown"
+     );
+     assert_eq!(record.stop, Some(StopReason::ContextRetired));
+-    assert!(record.discarded, "what the job left is discarded, not attached");
++    assert!(
++        record.discarded,
++        "what the job left is discarded, not attached"
++    );
+     assert!(record.failure.is_none());
+     assert_eq!(server.seen().len(), 1, "nothing was resubmitted");
+     assert_eq!(
+
+--- stderr ---

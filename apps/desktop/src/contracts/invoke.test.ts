@@ -58,7 +58,7 @@ describe('Tauri desktop transport', () => {
             if (isSessionRequest(cmd, body)) return sessionResponse
             sequences.push(body.sequence as string)
             if (body.sequence === '1') return new Promise((resolve) => (release = resolve))
-            return { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-2' } }
+            return { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-2', operation: null } }
         })
         const client = createDesktopClient()
         const first = client.dispatch({ kind: 'setAppearance', theme: 'dark' })

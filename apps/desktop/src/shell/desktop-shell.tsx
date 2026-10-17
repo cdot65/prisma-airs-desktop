@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ShellBrand, ShellFrame, ShellRail, ShellTopbar, type ShellNavItem } from '@ai-security-academy/presentation'
 import type { FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import { RuntimeView } from '../features/runtime/runtime-view'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { CommandPalette } from './command-palette'
 import { SettingsView, UnavailableView } from './feature-view'
@@ -133,6 +134,8 @@ export function DesktopShell(props: DesktopShellProps) {
                     onSetAppearance={props.onSetAppearance}
                     dispatch={props.dispatch}
                 />
+            ) : feature.id === 'runtime' && feature.availability.state === 'available' ? (
+                <RuntimeView ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
             ) : (
                 <UnavailableView ref={heading} feature={feature} />
             )}

@@ -26,7 +26,7 @@ function scripted(): Scripted {
     const decode = (bytes: Uint8Array) => JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>
     const state: Scripted = {
         dispatched: [],
-        respond: () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1' } }),
+        respond: () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } }),
         push: (update) => act(() => listeners.at(-1)?.(update)),
         pushAsync: (update) =>
             act(async () => {
@@ -73,14 +73,20 @@ afterEach(() => setItem.mockRestore())
 
 describe('desktop shell', () => {
     it('lists every native feature and shows unavailable destinations explicitly', async () => {
+        const user = userEvent.setup()
         await launch()
         const buttons = nav().getAllByRole('button')
         expect(buttons.map((b) => b.textContent?.replace('Soon', '').trim())).toEqual(base.features.map((f) => f.label))
+        // Runtime Security is the available landing destination (C03).
         expect(nav().getByRole('button', { name: /Runtime Security/ })).toHaveAttribute('aria-current', 'page')
-        expect(nav().getByRole('button', { name: /Runtime Security.*Not available in this build/ })).toBeInTheDocument()
-        expect(screen.getByRole('heading', { level: 1, name: 'Runtime Security' })).toBeInTheDocument()
+        expect(nav().queryByRole('button', { name: /Runtime Security.*Not available in this build/ })).toBeNull()
+        expect(screen.getByRole('heading', { level: 1, name: 'Scan a prompt or response' })).toBeInTheDocument()
+        expect(screen.getByText('Add a tenant and its scan key in Settings to run scans.')).toBeInTheDocument()
+        await user.click(nav().getByRole('button', { name: /^Academy/ }))
+        expect(nav().getByRole('button', { name: /^Academy.*Not available in this build/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { level: 1, name: 'Academy' })).toBeInTheDocument()
         expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C03')).toBeInTheDocument()
+        expect(screen.getByText('Planned in C04')).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
         // The rail must scroll rather than clip destinations at high zoom or
         // the minimum window size.

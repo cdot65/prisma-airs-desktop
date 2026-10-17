@@ -1,0 +1,109 @@
+{
+  "schema": "airs-v2-budgets/1",
+  "version": 3,
+  "registered_by_chunk": "C03",
+  "status": "registered before any acceptance measurement; changes need a new version with rationale, the prior results and owner or independent reviewer acknowledgement (test-catalogue: Performance budget governance)",
+  "host": {
+    "model": "Mac17,3",
+    "chip": "Apple M5",
+    "memory_bytes": 25769803776,
+    "os": "macOS 27.0.1 (26A434)",
+    "display": "built-in 2560x1664 Retina"
+  },
+  "build_under_test": {
+    "timing_and_memory": "the prepared fixture bundle (release profile, test-fixtures feature: production code plus the Fixture menu and fixture trust roots), against the synthetic localhost TLS scan endpoint tools/native-acceptance/scan_server.py",
+    "footprint": "an unsigned production bundle and DMG (release profile, no fixture features) built by `cargo run -p xtask -- footprint`; C26 repeats against the exact signed, notarized, installed bytes"
+  },
+  "changes": [
+    {
+      "version": 2,
+      "from_sha256": "fd10185a6296f0998c916f71bf94f331791de31f0e23aae1f30e3f64fa28ee54",
+      "change": "scan-peak-process-tree-resident method: the 100 KiB prompt is typed as process-targeted key events instead of being set through accessibility (AXValue). Limits, statistics and sample counts are unchanged.",
+      "rationale": "The C03 acceptance trial showed the WebView does not apply accessibility value writes to the textarea (the previous value was submitted), so the v1 method could not be executed. No measurement under version 1 exists: perf.json and footprint.json had not been produced.",
+      "prior_results": "none"
+    },
+    {
+      "version": 3,
+      "from_sha256": "6996deaf7f039c557ce22243cbdeeb0fe5aa540b64a5097cadbf8838e3ae22dc",
+      "change": "scan-peak-process-tree-resident method: the 100 KiB prompt is inserted paste-like (four key events of at most 30,000 characters) instead of typed as about 5,000 20-character key events. Limits, statistics and sample counts are unchanged.",
+      "rationale": "Under version 2 the per-keystroke typing method itself, not scanning, drove the UI process to 1.5-1.9 GiB: WebKit editing state from thousands of edits to a 100 KiB textarea, compounded by accessibility reads while typing. Scans added about 30 MiB once and nothing afterwards. Paste-like insertion keeps the tree below 300 MiB. See docs/planning/evidence/C03/perf-diagnosis/README.md. The typed-input growth stays an open observation owned by C24, which must register its own budget.",
+      "prior_results": "docs/planning/evidence/C03/perf-v2-over-budget-20261017.json (failed: scan peak median 1494 MiB, p95 1916 MiB; the other four budgets passed)"
+    }
+  ],
+  "budgets": [
+    {
+      "id": "cold-usable-shell",
+      "statistic": "p95",
+      "limit": 2000,
+      "unit": "ms",
+      "samples": 20,
+      "method": "Executable spawned directly from a fresh copy of the bundle at a new path, with no instance or fixture data root present (the app's earlier WebKit processes have exited); elapsed from spawn until the main window's accessibility tree contains the landing heading 'Scan a prompt or response', polled in-process every 5 ms. The OS file cache is not purged (that needs root); this limitation is recorded with the results.",
+      "rationale": "A native desktop tool should be usable within two seconds of launch."
+    },
+    {
+      "id": "warm-usable-shell",
+      "statistic": "p95",
+      "limit": 1000,
+      "unit": "ms",
+      "samples": 20,
+      "method": "Same bundle path and data root relaunched after a clean quit (one tenant with a ready session-free state); same spawn-to-heading measurement.",
+      "rationale": "Relaunch should feel immediate."
+    },
+    {
+      "id": "input-to-paint",
+      "statistic": "p95",
+      "limit": 50,
+      "unit": "ms",
+      "samples": 100,
+      "method": "With the Prompt field focused, a key event posted to the app process (CGEventPostToPid); elapsed until the field's accessible value contains the character (read every 0.5 ms), plus one 60 Hz frame (16.7 ms) for the compositor frame that follows the DOM update.",
+      "rationale": "Typing must stay within one perceptible frame budget."
+    },
+    {
+      "id": "idle-process-tree-resident",
+      "statistic": "max",
+      "limit": 350,
+      "unit": "MiB",
+      "samples": 20,
+      "method": "Resident set size (ps rss) of the app process plus the WebKit processes it started, sampled once per second for 20 s, 10 s after the warm shell is usable with one tenant and a ready key.",
+      "rationale": "Idle desktop footprint comparable to a lightweight native app with one web view."
+    },
+    {
+      "id": "scan-peak-process-tree-resident",
+      "statistic": "max",
+      "limit": 500,
+      "unit": "MiB",
+      "samples": 20,
+      "method": "Same process tree sampled every 50 ms across 20 deterministic scans, each a 100 KiB synthetic prompt inserted into the Prompt field paste-like, as four key events posted to the app process (at most 30,000 characters each), and submitted with the Scan button; each scan's peak is the maximum from Scan until its verdict settled.",
+      "rationale": "Bounded headroom for the 2 MiB per text / 8 MiB request ceiling."
+    },
+    {
+      "id": "app-bundle-bytes",
+      "statistic": "value",
+      "limit": 150,
+      "unit": "MiB",
+      "samples": 1,
+      "method": "Sum of regular-file sizes inside the unsigned production .app.",
+      "rationale": "First slice; later features register their own additions."
+    },
+    {
+      "id": "dmg-bytes",
+      "statistic": "value",
+      "limit": 100,
+      "unit": "MiB",
+      "samples": 1,
+      "method": "Size of the unsigned production DMG produced by tauri build --bundles dmg.",
+      "rationale": "Download size for the first slice."
+    }
+  ],
+  "later_workloads": [
+    {"workload": "Academy hosted content and learner sync", "owner": "C04"},
+    {"workload": "large management collections (lists, filters)", "owner": "C11"},
+    {"workload": "large red-team/model collections", "owner": "C13"},
+    {"workload": "large HTTP bodies and downloads", "owner": "C15"},
+    {"workload": "Gateway streaming and charts", "owner": "C18"},
+    {"workload": "Harness native-engine startup and memory", "owner": "C19"},
+    {"workload": "protected Harness history", "owner": "C20"},
+    {"workload": "tool and MCP workloads", "owner": "C21"},
+    {"workload": "MCP server sessions", "owner": "C22"}
+  ]
+}

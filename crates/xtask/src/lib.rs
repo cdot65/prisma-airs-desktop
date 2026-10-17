@@ -7,6 +7,7 @@
 //! append-only completion. It never ships with the application.
 
 pub mod bindings;
+pub mod budgets;
 pub mod cli;
 pub mod complete;
 pub mod env;

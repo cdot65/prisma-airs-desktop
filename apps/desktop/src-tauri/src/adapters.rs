@@ -83,6 +83,30 @@ fn credential_store(_root: Option<&Path>) -> Arc<dyn CredentialStore> {
     Arc::new(UnavailableVault)
 }
 
+/// The fixture build's additional trust roots for the synthetic acceptance
+/// endpoint, read from `fixture-transport-roots.pem` in the fixture data root.
+/// Production builds have no such file or code path: they trust the OS store.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_TRANSPORT_ROOTS: &str = "fixture-transport-roots.pem";
+
+/// The fixture transport policy, when the acceptance driver installed roots.
+#[cfg(feature = "test-fixtures")]
+pub fn fixture_transport<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Option<desktop_core::transport::TransportPolicy> {
+    let path = app
+        .path()
+        .app_data_dir()
+        .ok()?
+        .join(FIXTURE_TRANSPORT_ROOTS);
+    let pem = std::fs::read(path).ok()?;
+    Some(desktop_core::transport::TransportPolicy {
+        revision: 2,
+        extra_roots: vec![pem],
+        ..Default::default()
+    })
+}
+
 /// Reads at most [`MAX_IMPORT_BYTES`] from a regular file.
 pub fn read_bounded(path: &Path) -> Result<Zeroizing<Vec<u8>>, ImportError> {
     let meta = std::fs::metadata(path).map_err(|_| ImportError::Unsupported)?;

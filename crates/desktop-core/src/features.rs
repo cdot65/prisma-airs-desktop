@@ -47,8 +47,7 @@ pub struct FeatureEntry {
     pub availability: Availability,
 }
 
-const PLANNED: [(FeatureId, &str, &str); 10] = [
-    (FeatureId::Runtime, "Runtime Security", "C03"),
+const PLANNED: [(FeatureId, &str, &str); 9] = [
     (FeatureId::Academy, "Academy", "C04"),
     (FeatureId::Administration, "Administration", "C08"),
     (FeatureId::Sessions, "Sessions & Reports", "C11"),
@@ -62,17 +61,20 @@ const PLANNED: [(FeatureId, &str, &str); 10] = [
 
 /// The catalogue shipped by this build, in navigation order.
 pub fn catalogue() -> Vec<FeatureEntry> {
-    let mut entries: Vec<FeatureEntry> = PLANNED
-        .iter()
-        .map(|(id, label, chunk)| FeatureEntry {
-            id: *id,
-            label: (*label).to_owned(),
-            availability: Availability::Unavailable {
-                reason: "Not available in this build".to_owned(),
-                planned_chunk: (*chunk).to_owned(),
-            },
-        })
-        .collect();
+    // Runtime Security shipped in C03.
+    let mut entries = vec![FeatureEntry {
+        id: FeatureId::Runtime,
+        label: "Runtime Security".to_owned(),
+        availability: Availability::Available,
+    }];
+    entries.extend(PLANNED.iter().map(|(id, label, chunk)| FeatureEntry {
+        id: *id,
+        label: (*label).to_owned(),
+        availability: Availability::Unavailable {
+            reason: "Not available in this build".to_owned(),
+            planned_chunk: (*chunk).to_owned(),
+        },
+    }));
     entries.push(FeatureEntry {
         id: FeatureId::Settings,
         label: "Settings".to_owned(),

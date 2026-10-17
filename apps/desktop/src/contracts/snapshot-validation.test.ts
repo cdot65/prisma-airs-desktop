@@ -8,6 +8,31 @@ import { baseSnapshot, tenant, withTenant } from '../test/native'
 
 const valid: ShellSnapshot = withTenant(baseSnapshot, tenant())
 
+const scan = {
+    operation: 'op-1',
+    progress: 'settled',
+    outcome: 'completed',
+    stop: null,
+    result: {
+        scanId: 'S',
+        reportId: 'R',
+        trId: null,
+        profileName: 'P',
+        profileId: null,
+        category: 'future-category',
+        action: 'allow',
+        verdict: 'unknown',
+        timeout: false,
+        serviceError: false,
+        contentErrors: [{ contentType: 'prompt', feature: 'dlp', status: 'error' }],
+        promptDetected: [{ detector: 'future_detector', detected: true }],
+        responseDetected: [],
+    },
+    failure: null,
+    discarded: false,
+}
+const withScan = (overrides: Record<string, unknown>) => ({ ...valid, scans: [{ ...scan, ...overrides }] })
+
 function review(overrides: Record<string, unknown>) {
     return {
         ...valid,
@@ -37,6 +62,11 @@ describe('shell snapshot validation', () => {
     it('accepts a well-formed snapshot with C02 fields', () => {
         expect(parseShellSnapshot(valid)).toEqual(valid)
         expect(parseShellSnapshot(review({}))).toBeTruthy()
+        expect(parseShellSnapshot(withScan({}))).toBeTruthy()
+        expect(parseShellSnapshot(withScan({ progress: 'running', outcome: null, result: null }))).toBeTruthy()
+        expect(
+            parseShellSnapshot(withScan({ outcome: 'rejected', result: null, failure: { kind: 'unauthorized', status: 401 } }))
+        ).toBeTruthy()
     })
 
     it.each([
@@ -61,6 +91,15 @@ describe('shell snapshot validation', () => {
             },
         ],
         ['tenant with an unknown scan state', { ...valid, tenants: [{ ...tenant(), scan: { state: 'exfiltrated', mode: null, failure: null } }] }],
+        ['scans missing', { ...valid, scans: undefined }],
+        ['a scan with a malformed operation', withScan({ operation: 'op-x' })],
+        ['a result on a scan that did not complete', withScan({ outcome: 'unknown' })],
+        ['a settled scan without an outcome', withScan({ outcome: null, result: null })],
+        ['a running scan with an outcome', withScan({ progress: 'running', result: null, outcome: 'unknown' })],
+        ['an unknown verdict value', withScan({ result: { ...scan.result, verdict: 'probablyFine' } })],
+        ['an unknown failure kind', withScan({ outcome: 'rejected', result: null, failure: { kind: 'teapot', status: 418 } })],
+        ['a non-HTTP failure status', withScan({ outcome: 'rejected', result: null, failure: { kind: 'httpOther', status: 42 } })],
+        ['a detection without its flag', withScan({ result: { ...scan.result, promptDetected: [{ detector: 'dlp' }] } })],
         ['active context with a malformed reference', { ...valid, active: { tenant: tenant().id, context: 'not a context' } }],
     ])('rejects %s', (_case, snapshot) => {
         expect(() => parseShellSnapshot(snapshot)).toThrow(ContractViolation)

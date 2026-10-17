@@ -97,6 +97,32 @@ const CANDIDATE_PROBLEMS: readonly string[] = ['invalidLabel', 'invalidTsgId', '
 const TENANT_ID = /^tn-[0-9a-f]{16}$/
 const CONTEXT_REF = /^cx-[A-Za-z0-9-]{1,61}$/
 const REVIEW_ID = /^rv-[A-Za-z0-9-]{1,61}$/
+const OPERATION_ID = /^op-[0-9]{1,20}$/
+const SCAN_PROGRESS: readonly string[] = ['queued', 'running', 'settled']
+const OUTCOMES: readonly string[] = ['notSent', 'rejected', 'completed', 'unknown']
+const STOP_REASONS: readonly string[] = ['cancelled', 'contextRetired', 'deadline', 'shuttingDown']
+const VERDICTS: readonly string[] = ['allow', 'block', 'alert', 'unknown']
+const SCAN_FAILURES: readonly string[] = [
+    'unauthorized',
+    'forbidden',
+    'conflict',
+    'rateLimited',
+    'badRequest',
+    'unprocessable',
+    'serverError',
+    'httpOther',
+    'timeout',
+    'cancelled',
+    'network',
+    'redirect',
+    'malformedResponse',
+    'tooLarge',
+    'invalidRequest',
+    'credentialLocked',
+    'credentialDenied',
+    'credentialMissing',
+    'other',
+]
 
 const oneOf = (allowed: readonly string[], value: unknown): boolean =>
     typeof value === 'string' && allowed.includes(value)
@@ -164,6 +190,55 @@ function isImportView(value: unknown): boolean {
     }
 }
 
+const isOperation = (value: unknown): boolean => typeof value === 'string' && OPERATION_ID.test(value)
+const isDetection = (d: unknown): boolean => isRecord(d) && isString(d.detector) && typeof d.detected === 'boolean'
+
+function isScanResult(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isString(value.scanId) &&
+        isString(value.reportId) &&
+        optional(isString, value.trId) &&
+        optional(isString, value.profileName) &&
+        optional(isString, value.profileId) &&
+        isString(value.category) &&
+        isString(value.action) &&
+        oneOf(VERDICTS, value.verdict) &&
+        typeof value.timeout === 'boolean' &&
+        typeof value.serviceError === 'boolean' &&
+        Array.isArray(value.contentErrors) &&
+        value.contentErrors.every(
+            (e) =>
+                isRecord(e) && optional(isString, e.contentType) && optional(isString, e.feature) && optional(isString, e.status)
+        ) &&
+        Array.isArray(value.promptDetected) &&
+        value.promptDetected.every(isDetection) &&
+        Array.isArray(value.responseDetected) &&
+        value.responseDetected.every(isDetection)
+    )
+}
+
+function isScanRecord(value: unknown): boolean {
+    if (
+        !isRecord(value) ||
+        !isOperation(value.operation) ||
+        !oneOf(SCAN_PROGRESS, value.progress) ||
+        !optional((o) => oneOf(OUTCOMES, o), value.outcome) ||
+        !optional((s) => oneOf(STOP_REASONS, s), value.stop) ||
+        !optional(isScanResult, value.result) ||
+        !optional(
+            (f) => isRecord(f) && oneOf(SCAN_FAILURES, f.kind) && optional((s) => Number.isInteger(s) && (s as number) >= 100 && (s as number) <= 599, f.status),
+            value.failure
+        ) ||
+        typeof value.discarded !== 'boolean'
+    ) {
+        return false
+    }
+    // Only a completed scan carries a result, and a settled one has an outcome.
+    if (value.result !== null && value.outcome !== 'completed') return false
+    return (value.progress === 'settled') === (value.outcome !== null)
+}
+
 function isDecimalU64(value: unknown): value is string {
     return typeof value === 'string' && DECIMAL_U64.test(value) && BigInt(value) <= U64_MAX
 }
@@ -201,11 +276,16 @@ export function parseDispatchResponse(value: unknown): DispatchResponse {
         value.outcome === 'receipt' &&
         isRecord(value.receipt) &&
         value.receipt.kind === 'admitted' &&
-        typeof value.receipt.request === 'string'
+        typeof value.receipt.request === 'string' &&
+        optional(isOperation, value.receipt.operation)
     ) {
         return {
             outcome: 'receipt',
-            receipt: { kind: 'admitted', request: value.receipt.request },
+            receipt: {
+                kind: 'admitted',
+                request: value.receipt.request,
+                operation: value.receipt.operation as string | null,
+            },
         }
     }
     throw new ContractViolation('dispatch response')
@@ -243,7 +323,9 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
             (f) => isRecord(f) && oneOf(RESET_STAGES, f.stage) && oneOf(VAULT_ERRORS, f.reason),
             value.resetFailure
         ) ||
-        typeof value.durabilityUnconfirmed !== 'boolean'
+        typeof value.durabilityUnconfirmed !== 'boolean' ||
+        !Array.isArray(value.scans) ||
+        !value.scans.every(isScanRecord)
     ) {
         throw new ContractViolation('shell snapshot')
     }

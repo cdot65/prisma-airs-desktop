@@ -2,7 +2,8 @@ import type { Intent, Refusal } from '@prisma-airs/desktop-contracts'
 
 /** What the presentation learned about one delivered intent. */
 export type DispatchOutcome =
-    | { kind: 'admitted' }
+    /** Admitted; `operation` names native work the intent started, if any. */
+    | { kind: 'admitted'; operation: string | null }
     | { kind: 'refused'; refusal: Refusal }
     /** The desktop did not confirm admission; the current state is shown. */
     | { kind: 'unknown' }

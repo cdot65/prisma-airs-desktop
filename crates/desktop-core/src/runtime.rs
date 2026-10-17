@@ -57,6 +57,18 @@ impl OperationId {
     }
 }
 
+impl<'de> serde::Deserialize<'de> for OperationId {
+    /// Accepts only the native-issued shape (`op-` + decimal digits).
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = <String as serde::Deserialize>::deserialize(deserializer)?;
+        let digits = text.strip_prefix("op-").unwrap_or_default();
+        let ok =
+            !digits.is_empty() && digits.len() <= 20 && digits.bytes().all(|b| b.is_ascii_digit());
+        ok.then_some(Self(text))
+            .ok_or_else(|| serde::de::Error::custom("not an operation reference"))
+    }
+}
+
 /// What is known about the remote effect of an operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]

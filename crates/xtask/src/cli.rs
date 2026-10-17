@@ -29,6 +29,7 @@ const USAGE: &str = "usage: xtask <command> [options]
   shared-prepare    --input .inputs/academy --scratch .work/academy
   shared-lifecycle  --allowlist docs/architecture/shared-lifecycle.json --scratch .work/academy [--list]
   sdk-test          --package scm-sdk --features scan --scratch .work/scm-sdk
+  footprint         --chunk Cxx --manifest docs/architecture/checks.json
   package           --kind preview|release-candidate --manifest docs/architecture/checks.json";
 
 struct Args {
@@ -199,7 +200,8 @@ pub fn main(raw: Vec<String>) -> Result<()> {
                 .first()
                 .map(|a| a.sha256.clone())
                 .unwrap_or_default();
-            let pending = native::acceptance_status(&repo, &manifest, subject, &sha);
+            let mut pending = native::acceptance_status(&repo, &manifest, subject, &sha);
+            pending.extend(crate::budgets::status(&repo, &manifest, subject));
             if pending.is_empty() {
                 println!("native acceptance recorded for executable {sha}");
                 Ok(())
@@ -364,6 +366,16 @@ pub fn main(raw: Vec<String>) -> Result<()> {
                 &PathBuf::from(args.require("--input")?),
                 &PathBuf::from(args.require("--scratch")?),
             )
+        }
+        "footprint" => {
+            args.only(&["--chunk", "--manifest"])?;
+            let manifest = args.manifest(&repo)?;
+            let env = Environment::prepare(&repo)?;
+            let record = crate::budgets::footprint(&repo, &manifest, &env, args.subject()?)?;
+            for (id, metric) in &record.metrics {
+                println!("{id} {:.2} {}", metric.samples[0], metric.unit);
+            }
+            Ok(())
         }
         "sdk-test" => {
             args.only(&["--package", "--features", "--scratch"])?;

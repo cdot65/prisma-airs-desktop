@@ -16,6 +16,7 @@ pub mod import;
 mod observe;
 pub mod runtime;
 pub mod scan;
+pub mod scanning;
 pub mod store;
 pub mod tenants;
 pub mod transport;
@@ -25,8 +26,8 @@ pub mod wire;
 pub use authority::{
     ActiveContext, Adapters, AuthorityHandle, Core, CoreConfig, CredentialStore,
     EndpointReviewView, ImportFile, ImportPicker, ImportView, Intent, MAX_TENANTS, Observation,
-    Principal, Receipt, Refusal, ResetFailure, ResetStage, ScanState, ScanView, ShellSnapshot,
-    StorageHealth, TenantView, ViewScope,
+    Principal, Receipt, Refusal, ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState,
+    ScanView, ShellSnapshot, StorageHealth, TenantView, ViewScope,
 };
 pub use delivery::{Delivery, DeliverySession, SEQUENCE_LIMIT};
 pub use observe::{Subscription, Update};

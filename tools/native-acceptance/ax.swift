@@ -8,6 +8,10 @@
 //   ax press <pid> <role> <label> [nth]     AXPress the nth matching element
 //   ax focus <pid> <role> <label> [nth]     set AXFocused on the nth match
 //   ax raise <pid>                          raise the main window
+//   ax type-file <pid> <file> [units]       type the file's text into the focused
+//                                           field as key events posted to <pid>,
+//                                           [units] UTF-16 units per event
+//                                           (default 20; up to 30000 pastes)
 // A node matches when its role equals <role> and its label (title,
 // description or string value) starts with <label>. Secure text fields
 // report the value the OS exposes for them (so evidence can show the key is
@@ -118,6 +122,34 @@ case "press", "focus":
         ? AXUIElementPerformAction(el, kAXPressAction as CFString)
         : AXUIElementSetAttributeValue(el, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     guard status == .success else { fail("\(args[1]) failed: \(status.rawValue)") }
+    print("ok")
+case "type-file":
+    // Real keyboard events posted to this process only (CGEventPostToPid, so
+    // they can reach no other application), each carrying up to 20 UTF-16
+    // units of the file's text into the focused field. Used for inputs too
+    // large to type through System Events; the caller confirms the app is
+    // frontmost and verifies what arrived.
+    guard args.count >= 4, let text = try? String(contentsOfFile: args[3], encoding: .utf8) else { fail("type-file needs <file> [units per event]") }
+    // 20 UTF-16 units per event mimics fast typing; larger events (WebKit
+    // truncates one event at 36,864 units) insert like a paste.
+    let perEvent = args.count >= 5 ? Int(args[4]) ?? 20 : 20
+    let source = CGEventSource(stateID: .hidSystemState)
+    var chunk: [UniChar] = []
+    func post(_ units: [UniChar]) {
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else { fail("cannot create key events") }
+        units.withUnsafeBufferPointer { down.keyboardSetUnicodeString(stringLength: units.count, unicodeString: $0.baseAddress) }
+        down.postToPid(pid)
+        up.postToPid(pid)
+        // Large (paste-like) events get time to be applied before the next.
+        usleep(units.count > 20 ? 500_000 : 1_000)
+    }
+    for character in text {
+        let units = Array(String(character).utf16)
+        if chunk.count + units.count > perEvent { post(chunk); chunk = [] }
+        chunk.append(contentsOf: units)
+    }
+    if !chunk.isEmpty { post(chunk) }
     print("ok")
 case "raise":
     let app = AXUIElementCreateApplication(pid)

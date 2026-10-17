@@ -425,7 +425,34 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/runtime/scan-submit.test.tsx"
+          "src/features/runtime/scan-submit.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/contracts/invoke.test.ts",
+          "src/shell/desktop-shell.test.tsx"
+        ]
+      ],
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
         ]
       ]
     },

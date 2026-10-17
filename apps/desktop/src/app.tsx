@@ -48,7 +48,7 @@ export function App({ client }: { client: DesktopClient }) {
                 const response = await client.dispatch(intent)
                 return response.outcome === 'refusal'
                     ? { kind: 'refused', refusal: response.refusal }
-                    : { kind: 'admitted' }
+                    : { kind: 'admitted', operation: response.receipt.operation }
             } catch (error) {
                 return error instanceof DeliveryOutcomeUnknown ? { kind: 'unknown' } : { kind: 'failed' }
             }

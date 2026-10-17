@@ -1,0 +1,10 @@
+{
+  "schema": "airs-v2-perf-failed/1",
+  "label": "acceptance",
+  "budgets_sha256": "6996deaf7f039c557ce22243cbdeeb0fe5aa540b64a5097cadbf8838e3ae22dc",
+  "started_utc": "2026-10-17T14:57:59Z",
+  "failed_utc": "before 2026-10-17T15:06:52Z (footprint start)",
+  "error": "scan 13: the 100 KiB prompt did not arrive (tools/perf/measure_c03.py, first acceptance attempt)",
+  "partial": null,
+  "note": "Reconstructed record (started_utc is the end of the native acceptance run that preceded it). The script then kept no samples on failure, so the cold, warm, idle and input-latency samples it had collected were lost and are not reported. The script now writes this record itself, with any partial samples, on every failed attempt; bulk typing retries a mismatched field and paces key events at 1 ms."
+}

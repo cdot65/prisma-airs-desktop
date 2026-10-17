@@ -12,7 +12,7 @@ interface HeadingProps {
 }
 
 /** Page heading that receives focus after navigation (tabIndex -1). */
-const PageHeading = forwardRef<HTMLHeadingElement, HeadingProps>(function PageHeading({ id, kicker, title }, ref) {
+export const PageHeading = forwardRef<HTMLHeadingElement, HeadingProps>(function PageHeading({ id, kicker, title }, ref) {
     return (
         <header className='mb-6 flex flex-col gap-2'>
             <Kicker>{kicker}</Kicker>

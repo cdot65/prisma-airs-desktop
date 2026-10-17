@@ -2,6 +2,8 @@
 //! authority interface (dispatch/observe) with scripted vault, store and
 //! picker adapters, plus native transport/SDK binding contracts.
 
+// Shared with the sync_scan target, which uses replies this target does not.
+#[allow(dead_code)]
 mod support;
 mod transport;
 
