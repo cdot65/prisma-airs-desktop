@@ -174,6 +174,21 @@ impl Operations {
         work: Work,
         now: Instant,
     ) -> Result<(OperationId, Vec<Start>), Refusal> {
+        let budget = self.limits.interactive_budget;
+        self.admit_for(context, bytes, work, now, budget)
+    }
+
+    /// Admits operator-paced work (it waits on a native sheet before any
+    /// request) with its own deadline; each request inside keeps its own
+    /// timeout.
+    pub fn admit_for(
+        &mut self,
+        context: &str,
+        bytes: usize,
+        work: Work,
+        now: Instant,
+        budget: std::time::Duration,
+    ) -> Result<(OperationId, Vec<Start>), Refusal> {
         let full = self.queue.len() >= self.limits.max_queued
             || self.queued_bytes.saturating_add(bytes) > self.limits.max_queued_bytes;
         if full || bytes > self.limits.max_queued_bytes {
@@ -185,7 +200,7 @@ impl Operations {
             id: id.clone(),
             context: context.to_owned(),
             bytes,
-            deadline: now + self.limits.interactive_budget,
+            deadline: now + budget,
             cancelled: None,
             work,
         });

@@ -3,4 +3,4 @@
 /**
  * Why a learner call produced no tRPC reply.
  */
-export type CallFailure = "network" | "timeout" | "invalidResponse" | "sessionExpired" | "credentialUnavailable" | "cancelled";
+export type CallFailure = "network" | "timeout" | "invalidResponse" | "sessionExpired" | "credentialUnavailable" | "cancelled" | "hostUnavailable" | "unsupportedImage" | "destinationRefused" | "uploadFailed";

@@ -13,7 +13,6 @@ import {
     createRoute,
     createRouter,
     Link,
-    Navigate,
     Outlet,
     redirect,
     RouterProvider,
@@ -21,13 +20,30 @@ import {
 import { Button, Callout } from '@ai-security-academy/presentation'
 import { Info } from 'lucide-react'
 import {
+    AssessmentIntroPage,
+    AssessmentPage,
+    CertificatePage,
     CompletionMoments,
     CoursePage,
     currentCourseSlug,
+    DossierPage,
+    HomePage,
+    IdentityPracticalPage,
+    LEARNER_ACCOUNT_NAV,
+    LEARNER_NAV,
+    LearnerAccountPage,
     LearnPage,
+    MyCertificatePage,
+    NotificationsPage,
+    OnboardingPage,
+    OrientationPage,
     PathLandingPage,
+    ProgramHubPage,
+    ShiftEntryPage,
+    ShopPage,
     UnitPage,
     useLearnerPageHeader,
+    WeeklyBoardPage,
 } from '@ai-security-academy/learner'
 import type { DesktopClient, FeatureId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { LearnerProvider } from './learner-provider'
@@ -51,18 +67,57 @@ function themeFor(appearance: ShellSnapshot['appearance']): 'gruvbox' | 'paper' 
         : 'paper'
 }
 
-/** Builds the in-memory learner router (one per mounted generation). */
-function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string) {
+/**
+ * Builds the in-memory learner router (one per mounted generation). Reading
+ * routes serve guests too; account routes (Home, Program, assessment,
+ * certificates, Shift, progression, account) ask a guest to sign in.
+ */
+function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string, signedIn: boolean) {
     const root = createRootRoute({
         component: () => (
             <>
+                <AcademyNav signedIn={signedIn} />
                 <LearnerTrail />
+                <LearnerStatus />
                 <Outlet />
             </>
         ),
         notFoundComponent: () => <NotInThisBuild />,
     })
-    const index = createRoute({ getParentRoute: () => root, path: '/', component: () => <Navigate to='/learn' /> })
+    const signInFirst = () => <SignInHere onNavigate={onNavigate} />
+    const account = (path: string, Page: () => React.ReactNode) =>
+        createRoute({ getParentRoute: () => root, path, component: signedIn ? () => <>{Page()}</> : signInFirst })
+    const index = account('/', () => <HomePage />)
+    const program = account('/program', () => <ProgramHubPage />)
+    const assessment = account('/assessment', () => <AssessmentPage />)
+    const assessmentIntro = account('/assessment/intro', () => <AssessmentIntroPage />)
+    const identityPractical = account('/assessment/identity-practical', () => <IdentityPracticalPage />)
+    // The retired exam route goes to the assessment, as on Academy web.
+    const exam = createRoute({
+        getParentRoute: () => root,
+        path: '/exam',
+        beforeLoad: () => {
+            throw redirect({ to: '/assessment', replace: true })
+        },
+    })
+    const certificates = account('/certificate', () => <MyCertificatePage />)
+    const certificate = createRoute({
+        getParentRoute: () => root,
+        path: '/certificate/$certId',
+        component: signedIn
+            ? function CertificateRoute() {
+                  return <CertificatePage certId={certificate.useParams().certId} />
+              }
+            : signInFirst,
+    })
+    const shift = account('/shift', () => <ShiftEntryPage />)
+    const dossier = account('/dossier', () => <DossierPage />)
+    const leaderboard = account('/leaderboard', () => <WeeklyBoardPage />)
+    const settings = account('/settings', () => <LearnerAccountPage />)
+    const notifications = account('/notifications', () => <NotificationsPage />)
+    const shop = account('/shop', () => <ShopPage />)
+    const orientation = account('/orientation', () => <OrientationPage />)
+    const onboarding = account('/onboarding', () => <OnboardingPage />)
     const learn = createRoute({ getParentRoute: () => root, path: '/learn', component: LearnPage })
     // The retired paths list folded into /learn, as on Academy web.
     const paths = createRoute({
@@ -104,13 +159,89 @@ function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string)
         component: () => <SignInHere onNavigate={onNavigate} />,
     })
     return createRouter({
-        routeTree: root.addChildren([index, learn, paths, path, course, unit, signIn]),
+        routeTree: root.addChildren([
+            index,
+            learn,
+            paths,
+            path,
+            course,
+            unit,
+            signIn,
+            program,
+            assessment,
+            assessmentIntro,
+            identityPractical,
+            exam,
+            certificates,
+            certificate,
+            shift,
+            dossier,
+            leaderboard,
+            settings,
+            notifications,
+            shop,
+            orientation,
+            onboarding,
+        ]),
         history: createMemoryHistory({ initialEntries: [initialPath] }),
         defaultPreload: false,
         // A page that fails to render says so plainly; its error text (which
         // may name internals) is never shown.
         defaultErrorComponent: PageFailed,
     })
+}
+
+/**
+ * Academy's own navigation: its primary sections, and for a signed-in learner
+ * the web shell's Notifications and Settings entries. Guests see Learn only.
+ */
+function AcademyNav({ signedIn }: { signedIn: boolean }) {
+    const items = LEARNER_NAV.filter((item) => signedIn || item.to === '/learn')
+    return (
+        <nav aria-label='Academy sections' data-slot='academy-nav' className='mb-4 flex flex-wrap items-center gap-1'>
+            {items.map((item) => (
+                <NavLink key={item.to} to={item.to} label={item.label} />
+            ))}
+            {signedIn ? (
+                <span data-slot='academy-account-nav' className='ml-auto flex gap-1'>
+                    {LEARNER_ACCOUNT_NAV.map((item) => (
+                        <NavLink key={item.to} to={item.to} label={item.label} />
+                    ))}
+                </span>
+            ) : null}
+        </nav>
+    )
+}
+
+function NavLink({ to, label }: { to: string; label: string }) {
+    return (
+        <Link
+            to={to}
+            activeOptions={{ exact: to === '/' }}
+            activeProps={{ 'aria-current': 'page', className: 'bg-academy-accent-soft text-academy-ink' }}
+            className='text-academy-ink-soft hover:text-academy-ink rounded-academy-sm inline-flex min-h-11 items-center px-3 text-[13px] font-medium'
+        >
+            {label}
+        </Link>
+    )
+}
+
+/**
+ * Session-critical status a learner page publishes (the final assessment's
+ * timer, which also submits at Academy's deadline, and its proctored pill),
+ * kept in view while the page scrolls. It unmounts with the page.
+ */
+function LearnerStatus() {
+    const { status } = useLearnerPageHeader()
+    if (!status) return null
+    return (
+        <div
+            data-slot='academy-status'
+            className='bg-academy-bg sticky top-0 z-10 mb-4 flex min-h-11 items-center justify-end gap-3 py-2'
+        >
+            {status}
+        </div>
+    )
 }
 
 /**
@@ -187,12 +318,12 @@ function NotInThisBuild() {
     return (
         <section aria-labelledby='academy-later' className='mx-auto flex max-w-xl flex-col gap-4 py-10'>
             <h1 id='academy-later' className='font-display text-academy-ink text-[28px] font-semibold'>
-                Not in this desktop build yet
+                Not in the desktop app
             </h1>
             <Callout tone='default' icon={Info}>
                 <p>
-                    This part of Academy (such as the Program, assessments or practice shifts) arrives in a later
-                    desktop build. Lessons and knowledge checks are available now.
+                    This part of Academy is not part of the desktop app. Learning, the Program, assessments,
+                    certificates and your account are here.
                 </p>
             </Callout>
             <Link to='/learn' className='text-academy-ink min-h-11 text-[13px] underline'>
@@ -287,16 +418,21 @@ function AcademyRoutes({
     onNavigate,
     container,
     initialPath,
+    signedIn,
 }: {
     onNavigate: (id: FeatureId) => void
     container: React.RefObject<HTMLElement | null>
     initialPath: string
+    signedIn: boolean
 }) {
     // One router per mounted generation: a new callback identity must not
     // reset the learner's place.
     const navigate = useRef(onNavigate)
     navigate.current = onNavigate
-    const router = useMemo(() => academyRouter((id) => navigate.current(id), initialPath), [initialPath])
+    const router = useMemo(
+        () => academyRouter((id) => navigate.current(id), initialPath, signedIn),
+        [initialPath, signedIn]
+    )
     useHeadingFocus(container, router)
     const links = useLessonLinks(router)
     return (
@@ -346,8 +482,20 @@ export const AcademyView = forwardRef<HTMLHeadingElement, Props>(function Academ
                     Browsing as a guest. Sign in from Settings to track progress and take knowledge checks.
                 </p>
             ) : null}
-            <LearnerProvider client={client} learner={learner} accountId={accountId} theme={themeFor(snapshot.appearance)}>
-                <AcademyRoutes onNavigate={onNavigate} container={container} initialPath={initialPath} />
+            <LearnerProvider
+                client={client}
+                learner={learner}
+                accountId={accountId}
+                displayName={view.state === 'signedIn' ? view.displayName : null}
+                theme={themeFor(snapshot.appearance)}
+                webOrigin={snapshot.academyOrigin}
+            >
+                <AcademyRoutes
+                    onNavigate={onNavigate}
+                    container={container}
+                    initialPath={initialPath}
+                    signedIn={accountId !== null}
+                />
                 <CompletionMoments />
                 {snapshot.fixtureBuild ? (
                     <Suspense fallback={null}>

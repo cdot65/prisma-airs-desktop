@@ -106,6 +106,10 @@ describe('shell snapshot validation', () => {
         ['a malformed learner reference', { ...valid, academy: { state: 'signedIn', displayName: 'A', learner: 'cx-1' } }],
         ['an unknown academy failure', { ...valid, academy: { state: 'failed', failure: 'oops', vault: null, displayName: null } }],
         ['active context with a malformed reference', { ...valid, active: { tenant: tenant().id, context: 'not a context' } }],
+        ['a missing Academy origin', { ...valid, academyOrigin: undefined }],
+        ['a non-HTTPS Academy origin', { ...valid, academyOrigin: 'http://academy.example' }],
+        ['an Academy origin with a path', { ...valid, academyOrigin: 'https://academy.example/verify' }],
+        ['an Academy origin with credentials', { ...valid, academyOrigin: 'https://user@academy.example' }],
     ])('rejects %s', (_case, snapshot) => {
         expect(() => parseShellSnapshot(snapshot)).toThrow(ContractViolation)
     })

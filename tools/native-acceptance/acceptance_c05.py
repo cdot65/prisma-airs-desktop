@@ -80,6 +80,22 @@ def heading(tree, label, level=None):
                  and (level is None or n.get("value") == level)), None)
 
 
+def trail_links(tree):
+    """Links of the 'Academy location' trail, in order (from C06 the
+    destination's own navigation also offers a 'Learn' link)."""
+    out, depth = [], None
+    for n in tree:
+        d = n.get("depth", 0)
+        if depth is not None and d <= depth:
+            break
+        if n.get("role") == "AXGroup" and n.get("label") == "Academy location":
+            depth = d
+            continue
+        if depth is not None and n.get("role") == "AXLink":
+            out.append(n.get("label"))
+    return out
+
+
 def learner_calls(requests):
     return [r for r in requests if r.get("procedure")]
 
@@ -245,7 +261,7 @@ def run():
         "first_paragraph": shows(tree, FIRST_PARAGRAPH),
         "section_headings": sum(1 for n in tree if n.get("role") == "AXHeading" and (n.get("label") or "").startswith("Section ")),
         "bytes": lesson_bytes,
-        "trail": [n.get("label") for n in tree if n.get("role") == "AXLink" and n.get("label") in ("Learn", COURSE)],
+        "trail": trail_links(tree),
     }
     image = next((n for n in tree if (n.get("label") or "") == "Lesson diagram"), None)
     obs["diagram"] = {
@@ -290,7 +306,12 @@ def run():
     wait(lambda t: heading(t, COURSE, 1) is not None, 6)
     mark = len(endpoint.requests())
     tree, _ = open_unit("Lab: Scanning", "Lab: Scanning at runtime")
-    tree, ok = wait(lambda t: shows(t, "no lab sandbox was started"), 6)
+    if SUBJECT == "C05":
+        tree, ok = wait(lambda t: shows(t, "no lab sandbox was started"), 6)
+    else:
+        # From C06 the lab runs through Academy's desktop attempt contract:
+        # its intro offers 'Start lab' and nothing starts until pressed.
+        tree, ok = wait(lambda t: app.node(t, "AXButton", "Start lab") is not None, 6)
     obs["lab_preview"] = ok and heading(tree, "Block an injected prompt", 2) is not None
     obs["lab_requests"] = endpoint.requests()[mark:]
     obs["tree_lab"] = save_tree("lab-preview", tree)
@@ -506,7 +527,7 @@ def evaluate(prepared, o):
         f"guest 'Start knowledge check' shows 'Sign in to take this knowledge check.': {o['guest_kc_sign_in']}; learner calls sent for it: {guest_kc_sent}",
         [o["tree_guest_kc"]])
     lab_calls = [c["procedure"] for c in learner_calls(o["lab_requests"])]
-    lab_runs = [p for p in lab_calls if p.startswith("labs.") and p != "labs.get"]
+    lab_runs = [p for p in lab_calls if (p.startswith("labs.") and p != "labs.get") or p in ("desktop.attempt.start", "desktop.attempt.submit")]
     add("C05-N07", o["lab_preview"] and not lab_runs,
         f"lab unit previewed with its brief and 'no lab sandbox was started': {o['lab_preview']}; learner calls {lab_calls}; lab start/step/submit calls: {lab_runs}",
         [o["tree_lab"]])

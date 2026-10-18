@@ -1,0 +1,54 @@
+
+running 45 tests
+test avatar::tests::base64_matches_rfc_4648_vectors ... ok
+test academy::tests::private_fields_are_screened_except_the_orientation_drill ... ok
+test academy::tests::token_replies_require_bearer_scope_and_refresh ... ok
+test authority::learner_domain::tests::identity_requires_an_academy_account_and_a_display_name ... ok
+test academy::tests::origins_are_bare_https ... ok
+test authority::tests::observers_beyond_the_cap_are_refused_not_evicted ... ok
+test avatar::tests::only_avatars_on_academys_origin_are_read ... ok
+test authority::tests::observer_queue_overflow_ends_with_resync ... ok
+test avatar::tests::uploads_go_only_to_reviewed_destinations ... ok
+test context::tests::entered_secrets_never_format_their_value ... ok
+test context::tests::references_are_unique_per_epoch_and_bounded_on_input ... ok
+test import::tests::airs_cli_registry_imports_names_and_tsg_ids_only ... ok
+test import::tests::profile_documents_keep_whitelisted_fields_and_flag_invalid_entries ... ok
+test import::tests::unsupported_oversized_and_empty_sources_are_refused ... ok
+test learner::tests::the_allowlist_is_sorted_unique_and_learner_only ... ok
+test learner::tests::the_public_set_is_sorted_and_contains_only_queries ... ok
+test learner::tests::the_shared_procedure_fixture_matches_the_pinned_sets ... ok
+test runtime::tests::admission_is_bounded_by_count_and_bytes_without_dropping_work ... ok
+test runtime::tests::cancelling_queued_work_is_not_sent_and_claimed_work_is_signalled ... ok
+test runtime::tests::retirement_settles_queued_not_sent_and_cancels_claimed ... ok
+test runtime::tests::settlement_is_single_use_and_queued_deadlines_are_not_sent ... ok
+test avatar::tests::malformed_unsupported_oversize_and_huge_photos_are_refused ... ok
+test scanning::tests::drafts_never_format_their_text ... ok
+test scanning::tests::verdicts_follow_v1_and_never_default_to_allow ... ok
+test store::tests::a_planted_symlink_is_not_written_through ... ok
+test store::tests::a_second_instance_cannot_take_the_lease ... ok
+test store::tests::failures_before_the_rename_change_nothing_and_after_it_are_unconfirmed ... ok
+test store::tests::saves_atomically_with_owner_only_modes_and_reloads ... ok
+test store::tests::unreadable_or_inconsistent_documents_are_corrupt_and_untouched ... ok
+test tenants::tests::drafts_are_trimmed_and_bounded ... ok
+test tenants::tests::origins_are_https_hosts_without_extra_parts ... ok
+test tenants::tests::tenant_ids_have_the_issued_shape_only ... ok
+test transport::tests::chunks_are_bounded_without_losing_bytes ... ok
+test transport::tests::invalid_policies_are_refused ... ok
+test vault::tests::record_ids_have_the_issued_shape_only ... ok
+test vault::tests::session_records_are_isolated_and_removable ... ok
+test avatar::tests::exif_orientation_is_applied_to_the_prepared_square ... ok
+test scanning::tests::drafts_need_content_a_valid_profile_and_bounded_text ... ok
+test avatar::tests::served_avatars_are_re_encoded_only_when_type_and_image_agree ... ok
+test avatar::tests::extreme_landscape_and_portrait_photos_are_prepared_from_their_centre ... ok
+test avatar::tests::a_photo_larger_than_academys_upload_cap_is_still_accepted_as_a_source ... ok
+test avatar::tests::chosen_photos_become_512_pixel_jpegs_within_academys_cap ... ok
+test avatar::tests::decoded_pixels_beyond_the_memory_budget_are_refused_before_decoding ... ok
+test avatar::tests::decoded_pixels_and_their_resampling_together_stay_within_the_budget ... ok
+test avatar::tests::a_24_megapixel_rotated_photo_within_the_budget_is_prepared ... ok
+
+test result: ok. 45 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.88s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-786ea99fd92ae6a1)

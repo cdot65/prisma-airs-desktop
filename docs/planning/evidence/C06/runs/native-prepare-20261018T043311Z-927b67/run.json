@@ -1,0 +1,156 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "native-prepare-20261018T043311Z-927b67",
+  "subject": "C06",
+  "kind": "native-prepare",
+  "started_utc": "2026-10-18T04:33:11Z",
+  "finished_utc": "2026-10-18T04:34:50Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/cdot/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/cdot/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "node",
+      "path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/"
+  },
+  "inputs_before": {
+    "source": "c788775e1093d101f9ebcdbd2f075edb2f78c0524d2d3a82b0248fbb10e4cba8",
+    "dependencies": "cec9d34f2f97ff149a39e714f6bdaa97513ea7e9c8b34fca19645dfe838ed27c",
+    "build_flags": "d6a34f3578f220d5dcc79de9db3589c3ab16d68888d056e14e328b2f9e5c7d6b"
+  },
+  "inputs_after": {
+    "source": "c788775e1093d101f9ebcdbd2f075edb2f78c0524d2d3a82b0248fbb10e4cba8",
+    "dependencies": "cec9d34f2f97ff149a39e714f6bdaa97513ea7e9c8b34fca19645dfe838ed27c",
+    "build_flags": "d6a34f3578f220d5dcc79de9db3589c3ab16d68888d056e14e328b2f9e5c7d6b"
+  },
+  "commands": [
+    {
+      "label": "setup/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 12279,
+      "output_sha256": "f2bef0f513f68ebf3898514fde2b759ac017fe0d0cc78fc0ed17cd90ce6dbae3",
+      "log": "logs/setup-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "setup/2",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 652,
+      "output_sha256": "081abe02a3402f6479aae84cf5a558a86a798710697660ba61b4e7786386a47f",
+      "log": "logs/setup-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "native-prepare",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C06",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 48958,
+      "output_sha256": "f1bf18a6ab26735cdc08fb06ea704218016a7bf46ce2c12549b2a68b7efa02e2",
+      "log": "logs/native-prepare.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "artifacts": [
+    {
+      "name": "fixture-executable",
+      "path": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app/Contents/MacOS/prisma-airs-desktop-v2",
+      "sha256": "af93e8238944c03797b5fa7044a8c6b8049b4cf701d1ad55eb55e4648f21ba77"
+    },
+    {
+      "name": "fixture-bundle",
+      "path": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+      "sha256": "191f75547afe75e900ec6650ad0d60adb080eb27407c2018a7220cefcd670905"
+    }
+  ]
+}

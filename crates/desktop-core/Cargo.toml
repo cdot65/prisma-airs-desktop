@@ -35,6 +35,9 @@ tokio-util = { version = "=0.7.20", default-features = false }
 # Reviewed extra roots are validated as X.509 trust anchors before use.
 rustls-pki-types = { version = "=1.15.1", features = ["std"] }
 rustls-webpki = { version = "=0.103.15", default-features = false, features = ["std", "aws-lc-rs"] }
+# The learner's avatar is decoded with bounds, oriented and re-encoded as a
+# 512 px JPEG before upload and on readback (as v1 did); decoders only.
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
@@ -63,6 +66,11 @@ required-features = ["test-fixtures"]
 [[test]]
 name = "academy_learner"
 path = "tests/academy_learner/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "academy_program"
+path = "tests/academy_program/main.rs"
 required-features = ["test-fixtures"]
 
 [lints]

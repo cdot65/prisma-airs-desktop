@@ -207,9 +207,9 @@ describe('Academy destination', () => {
 
     it('carries Academy redirects and says plainly what this build does not include', async () => {
         const { client, dispatched } = native()
-        const view = render(<AcademyView snapshot={snapshot(true)} client={client} onNavigate={vi.fn()} initialPath='/program' />)
-        expect(await screen.findByRole('heading', { level: 1, name: 'Not in this desktop build yet' })).toBeInTheDocument()
-        expect(screen.getByText(/Lessons and knowledge checks are available now/)).toBeInTheDocument()
+        const view = render(<AcademyView snapshot={snapshot(true)} client={client} onNavigate={vi.fn()} initialPath='/admin' />)
+        expect(await screen.findByRole('heading', { level: 1, name: 'Not in the desktop app' })).toBeInTheDocument()
+        expect(screen.getByText(/Learning, the Program, assessments/)).toBeInTheDocument()
         expect(dispatched).toEqual([])
         view.unmount()
 
@@ -295,7 +295,7 @@ describe('desktop host capabilities', () => {
         pathContext: null,
     }
 
-    it('previews a lab instead of mounting a runner', async () => {
+    it('runs a lab through the desktop attempt contract instead of the web lab runtime', async () => {
         const lab = {
             ...base,
             id: 'u-lab',
@@ -311,10 +311,12 @@ describe('desktop host capabilities', () => {
         const { client, dispatched } = native({
             units: { get: lab, listByModule: [] },
             labs: { get: { lab: { kind: 'scan', id: 'lab-1', title: 'Block it', brief: 'Brief.' }, progress: {} } },
+            desktop: { attempt: { list: { accountId: 'user_2fixturelearner', attempts: [], nextCursor: null } } },
         })
         render(<AcademyView snapshot={snapshot(true)} client={client} onNavigate={vi.fn()} initialPath='/units/u-lab' />)
-        expect(await screen.findByText(/no lab sandbox was started/, {}, { timeout: 15000 })).toBeInTheDocument()
+        expect(await screen.findByRole('button', { name: 'Start lab' }, { timeout: 15000 })).toBeInTheDocument()
         expect(dispatched.filter((i) => i.procedure.startsWith('labs.') && i.procedure !== 'labs.get')).toEqual([])
+        expect(dispatched.some((i) => i.procedure === 'desktop.attempt.list')).toBe(true)
     }, 20000)
 
     it('shows pre-rendered diagrams without loading the diagram renderer or video', async () => {

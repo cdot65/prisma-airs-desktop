@@ -100,6 +100,8 @@ const CONTEXT_REF = /^cx-[A-Za-z0-9-]{1,61}$/
 const REVIEW_ID = /^rv-[A-Za-z0-9-]{1,61}$/
 const OPERATION_ID = /^op-[0-9]{1,20}$/
 const LEARNER_REF = /^lx-[A-Za-z0-9-]{1,61}$/
+/** A bare HTTPS origin (Academy web, for public links only). */
+const ACADEMY_ORIGIN = /^https:\/\/[A-Za-z0-9.-]{1,253}(:\d{1,5})?$/
 const ACADEMY_FAILURES: readonly string[] = [
     'notConfigured',
     'invalidConfig',
@@ -112,7 +114,18 @@ const ACADEMY_FAILURES: readonly string[] = [
     'accountChanged',
     'authFailed',
 ]
-const CALL_FAILURES: readonly string[] = ['network', 'timeout', 'invalidResponse', 'sessionExpired', 'credentialUnavailable', 'cancelled']
+const CALL_FAILURES: readonly string[] = [
+    'network',
+    'timeout',
+    'invalidResponse',
+    'sessionExpired',
+    'credentialUnavailable',
+    'cancelled',
+    'hostUnavailable',
+    'unsupportedImage',
+    'destinationRefused',
+    'uploadFailed',
+]
 const SCAN_PROGRESS: readonly string[] = ['queued', 'running', 'settled']
 const OUTCOMES: readonly string[] = ['notSent', 'rejected', 'completed', 'unknown']
 const STOP_REASONS: readonly string[] = ['cancelled', 'contextRetired', 'deadline', 'shuttingDown']
@@ -394,7 +407,9 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !Array.isArray(value.scans) ||
         !value.scans.every(isScanRecord) ||
         !isAcademyView(value.academy) ||
-        !optional((l) => typeof l === 'string' && LEARNER_REF.test(l), value.learner)
+        !optional((l) => typeof l === 'string' && LEARNER_REF.test(l), value.learner) ||
+        typeof value.academyOrigin !== 'string' ||
+        !ACADEMY_ORIGIN.test(value.academyOrigin)
     ) {
         throw new ContractViolation('shell snapshot')
     }

@@ -1,0 +1,80 @@
+{
+  "request_id": "rq-C06-20261018T081056Z-afbb7231",
+  "attempt_id": "attempt-04",
+  "subject": "C06",
+  "fingerprints": {
+    "source": "c658027d392401645e80790b522c488c8d5d39aede70acb45007b8ba66b64945",
+    "dependencies": "e8092aba79934a17122fb122816a84025c3d22b49406651d205154bfabbb815f",
+    "build_flags": "1f0d38523738a798bd5328a1b1b828fb1efc48823464f3654c4922d9b4de120c",
+    "evidence": "457ccf2cbb6ae2b4ea405a57af8cd24b044b026641748f8b39feb308471dc3d7"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 8,
+    "validation": 8,
+    "overall": 8
+  },
+  "required_fixes": [
+    "C06-A04-RF01 [P1] Bound resize intermediates as well as decoded pixels. crates/desktop-core/src/avatar.rs:80 calls decoded.resize_to_fill(512,512,Lanczos3). In pinned image 0.25.10, DynamicImage::resize_to_fill first resizes the entire image to fill the target and only then crops it (src/images/dynimage.rs:943-960); those allocations do not use the decoder budget. An 8192x1 RGB PNG passes the source, dimension and decoded-output checks (only 24,576 decoded bytes), but expands to a 4,194,304x512 intermediate. imageops::resize/horizontal_sample requests a 6,442,450,944-byte RGB output buffer before the crop, creating a native memory-exhaustion/crash path. The same helper processes remote avatar readback. Independently generated this valid 109-byte PNG using the actual native fixture generator and verified its chunks, CRCs and inflated row; the oversized resize was not executed. The dependency call path was checked against archive bytes matching Cargo.lock. Acceptance: use a bounded crop/resample pipeline or explicitly refuse inputs before resampling when intermediate allocations exceed the processing budget. Preserve ordinary photo preparation and EXIF behavior. Add extreme landscape and portrait cases at the production preparation and readback interfaces, proving safe bounded processing or refusal before oversized allocation and before upload. The new 7000x7000 tests correctly cover decoded storage but do not cover this small-decoded-input expansion."
+  ],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [
+    "Align the slow-briefing Rust fixture in crates/desktop-core/tests/academy_program/main.rs with the actual Shift inputs: shift.answer uses shiftId/order/values and shift.serve uses shiftId/order. Native C06-N06 already exercises the correct shape, so this remains nonblocking.",
+    "Consider exposing image loading/failure state before saying 'The photo shown is what Academy serves now.' useLearnerImage retains the previous image during refresh and falls back to initials on failure; qualify that copy while readback is pending or unavailable."
+  ],
+  "limitations": [
+    "Independently verified all four supplied fingerprints, the 308-entry source inventory, 96 referenced packet artifacts, source-bound run/log/artifact hashes, the passing C05 predecessor receipt and pinned Academy 7e8dcc7916a5a6d503415cf615246694f00e6629 tree. Frozen inputs were checked again before writing this verdict.",
+    "C06-A03-RF01 is resolved: decoded output bytes are reserved before DynamicImage allocation and the remaining budget is forwarded to the decoder. The new tests cover a within-dimension image exceeding the decoded-byte budget, chosen-photo refusal without presigning/uploading, remote-image refusal, and preparation of a rotated 24-megapixel photo.",
+    "Independently executed the existing academy_program binary (15/15 passing) and avatar unit tests (10/10 passing), without rebuilding. Also repeated in-memory React probes using the actual host-action mapper, upload hook and learner-image hook: lost PUT and denied confirmation retain possibly-applied messages and refresh the image at the unchanged URL.",
+    "The resize finding is source-derived; no multi-gigabyte resize or native memory-pressure experiment was executed. Five inspected image dependency files matched the image-0.25.10 archive whose SHA-256 is 85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104, matching Cargo.lock. The constructed PNG remained entirely in memory.",
+    "Reviewed registered evidence for 178 desktop tests, 1351 hermetic shared tests, 43 core tests, 75 selected frontend tests, the current truth-graph gate and 26 guarded mutation probes with passing baselines. The truth report has no private truth modules, forbidden packages or canary hits. Passing tests do not bound the uncovered resize intermediate.",
+    "All 55 submitted C06/C01/C04/C05 native checks report pass on executable 9da78548eaa72e5932ed604ddb7ceb43cfeb94b63d4d31ec2c0e4eb629db007a. Inspected native records and driver code include decoded-budget refusal with no remote request, ordinary photo preparation, and lost-PUT uncertainty with same-address readback. Native interaction was not repeated; the fixture substitutes a staged picker and recording printer. Actual NSOpenPanel/print-sheet interaction and spoken VoiceOver output remain unexercised.",
+    "Earlier timer, draft-ordering, course-reset, learner-feedback, print-open-failure and avatar-outcome remediations remain intact. Inspected credential confinement, destination restrictions and hosted grading/award boundaries remain preserved.",
+    "No application source was changed, no product endpoint was called and no real credential was accessed. Hosted qualification remains C25, signed installed-package qualification remains C26, and the previously recorded typed-input accessibility memory issue remains assigned to C24."
+  ],
+  "inspected_files": [
+    "AGENTS.md",
+    "GLOSSARY.md",
+    "docs/planning/chunks/C06.md",
+    "docs/planning/IMPLEMENTATION-PLAN.md",
+    "docs/planning/review-protocol.md",
+    "docs/planning/dependencies.md",
+    "docs/planning/parity-matrix.md",
+    "docs/planning/test-catalogue.md",
+    "docs/architecture/DESIGN.md",
+    "docs/architecture/checks.json",
+    "docs/architecture/native-checks.json",
+    "docs/architecture/inputs.lock.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/planning/reviews/C06/attempt-04/request.json",
+    "docs/planning/reviews/C06/attempt-04/source-inventory.json",
+    "docs/planning/reviews/C06/remediation-attempt-02.md",
+    "docs/planning/reviews/C05/attempt-03/receipt.json",
+    "docs/planning/reviews/C05/attempt-03/verdict.json",
+    "Cargo.lock",
+    "crates/desktop-core/src/avatar.rs",
+    "crates/desktop-core/tests/academy_program/main.rs",
+    "apps/desktop/src/features/academy/host-actions.ts",
+    ".inputs/academy/src/features/settings/hooks/use-avatar-upload.ts",
+    ".inputs/academy/src/lib/learner-capabilities.tsx",
+    "image-0.25.10/src/images/dynimage.rs (Cargo registry source and verified archive)",
+    "image-0.25.10/src/math/utils.rs (Cargo registry source and verified archive)",
+    "image-0.25.10/src/imageops/sample.rs (Cargo registry source and verified archive)",
+    "image-0.25.10/src/io/image_reader_type.rs (Cargo registry source and verified archive)",
+    "image-0.25.10/src/io/limits.rs (Cargo registry source and verified archive)",
+    "tools/native-acceptance/acceptance_c06.py",
+    "docs/planning/evidence/C06/runs/check-20261018T080048Z-61b25d/run.json",
+    "docs/planning/evidence/C06/runs/test-20261018T080606Z-519c8e/run.json",
+    "docs/planning/evidence/C06/runs/native-prepare-20261018T080752Z-3f7f58/run.json",
+    "docs/planning/evidence/C06/native-acceptance.json",
+    "docs/planning/evidence/C06/native-acceptance-C01.json",
+    "docs/planning/evidence/C06/native-acceptance-C04.json",
+    "docs/planning/evidence/C06/native-acceptance-C05.json",
+    "docs/planning/evidence/C06/native/observations.json",
+    "docs/planning/evidence/C06/truth-graph/truth-graph.json",
+    "docs/planning/evidence/C06/mutation-probes/results.json"
+  ],
+  "recommendation": "fail"
+}

@@ -118,6 +118,23 @@ pub enum Intent {
     /// Sign the Academy learner out: retire learner work, delete the saved
     /// session and revoke its refresh token.
     SignOutAcademy,
+    /// Open the native print sheet for the window's current page (where the
+    /// operator can print or save a PDF, such as an Academy certificate).
+    /// Nothing is printed without the operator's choice in that sheet.
+    /// Observed like a learner call: whether the sheet opened.
+    #[serde(rename_all = "camelCase")]
+    PrintPage { learner: LearnerRef },
+    /// Replace the signed-in learner's avatar with an image the operator
+    /// chooses in the native picker (JPEG, PNG or WebP, at most 2 MiB),
+    /// stored at Academy's presigned destination and confirmed with Academy.
+    /// Observed like a learner call (`settings.confirmAvatar`'s reply).
+    #[serde(rename_all = "camelCase")]
+    UploadAvatar { learner: LearnerRef },
+    /// Read an avatar Academy returned (on Academy's origin, public) for a
+    /// presentation that cannot load remote images. Observed like a learner
+    /// call: `{"json": {"src": "data:image/..."}}`.
+    #[serde(rename_all = "camelCase")]
+    LoadAcademyImage { learner: LearnerRef, url: String },
     /// Call one allowed learner procedure for the current learner account.
     /// `input` is the tRPC client's serialized (SuperJSON) input.
     #[serde(rename_all = "camelCase")]
@@ -317,6 +334,9 @@ pub struct ShellSnapshot {
     /// The current learner generation: the signed-in account's, or a guest
     /// generation for public catalog reads while signed out.
     pub learner: Option<LearnerRef>,
+    /// Academy web's origin, for public links Academy pages show (such as a
+    /// certificate's verify URL). The presentation never sends it back.
+    pub academy_origin: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -386,6 +406,21 @@ pub trait UrlOpener: Send + Sync + 'static {
     fn open(&self, url: &url::Url) -> bool;
 }
 
+/// Opens the native print sheet for the main window's page (host adapter).
+pub trait PagePrinter: Send + Sync + 'static {
+    /// True when the sheet was opened (or, in fixture builds, recorded).
+    fn print(&self) -> bool;
+}
+
+/// The native image picker for the learner's avatar (host adapter).
+pub trait ImagePicker: Send + Sync + 'static {
+    /// `None` when the operator cancelled or no sheet could open. Reads are
+    /// bounded by the host to the avatar cap.
+    fn choose_image(
+        &self,
+    ) -> futures_util::future::BoxFuture<'static, Option<Result<ImportFile, ImportError>>>;
+}
+
 /// A file chosen in the native import sheet.
 pub struct ImportFile {
     /// Display name only (no directory).
@@ -416,6 +451,8 @@ pub struct Adapters {
     pub store: Arc<dyn AppStore>,
     pub picker: Arc<dyn ImportPicker>,
     pub opener: Arc<dyn UrlOpener>,
+    pub printer: Arc<dyn PagePrinter>,
+    pub images: Arc<dyn ImagePicker>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -568,6 +605,7 @@ impl State {
             scans: self.scan_views(),
             academy: self.academy_view(),
             learner: self.learner_ref.clone(),
+            academy_origin: self.academy_origin.clone(),
         }
     }
 
@@ -1100,7 +1138,7 @@ impl AuthorityHandle {
                     let result = admit(
                         &mut state,
                         &self.inner.session,
-                        &self.inner.adapters.keychain,
+                        &self.inner.adapters,
                         intent,
                         &mut effects,
                     );
@@ -1242,7 +1280,7 @@ impl AuthorityHandle {
 fn admit(
     state: &mut State,
     session: &Arc<SessionVault>,
-    keychain: &Arc<dyn CredentialStore>,
+    adapters: &Adapters,
     intent: Intent,
     effects: &mut Vec<Effect>,
 ) -> Result<Receipt, Refusal> {
@@ -1632,6 +1670,22 @@ fn admit(
             }
             _ => return Err(Refusal::StaleContext),
         },
+        Intent::PrintPage { learner } => {
+            let (operation, starts) = state.admit_print(learner, Arc::clone(&adapters.printer))?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+        }
+        Intent::UploadAvatar { learner } => {
+            let (operation, starts) =
+                state.admit_avatar_upload(learner, Arc::clone(&adapters.images))?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+        }
+        Intent::LoadAcademyImage { learner, url } => {
+            let (operation, starts) = state.admit_image_read(learner, &url)?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+        }
         Intent::SignOutAcademy => {
             let active = state.data.learner.is_some()
                 || state.learner_session.is_some()
@@ -1678,7 +1732,7 @@ fn admit(
             let slot: PayloadSlot = Arc::default();
             let bytes = draft.queued_bytes();
             let job = ScanJob {
-                keychain: Arc::clone(keychain),
+                keychain: Arc::clone(&adapters.keychain),
                 session_vault: Arc::clone(session),
                 record,
                 mode,

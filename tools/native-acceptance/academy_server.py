@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Synthetic Academy + Clerk endpoint for C04/C05 native acceptance: the
+"""Synthetic Academy + Clerk endpoint for C04-C06 native acceptance: the
 public desktop configuration, RFC 8414 metadata, device authorization,
-token, revocation, the learner `desktop.me` procedure and (C05) the learner
-catalog procedures from <scratch>/catalog.json (academy_catalog.build), over
+token, revocation, the learner `desktop.me` procedure and (C05/C06) the
+learner procedures from <scratch>/catalog.json (academy_catalog.build,
+academy_program.build), over
 HTTPS on localhost with a disposable test CA (certificates from
 scan_server.make_certs). It never contacts the network and issues only
 synthetic tokens.
@@ -15,6 +16,23 @@ method, path, form field names, client_id, grant type and whether an
 Authorization header was present (token values are never recorded); learner
 procedure requests also record the procedure, the SuperJSON input and the
 endpoint's own handling time in milliseconds.
+
+Catalog replies may be wrapped: {"by": field, "values": {...}} picks by an
+input field; {"__seq__": [...]} answers successive calls in turn (the last
+repeats); {"__delay__": {"ms": n, "reply": ...}} answers late (a slow
+optional read); {"__timed__": {"reply": ..., "field": f, "in_s": n}} sets
+reply[f] to an ISO time n seconds after the request (mode.json "timed":
+{procedure: n} overrides n); {"__auth__": {"guest": ..., "account": ...}}
+follows Academy's access decision; {"__error__": {...}} is a tRPC error.
+
+With "__avatar__" in the catalog the endpoint keeps one learner avatar the
+way Academy does: settings.avatarUploadUrl presigns a PUT to
+/upload/avatars/<file>?X-Amz-Signature=fixture on this origin, PUT stores the
+bytes (recording content type, length and whether Authorization was sent),
+settings.confirmAvatar records <origin>/api/avatars/<file>?v=<n> only after a
+stored upload (else NOT_FOUND), settings.removeAvatar clears it,
+settings.get reports it, and GET /api/avatars/<file> serves it publicly.
+mode.json "lose_put_reply" stores a PUT's bytes but sends no reply.
 """
 
 import argparse
@@ -64,7 +82,69 @@ class Handler(BaseHTTPRequestHandler):
         query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query))
         if self.path.startswith("/api/trpc/"):
             return self.learner_call(query.get("input"))
+        if self.path.startswith("/api/avatars/") and self.server.catalog().get("__avatar__"):
+            path = self.path.split("?")[0]
+            self.serve_avatar(path)
+            return self.record({}, {"avatarRead": path, "status": 200 if self.server.avatar else 404})
         self.handle_request({})
+
+    def do_PUT(self):
+        self.started = time.perf_counter()
+        length = int(self.headers.get("content-length") or 0)
+        body = self.rfile.read(length)
+        path = self.path.split("?")[0]
+        stored = path.startswith("/upload/avatars/") and "X-Amz-Signature=" in self.path
+        if stored:
+            with self.server.lock:
+                self.server.uploads[path[len("/upload/avatars/"):]] = (self.headers.get("content-type"), body)
+        if stored and self.server.mode().get("lose_put_reply"):
+            # The store keeps the bytes but its reply never arrives.
+            self.close_connection = True
+            self.handled_ms = (time.perf_counter() - self.started) * 1000
+            return self.record({}, {"put": True, "contentType": self.headers.get("content-type"),
+                                    "bytes": len(body), "status": 0})
+        self.reply(200 if stored else 403, {})
+        self.record({}, {"put": True, "contentType": self.headers.get("content-type"), "bytes": len(body),
+                         "status": 200 if stored else 403})
+
+    def serve_avatar(self, path):
+        file = path[len("/api/avatars/"):]
+        current = self.server.avatar
+        if not current or current[0] != file:
+            return self.reply(404, {})
+        content_type, body = self.server.uploads.get(file, (None, b""))
+        self.handled_ms = (time.perf_counter() - self.started) * 1000
+        self.send_response(200)
+        self.send_header("content-type", content_type or "application/octet-stream")
+        self.send_header("content-length", str(len(body)))
+        self.send_header("connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+        self.close_connection = True
+
+    def avatar_call(self, procedure, value):
+        """Academy's avatar procedures over the endpoint's single avatar."""
+        origin, user = self.server.origin, "user_2fixturelearner"
+        catalog = self.server.catalog()
+        settings = json.loads(json.dumps(catalog.get("settings.get") or {}))
+        if procedure == "settings.avatarUploadUrl":
+            ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}.get(value.get("contentType"))
+            if not ext or not isinstance(value.get("size"), int) or value["size"] > 2 * 1024 * 1024:
+                return None, (400, "BAD_REQUEST", -32600, "Unsupported avatar")
+            return {"uploadUrl": f"{origin}/upload/avatars/{user}.{ext}?X-Amz-Signature=fixture",
+                    "key": f"avatars/{user}.{ext}"}, None
+        if procedure == "settings.confirmAvatar":
+            file = f"{user}.{value.get('ext')}"
+            if file not in self.server.uploads:
+                return None, (404, "NOT_FOUND", -32004, "avatar upload not found — try uploading again")
+            self.server.version += 1
+            self.server.avatar = (file, self.server.version)
+        if procedure == "settings.removeAvatar":
+            self.server.avatar = None
+        if self.server.avatar:
+            file, version = self.server.avatar
+            settings.setdefault("account", {})["avatarUrl"] = f"{origin}/api/avatars/{file}?v={version}"
+        return settings, None
 
     def do_POST(self):
         self.started = time.perf_counter()
@@ -85,8 +165,27 @@ class Handler(BaseHTTPRequestHandler):
             value = (json.loads(raw_input).get("json") if raw_input else None) or {}
         except ValueError:
             value = {}
+        if self.server.catalog().get("__avatar__") and procedure in (
+                "settings.get", "settings.avatarUploadUrl", "settings.confirmAvatar", "settings.removeAvatar"):
+            with self.server.lock:
+                reply, failure = self.avatar_call(procedure, value if isinstance(value, dict) else {})
+            entry = reply if failure is None else {"__error__": {"status": failure[0], "code": failure[1],
+                                                                  "rpc": failure[2], "message": failure[3]}}
         if isinstance(entry, dict) and set(entry) == {"by", "values"}:
             entry = entry["values"].get(str(value.get(entry["by"])), KeyError) if isinstance(value, dict) else KeyError
+        if isinstance(entry, dict) and set(entry) == {"__seq__"}:
+            with self.server.lock:
+                n = self.server.calls.get(procedure, 0)
+                self.server.calls[procedure] = n + 1
+            entry = entry["__seq__"][min(n, len(entry["__seq__"]) - 1)]
+        if isinstance(entry, dict) and set(entry) == {"__delay__"}:
+            time.sleep(entry["__delay__"]["ms"] / 1000)
+            entry = entry["__delay__"]["reply"]
+        if isinstance(entry, dict) and set(entry) == {"__timed__"}:
+            timed = entry["__timed__"]
+            seconds = (self.server.mode().get("timed") or {}).get(procedure, timed["in_s"])
+            entry = {**timed["reply"], timed["field"]: time.strftime(
+                "%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(time.time() + seconds))}
         # Access as Academy decides it: guest (no credential) or account.
         if isinstance(entry, dict) and set(entry) == {"__auth__"}:
             entry = entry["__auth__"]["account" if self.headers.get("authorization") else "guest"]
@@ -150,6 +249,10 @@ class Server(ThreadingHTTPServer):
         self.dir = directory
         self.origin = f"https://localhost:{port}"
         self.lock = threading.Lock()
+        self.calls = {}
+        self.uploads = {}
+        self.avatar = None
+        self.version = 0
         self._catalog = None
 
     def catalog(self):

@@ -8,6 +8,7 @@
 
 pub mod academy;
 mod authority;
+pub mod avatar;
 pub mod context;
 mod delivery;
 pub mod features;
@@ -27,10 +28,10 @@ pub mod wire;
 
 pub use authority::{
     ACADEMY_ORIGIN, AcademyCallHandle, AcademyCallResult, ActiveContext, Adapters, AuthorityHandle,
-    Core, CoreConfig, CredentialStore, EndpointReviewView, ImportFile, ImportPicker, ImportView,
-    Intent, MAX_TENANTS, Observation, Principal, Receipt, Refusal, ResetFailure, ResetStage,
-    ScanProgress, ScanRecordView, ScanState, ScanView, ShellSnapshot, StorageHealth, TenantView,
-    UrlOpener, ViewScope,
+    Core, CoreConfig, CredentialStore, EndpointReviewView, ImagePicker, ImportFile, ImportPicker,
+    ImportView, Intent, MAX_TENANTS, Observation, PagePrinter, Principal, Receipt, Refusal,
+    ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView, ShellSnapshot,
+    StorageHealth, TenantView, UrlOpener, ViewScope,
 };
 pub use delivery::{Delivery, DeliverySession, SEQUENCE_LIMIT};
 pub use observe::{Subscription, Update};

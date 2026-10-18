@@ -380,6 +380,78 @@ impl crate::UrlOpener for ScriptedOpener {
     }
 }
 
+/// Counts native print sheets requested; a sheet that cannot open can be
+/// scripted.
+#[derive(Default)]
+pub struct ScriptedPrinter {
+    printed: std::sync::atomic::AtomicUsize,
+    unavailable: std::sync::atomic::AtomicBool,
+}
+
+impl ScriptedPrinter {
+    pub fn printed(&self) -> usize {
+        self.printed.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Makes later sheets fail to open.
+    pub fn set_unavailable(&self, unavailable: bool) {
+        self.unavailable
+            .store(unavailable, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+impl crate::PagePrinter for ScriptedPrinter {
+    fn print(&self) -> bool {
+        if self.unavailable.load(std::sync::atomic::Ordering::SeqCst) {
+            return false;
+        }
+        self.printed
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        true
+    }
+}
+
+/// Answers native image-picker sheets from a script (`None`: cancelled).
+#[derive(Default)]
+pub struct ScriptedImagePicker {
+    replies: Mutex<VecDeque<PickerReply>>,
+    opened: Mutex<usize>,
+}
+
+impl ScriptedImagePicker {
+    pub fn reply(&self, reply: PickerReply) {
+        if let Ok(mut r) = self.replies.lock() {
+            r.push_back(reply);
+        }
+    }
+
+    pub fn opened(&self) -> usize {
+        self.opened.lock().map(|o| *o).unwrap_or(0)
+    }
+}
+
+impl crate::ImagePicker for ScriptedImagePicker {
+    fn choose_image(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+        if let Ok(mut o) = self.opened.lock() {
+            *o += 1;
+        }
+        let reply = self
+            .replies
+            .lock()
+            .ok()
+            .and_then(|mut r| r.pop_front())
+            .flatten();
+        Box::pin(async move {
+            reply.map(|r| {
+                r.map(|(name, bytes)| ImportFile {
+                    name,
+                    bytes: Zeroizing::new(bytes),
+                })
+            })
+        })
+    }
+}
+
 /// Handles to the scripted adapters behind an [`Adapters`] value.
 pub struct Handles {
     pub vault: Arc<ScriptedVault>,
@@ -388,6 +460,8 @@ pub struct Handles {
     pub store: Arc<ScriptedStore>,
     pub picker: Arc<ScriptedPicker>,
     pub opener: Arc<ScriptedOpener>,
+    pub printer: Arc<ScriptedPrinter>,
+    pub images: Arc<ScriptedImagePicker>,
 }
 
 /// Fresh scripted adapters with empty storage.
@@ -402,6 +476,8 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         store: Arc::new(store),
         picker: Arc::new(ScriptedPicker::default()),
         opener: Arc::new(ScriptedOpener::default()),
+        printer: Arc::new(ScriptedPrinter::default()),
+        images: Arc::new(ScriptedImagePicker::default()),
     };
     (
         Adapters {
@@ -410,6 +486,8 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             store: handles.store.clone(),
             picker: handles.picker.clone(),
             opener: handles.opener.clone(),
+            printer: handles.printer.clone(),
+            images: handles.images.clone(),
         },
         handles,
     )

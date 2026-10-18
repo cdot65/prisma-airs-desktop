@@ -13,10 +13,13 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use desktop_core::avatar::MAX_SOURCE_BYTES;
 use desktop_core::import::{ImportError, MAX_IMPORT_BYTES};
 use desktop_core::store::{AppStore, FileStore, UnavailableStore};
 use desktop_core::vault::UnavailableVault;
-use desktop_core::{Adapters, CredentialStore, ImportFile, ImportPicker, UrlOpener};
+use desktop_core::{
+    Adapters, CredentialStore, ImagePicker, ImportFile, ImportPicker, PagePrinter, UrlOpener,
+};
 use futures_util::future::BoxFuture;
 use tauri::{AppHandle, Manager, Runtime};
 use zeroize::Zeroizing;
@@ -43,8 +46,96 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         store,
         picker: Arc::new(NativePicker { app: app.clone() }),
         opener: opener(root.as_deref()),
+        printer: printer(app, root.as_deref()),
+        images: images(app, root.as_deref()),
     }
 }
+
+/// The native image picker for the learner's avatar.
+#[cfg(not(feature = "test-fixtures"))]
+fn images<R: Runtime>(app: &AppHandle<R>, _root: Option<&Path>) -> Arc<dyn ImagePicker> {
+    Arc::new(NativeImagePicker { app: app.clone() })
+}
+
+/// The fixture build answers the avatar picker with the image the
+/// acceptance driver staged in its data root (none staged: cancelled), so
+/// automation never blocks on a modal sheet.
+#[cfg(feature = "test-fixtures")]
+fn images<R: Runtime>(_app: &AppHandle<R>, root: Option<&Path>) -> Arc<dyn ImagePicker> {
+    struct StagedImage(Option<PathBuf>);
+    impl ImagePicker for StagedImage {
+        fn choose_image(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+            let path = self.0.clone();
+            Box::pin(async move {
+                let path = path.filter(|p| p.is_file())?;
+                let read = tokio::task::spawn_blocking(move || {
+                    let bytes = read_limited(&path, MAX_SOURCE_BYTES);
+                    let _ = std::fs::remove_file(&path);
+                    bytes
+                })
+                .await
+                .ok()?;
+                Some(read.map(|bytes| ImportFile {
+                    name: FIXTURE_AVATAR.to_owned(),
+                    bytes,
+                }))
+            })
+        }
+    }
+    Arc::new(StagedImage(root.map(|r| r.join(FIXTURE_AVATAR))))
+}
+
+/// The image the next fixture avatar pick returns (consumed by the pick).
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_AVATAR: &str = "fixture-avatar.img";
+/// While present, fixture print sheets fail to open.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_PRINT_UNAVAILABLE: &str = "fixture-print-unavailable";
+
+/// Opens the main window's native print sheet (print or save as PDF).
+#[cfg(not(feature = "test-fixtures"))]
+fn printer<R: Runtime>(app: &AppHandle<R>, _root: Option<&Path>) -> Arc<dyn PagePrinter> {
+    struct NativePrinter<R: Runtime>(AppHandle<R>);
+    impl<R: Runtime> PagePrinter for NativePrinter<R> {
+        fn print(&self) -> bool {
+            self.0
+                .get_webview_window(MAIN_WINDOW)
+                .is_some_and(|window| window.print().is_ok())
+        }
+    }
+    Arc::new(NativePrinter(app.clone()))
+}
+
+/// The fixture build records print requests in its data root instead of
+/// opening a sheet that would block automation.
+#[cfg(feature = "test-fixtures")]
+fn printer<R: Runtime>(_app: &AppHandle<R>, root: Option<&Path>) -> Arc<dyn PagePrinter> {
+    struct RecordingPrinter(Option<PathBuf>);
+    impl PagePrinter for RecordingPrinter {
+        fn print(&self) -> bool {
+            use std::io::Write;
+            let unavailable = self
+                .0
+                .as_ref()
+                .and_then(|p| p.parent())
+                .is_some_and(|root| root.join(FIXTURE_PRINT_UNAVAILABLE).exists());
+            !unavailable
+                && self.0.as_ref().is_some_and(|path| {
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(path)
+                        .and_then(|mut file| writeln!(file, "print"))
+                        .is_ok()
+                })
+        }
+    }
+    Arc::new(RecordingPrinter(root.map(|r| r.join(FIXTURE_PRINTS))))
+}
+
+/// Print sheets the fixture build was asked to open, one line each.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_PRINTS: &str = "fixture-prints.log";
 
 /// Opens a verified HTTPS page with LaunchServices (`/usr/bin/open`). The
 /// core passes only URLs the Academy issuer returned; the presentation
@@ -194,21 +285,61 @@ pub fn fixture_transport<R: Runtime>(
 
 /// Reads at most [`MAX_IMPORT_BYTES`] from a regular file.
 pub fn read_bounded(path: &Path) -> Result<Zeroizing<Vec<u8>>, ImportError> {
+    read_limited(path, MAX_IMPORT_BYTES)
+}
+
+/// Reads a regular file of at most `limit` bytes.
+pub fn read_limited(path: &Path, limit: usize) -> Result<Zeroizing<Vec<u8>>, ImportError> {
     let meta = std::fs::metadata(path).map_err(|_| ImportError::Unsupported)?;
     if !meta.is_file() {
         return Err(ImportError::Unsupported);
     }
-    if meta.len() > MAX_IMPORT_BYTES as u64 {
+    if meta.len() > limit as u64 {
         return Err(ImportError::TooLarge);
     }
     let mut bytes = Zeroizing::new(Vec::new());
     std::fs::File::open(path)
-        .and_then(|f| f.take(MAX_IMPORT_BYTES as u64 + 1).read_to_end(&mut bytes))
+        .and_then(|f| f.take(limit as u64 + 1).read_to_end(&mut bytes))
         .map_err(|_| ImportError::Unsupported)?;
-    if bytes.len() > MAX_IMPORT_BYTES {
+    if bytes.len() > limit {
         return Err(ImportError::TooLarge);
     }
     Ok(bytes)
+}
+
+/// The native image sheet for the learner's avatar, attached to the main
+/// window; reads are bounded to the 16 MiB source-photo cap.
+#[cfg_attr(feature = "test-fixtures", allow(dead_code))]
+pub struct NativeImagePicker<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> ImagePicker for NativeImagePicker<R> {
+    fn choose_image(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
+            let window = app.get_webview_window(MAIN_WINDOW)?;
+            app.run_on_main_thread(move || {
+                let chosen = rfd::FileDialog::new()
+                    .set_parent(&window)
+                    .set_title("Choose a photo")
+                    .add_filter("Photos", &["jpg", "jpeg", "png", "webp"])
+                    .pick_file();
+                let _ = tx.send(chosen);
+            })
+            .ok()?;
+            let path = rx.await.ok()??;
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let read = tokio::task::spawn_blocking(move || read_limited(&path, MAX_SOURCE_BYTES))
+                .await
+                .ok()?;
+            Some(read.map(|bytes| ImportFile { name, bytes }))
+        })
+    }
 }
 
 /// The native open sheet attached to the main window.

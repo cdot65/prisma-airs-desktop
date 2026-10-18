@@ -6,7 +6,7 @@
  * value for one account is shown to another. Tenant switches do not change
  * the learner reference and keep the cache.
  */
-import { createContext, type ReactNode, useContext, useEffect, useMemo } from 'react'
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createTRPCClient, TRPCClientError, type TRPCClient } from '@trpc/client'
 import type { AnyRouter } from '@trpc/server'
@@ -14,6 +14,7 @@ import SuperJSON from 'superjson'
 import { LearnerHost } from '@ai-security-academy/learner'
 import type { DesktopClient, LearnerRef } from '@prisma-airs/desktop-contracts'
 import { desktopLink } from './desktop-link'
+import { hostAction, loadAcademyImage } from './host-actions'
 
 const NO_RETRY = new Set([
     'UNAUTHORIZED',
@@ -53,11 +54,23 @@ interface Props {
     learner: LearnerRef
     /** Academy's account id when signed in; null for the guest generation. */
     accountId?: string | null
+    /** The signed-in account's display name, for Academy's account pages. */
+    displayName?: string | null
     theme?: 'gruvbox' | 'paper'
+    /** Academy web's origin (public links such as certificate verify URLs). */
+    webOrigin?: string | null
     children: ReactNode
 }
 
-function Generation({ client, learner, accountId = null, theme = 'gruvbox', children }: Props) {
+function Generation({
+    client,
+    learner,
+    accountId = null,
+    displayName = null,
+    theme = 'gruvbox',
+    webOrigin = null,
+    children,
+}: Props) {
     const queryClient = useMemo(() => learnerQueryClient(), [])
     const links = useMemo(
         () => [
@@ -74,7 +87,27 @@ function Generation({ client, learner, accountId = null, theme = 'gruvbox', chil
     // The generation is Academy's learner session: a new one (sign-in,
     // sign-out, reset, even for the same account) retires Academy's
     // learner-scoped state.
-    const identity = useMemo(() => ({ userId: accountId, session: learner }), [accountId, learner])
+    const identity = useMemo(
+        () => ({
+            userId: accountId,
+            session: learner,
+            // The desktop knows the account's display name only; the email
+            // and uploaded photo come from Academy's settings read.
+            profile: accountId ? { fullName: displayName, firstName: null, email: null, imageUrl: null } : null,
+        }),
+        [accountId, learner, displayName]
+    )
+    // Native actions Academy's pages ask the host for: sign-out ends the
+    // learner session in the core; print opens the native print sheet; the
+    // avatar is chosen, checked and uploaded natively and read back as a
+    // data URL (this WebView loads no remote images).
+    const onSignOut = useCallback(() => void client.dispatch({ kind: 'signOutAcademy' }).catch(() => undefined), [client])
+    const onPrint = useCallback(() => hostAction(client, { kind: 'printPage', learner }), [client, learner])
+    const onUploadAvatar = useCallback(() => hostAction(client, { kind: 'uploadAvatar', learner }), [client, learner])
+    const loadImage = useCallback(
+        (url: string) => loadAcademyImage(client, { kind: 'loadAcademyImage', learner, url }),
+        [client, learner]
+    )
     useEffect(() => () => queryClient.clear(), [queryClient])
     return (
         <QueryClientProvider client={queryClient}>
@@ -84,8 +117,20 @@ function Generation({ client, learner, accountId = null, theme = 'gruvbox', chil
                     queryClient={queryClient}
                     identity={identity}
                     theme={theme}
-                    labs='preview'
+                    labs='desktop'
                     diagrams='prerendered'
+                    webOrigin={webOrigin}
+                    onSignOut={onSignOut}
+                    onPrint={onPrint}
+                    remoteImages={false}
+                    loadImage={loadImage}
+                    avatarUpload={accountId !== null}
+                    onUploadAvatar={onUploadAvatar}
+                    appearance='host'
+                    assessorTools={false}
+                    awardPresenters={false}
+                    courseReset
+                    lessonFeedback
                 >
                     {children}
                 </LearnerHost>

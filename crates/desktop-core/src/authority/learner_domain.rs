@@ -680,6 +680,333 @@ impl State {
         });
         Ok((operation, starts))
     }
+
+    /// Admits a native learner job for the current generation, observed like
+    /// a learner call (and, like one, never delivered to a retired
+    /// generation). `account` jobs need the signed-in account session.
+    fn admit_learner_job(
+        &mut self,
+        learner: LearnerRef,
+        work: Work,
+        budget: Duration,
+    ) -> Result<(OperationId, Vec<crate::runtime::Start>), super::Refusal> {
+        let (operation, starts) =
+            self.operations
+                .admit_for(learner.as_str(), 0, work, Instant::now(), budget)?;
+        Ok((operation, starts))
+    }
+
+    fn current_learner(&self, learner: &LearnerRef) -> Result<(), super::Refusal> {
+        if self.storage == super::StorageHealth::Resetting
+            || self.learner_ref.as_ref() != Some(learner)
+        {
+            return Err(super::Refusal::StaleContext);
+        }
+        Ok(())
+    }
+
+    fn record_job(&mut self, operation: &OperationId, learner: LearnerRef, slot: Slot) {
+        self.academy_calls.push(CallRecord {
+            operation: operation.clone(),
+            learner,
+            slot,
+            cell: Arc::default(),
+            settled: false,
+            observed: false,
+        });
+    }
+
+    /// Opens the native print sheet for the current page (an Academy
+    /// certificate): reports whether it opened; changes no learner state.
+    pub(super) fn admit_print(
+        &mut self,
+        learner: LearnerRef,
+        printer: Arc<dyn super::PagePrinter>,
+    ) -> Result<(OperationId, Vec<crate::runtime::Start>), super::Refusal> {
+        self.current_learner(&learner)?;
+        let slot: Slot = Arc::default();
+        let job = PrintJob {
+            printer,
+            slot: Arc::clone(&slot),
+        };
+        let admitted = self.admit_learner_job(learner.clone(), job.into_work(), SHEET_BUDGET)?;
+        self.record_job(&admitted.0, learner, slot);
+        Ok(admitted)
+    }
+
+    /// Replaces the signed-in learner's avatar with an image chosen in the
+    /// native picker: checked here, stored at Academy's presigned
+    /// destination, then confirmed with Academy.
+    pub(super) fn admit_avatar_upload(
+        &mut self,
+        learner: LearnerRef,
+        picker: Arc<dyn super::ImagePicker>,
+    ) -> Result<(OperationId, Vec<crate::runtime::Start>), super::Refusal> {
+        self.current_learner(&learner)?;
+        if !matches!(self.learner, LearnerPhase::SignedIn) {
+            return Err(super::Refusal::CapabilityMissing);
+        }
+        let session = self
+            .learner_session
+            .clone()
+            .ok_or(super::Refusal::CapabilityMissing)?;
+        let slot: Slot = Arc::default();
+        let job = AvatarJob {
+            client: session.client.clone(),
+            session,
+            picker,
+            slot: Arc::clone(&slot),
+        };
+        let admitted = self.admit_learner_job(learner.clone(), job.into_work(), SHEET_BUDGET)?;
+        self.record_job(&admitted.0, learner, slot);
+        Ok(admitted)
+    }
+
+    /// Reads an avatar Academy returned (public, on Academy's origin) for
+    /// the presentation, which cannot load remote images.
+    pub(super) fn admit_image_read(
+        &mut self,
+        learner: LearnerRef,
+        url: &str,
+    ) -> Result<(OperationId, Vec<crate::runtime::Start>), super::Refusal> {
+        self.current_learner(&learner)?;
+        let client = self
+            .academy_client()
+            .ok_or(super::Refusal::CapabilityMissing)?;
+        let url = crate::avatar::avatar_address(url, client.origin())
+            .ok_or(super::Refusal::InvalidInput)?;
+        let slot: Slot = Arc::default();
+        let job = ImageJob {
+            client,
+            url,
+            slot: Arc::clone(&slot),
+        };
+        let budget = self.operations.limits().interactive_budget;
+        let admitted = self.admit_learner_job(learner.clone(), job.into_work(), budget)?;
+        self.record_job(&admitted.0, learner, slot);
+        Ok(admitted)
+    }
+}
+
+/// Operator-paced jobs wait on a native sheet before any request.
+const SHEET_BUDGET: Duration = Duration::from_secs(15 * 60);
+
+fn leave(slot: &Slot, value: Result<CallReply, CallFailure>) {
+    if let Ok(mut slot) = slot.lock() {
+        *slot = Some(value);
+    }
+}
+
+/// `{"json": value}` as a learner call's data.
+fn data(value: serde_json::Value) -> CallReply {
+    CallReply::Data(serde_json::json!({ "json": value }).to_string())
+}
+
+struct PrintJob {
+    printer: Arc<dyn super::PagePrinter>,
+    slot: Slot,
+}
+
+impl PrintJob {
+    fn into_work(self) -> Work {
+        Box::new(move |_claim| {
+            Box::pin(async move {
+                let printer = self.printer;
+                let opened = tokio::task::spawn_blocking(move || printer.print())
+                    .await
+                    .unwrap_or(false);
+                if opened {
+                    leave(&self.slot, Ok(data(serde_json::json!({ "opened": true }))));
+                    Outcome::Completed
+                } else {
+                    leave(&self.slot, Err(CallFailure::HostUnavailable));
+                    Outcome::NotSent
+                }
+            })
+        })
+    }
+}
+
+struct ImageJob {
+    client: AcademyClient,
+    url: Url,
+    slot: Slot,
+}
+
+impl ImageJob {
+    fn into_work(self) -> Work {
+        Box::new(move |claim| {
+            Box::pin(async move {
+                let remaining = claim
+                    .deadline
+                    .saturating_duration_since(Instant::now())
+                    .min(CALL_TIMEOUT);
+                let read = tokio::select! {
+                    read = self.client.get_image(self.url, crate::avatar::MAX_AVATAR_BYTES, remaining) => read,
+                    () = claim.cancel.cancelled() => Err(CallFailure::Cancelled),
+                };
+                let reply = read.and_then(|(content_type, bytes)| {
+                    crate::avatar::data_url(&content_type, &bytes)
+                        .map(|src| data(serde_json::json!({ "src": src })))
+                        .ok_or(CallFailure::InvalidResponse)
+                });
+                let outcome = if reply.is_ok() {
+                    Outcome::Completed
+                } else {
+                    Outcome::Rejected
+                };
+                leave(&self.slot, reply);
+                outcome
+            })
+        })
+    }
+}
+
+struct AvatarJob {
+    session: Arc<LearnerSession>,
+    client: AcademyClient,
+    picker: Arc<dyn super::ImagePicker>,
+    slot: Slot,
+}
+
+impl AvatarJob {
+    fn into_work(self) -> Work {
+        Box::new(move |claim| Box::pin(self.run(claim)))
+    }
+
+    /// One account request; a refused token is renewed and the request
+    /// asked again only when `repeatable` (it changes nothing on Academy).
+    async fn request(
+        &self,
+        procedure: &str,
+        input: &str,
+        repeatable: bool,
+        claim: &Claim,
+    ) -> Result<CallReply, CallFailure> {
+        let mut force = false;
+        loop {
+            let token = tokio::select! {
+                token = self.session.access(force) => token?,
+                () = claim.cancel.cancelled() => return Err(CallFailure::Cancelled),
+            };
+            let remaining = claim
+                .deadline
+                .saturating_duration_since(Instant::now())
+                .min(CALL_TIMEOUT);
+            let reply = tokio::select! {
+                reply = self.client.call(procedure, ProcedureKind::Mutation, Some(input), Some(token.as_str()), remaining) => reply,
+                () = claim.cancel.cancelled() => Err(CallFailure::Cancelled),
+            };
+            if !force && matches!(reply, Ok(CallReply::Error { status: 401, .. })) {
+                force = true;
+                if repeatable {
+                    continue;
+                }
+                let _ = self.session.access(true).await;
+            }
+            return reply;
+        }
+    }
+
+    async fn run(self, claim: Claim) -> Outcome {
+        // Nothing is sent until an acceptable image was chosen.
+        let chosen = tokio::select! {
+            chosen = self.picker.choose_image() => chosen,
+            () = claim.cancel.cancelled() => None,
+        };
+        let file = match chosen {
+            None => {
+                leave(&self.slot, Err(CallFailure::Cancelled));
+                return Outcome::NotSent;
+            }
+            Some(Err(_)) => {
+                leave(&self.slot, Err(CallFailure::UnsupportedImage));
+                return Outcome::NotSent;
+            }
+            Some(Ok(file)) => file,
+        };
+        // The photo is decoded within bounds and prepared as Academy's
+        // 512-pixel JPEG; anything that does not decode is never uploaded.
+        let source = file.bytes.to_vec();
+        let prepared = tokio::select! {
+            prepared = tokio::task::spawn_blocking(move || crate::avatar::prepare(&source)) => prepared.ok().flatten(),
+            () = claim.cancel.cancelled() => {
+                leave(&self.slot, Err(CallFailure::Cancelled));
+                return Outcome::NotSent;
+            }
+        };
+        let Some(jpeg) = prepared else {
+            leave(&self.slot, Err(CallFailure::UnsupportedImage));
+            return Outcome::NotSent;
+        };
+        // Presigning changes nothing on Academy, so it may be asked again.
+        let presign = serde_json::json!({ "json": {
+            "contentType": crate::avatar::PREPARED_CONTENT_TYPE, "size": jpeg.len() } })
+        .to_string();
+        let upload_url = match self
+            .request("settings.avatarUploadUrl", &presign, true, &claim)
+            .await
+        {
+            Ok(CallReply::Data(data)) => serde_json::from_str::<serde_json::Value>(&data)
+                .ok()
+                .and_then(|v| v["json"]["uploadUrl"].as_str().map(str::to_owned)),
+            Ok(error @ CallReply::Error { .. }) => {
+                leave(&self.slot, Ok(error));
+                return Outcome::Rejected;
+            }
+            Err(failure) => {
+                leave(&self.slot, Err(failure));
+                return Outcome::NotSent;
+            }
+        };
+        let Some(destination) = upload_url
+            .as_deref()
+            .and_then(|u| crate::avatar::upload_destination(u, self.client.origin()))
+        else {
+            leave(&self.slot, Err(CallFailure::DestinationRefused));
+            return Outcome::NotSent;
+        };
+        // Academy's key is stable (`avatars/<user>.jpg`): a stored PUT can
+        // replace the photo Academy already serves even if it is never
+        // confirmed, so from here on a failure is not "unchanged".
+        let remaining = claim
+            .deadline
+            .saturating_duration_since(Instant::now())
+            .min(CALL_TIMEOUT);
+        let stored = tokio::select! {
+            stored = self.client.put_upload(destination, crate::avatar::PREPARED_CONTENT_TYPE, jpeg, remaining) => stored,
+            () = claim.cancel.cancelled() => crate::academy::StoreOutcome::Uncertain,
+        };
+        match stored {
+            crate::academy::StoreOutcome::Stored => {}
+            crate::academy::StoreOutcome::Refused | crate::academy::StoreOutcome::NotSent => {
+                leave(&self.slot, Err(CallFailure::UploadFailed));
+                return if stored == crate::academy::StoreOutcome::Refused {
+                    Outcome::Rejected
+                } else {
+                    Outcome::NotSent
+                };
+            }
+            crate::academy::StoreOutcome::Uncertain => {
+                leave(&self.slot, Err(CallFailure::UploadFailed));
+                return Outcome::Unknown;
+            }
+        }
+        let confirm =
+            serde_json::json!({ "json": { "ext": crate::avatar::PREPARED_EXT } }).to_string();
+        let reply = self
+            .request("settings.confirmAvatar", &confirm, false, &claim)
+            .await;
+        // Only a confirmed photo is a known outcome: after a stored PUT, a
+        // refused or failed confirmation may still leave the new photo
+        // served under the existing address.
+        let outcome = match &reply {
+            Ok(CallReply::Data(_)) => Outcome::Completed,
+            _ => Outcome::Unknown,
+        };
+        leave(&self.slot, reply);
+        outcome
+    }
 }
 
 struct CallJob {

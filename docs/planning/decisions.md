@@ -373,6 +373,43 @@ Decided in C05 (implementer decision, recorded for review).
 - C06 revisits labs (guided lab submission through the desktop attempt
   contracts) and gamification; C07 offline content.
 
+## D030 — Graded workflows through Academy's contracts; host capabilities for what the desktop leaves to the web
+
+Decided in C06 (implementer decision, recorded for review).
+
+- Guided labs run through Academy's desktop attempt contract
+  (`desktop.attempt.*`, `desktop.draft.*`; `LearnerHost labs="desktop"`),
+  not the web lab runtime: Academy owns attempts, versioned drafts,
+  idempotency and grading, and the desktop never sees an answer key.
+  Labs without an authored desktop adapter (Academy's `PRECONDITION_FAILED`)
+  and drawing steps are previewed.
+- The desktop leaves to Academy web, by declared `LearnerHost`
+  capabilities, what its account token does not carry: assessor review
+  (`assessorTools=false`) and away commendation and event claims
+  (`awardPresenters=false`). Each is a page that says where the action
+  happens, never a control that fails.
+- Learner workflows v1 kept are retained even where Academy web dropped
+  their trigger (C06 review RF03): course reset (`courseReset`), a
+  completed lesson's rating (`lessonFeedback`) and the avatar. The avatar
+  is uploaded and read back by the core (`UploadAvatar`,
+  `LoadAcademyImage`) because the WebView admits no remote network or
+  images; uploads go only to reviewed destinations (Academy's object store
+  or origin), and only Academy's public avatar address is read. As in v1,
+  the core decodes, orients and re-encodes every photo it sends or shows
+  (`image` 0.25.10, decoders for JPEG, PNG and WebP only, bounded), and an
+  upload that may have reached Academy's per-user key is never reported as
+  unchanged.
+- Native host actions are intents with no effect on Academy state:
+  `SignOutAcademy` for the account page's sign-out and `PrintPage` for
+  certificate downloads (the native print sheet; "Save as PDF" is the
+  system's), which reports whether the sheet opened. Public certificate links use Academy web's origin
+  (`ShellSnapshot.academyOrigin`).
+- Frozen built-ins stay frozen (D029): Academy modules that cannot load
+  under `freezePrototype` are kept off the desktop's load path in Academy
+  (lazy web lab runtimes) or replaced there (DOMPurify for the diagram
+  sanitizer), not by loosening the WebView.
+- C07 takes offline lab work and content; the desktop never grades offline.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

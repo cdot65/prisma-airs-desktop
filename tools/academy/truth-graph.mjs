@@ -48,7 +48,14 @@ const TRUTH = [
     'packages/shared/src/server',
 ]
 /** Lab evaluation and grading engines (server-side truth). */
-const TRUTH_NAMES = [/evaluat/i, /grader/i, /grading/i, /answer-?key/i, /goldens?/i, /rubric/i]
+const TRUTH_NAMES = [
+    /(^|\/)evaluat(e|or|ion)s?(\/|\.tsx?$)/i,
+    /(^|\/)grader/i,
+    /(^|\/)grading(\/|\.tsx?$)/i,
+    /answer-?keys?/i,
+    /(^|\/)goldens?(\/|\.(ts|json)$)/i,
+    /(^|\/)rubrics?(\/|\.(ts|json)$)/i,
+]
 /** Packages a learner client never needs (server, database, providers). */
 const FORBIDDEN_PACKAGES = [
     'drizzle-orm',
@@ -70,14 +77,21 @@ const FORBIDDEN_PACKAGES = [
  */
 const UNMOUNTED =
     'reached only through the gamification barrel; no shipped learner page mounts the component, so the call is never made'
+const PRESENTERS =
+    "Home's away-commendation and event-celebration presenters claim on mount only with LearnerHost awardPresenters; the desktop passes false, so the call is never made (Academy web announces them and the dossier lists every commendation)"
 const REFUSED_BY_DESIGN = {
-    'labs.': 'hands-on lab runs are previewed (LearnerHost labs="preview"); no runner mounts, so no lab start, step or submit call is made',
-    'gamification.acknowledgeCommendations': UNMOUNTED,
-    'gamification.claimCommendations': UNMOUNTED,
-    'gamification.acknowledgeSko27Celebration': UNMOUNTED,
-    'gamification.claimSko27Celebration': UNMOUNTED,
+    'labs.': 'the web lab runtime; the desktop runs hands-on labs through desktop.attempt/desktop.draft (LearnerHost labs="desktop"), so no web lab runner mounts and no labs.* start, step or submit call is made',
+    'gamification.acknowledgeCommendations': PRESENTERS,
+    'gamification.claimCommendations': PRESENTERS,
+    'gamification.acknowledgeSko27Celebration': PRESENTERS,
+    'gamification.claimSko27Celebration': PRESENTERS,
     'gamification.sko27LoginAward': UNMOUNTED,
-    'telemetry.track': 'award toasts fire it and forget it; the desktop sends no Academy product telemetry and the refusal shows nothing',
+    'gamification.firstRotation':
+        "Home's first-rotation checklist is not in the desktop token allowlist; the card renders only when Academy returns it, so the refusal leaves it hidden",
+    'paths.recommended':
+        "Home's recommended paths are not in the desktop token allowlist; the refusal leaves the briefing without recommendations (the catalog stays reachable from Learn)",
+    'identityPractical.': 'assessor authority stays on Academy web: the identity practical runs with LearnerHost assessorTools=false, so the assessor queue and review are never fetched or offered',
+    'telemetry.track': 'view, click and award beacons fire it and forget it with meta.silent; the desktop sends no Academy product telemetry and the refusal shows nothing',
 }
 
 const CANARY = 'AIRS-C05-TRUTH-CANARY'

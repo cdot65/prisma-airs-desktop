@@ -45,4 +45,9 @@ academy: AcademyView,
  * The current learner generation: the signed-in account's, or a guest
  * generation for public catalog reads while signed out.
  */
-learner: LearnerRef | null, };
+learner: LearnerRef | null, 
+/**
+ * Academy web's origin, for public links Academy pages show (such as a
+ * certificate's verify URL). The presentation never sends it back.
+ */
+academyOrigin: string, };

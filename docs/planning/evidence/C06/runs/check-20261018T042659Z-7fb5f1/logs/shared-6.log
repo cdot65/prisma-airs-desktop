@@ -1,0 +1,375 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy
+
+ ✓ src/features/gamification/__tests__/use-award-toasts.test.tsx (32 tests) 470ms
+ ✓ src/features/home/components/command-rail/__tests__/command-rail.test.tsx (33 tests) 486ms
+ ✓ src/features/leaderboard/__tests__/leaderboard-page.test.tsx (30 tests) 687ms
+ ✓ src/features/gamification/__tests__/gamification-hud.test.tsx (18 tests) 760ms
+ ✓ src/features/shift/__tests__/shift-page-settle.test.tsx (11 tests) 587ms
+ ✓ src/features/units/__tests__/unit-page.test.tsx (19 tests) 934ms
+   ✓ UnitPage > unlocked lab unit mounts the inline lab section  322ms
+ ✓ src/features/shift/__tests__/alert-card.test.tsx (36 tests) 1422ms
+ ✓ src/features/home/__tests__/home-page.test.tsx (35 tests) 1350ms
+ ✓ src/features/labs/__tests__/terminal-lab-runner.test.tsx (8 tests) 891ms
+   ✓ TerminalLabRunner > inserts a complete command template and saves the structured response  429ms
+ ✓ src/features/labs/components/steps/__tests__/diagram-label-step.test.tsx (18 tests) 1053ms
+ ✓ src/features/units/__tests__/course-ceremony.test.tsx (11 tests) 419ms
+ ✓ src/features/labs/__tests__/scenario-lab-runner.test.tsx (11 tests) 1546ms
+   ✓ ScenarioLabRunner > renders the step rail with locked/active states + the active terminal step  378ms
+   ✓ ScenarioLabRunner > advances the active step in place when submitStep onSuccess returns an advanced session (R14, no reload)  383ms
+   ✓ ScenarioLabRunner — deterministic step kinds (config-edit, diagram-label) > renders ConfigEditStep for an active config-edit step  338ms
+   ✓ ScenarioLabRunner — deterministic step kinds (config-edit, diagram-label) > renders DiagramLabelStep for an active diagram-label step  331ms
+ ✓ src/features/settings/__tests__/settings-page.test.tsx (37 tests) 4169ms
+   ✓ SettingsPage save recovery > shows unsaved, saving, and failed states truthfully and retries the current draft  615ms
+   ✓ SettingsPage save recovery > does not overwrite a newer draft when an older field save acknowledges  596ms
+ ✓ src/features/labs/desktop/__tests__/desktop-lab-runner.test.tsx (5 tests) 1634ms
+   ✓ desktop lab runner > shows both copies on a draft conflict and resolves with the copy the learner keeps  1255ms
+ ✓ packages/learner/src/__tests__/host.test.tsx (6 tests) 601ms
+ ✓ src/features/dossier/__tests__/dossier-page.test.tsx (16 tests) 966ms
+ ✓ src/features/labs/components/steps/__tests__/draw-step.test.tsx (5 tests) 2502ms
+   ✓ DrawStep > mounts the LAZY Excalidraw canvas (suspense fallback → mock)  368ms
+   ✓ DrawStep > scene changes autosave the draft (debounced)  2037ms
+ ✓ src/features/shift/__tests__/shift-motion.test.tsx (14 tests) 371ms
+ ✓ src/features/dossier/__tests__/service-record.test.tsx (13 tests) 215ms
+ ✓ src/features/shift/__tests__/run-summary.test.tsx (19 tests) 269ms
+ ✓ src/features/home/__tests__/home-prefetch.test.tsx (8 tests) 364ms
+ ✓ src/features/shift/__tests__/run-graphs.test.tsx (12 tests) 145ms
+ ✓ src/features/library/__tests__/learn-page.test.tsx (14 tests) 476ms
+ ✓ src/features/labs/__tests__/terminal-lab-runner-live.test.tsx (7 tests) 760ms
+   ✓ TerminalLabRunner — live conduit UX (spec §7) > renders a server-sent quota warn span line (D8) with the warning tone  552ms
+ ✓ src/features/exam/__tests__/exam-runner.test.tsx (9 tests) 721ms
+ ✓ src/features/units/__tests__/completion-moments.test.tsx (11 tests) 548ms
+   ✓ one unit completing both module and course > shows the module moment first, then the ceremony, and never doubles  432ms
+ ✓ src/features/units/__tests__/course-page.test.tsx (10 tests) 372ms
+ ✓ src/features/onboarding/__tests__/welcome-wizard.test.tsx (19 tests) 1026ms
+ ✓ src/features/labs/__tests__/lab-runner.test.tsx (9 tests) 519ms
+ ✓ src/features/home/__tests__/use-home-briefing.test.ts (11 tests) 49ms
+ ✓ src/features/units/__tests__/path-landing-page.test.tsx (8 tests) 308ms
+ ✓ src/components/ax/__tests__/ax.test.tsx (18 tests) 245ms
+ ✓ src/features/home/components/__tests__/status-strip.test.tsx (19 tests) 401ms
+ ✓ src/features/shop/__tests__/shop-page.test.tsx (10 tests) 685ms
+ ✓ src/features/shift/__tests__/yesterday-incident-strip.test.tsx (14 tests) 132ms
+ ✓ src/features/home/__tests__/daily-read-discipline.test.tsx (7 tests) 328ms
+ ✓ src/features/orientation/__tests__/orientation-page.test.tsx (7 tests) 303ms
+ ✓ src/features/onboarding/__tests__/onboarding-persona.test.tsx (5 tests) 467ms
+ ✓ src/features/shop/__tests__/cache-vault.test.tsx (7 tests) 470ms
+ ✓ src/features/onboarding/__tests__/onboarding-complete-regression.test.tsx (4 tests) 938ms
+   ✓ #104 regression — Get started fires onboarding.complete > sends the mutation with no input, then navigates home  374ms
+ ✓ src/features/shift/__tests__/shift-page-locked.test.tsx (8 tests) 335ms
+ ✓ src/features/exam/__tests__/use-submit-exam.test.tsx (6 tests) 486ms
+ ✓ src/features/certificate/__tests__/certificate-credential.test.tsx (8 tests) 567ms
+ ✓ src/features/learn/__tests__/feedback-widget.test.tsx (4 tests) 711ms
+ ✓ src/features/learn/__tests__/watch-floor-unlock.test.tsx (3 tests) 177ms
+ ✓ src/components/shell/__tests__/theme-toggle.test.tsx (3 tests) 208ms
+ ✓ src/components/shell/__tests__/rail.test.tsx (11 tests) 302ms
+ ✓ src/features/labs/__tests__/use-lab-queries.test.tsx (22 tests) 365ms
+ ✓ src/features/identity-assessment/__tests__/page.test.tsx (5 tests) 261ms
+ ✓ src/features/gamification/__tests__/commendation-away-queue.test.tsx (7 tests) 181ms
+ ✓ src/features/labs/__tests__/embedded-header-writer.test.tsx (4 tests) 85ms
+ ✓ src/features/gamification/__tests__/sko27-celebration.test.tsx (7 tests) 228ms
+ ✓ src/features/gamification/__tests__/daily-goal-picker.test.tsx (15 tests) 494ms
+ ✓ src/features/exam/__tests__/assessment-intro.test.tsx (5 tests) 255ms
+ ✓ src/features/labs/__tests__/triage-lab-runner.test.tsx (4 tests) 385ms
+ ✓ src/features/learn/__tests__/lesson-renderer.test.tsx (6 tests) 239ms
+ ✓ src/features/units/__tests__/path-course-card.test.tsx (10 tests) 367ms
+ ✓ src/features/learn/__tests__/knowledge-check.test.tsx (9 tests) 423ms
+ ✓ src/features/labs/__tests__/explain-step.test.tsx (7 tests) 784ms
+   ✓ ExplainStep (spec §2 explain row) > live char count + submit disabled until minChars  384ms
+ ✓ src/components/shell/__tests__/notifications-bell.test.tsx (6 tests) 235ms
+ ✓ src/components/shell/__tests__/app-shell.test.tsx (5 tests) 289ms
+ ✓ src/features/learn/__tests__/knowledge-check-unlock.test.tsx (2 tests) 146ms
+ ✓ src/components/ax/__tests__/ax-inputs.test.tsx (11 tests) 212ms
+ ✓ src/features/learn/__tests__/option-row.test.tsx (6 tests) 191ms
+ ✓ src/features/learn/__tests__/question-code.test.tsx (4 tests) 116ms
+ ✓ src/features/labs/__tests__/scenario-runner-step-error.test.tsx (7 tests) 80ms
+ ✓ src/features/learn/__tests__/markdown-artifacts.test.tsx (6 tests) 194ms
+ ✓ src/features/certificate/__tests__/my-certificate-page.test.tsx (4 tests) 225ms
+ ✓ src/components/shell/__tests__/topbar.test.tsx (3 tests) 118ms
+ ✓ src/styles/__tests__/theme-tokens.test.ts (79 tests) 37ms
+ ✓ src/features/labs/__tests__/unit-lab-section.test.tsx (15 tests) 1102ms
+   ✓ UnitLabSection > renders the scan runner for a scan lab  331ms
+   ✓ UnitLabSection > renders the scenario runner embedded  309ms
+   ✓ the lab gate agrees with the app shell > runs a command-assisted terminal lab on mobile web  305ms
+ ✓ src/features/labs/__tests__/scenario-runner-race.test.tsx (2 tests) 64ms
+ ✓ src/features/settings/__tests__/use-avatar-upload.test.tsx (7 tests) 73ms
+ ✓ src/features/shift/__tests__/daily-board.test.tsx (9 tests) 125ms
+ ✓ src/features/exam/__tests__/exam-grading-status-award.test.tsx (8 tests) 292ms
+ ✓ src/features/shift/__tests__/countermeasure-picker.test.tsx (10 tests) 182ms
+ ✓ src/features/units/__tests__/course-module-accordion.test.tsx (10 tests) 269ms
+ ✓ src/features/shift/__tests__/shift-page-serve-timing.test.tsx (1 test) 77ms
+ ✓ src/features/shift/__tests__/options-reveal.test.tsx (4 tests) 49ms
+ ✓ src/features/orientation/__tests__/orientation-a11y.test.tsx (8 tests) 577ms
+ ✓ src/features/shift/__tests__/stage-boundary.test.tsx (6 tests) 94ms
+ ✓ src/features/settings/__tests__/use-user-settings.test.tsx (1 test) 81ms
+ ✓ src/features/units/__tests__/completion-latch.test.ts (5 tests) 4ms
+ ✓ src/features/notifications/__tests__/notifications-page.test.tsx (6 tests) 300ms
+ ✓ src/features/shift/__tests__/daily-incident-panel.test.tsx (5 tests) 49ms
+ ✓ src/features/shift/__tests__/watch-floor-explainer.test.tsx (5 tests) 125ms
+ ✓ src/features/program/__tests__/program-hub-page.test.tsx (4 tests) 275ms
+ ✓ src/features/settings/__tests__/use-learner-profile.test.tsx (4 tests) 33ms
+ ✓ src/features/shift/__tests__/stage-progress.test.tsx (5 tests) 70ms
+ ✓ src/features/units/components/__tests__/diagram-media.test.tsx (8 tests) 89ms
+ ✓ src/features/units/components/__tests__/module-brief.test.tsx (6 tests) 60ms
+ ✓ src/features/shift/__tests__/sla-countdown.test.tsx (4 tests) 162ms
+ ✓ src/features/labs/components/steps/__tests__/draw-submit.test.ts (3 tests) 171ms
+ ✓ src/features/settings/components/__tests__/avatar-upload-hero.test.tsx (5 tests) 186ms
+ ✓ src/features/units/__tests__/knowledge-check-submit-error.test.tsx (1 test) 161ms
+ ✓ src/features/units/__tests__/knowledge-check-runner-feedback.test.tsx (3 tests) 246ms
+ ✓ src/features/units/__tests__/remove-enrollment-action.test.tsx (3 tests) 219ms
+ ✓ packages/presentation/src/controls/__tests__/controls.test.tsx (11 tests) 305ms
+ ✓ src/features/units/__tests__/knowledge-check-start-error.test.tsx (4 tests) 216ms
+ ✓ src/features/labs/components/steps/__tests__/config-edit-step.test.tsx (3 tests) 438ms
+   ✓ ConfigEditStep > submits the current document as { content }  303ms
+ ✓ src/features/units/__tests__/use-unit-queries-award.test.tsx (6 tests) 233ms
+ ✓ src/features/exam/__tests__/exam-results-grading.test.tsx (7 tests) 245ms
+ ✓ src/features/exam/__tests__/exam-results.test.tsx (8 tests) 446ms
+ ✓ src/features/gamification/__tests__/use-daily-goal.test.tsx (6 tests) 72ms
+ ✓ src/features/home/__tests__/first-rotation-card.test.tsx (5 tests) 365ms
+ ✓ src/features/exam/__tests__/exam-terminal-item.test.tsx (5 tests) 553ms
+   ✓ ExamTerminalItemPanel (controlled, plan D-I) > echoes the prompt, forwards input to onExec, reconciles the result  321ms
+ ✓ src/features/exam/__tests__/exam-runner-terminal.test.tsx (4 tests) 774ms
+   ✓ ExamRunner terminal-live phase (P6) > walks questions → terminal items → submit  389ms
+ ✓ src/features/dossier/__tests__/activity-heatmap.test.tsx (6 tests) 574ms
+ ✓ src/features/gamification/__tests__/authed-shell-wiring.test.tsx (4 tests) 73ms
+ ✓ src/features/units/__tests__/knowledge-check-freetext.test.tsx (4 tests) 305ms
+ ✓ src/features/labs/__tests__/terminal-live-ux.test.ts (7 tests) 6ms
+ ✓ src/features/gamification/__tests__/use-unopened-caches.test.tsx (5 tests) 28ms
+ ✓ src/features/onboarding/__tests__/onboarding-page.test.tsx (3 tests) 354ms
+ ✓ src/features/home/__tests__/use-home-discovery.test.tsx (3 tests) 26ms
+ ✓ src/features/library/__tests__/library-components.test.tsx (3 tests) 137ms
+ ✓ src/features/gamification/__tests__/use-view-telemetry.test.tsx (7 tests) 29ms
+ ✓ src/features/dossier/__tests__/trend-charts.test.tsx (7 tests) 329ms
+ ✓ src/features/labs/__tests__/unit-lab-section-hosts.test.tsx (2 tests) 150ms
+ ✓ src/components/ax/__tests__/brand-mark.test.tsx (4 tests) 39ms
+ ✓ src/features/units/__tests__/course-tabs.test.tsx (1 test) 177ms
+ ✓ src/features/labs/__tests__/lab-gate-screen.test.tsx (3 tests) 143ms
+ ✓ packages/presentation/src/shell/__tests__/shell.test.tsx (8 tests) 344ms
+ ✓ src/features/units/__tests__/path-outline.test.tsx (7 tests) 333ms
+ ✓ src/features/units/components/__tests__/module-intro-media.test.tsx (8 tests) 124ms
+ ✓ src/features/labs/__tests__/lab-route-redirect.test.tsx (2 tests) 36ms
+ ✓ src/features/units/__tests__/reset-course-progress-action.test.tsx (3 tests) 305ms
+ ✓ src/lib/__tests__/learner-session.test.tsx (1 test) 60ms
+ ✓ packages/presentation/src/__tests__/provider-free.test.ts (25 tests) 18ms
+ ✓ src/components/shell/__tests__/appearance-sync.test.tsx (4 tests) 95ms
+ ✓ src/features/units/__tests__/use-learning-path.test.tsx (6 tests) 65ms
+ ✓ src/features/labs/components/steps/__tests__/codemirror-extensions.test.ts (4 tests) 7ms
+ ✓ src/theme/__tests__/theme.test.ts (8 tests) 11ms
+ ✓ src/features/labs/embed/__tests__/draw-bridge-host.test.ts (6 tests) 8ms
+ ✓ src/features/home/components/command-rail/__tests__/streak-standing.test.ts (6 tests) 7ms
+ ✓ src/features/units/__tests__/identity-course-copy.test.ts (13 tests) 4ms
+ ✓ src/features/certificate/__tests__/certificate-page.test.tsx (4 tests) 255ms
+ ✓ src/features/shift/__tests__/use-typewriter.test.ts (4 tests) 37ms
+ ✓ src/features/notifications/__tests__/notif-presentation.test.ts (4 tests) 34ms
+ ✓ src/features/leaderboard/components/__tests__/season-card.test.tsx (4 tests) 54ms
+ ✓ src/features/settings/__tests__/avatar-downscale.test.ts (2 tests) 10ms
+ ✓ src/features/shift/__tests__/use-start-shift-award.test.tsx (2 tests) 33ms
+ ✓ src/features/shift/__tests__/shift-entry-page.test.tsx (5 tests) 66ms
+ ✓ src/features/gamification/lib/__tests__/celebrate.test.tsx (4 tests) 254ms
+ ✓ src/theme/__tests__/appearance.test.ts (3 tests) 6ms
+ ✓ src/features/exam/__tests__/exam-timer.test.tsx (2 tests) 44ms
+ ✓ src/features/labs/components/__tests__/lab-brief-layout.test.tsx (2 tests) 70ms
+ ✓ src/__tests__/content-width.test.ts (4 tests) 5ms
+ ✓ src/features/onboarding/__tests__/welcome-preview-page.test.tsx (1 test) 330ms
+   ✓ WelcomePreviewPage > shows the preview banner and saves nothing on Get started  328ms
+ ✓ packages/presentation/src/__tests__/theme-and-cn.test.ts (4 tests) 11ms
+ ✓ src/features/onboarding/__tests__/use-onboarding-redirect.test.tsx (3 tests) 36ms
+ ✓ src/features/shift/__tests__/daily-ghost-strip.test.tsx (4 tests) 37ms
+ ✓ src/lib/__tests__/mutation-failure.test.ts (2 tests) 3ms
+ ✓ src/features/leaderboard/lib/__tests__/week-time.test.ts (4 tests) 2ms
+ ✓ src/features/leaderboard/lib/__tests__/season-time.test.ts (4 tests) 2ms
+ ✓ src/features/shift/__tests__/actor-banner.test.tsx (2 tests) 90ms
+ ✓ src/features/settings/__tests__/settings-patch.test.ts (1 test) 7ms
+ ✓ src/features/units/__tests__/path-tone.test.ts (3 tests) 4ms
+ ✓ src/features/dossier/__tests__/activity-ledger.test.tsx (1 test) 49ms
+ ✓ src/features/home/__tests__/copy.test.ts (1 test) 3ms
+ ✓ src/features/settings/__tests__/name-from-email.test.ts (4 tests) 3ms
+ ✓ src/features/gamification/__tests__/level-up-overlay.test.tsx (2 tests) 51ms
+ ✓ src/features/shop/__tests__/shop-icons.test.ts (35 tests) 3ms
+
+ Test Files  162 passed (162)
+      Tests  1341 passed (1341)
+   Start at  23:29:16
+   Duration  36.36s (transform 6.83s, setup 17.25s, collect 96.53s, tests 53.35s, environment 97.36s, prepare 13.63s)
+
+
+--- stderr ---
+stderr | packages/learner/src/__tests__/host.test.tsx > learner host > asks a guest to sign in when completing a unit, inline and as a notice, without repeating it
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | packages/learner/src/__tests__/host.test.tsx > learner host > says a completion may have been recorded when its outcome is unknown, and does not resend it
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | packages/learner/src/__tests__/host.test.tsx > learner host > after an unknown submission outcome, shows in the outline what Academy recorded, without resubmitting
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | packages/learner/src/__tests__/host.test.tsx > learner host > retires learner state when the host session changes for the same account
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | packages/learner/src/__tests__/host.test.tsx > learner host > retires the previous learner notices when the identity changes
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > "Check answer" is a primary button, disabled until an option is selected (F14)
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > shows the "CHECK n OF m" kicker chip and the not-graded caption (P11)
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > confirms a correct answer in a tinted success panel with role=status
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > confirms a correct answer in a tinted success panel with role=status
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > explains a wrong answer in a warn panel with role=status (not gated)
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > explains a wrong answer in a warn panel with role=status (not gated)
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > tints the chosen option with the academy success token on correct
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > tints the chosen option with the academy success token on correct
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > tints only the chosen option with the warn token on incorrect (no answer reveal)
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > tints only the chosen option with the warn token on incorrect (no answer reveal)
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > try again resets the grade, clears the selection, and re-enables the input
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > try again resets the grade, clears the selection, and re-enables the input
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > try again resets the grade, clears the selection, and re-enables the input
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > try again resets the grade, clears the selection, and re-enables the input
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > on correct: shows the objective microcopy and no dead "Continue lesson" CTA
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > on correct: shows the objective microcopy and no dead "Continue lesson" CTA
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > omits the objective microcopy when the server echoes no objectiveId
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/knowledge-check.test.tsx > KnowledgeCheck (formative) > omits the objective microcopy when the server echoes no objectiveId
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/markdown-artifacts.test.tsx > markdown pipeline (R31) > explanation renders artifact-free after grading (knowledge check)
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/learn/__tests__/markdown-artifacts.test.tsx > markdown pipeline (R31) > explanation renders artifact-free after grading (knowledge check)
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+stderr | src/features/labs/__tests__/scenario-runner-race.test.tsx > ScenarioLabRunner — step-advance race (R15) > R1: a delayed STALE resume echo (newer rev) delivered after advance does NOT revert the active step
+An update to ScenarioLabRunner inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ScenarioLabRunner inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ScenarioLabRunner inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/features/dossier/__tests__/trend-charts.test.tsx > dossier trend charts > has no serious accessibility violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/axe-core/axe.js:16723:49
+    at Object.get (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/axe-core/axe.js:11239:23)
+    at _isIconLigature (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/axe-core/axe.js:16722:41)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/axe-core/axe.js:28288:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/axe-core/axe.js:28287:35)
+    at Rule.colorContrastMatches [as matches] (/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work/academy/node_modules/axe-core/axe.js:28249:12) undefined
+

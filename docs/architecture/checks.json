@@ -645,7 +645,21 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/academy/learner-interactions.test.tsx"
+          "src/features/academy/learner-interactions.test.tsx",
+          "src/features/academy/learner-routes.test.tsx",
+          "src/features/academy/academy-view.test.tsx",
+          "src/features/academy/academy-generations.test.tsx",
+          "src/features/academy/trpc-link.test.ts"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
         ]
       ]
     },

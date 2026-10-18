@@ -91,6 +91,7 @@ func describe(_ node: Node) -> [String: Any] {
     d["focused"] = (attr(el, kAXFocusedAttribute) as? Bool) ?? false
     d["enabled"] = (attr(el, kAXEnabledAttribute) as? Bool) ?? true
     d["current"] = string(el, "AXARIACurrent") ?? NSNull()
+    if let url = attr(el, kAXURLAttribute) as? URL { d["url"] = url.absoluteString }
     d["pos"] = point(el) ?? NSNull()
     d["size"] = size(el) ?? NSNull()
     return d

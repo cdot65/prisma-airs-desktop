@@ -1,0 +1,641 @@
+[
+  {
+    "mutation": "a server error after receipt reads as rejected",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "a_failed_submission_reports_an_unknown_outcome_once_and_reconciles_by_query",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an earlier generation's reply is delivered after an account change",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "a_late_unauthorized_reply_for_an_earlier_generation_never_retires_the_newer_account",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an assessor procedure joins the learner allowlist",
+    "files": [
+      "crates/desktop-core/src/learner.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "assessor_grading_and_award_procedures_are_refused_before_any_request",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a print sheet that could not open reads as opened",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "a_print_sheet_that_cannot_open_says_so_and_changes_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "avatar uploads go to any HTTPS destination",
+    "files": [
+      "crates/desktop-core/src/avatar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "an_avatar_never_goes_to_an_unreviewed_destination_or_past_a_refused_step",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "any address is read back as an avatar",
+    "files": [
+      "crates/desktop-core/src/avatar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "the_avatar_is_read_back_from_academys_origin_and_re_encoded_only",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a source photo beyond the 16 MiB cap is uploaded",
+    "files": [
+      "crates/desktop-core/src/avatar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "an_avatar_upload_sends_nothing_when_cancelled_or_the_photo_does_not_decode",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "decoded pixels are allocated before the memory budget is checked",
+    "files": [
+      "crates/desktop-core/src/avatar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "an_avatar_upload_sends_nothing_when_cancelled_or_the_photo_does_not_decode",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "resampling is not reserved from the memory budget",
+    "files": [
+      "crates/desktop-core/src/avatar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "avatar"
+    ],
+    "guard": "decoded_pixels_and_their_resampling_together_stay_within_the_budget",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a photo that does not decode is uploaded as chosen",
+    "files": [
+      "crates/desktop-core/src/avatar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "an_avatar_upload_sends_nothing_when_cancelled_or_the_photo_does_not_decode",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a lost store reply reads as nothing stored",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "an_upload_that_may_have_replaced_the_photo_is_reported_as_possibly_applied",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused confirmation after a stored photo reads as nothing changed",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "guard": "an_upload_that_may_have_replaced_the_photo_is_reported_as_possibly_applied",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the photo at an unchanged address is not read again",
+    "files": [
+      ".work/academy/src/features/settings/hooks/use-avatar-upload.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "reads the photo Academy serves again after an upload that may have replaced it at the same address",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the assessment timer is not rendered",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "shows Academy's countdown in view and submits once at the deadline",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "overlapping lab draft saves",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "never overlap; a later save carries the newer work on the confirmed version",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "course reset is not offered",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "resets course progress only after a confirmation with the counts and certificates kept",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "completed lessons ask for no rating",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "asks for a rating on a completed lesson and sends it once",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the avatar is uploaded through the page instead of the core",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "uploads a new photo natively, re-reads Academy and shows the photo the core reads back",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the uploaded photo is not read back",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "uploads a new photo natively, re-reads Academy and shows the photo the core reads back",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Home claims commendations the desktop refuses",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-routes.test.tsx"
+    ],
+    "guard": "/ sends only admitted procedures and shows no refusal",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "certificate download uses the browser's print",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "link verification to Academy web and download through the desktop's print sheet",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "verify links use the app's origin",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "link verification to Academy web and download through the desktop's print sheet",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "account sign-out bypasses the desktop",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "signs out through the desktop and leaves appearance to the app",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "guests see the account sections",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "ask a guest to sign in at",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "account routes render for guests",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "guard": "ask a guest to sign in at",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "labs previewed instead of run through the attempt contract",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "runs a lab through the desktop attempt contract",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused beacon loses its reason",
+    "files": [
+      "tools/academy/truth-graph.mjs"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.truth.config.ts"
+    ],
+    "guard": "ships no Academy truth, privileged module or unexplained procedure",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_program"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "avatar"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-interactions.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/learner-routes.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.truth.config.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

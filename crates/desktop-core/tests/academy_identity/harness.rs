@@ -35,9 +35,16 @@ struct Script {
     refresh_delay_ms: u64,
     trpc: Vec<(String, u16, Value)>,
     trpc_delay_ms: u64,
+    /// Per-procedure reply delays (milliseconds), overriding `trpc_delay_ms`.
+    trpc_delays: Vec<(String, u64)>,
     poll_delay_ms: u64,
     revoke_delay_ms: u64,
     me_delays: Vec<u64>,
+    /// Other paths (upload destinations, avatar images): path without the
+    /// query, status (0: the reply is lost; 1: no reply ever), content type and
+    /// body; each
+    /// answers once.
+    files: Vec<(String, u16, String, Vec<u8>)>,
     metadata_issuer: Option<String>,
     token_endpoint: Option<String>,
     issued: u32,
@@ -70,9 +77,11 @@ impl Script {
             refresh_delay_ms: 0,
             trpc: Vec::new(),
             trpc_delay_ms: 0,
+            trpc_delays: Vec::new(),
             poll_delay_ms: 0,
             revoke_delay_ms: 0,
             me_delays: Vec::new(),
+            files: Vec::new(),
             metadata_issuer: None,
             token_endpoint: None,
             issued: 0,
@@ -157,13 +166,37 @@ impl Script {
             }
             if let Some(i) = self.trpc.iter().position(|(p, ..)| *p == procedure) {
                 let (_, status, body) = self.trpc.remove(i);
-                return delay(self.trpc_delay_ms, raw(status, &body));
+                let wait = self
+                    .trpc_delays
+                    .iter()
+                    .find(|(p, _)| *p == procedure)
+                    .map_or(self.trpc_delay_ms, |(_, ms)| *ms);
+                return delay(wait, raw(status, &body));
             }
             return raw(
                 404,
                 &json!({"error": {"json": {"message": "No procedure", "code": -32004,
                 "data": {"code": "NOT_FOUND", "httpStatus": 404}}}}),
             );
+        }
+        let bare = path.split('?').next().unwrap_or("");
+        if let Some(i) = self.files.iter().position(|(p, ..)| p == bare) {
+            let (_, status, content_type, body) = self.files.remove(i);
+            // Status 0: read the request, then close without a reply;
+            // status 1: never answer.
+            if status == 0 {
+                return Reply::Close;
+            }
+            if status == 1 {
+                return Reply::Hang;
+            }
+            return Reply::Raw {
+                head: format!(
+                    "HTTP/1.1 {status} S\r\ncontent-type: {content_type}\r\ncontent-length: {}\r\nconnection: close",
+                    body.len()
+                ),
+                body,
+            };
         }
         raw(404, &json!({}))
     }

@@ -690,10 +690,11 @@ Implemented in Academy's `@ai-security-academy/learner` package (branch
 - **Desktop learner host** (D029). The Academy destination routes Academy's
   paths in memory (`/learn`, `/paths`, `/paths/$pathSlug`,
   `/courses/$courseSlug` with Academy's retired-slug redirects,
-  `/units/$unitId`, `/sign-in` pointing to Settings); any other learner path
-  (Program, assessments, shifts) says plainly it is not in this build, and
-  a page that fails to render shows a plain failure view without its error
-  text. Focus moves to each new page's heading. Learner pages' breadcrumb
+  `/units/$unitId`, `/sign-in` pointing to Settings; C06 adds the Program,
+  assessment, certificate, Shift and account routes); any other path
+  (Academy's manager and admin areas) says plainly it is not in the desktop
+  app, and a page that fails to render shows a plain failure view without
+  its error text. Focus moves to each new page's heading. Learner pages' breadcrumb
   trail (`useLearnerPageHeader`) renders as links in the destination.
   Lesson-body anchors route learner paths in place, scroll in-page anchors,
   and leave any other address out of the window (the navigation policy
@@ -744,12 +745,131 @@ Implemented in Academy's `@ai-security-academy/learner` package (branch
   output (a canary seeded into the learner host does, proving detection),
   and every procedure the shipped modules call is on the account allowlist,
   public, or listed as refused by design with its reason (lab runs —
-  previewed; event celebrations — never mounted; product telemetry). The
-  C05 test gate runs it (`vitest.truth.config.ts`); its report is in
+  previewed, from C06 run through the desktop attempt contract; event
+  celebrations — never mounted, from C06 gated by `awardPresenters`;
+  product telemetry). The C05 test gate runs it (`vitest.truth.config.ts`); its report is in
   `docs/planning/evidence/C05/truth-graph`.
 - **Fixture-only measurement.** In fixture builds (`snapshot.fixtureBuild`)
   the destination offers a learner-call probe for the C04-registered
   overhead budget; production builds never render or load it.
+
+### C06 implementation: graded workflows, Program and the learner account
+
+Implemented in Academy's learner package and pages (branch
+`v2/desktop-presentation`, pinned in `docs/architecture/inputs.lock.json`),
+`crates/desktop-core` (`authority`: `PrintPage`, `PagePrinter`,
+`ShellSnapshot.academy_origin`), `apps/desktop/src-tauri/src/adapters.rs`
+and `apps/desktop/src/features/academy`.
+
+- **Academy's own pages, more of them.** The learner export adds Home,
+  Program, the final assessment (intro and runner), the identity practical,
+  certificates (own and by id), Shift, the dossier, the weekly board,
+  account settings, notifications, requisitions, orientation and onboarding,
+  with Academy's navigation (`LEARNER_NAV`: Home, Learn, Program) and the
+  web shell's account entries (`LEARNER_ACCOUNT_NAV`: Notifications,
+  Settings; a parity test keeps both equal to Academy web's shell). Guests
+  see Learn only; an account route asks a guest to sign in and sends
+  nothing. Learner identity carries the native account's display name
+  (from `desktop.me`) as its profile, never an identity-provider session;
+  email and other account facts come from Academy's own settings read.
+  The page's session-critical status (`useLearnerPageHeader().status`: the
+  final assessment's timer, which submits once at Academy's deadline, and
+  its proctored pill) renders in a sticky slot under the trail and unmounts
+  with the attempt or the learner generation.
+- **Hosted authority is passed through, not recomputed.** Exam, Shift,
+  practical, lab and draft requests travel exactly as the page wrote them;
+  Academy's deadlines, SLA stamps, grades, awards, submission state and
+  review status come back untouched and are what the pages show. The core
+  sends each learner mutation once: a 5xx or lost reply is an unknown
+  outcome (`Outcome::Unknown`), the page says Academy may have recorded it
+  and offers Academy's own status read (`exam.submissionState`, the
+  attempt/draft reads) before any retry, and a retry the learner chooses
+  reuses the page's idempotency key (submission id, mutation id, request
+  id). A changed draft version is Academy's `CONFLICT`, shown with both
+  copies until the learner keeps one. Assessor, grading, override, award
+  and admin procedures are not on the allowlist and are refused before any
+  request.
+- **Timed work is never held by optional context.** Calls are independent
+  operations: a slow `shift.briefing`/`shift.dailyGhost` or debrief never
+  delays `shift.serve`/`shift.answer`/`shift.decide` (fixture-tested with a
+  delayed briefing), and a stale unauthorized reply of an earlier
+  generation is cancelled with that generation, so it cannot retire a newer
+  account.
+- **Host capabilities (D030).** `LearnerHost` gains `labs: 'desktop'`
+  (guided labs through Academy's `desktop.attempt`/`desktop.draft`
+  contract: start once per request id, versioned draft saves with mutation
+  ids, product-sandbox operations applied and replayed client-side, grading
+  only on a confirmed draft version with a submission id, conflicts
+  resolved by the learner, unsupported labs previewed, locked attempts
+  explained), `webOrigin` (public verify links on Academy web's origin from
+  `ShellSnapshot.academyOrigin`, validated as an HTTPS origin), `onSignOut`
+  (the account page signs out through `SignOutAcademy`), `onPrint`
+  (certificate download opens the native print sheet through `PrintPage`,
+  observed like a learner call: a sheet that cannot open reports
+  `hostUnavailable` and the page says so; nothing changes either way; the
+  fixture build records it), `courseReset` and `lessonFeedback` (retained
+  from v1: Academy's reset confirmation with its counts and kept
+  certificates, and a completed lesson's rating through
+  `admin.feedback.submit`; both off on Academy web), `onUploadAvatar` and
+  `loadImage` with `remoteImages=false` (below), `appearance='host'`
+  (theme and accent follow the desktop), `assessorTools=false` (the
+  practical's assessor queue and review stay on Academy web and are never
+  fetched) and `awardPresenters=false` (Home does not claim away
+  commendations or event celebrations; Academy web announces them and the
+  dossier lists every commendation). Academy web keeps every default.
+- **Avatar outside the renderer.** `UploadAvatar` opens the native image
+  picker (fixture builds use a staged file) for a source photo of up to
+  16 MiB, decodes it in the core within bounds (JPEG, PNG or WebP
+  recognised from its bytes; at most 8192 pixels a side and 128 MiB of
+  decoder memory, the decoded pixels and then the resampling buffers
+  reserved from that budget before they are allocated), resamples only the
+  centred square (read in place, so an extreme aspect ratio never scales up
+  the whole image) to 512 pixels, applies its EXIF orientation to that
+  square (a centred crop commutes with every rotation and flip, so no
+  full-size copy) and re-encodes it as a JPEG within Academy's 2 MiB cap (as v1 did with the same `image`
+  0.25.10 decoders); anything that does not decode completely is never
+  uploaded. It then presigns with the account credential
+  (`settings.avatarUploadUrl`, which changes nothing and may be asked
+  again after a renewed token), stores the JPEG with one credential-free
+  PUT only at a reviewed destination (`crate::avatar::upload_destination`:
+  HTTPS, signed query, the `*.r2.cloudflarestorage.com` object store or
+  Academy's own origin), and confirms with Academy
+  (`settings.confirmAvatar`, never resent). Academy keys avatars by user,
+  so a stored PUT can replace the photo already served at the same address
+  before or without confirmation: only a refused (4xx) or unsent PUT
+  reports the photo unchanged; a lost or failed store reply, cancellation
+  after sending, and any confirmation that is not a success report that the
+  photo may have changed (`Outcome::Unknown`), and the page re-reads
+  Academy's settings and the image at its (possibly unchanged) address.
+  `LoadAcademyImage` reads only Academy's public avatar address
+  (`/api/avatars/<id>.<ext>`, no credential) and hands the page a `data:`
+  JPEG re-encoded the same way, only when the declared type matches the
+  decoded image. Removal is Academy's `settings.removeAvatar`. Both jobs run
+  in the learner generation and are retired with it; the picker wait has
+  its own budget (`OperationsRuntime::admit_for`), each request its own
+  timeout.
+- **Lab drafts are serialized.** Academy's desktop draft saves run one at
+  a time against the work current when each starts; an older reply never
+  replaces a newer confirmed version or clears another save, and a queued
+  save of confirmed work sends nothing.
+- **WebView constraints met in Academy, not loosened here.** Academy web's
+  lab runtimes (editors, drawing canvas, renderers) load lazily only for
+  `labs='run'`, and the diagram-label sanitizer uses DOMPurify instead of
+  sanitize-html, whose date dependency assigns over frozen built-ins (the
+  JavaScript override mistake) and could not load under `freezePrototype`.
+  Award-toast bookkeeping (beacon, acknowledge) is silent like Academy's
+  other best-effort writes, so a refused beacon never surfaces as a failure.
+- **Course removal and reset.** Removing an enrollment shows Academy's
+  confirmation naming every affected certification and its courses and
+  that earned certificates stay valid, and sends one
+  `enrollment.removeByCourse`. Course reset (retained from v1, though
+  Academy web moved its trigger to an admin panel) shows Academy's
+  confirmation with the course's unit, quiz and lab counts and that earned
+  certificates stay valid, and sends one `progress.resetCourse`.
+- **Route sweep.** `learner-routes.test.tsx` renders every desktop learner
+  route against a core that admits exactly the allowlist and public
+  queries: no route may show an error toast, and every refusal must be one
+  the truth graph lists with a reason.
 
 ## 3. Native Harness, identity and protected storage
 

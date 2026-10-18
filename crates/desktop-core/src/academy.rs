@@ -110,6 +110,20 @@ pub enum CallReply {
     Error { error: String, status: u16 },
 }
 
+/// What a presigned avatar PUT is known to have done.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StoreOutcome {
+    /// The store accepted the bytes.
+    Stored,
+    /// The store refused them (4xx): nothing was stored.
+    Refused,
+    /// No connection was made: nothing was sent.
+    NotSent,
+    /// Sent, but the reply was an error or never arrived: the bytes may be
+    /// stored.
+    Uncertain,
+}
+
 /// Why a learner call produced no tRPC reply.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -125,8 +139,19 @@ pub enum CallFailure {
     SessionExpired,
     /// No usable credential (signed out, vault failure).
     CredentialUnavailable,
-    /// Stopped by the operator or a learner/account change.
+    /// Stopped by the operator or a learner/account change, or a native
+    /// sheet the operator dismissed.
     Cancelled,
+    /// A native sheet (print, image picker) could not open.
+    HostUnavailable,
+    /// The chosen photo is not a complete JPEG, PNG or WebP of at most
+    /// 16 MiB and 8192 pixels a side.
+    UnsupportedImage,
+    /// Academy named an upload destination outside the reviewed set.
+    DestinationRefused,
+    /// The photo was not stored, or its store is not known to have taken
+    /// it (the call's outcome says which).
+    UploadFailed,
 }
 
 fn https(text: &str) -> Option<Url> {
@@ -531,6 +556,82 @@ impl AcademyClient {
             .ok_or(CallFailure::InvalidResponse)?;
         screen(procedure, &mut data)?;
         Ok(CallReply::Data(data.to_string()))
+    }
+}
+
+impl AcademyClient {
+    /// Stores an avatar at a presigned upload destination: a single PUT of
+    /// the bytes with their content type and no credential (the signature
+    /// is in the URL). The caller has checked the destination. A refusal
+    /// (4xx) stored nothing; a request that never connected was not sent;
+    /// anything else after sending (5xx, a lost reply, a timeout) may have
+    /// stored the bytes.
+    pub async fn put_upload(
+        &self,
+        url: Url,
+        content_type: &str,
+        bytes: Vec<u8>,
+        timeout: Duration,
+    ) -> StoreOutcome {
+        let sent = self
+            .http
+            .put(url)
+            .timeout(timeout)
+            .header("content-type", content_type)
+            .body(bytes)
+            .send()
+            .await;
+        match sent {
+            Ok(response) if response.status().is_success() => StoreOutcome::Stored,
+            Ok(response) if response.status().is_client_error() => StoreOutcome::Refused,
+            Ok(_) => StoreOutcome::Uncertain,
+            Err(error) if error.is_connect() => StoreOutcome::NotSent,
+            Err(_) => StoreOutcome::Uncertain,
+        }
+    }
+
+    /// Reads one public Academy image without a credential: its declared
+    /// content type and at most `limit` bytes. The caller has checked the
+    /// address.
+    pub async fn get_image(
+        &self,
+        url: Url,
+        limit: usize,
+        timeout: Duration,
+    ) -> Result<(String, Vec<u8>), CallFailure> {
+        let response = self
+            .http
+            .get(url)
+            .timeout(timeout)
+            .header("accept", "image/jpeg, image/png, image/webp")
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    CallFailure::Timeout
+                } else {
+                    CallFailure::Network
+                }
+            })?;
+        if response.status().as_u16() != 200 {
+            return Err(CallFailure::InvalidResponse);
+        }
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .map(|v| {
+                v.split(';')
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .to_ascii_lowercase()
+            })
+            .unwrap_or_default();
+        let body = bounded_body(response, limit)
+            .await
+            .map_err(|()| CallFailure::InvalidResponse)?;
+        Ok((content_type, body))
     }
 }
 
