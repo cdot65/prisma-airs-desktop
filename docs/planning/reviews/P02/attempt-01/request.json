@@ -1,0 +1,393 @@
+{
+  "schema": "airs-v2/review-request/1",
+  "request_id": "rq-P02-20261018T192444Z-fb0bb307",
+  "attempt_id": "attempt-01",
+  "subject": "P02",
+  "kind": "phase",
+  "created_utc": "2026-10-18T19:24:45Z",
+  "repository": "/Users/cdot/development/redtail/prisma-airs-desktop-v2",
+  "base_commit": "960e3408b041db51b159b83b37d59420f55a8566",
+  "scope": "cumulative phase review of P02 and the earlier features it affects",
+  "instructions": [
+    "docs/planning/chunks/C04.md",
+    "docs/planning/chunks/C05.md",
+    "docs/planning/chunks/C06.md",
+    "docs/planning/chunks/C07.md"
+  ],
+  "predecessors": [
+    {
+      "subject": "C04",
+      "receipt": {
+        "path": "docs/planning/reviews/C04/attempt-03/receipt.json",
+        "sha256": "5988a7b0e5c28b7aca6df888a04511b96a69404468619c907074605e4a0ef144"
+      }
+    },
+    {
+      "subject": "C05",
+      "receipt": {
+        "path": "docs/planning/reviews/C05/attempt-03/receipt.json",
+        "sha256": "4be2d0ba1dbc4c268d033eada485244ff2a9ada1018055e7ff5fff527ed64491"
+      }
+    },
+    {
+      "subject": "C06",
+      "receipt": {
+        "path": "docs/planning/reviews/C06/attempt-05/receipt.json",
+        "sha256": "296d6da93a24700ad2793f270c1111b48e9db9c564490b08922e263942755cc4"
+      }
+    },
+    {
+      "subject": "C07",
+      "receipt": {
+        "path": "docs/planning/reviews/C07/attempt-06/receipt.json",
+        "sha256": "bf5f0c3233006e2065620cfbfb2f87536aaaffadce8b14b979cd9eb38a4ec1ca"
+      }
+    }
+  ],
+  "fingerprints": {
+    "source": "f81d60e1077210b0030371f1664b6809701d35b64f50ff184be1882a64a290c6",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "e565bf97e30052f99d23369fcaf43d1b6cd7eefeb29bd5f224d4128ac0cb8382",
+    "evidence": "d81718299e3baf60c52cbf4e3b1bfb5b072508c9221383dc47925088be88d553"
+  },
+  "source_inventory": {
+    "path": "docs/planning/reviews/P02/attempt-01/source-inventory.json",
+    "sha256": "1bc712cf6db2dfe102be1bcb10afa93f9286c0d3777eeb83a4e01b948022ff09"
+  },
+  "runs": [
+    {
+      "kind": "check",
+      "run_id": "check-20261018T190753Z-e6706f",
+      "path": "docs/planning/evidence/P02/runs/check-20261018T190753Z-e6706f/run.json",
+      "sha256": "f27eac85b01791fb3141ef429aa9cc7d478ba6ad7c4522d38bacfbfca3f1d36d"
+    },
+    {
+      "kind": "test",
+      "run_id": "test-20261018T191100Z-2f0163",
+      "path": "docs/planning/evidence/P02/runs/test-20261018T191100Z-2f0163/run.json",
+      "sha256": "ef59700eff22872a99c7a113fd10e9d8bbac6596e56a7768de609b78ccec127e"
+    },
+    {
+      "kind": "native-prepare",
+      "run_id": "native-prepare-20261018T192209Z-8ff4ad",
+      "path": "docs/planning/evidence/P02/runs/native-prepare-20261018T192209Z-8ff4ad/run.json",
+      "sha256": "68ee4fd32d36df206581b521994fbde25e27dcfe375e24aad69d7a1aa0ded4b1"
+    }
+  ],
+  "evidence_files": [
+    {
+      "path": "docs/planning/evidence/P02/native-C04/observations.json",
+      "sha256": "df7206718f903e5eec26761128b6941ff3f2035e6097201e97e4f152ed1495a5"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C04/tree-awaiting.json",
+      "sha256": "f8b7e3a19e8c87a3daf2e69ab851d5275b3afb99032fbf0ded3a60be15fcee05"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C04/tree-denied.json",
+      "sha256": "9d79b5b0f5de92c5cebdfbac859f189be2da9f56646d535b316772c51621e5af"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C04/tree-offline.json",
+      "sha256": "2e71b44c46362fa9c19404d607a97972f48d1a6dd573cf5e8aa7fecbfd781a2d"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C04/tree-restored.json",
+      "sha256": "7dfe6dceae34378199257a6edce038b3657387b7f314d3254968588c78a03fe5"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C04/tree-signed-in.json",
+      "sha256": "060bdb4d0ad4747d0783b42b54a23808788ec002fb37d19515a4f4131fdbdaf7"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C04/tree-signed-out.json",
+      "sha256": "842a82d6072e33cbda1d16bd6f057f43868415cc84b2c3dbdd64e7ac0f5776b4"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/colors-dark.json",
+      "sha256": "981f6426bf3a53025e02fb2cd1587d6df93133bf8522b00a10fba2d82f5371d9"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/colors-light.json",
+      "sha256": "c1708d3d00e2222f20c47f621e4e2fbc32b12c2be2aacc74805af20c4e2039dc"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/observations.json",
+      "sha256": "2ad2ff31a8bc08696572929dcc8d3b341d19c2f4f822b775c14e2a54d3f26f6e"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-account-catalog.json",
+      "sha256": "1cfb91494514f89bea9ac12a307c17c69c6bdd37a5c0c124edd5e12b5e743c5f"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-account-locked.json",
+      "sha256": "fe31c60ffb2ced97d96de2a5be66e4b7b783197a4e249ced818ccc78dcaf1c0c"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-account-missing.json",
+      "sha256": "0cfa06f26f6633270eac3c9c3c16389c3d9dafecc064855716c568225a621154"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-after-internal-link.json",
+      "sha256": "6096d80a778c3bc1d257e8bbd1e470b593ba0c3e209b0f40864f9e236867e91a"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-after-sign-out.json",
+      "sha256": "926c442dfffa4c1a652e78898848f272e57567917e58d01544ca07031516ffb6"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-away-harness.json",
+      "sha256": "caf7cb2e4e09a500681bce7c5419c6f3fe254a2da23bf3fdcde756ae0de33b6f"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-away-runtime.json",
+      "sha256": "bf80ae6d9299b9b69a373647b83ef4012d44cdbc5f74d3545c1673d4b9b4a55e"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-guest-catalog.json",
+      "sha256": "05eb1e09eaed009aa459b555fb8a0e143319c6ffd115c1306c146c0b550788df"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-guest-complete.json",
+      "sha256": "ecb91a082ceb90d4675fb30a9d23c2e3e8f1e53a3fe91fcdf4a2729d1fc3af52"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-guest-knowledge-check.json",
+      "sha256": "bd3c5f1437afe0e5657e0ded544e6503b645776a7e17844cc003ae510c3e9771"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-guest-locked.json",
+      "sha256": "bec0b434c0b20f21463f7fa33b1cfd03e2a54a3a04e7af6b8fc19ed951214f1c"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-guest-members.json",
+      "sha256": "0bb8d854e95f0a00c443c498d4715e908638da7f412fff73730f5a1154a81d98"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-knowledge-check-graded.json",
+      "sha256": "55b275734cdec266ac5f7201b26cd082b58eb1dff0180303a368cb8bd4cd2738"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-knowledge-check-unknown-outcome.json",
+      "sha256": "9ae64e7a6fda61b13c66bdf63ce14e45f79e98667161d2e3d36c014832187c78"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-lab-preview.json",
+      "sha256": "d81494c9b3826e7a7edfae5fd0041c6cf8140db932b5da2e255e1559101088b0"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C05/tree-lesson.json",
+      "sha256": "7cdacf4a3cf3b101c5370cba283cdef57c1ae51c071b994a256907f40e8c7879"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/observations.json",
+      "sha256": "aa978c8bf3c9a7fb42cb5cc51b66359f3373fb94eec819ffe2ffc31ce85b9e48"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-account.json",
+      "sha256": "ab7cbaed2196046aa220aae889f895ecc93bc408ebbbd74a5a9e5d5f2e655449"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-after-sign-out.json",
+      "sha256": "d7587f47ca0f2f4e812cad4e0845f23c6bf4bc4e5c872245f878fc2602bc4d69"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-avatar-lost-reply.json",
+      "sha256": "81b2382245444d5555b56f094285af40ee8eb27ea76724f9923d232d7eb2b7cb"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-avatar-uploaded.json",
+      "sha256": "00f949a14c94bd39ffe73c27ac4136eb9a184156475b8733a91f416e32163419"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-away-harness.json",
+      "sha256": "2bdd52afc2d29a0064d35616b4cb17e889b996f5fac90deb875120ea71c947ff"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-away-runtime.json",
+      "sha256": "1ea675027b9e854fe959642258e3fb5215146225fd69d5f7f9effff53f770801"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-certificate-print-failed.json",
+      "sha256": "55d4f2e35a53dbe6f479719a92a752a1d3afc5a00391e3083b9414a00214d86d"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-certificate.json",
+      "sha256": "7c6f49d7ccb4a7d5536c4acc60816e16c80b20927259807263adf73c78d105ec"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-exam-deadline.json",
+      "sha256": "07b9be716e5ccfd72d477b82e32c199f6233b00462b47a105187d82ec3a090fb"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-exam-intro.json",
+      "sha256": "c66867d72bb7d923a6c34396324a36d32efd69c1189fdd94d78cf7175c4fb03e"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-exam-keyboard.json",
+      "sha256": "0c91b84615f2ef974221d0c3f185b40ce2e005894b7cd0df34974954a1189860"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-exam-pending-review.json",
+      "sha256": "bc2bb43631deb50daeb393c0450b28079d1ab75c48428717ac023d67a2419846"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-exam-runner.json",
+      "sha256": "0cd4edc7b0fb05fddc2b6d7c1b689f94f97c9693edf25a4f475d235f446b5daa"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-exam-unknown-outcome.json",
+      "sha256": "b29905dfd225ddf799cbacf94219aa724a040a53db39391ab438b9303c69d279"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-guest-learn.json",
+      "sha256": "6ce57c5f8c153d9bcb5e21ded5f3627b26c0bb8d5d390dcc2f70560ebf39057e"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-home.json",
+      "sha256": "e2d3499608abbc7712939f61499cd0d6a9e5c9db08a98a31a84e19afcd17b017"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-lab-intro.json",
+      "sha256": "8c549cd6212e0d756d64e48d0a8360af03a5217ab10024cbd8343a46f426948d"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-lab-passed.json",
+      "sha256": "bbd659cbc3c25cdc86852ae5fb16ab0fc6149216034f50443005da7afbb8d9e6"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-lab-unsupported.json",
+      "sha256": "958d9614a6d80bf68989ea7dcaa58095d8342333b27117ca378943909c90012e"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-lesson-feedback.json",
+      "sha256": "68e58cfe0f6b0d2a7ead556f5a00670dcf18016d6e41c59d1fa77caf29c31260"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-program.json",
+      "sha256": "6bff9aa2bdcf397293a1385a126033b6b0bda55acd53bcaebe95bffd4691c937"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-removal-dialog.json",
+      "sha256": "55f0d17be0abd744323bf2217fda74325acb413fd806e74ac8e6e6cee2eb19d4"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-reset-dialog.json",
+      "sha256": "8a5c6c9964db192ab4882b91f5a67bb02c355c25dc7afc11c3070fd4f2d42d70"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-shift-answered.json",
+      "sha256": "505baec16063836c441c749d4a58dd79821fc9b63ab7859a9b35a4930f244e1b"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C06/tree-zoom-start.json",
+      "sha256": "f5cd374568ecb5755fd516929f892f9cff282e6f17baa29e38ca42a89b81274a"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/observations.json",
+      "sha256": "21156028433edbddc6a91db871531c730da0ef6e227535af7e309780a75ea58e"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-downloaded.json",
+      "sha256": "f08bb9d8409d55b187badc5a3c6d4ae943d0d2d57d9c4768d3aab427ea3866f5"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-downloads-empty.json",
+      "sha256": "98203b6a87819e781bdf5ac93c3d8a8f5660403a5fa41a4995ee8b46b1dff1ab"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-lease-ended-lesson.json",
+      "sha256": "44127715ac24d4aa5eba5c097c4ad709ab9fa1dcc65eb4096908ae2a3435d5b0"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-lease-ended.json",
+      "sha256": "0abe33497e668cdf31917e1a3650396bf89dae4dea3103db42d3c08d2bb557b2"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-offline-downloads.json",
+      "sha256": "17db6038f01b3781589091221d94c366f05139a00f1a11260fba4103ee436539"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-offline-lab.json",
+      "sha256": "f036302f324a224c3d91b2fd69ce1c18dad2a3f7255618dd2865248f64b1b02f"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-offline-lesson.json",
+      "sha256": "11cd461b5533bb6d58f5389eaec5a69b7d0ddca623d8b7cbbcf3c21ed5946149"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-other-account.json",
+      "sha256": "14d4755d1f8b028dcf0760d63bf804aac12fb9c8ce14ab8438b0100d16de53d4"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-reconnected.json",
+      "sha256": "59d69586e2cd8d3f927762c25504009db429ff5a4ea501886a058d2a9f218db2"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-restored-lab.json",
+      "sha256": "bda5a911019c007f212b4dbec32bb09a3c3d114a2cd016e35c865ba0e54db25e"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-too-large.json",
+      "sha256": "c3c77bb1163bac260469d69c7b305c1e81c366b595470c2e2c6e052b300c2d98"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-C07/tree-withdrawn.json",
+      "sha256": "a37962d3afdcade125c1fd5ff99e99877020ae55aaa23b624c3a1a347f490d51"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-acceptance-C04.json",
+      "sha256": "710a4ca06c769efc365d09ef0375e8c7decd9a2217c2b0490ff94d761c993a56"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-acceptance-C05.json",
+      "sha256": "54e8018240b8ffba4be662c3125bdac1c81aa663d6255650d7c2bb39894ca338"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-acceptance-C06.json",
+      "sha256": "aa588caa0505070875ef43b4ec4b3be1c5d342399f37a86dd62cffaf0bf31195"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-acceptance-C07.json",
+      "sha256": "0b3ffa9e6fd26783a0fa2424b1202bf68067d9423bfd9a2f3cd07b34e4835dfb"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-acceptance.json",
+      "sha256": "3477fbbd20a46deba0b520190c5eecf5d9582c5b34adc4601bd7c9d1549615fb"
+    },
+    {
+      "path": "docs/planning/evidence/P02/native-prepare.json",
+      "sha256": "997323d115644124b2fe7d1e1a81b84b52fbbec5e0a3a7bf6feb9107c09bc8d8"
+    },
+    {
+      "path": "docs/planning/evidence/P02/storage-manifest.json",
+      "sha256": "07815c6cdf3e745bf33dfab2d3f86c2b03a6c50170fdf38e553d0783baf18e7f"
+    },
+    {
+      "path": "docs/planning/evidence/P02/workload-perf.json",
+      "sha256": "836ed97f634a27188ce088bf67a64b25c331bf32ac5505e064f324a0b5f57ffc"
+    }
+  ],
+  "native_acceptance": {
+    "path": "docs/planning/evidence/P02/native-acceptance.json",
+    "sha256": "3477fbbd20a46deba0b520190c5eecf5d9582c5b34adc4601bd7c9d1549615fb"
+  },
+  "native_executable_sha256": "8f2725a300c7eb886c751ae9b7e59cb0f3a3b08f9d0f6a58b2cfa0eaf943bf8d",
+  "diff": {
+    "path": "docs/planning/reviews/P02/attempt-01/diff.patch",
+    "sha256": "b7e4c8f4df31e48a39a2b3286f48685bc94ebbe781cb851171e726c4b11b48ff"
+  },
+  "limitations": [
+    "P02 integrated native evidence: the C04, C05, C06 and C07 drivers ran against the single P02-prepared fixture bundle with AIRS_NATIVE_SUBJECT=P02 (native-<chunk>/, native-acceptance-<chunk>.json), merged by tools/native-acceptance/merge_phase.py into native-acceptance.json; the C05 learner-sync workload (C04 registration) was re-measured on that bundle (workload-perf.json).",
+    "Driver expectations for builds after C06 (unchanged from the C07 regressions): the C06 driver expects the desktop's Downloads navigation entry and, at sign-out, the account's offline key remaining with its locked work (the draft hook keeps unconfirmed lab work on the Mac after each edit; reset removes the key); the C05 driver expects the desktop lab runner's intro for C06+ builds.",
+    "C07 completion: see docs/planning/evidence/completions.jsonl. If C07 was completed under D032 (owner acceptance of an 8/10 review), that review's required fixes remain recorded in its attempt directory as known follow-ups; the 9/10 threshold still applies to this phase review.",
+    "Academy changes are on the owner-approved branch v2/desktop-presentation (pinned 532809aa, tree hash in docs/architecture/inputs.lock.json), pushed to origin (tip 0f51e812 merges Academy main's content-hook RPC fix #2059; the pin is its ancestor); the pre-push hook passed and was not bypassed.",
+    "Academy is a synthetic local endpoint (tools/native-acceptance/academy_server.py with academy_catalog.py, academy_program.py and academy_offline.py) shaped after Academy's routers at the pinned commit; hosted Academy identity, timing, grading and the offline contract are qualified in C25 (L13). Offline natively is the endpoint stopped. Fixture endpoint only; signed packages are C26."
+  ],
+  "verdict_schema": {
+    "path": "docs/architecture/review-verdict.schema.json",
+    "sha256": "446db12c809cbe91ea6af7ac622c3e029dbe5792828e1361d2b1f2af830375b4"
+  },
+  "verdict_path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/docs/planning/reviews/P02/attempt-01/verdict.json",
+  "review_instructions": "Independently review phase P02 (chunks C04, C05, C06, C07) of Prisma AIRS Desktop\nv2 as an integrated whole. Read AGENTS.md, GLOSSARY.md, decisions, ADRs, the\nimplementation plan, each phase chunk instruction, review-protocol.md, and the\npacket's receipts and evidence. Assess how the phase's features compose with\neach other and with earlier phases they affect: authority boundaries across\nfeatures, shared state, regressions, outcome truthfulness, and whether the\nintegrated tests and native evidence exercise the combined behavior.\n\nHistorical chunk scores are evidence to assess, not a substitute for this\nreview. A defect visible only across chunks is a required fix even if every\nchunk passed alone. Do not edit application files, call endpoints, read\nsecrets, or implement fixes.\n\nScore architecture, behavior, authority_security, validation and overall 1-10.\nReturn the same verdict schema as chunk reviews with the phase as subject. A\npass requires every score >=9 and empty required_fixes/blockers/evidence_gaps.\nDo not inflate scores to meet the target."
+}

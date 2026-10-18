@@ -1,0 +1,566 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "P02",
+  "recorded_utc": "2026-10-18T19:22:00Z",
+  "method": "cua",
+  "performed_by": "C04: Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic Academy + Clerk endpoint tools/native-acceptance/academy_server.py; tools/native-acceptance/acceptance_c04.py (recorded 2026-10-18T19:15:15Z); C05: Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, ax_colors.swift, System Events keystrokes) against the synthetic Academy endpoint tools/native-acceptance/academy_server.py serving tools/native-acceptance/academy_catalog.py; tools/native-acceptance/acceptance_c05.py (recorded 2026-10-18T19:16:53Z); C06: Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic Academy endpoint tools/native-acceptance/academy_server.py serving tools/native-acceptance/academy_catalog.py and academy_program.py; tools/native-acceptance/acceptance_c06.py (recorded 2026-10-18T19:19:03Z); C07: Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic Academy endpoint tools/native-acceptance/academy_server.py serving tools/native-acceptance/academy_catalog.py, academy_program.py and academy_offline.py; tools/native-acceptance/acceptance_c07.py (recorded 2026-10-18T19:20:44Z)",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "8f2725a300c7eb886c751ae9b7e59cb0f3a3b08f9d0f6a58b2cfa0eaf943bf8d",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C04-N01",
+      "description": "Settings shows a labelled 'Academy account' group, separate from Tenants, stating the learner account is independent of AIRS tenants; signed out it offers 'Sign in to Academy', reachable by Tab.",
+      "result": "pass",
+      "observation": "'Academy account' group with the tenant-independence text and 'Not signed in to Academy.': True; Tab reached 'Sign in to Academy': True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json",
+        "docs/planning/evidence/P02/native-C04/tree-signed-out.json"
+      ]
+    },
+    {
+      "id": "C04-N02",
+      "description": "Starting sign-in shows the device code (accessible name 'Sign-in code \u2026') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL.",
+      "result": "pass",
+      "observation": "code shown: True; accessible name 'Sign-in code W D J B \u2026': True; issuer page shown: True; pages handed to the browser: ['https://localhost:59539/activate?user_code=WDJB-MJHT']",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json",
+        "docs/planning/evidence/P02/native-C04/tree-awaiting.json"
+      ]
+    },
+    {
+      "id": "C04-N03",
+      "description": "After approval in the browser the window shows 'Signed in to Academy as <name>'; the endpoint saw a public-client device flow (client_id, no client secret, no Authorization on identity requests); the learner Keychain namespace holds exactly one item and the scan namespace none; no token appears in the data root or any AX snapshot.",
+      "result": "pass",
+      "observation": "'Signed in to Academy as Ada Lovelace': True; public-client device flow (device fields ['client_id', 'scope'], 6 polls, no secret or Authorization on identity requests, desktop.me with Authorization): True; learner namespace items ['cr-c8db525390722772']; scan namespace items []; token in AX snapshots []; in data root []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json",
+        "docs/planning/evidence/P02/native-C04/tree-signed-in.json"
+      ]
+    },
+    {
+      "id": "C04-N04",
+      "description": "After quit and relaunch the Academy account is still signed in (from the Keychain) under the same name.",
+      "result": "pass",
+      "observation": "after quit and relaunch 'Signed in to Academy as Ada Lovelace': True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json",
+        "docs/planning/evidence/P02/native-C04/tree-restored.json"
+      ]
+    },
+    {
+      "id": "C04-N05",
+      "description": "Creating and switching AIRS tenants leaves the Academy account signed in under the same name.",
+      "result": "pass",
+      "observation": "Tenant B active: True; Academy still signed in as Ada Lovelace: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C04-N06",
+      "description": "Signing out shows 'Not signed in to Academy', empties the learner Keychain namespace and revokes the refresh token at the issuer.",
+      "result": "pass",
+      "observation": "'Not signed in to Academy.': True; learner namespace items []; refresh-token revocations 1",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C04-N07",
+      "description": "A sign-in declined in the browser shows 'Sign-in was declined in the browser.' with 'Sign in again', and saves nothing.",
+      "result": "pass",
+      "observation": "'Sign-in was declined in the browser.' with 'Sign in again': True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json",
+        "docs/planning/evidence/P02/native-C04/tree-denied.json"
+      ]
+    },
+    {
+      "id": "C04-N08",
+      "description": "With the Academy endpoint unreachable, sign-in reports that Academy could not be reached, and nothing is saved.",
+      "result": "pass",
+      "observation": "'Academy could not be reached' with the endpoint stopped: True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json",
+        "docs/planning/evidence/P02/native-C04/tree-offline.json"
+      ]
+    },
+    {
+      "id": "C04-N09",
+      "description": "Cancelling a sign-in that is waiting for approval returns to 'Not signed in to Academy'; a grant issued afterwards does not sign in and nothing is saved.",
+      "result": "pass",
+      "observation": "cancelled to 'Not signed in to Academy.': True; still signed out 3 s after a grant became available: True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C04-N10",
+      "description": "Keyboard only: Tab reaches 'Sign in to Academy', Space starts sign-in, Tab reaches 'Open sign-in page' and 'Cancel sign-in'; state changes are exposed through a live status region.",
+      "result": "pass",
+      "observation": "Tab reached 'Sign in to Academy' and Space started sign-in: True; Tab reached 'Open sign-in page' and 'Cancel sign-in': True; live status regions in the group: 1",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json",
+        "docs/planning/evidence/P02/native-C04/tree-awaiting.json"
+      ]
+    },
+    {
+      "id": "C04-N11",
+      "description": "At 200% zoom and at the minimum window size, the Academy sign-in control is reachable by Tab and lies inside the window clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Sign in again', 'pos': [649, 617], 'size': [225, 88]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Sign in again', 'pos': [384, 490], 'size': [113, 45]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C04-N12",
+      "description": "Reset local data signs the Academy account out and empties the learner Keychain namespace.",
+      "result": "pass",
+      "observation": "signed in before reset with 1 learner item(s); after reset 'Not signed in to Academy.': True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C05-N01",
+      "description": "Signed out, the Academy destination shows Academy's own catalog ('What will you take up next?') with a note that the learner is browsing as a guest; the endpoint receives only public catalog procedures, none with an Authorization header, and no identity-provider requests.",
+      "result": "pass",
+      "observation": "guest catalog with the guest note: True; learner calls ['paths.list', 'library.list'] all public and without Authorization: True; identity or other requests: 0",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-guest-catalog.json"
+      ]
+    },
+    {
+      "id": "C05-N02",
+      "description": "After signing in, the Academy catalog is read again under the account without the guest note; requests carry the account credential exactly for procedures on the desktop account allowlist.",
+      "result": "pass",
+      "observation": "signed in: True; catalog re-read under the account without the guest note: True; calls (procedure, Authorization): [['paths.list', True], ['library.list', True]]",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-account-catalog.json"
+      ]
+    },
+    {
+      "id": "C05-N03",
+      "description": "From the catalog's Courses filter, the course page and its module units open; a lesson exposes its heading and first paragraph and all section headings of a 50 KiB lesson; the trail 'Learn \u203a <course>' links back to the course.",
+      "result": "pass",
+      "observation": "lesson heading: True; first paragraph exposed: True; 22 section headings in a 51968 byte lesson; trail links ['Learn', 'Runtime Security Foundations']; trail back to the course: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-lesson.json"
+      ]
+    },
+    {
+      "id": "C05-N04",
+      "description": "A lesson diagram shows its pre-rendered image ('Lesson diagram') with its source under a disclosure, a diagram without an artifact shows its source, and no diagram video is requested; an external lesson link opens nothing, keeps the window on the lesson and states it was not opened; an in-page anchor stays on the lesson; a learner-path link routes to the catalog in place.",
+      "result": "pass",
+      "observation": "pre-rendered diagram image 'Lesson diagram': {'role': 'AXGroup', 'size': [460, 91]}; source disclosure: True; artifact-less diagram shows its source: True; diagram video requests: 0; external link notice: True, window still on the lesson: True, pages handed to the browser: []; in-page anchor stays on the lesson: True; learner-path link routes to the catalog: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-lesson.json",
+        "docs/planning/evidence/P02/native-C05/tree-after-internal-link.json"
+      ]
+    },
+    {
+      "id": "C05-N05",
+      "description": "Signed in, a knowledge check starts, takes an answer and submits through the endpoint with the literal fixture request bodies and the account credential; the server's grade ('You scored 100%', '1 of 1 correct') is shown; no answer key appears in any AX snapshot.",
+      "result": "pass",
+      "observation": "'You scored 100%': True; '1 of 1 correct': True; start body is the literal fixture: True; submit body is the literal fixture: True; both with Authorization: True; answer keys or canaries in AX snapshots: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-knowledge-check-graded.json"
+      ]
+    },
+    {
+      "id": "C05-N06",
+      "description": "As a guest, starting a knowledge check says 'Sign in to take this knowledge check.' and sends nothing to Academy.",
+      "result": "pass",
+      "observation": "guest 'Start knowledge check' shows 'Sign in to take this knowledge check.': True; learner calls sent for it: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-guest-knowledge-check.json"
+      ]
+    },
+    {
+      "id": "C05-N07",
+      "description": "A hands-on lab unit is previewed with its title and brief and says no lab sandbox was started; no lab start, step or submit request is made.",
+      "result": "pass",
+      "observation": "lab unit previewed with its brief and 'no lab sandbox was started': True; learner calls ['units.get', 'labs.get', 'desktop.attempt.list']; lab start/step/submit calls: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-lab-preview.json"
+      ]
+    },
+    {
+      "id": "C05-N08",
+      "description": "Signing out while on a lesson returns the Academy destination to the catalog as a guest with only uncredentialed calls; signing in again reads the catalog under the account.",
+      "result": "pass",
+      "observation": "signed out from a lesson: True; Academy back at the catalog as a guest: True; guest calls (procedure, Authorization) [['paths.list', False], ['library.list', False]]; signed in again: True; account catalog: True; calls [['paths.list', True], ['library.list', True]]",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-after-sign-out.json"
+      ]
+    },
+    {
+      "id": "C05-N09",
+      "description": "Navigating Academy \u2192 Runtime Security \u2192 Harness placeholder shows no learner chrome or effects (XP, trail, reading progress, knowledge check, lab, guest note, probe) outside Academy, and no learner request is made while away.",
+      "result": "pass",
+      "observation": "learner markers in Runtime Security: []; in Harness: []; learner calls while away from Academy: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-away-runtime.json",
+        "docs/planning/evidence/P02/native-C05/tree-away-harness.json"
+      ]
+    },
+    {
+      "id": "C05-N10",
+      "description": "Keyboard only: Tab reaches the Courses filter and the course link, Return opens the course with focus on its heading, Tab reaches a lesson link, and Return opens the lesson with focus on its heading.",
+      "result": "pass",
+      "observation": "Tab reached the Courses filter: True; Tab reached the course link: True; Return opened the course with focus on its heading: True; Tab reached the lesson link: True; Return opened the lesson with focus on its heading: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-lesson.json"
+      ]
+    },
+    {
+      "id": "C05-N11",
+      "description": "In View > Appearance Dark and Light the lesson text uses the light Gruvbox ink and the dark Paper ink respectively (AX text colors).",
+      "result": "pass",
+      "observation": "lesson paragraph ink in Dark #c9bba4 (luminance 0.7384933333333333), in Light #4b4b57 (luminance 0.29751529411764704)",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/colors-dark.json",
+        "docs/planning/evidence/P02/native-C05/colors-light.json"
+      ]
+    },
+    {
+      "id": "C05-N12",
+      "description": "At 200% zoom and at the minimum window size, a lesson's 'Complete & continue' control is reachable by Tab and lies inside the window clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Complete & continue', 'pos': [889, 617], 'size': [374, 89]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Complete & continue', 'pos': [740, 516], 'size': [188, 45]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json"
+      ]
+    },
+    {
+      "id": "C05-N13",
+      "description": "Reset local data while signed in signs the learner out, empties the learner Keychain namespace and returns Academy to the guest catalog.",
+      "result": "pass",
+      "observation": "after reset 'Not signed in to Academy.': True; Academy shows the guest catalog: True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json"
+      ]
+    },
+    {
+      "id": "C05-N14",
+      "description": "Content access as Academy decides it: a guest at members-only or progression-locked content sees Academy's sign-in gate (endpoint 401, no credential); signed in, locked content shows 'This content is locked' with its progression reason (endpoint 403 FORBIDDEN with the domain code), members-only content opens, and retired content says 'Unit not found.' without any gate.",
+      "result": "pass",
+      "observation": "guest at members-only and locked content: sign-in gate True/True, endpoint replies (status, Authorization) [[401, False]]/[[401, False]]; signed in, locked content shows 'This content is locked' with the progression reason: True (no sign-in gate: True), replies [[403, True]]; members-only content opens: True [[200, True]]; retired content 'Unit not found.' without a gate: True [[404, True]]",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-guest-members.json",
+        "docs/planning/evidence/P02/native-C05/tree-guest-locked.json",
+        "docs/planning/evidence/P02/native-C05/tree-account-locked.json",
+        "docs/planning/evidence/P02/native-C05/tree-account-missing.json"
+      ]
+    },
+    {
+      "id": "C05-N15",
+      "description": "Failures stay visible and truthful: a guest pressing 'Complete & continue' is asked to sign in, stays on the lesson and sends nothing; a knowledge-check submission the server fails after receiving it says Academy may have recorded it, keeps the answer, hides the server text and is sent once.",
+      "result": "pass",
+      "observation": "guest 'Complete & continue' asks to sign in and stays on the lesson: True; learner calls sent: []; a submission the server failed after receiving shows 'Academy may have recorded this submission': True, answer kept: True, server text hidden: True; submissions sent (status, Authorization): [[500, True]]",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C05/observations.json",
+        "docs/planning/evidence/P02/native-C05/tree-guest-complete.json",
+        "docs/planning/evidence/P02/native-C05/tree-knowledge-check-unknown-outcome.json"
+      ]
+    },
+    {
+      "id": "C06-N01",
+      "description": "Signed out, Academy's navigation offers Learn only; signed in it offers Academy's Home, Learn and Program and the web shell's Notifications and Settings. Home shows Academy's own briefing (level and XP from Academy) with no failure toast, and Program shows Academy's hub with its five sections.",
+      "result": "pass",
+      "observation": "guest Academy navigation ['Learn']; signed in: True; account navigation ['Home', 'Learn', 'Program', 'Downloads', 'Notifications', 'Settings']; Home shows Academy's level and XP: True, failure toast: False; Program hub: True with cards ['CAPSTONE Exams The proctored assessments that close out each certification.', 'CREDENTIALS Certificates Credentials you have earned, with public verification links.', 'RECORD Dossier Your operative record: rank, commendations, and activity.', 'SUPPLY Requisitions Spend earned credits on gear and cosmetics.', 'STANDINGS Weekly Board Where you stand on this week\u2019s leaderboard.']",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-guest-learn.json",
+        "docs/planning/evidence/P02/native-C06/tree-home.json",
+        "docs/planning/evidence/P02/native-C06/tree-program.json"
+      ]
+    },
+    {
+      "id": "C06-N02",
+      "description": "The final assessment shows Academy's eligibility facts, starts with the learner's consent and shows Academy's question with Academy's countdown ('Time remaining', counted down to Academy's deadline) and the proctored pill in view; a submission the server fails after receiving shows that submission could not be confirmed, keeps the answer, hides the server's text and is sent exactly once; 'Check submission status' reads Academy's submission state and shows Academy's pending review. No answer key or truth canary appears in any captured AX tree.",
+      "result": "pass",
+      "observation": "intro with Academy's eligibility facts: True; runner with Academy's question: True; Academy's countdown in view: 59:59 (Time remaining, Proctored: True); a submission the server failed after receiving shows 'We could not confirm submission': True, answer kept: True, server text hidden: True; submissions (procedure, status, Authorization) [['exam.submit', 503, True]]; 'Check submission status' reads Academy's state and shows its pending review ('Grading your written answers'): True; answer keys or canaries in AX snapshots: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-exam-intro.json",
+        "docs/planning/evidence/P02/native-C06/tree-exam-runner.json",
+        "docs/planning/evidence/P02/native-C06/tree-exam-unknown-outcome.json",
+        "docs/planning/evidence/P02/native-C06/tree-exam-pending-review.json"
+      ]
+    },
+    {
+      "id": "C06-N03",
+      "description": "Keyboard only: Tab reaches the first answer option, Space selects it, Tab reaches 'See results', Return submits once and the unknown outcome is announced, Tab reaches 'Check submission status' and Return shows Academy's pending review.",
+      "result": "pass",
+      "observation": "Tab reached the first option: True; Space selected it: True; Tab reached 'See results': True; Return submitted once (1 submission) and the unknown outcome was shown: True, inside an alert region: True; Tab reached 'Check submission status': True; Return showed Academy's pending review: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-exam-keyboard.json"
+      ]
+    },
+    {
+      "id": "C06-N04",
+      "description": "The certificate's public verify URL (shared to LinkedIn) is on Academy web's origin, not the app's; 'Download PDF' opens exactly one native print sheet (recorded by the fixture build), stays on the certificate, and makes no learner call beyond the certificate and account reads; when the sheet cannot open, the page says so in an alert region, no sheet is opened and nothing is sent.",
+      "result": "pass",
+      "observation": "certificate shown: True; public verify URL https://localhost:59926/verify/cert-certification (Academy web origin https://localhost:59926/verify/cert-certification); print sheets opened: 0 -> 1; a sheet that cannot open says 'The print sheet could not open' in an alert region: True, sheets opened after it: 1; still on the certificate: True; learner calls (no mutation) [['certificate.mine', 200]]",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-certificate.json",
+        "docs/planning/evidence/P02/native-C06/tree-certificate-print-failed.json"
+      ]
+    },
+    {
+      "id": "C06-N05",
+      "description": "A guided lab runs through Academy's desktop attempt contract: one start with the lab id and a request id, draft saves naming the base version with a client mutation id, one grading request naming a confirmed draft version with a submission id, and Academy's pass shown; no web lab runtime call is made. A lab Academy refuses to start for lack of a desktop adapter is previewed with no sandbox started.",
+      "result": "pass",
+      "observation": "lab intro: True; attempt started once with labId and requestId: [{'labId': 'm-rt-1-lab-def', 'requestId': '1876621f-ede7-4674-ad2b-8eb0fff24521'}]; draft saves with baseVersion and clientMutationId: 1; grading request [{'attemptId': '00000000-0000-4000-8000-0000000000a1', 'draftVersion': 1, 'submissionId': '1f85c119-17c3-49cb-83ae-93c0427a5358'}]; 'Lab passed. Academy recorded it on your account.': True; web lab run calls: []; a lab without a desktop adapter is previewed: True (calls [['units.get', 200], ['labs.get', 200], ['desktop.attempt.start', 412]])",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-lab-intro.json",
+        "docs/planning/evidence/P02/native-C06/tree-lab-passed.json",
+        "docs/planning/evidence/P02/native-C06/tree-lab-unsupported.json"
+      ]
+    },
+    {
+      "id": "C06-N06",
+      "description": "In Shift, the unstamped alert is served and the learner's answer is sent and answered (Academy's explanation shown) before a slow optional briefing replies; the answer carries only the learner's choice, and the SLA countdown comes from Academy's stamp.",
+      "result": "pass",
+      "observation": "Shift alert shown: True; serve replied at [0.04] s and the answer at [0.6] s while the optional briefing replied at 6.04 s; Academy's explanation shown after 0.64 s: True; answer request {'shiftId': '00000000-0000-4000-8000-0000000000d1', 'order': 2, 'values': ['0']}; Academy's SLA countdown present: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-shift-answered.json"
+      ]
+    },
+    {
+      "id": "C06-N07",
+      "description": "Removing an enrollment shows Academy's confirmation naming the affected certification and every course it covers and stating that earned certificates stay valid; Cancel sends nothing and confirming sends exactly one enrollment.removeByCourse for the course.",
+      "result": "pass",
+      "observation": "confirmation dialog: True; names the certification: True and its courses: True; earned certificates stay valid: True; removals after Cancel: []; removals after confirming: [{'courseId': 'runtime-security'}]",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-removal-dialog.json"
+      ]
+    },
+    {
+      "id": "C06-N08",
+      "description": "Academy's Settings entry opens the learner account page, which offers 'Change photo' on the desktop and says the app sets theme and accent (no theme choice); its Sign out ends the Academy session through the desktop: the destination returns to guest navigation, Settings shows 'Not signed in to Academy.', the refresh token is revoked and the learner keychain namespace is empty.",
+      "result": "pass",
+      "observation": "account page from Academy's Settings entry: True; photo changed here ('Change photo'): True; appearance follows the app: True, no theme choice: True; Academy's Sign out returned the destination to guest navigation ['Learn'] and Settings shows 'Not signed in to Academy.': True; learner keychain items ['cr-2fd6e746c9cd051c', 'cr-58ba6fd014506ab8'] -> ['cr-58ba6fd014506ab8']; revoked: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-account.json",
+        "docs/planning/evidence/P02/native-C06/tree-after-sign-out.json"
+      ]
+    },
+    {
+      "id": "C06-N09",
+      "description": "Across the run every learner request is on the account allowlist or a public query; no assessor, grading, override, award or admin procedure is requested; no exam, Shift, lab or enrollment input carries a hosted decision (deadline, score, pass, award, verdict or clock); public-only queries carry no Authorization header.",
+      "result": "pass",
+      "observation": "100 learner requests; outside the allowlist and public queries: []; assessor, grading, award or admin procedures: []; hosted-decision fields in learner inputs: []; public-only queries sent with Authorization: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json"
+      ]
+    },
+    {
+      "id": "C06-N10",
+      "description": "Leaving Academy for Runtime Security and Harness shows none of Academy's learner surfaces (Program, assessment, lab, Shift, removal, level) and makes no learner calls.",
+      "result": "pass",
+      "observation": "learner markers in Runtime Security: []; in Harness: []; learner calls while away from Academy: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-away-runtime.json",
+        "docs/planning/evidence/P02/native-C06/tree-away-harness.json"
+      ]
+    },
+    {
+      "id": "C06-N11",
+      "description": "On the assessment at 200% zoom and at the minimum window size, Tab reaches 'See results' inside the window and above the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'See results', 'pos': [1010, 608], 'size': [278, 97]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'See results', 'pos': [800, 513], 'size': [140, 49]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json"
+      ]
+    },
+    {
+      "id": "C06-N12",
+      "description": "Signed in again (a fresh learner cache) with Academy's deadline seconds away, the resumed assessment's countdown shows it and, at the deadline, the runner submits exactly once and reports the server's unknown outcome; nothing is resent and the countdown stays at 00:00.",
+      "result": "pass",
+      "observation": "with Academy's deadline 8 s away the countdown read 00:07; at the deadline the runner submitted once (1 submission, 8.02 s after the attempt was read) and reported the unknown outcome: True; nothing was resent in the next 3 s; the countdown then reads 00:00",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-exam-deadline.json"
+      ]
+    },
+    {
+      "id": "C06-N13",
+      "description": "'Change photo' takes a photo chosen natively (here larger than Academy's 2 MiB cap), prepares it in the core as a 512-pixel JPEG within the cap, presigns with the account credential (the prepared type and size), stores the bytes at the presigned destination with no credential, confirms with Academy, and reads the photo back from Academy's public avatar address (no credential) so the page shows it without a load warning; an extreme 1x8192 portrait is prepared from its centre and uploaded; a later photo the store keeps under the same address but whose reply is lost is reported as possibly changed (never unchanged), is not confirmed or resent, and the photo at the unchanged address is read again; a file with an image signature that does not decode, and a photo within 8192 pixels a side whose decoded pixels exceed the decoder memory budget, send nothing and says the photo is unchanged; a cancelled pick sends nothing and shows no error; 'Remove photo' removes it with one learner call.",
+      "result": "pass",
+      "observation": "'Change photo' prepared the staged 5883258 byte PNG (above Academy's 2 MiB cap) as a 232148 byte JPEG: presign (input, Authorization) [[{'contentType': 'image/jpeg', 'size': 232148}, True]]; store PUT (type, bytes, Authorization, status) [['image/jpeg', 232148, False, 200]]; a stored photo whose reply was lost said 'Your photo may have changed, but Academy did not confirm it': True (PUT statuses [0], confirmations 0) and read the photo at the same address again: ['/api/avatars/user_2fixturelearner.jpg']; a 1x8192 portrait was prepared from its centre and uploaded (PUT [['image/jpeg', 7797, 200]], confirmed 1, load warning False); a 7000x7000 photo beyond the decoder memory budget said the photo is unchanged: True and sent []; a file with a PNG signature that does not decode said 'Upload failed. Your photo is unchanged' in an alert region: True and sent []; confirm [[{'ext': 'jpg'}, True]]; read back (path, Authorization, status) [['/api/avatars/user_2fixturelearner.jpg', False, 200]]; 'Remove photo' offered: True; image load warning: False; a cancelled pick sent [] and showed an error: False; 'Remove photo' removed it: True (1 removal)",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-avatar-uploaded.json",
+        "docs/planning/evidence/P02/native-C06/tree-avatar-lost-reply.json"
+      ]
+    },
+    {
+      "id": "C06-N14",
+      "description": "'Reset course progress' asks 'Reset your progress?' with Academy's counts and that earned certificates stay valid; Cancel sends nothing and confirming sends exactly one progress.resetCourse for the course.",
+      "result": "pass",
+      "observation": "'Reset course progress' asks 'Reset your progress?': True with Academy's counts '3 units, 1 quizzes, 0 labs': True and earned certificates kept: True; resets after Cancel: []; after confirming: [{'courseId': 'runtime-security'}]",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-reset-dialog.json"
+      ]
+    },
+    {
+      "id": "C06-N15",
+      "description": "A completed lesson asks 'How was this module?' (an unfinished one does not); rating it and submitting thanks the learner and sends exactly one admin.feedback.submit with the module, lesson and rating.",
+      "result": "pass",
+      "observation": "an unfinished lesson asks for no rating: True; the completed lesson asks 'How was this module?': True; 'Rate 4 stars' then 'Submit feedback' thanked the learner: True and sent [{'moduleId': 'm-rt-1', 'rating': 4, 'lessonId': 'm-rt-1-lesson-03'}]",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C06/observations.json",
+        "docs/planning/evidence/P02/native-C06/tree-lesson-feedback.json"
+      ]
+    },
+    {
+      "id": "C07-N01",
+      "description": "Signed in, Academy's navigation offers the desktop's Downloads; the page says what still needs Academy (videos, walkthroughs, live labs); a course is downloaded by keyboard (Tab to 'Download <course>', Return) and listed ready offline with its unit count after exactly one desktop.access and one desktop.bundle, both with the account credential; one offline key item is added to the fixture learner keychain.",
+      "result": "pass",
+      "observation": "signed in: True; Academy navigation ['Home', 'Learn', 'Program', 'Downloads', 'Notifications', 'Settings']; Downloads page: True with the disclosure that videos, walkthroughs and live labs need Academy: True; Tab reached 'Download Runtime Security Foundations': True and Return kept it ('Runtime Security Foundations is ready offline.'): True, listed 'Ready offline \u00b7 28 units': True; requests (procedure, status, Authorization) [['desktop.access', 200, True], ['desktop.bundle', 200, True]]; learner keychain items added ['cr-58ba6fd014506ab8']",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json",
+        "docs/planning/evidence/P02/native-C07/tree-downloads-empty.json",
+        "docs/planning/evidence/P02/native-C07/tree-downloaded.json"
+      ]
+    },
+    {
+      "id": "C07-N02",
+      "description": "Every file under the offline root is a sealed record in a 0700 directory with mode 0600; no lesson text, course id or title, account id or display name appears in any file's bytes or path.",
+      "result": "pass",
+      "observation": "3 files under the offline root (1 sealed records), directory modes ['0o700'], file modes ['0o600']; lesson text, course id, course title, account id or display name in any file's bytes or path: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json"
+      ]
+    },
+    {
+      "id": "C07-N03",
+      "description": "With Academy unreachable, quit and relaunched: still signed in, Academy says it cannot be reached, Downloads lists the course ready offline and offers no download, 'Open' shows the first lesson with its text from the download, and its contents open the second.",
+      "result": "pass",
+      "observation": "endpoint stopped, relaunched: 'Academy can't be reached' shown: True; Downloads lists the course ready offline: True and offers no download ('Connect to Academy to download more courses.'): True; 'Open' showed 'Scanning at runtime: part 1' with its text: True; the contents opened 'Scanning at runtime: part 2': True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json",
+        "docs/planning/evidence/P02/native-C07/tree-offline-downloads.json",
+        "docs/planning/evidence/P02/native-C07/tree-offline-lesson.json"
+      ]
+    },
+    {
+      "id": "C07-N04",
+      "description": "Offline, the lab opens from the attempt read while online and an edit says it is saved on this device only; quit and relaunched offline, Downloads names one lab draft saved on this Mac only and the lab reopens with the edit and that status; no request reaches Academy meanwhile.",
+      "result": "pass",
+      "observation": "lab attempt read online: True; offline the lab opened from that copy: True and an edit said 'Saved on this device only': True; relaunched offline, Downloads says 'One lab draft is saved on this Mac only': True, the lab reopened: True with the status: True and the edit: True; requests reaching Academy while offline: 0",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json",
+        "docs/planning/evidence/P02/native-C07/tree-offline-lab.json",
+        "docs/planning/evidence/P02/native-C07/tree-restored-lab.json"
+      ]
+    },
+    {
+      "id": "C07-N05",
+      "description": "With Academy back, nothing is sent by itself; 'Save now' sends exactly one draft save on the attempt's base version with a client mutation id and the edit, Academy's confirmation clears the local copy, reconnecting re-checks the download (access and manifest) and shows that a newer version is on Academy, and 'Update' downloads it again.",
+      "result": "pass",
+      "observation": "with Academy back, sent by itself in 8 s: []; 'Save now' sent 1 draft save [{'attemptId': '00000000-0000-4000-8000-0000000000a1', 'baseVersion': 0, 'clientMutationId': '4d2bcee4-c820-4815-9de1-18dc11c43b2e', 'draft': {'classifications': {'f1': 'true-positive'}, 'commands': [], 'debrief': '', 'steps': {}}}] and showed 'All changes saved to your Academy account.': True; the local copy cleared from Downloads: True; reconnecting re-checked the download (['desktop.access', 'desktop.manifest']) and showed 'A newer version is on Academy': True; 'Update' sent ['desktop.access', 'desktop.bundle'] and kept it again: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json",
+        "docs/planning/evidence/P02/native-C07/tree-reconnected.json"
+      ]
+    },
+    {
+      "id": "C07-N06",
+      "description": "Signing out removes Downloads (guest navigation offers Learn only); another account sees no downloads and the first account's sealed files are unchanged; the first account signed in again sees its download.",
+      "result": "pass",
+      "observation": "signed out, Academy navigation ['Learn'] (no Downloads); another account signed in: True and sees 'No courses are downloaded yet.': True, the first account's course: False; the first account's sealed files unchanged: True; the first account signed in again: True and its download is listed: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json",
+        "docs/planning/evidence/P02/native-C07/tree-other-account.json"
+      ]
+    },
+    {
+      "id": "C07-N07",
+      "description": "Size and retention limits: a course past Academy's bundle cap (413) is assembled from its manifest and unit bundles each within Academy's 7 MiB cap, and fetching stops as soon as it cannot fit the desktop's 16 MiB record (three of four 6 MiB parts fetched), with 'There is not enough room' and nothing kept; once a download's lease ends its lessons are not read offline and Downloads says offline access ended; a course Academy no longer gives the account says so after relaunch and offers no Open.",
+      "result": "pass",
+      "observation": "a course past Academy's bundle cap (four 6 MiB unit bundles, each within Academy's 7 MiB cap): requests [['desktop.access', 200], ['desktop.bundle', 413], ['desktop.manifest', 200], ['desktop.unitBundle', 200], ['desktop.unitBundle', 200], ['desktop.unitBundle', 200]] (fetching stopped once the course could not fit one record); 'There is not enough room for this course in offline storage': True; kept: False; offline files unchanged: True; a 12 s lease once ended: its lesson offline said 'Unable to load this lesson.': True (lesson text shown: False) and Downloads says 'Offline access ended. Connect to renew it.': True; a course Academy withdrew shows 'No longer part of your account' after relaunch: True and offers Open: False",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json",
+        "docs/planning/evidence/P02/native-C07/tree-too-large.json",
+        "docs/planning/evidence/P02/native-C07/tree-lease-ended-lesson.json",
+        "docs/planning/evidence/P02/native-C07/tree-lease-ended.json",
+        "docs/planning/evidence/P02/native-C07/tree-withdrawn.json"
+      ]
+    },
+    {
+      "id": "C07-N08",
+      "description": "'Reset local data' removes the offline root and every learner keychain item, including the offline key.",
+      "result": "pass",
+      "observation": "before reset: offline root present True, learner keychain items ['cr-4a26fe85f9eef4cf', 'cr-58ba6fd014506ab8']; 'Reset local data' completed: True; after: offline root present False, learner keychain items []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json"
+      ]
+    },
+    {
+      "id": "C07-N09",
+      "description": "At 200% zoom and at the minimum window size, Tab reaches 'Download <course>' on Downloads inside the window and clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Download Runtime Security Foundations', 'pos': [1127, 616], 'size': [191, 89]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Download Runtime Security Foundations', 'pos': [859, 516], 'size': [95, 45]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json"
+      ]
+    },
+    {
+      "id": "C07-N10",
+      "description": "Every learner request is an allowlisted or public procedure, and every desktop offline procedure carries the account credential.",
+      "result": "pass",
+      "observation": "44 learner requests; outside the allowlist and public queries: []; desktop procedures sent without the account credential: []",
+      "evidence": [
+        "docs/planning/evidence/P02/native-C07/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "C04: The identity provider and Academy are a local synthetic fixture with a disposable test CA trusted only by the fixture build; the hosted Academy/Clerk registration is qualified in C25 (L11).",
+    "C04: Browser approval is simulated by switching the synthetic token endpoint from pending to granted or denied; the fixture build records the verification page instead of launching a browser. Production opens it with /usr/bin/open.",
+    "C04: Keychain items are inspected by attributes only (security dump-keychain without -d); stored secrets are never read back.",
+    "C04: Spoken VoiceOver output was not recorded; AX roles, names, focus and live status regions are inspected.",
+    "C05: Academy is a local synthetic endpoint answering Academy's learner procedures with synthetic catalog content shaped after Academy's routers at the pinned commit; hosted Academy is qualified in C25 (L11).",
+    "C05: Browser approval is simulated by the synthetic token endpoint; the fixture build records pages instead of launching a browser.",
+    "C05: Spoken VoiceOver output was not recorded; AX roles, names, focus and live status regions are inspected. Screen capture is not available to this session, so themes are checked through AX text colors.",
+    "C06: Academy is a local synthetic endpoint answering Academy's learner procedures with synthetic coursework shaped after Academy's routers at the pinned commit; hosted Academy (timing, grading, awards) is qualified in C25 (L13).",
+    "C06: The fixture build records print sheets and browser pages instead of opening them; the native print sheet itself is not driven.",
+    "C06: The identity practical is reached from identity-course pages the synthetic catalog does not carry; its assessor gating is covered by the route sweep and Academy's own tests, not natively.",
+    "C06: The fixture build answers the avatar picker with an image the driver stages in its data root, and records instead of opening the print sheet; the native NSOpenPanel and print sheet are not driven.",
+    "C06: Spoken VoiceOver output was not recorded; AX roles, names, focus and live regions are inspected.",
+    "C07: Academy is a local synthetic endpoint answering Academy's offline contract (desktop.access, desktop.bundle, desktop.manifest, desktop.unitBundle) with synthetic coursework shaped after Academy's routers at the pinned commit; hosted Academy is qualified in C25 (L13).",
+    "C07: Offline is the synthetic endpoint stopped (connections refused); a network that drops mid-transfer or hangs is covered by the Rust offline suite, not natively.",
+    "C07: The 512 MiB account budget and 1024-record cap are covered by the store unit test an_account_is_bounded_in_bytes_and_records; natively a course past the 16 MiB record limit is refused.",
+    "C07: Keychain denial and an unreadable record are covered by the Rust offline suite; the fixture keychain is not made to refuse natively.",
+    "C07: Spoken VoiceOver output was not recorded; AX roles, names, focus and live regions are inspected."
+  ]
+}

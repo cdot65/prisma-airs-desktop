@@ -1,0 +1,26 @@
+
+running 17 tests
+test a_locked_key_at_dispatch_sends_nothing ... ok
+test a_connect_failure_is_unknown_and_never_retried ... ok
+test admission_requires_a_current_context_a_ready_key_and_a_valid_draft ... ok
+test a_content_error_is_incomplete_whatever_the_global_flags_say ... ok
+test malformed_responses_are_unknown ... ok
+test history_keeps_the_newest_five_settled_scans_per_tenant ... ok
+test the_literal_request_reaches_the_endpoint_and_the_result_is_faithful ... ok
+test cancelling_a_claimed_scan_before_it_is_sent_sends_nothing ... ok
+test unknown_actions_categories_and_incomplete_scans_are_never_allow ... ok
+test a_lost_response_is_unknown_and_never_replayed ... ok
+test a_restart_resubmits_nothing ... ok
+test a_timeout_after_dispatch_is_unknown ... ok
+test denied_keys_and_service_failures_report_the_remote_outcome_without_retry ... ok
+test a_tenant_switch_mid_request_discards_the_late_reply ... ok
+test a_refused_tenant_deletion_keeps_its_scans_observable_and_cancellable ... ok
+test v1_sized_inputs_are_sent_and_the_request_ceiling_holds ... ok
+test cancelling_a_running_scan_is_unknown_and_a_queued_one_is_not_sent ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.96s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running tests/sync_scan/main.rs (target/debug/deps/sync_scan-c6d9ecacabd710e1)
