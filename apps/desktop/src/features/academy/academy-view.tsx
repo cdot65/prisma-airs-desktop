@@ -47,6 +47,7 @@ import {
 } from '@ai-security-academy/learner'
 import type { DesktopClient, FeatureId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { LearnerProvider } from './learner-provider'
+import { DownloadsPage, OfflineNotice, OfflineWorkProvider } from './offline-work'
 
 interface Props {
     snapshot: ShellSnapshot
@@ -77,6 +78,7 @@ function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string,
         component: () => (
             <>
                 <AcademyNav signedIn={signedIn} />
+                <OfflineNotice />
                 <LearnerTrail />
                 <LearnerStatus />
                 <Outlet />
@@ -89,6 +91,7 @@ function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string,
         createRoute({ getParentRoute: () => root, path, component: signedIn ? () => <>{Page()}</> : signInFirst })
     const index = account('/', () => <HomePage />)
     const program = account('/program', () => <ProgramHubPage />)
+    const downloads = account('/downloads', () => <DownloadsPage />)
     const assessment = account('/assessment', () => <AssessmentPage />)
     const assessmentIntro = account('/assessment/intro', () => <AssessmentIntroPage />)
     const identityPractical = account('/assessment/identity-practical', () => <IdentityPracticalPage />)
@@ -182,6 +185,7 @@ function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string,
             shop,
             orientation,
             onboarding,
+            downloads,
         ]),
         history: createMemoryHistory({ initialEntries: [initialPath] }),
         defaultPreload: false,
@@ -193,7 +197,8 @@ function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string,
 
 /**
  * Academy's own navigation: its primary sections, and for a signed-in learner
- * the web shell's Notifications and Settings entries. Guests see Learn only.
+ * the desktop's Downloads and the web shell's Notifications and Settings
+ * entries. Guests see Learn only.
  */
 function AcademyNav({ signedIn }: { signedIn: boolean }) {
     const items = LEARNER_NAV.filter((item) => signedIn || item.to === '/learn')
@@ -204,6 +209,7 @@ function AcademyNav({ signedIn }: { signedIn: boolean }) {
             ))}
             {signedIn ? (
                 <span data-slot='academy-account-nav' className='ml-auto flex gap-1'>
+                    <NavLink to='/downloads' label='Downloads' />
                     {LEARNER_ACCOUNT_NAV.map((item) => (
                         <NavLink key={item.to} to={item.to} label={item.label} />
                     ))}
@@ -490,12 +496,14 @@ export const AcademyView = forwardRef<HTMLHeadingElement, Props>(function Academ
                 theme={themeFor(snapshot.appearance)}
                 webOrigin={snapshot.academyOrigin}
             >
-                <AcademyRoutes
-                    onNavigate={onNavigate}
-                    container={container}
-                    initialPath={initialPath}
-                    signedIn={accountId !== null}
-                />
+                <OfflineWorkProvider value={{ client, learner, offline: snapshot.academyOffline }}>
+                    <AcademyRoutes
+                        onNavigate={onNavigate}
+                        container={container}
+                        initialPath={initialPath}
+                        signedIn={accountId !== null}
+                    />
+                </OfflineWorkProvider>
                 <CompletionMoments />
                 {snapshot.fixtureBuild ? (
                     <Suspense fallback={null}>

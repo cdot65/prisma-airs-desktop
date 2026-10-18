@@ -40,6 +40,7 @@ const ROUTES = [
     '/shop',
     '/orientation',
     '/onboarding',
+    '/downloads',
 ]
 
 beforeEach(() => {

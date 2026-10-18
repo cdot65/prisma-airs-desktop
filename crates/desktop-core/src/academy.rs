@@ -152,6 +152,13 @@ pub enum CallFailure {
     /// The photo was not stored, or its store is not known to have taken
     /// it (the call's outcome says which).
     UploadFailed,
+    /// Offline work storage could not be opened or written; nothing was
+    /// written in plaintext and saved work was kept.
+    OfflineUnavailable,
+    /// Academy does not give this account the course to download.
+    NotDownloadable,
+    /// The item does not fit in this account's offline storage.
+    OfflineFull,
 }
 
 fn https(text: &str) -> Option<Url> {

@@ -16,7 +16,7 @@ const USAGE: &str = "usage: xtask <command> [options]
   native            --chunk Cxx --manifest docs/architecture/checks.json
   native-prepare    --chunk Cxx --target aarch64-apple-darwin --features test-fixtures
   review            --chunk Cxx|--phase Pxx --reviewer codex --manifest docs/architecture/checks.json [--transport auto|thread|fresh] [--limitation TEXT]... [--native-pending REASON]
-  complete          --chunk Cxx|--phase Pxx --manifest docs/architecture/checks.json
+  complete          --chunk Cxx|--phase Pxx --manifest docs/architecture/checks.json [--owner-accept REASON]
   reopen            --chunk Cxx|--phase Pxx --reason TEXT --manifest docs/architecture/checks.json
   verify-commit     --chunk Cxx|--phase Pxx
   validate-receipt  --receipt PATH --chunk Cxx|--phase Pxx [--gate-only]
@@ -252,12 +252,18 @@ pub fn main(raw: Vec<String>) -> Result<()> {
             }
         }
         "complete" => {
-            args.only(&["--chunk", "--phase", "--manifest"])?;
+            args.only(&["--chunk", "--phase", "--manifest", "--owner-accept"])?;
             let manifest = args.manifest(&repo)?;
             let subject = args.subject()?;
             let env = Environment::prepare(&repo)?;
             let current = fingerprint::all(&repo, &manifest, subject, &env.toolchain_hash())?;
-            let entry = complete::complete(&repo, &manifest, subject, current)?;
+            let entry = complete::complete_with(
+                &repo,
+                &manifest,
+                subject,
+                current,
+                args.value("--owner-accept"),
+            )?;
             println!(
                 "{}",
                 serde_json::to_string_pretty(&entry).unwrap_or_default()

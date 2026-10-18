@@ -37,6 +37,9 @@ struct Script {
     trpc_delay_ms: u64,
     /// Per-procedure reply delays (milliseconds), overriding `trpc_delay_ms`.
     trpc_delays: Vec<(String, u64)>,
+    /// One-shot delays: the next reply of the procedure waits this long
+    /// (consumed in order), so a request asked earlier can answer later.
+    trpc_once_delays: Vec<(String, u64)>,
     poll_delay_ms: u64,
     revoke_delay_ms: u64,
     me_delays: Vec<u64>,
@@ -45,6 +48,9 @@ struct Script {
     /// body; each
     /// answers once.
     files: Vec<(String, u16, String, Vec<u8>)>,
+    /// Academy unreachable: every request (learner procedures, token
+    /// renewal, metadata) is read and the connection closed without a reply.
+    unreachable: bool,
     metadata_issuer: Option<String>,
     token_endpoint: Option<String>,
     issued: u32,
@@ -78,10 +84,12 @@ impl Script {
             trpc: Vec::new(),
             trpc_delay_ms: 0,
             trpc_delays: Vec::new(),
+            trpc_once_delays: Vec::new(),
             poll_delay_ms: 0,
             revoke_delay_ms: 0,
             me_delays: Vec::new(),
             files: Vec::new(),
+            unreachable: false,
             metadata_issuer: None,
             token_endpoint: None,
             issued: 0,
@@ -92,6 +100,9 @@ impl Script {
         let line = seen.request_line.clone();
         let path = line.split(' ').nth(1).unwrap_or("").to_owned();
         let form = String::from_utf8_lossy(&seen.body).to_string();
+        if self.unreachable {
+            return Reply::Close;
+        }
         if path == "/api/desktop/config" {
             let config = if self.config.is_null() {
                 json!({"issuer": self.origin, "clientId": CLIENT, "scope": SCOPE})
@@ -147,6 +158,7 @@ impl Script {
         if path == "/oauth/revoke" {
             return delay(self.revoke_delay_ms, raw(200, &json!({})));
         }
+
         if let Some(rest) = path.strip_prefix("/api/trpc/") {
             let procedure = rest.split('?').next().unwrap_or("").to_owned();
             if procedure == "desktop.me" && !self.trpc.iter().any(|(p, ..)| p == "desktop.me") {
@@ -166,11 +178,17 @@ impl Script {
             }
             if let Some(i) = self.trpc.iter().position(|(p, ..)| *p == procedure) {
                 let (_, status, body) = self.trpc.remove(i);
-                let wait = self
-                    .trpc_delays
+                let once = self
+                    .trpc_once_delays
                     .iter()
-                    .find(|(p, _)| *p == procedure)
-                    .map_or(self.trpc_delay_ms, |(_, ms)| *ms);
+                    .position(|(p, _)| *p == procedure)
+                    .map(|i| self.trpc_once_delays.remove(i).1);
+                let wait = once.unwrap_or_else(|| {
+                    self.trpc_delays
+                        .iter()
+                        .find(|(p, _)| *p == procedure)
+                        .map_or(self.trpc_delay_ms, |(_, ms)| *ms)
+                });
                 return delay(wait, raw(status, &body));
             }
             return raw(
@@ -255,6 +273,7 @@ async fn start(
     restart: Option<(Handles, desktop_core::store::PersistedState)>,
 ) -> Desk {
     let origin = script.lock().expect("script").origin.clone();
+    let restart_requested = restart.is_some();
     let (adapters, handles) = match restart {
         None => fixtures::adapters(),
         Some((old, state)) => {
@@ -262,8 +281,10 @@ async fn start(
                 fixtures::adapters_with(fixtures::ScriptedStore::with_state(state));
             adapters.keychain = old.vault.clone();
             adapters.learner_keychain = old.learner_vault.clone();
+            adapters.offline_root = Some(old.offline_root.clone());
             handles.vault = old.vault;
             handles.learner_vault = old.learner_vault;
+            handles.offline_root = old.offline_root;
             (adapters, handles)
         }
     };
@@ -272,13 +293,24 @@ async fn start(
         ..CoreConfig::default()
     };
     let core = Core::new(config, adapters);
-    core.start();
-    core.set_transport_policy(TransportPolicy {
+    let policy = TransportPolicy {
         revision: 2,
         proxy: ProxyMode::Direct,
         extra_roots: vec![ca.pem.as_bytes().to_vec()],
-    })
-    .expect("policy");
+    };
+    if restart_requested {
+        // As the host does at launch: the policy is installed during setup,
+        // off the async runtime, before the core starts on it.
+        let off_runtime = core.clone();
+        std::thread::spawn(move || off_runtime.set_transport_policy(policy))
+            .join()
+            .expect("installing the policy off the runtime must not panic")
+            .expect("policy");
+        core.start();
+    } else {
+        core.start();
+        core.set_transport_policy(policy).expect("policy");
+    }
     let handle = core.operator();
     let session = handle.register_delivery_session().expect("session").nonce;
     Desk {

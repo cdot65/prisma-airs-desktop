@@ -14,7 +14,11 @@ export const ACADEMY_ORIGIN = 'https://academy.example'
 const base = shellResponse.snapshot as ShellSnapshot
 
 /** A guest or signed-in shell snapshot for the Academy destination. */
-export function academySnapshot(signedIn: boolean, learner = signedIn ? ACCOUNT : GUEST): ShellSnapshot {
+export function academySnapshot(
+    signedIn: boolean,
+    learner = signedIn ? ACCOUNT : GUEST,
+    offline: Partial<ShellSnapshot['academyOffline']> = {}
+): ShellSnapshot {
     return {
         ...base,
         learner,
@@ -22,6 +26,13 @@ export function academySnapshot(signedIn: boolean, learner = signedIn ? ACCOUNT 
         academy: signedIn
             ? { state: 'signedIn', displayName: 'Ada Lovelace', accountId: 'user_2fixturelearner', learner }
             : { state: 'signedOut' },
+        academyOffline: {
+            state: signedIn ? 'empty' : 'signedOut',
+            reachable: true,
+            downloads: [],
+            localDrafts: [],
+            ...offline,
+        },
     } as ShellSnapshot
 }
 
@@ -37,14 +48,25 @@ export const held = () => ({ __held__: true })
 
 export type Replies = Record<string, unknown> | ((procedure: string, learner: string, input: unknown) => unknown)
 
-/** Native host actions observed like learner calls, scripted as `@<kind>`. */
-const HOST_ACTIONS = new Set(['printPage', 'uploadAvatar', 'loadAcademyImage'])
+/** Native host and offline actions observed like learner calls, scripted as `@<kind>`. */
+const HOST_ACTIONS = new Set([
+    'printPage',
+    'uploadAvatar',
+    'loadAcademyImage',
+    'downloadCourse',
+    'removeDownload',
+    'saveLocalDraft',
+    'loadLocalDraft',
+    'clearLocalDraft',
+])
 
 /**
  * The native core: `replies` maps a procedure (`a.b`) to its data, a scripted
  * refusal or a raw result; a function may vary them by learner and input.
  * Host actions are scripted as `@printPage`, `@uploadAvatar` and
- * `@loadAcademyImage` (input: the image URL); unscripted ones open nothing.
+ * `@loadAcademyImage` (input: the image URL); offline actions as
+ * `@downloadCourse` and the like (input: the course or attempt id, and for
+ * `@saveLocalDraft` the intent); unscripted ones open nothing.
  */
 export function scriptedNative(replies: Replies) {
     const intents: Intent[] = []
@@ -77,8 +99,9 @@ export function scriptedNative(replies: Replies) {
                 const input = intent.input ? (JSON.parse(intent.input) as { json?: unknown }).json : undefined
                 value = lookup(intent.procedure, intent.learner, input)
             } else {
-                const action = intent as Extract<Intent, { learner: string }> & { url?: string }
-                value = lookup(`@${intent.kind}`, action.learner, action.url)
+                const action = intent as Extract<Intent, { learner: string }> & { url?: string; courseId?: string; attemptId?: string }
+                const input = intent.kind === 'saveLocalDraft' ? intent : (action.url ?? action.courseId ?? action.attemptId)
+                value = lookup(`@${intent.kind}`, action.learner, input)
                 if (value === undefined) value = result({ kind: 'failed', failure: 'hostUnavailable', outcome: 'notSent' })
             }
             if (value && typeof value === 'object' && '__refusal__' in value) {

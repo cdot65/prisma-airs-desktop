@@ -103,6 +103,18 @@ pub(super) struct LearnerSession {
 }
 
 impl LearnerSession {
+    pub(super) fn client(&self) -> &AcademyClient {
+        &self.client
+    }
+
+    /// A usable access token (renewed when `force`).
+    pub(super) async fn access_token(
+        self: &Arc<Self>,
+        force: bool,
+    ) -> Result<Zeroizing<String>, CallFailure> {
+        self.access(force).await
+    }
+
     pub(super) fn new(
         learner: LearnerRef,
         client: AcademyClient,
@@ -479,6 +491,23 @@ impl State {
 
     /// (Re)creates the saved learner's session under a new reference; its
     /// access token is renewed from the Keychain on first use.
+    /// Begins the signed-in generation's offline work (opened by
+    /// [`Effect::OpenOffline`], off the state lock).
+    pub(super) fn start_offline(
+        &mut self,
+        inner: &Arc<Inner>,
+    ) -> Option<Arc<super::offline_domain::OfflineGen>> {
+        let account = self.data.learner.as_ref()?.account_id.clone();
+        let generation = super::offline_domain::OfflineGen::new(
+            account,
+            inner.adapters.offline_root.clone(),
+            Arc::clone(&inner.adapters.learner_keychain),
+            Arc::downgrade(inner),
+        );
+        self.offline = Some(Arc::clone(&generation));
+        Some(generation)
+    }
+
     pub(super) fn restore_learner_session(
         &mut self,
         inner: &Arc<Inner>,
@@ -487,6 +516,12 @@ impl State {
             return Vec::new();
         };
         let client = self.academy_client();
+        // The same account's offline work stays open across a transport
+        // revision (only its learner reference changes).
+        let previous = self
+            .offline
+            .clone()
+            .filter(|o| o.account() == stored.account_id);
         let starts = self.reissue_learner();
         match (client, self.learner_ref.clone()) {
             (Some(client), Some(learner)) => {
@@ -498,6 +533,12 @@ impl State {
                     None,
                     None,
                 ));
+                match previous {
+                    Some(offline) => self.offline = Some(offline),
+                    None => {
+                        self.start_offline(inner);
+                    }
+                }
             }
             _ => {
                 self.learner_session = None;
@@ -514,6 +555,9 @@ impl State {
     /// and retires every learner operation bound to the previous one.
     pub(super) fn reissue_learner(&mut self) -> Vec<crate::runtime::Start> {
         self.learner_epoch += 1;
+        // The previous generation's offline work is locked (its store is
+        // dropped once no job holds it).
+        self.offline = None;
         // Signed out, the reference names a guest generation (public catalog
         // reads only); either way a new value retires the previous one.
         self.learner_ref = Some(LearnerRef::issue(&self.salt, self.learner_epoch));
@@ -666,6 +710,11 @@ impl State {
             kind,
             input,
             slot: Arc::clone(&slot),
+            offline: if signed_in {
+                self.offline.clone()
+            } else {
+                None
+            },
         };
         let (operation, starts) =
             self.operations
@@ -758,6 +807,51 @@ impl State {
             slot: Arc::clone(&slot),
         };
         let admitted = self.admit_learner_job(learner.clone(), job.into_work(), SHEET_BUDGET)?;
+        self.record_job(&admitted.0, learner, slot);
+        Ok(admitted)
+    }
+
+    /// Admits an offline-work operation for the signed-in current learner.
+    pub(super) fn admit_offline(
+        &mut self,
+        learner: LearnerRef,
+        op: OfflineOp,
+    ) -> Result<(OperationId, Vec<crate::runtime::Start>), super::Refusal> {
+        self.current_learner(&learner)?;
+        if !matches!(self.learner, LearnerPhase::SignedIn) {
+            return Err(super::Refusal::CapabilityMissing);
+        }
+        // Course and attempt ids name records and appear in the snapshot.
+        let id_ok = super::offline_domain::plain_id;
+        let valid = match &op {
+            OfflineOp::Download(id)
+            | OfflineOp::Remove(id)
+            | OfflineOp::LoadDraft(id)
+            | OfflineOp::ClearDraft(id) => id_ok(id),
+            OfflineOp::SaveDraft {
+                attempt_id, draft, ..
+            } => id_ok(attempt_id) && draft.len() <= crate::academy::CALL_INPUT_LIMIT * 4,
+        };
+        if !valid {
+            return Err(super::Refusal::InvalidInput);
+        }
+        let generation = self
+            .offline
+            .clone()
+            .ok_or(super::Refusal::CapabilityMissing)?;
+        let session = self
+            .learner_session
+            .clone()
+            .ok_or(super::Refusal::CapabilityMissing)?;
+        let slot: Slot = Arc::default();
+        let job = OfflineJob {
+            generation,
+            session,
+            op,
+            slot: Arc::clone(&slot),
+        };
+        let budget = self.operations.limits().interactive_budget * 5;
+        let admitted = self.admit_learner_job(learner.clone(), job.into_work(), budget)?;
         self.record_job(&admitted.0, learner, slot);
         Ok(admitted)
     }
@@ -1017,6 +1111,9 @@ struct CallJob {
     kind: ProcedureKind,
     input: Option<String>,
     slot: Slot,
+    /// The signed-in account's offline work: reachability, cached attempt
+    /// reads and offline answers.
+    offline: Option<Arc<super::offline_domain::OfflineGen>>,
 }
 
 impl CallJob {
@@ -1052,26 +1149,20 @@ impl CallJob {
         })
     }
 
-    async fn run(self, claim: Claim) -> Outcome {
+    async fn attempt(&self, claim: &Claim) -> (Result<CallReply, CallFailure>, Outcome) {
         // No usable token means nothing was sent.
-        let mut reply = match self.send(false, &claim).await {
+        let mut reply = match self.send(false, claim).await {
             Ok(reply) => reply,
-            Err(failure) => {
-                self.leave(Err(failure));
-                return Outcome::NotSent;
-            }
+            Err(failure) => return (Err(failure), Outcome::NotSent),
         };
         // A refused token is renewed once. A query is then asked again; a
         // mutation is never resent (the operator retries explicitly) and its
         // refusal is returned as is.
         if self.session.is_some() && matches!(reply, Ok(CallReply::Error { status: 401, .. })) {
             match self.kind {
-                ProcedureKind::Query => match self.send(true, &claim).await {
+                ProcedureKind::Query => match self.send(true, claim).await {
                     Ok(again) => reply = again,
-                    Err(failure) => {
-                        self.leave(Err(failure));
-                        return Outcome::Rejected;
-                    }
+                    Err(failure) => return (Err(failure), Outcome::Rejected),
                 },
                 ProcedureKind::Mutation => {
                     if let Some(session) = &self.session {
@@ -1087,8 +1178,161 @@ impl CallJob {
             // and cancellation after sending: the effect is unknown.
             _ => Outcome::Unknown,
         };
+        (reply, outcome)
+    }
+
+    async fn run(self, claim: Claim) -> Outcome {
+        // When this read of Academy started: what it brings back is kept
+        // only over what was observed before it.
+        // Reads whose result is kept wait for opening, so the stamp follows
+        // every persisted one.
+        let observed = match &self.offline {
+            Some(offline)
+                if self.kind == ProcedureKind::Query
+                    && matches!(
+                        self.procedure.as_str(),
+                        "desktop.attempt.get" | "desktop.attempt.list"
+                    ) =>
+            {
+                let offline = Arc::clone(offline);
+                tokio::task::spawn_blocking(move || offline.observe_seeded())
+                    .await
+                    .unwrap_or(0)
+            }
+            Some(offline) => offline.observe(),
+            None => 0,
+        };
+        let (mut reply, mut outcome) = self.attempt(&claim).await;
+        if let Some(offline) = &self.offline {
+            match &reply {
+                // Any reply means Academy is reachable: when it just became
+                // reachable again, downloads are re-checked (nothing replayed).
+                Ok(answer) => {
+                    if offline.mark_reachable(true)
+                        && let Some(session) = &self.session
+                    {
+                        tokio::spawn(super::offline_domain::revalidate(
+                            Arc::clone(offline),
+                            Arc::clone(session),
+                        ));
+                    }
+                    if let CallReply::Data(data) = answer
+                        && self.session.is_some()
+                    {
+                        let (cache, procedure, input, data, kind) = (
+                            Arc::clone(offline),
+                            self.procedure.clone(),
+                            self.input.clone(),
+                            data.clone(),
+                            self.kind,
+                        );
+                        let _ = tokio::task::spawn_blocking(move || match kind {
+                            ProcedureKind::Query => {
+                                cache.cache(&procedure, input.as_deref(), &data, observed);
+                            }
+                            // A draft Academy confirmed stays with the kept
+                            // attempt for offline use.
+                            _ if matches!(
+                                procedure.as_str(),
+                                "desktop.draft.save" | "desktop.draft.resolve"
+                            ) =>
+                            {
+                                cache.confirm_draft(&procedure, input.as_deref(), &data);
+                            }
+                            _ => {}
+                        })
+                        .await;
+                    }
+                }
+                // Unreachable: a read a download or cached attempt can serve
+                // is answered from this account's offline work.
+                Err(CallFailure::Network | CallFailure::Timeout) => {
+                    offline.mark_reachable(false);
+                    if self.kind == ProcedureKind::Query
+                        && super::offline_domain::OFFLINE_READS.contains(&self.procedure.as_str())
+                    {
+                        let (store, procedure, input) = (
+                            Arc::clone(offline),
+                            self.procedure.clone(),
+                            self.input.clone(),
+                        );
+                        let answer = tokio::task::spawn_blocking(move || {
+                            store.answer(&procedure, input.as_deref())
+                        })
+                        .await
+                        .ok()
+                        .flatten();
+                        if let Some(data) = answer {
+                            reply = Ok(CallReply::Data(data));
+                            outcome = Outcome::Completed;
+                        }
+                    }
+                }
+                Err(_) => {}
+            }
+        }
         self.leave(reply);
         outcome
+    }
+}
+
+/// A native offline-work operation, observed like a learner call.
+pub(super) enum OfflineOp {
+    Download(String),
+    Remove(String),
+    SaveDraft {
+        attempt_id: String,
+        base_version: u32,
+        draft: String,
+    },
+    LoadDraft(String),
+    ClearDraft(String),
+}
+
+struct OfflineJob {
+    generation: Arc<super::offline_domain::OfflineGen>,
+    session: Arc<LearnerSession>,
+    op: OfflineOp,
+    slot: Slot,
+}
+
+impl OfflineJob {
+    fn into_work(self) -> Work {
+        Box::new(move |claim| {
+            Box::pin(async move {
+                use super::offline_domain as off;
+                let generation = Arc::clone(&self.generation);
+                let result = match self.op {
+                    OfflineOp::Download(course) => tokio::select! {
+                        r = off::download(&generation, &self.session, &course) => r,
+                        () = claim.cancel.cancelled() => Err(CallFailure::Cancelled),
+                    },
+                    op => tokio::task::spawn_blocking(move || match op {
+                        OfflineOp::Remove(course) => off::remove(&generation, &course),
+                        OfflineOp::SaveDraft {
+                            attempt_id,
+                            base_version,
+                            draft,
+                        } => off::save_draft(&generation, &attempt_id, base_version, &draft),
+                        OfflineOp::LoadDraft(attempt) => off::load_draft(&generation, &attempt),
+                        OfflineOp::ClearDraft(attempt) => off::clear_draft(&generation, &attempt),
+                        OfflineOp::Download(_) => Err(CallFailure::Cancelled),
+                    })
+                    .await
+                    .unwrap_or(Err(CallFailure::OfflineUnavailable)),
+                };
+                let outcome = match &result {
+                    Ok(CallReply::Data(_)) => Outcome::Completed,
+                    Ok(CallReply::Error { status, .. }) if (400..500).contains(status) => {
+                        Outcome::Rejected
+                    }
+                    Ok(CallReply::Error { .. }) => Outcome::Unknown,
+                    Err(_) => Outcome::NotSent,
+                };
+                leave(&self.slot, result);
+                outcome
+            })
+        })
     }
 }
 
@@ -1219,7 +1463,13 @@ pub(super) async fn sign_in(inner: Arc<Inner>, flow: u64, client: AcademyClient)
         Failed(VaultError),
         Superseded,
     }
-    let committed: Result<Vec<crate::runtime::Start>, Abandon> = (|| {
+    let committed: Result<
+        (
+            Vec<crate::runtime::Start>,
+            Option<Arc<super::offline_domain::OfflineGen>>,
+        ),
+        Abandon,
+    > = (|| {
         let Ok(mut state) = lock(&inner) else {
             return Err(Abandon::Superseded);
         };
@@ -1249,11 +1499,16 @@ pub(super) async fn sign_in(inner: Arc<Inner>, flow: u64, client: AcademyClient)
             Some((config.clone(), endpoints.clone())),
         ));
         state.learner = LearnerPhase::SignedIn;
+        let offline = state.start_offline(&inner);
         state.changed();
-        Ok(starts)
+        Ok((starts, offline))
     })();
     match committed {
-        Ok(starts) => super::run_effects(&inner, vec![Effect::Start(starts)]),
+        Ok((starts, offline)) => {
+            let mut effects = vec![Effect::Start(starts)];
+            effects.extend(offline.map(Effect::OpenOffline));
+            super::run_effects(&inner, effects);
+        }
         Err(abandon) => {
             // The record stays in the ledger and is deleted by cleanup; the
             // grant it held is revoked.
@@ -1357,6 +1612,38 @@ pub(super) fn drain_learner_cleanup(inner: &Arc<Inner>) {
         }
         state.changed();
     });
+}
+
+/// Opens a signed-in generation's offline work if its key exists, then
+/// re-checks its downloads with Academy (off the state lock).
+pub(super) async fn open_offline(
+    inner: Arc<Inner>,
+    generation: Arc<super::offline_domain::OfflineGen>,
+) {
+    generation.set_notifier(Arc::downgrade(&inner));
+    let opener = Arc::clone(&generation);
+    let state = tokio::task::spawn_blocking(move || opener.open_existing())
+        .await
+        .unwrap_or(super::offline_domain::OfflineState::Unavailable);
+    let session = lock(&inner).ok().and_then(|s| {
+        let current = s
+            .offline
+            .as_ref()
+            .is_some_and(|o| Arc::ptr_eq(o, &generation));
+        if current {
+            s.learner_session.clone()
+        } else {
+            None
+        }
+    });
+    if let Ok(mut s) = lock(&inner) {
+        s.changed();
+    }
+    if state == super::offline_domain::OfflineState::Ready
+        && let Some(session) = session
+    {
+        super::offline_domain::revalidate(generation, session).await;
+    }
 }
 
 #[cfg(test)]

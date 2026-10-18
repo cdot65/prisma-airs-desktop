@@ -45,7 +45,8 @@ INTRO = "Final assessment"
 UNKNOWN = "We could not confirm submission"
 PENDING = "Grading your written answers"
 LAB_PASSED = "Lab passed. Academy recorded it on your account."
-NAV_SIGNED_IN = ["Home", "Learn", "Program", "Notifications", "Settings"]
+# Builds after C06 add the desktop's Downloads entry (C07).
+NAV_SIGNED_IN = ["Home", "Learn", "Program"] + ([] if SUBJECT == "C06" else ["Downloads"]) + ["Notifications", "Settings"]
 GENERIC_FAILURE = "Something went wrong"
 PROCEDURES = json.load(open(os.path.join(ROOT, "packages/desktop-contracts/fixtures/academy/learner-procedures.json")))
 PUBLIC = set(PROCEDURES["public"])
@@ -633,6 +634,23 @@ def run():
     return evaluate(prepared, obs)
 
 
+def offline_key(account):
+    """The learner-namespace record of an account's offline key (C07:
+    cr- and the first 16 hex digits of sha256("academy-offline-key:" +
+    account))."""
+    import hashlib
+    return "cr-" + hashlib.sha256(f"academy-offline-key:{account}".encode()).hexdigest()[:16]
+
+
+def signed_out_items(items):
+    """Learner items that must be gone after sign-out. From C07 the
+    account's offline key stays with its locked offline work (lab work is
+    kept on this Mac until Academy confirms it); reset removes it."""
+    if SUBJECT == "C06":
+        return items
+    return [i for i in items if i != offline_key("user_2fixturelearner")]
+
+
 def reach(app, zoom, label):
     """Tabs until `label` has focus; it must lie inside the window and end
     above the 60 CSS px bottom fade."""
@@ -727,7 +745,7 @@ def evaluate(prepared, o):
 
     a = o["account"]
     add("C06-N08", a["page"] and a["photo_here"] and a["host_appearance"] and a["no_theme_choice"]
-        and a["guest_nav"] and a["shell_signed_out"] and a["items_before"] and a["items_after"] == [] and a["revoked"],
+        and a["guest_nav"] and a["shell_signed_out"] and a["items_before"] and signed_out_items(a["items_after"]) == [] and a["revoked"],
         f"account page from Academy's Settings entry: {a['page']}; photo changed here ('Change photo'): {a['photo_here']}; "
         f"appearance follows the app: {a['host_appearance']}, no theme choice: {a['no_theme_choice']}; Academy's Sign out returned the destination to guest navigation "
         f"{a['guest_nav_links']} and Settings shows 'Not signed in to Academy.': {a['shell_signed_out']}; learner keychain items {a['items_before']} -> {a['items_after']}; revoked: {a['revoked']}",

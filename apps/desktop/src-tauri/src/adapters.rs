@@ -48,6 +48,7 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         opener: opener(root.as_deref()),
         printer: printer(app, root.as_deref()),
         images: images(app, root.as_deref()),
+        offline_root: root.as_ref().map(|r| r.join("academy-offline")),
     }
 }
 

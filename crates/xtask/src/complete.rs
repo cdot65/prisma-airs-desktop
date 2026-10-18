@@ -8,6 +8,14 @@
 //! A subject counts as complete only when its latest generation has a
 //! completion, a commit bound to the same receipt, no invalidation, and a
 //! receipt file whose bytes still match the ledger.
+//!
+//! Owner acceptance (D032): the owner may accept a review below the 9/10
+//! threshold. `complete --owner-accept REASON` then accepts the newest
+//! receipt only if every score is at least [`OWNER_MINIMUM_SCORE`], it has no
+//! blockers, and nothing but the threshold (scores, required fixes, evidence
+//! gaps, the recommendation) fails: the packet, verdict, transport,
+//! fingerprints, runs and native evidence must all still check. The completion records the reason and every accepted
+//! failure; verdicts are never edited.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -34,6 +42,8 @@ pub enum Entry {
         receipt_sha256: String,
         fingerprints: Fingerprints,
         completed_utc: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        owner_acceptance: Option<OwnerAcceptance>,
     },
     Commit {
         subject: String,
@@ -50,6 +60,60 @@ pub enum Entry {
         reason: String,
         invalidated_utc: String,
     },
+}
+
+/// The lowest score an owner may accept (D032).
+pub const OWNER_MINIMUM_SCORE: u8 = 8;
+
+/// The owner's acceptance of a review below the threshold, as recorded.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OwnerAcceptance {
+    pub decision: String,
+    pub reason: String,
+    pub minimum_score: u8,
+    pub accepted_failures: Vec<String>,
+}
+
+/// The gate failures an owner may accept for `receipt` (the threshold
+/// alone), or why it cannot be accepted.
+pub fn owner_acceptable(
+    receipt: &Receipt,
+    failures: &[String],
+) -> std::result::Result<Vec<String>, String> {
+    let named = receipt.scores.named();
+    if let Some((name, score)) = named.iter().find(|(_, s)| *s < OWNER_MINIMUM_SCORE) {
+        return Err(format!(
+            "score {name}={score} is below the owner minimum {OWNER_MINIMUM_SCORE}"
+        ));
+    }
+    if receipt.blockers > 0 {
+        return Err("blockers remain".to_owned());
+    }
+    let mut threshold: Vec<String> = named
+        .iter()
+        .filter(|(_, s)| *s < gate::MINIMUM_SCORE)
+        .map(|(name, s)| format!("score {name}={s} is below {}", gate::MINIMUM_SCORE))
+        .collect();
+    if receipt.required_fixes > 0 {
+        threshold.push(format!("{} required fixes remain", receipt.required_fixes));
+    }
+    if receipt.evidence_gaps > 0 {
+        threshold.push(format!("{} evidence gaps remain", receipt.evidence_gaps));
+    }
+    threshold.push("reviewer recommendation is fail".to_owned());
+    let other: Vec<&String> = failures.iter().filter(|f| !threshold.contains(f)).collect();
+    if !other.is_empty() {
+        return Err(format!(
+            "failures other than the threshold remain: {}",
+            other
+                .iter()
+                .map(|f| f.as_str())
+                .collect::<Vec<_>>()
+                .join("; ")
+        ));
+    }
+    Ok(failures.to_vec())
 }
 
 pub fn read_ledger(path: &Path) -> Result<Vec<Entry>> {
@@ -114,6 +178,7 @@ pub fn completion_problems(repo: &Repo, entries: &[Entry], subject: Subject) -> 
         receipt_id,
         receipt,
         receipt_sha256,
+        owner_acceptance,
         ..
     }) = latest_completion(entries, subject)
     else {
@@ -139,15 +204,22 @@ pub fn completion_problems(repo: &Repo, entries: &[Entry], subject: Subject) -> 
                     "{subject} receipt {receipt} was changed after completion"
                 ));
             } else if let Ok(parsed) = serde_json::from_slice::<Receipt>(&bytes) {
-                let scores_ok = parsed
-                    .scores
-                    .named()
-                    .iter()
-                    .all(|(_, s)| *s >= gate::MINIMUM_SCORE);
-                if !parsed.passed
-                    || !scores_ok
-                    || parsed.required_fixes + parsed.blockers + parsed.evidence_gaps > 0
-                {
+                let minimum = if owner_acceptance.is_some() {
+                    OWNER_MINIMUM_SCORE
+                } else {
+                    gate::MINIMUM_SCORE
+                };
+                let scores_ok = parsed.scores.named().iter().all(|(_, s)| *s >= minimum);
+                let accepted = match owner_acceptance {
+                    // Owner-accepted (D032): the threshold alone may fail.
+                    Some(_) => scores_ok && parsed.blockers == 0,
+                    None => {
+                        parsed.passed
+                            && scores_ok
+                            && parsed.required_fixes + parsed.blockers + parsed.evidence_gaps == 0
+                    }
+                };
+                if !accepted {
                     problems.push(format!(
                         "{subject} receipt does not record a passing review"
                     ));
@@ -316,6 +388,21 @@ pub fn complete(
     subject: Subject,
     current: Fingerprints,
 ) -> Result<Entry> {
+    complete_with(repo, manifest, subject, current, None)
+}
+
+/// [`complete`], or with `owner_accept` the newest receipt the owner may
+/// accept below the threshold (D032).
+pub fn complete_with(
+    repo: &Repo,
+    manifest: &Manifest,
+    subject: Subject,
+    current: Fingerprints,
+    owner_accept: Option<&str>,
+) -> Result<Entry> {
+    if owner_accept.is_some_and(|r| r.trim().is_empty()) {
+        return Err(invalid("--owner-accept needs the owner's reason"));
+    }
     require_predecessors(repo, manifest, subject)?;
     let ledger = repo.completion_ledger();
     let entries = read_ledger(&ledger)?;
@@ -334,13 +421,29 @@ pub fn complete(
     let mut last_failures = vec!["no review receipt exists".to_owned()];
     for receipt_path in attempts.iter().rev() {
         let failures = evaluate_receipt(repo, manifest, subject, receipt_path, current.clone())?;
-        if !failures.is_empty() {
-            last_failures = failures;
-            continue;
-        }
         let bytes = std::fs::read(receipt_path).map_err(io_err(receipt_path))?;
         let receipt: Receipt =
             serde_json::from_slice(&bytes).map_err(|e| invalid(e.to_string()))?;
+        let owner_acceptance = match (owner_accept, failures.is_empty()) {
+            (_, true) => None,
+            (Some(reason), false) => match owner_acceptable(&receipt, &failures) {
+                Ok(accepted) => Some(OwnerAcceptance {
+                    decision: "D032".to_owned(),
+                    reason: reason.trim().to_owned(),
+                    minimum_score: OWNER_MINIMUM_SCORE,
+                    accepted_failures: accepted,
+                }),
+                Err(why) => {
+                    last_failures = vec![format!("owner acceptance refused: {why}")];
+                    // Only the newest receipt may be owner-accepted.
+                    break;
+                }
+            },
+            (None, false) => {
+                last_failures = failures;
+                continue;
+            }
+        };
         if entries.iter().any(|e| matches!(e, Entry::Completion { receipt_id, .. } if *receipt_id == receipt.receipt_id)) {
             return Err(invalid("duplicate receipt ID; a receipt can complete only once"));
         }
@@ -356,6 +459,7 @@ pub fn complete(
             receipt_sha256: sha256_hex(&bytes),
             fingerprints: current,
             completed_utc: now_utc(),
+            owner_acceptance,
         };
         append(&ledger, &entry)?;
         return Ok(entry);

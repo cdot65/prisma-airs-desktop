@@ -1,0 +1,27 @@
+
+running 18 tests
+test a_denied_keychain_keeps_offline_work_closed_and_writes_nothing ... ok
+test a_course_academy_does_not_give_the_account_is_not_downloaded ... ok
+test a_downloaded_course_is_kept_sealed_for_its_account_under_academys_lease ... ok
+test a_course_past_academys_bundle_cap_is_assembled_unit_by_unit ... ok
+test a_relaunch_while_academy_is_unreachable_still_opens_downloaded_work ... ok
+test an_unreadable_record_is_kept_aside_and_the_rest_still_opens ... ok
+test cached_attempts_open_offline_and_a_submission_is_never_replayed ... ok
+test assembling_stops_once_a_course_cannot_fit_one_record ... ok
+test only_the_signed_in_current_learner_keeps_work_offline ... ok
+test reconnecting_withdraws_courses_academy_no_longer_gives_and_marks_new_revisions ... ok
+test reset_removes_offline_work_and_its_keys ... ok
+test offline_reads_come_from_the_download_only_while_academy_is_unreachable ... ok
+test lab_work_kept_on_this_mac_survives_restart_and_is_never_sent_by_itself ... ok
+test an_expired_lease_is_not_read_offline ... ok
+test cached_attempts_lock_when_their_lease_ends_access_is_revoked_or_the_revision_is_withdrawn ... ok
+test sign_out_locks_offline_work_and_another_account_cannot_see_it ... ok
+test revalidation_never_overwrites_a_newer_download_or_brings_back_a_removed_one ... ok
+test reset_waits_for_admitted_offline_work_and_nothing_survives_it ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.47s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running tests/academy_offline/main.rs (target/debug/deps/academy_offline-e05d40565ee9eb95)

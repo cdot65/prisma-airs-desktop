@@ -871,6 +871,129 @@ and `apps/desktop/src/features/academy`.
   queries: no route may show an error toast, and every refusal must be one
   the truth graph lists with a reason.
 
+### C07 implementation: encrypted offline work
+
+Implemented in `crates/desktop-core` (`offline`: the sealed store;
+`authority/offline_domain`: downloads, offline answers, revalidation and
+lab work kept on this Mac; intents `DownloadCourse`, `RemoveDownload`,
+`SaveLocalDraft`, `LoadLocalDraft`, `ClearLocalDraft`;
+`ShellSnapshot.academyOffline`), `apps/desktop/src/features/academy`
+(Downloads page, offline notice, `nativeLocalDrafts`) and Academy's
+desktop draft hook (`LearnerHost localDrafts`, pinned in
+`docs/architecture/inputs.lock.json`).
+
+- **Sealed per account (D031).** Each signed-in account has a directory
+  under the app data root named by a digest of its account id and its own
+  random 32-byte key in the learner Keychain namespace (record
+  `cr-<digest>`, deterministic per account, created on the first download
+  or the first lab work kept on this Mac, never before; sign-out keeps it
+  with the locked work, reset removes it). Every record is XChaCha20-Poly1305 sealed
+  under a fresh nonce with associated data binding the schema, the account
+  digest and the record's file name, so no record reads as another
+  account's or another record. Writes are atomic (a temporary file of the
+  writer's own, sync, rename, directory sync; leftovers of an interrupted
+  write are removed when the store opens), directories 0700 and files
+  0600, one instance per account (an exclusive lock). Within the instance,
+  the quota check, every commit, deletion and set-aside runs under one
+  commit lock, and read-modify-write goes through `OfflineStore::update`.
+  Bounds: 16 MiB per record (the learner reply cap), 512 MiB and 1024
+  records per account, counting records kept aside; beyond them a download
+  is refused (`offlineFull`) and nothing is kept. A record that does not
+  authenticate (re-checked under the commit lock) is renamed aside
+  (`.unreadable-<time>`) and kept, the newest eight; the rest still opens.
+  The key is proven against a sealed key check (or, for a store without
+  one, a record that authenticates) before anything is read, set aside or
+  written; a store that cannot open (Keychain denied or locked, a key that
+  cannot be proven, another instance) stays closed and touches nothing
+  (`offlineUnavailable`), and the right key recovers everything. There is
+  no plaintext path.
+- **One write ledger with reset.** Every offline store operation, key
+  creation included, first enters its generation's ledger
+  (`OfflineGen::enter`): a retired generation (sign-out, account change, a
+  new generation) or a reset in progress admits none, and reset waits for
+  every admitted one before purging the Keychain and the offline root, so
+  nothing is written or recreated after reset completes. Downloads leave
+  the ledger while Academy answers and enter it again to save.
+- **What is kept.** A course is downloaded only after `desktop.access`
+  says the account may have it, as Academy's `desktop.bundle` (its own
+  `units.get` replies and the learner's lab definitions, no grader
+  fields); past Academy's bundle cap (413) the course is assembled from
+  `desktop.manifest` and each `desktop.unitBundle` (each Academy's whole
+  bundle projection, checked for schema 1, this course, this account and
+  the manifest's revision), and fetching stops (`offlineFull`) as soon as
+  what was received could no longer fit one record. The bundle must name schema 1, the course, the
+  signed-in account and a lease. Attempt reads (`desktop.attempt.get` of
+  the signed-in account, `list`) are kept as answered online, with when
+  they were kept; a draft Academy confirms (`desktop.draft.save` or
+  `desktop.draft.resolve` answering `saved`) moves the kept attempt's draft
+  and version forward (marking earlier step verdicts stale, as Academy
+  does for a changed draft), never its lease, so confirmed work opens
+  offline without another read. Media and walkthrough videos are never kept; the
+  Downloads page says they, and live labs, need Academy.
+- **Offline answers only when Academy is unreachable.** A learner call
+  that fails with `network` or `timeout` (the access-token renewal
+  included) is answered from what is kept: `units.get` and `labs.get` of a
+  readable download (current or outdated, lease not ended, clock not
+  behind the download time), the attempt list, and a kept attempt as
+  Academy returned it only while its own lease holds (clock not behind
+  when it was kept) and its course is not withdrawn; otherwise the attempt
+  is answered locked, with the learner's own work and no authored
+  definition. These decisions read the kept records themselves (status,
+  lease, download time), not the index, so a verdict applies as soon as it
+  is written; index rebuilds run one at a time. Nothing else is answered
+  offline, mutations never. A reply
+  clears the unreachable flag; the snapshot's `reachable` drives the
+  offline notice. While Academy is unreachable the Downloads page asks for
+  the course list every 15 s, so a learner waiting there sees Academy
+  return without leaving the page. Restoring a saved session needs no
+  network, so an offline launch opens the account's work.
+- **Revalidation, never replay.** When Academy becomes reachable again,
+  and when a generation opens, the core asks `desktop.access` (renewing
+  each lease or marking the course withdrawn) and `desktop.manifest` (a
+  different revision marks it outdated, offered for update), and reads
+  each kept attempt again (Academy's reply, or its lock for revoked access
+  or a withdrawn revision, replaces what was kept; an attempt Academy
+  refuses is kept locked). Every read of Academy that may change a kept
+  record (a foreground attempt read, a download, a revalidation) takes an
+  observation stamp when it starts, and a result is written only over
+  records observed before it, so a reply asked earlier and answering later
+  never undoes a newer download, lock or confirmed draft (a kept newer
+  draft, with its results and conflict state, also survives any older
+  attempt reply); a download answered after a newer verdict is refused
+  (`notDownloadable`). A generation's stamps continue after every
+  persisted one, and attempt reads whose results are kept take their stamp
+  only once opening finished, so ordering never depends on the clock. Withdrawals are published
+  before attempts are read again. Nothing else is sent: no progress, grading, draft or submission
+  is replayed, and normal token renewal sends nothing deferred.
+- **Lab work kept on this Mac.** Academy's draft hook gives a host that
+  keeps lab work (`localDrafts`) the latest work Academy has not
+  confirmed: shortly after each edit, after a failed save and on leaving
+  the lab, through one ordered queue of device operations per learner
+  generation and attempt that outlives any view of the lab, so a late read,
+  an older request's completion or a closed view's pending write never
+  replaces newer work, and only the most recently opened view of an
+  attempt may change its copy (a closed view's late replies keep and clear
+  nothing). The copy is forgotten only once the kept attempt holds that
+  work, so it is never the last offline copy to go. Reading the kept copy
+  joins an opening in progress. "Holds" means the attempt's commit is
+  known durable: a record renamed into place whose directory sync did not
+  complete is not, until a later sync does, and opening a store syncs its
+  directory first. Reading the kept copy joins an opening in progress;
+  a copy that cannot be read is reported, never treated as none, and left
+  untouched. It returns
+  when the lab opens again as "saved on this device only", is never sent
+  by itself, and the learner's next save sends it on the version it was
+  based on, so a copy Academy moved on from becomes Academy's conflict
+  with both copies shown. It is forgotten once Academy holds the latest
+  work; a clear that did not complete is asked again. Grading still
+  requires a draft Academy confirmed.
+- **Locking and reset.** Signing out, changing account or a new learner
+  generation drops the offline generation (its store closes when no job
+  holds it); another account's directory and key are never opened. Reset
+  purges the learner Keychain (offline keys included) and removes the
+  offline root. On quit the host closes the store (`Core::shutdown`) so its
+  lock is released.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

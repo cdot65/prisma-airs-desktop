@@ -38,6 +38,8 @@ rustls-webpki = { version = "=0.103.15", default-features = false, features = ["
 # The learner's avatar is decoded with bounds, oriented and re-encoded as a
 # 512 px JPEG before upload and on readback (as v1 did); decoders only.
 image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
+# Offline Academy work is sealed with XChaCha20-Poly1305 (v1's cipher crate).
+chacha20poly1305 = { version = "=0.10.1", default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
@@ -71,6 +73,11 @@ required-features = ["test-fixtures"]
 [[test]]
 name = "academy_program"
 path = "tests/academy_program/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "academy_offline"
+path = "tests/academy_offline/main.rs"
 required-features = ["test-fixtures"]
 
 [lints]

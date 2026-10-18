@@ -364,9 +364,22 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
                     .map_err(|e| std::io::Error::other(e.to_string()))?;
             }
             app.manage(Host::new(&core));
+            app.manage(Exit(core.clone()));
             tauri::async_runtime::spawn(async move { core.start() });
             main_window(app)?;
             Ok(())
         })
-        .run(context)
+        .build(context)?
+        .run(|app, event| {
+            // Offline work is locked as the app exits.
+            if matches!(event, tauri::RunEvent::Exit)
+                && let Some(exit) = app.try_state::<Exit>()
+            {
+                exit.0.shutdown();
+            }
+        });
+    Ok(())
 }
+
+/// The core, for shutdown at exit.
+struct Exit(Core);

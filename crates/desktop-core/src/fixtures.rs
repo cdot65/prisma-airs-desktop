@@ -462,6 +462,8 @@ pub struct Handles {
     pub opener: Arc<ScriptedOpener>,
     pub printer: Arc<ScriptedPrinter>,
     pub images: Arc<ScriptedImagePicker>,
+    /// This instance's offline work root (a fresh temporary directory).
+    pub offline_root: std::path::PathBuf,
 }
 
 /// Fresh scripted adapters with empty storage.
@@ -478,6 +480,7 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         opener: Arc::new(ScriptedOpener::default()),
         printer: Arc::new(ScriptedPrinter::default()),
         images: Arc::new(ScriptedImagePicker::default()),
+        offline_root: fresh_offline_root(),
     };
     (
         Adapters {
@@ -488,7 +491,19 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             opener: handles.opener.clone(),
             printer: handles.printer.clone(),
             images: handles.images.clone(),
+            offline_root: Some(handles.offline_root.clone()),
         },
         handles,
     )
+}
+
+/// A fresh, empty offline work root under the system temporary directory
+/// (resolved, so no symlinked ancestor).
+fn fresh_offline_root() -> std::path::PathBuf {
+    let mut entropy = [0u8; 8];
+    let _ = getrandom::fill(&mut entropy);
+    let base = std::env::temp_dir()
+        .canonicalize()
+        .unwrap_or_else(|_| std::env::temp_dir());
+    base.join(format!("airs-v2-offline-{}", hex::encode(entropy)))
 }

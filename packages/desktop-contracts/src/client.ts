@@ -125,6 +125,9 @@ const CALL_FAILURES: readonly string[] = [
     'unsupportedImage',
     'destinationRefused',
     'uploadFailed',
+    'offlineUnavailable',
+    'notDownloadable',
+    'offlineFull',
 ]
 const SCAN_PROGRESS: readonly string[] = ['queued', 'running', 'settled']
 const OUTCOMES: readonly string[] = ['notSent', 'rejected', 'completed', 'unknown']
@@ -265,6 +268,50 @@ function isScanRecord(value: unknown): boolean {
     // Only a completed scan carries a result, and a settled one has an outcome.
     if (value.result !== null && value.outcome !== 'completed') return false
     return (value.progress === 'settled') === (value.outcome !== null)
+}
+
+const OFFLINE_STATES: readonly string[] = ['signedOut', 'opening', 'empty', 'ready', 'unavailable']
+const DOWNLOAD_STATUSES: readonly string[] = ['current', 'outdated', 'expired', 'withdrawn']
+/** A UTC instant as the core writes it (`2026-10-25T12:00:00.000Z`). */
+const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+const isInstant = (value: unknown): boolean => typeof value === 'string' && INSTANT.test(value)
+const OFFLINE_ID = /^[A-Za-z0-9_-]{1,128}$/
+const isOfflineId = (value: unknown): boolean => typeof value === 'string' && OFFLINE_ID.test(value)
+
+function isOfflineView(value: unknown): boolean {
+    if (!isRecord(value) || !oneOf(OFFLINE_STATES, value.state) || typeof value.reachable !== 'boolean') return false
+    if (!Array.isArray(value.downloads) || !Array.isArray(value.localDrafts)) return false
+    // Signed out or not yet open, nothing of the account is shown.
+    const open = value.state === 'ready'
+    if (!open && (value.downloads.length > 0 || value.localDrafts.length > 0)) return false
+    const courses = new Set<unknown>()
+    const downloads = value.downloads.every((d) => {
+        if (
+            !isRecord(d) ||
+            !isOfflineId(d.courseId) ||
+            courses.has(d.courseId) ||
+            typeof d.title !== 'string' ||
+            !isString(d.revision) ||
+            !isInstant(d.downloadedAt) ||
+            !isInstant(d.leaseExpiresAt) ||
+            !oneOf(DOWNLOAD_STATUSES, d.status) ||
+            !isCount(d.units) ||
+            !optional(isOfflineId, d.firstUnit)
+        ) {
+            return false
+        }
+        courses.add(d.courseId)
+        return true
+    })
+    const attempts = new Set<unknown>()
+    const drafts = value.localDrafts.every((d) => {
+        if (!isRecord(d) || !isOfflineId(d.attemptId) || attempts.has(d.attemptId) || !isCount(d.baseVersion) || !isInstant(d.savedAt)) {
+            return false
+        }
+        attempts.add(d.attemptId)
+        return true
+    })
+    return downloads && drafts
 }
 
 function isAcademyView(value: unknown): boolean {
@@ -409,7 +456,9 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isAcademyView(value.academy) ||
         !optional((l) => typeof l === 'string' && LEARNER_REF.test(l), value.learner) ||
         typeof value.academyOrigin !== 'string' ||
-        !ACADEMY_ORIGIN.test(value.academyOrigin)
+        !ACADEMY_ORIGIN.test(value.academyOrigin) ||
+        !isOfflineView(value.academyOffline) ||
+        (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')
     }

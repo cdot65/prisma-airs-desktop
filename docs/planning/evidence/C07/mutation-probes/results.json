@@ -1,0 +1,1162 @@
+[
+  {
+    "mutation": "a download whose lease ended is still read offline",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "an_expired_lease_is_not_read_offline",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a course Academy does not give the account is downloaded",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_course_academy_does_not_give_the_account_is_not_downloaded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another account's bundle is kept",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_course_academy_does_not_give_the_account_is_not_downloaded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "unit bundles of different revisions are assembled into one course",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_course_past_academys_bundle_cap_is_assembled_unit_by_unit",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a course Academy withdrew stays current",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "reconnecting_withdraws_courses_academy_no_longer_gives_and_marks_new_revisions",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a new revision is not marked outdated",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "reconnecting_withdraws_courses_academy_no_longer_gives_and_marks_new_revisions",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reconnecting does not re-check downloads",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "reconnecting_withdraws_courses_academy_no_longer_gives_and_marks_new_revisions",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "attempt reads are not kept for offline use",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "cached_attempts_open_offline_and_a_submission_is_never_replayed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "signing out leaves offline work open",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "sign_out_locks_offline_work_and_another_account_cannot_see_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "records are written unsealed",
+    "files": [
+      "crates/desktop-core/src/offline.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_downloaded_course_is_kept_sealed_for_its_account_under_academys_lease",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the account budget admits twice its bytes",
+    "files": [
+      "crates/desktop-core/src/offline.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "offline"
+    ],
+    "guard": "an_account_is_bounded_in_bytes_and_records",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the record cap admits one more record",
+    "files": [
+      "crates/desktop-core/src/offline.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "offline"
+    ],
+    "guard": "an_account_is_bounded_in_bytes_and_records",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unreadable record is deleted instead of kept aside",
+    "files": [
+      "crates/desktop-core/src/offline.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "an_unreadable_record_is_kept_aside_and_the_rest_still_opens",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset leaves offline work behind",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "reset_removes_offline_work_and_its_keys",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "installing the transport policy at launch opens offline work off the runtime",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_relaunch_while_academy_is_unreachable_still_opens_downloaded_work",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "record ids are not checked",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "only_the_signed_in_current_learner_keeps_work_offline",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the offline notice shows while Academy answers",
+    "files": [
+      "apps/desktop/src/features/academy/offline-work.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/offline-work.test.tsx"
+    ],
+    "guard": "while Academy is unreachable",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a download names the wrong course",
+    "files": [
+      "apps/desktop/src/features/academy/offline-work.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/offline-work.test.tsx"
+    ],
+    "guard": "downloads a course Academy offers",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "offline work is accepted in a signed-out snapshot",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "offline work shown while signed out",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a kept draft that is not an object is read back",
+    "files": [
+      "apps/desktop/src/features/academy/host-actions.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/host-actions.test.ts"
+    ],
+    "guard": "a draft that is not an object",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "kept work is sent by itself when the lab opens",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "without sending it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a confirmed save does not forget the kept copy",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "forgets it once Academy holds it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "work a save could not confirm is not kept",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "keeps work a save could not confirm",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an older kept copy replaces work started here",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "keeps an older one from replacing newer work",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "device operations run out of order",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "device writes land in the order they were asked",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a clear that did not complete counts as done",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "asks again to forget a copy whose clear did not complete",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "leaving the lab keeps nothing",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "after leaving the lab",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset does not wait for admitted offline work",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "reset_waits_for_admitted_offline_work_and_nothing_survives_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a cached attempt is shown after its lease ended",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "cached_attempts_lock_when_their_lease_ends_access_is_revoked_or_the_revision_is_withdrawn",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Academy's lock on reconnect does not replace what was kept",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "an_attempt_academy_no_longer_returns_is_kept_locked",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "assembling fetches every unit whatever their size",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "assembling_stops_once_a_course_cannot_fit_one_record",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "revalidation brings back a removed download",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "revalidation_never_overwrites_a_newer_download_or_brings_back_a_removed_one",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "revalidation applies an earlier verdict to a newer download (revision, stamp and verdict checks removed)",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "revalidation_never_overwrites_a_newer_download_or_brings_back_a_removed_one",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "records kept aside do not count toward the budget",
+    "files": [
+      "crates/desktop-core/src/offline.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "offline"
+    ],
+    "guard": "records_kept_aside_are_bounded_and_count_toward_the_budget",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "concurrent writers share one temporary file without the commit lock",
+    "files": [
+      "crates/desktop-core/src/offline.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "offline"
+    ],
+    "guard": "concurrent_writers_commit_whole_records_within_the_budget",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an older revalidation reply replaces a newer attempt",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "revalidation_results_never_undo_newer_state",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an older revalidation verdict applies to a same-revision re-download (stamp and verdict checks removed)",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "revalidation_results_never_undo_newer_state",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a stale attempt reply takes back a newer confirmed draft",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "an_attempt_read_that_predates_a_confirmed_save_keeps_the_newer_draft",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "withdrawn content is served from the kept record",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_withdrawal_applies_at_once_while_other_checks_are_pending",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a withdrawn course does not lock its kept attempts",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_withdrawal_applies_at_once_while_other_checks_are_pending",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a wrong key opens the store",
+    "files": [
+      "crates/desktop-core/src/offline.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_wrong_offline_key_opens_nothing_and_loses_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a confirmed draft is not kept with the attempt",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_confirmed_draft_opens_offline_without_the_attempt_being_read_again",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a draft asked for while opening is answered as none",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_draft_asked_for_while_kept_work_is_opening_waits_for_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a unit bundle for another account is assembled",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_unit_bundle_for_another_account_or_course_is_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a closed view's device queue ends with it",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "pending device write never replaces a later view",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "unreadable kept work is replaced",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "a kept copy that cannot be read is neither treated as absent nor replaced",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a closed view's late reply changes a later view's kept work",
+    "files": [
+      ".work/academy/src/features/labs/desktop/use-desktop-draft.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "guard": "a closed view whose save to Academy",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a download answered after a newer withdrawal brings the course back",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_download_answered_after_a_newer_withdrawal_does_not_bring_the_course_back",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a local copy is forgotten though the kept attempt does not hold it",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_confirmation_the_kept_attempt_cannot_hold_leaves_the_local_copy",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an earlier verdict is shown for confirmed newer work",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "confirmed_work_marks_earlier_verdicts_stale_and_a_resolved_conflict_stays_resolved",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an older reply brings back a resolved conflict",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "confirmed_work_marks_earlier_verdicts_stale_and_a_resolved_conflict_stays_resolved",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "stamps restart below kept ones after a restart",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "stamps_continue_after_kept_ones_when_the_clock_is_behind",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a local copy is forgotten though the attempt's commit is not known durable",
+    "files": [
+      "crates/desktop-core/src/authority/offline_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "a_confirmation_whose_commit_is_not_known_durable_leaves_the_local_copy",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an attempt read stamps before opening finished",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "guard": "an_attempt_read_during_opening_keeps_academys_lock_over_kept_stamps_ahead_of_the_clock",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_offline"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "offline"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/offline-work.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/host-actions.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts",
+      "src/features/labs/desktop/__tests__/use-desktop-draft.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

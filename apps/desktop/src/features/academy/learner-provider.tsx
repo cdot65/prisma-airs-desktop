@@ -14,7 +14,7 @@ import SuperJSON from 'superjson'
 import { LearnerHost } from '@ai-security-academy/learner'
 import type { DesktopClient, LearnerRef } from '@prisma-airs/desktop-contracts'
 import { desktopLink } from './desktop-link'
-import { hostAction, loadAcademyImage } from './host-actions'
+import { hostAction, loadAcademyImage, nativeLocalDrafts } from './host-actions'
 
 const NO_RETRY = new Set([
     'UNAUTHORIZED',
@@ -108,6 +108,12 @@ function Generation({
         (url: string) => loadAcademyImage(client, { kind: 'loadAcademyImage', learner, url }),
         [client, learner]
     )
+    // Lab work Academy has not confirmed is sealed in the core for this
+    // account (signed in only); the core never sends it by itself.
+    const localDrafts = useMemo(
+        () => (accountId === null ? undefined : nativeLocalDrafts(client, learner)),
+        [client, learner, accountId]
+    )
     useEffect(() => () => queryClient.clear(), [queryClient])
     return (
         <QueryClientProvider client={queryClient}>
@@ -131,6 +137,7 @@ function Generation({
                     awardPresenters={false}
                     courseReset
                     lessonFeedback
+                    localDrafts={localDrafts}
                 >
                     {children}
                 </LearnerHost>

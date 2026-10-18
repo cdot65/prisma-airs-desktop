@@ -17,6 +17,7 @@ pub mod fixtures;
 pub mod import;
 pub mod learner;
 mod observe;
+pub mod offline;
 pub mod runtime;
 pub mod scan;
 pub mod scanning;
@@ -28,10 +29,11 @@ pub mod wire;
 
 pub use authority::{
     ACADEMY_ORIGIN, AcademyCallHandle, AcademyCallResult, ActiveContext, Adapters, AuthorityHandle,
-    Core, CoreConfig, CredentialStore, EndpointReviewView, ImagePicker, ImportFile, ImportPicker,
-    ImportView, Intent, MAX_TENANTS, Observation, PagePrinter, Principal, Receipt, Refusal,
-    ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView, ShellSnapshot,
-    StorageHealth, TenantView, UrlOpener, ViewScope,
+    Core, CoreConfig, CredentialStore, DownloadStatus, DownloadView, EndpointReviewView,
+    ImagePicker, ImportFile, ImportPicker, ImportView, Intent, LocalDraftView, MAX_TENANTS,
+    Observation, OfflineState, OfflineView, PagePrinter, Principal, Receipt, Refusal, ResetFailure,
+    ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView, ShellSnapshot, StorageHealth,
+    TenantView, UrlOpener, ViewScope,
 };
 pub use delivery::{Delivery, DeliverySession, SEQUENCE_LIMIT};
 pub use observe::{Subscription, Update};

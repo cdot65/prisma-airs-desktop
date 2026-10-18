@@ -1084,6 +1084,7 @@ fn completed(dir: &Path, subject: &str, generation: u32, receipt_id: &str) {
             receipt_sha256: sha(&bytes),
             fingerprints: fixtures::fingerprints(),
             completed_utc: "t".into(),
+            owner_acceptance: None,
         },
     );
     ledger_line(
@@ -1135,6 +1136,7 @@ fn ledger_generations_invalidation_and_receipt_integrity() {
             receipt_sha256: sha(&passing_receipt("r-c01-1")),
             fingerprints: fixtures::fingerprints(),
             completed_utc: "t".into(),
+            owner_acceptance: None,
         },
     );
     ledger_line(
@@ -1183,6 +1185,32 @@ fn ledger_generations_invalidation_and_receipt_integrity() {
 
 // ---- R5: consumed shared source is bound and verified ----
 
+/// Identical input, scratch and installed copies of the consumed shared
+/// packages other than presentation (learner since C05, shared).
+fn stage_other_shared(dir: &Path) {
+    for name in ["learner", "shared"] {
+        for root in [".inputs/academy", ".work/academy"] {
+            let path = dir.join(root).join(format!("packages/{name}/src/index.ts"));
+            std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+            std::fs::write(path, "export const y = 1").expect("write");
+        }
+        let installed = dir.join(format!(
+            "node_modules/.pnpm/{name}/node_modules/@ai-security-academy/{name}"
+        ));
+        std::fs::create_dir_all(installed.join("src")).expect("mkdir");
+        std::fs::write(installed.join("src/index.ts"), "export const y = 1").expect("write");
+        std::fs::create_dir_all(dir.join("apps/desktop/node_modules/@ai-security-academy"))
+            .expect("mkdir");
+        std::os::unix::fs::symlink(
+            &installed,
+            dir.join(format!(
+                "apps/desktop/node_modules/@ai-security-academy/{name}"
+            )),
+        )
+        .expect("link");
+    }
+}
+
 #[test]
 fn edits_to_consumed_shared_source_are_detected() {
     let dir = scratch("shared");
@@ -1203,6 +1231,7 @@ fn edits_to_consumed_shared_source_are_detected() {
         dir.join("apps/desktop/node_modules/@ai-security-academy/presentation"),
     )
     .expect("link");
+    stage_other_shared(&dir);
     fingerprint::verify_consumed_shared(&repo).expect("identical copies verify");
     let before = fingerprint::dependencies(&repo, "toolchain").expect("fp");
 
@@ -1373,6 +1402,7 @@ fn edits_to_the_web_consumer_scratch_tree_are_detected() {
     // Documented generated outputs may appear in scratch.
     std::fs::create_dir_all(dir.join(".work/academy/dist")).expect("mkdir");
     std::fs::write(dir.join(".work/academy/dist/index.html"), "built").expect("write");
+    stage_other_shared(&dir);
     fingerprint::verify_consumed_shared(&repo).expect("generated outputs are excluded");
     let before = fingerprint::dependencies(&repo, "toolchain").expect("fp");
     for rel in [
@@ -1483,15 +1513,15 @@ fn phases_require_integrated_native_runs_and_acceptance() {
     }
     // A phase fails closed while any member has no inventory yet.
     let later: Vec<String> = manifest
-        .phase_chunks(Subject::Phase(2))
-        .expect("P02")
+        .phase_chunks(Subject::Phase(3))
+        .expect("P03")
         .iter()
         .map(Subject::to_string)
         .collect();
     let error =
-        xtask::evidence::required_checks(&inventory, &later).expect_err("P02 inventories pending");
+        xtask::evidence::required_checks(&inventory, &later).expect_err("P03 inventories pending");
     assert!(
-        error.to_string().contains("C04"),
+        error.to_string().contains("C08"),
         "a phase fails closed until each member has an inventory: {error}"
     );
 }
@@ -1574,4 +1604,108 @@ fn thread_wait_requires_a_completed_turn_not_progress() {
     both.push(b'\n');
     both.extend_from_slice(&done);
     assert!(transport::has_completed_turn(&both));
+}
+
+#[test]
+fn owner_acceptance_takes_only_the_threshold_and_is_honored_only_when_recorded() {
+    let eight = |receipt: &mut Receipt| {
+        receipt.scores.architecture = 8;
+        receipt.scores.behavior = 8;
+        receipt.scores.authority_security = 8;
+        receipt.scores.validation = 8;
+        receipt.scores.overall = 8;
+        receipt.required_fixes = 2;
+        receipt.passed = false;
+    };
+    let mut receipt = receipt_of(&fixtures::valid());
+    eight(&mut receipt);
+    let threshold: Vec<String> = [
+        "score architecture=8 is below 9",
+        "score behavior=8 is below 9",
+        "score authority_security=8 is below 9",
+        "score validation=8 is below 9",
+        "score overall=8 is below 9",
+        "2 required fixes remain",
+        "reviewer recommendation is fail",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
+    // All 8s with required fixes: the threshold alone may be accepted.
+    assert_eq!(
+        complete::owner_acceptable(&receipt, &threshold),
+        Ok(threshold.clone())
+    );
+    // Anything else failing is never accepted.
+    let mut tampered = threshold.clone();
+    tampered.push("verdict bytes do not match the receipt (edited verdict)".into());
+    assert!(complete::owner_acceptable(&receipt, &tampered).is_err());
+    let mut stale = threshold.clone();
+    stale.push("source changed since review (stale receipt)".into());
+    assert!(complete::owner_acceptable(&receipt, &stale).is_err());
+    // Below 8, or with an evidence gap or blocker: refused.
+    let mut seven = receipt.clone();
+    seven.scores.validation = 7;
+    assert!(complete::owner_acceptable(&seven, &threshold).is_err());
+    // Evidence gaps may be accepted with the threshold (recorded), blockers never.
+    let mut gap = receipt.clone();
+    gap.evidence_gaps = 1;
+    let mut with_gap = threshold.clone();
+    with_gap.push("1 evidence gaps remain".into());
+    assert_eq!(
+        complete::owner_acceptable(&gap, &with_gap),
+        Ok(with_gap.clone())
+    );
+    assert!(complete::owner_acceptable(&gap, &threshold).is_ok());
+    let mut blocker = receipt.clone();
+    blocker.blockers = 1;
+    assert!(complete::owner_acceptable(&blocker, &threshold).is_err());
+
+    // In the ledger: an 8/10 receipt counts only with the recorded acceptance.
+    let dir = scratch("owner-acceptance");
+    let repo = Repo::new(&dir);
+    let relative = "docs/planning/reviews/C01/attempt-01/receipt.json".to_owned();
+    let bytes = fixtures::to_bytes(&receipt);
+    std::fs::create_dir_all(dir.join(&relative).parent().expect("parent")).expect("mkdir");
+    std::fs::write(dir.join(&relative), &bytes).expect("write");
+    let completion = |owner: Option<complete::OwnerAcceptance>, generation: u32, id: &str| {
+        complete::Entry::Completion {
+            subject: "C01".into(),
+            generation,
+            receipt_id: id.into(),
+            receipt: relative.clone(),
+            receipt_sha256: sha(&bytes),
+            fingerprints: fixtures::fingerprints(),
+            completed_utc: "t".into(),
+            owner_acceptance: owner,
+        }
+    };
+    let commit = |generation: u32, id: &str| complete::Entry::Commit {
+        subject: "C01".into(),
+        generation,
+        receipt_id: id.into(),
+        commit: "c".into(),
+        tree: "t".into(),
+        source: "s".into(),
+        verified_utc: "t".into(),
+    };
+    ledger_line(&dir, &completion(None, 1, "r-1"));
+    ledger_line(&dir, &commit(1, "r-1"));
+    let ledger = || complete::read_ledger(&repo.completion_ledger()).expect("ledger");
+    assert!(
+        !complete::is_completed(&repo, &ledger(), Subject::Chunk(1)),
+        "8/10 without acceptance"
+    );
+    let accepted = complete::OwnerAcceptance {
+        decision: "D032".into(),
+        reason: "owner accepted 8/10".into(),
+        minimum_score: complete::OWNER_MINIMUM_SCORE,
+        accepted_failures: threshold,
+    };
+    ledger_line(&dir, &completion(Some(accepted), 2, "r-2"));
+    ledger_line(&dir, &commit(2, "r-2"));
+    assert!(
+        complete::is_completed(&repo, &ledger(), Subject::Chunk(1)),
+        "8/10 with the owner's acceptance"
+    );
 }

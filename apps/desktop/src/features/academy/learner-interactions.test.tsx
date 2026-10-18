@@ -67,10 +67,10 @@ describe('account sections', () => {
         }
     )
 
-    it("show Academy's own navigation to a signed-in learner", async () => {
+    it("show Academy's own navigation and the desktop's Downloads to a signed-in learner", async () => {
         academy('/learn', { 'paths.list': [], 'library.list': [] })
         const nav = await screen.findByRole('navigation', { name: 'Academy sections' })
-        expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual(['Home', 'Learn', 'Program', 'Notifications', 'Settings'])
+        expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual(['Home', 'Learn', 'Program', 'Downloads', 'Notifications', 'Settings'])
         expect(within(nav).getByRole('link', { name: 'Learn' })).toHaveAttribute('aria-current', 'page')
     })
 })

@@ -31,6 +31,23 @@ const scan = {
     failure: null,
     discarded: false,
 }
+const signedIn = { state: 'signedIn', displayName: 'Ada', accountId: 'user_2fixture', learner: 'lx-1' }
+const download = {
+    courseId: 'runtime-security',
+    title: 'Runtime Security',
+    revision: 'rev-1',
+    downloadedAt: '2026-10-18T12:00:00.000Z',
+    leaseExpiresAt: '2026-10-25T12:00:00.000Z',
+    status: 'current',
+    units: 3,
+    firstUnit: 'm-rt-1-lesson-01',
+}
+const localDraft = { attemptId: 'att_1', baseVersion: 2, savedAt: '2026-10-18T12:00:00.000Z' }
+const offline = (overrides: Record<string, unknown>) => ({
+    ...valid,
+    academy: signedIn,
+    academyOffline: { state: 'ready', reachable: false, downloads: [download], localDrafts: [localDraft], ...overrides },
+})
 const withScan = (overrides: Record<string, unknown>) => ({ ...valid, scans: [{ ...scan, ...overrides }] })
 
 function review(overrides: Record<string, unknown>) {
@@ -67,6 +84,9 @@ describe('shell snapshot validation', () => {
         expect(
             parseShellSnapshot(withScan({ outcome: 'rejected', result: null, failure: { kind: 'unauthorized', status: 401 } }))
         ).toBeTruthy()
+        expect(parseShellSnapshot(offline({}))).toBeTruthy()
+        expect(parseShellSnapshot(offline({ state: 'empty', downloads: [], localDrafts: [] }))).toBeTruthy()
+        expect(parseShellSnapshot(offline({ downloads: [{ ...download, status: 'withdrawn' }] }))).toBeTruthy()
     })
 
     it.each([
@@ -110,6 +130,17 @@ describe('shell snapshot validation', () => {
         ['a non-HTTPS Academy origin', { ...valid, academyOrigin: 'http://academy.example' }],
         ['an Academy origin with a path', { ...valid, academyOrigin: 'https://academy.example/verify' }],
         ['an Academy origin with credentials', { ...valid, academyOrigin: 'https://user@academy.example' }],
+        ['offline work missing', { ...valid, academyOffline: undefined }],
+        ['an unknown offline state', offline({ state: 'decrypted' })],
+        ['offline work shown while signed out', { ...valid, academyOffline: offline({}).academyOffline }],
+        ['downloads listed before offline work opens', offline({ state: 'opening' })],
+        ['an unknown download status', offline({ downloads: [{ ...download, status: 'cached' }] })],
+        ['a duplicated download', offline({ downloads: [download, download] })],
+        ['a download with a path for an id', offline({ downloads: [{ ...download, courseId: '../x' }] })],
+        ['a download starting at a unit path', offline({ downloads: [{ ...download, firstUnit: '../units' }] })],
+        ['a download with a non-instant lease', offline({ downloads: [{ ...download, leaseExpiresAt: 'tomorrow' }] })],
+        ['a local draft with a fractional version', offline({ localDrafts: [{ ...localDraft, baseVersion: 1.5 }] })],
+        ['a reachability flag that is not a flag', offline({ reachable: 'yes' })],
     ])('rejects %s', (_case, snapshot) => {
         expect(() => parseShellSnapshot(snapshot)).toThrow(ContractViolation)
     })

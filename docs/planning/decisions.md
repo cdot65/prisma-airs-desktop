@@ -410,6 +410,66 @@ Decided in C06 (implementer decision, recorded for review).
   sanitizer), not by loosening the WebView.
 - C07 takes offline lab work and content; the desktop never grades offline.
 
+## D031 — Offline work sealed per account with a lazily created Keychain key
+
+Decided in C07 (implementer decision, recorded for review).
+
+- Offline records are sealed with XChaCha20-Poly1305 from
+  `chacha20poly1305` 0.10.1, the version v1 qualified and the one in the
+  offline registry; 0.11.0 is not adopted here (no cached, reviewed
+  source). The 24-byte random nonce removes nonce bookkeeping across
+  restarts and crashes.
+- One random key per account, in the learner Keychain namespace under a
+  deterministic record (`cr-` and a digest of the account), so the key is
+  found again after restart without an index on disk and reset removes it
+  with the learner credentials. It is created on the first download or
+  the first lab work kept on this Mac (unconfirmed lab work is kept
+  shortly after each edit), never at sign-in: an account that never
+  downloads a course or edits a lab adds nothing to the Keychain. Sign-out
+  keeps the key with the account's locked work; reset removes both.
+- Course content is kept only as Academy's bundle for the signed-in account
+  under Academy's lease; it is read only when Academy is unreachable, and
+  never fills a gap with content Academy did not send (media and videos are
+  disclosed as needing Academy).
+- Offline lab work is Academy's draft, kept by the host through a declared
+  `LearnerHost` capability (`localDrafts`); Academy's versioned save and
+  conflict contract decides what happens when it is sent, and it is sent
+  only by the learner.
+- The host closes the store on quit (`Core::shutdown`, run on
+  `RunEvent::Exit`) so the per-account lock is released before a relaunch.
+- Cached lab attempts carry Academy's authority with them: shown offline
+  only within the lease Academy gave them and while their course is not
+  withdrawn, re-read on reconnect (a read) so Academy's lock replaces an
+  authored definition; locked, they keep only the learner's own work.
+- Offline store work shares reset's write ledger: a retired generation or
+  a reset in progress admits none, and reset waits for admitted work.
+- A key is proven (sealed key check) before the store reads or changes
+  anything; a wrong key never sets records aside.
+- Kept records change only by results observed after them (observation
+  stamps taken when a read of Academy starts); confirmed drafts move kept
+  attempts forward without extending their lease.
+
+## D032 — Owner acceptance of a review below 9/10
+
+Decided by the owner on 2026-10-18 during C07 ("if the next review comes back
+8/10, allow it and proceed. we need to push forward"); recorded by the
+implementer.
+
+- D026's threshold (9/10 in every score, no required fixes) stays the gate.
+  The owner may accept a review below it: `xtask complete --owner-accept
+  REASON` completes on the newest receipt only when every score is at least
+  8, there are no blockers, and nothing fails other than the threshold
+  itself (scores, required fixes, evidence gaps, the recommendation); the
+  packet, verdict, transport, fingerprints, runs and native evidence must
+  all still check. The owner widened it to evidence gaps on 2026-10-18 ("hey
+  it's good enough, push on forward") after C07 attempt-05 (9/9/9/8/8, one
+  evidence gap, no required fixes).
+- The completion records the decision, the owner's reason, the minimum and
+  every accepted failure (`owner_acceptance`); later completion checks honor
+  an 8/10 receipt only with that record. Verdicts are never edited, and the
+  accepted review's required fixes remain recorded in its attempt directory
+  as known follow-ups.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

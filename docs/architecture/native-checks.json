@@ -334,6 +334,48 @@
         "id": "C06-N15",
         "check": "A completed lesson asks 'How was this module?' (an unfinished one does not); rating it and submitting thanks the learner and sends exactly one admin.feedback.submit with the module, lesson and rating."
       }
+    ],
+    "C07": [
+      {
+        "id": "C07-N01",
+        "check": "Signed in, Academy's navigation offers the desktop's Downloads; the page says what still needs Academy (videos, walkthroughs, live labs); a course is downloaded by keyboard (Tab to 'Download <course>', Return) and listed ready offline with its unit count after exactly one desktop.access and one desktop.bundle, both with the account credential; one offline key item is added to the fixture learner keychain."
+      },
+      {
+        "id": "C07-N02",
+        "check": "Every file under the offline root is a sealed record in a 0700 directory with mode 0600; no lesson text, course id or title, account id or display name appears in any file's bytes or path."
+      },
+      {
+        "id": "C07-N03",
+        "check": "With Academy unreachable, quit and relaunched: still signed in, Academy says it cannot be reached, Downloads lists the course ready offline and offers no download, 'Open' shows the first lesson with its text from the download, and its contents open the second."
+      },
+      {
+        "id": "C07-N04",
+        "check": "Offline, the lab opens from the attempt read while online and an edit says it is saved on this device only; quit and relaunched offline, Downloads names one lab draft saved on this Mac only and the lab reopens with the edit and that status; no request reaches Academy meanwhile."
+      },
+      {
+        "id": "C07-N05",
+        "check": "With Academy back, nothing is sent by itself; 'Save now' sends exactly one draft save on the attempt's base version with a client mutation id and the edit, Academy's confirmation clears the local copy, reconnecting re-checks the download (access and manifest) and shows that a newer version is on Academy, and 'Update' downloads it again."
+      },
+      {
+        "id": "C07-N06",
+        "check": "Signing out removes Downloads (guest navigation offers Learn only); another account sees no downloads and the first account's sealed files are unchanged; the first account signed in again sees its download."
+      },
+      {
+        "id": "C07-N07",
+        "check": "Size and retention limits: a course past Academy's bundle cap (413) is assembled from its manifest and unit bundles each within Academy's 7 MiB cap, and fetching stops as soon as it cannot fit the desktop's 16 MiB record (three of four 6 MiB parts fetched), with 'There is not enough room' and nothing kept; once a download's lease ends its lessons are not read offline and Downloads says offline access ended; a course Academy no longer gives the account says so after relaunch and offers no Open."
+      },
+      {
+        "id": "C07-N08",
+        "check": "'Reset local data' removes the offline root and every learner keychain item, including the offline key."
+      },
+      {
+        "id": "C07-N09",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches 'Download <course>' on Downloads inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C07-N10",
+        "check": "Every learner request is an allowlisted or public procedure, and every desktop offline procedure carries the account credential."
+      }
     ]
   }
 }

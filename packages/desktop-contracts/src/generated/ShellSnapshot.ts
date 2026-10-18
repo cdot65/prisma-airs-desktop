@@ -5,6 +5,7 @@ import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
 import type { ImportView } from "./ImportView";
 import type { LearnerRef } from "./LearnerRef";
+import type { OfflineView } from "./OfflineView";
 import type { ResetFailure } from "./ResetFailure";
 import type { ScanRecordView } from "./ScanRecordView";
 import type { StorageHealth } from "./StorageHealth";
@@ -50,4 +51,9 @@ learner: LearnerRef | null,
  * Academy web's origin, for public links Academy pages show (such as a
  * certificate's verify URL). The presentation never sends it back.
  */
-academyOrigin: string, };
+academyOrigin: string, 
+/**
+ * The signed-in account's offline work: what is kept, its status and
+ * whether Academy was last reachable (never content).
+ */
+academyOffline: OfflineView, };

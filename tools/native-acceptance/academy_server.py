@@ -33,11 +33,17 @@ settings.confirmAvatar records <origin>/api/avatars/<file>?v=<n> only after a
 stored upload (else NOT_FOUND), settings.removeAvatar clears it,
 settings.get reports it, and GET /api/avatars/<file> serves it publicly.
 mode.json "lose_put_reply" stores a PUT's bytes but sends no reply.
+
+(C07) mode.json "accountId" names the signed-in Academy account (default
+user_2fixturelearner) and "replies" {procedure: reply} answers instead of
+the catalog. In any reply, the string "{{account}}" becomes that account and
+"{{in_s:N}}" an ISO time N seconds after the request.
 """
 
 import argparse
 import json
 import os
+import re
 import ssl
 import sys
 import threading
@@ -46,6 +52,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SCOPE = "openid profile email offline_access academy:learn"
+DEFAULT_ACCOUNT = "user_2fixturelearner"
 CLIENT = "desktop_public_client"
 
 
@@ -160,7 +167,8 @@ class Handler(BaseHTTPRequestHandler):
         procedure = self.path.split("?")[0][len("/api/trpc/"):]
         if procedure == "desktop.me":
             return self.handle_request({})
-        entry = self.server.catalog().get(procedure, KeyError)
+        entry = (self.server.mode().get("replies") or {}).get(procedure, self.server.catalog().get(procedure, KeyError))
+        entry = self.substitute(entry)
         try:
             value = (json.loads(raw_input).get("json") if raw_input else None) or {}
         except ValueError:
@@ -205,6 +213,20 @@ class Handler(BaseHTTPRequestHandler):
         self.record({}, {"procedure": procedure, "input": raw_input, "status": 404 if entry is KeyError else 200,
                          "handlingMs": round(self.handled_ms, 3)})
 
+    def substitute(self, value):
+        """Fills "{{account}}" and "{{in_s:N}}" placeholders anywhere in a reply."""
+        if isinstance(value, dict):
+            return {k: self.substitute(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self.substitute(v) for v in value]
+        if isinstance(value, str) and "{{" in value:
+            if value == "{{account}}":
+                return self.server.mode().get("accountId", DEFAULT_ACCOUNT)
+            moment = re.fullmatch(r"\{\{in_s:(-?\d+)\}\}", value)
+            if moment:
+                return time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(time.time() + int(moment.group(1))))
+        return value
+
     def handle_request(self, form):
         self.record(form)
         origin = self.server.origin
@@ -235,7 +257,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/oauth/revoke":
             return self.reply(200, {})
         if path == "/api/trpc/desktop.me":
-            return self.reply(200, {"result": {"data": {"json": {"accountId": "user_2fixturelearner",
+            return self.reply(200, {"result": {"data": {"json": {"accountId": mode.get("accountId", DEFAULT_ACCOUNT),
                                     "displayName": mode.get("displayName", "Ada Lovelace"),
                                     "serverTime": "2026-10-17T00:00:00.000Z"}}}})
         return self.reply(404, {})

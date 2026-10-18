@@ -18,9 +18,11 @@ use ts_rs::TS;
 use zeroize::Zeroizing;
 
 mod learner_domain;
+mod offline_domain;
 
 pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
 use learner_domain::{LearnerPhase, LearnerSession};
+pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineState, OfflineView};
 
 use crate::academy::AcademyClient;
 use crate::context::{ContextRef, EnteredSecret, LearnerRef, ReviewId};
@@ -135,6 +137,44 @@ pub enum Intent {
     /// call: `{"json": {"src": "data:image/..."}}`.
     #[serde(rename_all = "camelCase")]
     LoadAcademyImage { learner: LearnerRef, url: String },
+    /// Download a course for offline reading (Academy's access check and
+    /// bundle, kept sealed under its lease in this account's store).
+    /// Observed like a learner call.
+    #[serde(rename_all = "camelCase")]
+    DownloadCourse {
+        learner: LearnerRef,
+        course_id: String,
+    },
+    /// Remove a downloaded course from this Mac. Observed like a learner call.
+    #[serde(rename_all = "camelCase")]
+    RemoveDownload {
+        learner: LearnerRef,
+        course_id: String,
+    },
+    /// Keep lab work on this Mac (sealed; never sent anywhere) when Academy
+    /// cannot take it. `draft` is the draft as JSON text. Observed like a
+    /// learner call.
+    #[serde(rename_all = "camelCase")]
+    SaveLocalDraft {
+        learner: LearnerRef,
+        attempt_id: String,
+        base_version: u32,
+        draft: String,
+    },
+    /// Read the lab work kept on this Mac for an attempt (`null` when none).
+    /// Observed like a learner call.
+    #[serde(rename_all = "camelCase")]
+    LoadLocalDraft {
+        learner: LearnerRef,
+        attempt_id: String,
+    },
+    /// Forget lab work kept on this Mac once Academy holds it. Observed like
+    /// a learner call.
+    #[serde(rename_all = "camelCase")]
+    ClearLocalDraft {
+        learner: LearnerRef,
+        attempt_id: String,
+    },
     /// Call one allowed learner procedure for the current learner account.
     /// `input` is the tRPC client's serialized (SuperJSON) input.
     #[serde(rename_all = "camelCase")]
@@ -337,6 +377,9 @@ pub struct ShellSnapshot {
     /// Academy web's origin, for public links Academy pages show (such as a
     /// certificate's verify URL). The presentation never sends it back.
     pub academy_origin: String,
+    /// The signed-in account's offline work: what is kept, its status and
+    /// whether Academy was last reachable (never content).
+    pub academy_offline: offline_domain::OfflineView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -453,6 +496,8 @@ pub struct Adapters {
     pub opener: Arc<dyn UrlOpener>,
     pub printer: Arc<dyn PagePrinter>,
     pub images: Arc<dyn ImagePicker>,
+    /// Where account-scoped encrypted offline work lives (None: unavailable).
+    pub offline_root: Option<std::path::PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -550,7 +595,11 @@ struct State {
     learner_busy: Vec<RecordId>,
     /// Learner records whose Keychain write has not settled (reset waits).
     learner_writes: Vec<RecordId>,
+    /// Admitted offline store operations (reset waits for none).
+    offline_writers: usize,
     learner_cleaning: bool,
+    /// The signed-in generation's offline work (dropped with it).
+    offline: Option<Arc<offline_domain::OfflineGen>>,
 }
 
 impl State {
@@ -606,6 +655,10 @@ impl State {
             academy: self.academy_view(),
             learner: self.learner_ref.clone(),
             academy_origin: self.academy_origin.clone(),
+            academy_offline: self
+                .offline
+                .as_ref()
+                .map_or_else(offline_domain::OfflineView::signed_out, |o| o.view()),
         }
     }
 
@@ -948,6 +1001,8 @@ enum Effect {
         record: Option<RecordId>,
     },
     Open(url::Url),
+    /// Open a signed-in generation's offline work.
+    OpenOffline(Arc<offline_domain::OfflineGen>),
 }
 
 struct Inner {
@@ -1016,7 +1071,9 @@ impl Core {
             academy_calls: Vec::new(),
             learner_busy: Vec::new(),
             learner_writes: Vec::new(),
+            offline_writers: 0,
             learner_cleaning: false,
+            offline: None,
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -1038,10 +1095,39 @@ impl Core {
         Self { inner }
     }
 
+    /// Makes the signed-in generation's offline store fail its next write at
+    /// `fault` (a `DirectorySync` fault persists until cleared with `None`)
+    /// (fixture builds only).
+    #[cfg(feature = "test-fixtures")]
+    pub fn inject_offline_fault(&self, fault: Option<crate::offline::WriteFault>) {
+        let store = lock(&self.inner)
+            .ok()
+            .and_then(|s| s.offline.clone())
+            .and_then(|o| o.store());
+        if let Some(store) = store {
+            match fault {
+                Some(fault) => store.inject(fault),
+                None => store.clear_fault(),
+            }
+        }
+    }
+
+    /// Locks offline work as the application exits (its store's instance
+    /// lock is released once no job holds it). Call once, at exit.
+    pub fn shutdown(&self) {
+        if let Ok(mut state) = lock(&self.inner) {
+            state.offline = None;
+            state.changed();
+        }
+    }
+
     /// Resumes durable work after launch (pending Keychain cleanup). Call on
     /// the application runtime.
     pub fn start(&self) {
-        run_effects(&self.inner, vec![Effect::Cleanup]);
+        let offline = lock(&self.inner).ok().and_then(|s| s.offline.clone());
+        let mut effects = vec![Effect::Cleanup];
+        effects.extend(offline.map(Effect::OpenOffline));
+        run_effects(&self.inner, effects);
     }
 
     /// The operator handle, created by the host for its packaged main window.
@@ -1059,15 +1145,25 @@ impl Core {
         let starts = {
             let mut state = lock(&self.inner).map_err(|_| PolicyError::Client)?;
             state.transport = Some(factory);
+            let previous = state.offline.clone();
             let mut starts = state.reissue_context();
             // Learner work moves to a client under the new policy.
             if matches!(state.learner, LearnerPhase::SignedIn) {
                 starts.extend(state.restore_learner_session(&self.inner));
             }
             state.changed();
-            starts
+            // The same account keeps its open (or, before `start`, its
+            // pending) offline work; only a new generation is opened here.
+            let fresh = state
+                .offline
+                .clone()
+                .filter(|o| !previous.as_ref().is_some_and(|p| Arc::ptr_eq(p, o)));
+            (starts, fresh)
         };
-        run_effects(&self.inner, vec![Effect::Start(starts)]);
+        let (starts, offline) = starts;
+        let mut effects = vec![Effect::Start(starts)];
+        effects.extend(offline.map(Effect::OpenOffline));
+        run_effects(&self.inner, effects);
         Ok(())
     }
 }
@@ -1681,6 +1777,53 @@ fn admit(
             operation_ref = Some(operation);
             effects.push(Effect::Start(starts));
         }
+        Intent::DownloadCourse { learner, course_id } => {
+            let (operation, starts) =
+                state.admit_offline(learner, learner_domain::OfflineOp::Download(course_id))?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+        }
+        Intent::RemoveDownload { learner, course_id } => {
+            let (operation, starts) =
+                state.admit_offline(learner, learner_domain::OfflineOp::Remove(course_id))?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+        }
+        Intent::SaveLocalDraft {
+            learner,
+            attempt_id,
+            base_version,
+            draft,
+        } => {
+            let (operation, starts) = state.admit_offline(
+                learner,
+                learner_domain::OfflineOp::SaveDraft {
+                    attempt_id,
+                    base_version,
+                    draft,
+                },
+            )?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+        }
+        Intent::LoadLocalDraft {
+            learner,
+            attempt_id,
+        } => {
+            let (operation, starts) =
+                state.admit_offline(learner, learner_domain::OfflineOp::LoadDraft(attempt_id))?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+        }
+        Intent::ClearLocalDraft {
+            learner,
+            attempt_id,
+        } => {
+            let (operation, starts) =
+                state.admit_offline(learner, learner_domain::OfflineOp::ClearDraft(attempt_id))?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+        }
         Intent::LoadAcademyImage { learner, url } => {
             let (operation, starts) = state.admit_image_read(learner, &url)?;
             operation_ref = Some(operation);
@@ -1850,6 +1993,9 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     record,
                 ));
             }
+            Effect::OpenOffline(generation) => {
+                tokio::spawn(learner_domain::open_offline(Arc::clone(inner), generation));
+            }
             Effect::Open(url) => {
                 let inner = Arc::clone(inner);
                 tokio::task::spawn_blocking(move || {
@@ -1866,11 +2012,16 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
             Effect::Reset => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
-                    // No new credential write can start while resetting; wait
-                    // for admitted ones to settle so none lands after the purge.
+                    // No new credential or offline write can start while
+                    // resetting; wait for admitted ones to settle so none
+                    // lands after the purge.
                     loop {
                         let pending = lock(&inner)
-                            .map(|s| s.writes_in_flight.len() + s.learner_writes.len())
+                            .map(|s| {
+                                s.writes_in_flight.len()
+                                    + s.learner_writes.len()
+                                    + s.offline_writers
+                            })
                             .unwrap_or(0);
                         if pending == 0 {
                             break;
@@ -1885,6 +2036,13 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                             namespace.purge().map_err(|reason| ResetFailure {
                                 stage: ResetStage::Credentials,
                                 reason,
+                            })?;
+                        }
+                        // Offline work goes with its keys (purged above).
+                        if let Some(root) = &worker.adapters.offline_root {
+                            crate::offline::purge(root).map_err(|_| ResetFailure {
+                                stage: ResetStage::Document,
+                                reason: VaultError::Unavailable,
                             })?;
                         }
                         match worker.adapters.store.reset() {
