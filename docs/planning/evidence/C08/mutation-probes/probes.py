@@ -129,6 +129,17 @@ PROBES = [
      [(SHELL, "data-slot='shell-status' className='text-academy-ink-soft mt-4 pb-14 text-[13px]'",
        "data-slot='shell-status' className='text-academy-ink-soft mt-4 text-[13px]'")],
      FE_SHELL, "lists every native feature and shows unavailable destinations explicitly"),
+    ("a retired context's settled result is delivered when observed later",
+     [(DOMAIN, "        if record.settled\n            && self.active_ref.as_ref() != Some(&record.context)\n", "        if false\n")],
+     READS_T, "a_result_settled_before_its_context_retired_is_never_delivered_afterwards"),
+    ("a failed binding is cached until reconfiguration",
+     [(MGMT, "pub type BindingCell = Arc<OnceCell<ManagementBinding>>;", "pub type BindingCell = Arc<OnceCell<ManagementBinding>>;\nstatic POISON: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);"),
+      (MGMT, "                    Err(VaultError::Locked) => return Err(ManagementFailure::CredentialLocked),",
+       "                    Err(VaultError::Locked) => {\n                        POISON.store(true, std::sync::atomic::Ordering::SeqCst);\n                        return Err(ManagementFailure::CredentialLocked);\n                    }\n                    _ if POISON.load(std::sync::atomic::Ordering::SeqCst) => return Err(ManagementFailure::CredentialLocked),")],
+     READS_T, "protected_storage_failures_are_reported_without_any_fallback"),
+    ("Administration keeps its instance across contexts",
+     [(SHELL, "                    key={snapshot.active?.context ?? 'none'}\n", "")],
+     FE_ADMIN, "restarts from the first page when the credential is replaced mid-pagination"),
 ]
 
 

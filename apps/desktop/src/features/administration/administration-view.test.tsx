@@ -142,7 +142,13 @@ describe('administration inventories', () => {
         await waitFor(() => expect(rows()).toHaveLength(25))
         await user.click(screen.getByRole('button', { name: 'Next page' }))
         await waitFor(() => expect(reads).toHaveLength(2))
+        const before = document.querySelector('[data-slot="administration"]')
+        const tableBefore = document.querySelector('[data-slot="administration-table"]')
         await native.push(ready(REPLACED))
+        // The view was remounted for the new credential: the old instance
+        // (and its rows) never rendered with the new context.
+        expect(document.querySelector('[data-slot="administration"]')).not.toBe(before)
+        expect(tableBefore?.isConnected).toBe(false)
         await waitFor(() => expect(rows()[0]).toBe('Profile 100'))
         expect(reads[2]).toEqual({ context: REPLACED, request: { kind: 'page', resource: 'profiles', offset: 0, limit: 25 } })
         release()

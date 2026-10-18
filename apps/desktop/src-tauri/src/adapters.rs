@@ -48,8 +48,34 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         opener: opener(root.as_deref()),
         printer: printer(app, root.as_deref()),
         images: images(app, root.as_deref()),
+        confirmer: confirmer(app),
+        secrets: secrets(app),
         offline_root: root.as_ref().map(|r| r.join("academy-offline")),
     }
+}
+
+/// The native operator confirmation sheet (C09; fixture builds present the
+/// real sheet too, so native acceptance drives it through Accessibility).
+#[cfg(target_os = "macos")]
+fn confirmer<R: Runtime>(app: &AppHandle<R>) -> Arc<dyn desktop_core::OperatorConfirmation> {
+    Arc::new(crate::native_confirmation::NativeConfirmation::new(
+        app.clone(),
+    ))
+}
+
+#[cfg(target_os = "macos")]
+fn secrets<R: Runtime>(app: &AppHandle<R>) -> Arc<dyn desktop_core::SecretPresenter> {
+    Arc::new(crate::native_confirmation::NativeSecrets { app: app.clone() })
+}
+
+#[cfg(not(target_os = "macos"))]
+fn confirmer<R: Runtime>(_app: &AppHandle<R>) -> Arc<dyn desktop_core::OperatorConfirmation> {
+    Arc::new(crate::native_confirmation::Unsupported)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn secrets<R: Runtime>(_app: &AppHandle<R>) -> Arc<dyn desktop_core::SecretPresenter> {
+    Arc::new(crate::native_confirmation::Unsupported)
 }
 
 /// The native image picker for the learner's avatar.

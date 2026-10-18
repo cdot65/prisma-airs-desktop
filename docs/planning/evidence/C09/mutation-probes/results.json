@@ -1,0 +1,422 @@
+[
+  {
+    "mutation": "Apply ignores input edited after Review",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "fresh_input_and_the_typed_confirmation_must_match_the_review",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Apply ignores the typed confirmation",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "fresh_input_and_the_typed_confirmation_must_match_the_review",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a declined confirmation still applies",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "a_denied_or_stale_confirmation_sends_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "retiring a review leaves its sheet open",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "a_denied_or_stale_confirmation_sends_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a changed baseline is written over",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "a_resource_changed_since_review_is_a_conflict_and_is_not_written",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a duplicate name is accepted for a new key",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "key_creation_checks_names_injects_the_deployment_code_and_holds_the_secret",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "write responses keep their secret fields",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "key_creation_checks_names_injects_the_deployment_code_and_holds_the_secret",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a draft may carry its own auth code",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "guard": "key_creation_needs_its_fields_and_one_deployment_profiles_code",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "topics keep the draft's author",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "guard": "topics_are_authored_stripped_and_bounded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a rotation sends the whole draft",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "guard": "key_rotation_is_reduced_and_bounded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an ambiguous deployment profile supplies a code",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "guard": "key_creation_needs_its_fields_and_one_deployment_profiles_code",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a confirmation nonce can be opened twice",
+    "files": [
+      "apps/desktop/src-tauri/src/native_confirmation.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_confirmation"
+    ],
+    "guard": "a_confirmation_resolves_once_and_only_for_its_nonce",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "cleanup clears a clipboard someone else wrote",
+    "files": [
+      "apps/desktop/src-tauri/src/clipboard_secret.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "clipboard_secret"
+    ],
+    "guard": "only_an_unchanged_own_copy_is_cleared",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Review and Apply send the editor's initial text",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/review-apply.test.tsx"
+    ],
+    "guard": "reviews exactly the editor text and applies the text present when Apply is pressed",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the editor stays writable while the confirmation is open",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/review-apply.test.tsx"
+    ],
+    "guard": "holds the editor while the native confirmation is open",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an uncertain outcome is shown as applied",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/review-apply.test.tsx"
+    ],
+    "guard": "reports an uncertain outcome without claiming success",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the presentation accepts an unsettled change with an outcome",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects an unsettled change with an outcome",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_confirmation"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "clipboard_secret"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/review-apply.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

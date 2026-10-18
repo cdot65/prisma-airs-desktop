@@ -452,6 +452,118 @@ impl crate::ImagePicker for ScriptedImagePicker {
     }
 }
 
+/// A scripted native operator confirmation. By default every request is
+/// held until [`ScriptedConfirmer::complete`] (or a dismissal) resolves it.
+#[derive(Default)]
+pub struct ScriptedConfirmer {
+    state: Mutex<ConfirmerState>,
+}
+
+#[derive(Default)]
+struct ConfirmerState {
+    auto: Option<bool>,
+    pending: Vec<(u64, tokio::sync::oneshot::Sender<bool>)>,
+    requests: Vec<(u64, crate::authority::ConfirmationRequest)>,
+    dismissed: Vec<u64>,
+}
+
+impl ScriptedConfirmer {
+    /// Answer every later request at once (`None`: hold them).
+    pub fn auto(&self, answer: Option<bool>) {
+        if let Ok(mut s) = self.state.lock() {
+            s.auto = answer;
+        }
+    }
+
+    /// Resolves the oldest held confirmation; false when none is held.
+    pub fn complete(&self, accepted: bool) -> bool {
+        let sender = self
+            .state
+            .lock()
+            .ok()
+            .and_then(|mut s| (!s.pending.is_empty()).then(|| s.pending.remove(0).1));
+        sender.is_some_and(|tx| tx.send(accepted).is_ok())
+    }
+
+    pub fn requests(&self) -> Vec<(u64, crate::authority::ConfirmationRequest)> {
+        self.state
+            .lock()
+            .map(|s| s.requests.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn held(&self) -> usize {
+        self.state.lock().map(|s| s.pending.len()).unwrap_or(0)
+    }
+
+    pub fn dismissed(&self) -> Vec<u64> {
+        self.state
+            .lock()
+            .map(|s| s.dismissed.clone())
+            .unwrap_or_default()
+    }
+}
+
+impl crate::authority::OperatorConfirmation for ScriptedConfirmer {
+    fn confirm(
+        &self,
+        nonce: u64,
+        request: crate::authority::ConfirmationRequest,
+    ) -> futures_util::future::BoxFuture<'static, bool> {
+        let Ok(mut s) = self.state.lock() else {
+            return Box::pin(async { false });
+        };
+        s.requests.push((nonce, request));
+        if let Some(answer) = s.auto {
+            return Box::pin(async move { answer });
+        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        s.pending.push((nonce, tx));
+        Box::pin(async move { rx.await.unwrap_or(false) })
+    }
+
+    fn dismiss(&self, nonce: u64) {
+        if let Ok(mut s) = self.state.lock() {
+            s.dismissed.push(nonce);
+            if let Some(i) = s.pending.iter().position(|(n, _)| *n == nonce) {
+                let (_, tx) = s.pending.remove(i);
+                let _ = tx.send(false);
+            }
+        }
+    }
+}
+
+/// A scripted one-time secret sheet: records what it was asked to show.
+#[derive(Default)]
+pub struct ScriptedSecrets {
+    shown: Mutex<Vec<(String, String)>>,
+    dismissals: Mutex<usize>,
+}
+
+impl ScriptedSecrets {
+    pub fn shown(&self) -> Vec<(String, String)> {
+        self.shown.lock().map(|s| s.clone()).unwrap_or_default()
+    }
+
+    pub fn dismissals(&self) -> usize {
+        self.dismissals.lock().map(|d| *d).unwrap_or(0)
+    }
+}
+
+impl crate::authority::SecretPresenter for ScriptedSecrets {
+    fn reveal(&self, label: String, secret: Zeroizing<String>) {
+        if let Ok(mut s) = self.shown.lock() {
+            s.push((label, secret.as_str().to_owned()));
+        }
+    }
+
+    fn dismiss(&self) {
+        if let Ok(mut d) = self.dismissals.lock() {
+            *d += 1;
+        }
+    }
+}
+
 /// Handles to the scripted adapters behind an [`Adapters`] value.
 pub struct Handles {
     pub vault: Arc<ScriptedVault>,
@@ -462,6 +574,8 @@ pub struct Handles {
     pub opener: Arc<ScriptedOpener>,
     pub printer: Arc<ScriptedPrinter>,
     pub images: Arc<ScriptedImagePicker>,
+    pub confirmer: Arc<ScriptedConfirmer>,
+    pub secrets: Arc<ScriptedSecrets>,
     /// This instance's offline work root (a fresh temporary directory).
     pub offline_root: std::path::PathBuf,
 }
@@ -480,6 +594,8 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         opener: Arc::new(ScriptedOpener::default()),
         printer: Arc::new(ScriptedPrinter::default()),
         images: Arc::new(ScriptedImagePicker::default()),
+        confirmer: Arc::new(ScriptedConfirmer::default()),
+        secrets: Arc::new(ScriptedSecrets::default()),
         offline_root: fresh_offline_root(),
     };
     (
@@ -491,6 +607,8 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             opener: handles.opener.clone(),
             printer: handles.printer.clone(),
             images: handles.images.clone(),
+            confirmer: handles.confirmer.clone(),
+            secrets: handles.secrets.clone(),
             offline_root: Some(handles.offline_root.clone()),
         },
         handles,

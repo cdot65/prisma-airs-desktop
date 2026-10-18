@@ -17,10 +17,15 @@ use tokio::time::Instant;
 use ts_rs::TS;
 use zeroize::Zeroizing;
 
+mod change_domain;
 mod learner_domain;
 mod management_domain;
 mod offline_domain;
 
+pub use change_domain::{
+    ChangeFailure, ChangeResultView, ChangeReviewState, ChangeReviewView, ChangesView, Readback,
+    SecretState,
+};
 pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
 use learner_domain::{LearnerPhase, LearnerSession};
 pub use management_domain::ManagementHandle;
@@ -102,6 +107,26 @@ pub enum Intent {
         context: ContextRef,
         request: ManagementRequest,
     },
+    /// Prepare a review of a Runtime change (C09): Rust normalizes the
+    /// captured draft and reads its baseline.
+    ReviewChange {
+        context: ContextRef,
+        draft: crate::changes::ChangeDraft,
+    },
+    /// Ask to apply a prepared review: the freshly captured draft and the
+    /// typed confirmation must equal the review's. Opens the native operator
+    /// confirmation; only its private completion applies the change.
+    RequestApply {
+        review: ReviewId,
+        draft: crate::changes::ChangeDraft,
+        confirmation: String,
+    },
+    /// Discard the open change review (ends its confirmation if shown).
+    DiscardChange { review: ReviewId },
+    /// Show an applied change's one-time API key in the native secret sheet.
+    RevealSecret { operation: OperationId },
+    /// Clear an applied change's one-time API key from memory.
+    ForgetSecret { operation: OperationId },
     /// Prepare a reviewed change of the active tenant's scan destination.
     ReviewEndpointChange {
         context: ContextRef,
@@ -420,6 +445,8 @@ pub struct ShellSnapshot {
     /// The signed-in account's offline work: what is kept, its status and
     /// whether Academy was last reachable (never content).
     pub academy_offline: offline_domain::OfflineView,
+    /// The active tenant's change review and applied changes (no secrets).
+    pub changes: ChangesView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -523,6 +550,40 @@ pub trait ImportPicker: Send + Sync + 'static {
     ) -> futures_util::future::BoxFuture<'static, Option<Result<ImportFile, ImportError>>>;
 }
 
+/// What the native operator confirmation shows: Rust's stored review.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConfirmationRequest {
+    pub title: String,
+    pub message: String,
+    pub confirm_label: String,
+    /// Delete and rotate are shown as destructive.
+    pub destructive: bool,
+}
+
+/// The native operator confirmation (ADR 0001): a sheet on the main window.
+/// Its completion is private to the host and never crosses the renderer
+/// boundary; the future resolves true only when the operator chose the
+/// confirming action.
+pub trait OperatorConfirmation: Send + Sync + 'static {
+    fn confirm(
+        &self,
+        nonce: u64,
+        request: ConfirmationRequest,
+    ) -> futures_util::future::BoxFuture<'static, bool>;
+    /// Ends confirmation `nonce` if it is still shown (resolving it false).
+    /// Called with the authority locked: it must not block.
+    fn dismiss(&self, nonce: u64);
+}
+
+/// The transient native sheet for a one-time secret (never a snapshot).
+pub trait SecretPresenter: Send + Sync + 'static {
+    /// Shows `secret` under `label` with an explicit copy action; the host
+    /// owns its expiry and clipboard cleanup.
+    fn reveal(&self, label: String, secret: Zeroizing<String>);
+    /// Ends any shown secret sheet and zeroizes its copy. Must not block.
+    fn dismiss(&self);
+}
+
 /// Keychain operations the core needs beyond single records.
 pub trait CredentialStore: Vault {
     /// Deletes every record in this build's v2 credential namespace.
@@ -540,6 +601,8 @@ pub struct Adapters {
     pub opener: Arc<dyn UrlOpener>,
     pub printer: Arc<dyn PagePrinter>,
     pub images: Arc<dyn ImagePicker>,
+    pub confirmer: Arc<dyn OperatorConfirmation>,
+    pub secrets: Arc<dyn SecretPresenter>,
     /// Where account-scoped encrypted offline work lives (None: unavailable).
     pub offline_root: Option<std::path::PathBuf>,
 }
@@ -660,6 +723,11 @@ struct State {
     /// One management binding per issued context; cancelled when it retires.
     management_bindings: Vec<management_domain::GenerationBinding>,
     management_calls: Vec<management_domain::ManagementRecord>,
+    /// The open Runtime change review (one at a time).
+    change_review: Option<change_domain::ChangeReview>,
+    change_results: Vec<change_domain::ChangeRecord>,
+    confirmer: Arc<dyn OperatorConfirmation>,
+    secrets: Arc<dyn SecretPresenter>,
     academy_origin: String,
     learner: LearnerPhase,
     learner_ref: Option<LearnerRef>,
@@ -737,6 +805,7 @@ impl State {
                 .offline
                 .as_ref()
                 .map_or_else(offline_domain::OfflineView::signed_out, |o| o.view()),
+            changes: self.changes_view(),
         }
     }
 
@@ -801,6 +870,7 @@ impl State {
         self.sync_scans();
         self.sync_academy_calls();
         self.sync_management_calls();
+        self.sync_changes();
         self.revision += 1;
         let update = Update::Shell(Box::new(self.snapshot()));
         self.subscribers.publish(&update);
@@ -830,6 +900,7 @@ impl State {
         self.retire_management_bindings();
         self.sync_scans();
         self.sync_management_calls();
+        self.sync_changes();
         starts
     }
 
@@ -1042,6 +1113,7 @@ impl State {
         self.retire_management_bindings();
         self.sync_scans();
         self.sync_management_calls();
+        self.sync_changes();
         starts
     }
 }
@@ -1130,6 +1202,16 @@ enum Effect {
     Open(url::Url),
     /// Open a signed-in generation's offline work.
     OpenOffline(Arc<offline_domain::OfflineGen>),
+    /// Present the native operator confirmation for a change review.
+    Confirm {
+        review: ReviewId,
+        nonce: u64,
+        request: ConfirmationRequest,
+    },
+    RevealSecret {
+        label: String,
+        secret: Zeroizing<String>,
+    },
 }
 
 struct Inner {
@@ -1192,6 +1274,10 @@ impl Core {
             management_endpoints: config.management,
             management_bindings: Vec::new(),
             management_calls: Vec::new(),
+            change_review: None,
+            change_results: Vec::new(),
+            confirmer: Arc::clone(&adapters.confirmer),
+            secrets: Arc::clone(&adapters.secrets),
             academy_origin: config.academy_origin,
             learner: LearnerPhase::SignedOut,
             learner_ref: None,
@@ -1675,6 +1761,42 @@ fn admit(
                 CredentialClass::Management,
             )?;
         }
+        Intent::ReviewChange { context, draft } => {
+            let (operation, starts) = state.review_change(
+                context,
+                draft,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = operation;
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::RequestApply {
+            review,
+            draft,
+            confirmation,
+        } => {
+            let (nonce, request) = state.request_apply(&review, &draft, &confirmation)?;
+            effects.push(Effect::Confirm {
+                review,
+                nonce,
+                request,
+            });
+            state.changed();
+        }
+        Intent::DiscardChange { review } => {
+            state.discard_change(&review)?;
+            state.changed();
+        }
+        Intent::RevealSecret { operation } => {
+            let (label, secret) = state.reveal_secret(&operation)?;
+            effects.push(Effect::RevealSecret { label, secret });
+        }
+        Intent::ForgetSecret { operation } => {
+            state.forget_secret(&operation)?;
+            state.changed();
+        }
         Intent::Management { context, request } => {
             let (operation, starts) = state.admit_management(
                 context,
@@ -2139,6 +2261,20 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     let _ = inner.adapters.opener.open(&url);
                 });
             }
+            Effect::Confirm {
+                review,
+                nonce,
+                request,
+            } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let accepted = inner.adapters.confirmer.confirm(nonce, request).await;
+                    settle_confirmation(&inner, &review, nonce, accepted);
+                });
+            }
+            Effect::RevealSecret { label, secret } => {
+                inner.adapters.secrets.reveal(label, secret);
+            }
             Effect::ChooseImport { lease } => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
@@ -2308,6 +2444,26 @@ fn configure_credential(
 
 /// Signs the active tenant's `class` capability out (the other class is
 /// untouched).
+/// The native confirmation's private completion: never reachable from the
+/// renderer (it is the adapter future's own result).
+fn settle_confirmation(inner: &Arc<Inner>, review: &ReviewId, nonce: u64, accepted: bool) {
+    let starts = match lock(inner) {
+        Ok(mut state) => {
+            let starts = state.settle_confirmation(
+                review,
+                nonce,
+                accepted,
+                Arc::clone(&inner.adapters.keychain),
+                Arc::clone(&inner.session),
+            );
+            state.changed();
+            starts
+        }
+        Err(_) => return,
+    };
+    run_effects(inner, vec![Effect::Start(starts)]);
+}
+
 fn remove_credential(
     state: &mut State,
     session: &Arc<SessionVault>,

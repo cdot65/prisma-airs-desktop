@@ -24,11 +24,13 @@ use tauri::{
 use tokio::sync::broadcast;
 
 pub mod adapters;
+pub mod clipboard_secret;
 #[cfg(all(feature = "test-fixtures", target_os = "macos"))]
 pub mod fixture_capture;
 #[cfg(target_os = "macos")]
 pub mod keychain;
 mod menu;
+pub mod native_confirmation;
 
 /// Label of the single packaged window allowed to call application commands.
 pub const MAIN_WINDOW: &str = "main";

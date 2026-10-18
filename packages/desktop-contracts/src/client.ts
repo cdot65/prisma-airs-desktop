@@ -186,6 +186,26 @@ const MANAGEMENT_FAILURES: readonly string[] = [
     'configuration',
 ]
 const DETAIL_FOUND: readonly string[] = ['found', 'absent', 'incomplete']
+const CHANGE_KINDS: readonly string[] = ['profiles', 'topics', 'applications', 'apiKeys']
+const CHANGE_ACTIONS: readonly string[] = ['create', 'update', 'delete', 'version', 'rotate']
+const CHANGE_PROBLEMS: readonly string[] = [
+    'unsupported',
+    'target',
+    'body',
+    'contract',
+    'description',
+    'rotation',
+    'keyFields',
+    'applicationExists',
+    'keyExists',
+    'inventoryLimit',
+    'deploymentProfile',
+    'sourceMismatch',
+    'notFound',
+]
+const REVIEW_STATES: readonly string[] = ['preparing', 'ready', 'confirming', 'failed']
+const READBACKS: readonly string[] = ['found', 'absent', 'incomplete', 'failed']
+const SECRET_STATES: readonly string[] = ['none', 'held', 'forgotten']
 /** Largest page the native side reads (`management::MAX_PAGE`). */
 const MANAGEMENT_MAX_PAGE = 100
 
@@ -463,6 +483,69 @@ function isManagementDetail(value: unknown): boolean {
     }
 }
 
+function isJsonObjectText(value: unknown): boolean {
+    if (typeof value !== 'string') return false
+    try {
+        return isRecord(JSON.parse(value))
+    } catch {
+        return false
+    }
+}
+
+function isChangeFailure(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    if (value.kind === 'conflict') return true
+    if (value.kind === 'problem') return oneOf(CHANGE_PROBLEMS, value.problem)
+    return value.kind === 'service' && oneOf(MANAGEMENT_FAILURES, value.failure)
+}
+
+function isChangeReview(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.review === 'string' &&
+        REVIEW_ID.test(value.review) &&
+        oneOf(CHANGE_KINDS, value.kind) &&
+        oneOf(CHANGE_ACTIONS, value.action) &&
+        isString(value.target) &&
+        oneOf(REVIEW_STATES, value.state) &&
+        optional(isChangeFailure, value.failure) &&
+        (value.state === 'failed') === (value.failure !== null) &&
+        optional(isJsonObjectText, value.before) &&
+        optional(isJsonObjectText, value.after) &&
+        optional(isJsonObjectText, value.sourceKey) &&
+        isString(value.impact) &&
+        optional(isString, value.confirmation)
+    )
+}
+
+function isChangeResult(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isOperation(value.operation) &&
+        oneOf(CHANGE_KINDS, value.kind) &&
+        oneOf(CHANGE_ACTIONS, value.action) &&
+        isString(value.target) &&
+        optional(isString, value.name) &&
+        typeof value.settled === 'boolean' &&
+        // Only a settled change has an outcome.
+        (value.settled ? oneOf(OUTCOMES, value.outcome) : value.outcome === null) &&
+        optional(isChangeFailure, value.failure) &&
+        optional(isJsonObjectText, value.response) &&
+        optional((r) => oneOf(READBACKS, r), value.readback) &&
+        optional(isJsonObjectText, value.current) &&
+        oneOf(SECRET_STATES, value.secret)
+    )
+}
+
+function isChangesView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        optional(isChangeReview, value.review) &&
+        Array.isArray(value.results) &&
+        value.results.every(isChangeResult)
+    )
+}
+
 /** Validates a management read result (items stay JSON text). */
 export function parseManagementResult(value: unknown): ManagementResult {
     if (isRecord(value)) {
@@ -568,6 +651,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         typeof value.academyOrigin !== 'string' ||
         !ACADEMY_ORIGIN.test(value.academyOrigin) ||
         !isOfflineView(value.academyOffline) ||
+        !isChangesView(value.changes) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')

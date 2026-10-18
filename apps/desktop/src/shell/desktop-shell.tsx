@@ -162,6 +162,9 @@ export function DesktopShell(props: DesktopShellProps) {
                 />
             ) : feature.id === 'administration' && feature.availability.state === 'available' ? (
                 <AdministrationView
+                    // A new tenant or management credential remounts the view,
+                    // so no render ever pairs it with the previous one's rows.
+                    key={snapshot.active?.context ?? 'none'}
                     ref={heading}
                     snapshot={snapshot}
                     dispatch={props.dispatch}

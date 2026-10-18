@@ -2,7 +2,7 @@
 
 G00 and G01 passed (historical Claude reviews). C01–C04 and the P01 cumulative review completed on
 2026-10-17; C05–C07 and the P02 cumulative review completed on 2026-10-18;
-implementation is at **C08** (P03). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+implementation is at **C09** (P03). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no
 blockers; each phase review still needs 9/10, after every chunk accepted below
@@ -21,8 +21,9 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C06 | **Complete** (generation 1): Codex attempt-05 passed; committed as 8718ac9 and verified against the reviewed source fingerprint | Attempts 01–04 remediated (records retained); D030 recorded |
 | C07 | **Complete** (generation 1): Codex attempt-06 scored 9 in all five dimensions; committed as 960e340 and verified against the reviewed source fingerprint | Attempts 01–05 remediated (`reviews/C07/remediation-attempt-0{1..5}.md`); D031 and D032 recorded |
 | P02 | **Complete**: Codex phase attempt-01 scored 9 in all five dimensions; committed as 3decccc and verified against the reviewed source fingerprint | Integrated native checks for C04–C07 and the workload budget on the P02 bundle |
-| C08 | **In progress**: management onboarding and Runtime/DLP reads implemented; native acceptance, mutation probes and the Codex review next | D033 recorded; evidence in `evidence/C08` |
-| C09–C26 | Planned | Ordered predecessors required; P03 phase review after C12 |
+| C08 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as c07cc8b and verified | Follow-ups R1–R3/E1 remediated in the tree (`reviews/C08/follow-ups.md`); raised to 9/10 before the P03 review |
+| C09 | **In progress**: reviewed Runtime changes and one-time secrets implemented; native acceptance, probes and the Codex review next | D035 recorded; evidence in `evidence/C09` |
+| C10–C26 | Planned | Ordered predecessors required; P03 phase review after C12 |
 
 ## C01 evidence (docs/planning/evidence/C01)
 

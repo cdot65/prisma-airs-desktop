@@ -188,30 +188,44 @@ fn shipping_builds_exclude_fixture_features_and_commands() {
     for item in [
         "desktop-core/test-fixtures",
         "tauri/test",
-        "dep:objc2",
         "dep:objc2-web-kit",
-        "dep:objc2-app-kit",
-        "dep:objc2-foundation",
-        "dep:block2",
     ] {
         assert!(features.contains(item), "test-fixtures must enable {item}");
     }
+    // WebView self-capture (WebKit) exists only in fixture builds.
+    let web_kit = manifest
+        .lines()
+        .find(|l| l.starts_with("objc2-web-kit ="))
+        .expect("capture dependency");
+    assert!(
+        web_kit.contains("optional = true"),
+        "objc2-web-kit must only be pulled in by test-fixtures"
+    );
+    // Since C09 (D035) AppKit is a shipping dependency: the native operator
+    // confirmation, the one-time secret sheet and the clipboard. It is
+    // pinned exactly and enables only the classes those use.
     for dep in [
         "objc2 =",
         "objc2-foundation =",
         "objc2-app-kit =",
-        "objc2-web-kit =",
         "block2 =",
     ] {
         let line = manifest
             .lines()
             .find(|l| l.starts_with(dep))
-            .expect("capture dependency");
+            .expect("AppKit dependency");
+        assert!(line.contains("\"=0."), "{dep} is pinned exactly: {line}");
         assert!(
-            line.contains("optional = true"),
-            "{dep} must only be pulled in by test-fixtures"
+            !line.contains("optional = true")
+                && !features.contains(&format!("\"dep:{}\"", dep.trim_end_matches(" ="))),
+            "{dep}"
         );
     }
+    let lib_rs = std::fs::read_to_string(crate_dir().join("src/lib.rs")).expect("lib.rs");
+    assert!(
+        lib_rs.contains("#[cfg(all(feature = \"test-fixtures\", target_os = \"macos\"))]\npub mod fixture_capture;"),
+        "fixture capture stays fixture-only"
+    );
     let checks = json("../../../docs/architecture/checks.json");
     let artifact: Vec<String> = checks["artifact_build"]
         .as_array()

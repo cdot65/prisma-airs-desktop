@@ -75,6 +75,34 @@ function review(overrides: Record<string, unknown>) {
     }
 }
 
+const changeReview = {
+    review: 'rv-0011223344556677',
+    kind: 'topics',
+    action: 'update',
+    target: 't-1',
+    state: 'ready',
+    failure: null,
+    before: '{"topic_name":"Finance"}',
+    after: '{"topic_name":"Finance"}',
+    sourceKey: null,
+    impact: 'Applies only to this tenant.',
+    confirmation: 'Finance',
+}
+const changeResult = {
+    operation: 'op-3',
+    kind: 'apiKeys',
+    action: 'rotate',
+    target: 'key-1',
+    name: 'Support key',
+    settled: true,
+    outcome: 'completed',
+    failure: null,
+    response: '{"api_key_id":"key-1"}',
+    readback: 'found',
+    current: null,
+    secret: 'held',
+}
+
 describe('shell snapshot validation', () => {
     it('accepts a well-formed snapshot with C02 fields', () => {
         expect(parseShellSnapshot(valid)).toEqual(valid)
@@ -85,6 +113,10 @@ describe('shell snapshot validation', () => {
             parseShellSnapshot(withScan({ outcome: 'rejected', result: null, failure: { kind: 'unauthorized', status: 401 } }))
         ).toBeTruthy()
         expect(parseShellSnapshot(offline({}))).toBeTruthy()
+        expect(parseShellSnapshot({ ...valid, changes: { review: changeReview, results: [changeResult] } })).toBeTruthy()
+        expect(
+            parseShellSnapshot({ ...valid, changes: { review: { ...changeReview, state: 'failed', failure: { kind: 'conflict' } }, results: [] } })
+        ).toBeTruthy()
         expect(parseShellSnapshot(offline({ state: 'empty', downloads: [], localDrafts: [] }))).toBeTruthy()
         expect(parseShellSnapshot(offline({ downloads: [{ ...download, status: 'withdrawn' }] }))).toBeTruthy()
     })
@@ -120,6 +152,16 @@ describe('shell snapshot validation', () => {
             'a non-HTTPS management token origin',
             { ...valid, tenants: [{ ...tenant(), management: { ...tenant().management, tokenOrigin: 'http://auth.example' } }] },
         ],
+        ['changes missing', { ...valid, changes: undefined }],
+        [
+            'a failed review without its failure',
+            { ...valid, changes: { review: { ...changeReview, state: 'failed' }, results: [] } },
+        ],
+        ['a review with an unknown action', { ...valid, changes: { review: { ...changeReview, action: 'forceDelete' }, results: [] } }],
+        ['a review whose preview is not JSON', { ...valid, changes: { review: { ...changeReview, after: '<b>x</b>' }, results: [] } }],
+        ['an unsettled change with an outcome', { ...valid, changes: { review: null, results: [{ ...changeResult, settled: false }] } }],
+        ['a change with an unknown secret state', { ...valid, changes: { review: null, results: [{ ...changeResult, secret: 'revealed' }] } }],
+        ['a change failure with server text', { ...valid, changes: { review: null, results: [{ ...changeResult, failure: { kind: 'service', failure: 'Forbidden: x' } }] } }],
         ['scans missing', { ...valid, scans: undefined }],
         ['a scan with a malformed operation', withScan({ operation: 'op-x' })],
         ['a result on a scan that did not complete', withScan({ outcome: 'unknown' })],

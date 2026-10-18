@@ -580,6 +580,33 @@ impl ManagementBinding {
             });
         }
         let field = resource.id_field();
+        let walked = self
+            .walk(resource, deadline, |item| {
+                identity(item.get(field)).as_deref() == Some(id)
+            })
+            .await?;
+        let (found, item) = match walked {
+            Walk::Found(item) => (DetailFound::Found, Some(item.to_string())),
+            Walk::Ended => (DetailFound::Absent, None),
+            Walk::Incomplete => (DetailFound::Incomplete, None),
+        };
+        Ok(ManagementDetail {
+            resource,
+            id: id.to_owned(),
+            found,
+            item,
+        })
+    }
+
+    /// A bounded walk (40 pages of 25, v1) of `resource` for the first item
+    /// `wanted` accepts. Items are redacted. `Ended` only when the service
+    /// said the inventory ended.
+    pub async fn walk(
+        &self,
+        resource: ManagementResource,
+        deadline: Instant,
+        mut wanted: impl FnMut(&Value) -> bool,
+    ) -> Result<Walk, PageError> {
         let mut offset = 0u32;
         for _ in 0..DETAIL_PAGES {
             let page = self
@@ -587,37 +614,106 @@ impl ManagementBinding {
                 .await?;
             let items: Vec<Value> =
                 serde_json::from_str(&page.items).map_err(|_| PageError::Invalid)?;
-            if let Some(item) = items
-                .into_iter()
-                .find(|item| identity(item.get(field)).as_deref() == Some(id))
-            {
-                return Ok(ManagementDetail {
-                    resource,
-                    id: id.to_owned(),
-                    found: DetailFound::Found,
-                    item: Some(item.to_string()),
-                });
+            if let Some(item) = items.into_iter().find(|item| wanted(item)) {
+                return Ok(Walk::Found(item));
             }
             match (page.complete, page.next_offset) {
-                (true, _) => {
-                    return Ok(ManagementDetail {
-                        resource,
-                        id: id.to_owned(),
-                        found: DetailFound::Absent,
-                        item: None,
-                    });
-                }
+                (true, _) => return Ok(Walk::Ended),
                 (false, Some(next)) => offset = next,
                 (false, None) => break,
             }
         }
-        Ok(ManagementDetail {
-            resource,
-            id: id.to_owned(),
-            found: DetailFound::Incomplete,
-            item: None,
-        })
+        Ok(Walk::Incomplete)
     }
+
+    /// The deployment profiles as the service returned them, auth codes
+    /// included (they never leave Rust; v1 injects them into key creates).
+    pub async fn deployment_profiles(&self, deadline: Instant) -> Result<Vec<Value>, PageError> {
+        let options = Self::options(deadline);
+        let reply = self
+            .management
+            .deployment_profiles()
+            .list(DeploymentProfileListOptions::default(), options.as_ref())
+            .await?;
+        let mut value = erased::Json::to_json(&reply).map_err(|_| PageError::Invalid)?;
+        array_at(&mut value, "deployment_profiles", true)
+    }
+
+    /// Performs one reviewed change with the SDK call v1 makes for it
+    /// (retries off). The reply may hold a one-time secret: callers pass it
+    /// to [`crate::changes::take_secret`] before anything else.
+    pub async fn write(
+        &self,
+        mutation: &crate::changes::Mutation,
+        before: Option<&Value>,
+        deadline: Instant,
+    ) -> Result<Value, PageError> {
+        use crate::changes::{ChangeAction as A, ChangeKind as K, item_name};
+        let options = Self::options(deadline);
+        let o = options.as_ref();
+        fn model<T: serde::de::DeserializeOwned>(body: &Value) -> Result<T, PageError> {
+            serde_json::from_value(body.clone()).map_err(|_| PageError::Invalid)
+        }
+        let json = |value: &dyn erased::Json| value.to_json().map_err(|_| PageError::Invalid);
+        let name = || {
+            before
+                .and_then(|b| item_name(mutation.kind, b))
+                .ok_or(PageError::Invalid)
+        };
+        let author = mutation
+            .body
+            .get("updated_by")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let target = mutation.target.as_str();
+        let m = &self.management;
+        match (mutation.kind, mutation.action) {
+            (K::Profiles, A::Create) => {
+                json(&m.profiles().create(&model(&mutation.body)?, o).await?)
+            }
+            (K::Profiles, A::Update) => json(
+                &m.profiles()
+                    .update(target, &model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::Profiles, A::Delete) => json(&m.profiles().delete(target, o).await?),
+            (K::Topics, A::Create) => json(&m.topics().create(&model(&mutation.body)?, o).await?),
+            (K::Topics, A::Update) => json(
+                &m.topics()
+                    .update(target, &model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::Topics, A::Delete) => json(&m.topics().delete(target, o).await?),
+            (K::Applications, A::Update) => json(
+                &m.customer_apps()
+                    .update(target, &model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::Applications, A::Delete) => {
+                json(&m.customer_apps().delete(&name()?, author, o).await?)
+            }
+            (K::ApiKeys, A::Create | A::Version) => {
+                json(&m.api_keys().create(&model(&mutation.body)?, o).await?)
+            }
+            (K::ApiKeys, A::Rotate) => json(
+                &m.api_keys()
+                    .regenerate(target, &model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::ApiKeys, A::Delete) => json(&m.api_keys().delete(&name()?, author, o).await?),
+            _ => Err(PageError::Invalid),
+        }
+    }
+}
+
+/// Where a bounded walk ended.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Walk {
+    Found(Value),
+    /// The service said the inventory ended without a match.
+    Ended,
+    /// The walk's bound was reached first.
+    Incomplete,
 }
 
 impl ManagementBinding {
@@ -668,7 +764,7 @@ impl ManagementBinding {
 
 /// An item's identity as text: a string, or a number's decimal form (DLP
 /// identifiers may be numeric).
-fn identity(value: Option<&Value>) -> Option<String> {
+pub fn identity(value: Option<&Value>) -> Option<String> {
     match value? {
         Value::String(s) => Some(s.clone()),
         Value::Number(n) => Some(n.to_string()),
@@ -832,12 +928,16 @@ fn normalize(
 /// The bound clients of one credential generation, built once by the first
 /// read that needs them and reused (with the SDK's token cache) until the
 /// generation retires.
-pub type BindingCell = Arc<OnceCell<Result<ManagementBinding, ManagementFailure>>>;
+/// A failed build (a locked Keychain, say) is not cached: the next explicit
+/// read tries again.
+pub type BindingCell = Arc<OnceCell<ManagementBinding>>;
 
 pub type ResultSlot = Arc<std::sync::Mutex<Option<ManagementResult>>>;
 
-/// Everything one admitted management read needs at dispatch.
-pub(crate) struct ManagementJob {
+/// Everything needed to build (or reuse) a credential generation's
+/// binding: shared by management reads and reviewed changes.
+#[derive(Clone)]
+pub(crate) struct BindingSource {
     pub keychain: Arc<dyn CredentialStore>,
     pub session_vault: Arc<SessionVault>,
     pub record: RecordId,
@@ -848,30 +948,20 @@ pub(crate) struct ManagementJob {
     pub transport: Arc<dyn Transport>,
     pub session: Session,
     pub binding: BindingCell,
+}
+
+/// Everything one admitted management read needs at dispatch.
+pub(crate) struct ManagementJob {
+    pub source: BindingSource,
     pub request: ManagementRequest,
     pub slot: ResultSlot,
 }
 
-impl ManagementJob {
-    pub fn into_work(self) -> Work {
-        Box::new(move |claim| Box::pin(self.run(claim)))
-    }
-
-    fn leave(&self, result: ManagementResult) {
-        if let Ok(mut slot) = self.slot.lock() {
-            *slot = Some(result);
-        }
-    }
-
-    fn fail(&self, failure: ManagementFailure, outcome: Outcome) -> Outcome {
-        self.leave(ManagementResult::Failed { failure, outcome });
-        outcome
-    }
-
-    async fn bind(&self) -> Result<&ManagementBinding, ManagementFailure> {
-        let built = self
-            .binding
-            .get_or_init(|| async {
+impl BindingSource {
+    /// The generation's binding, built by the first caller that needs it.
+    pub async fn bind(&self) -> Result<&ManagementBinding, ManagementFailure> {
+        self.binding
+            .get_or_try_init(|| async {
                 let keychain = Arc::clone(&self.keychain);
                 let session_vault = Arc::clone(&self.session_vault);
                 let record = self.record.clone();
@@ -901,12 +991,28 @@ impl ManagementJob {
                     self.session.clone(),
                 )
             })
-            .await;
-        built.as_ref().map_err(|failure| *failure)
+            .await
+    }
+}
+
+impl ManagementJob {
+    pub fn into_work(self) -> Work {
+        Box::new(move |claim| Box::pin(self.run(claim)))
+    }
+
+    fn leave(&self, result: ManagementResult) {
+        if let Ok(mut slot) = self.slot.lock() {
+            *slot = Some(result);
+        }
+    }
+
+    fn fail(&self, failure: ManagementFailure, outcome: Outcome) -> Outcome {
+        self.leave(ManagementResult::Failed { failure, outcome });
+        outcome
     }
 
     async fn run(self, claim: Claim) -> Outcome {
-        let binding = match self.bind().await {
+        let binding = match self.source.bind().await {
             Ok(binding) => binding,
             Err(failure) => return self.fail(failure, Outcome::NotSent),
         };

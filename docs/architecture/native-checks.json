@@ -426,6 +426,48 @@
         "id": "C08-N12",
         "check": "No file in the fixture data root other than the fixture keychain, and no fixture WebKit data, contains the client secret, the scan key or any redacted secret field value; no AX snapshot contains them; no management request carried the scan key and no scan request carried an Authorization header; v1 data is unchanged."
       }
+    ],
+    "C09": [
+      {
+        "id": "C09-N01",
+        "check": "Editing a custom topic in Administration: Edit… opens the item as a JSON draft; Review change reads the current item and shows its current and expected JSON with v1's impact text and the typed confirmation (the topic name); nothing is written by reviewing."
+      },
+      {
+        "id": "C09-N02",
+        "check": "Apply… opens a native AppKit sheet on the main window (not a WebView dialog) titled with Rust's stored summary (action, kind and name) and the tenant; while it is open the main window takes no input; Escape cancels it and nothing is written; a second Apply… and Return (the default for a non-destructive change) apply it: exactly one PUT with the management client as author, and the window says it was applied and read back."
+      },
+      {
+        "id": "C09-N03",
+        "check": "A topic changed by another writer between Review and Apply is reported as changed since review after the operator confirms, and nothing is written; text edited in the draft after Review is refused at Apply without opening the sheet."
+      },
+      {
+        "id": "C09-N04",
+        "check": "Deleting a topic: the sheet is destructive and Return chooses Cancel (nothing deleted); choosing Delete sends exactly one DELETE and the window says the item is no longer in the inventory."
+      },
+      {
+        "id": "C09-N05",
+        "check": "Creating an API key: the deployment profile's auth code is added by the desktop (the POST carries the profile's code and the client as author; the code is never shown); the window says a new key is held in memory only, and no AX snapshot or data-root file holds the one-time key."
+      },
+      {
+        "id": "C09-N06",
+        "check": "Show new key… opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; a key shown again and left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied."
+      },
+      {
+        "id": "C09-N07",
+        "check": "Rotating a key: the rotation sheet is destructive (Return cancels; Rotate key applies); after copying the rotated key, text copied by the operator in the meantime is left on the clipboard after 60 s; Clear key forgets a held key and the window says so."
+      },
+      {
+        "id": "C09-N08",
+        "check": "T23: with the management endpoint stopped, a confirmed create (it needs no baseline read) reports that the service could not be reached and that the change may or may not have been applied (a transport failure's outcome is unknown, as for scans), to refresh before retrying, and nothing is queued; after the endpoint returns nothing is sent by itself within 6 s; an explicit Review prepares the change again without sending it."
+      },
+      {
+        "id": "C09-N09",
+        "check": "Quitting while a confirmed create is in flight and relaunching: no change review or result is shown and nothing is sent again within 6 s of launch (exactly the one in-flight POST)."
+      },
+      {
+        "id": "C09-N10",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches the workbench's Review change inside the window and clear of the bottom fade."
+      }
     ]
   }
 }

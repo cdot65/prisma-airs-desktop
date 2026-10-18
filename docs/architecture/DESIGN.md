@@ -1088,6 +1088,75 @@ per-generation bindings, admission and single observation; intents
   secrets and multipart DLP operations to C09/C10.
 - **Not done here.** No real management endpoint is called before C25.
 
+### C09 implementation: reviewed Runtime changes and one-time secrets
+
+Implemented in `crates/desktop-core` (`changes`: v1's write subset,
+validation, digests, preview and secret removal; `authority/change_domain`:
+reviews, the confirmation hand-off, apply jobs, results and held secrets;
+intents `ReviewChange`, `RequestApply`, `DiscardChange`, `RevealSecret`,
+`ForgetSecret`; `ShellSnapshot.changes`; adapters `OperatorConfirmation`
+and `SecretPresenter`), `apps/desktop/src-tauri` (`native_confirmation`:
+the AppKit sheets and the nonce registry; `clipboard_secret`: clipboard
+ownership) and `apps/desktop/src/features/administration/runtime-changes`.
+D035 records the decisions.
+
+- **Review.** `ReviewChange { context, draft }` needs the active tenant's
+  ready management credential (the binding source C08 checks). Rust
+  normalizes the raw draft with v1's rules and the SDK request contract;
+  a draft that fails yields a failed review the operator can read, with no
+  request. Otherwise a runtime operation reads the baseline: nothing for a
+  create, the item by a 40×25 walk otherwise (not found or an incomplete
+  walk refuses), for an application delete every matching key, and for a
+  key create/version the name checks and the deployment profile's auth
+  code. The review holds the normalized draft, the ready mutation, the
+  baseline and v1's review digest (tenant, client, mutation, baseline) for
+  15 minutes; the view shows current/expected JSON (secret fields removed,
+  server-determined fields labelled), the impact and the confirmation text.
+- **Apply.** `RequestApply { review, draft, confirmation }` normalizes the
+  freshly captured draft and requires it to equal the reviewed one, and the
+  typed confirmation to equal "CREATE" or the item name; the review then
+  holds a random nonce and the core asks the host's `OperatorConfirmation`
+  with Rust's stored summary. A second RequestApply while confirming is
+  `Busy`. Only that future's resolution (`settle_confirmation`) continues:
+  a denial returns the review to ready; acceptance consumes it (a consumed
+  review is refused afterwards) and admits the apply operation. A review
+  whose context retires is dropped and its sheet ended (`dismiss`).
+- **Write.** The apply job re-reads the baseline and recomputes the digest;
+  any difference is a conflict, not sent. It then makes exactly v1's SDK
+  call (`profiles/topics().create|update|delete`, `customer_apps().update|
+  delete(name, author)`, `api_keys().create|regenerate|delete(name,
+  author)`), with retries off, maps 409 to conflict and keeps the SDK's
+  remote outcome, takes any one-time key out of the reply into a zeroizing
+  buffer, removes secret fields and reads the item back (by name for a
+  create, by identifier or name otherwise; absent is the expected readback
+  of a delete).
+- **Secrets.** `RevealSecret { operation }` passes the held key to the
+  host's `SecretPresenter`; `ForgetSecret` drops it. Keys are held per
+  result for the active context only, never persisted, and dropped with the
+  context. The host's sheet shows the key in a selectable label, ends after
+  60 s and clears the field; Copy and Close writes the key, a random owner
+  marker and the concealed/transient hints, and clears the clipboard after
+  60 s only if both the marker and the change count are unchanged.
+- **Native confirmation.** `NativeConfirmation` registers the nonce, then on
+  the main thread builds an `NSAlert` (title and message from the request,
+  the confirm button, Cancel; destructive changes are critical with Cancel
+  as the Return default) and begins it as a sheet of the main window; the
+  completion block resolves the registry entry once. The sheet makes the
+  window modal, holding the editor. Unknown and repeated completions are
+  ignored; dismissal resolves false and ends the sheet.
+- **Presentation.** Administration offers v1's actions (new profile/topic,
+  create key; edit/delete; rotate/add version/delete) in a workbench whose
+  editor is uncontrolled: Review and Apply read it when pressed; Apply…
+  also reads the typed confirmation. While confirming the editor and the
+  confirmation field are read-only. Applied changes list their outcome and
+  readback, and a held key offers "Show new key…" and "Clear key".
+- **T23.** Reviews, confirmations, results and keys are memory-only: a
+  restart shows none and nothing is replayed; offline, a review that needs
+  a read fails and a confirmed write reports its unknown outcome, never
+  queued; retry is an explicit new review.
+- **Not done here.** No real management endpoint is called before C25; DLP
+  writes are C10.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

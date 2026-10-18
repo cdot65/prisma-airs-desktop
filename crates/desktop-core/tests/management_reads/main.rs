@@ -836,6 +836,74 @@ async fn protected_storage_failures_are_reported_without_any_fallback() {
     let locked = desk.read(json!({"kind": "verify"})).await;
     assert_eq!(failed(&locked), Some(ManagementFailure::CredentialLocked));
     assert!(desk.requests("/oauth2/access_token").is_empty());
+    // Unlocked, the next explicit read recovers without reconfiguration: a
+    // failed binding is not cached.
+    desk.adapters.vault.fail_with(None);
+    assert_eq!(
+        desk.read(json!({"kind": "verify"})).await,
+        ManagementResult::Verified
+    );
+    assert_eq!(desk.requests("/oauth2/access_token").len(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_result_settled_before_its_context_retired_is_never_delivered_afterwards() {
+    let mut desk = desk().await;
+    desk.management_key(CLIENT_SECRET).await;
+    // Read A's inventory and detail to completion without observing them.
+    let page = desk
+        .admit(json!({"kind": "page", "resource": "profiles", "offset": 0, "limit": 25}))
+        .await
+        .expect("admitted");
+    let detail = desk
+        .admit(json!({"kind": "detail", "resource": "topics", "id": "11111111-1111-4111-8111-111111111111"}))
+        .await
+        .expect("admitted");
+    assert!(
+        eventually(|| desk.requests("/aisec/v1/mgmt/topics").len() == 1).await,
+        "both reads reached the service"
+    );
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    // The credential is replaced: A's results are withdrawn, not delivered.
+    desk.management_key("replacement-secret").await;
+    for operation in [&page, &detail] {
+        assert_eq!(
+            desk.result(operation).await,
+            ManagementResult::Failed {
+                failure: ManagementFailure::Cancelled,
+                outcome: desktop_core::runtime::Outcome::Completed
+            }
+        );
+    }
+    // Likewise across a tenant switch.
+    let page = desk
+        .admit(json!({"kind": "page", "resource": "profiles", "offset": 0, "limit": 25}))
+        .await
+        .expect("admitted");
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let context = desk.context();
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": TSG,
+        "destination": {"kind": "region", "region": "europe"}}}),
+    )
+    .await
+    .expect("created");
+    let other = desk
+        .snap()
+        .tenants
+        .iter()
+        .find(|t| t.label == "Tenant B")
+        .expect("tenant")
+        .id
+        .clone();
+    desk.send(json!({"kind": "selectTenant", "tenant": other}))
+        .await
+        .expect("selected");
+    assert_ne!(desk.context(), context, "B is active");
+    assert_eq!(
+        failed(&desk.result(&page).await),
+        Some(ManagementFailure::Cancelled)
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

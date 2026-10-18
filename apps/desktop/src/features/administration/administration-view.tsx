@@ -10,6 +10,7 @@ import type {
     ShellSnapshot,
 } from '@prisma-airs/desktop-contracts'
 import { PageHeading } from '../../shell/feature-view'
+import { type ChangeTarget, ChangeResults, ChangeWorkbench, TEMPLATES, pretty } from './runtime-changes'
 import type { Dispatch } from '../tenants/dispatch'
 import {
     MANAGEMENT_FAILURE_TEXT,
@@ -78,6 +79,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
     const [loading, setLoading] = useState(false)
     const [filter, setFilter] = useState('')
     const [detail, setDetail] = useState<DetailState | null>(null)
+    const [change, setChange] = useState<ChangeTarget | null>(null)
     // Each page and detail read carries a token; a reply for a superseded
     // tenant, credential, inventory or newer read is dropped.
     const token = useRef(0)
@@ -232,6 +234,11 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                 <Button type='button' tier='secondary' disabled={loading} onClick={() => void load(page?.offset ?? 0)}>
                     Refresh
                 </Button>
+                {CREATE[resource] ? (
+                    <Button type='button' tier='secondary' onClick={() => setChange(CREATE[resource] ?? null)}>
+                        {CREATE[resource]?.title}
+                    </Button>
+                ) : null}
             </div>
 
             <div role='status' aria-live='polite' className='text-academy-ink-soft text-[13px]' data-slot='administration-progress'>
@@ -327,12 +334,81 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                 </div>
             ) : null}
 
-            {detail ? <DetailPanel state={detail} info={info} onClose={() => setDetail(null)} /> : null}
+            {detail ? (
+                <DetailPanel state={detail} info={info} onClose={() => setDetail(null)} onChange={setChange} />
+            ) : null}
+            {change ? (
+                <ChangeWorkbench
+                    key={`${change.kind}-${change.action}-${change.target}`}
+                    change={change}
+                    review={snapshot.changes.review}
+                    context={context}
+                    dispatch={dispatch}
+                    onClose={() => setChange(null)}
+                />
+            ) : null}
+            <ChangeResults results={snapshot.changes.results} dispatch={dispatch} />
         </section>
     )
 })
 
-function DetailPanel({ state, info, onClose }: { state: DetailState; info: ResourceInfo; onClose: () => void }) {
+/** The changes v1 offers to start from an inventory. */
+const CREATE: Partial<Record<ManagementResource, ChangeTarget>> = {
+    profiles: { kind: 'profiles', action: 'create', target: '', title: 'New security profile', body: pretty(TEMPLATES.profile) },
+    topics: { kind: 'topics', action: 'create', target: '', title: 'New custom topic', body: pretty(TEMPLATES.topic) },
+    apiKeys: { kind: 'apiKeys', action: 'create', target: '', title: 'Create API key', body: pretty(TEMPLATES.key) },
+}
+
+const CHANGE_KIND: Partial<Record<ManagementResource, ChangeTarget['kind']>> = {
+    profiles: 'profiles',
+    topics: 'topics',
+    applications: 'applications',
+    apiKeys: 'apiKeys',
+}
+
+/** The changes v1 offers for one item. */
+function itemChanges(info: ResourceInfo, item: Item, name: string): ChangeTarget[] {
+    const kind = CHANGE_KIND[info.id]
+    const id = itemId(info, item)
+    if (!kind || id === null) return []
+    if (kind === 'apiKeys') {
+        return [
+            { kind, action: 'rotate', target: id, title: `Rotate ${name}`, body: pretty(TEMPLATES.rotate) },
+            {
+                kind,
+                action: 'version',
+                target: id,
+                title: `Add a key for ${fieldText(item.cust_app)}`,
+                body: pretty({ ...TEMPLATES.key, cust_app: item.cust_app ?? '' }),
+            },
+            { kind, action: 'delete', target: id, title: `Delete ${name}`, body: '{}' },
+        ]
+    }
+    return [
+        { kind, action: 'update', target: id, title: `Edit ${name}`, body: pretty(item) },
+        { kind, action: 'delete', target: id, title: `Delete ${name}`, body: '{}' },
+    ]
+}
+
+const ACTION_LABEL: Record<ChangeTarget['action'], string> = {
+    create: 'Create…',
+    update: 'Edit…',
+    delete: 'Delete…',
+    version: 'Add key version…',
+    rotate: 'Rotate…',
+}
+
+function DetailPanel({
+    state,
+    info,
+    onClose,
+    onChange,
+}: {
+    state: DetailState
+    info: ResourceInfo
+    onClose: () => void
+    onChange: (change: ChangeTarget) => void
+}) {
     const headingId = useId()
     const heading = useRef<HTMLHeadingElement>(null)
     useEffect(() => {
@@ -382,8 +458,15 @@ function DetailPanel({ state, info, onClose }: { state: DetailState; info: Resou
                     ) : null}
                 </>
             )}
-            <div>
-                <Button type='button' tier='secondary' onClick={onClose}>
+            <div className='flex flex-wrap gap-2'>
+                {state.kind === 'shown' && state.item
+                    ? itemChanges(info, state.item, state.name).map((c) => (
+                          <Button key={c.action} type='button' tier='secondary' onClick={() => onChange(c)}>
+                              {ACTION_LABEL[c.action]}
+                          </Button>
+                      ))
+                    : null}
+                <Button type='button' tier='tertiary' onClick={onClose}>
                     Close details
                 </Button>
             </div>

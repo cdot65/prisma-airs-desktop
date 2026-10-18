@@ -11,12 +11,19 @@ only ever sees synthetic credentials; secrets are compared, never logged.
                  --client-id <synthetic id> --secret <synthetic secret> --tsg <digits>
 
 Files in <scratch>: mode.json ({"grant": "ok"|"deny", "profiles": "ok"|"deny",
-"topics": "ok"|"deny"|"empty", "profileCount": n, "delayMs": {"<path prefix>": ms}})
+"topics": "ok"|"deny"|"empty", "profileCount": n, "delayMs": {"<path prefix>": ms},
+"topicDescription": text (changes the stored topic, as another writer would)})
 and requests.jsonl.
+
+Writes (C09) change an in-memory inventory: topics create/update/delete,
+API key create/regenerate/delete (a one-time api_key in the reply). The log
+records each write's body field names, its authorship and auth-code match,
+and only a SHA-256 of any issued one-time key.
 """
 
 import argparse
 import base64
+import hashlib
 import hmac
 import json
 import os
@@ -47,6 +54,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.handle_request("POST")
 
+    def do_PUT(self):
+        self.handle_request("PUT")
+
+    def do_DELETE(self):
+        self.handle_request("DELETE")
+
     def authorization(self):
         value = self.headers.get("authorization") or ""
         srv = self.server
@@ -67,6 +80,7 @@ class Handler(BaseHTTPRequestHandler):
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         length = int(self.headers.get("content-length") or 0)
         body = self.rfile.read(length) if length else b""
+        self.sent_body = body
         mode = srv.mode()
         record = {
             "t": time.time(),
@@ -86,7 +100,17 @@ class Handler(BaseHTTPRequestHandler):
         for prefix, ms in (mode.get("delayMs") or {}).items():
             if url.path.startswith(prefix):
                 time.sleep(ms / 1000)
-        status, payload = self.reply(url.path, query, record, mode)
+        if method in ("PUT", "DELETE") or (method == "POST" and url.path != "/oauth2/access_token"):
+            try:
+                sent = json.loads(body or b"{}")
+            except ValueError:
+                sent = None
+            if isinstance(sent, dict):
+                record["fields"] = sorted(sent)
+                record["author"] = sent.get("updated_by") or sent.get("created_by")
+                record["authCodeMatches"] = sent.get("auth_code") == srv.auth_code if "auth_code" in sent else None
+                record["description"] = sent.get("description")
+        status, payload = self.write(method, url.path, query, record, mode) if method != "GET" and url.path != "/oauth2/access_token" else self.reply(url.path, query, record, mode)
         record["status"] = status
         with srv.lock, open(srv.log, "a") as f:
             f.write(json.dumps(record) + "\n")
@@ -102,6 +126,9 @@ class Handler(BaseHTTPRequestHandler):
                 srv.counter += 1
                 token = f"{TOKEN_PREFIX}{srv.counter}"
                 srv.issued.add(token)
+                # Kept across a restart (offline and back), like the service.
+                with open(os.path.join(srv.directory, "issued.json"), "w") as f:
+                    json.dump(sorted(srv.issued), f)
             return 200, {"access_token": token, "token_type": "Bearer", "expires_in": 3600}
         if record["auth"] != "bearer-issued":
             return 401, {"error": "unauthorized"}
@@ -122,22 +149,79 @@ class Handler(BaseHTTPRequestHandler):
                 return 403, {"error": "forbidden", "message": "SERVER-TEXT-NEVER-SHOWN"}
             if topics == "empty":
                 return 200, {"custom_topics": []}
-            return 200, {"custom_topics": [{"topic_id": "11111111-1111-4111-8111-111111111111", "topic_name": "Finance",
-                                            "revision": 1, "description": "Money talk"}]}
+            with srv.lock:
+                if mode.get("topicDescription") and srv.topics:
+                    srv.topics[0]["description"] = mode["topicDescription"]
+                return 200, {"custom_topics": [dict(t) for t in srv.topics[offset:offset + limit]]}
         if path == f"/aisec/v1/mgmt/customerapp/tsg/{tsg}":
-            return 200, {"customer_apps": [{"customer_appId": "app-1", "tsg_id": tsg, "app_name": "Support bot",
-                                            "cloud_provider": "aws", "environment": "production"}]}
+            with srv.lock:
+                return 200, {"customer_apps": [dict(a) for a in srv.apps[offset:offset + limit]]}
         if path == f"/aisec/v1/mgmt/apikeys/tsg/{tsg}":
-            return 200, {"api_keys": [{"api_key_id": "key-1", "api_key_name": "Runtime", "api_key_last8": "abcd1234",
-                                       "api_key": "SYNTHETIC-C08-KEY-VALUE", "auth_code": "SYNTHETIC-C08-AUTH-CODE",
-                                       "expiration": "2027-01-01T00:00:00Z", "revoked": False, "status": "FUTURE_STATUS"}]}
+            with srv.lock:
+                return 200, {"api_keys": [dict(k) for k in srv.keys[offset:offset + limit]]}
         if path == "/aisec/v1/mgmt/deploymentprofiles":
-            return 200, {"deployment_profiles": [{"dp_name": f"dp-{n}", "auth_code": "SYNTHETIC-C08-DP-CODE", "status": "active"}
-                                                 for n in range(3)], "status": "success"}
+            return 200, {"deployment_profiles": [{"dp_name": f"dp-{n}", "auth_code": srv.auth_code if n == 0 else f"SYNTHETIC-C08-DP-CODE-{n}",
+                                                  "status": "active"} for n in range(3)], "status": "success"}
         if path == "/dlp/v2/api/data-patterns":
             page = int(query.get("page", 0))
             return 200, {"content": [{"id": f"pattern-{page}", "name": "Card numbers"}], "last": page >= 1,
                          "totalElements": 2, "number": page}
+        return 404, {"error": "not found"}
+
+    def write(self, method, path, query, record, mode):
+        srv = self.server
+        if record["auth"] != "bearer-issued":
+            return 401, {"error": "unauthorized"}
+        try:
+            body = json.loads(self.sent_body or b"{}")
+        except ValueError:
+            body = {}
+        with srv.lock:
+            if method == "POST" and path == "/aisec/v1/mgmt/topic":
+                srv.serial += 1
+                topic = dict(body, topic_id=f"33333333-3333-4333-8333-{srv.serial:012d}", revision=1)
+                topic.setdefault("description", "")
+                srv.topics.append(topic)
+                return 200, topic
+            if method == "PUT" and path.startswith("/aisec/v1/mgmt/topic/uuid/"):
+                tid = path.rsplit("/", 1)[1]
+                for i, t in enumerate(srv.topics):
+                    if t["topic_id"] == tid:
+                        updated = dict(body, topic_id=tid, revision=t.get("revision", 0) + 1)
+                        updated.setdefault("description", "")
+                        srv.topics[i] = updated
+                        return 200, updated
+                return 404, {"error": "not found"}
+            if method == "DELETE" and path.startswith("/aisec/v1/mgmt/topic/"):
+                tid = path.rsplit("/", 1)[1]
+                srv.topics = [t for t in srv.topics if t["topic_id"] != tid]
+                return 200, {"message": "deleted"}
+            if method == "POST" and path == "/aisec/v1/mgmt/apikey":
+                srv.serial += 1
+                secret = f"SYNTHETIC-C09-ONE-TIME-{srv.serial:04d}-{base64.b32encode(hashlib.sha256(str(srv.serial).encode()).digest()[:10]).decode()}"
+                key = {"api_key_id": f"key-{srv.serial + 1}", "api_key_name": body.get("api_key_name"),
+                       "cust_app": body.get("cust_app"), "api_key_last8": secret[-8:],
+                       "expiration": "2027-06-01T00:00:00Z", "revoked": False, "auth_code": body.get("auth_code", "")}
+                srv.keys.append(key)
+                if not any(a["app_name"] == body.get("cust_app") for a in srv.apps):
+                    srv.apps.append({"customer_appId": f"app-{srv.serial + 1}", "app_name": body.get("cust_app"),
+                                     "cloud_provider": body.get("cust_cloud_provider"), "environment": body.get("cust_env")})
+                record["issuedSha256"] = hashlib.sha256(secret.encode()).hexdigest()
+                return 200, dict(key, api_key=secret)
+            if method == "POST" and path.startswith("/aisec/v1/mgmt/apikey/regenerate/"):
+                kid = path.rsplit("/", 1)[1]
+                for key in srv.keys:
+                    if key["api_key_id"] == kid:
+                        srv.serial += 1
+                        secret = f"SYNTHETIC-C09-ROTATED-{srv.serial:04d}-{base64.b32encode(hashlib.sha256(str(srv.serial).encode()).digest()[:10]).decode()}"
+                        key["api_key_last8"] = secret[-8:]
+                        record["issuedSha256"] = hashlib.sha256(secret.encode()).hexdigest()
+                        return 200, dict(key, api_key=secret)
+                return 404, {"error": "not found"}
+            if method == "DELETE" and path.startswith("/aisec/v1/mgmt/apikey/delete/"):
+                name = path.rsplit("/", 1)[1].replace("%20", " ")
+                srv.keys = [k for k in srv.keys if k["api_key_name"] != name]
+                return 200, {"message": "deleted"}
         return 404, {"error": "not found"}
 
     def respond(self, status, payload):
@@ -158,8 +242,21 @@ class Server(ThreadingHTTPServer):
         self.directory, self.client_id, self.secret, self.tsg = directory, client_id, secret, tsg
         self.log = os.path.join(directory, "requests.jsonl")
         self.lock = threading.Lock()
-        self.issued = set()
-        self.counter = 0
+        try:
+            with open(os.path.join(directory, "issued.json")) as f:
+                self.issued = set(json.load(f))
+        except (OSError, ValueError):
+            self.issued = set()
+        self.counter = len(self.issued) + 1000 * int(time.time() % 1000)
+        self.serial = 0
+        self.auth_code = "SYNTHETIC-C08-DP-CODE"
+        self.topics = [{"topic_id": "11111111-1111-4111-8111-111111111111", "topic_name": "Finance",
+                        "revision": 1, "description": "Money talk"}]
+        self.apps = [{"customer_appId": "app-1", "tsg_id": tsg, "app_name": "Support bot",
+                      "cloud_provider": "aws", "environment": "production"}]
+        self.keys = [{"api_key_id": "key-1", "api_key_name": "Runtime", "api_key_last8": "abcd1234",
+                      "api_key": "SYNTHETIC-C08-KEY-VALUE", "auth_code": "SYNTHETIC-C08-AUTH-CODE", "cust_app": "Support bot",
+                      "expiration": "2027-01-01T00:00:00Z", "revoked": False, "status": "FUTURE_STATUS"}]
 
     def mode(self):
         try:

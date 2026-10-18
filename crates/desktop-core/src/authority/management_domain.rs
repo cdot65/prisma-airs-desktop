@@ -14,7 +14,8 @@ use tokio::time::Instant;
 use super::{Refusal, ScanCapability, State};
 use crate::context::ContextRef;
 use crate::management::{
-    BindingCell, ManagementFailure, ManagementJob, ManagementRequest, ManagementResult, ResultSlot,
+    BindingCell, BindingSource, ManagementFailure, ManagementJob, ManagementRequest,
+    ManagementResult, ResultSlot,
 };
 use crate::runtime::{OperationId, OperationState, Outcome, Settlement};
 use crate::vault::SessionVault;
@@ -100,17 +101,17 @@ impl State {
 
     /// Admits one management read for the active tenant's management
     /// capability. The scan key is never consulted.
-    pub(super) fn admit_management(
+    /// The active tenant's management binding inputs, checked: a ready
+    /// management credential, its client ID and TSG, and the configured
+    /// token origin equal to the one the credential was stored for. The scan
+    /// key is never consulted.
+    pub(super) fn binding_source(
         &mut self,
-        context: ContextRef,
-        request: ManagementRequest,
+        context: &ContextRef,
         keychain: Arc<dyn super::CredentialStore>,
         session_vault: Arc<SessionVault>,
-    ) -> Result<(OperationId, Vec<crate::runtime::Start>), Refusal> {
-        let tenant = self.check_context(&context)?;
-        if !request.is_valid() {
-            return Err(Refusal::InvalidInput);
-        }
+    ) -> Result<BindingSource, Refusal> {
+        let tenant = self.check_context(context)?;
         let current = self.tenant(&tenant).ok_or(Refusal::StaleContext)?;
         let (record, mode, destination) = match &current.management {
             ScanCapability::Ready {
@@ -141,9 +142,8 @@ impl State {
             .ok_or(Refusal::CapabilityMissing)?
             .for_admission()
             .map_err(|_| Refusal::CapabilityMissing)?;
-        let (session, binding) = self.management_binding(&context);
-        let slot: ResultSlot = Arc::default();
-        let job = ManagementJob {
+        let (session, binding) = self.management_binding(context);
+        Ok(BindingSource {
             keychain,
             session_vault,
             record,
@@ -154,6 +154,26 @@ impl State {
             transport,
             session,
             binding,
+        })
+    }
+
+    /// Admits one management read for the active tenant's management
+    /// capability.
+    pub(super) fn admit_management(
+        &mut self,
+        context: ContextRef,
+        request: ManagementRequest,
+        keychain: Arc<dyn super::CredentialStore>,
+        session_vault: Arc<SessionVault>,
+    ) -> Result<(OperationId, Vec<crate::runtime::Start>), Refusal> {
+        self.check_context(&context)?;
+        if !request.is_valid() {
+            return Err(Refusal::InvalidInput);
+        }
+        let source = self.binding_source(&context, keychain, session_vault)?;
+        let slot: ResultSlot = Arc::default();
+        let job = ManagementJob {
+            source,
             request,
             slot: Arc::clone(&slot),
         };
@@ -225,10 +245,32 @@ impl State {
             .find(|r| &r.operation == operation && !r.observed)
             .ok_or(Refusal::InvalidInput)?;
         record.observed = true;
+        // A result whose context retired before it was observed is withdrawn
+        // (it may have settled while the context was current).
+        if record.settled
+            && self.active_ref.as_ref() != Some(&record.context)
+            && let Ok(mut slot) = record.cell.result.lock()
+            && let Some(result) = slot.take()
+        {
+            *slot = Some(withdrawn(result));
+        }
         let handle = ManagementHandle(Arc::clone(&record.cell));
         if record.settled {
             self.sync_management_calls();
         }
         Ok(handle)
+    }
+}
+
+/// What a retired context's undelivered result becomes: cancelled, keeping
+/// the remote outcome (a completed read did reach the service).
+fn withdrawn(result: ManagementResult) -> ManagementResult {
+    let outcome = match result {
+        ManagementResult::Failed { outcome, .. } => outcome,
+        _ => Outcome::Completed,
+    };
+    ManagementResult::Failed {
+        failure: ManagementFailure::Cancelled,
+        outcome,
     }
 }

@@ -526,6 +526,46 @@ case-by-case acceptance for chunks.
   chunks. `xtask complete` refuses a phase while any member chunk's current
   completion is owner-accepted.
 
+## D035 — Reviewed Runtime writes with an AppKit confirmation and secret sheet
+
+Decided in C09 (implementer decision, recorded for review).
+
+- C09 implements exactly v1's Runtime write subset (`bridge/src/protocol.ts`
+  allowed matrix at 74754c02): profiles and custom topics create, update and
+  delete; applications update and delete; API keys create, version, rotate
+  and delete; never force delete. v1's validation, authorship (the
+  management client ID), key-creation checks (application and key names
+  case-insensitively unique over a 40×25 walk, the one deployment profile's
+  auth code injected by the desktop), baseline and review digests, typed
+  confirmation ("CREATE" or the item name) and impact text are kept. Request
+  bodies are normalized with the SDK's own request contracts
+  (`scm_sdk::validation::parse`), the Rust counterpart of v1's zod parse.
+- The SDK has no conditional-write precondition, so a change re-reads its
+  baseline immediately before writing and refuses (not sent) when the
+  review digest differs, as v1 did; a 409 is a conflict. An external writer
+  can still race the final read; atomic conflict prevention is not claimed.
+  Writes are never retried; a transport failure's outcome stays unknown.
+  After a write the item is read back by the operation (v1 relied on the
+  write reply), and the readback never changes the write's outcome.
+- RequestApply opens an `NSAlert` sheet on the main window built on the main
+  thread with `objc2` 0.6.5, `objc2-app-kit` 0.3.2, `objc2-foundation` 0.3.2
+  and `block2` 0.6.2 (the lock's versions; DESIGN named objc2 0.6.3 before
+  the pin moved). These become shipping macOS dependencies limited to the
+  NSAlert, NSWindow, NSButton, NSTextField and NSPasteboard classes; WebKit
+  capture stays fixture-only. The sheet's completion resolves a private,
+  nonce-bound future; no wire intent can carry an approval. Destructive
+  changes (delete, rotate) make Cancel the Return default.
+- One-time keys (`api_key` in create/version/rotate replies; the SDK models
+  it as a plain String) move into a zeroizing buffer at once and are never
+  serialized to a snapshot, log or store; the native secret sheet shows one
+  on request, ends itself after 60 s, and Copy and Close writes it with a
+  random owner marker and the nspasteboard.org concealed/transient hints,
+  clearing it after 60 s only if the marker and change count are still
+  ours. The text field's own string copy cannot be zeroized; it is cleared
+  when the sheet ends.
+- v1's directional and customized prompt-injection options were local
+  previews with no API fields; they are not part of any draft.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

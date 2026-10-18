@@ -772,6 +772,17 @@
           "test-fixtures",
           "--test",
           "shell_controller"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
         ]
       ],
       "rust_target": "management_reads",
@@ -806,23 +817,6 @@
         "--test",
         "runtime_changes"
       ],
-      "native_prepare": [
-        "cargo",
-        "run",
-        "--locked",
-        "-p",
-        "xtask",
-        "--",
-        "native-prepare",
-        "--chunk",
-        "C09",
-        "--target",
-        "aarch64-apple-darwin",
-        "--features",
-        "test-fixtures"
-      ],
-      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only",
       "frontend_commands": [
         [
           "pnpm",
@@ -833,7 +827,41 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/runtime/review-apply.test.tsx"
+          "src/features/runtime/review-apply.test.tsx",
+          "src/features/administration/administration-view.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/shell/desktop-shell.test.tsx"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "management_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
         ]
       ],
       "host_commands": [
@@ -859,7 +887,24 @@
           "--test",
           "clipboard_secret"
         ]
-      ]
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C09",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only"
     },
     "C10": {
       "rust_target": "dlp_subset",

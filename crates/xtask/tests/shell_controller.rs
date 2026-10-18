@@ -1520,8 +1520,15 @@ fn phases_require_integrated_native_runs_and_acceptance() {
         .collect();
     let error =
         xtask::evidence::required_checks(&inventory, &later).expect_err("P03 inventories pending");
+    // The first member still without an inventory (it moves as chunks land).
+    let inventories: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&inventory).expect("inventory")).expect("json");
+    let pending = later
+        .iter()
+        .find(|c| inventories["chunks"].get(c.as_str()).is_none())
+        .expect("a P03 member without an inventory");
     assert!(
-        error.to_string().contains("C09"),
+        error.to_string().contains(pending.as_str()),
         "a phase fails closed until each member has an inventory: {error}"
     );
 }
