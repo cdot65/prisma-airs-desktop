@@ -1,0 +1,77 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+ ✓ src/contracts/invoke.test.ts (10 tests) 86ms
+ ✓ src/features/academy/desktop-link.test.ts (10 tests) 12ms
+ ✓ src/features/academy/learner-provider.test.tsx (2 tests) 67ms
+ ✓ src/features/tenants/reset.test.tsx (5 tests) 1603ms
+   ✓ reset local data > asks for confirmation before dispatching a reset  522ms
+   ✓ reset local data > explains a stop while removing the document after the keys were deleted  316ms
+   ✓ reset local data > says while resetting that keys are out of use  347ms
+ ✓ src/contracts/snapshot-validation.test.ts (24 tests) 45ms
+ ✓ src/features/academy/trpc-link.test.ts (7 tests) 81ms
+ ✓ src/features/tenants/profile-import.test.tsx (6 tests) 2225ms
+   ✓ profile import > asks the desktop for its native sheet and never reads files in the page  525ms
+   ✓ profile import > shows the native preview faithfully and sends only the explicit selection  375ms
+   ✓ profile import > discards a preview without importing  511ms
+   ✓ profile import > shows imported tenants without keys and reports a consumed review  302ms
+ ✓ src/features/academy/academy-account.test.tsx (8 tests) 2506ms
+   ✓ Academy account > starts device sign-in, shows the code, opens only the native page and signs out  846ms
+   ✓ Academy account > cancels a sign-in in progress  323ms
+   ✓ Academy account > explains { state: 'failed', failure: 'denied', vault: null, displayName: null } with an explicit way forward  337ms
+ ✓ src/features/academy/academy-view.test.tsx (16 tests) 2655ms
+   ✓ lesson links > routes learner paths in place and keeps other addresses out of the window  354ms
+   ✓ desktop host capabilities > previews a lab instead of mounting a runner  428ms
+   ✓ learner effects across generations > never shows or watches a previous account completion in the next generation  360ms
+   ✓ learner failures through the desktop transport > says a knowledge-check submission may have been recorded when the server fails after receiving it  316ms
+ ✓ src/shell/desktop-shell.test.tsx (10 tests) 3297ms
+   ✓ desktop shell > lists every native feature and shows unavailable destinations explicitly  926ms
+   ✓ desktop shell > supports keyboard-only navigation and moves focus to the new heading  358ms
+   ✓ desktop shell > hands focus to the Academy page heading once the page renders  1312ms
+ ✓ src/features/tenants/credential-entry.test.tsx (9 tests) 3322ms
+   ✓ scan-key entry > captures the key typed at submission time and clears the field before awaiting  1002ms
+   ✓ scan-key entry > keeps the key out of snapshots, observations, the page and browser storage  621ms
+   ✓ scan-key entry > sends the session-only choice when selected  598ms
+   ✓ scan-key entry > reports a refusal without claiming the key was saved  396ms
+ ✓ src/features/runtime/scan-submit.test.tsx (15 tests) 3813ms
+   ✓ runtime scan submission > captures the values present at click time and sends one literal scan intent  1047ms
+   ✓ runtime scan submission > sends a profile by ID only when it is a UUID  750ms
+   ✓ runtime scan submission > requires an explicit profile and some content  400ms
+   ✓ runtime scan submission > sends working v1 inputs and the largest accepted request, and refuses past the 2 MiB and 8 MiB ceilings  821ms
+
+ Test Files  12 passed (12)
+      Tests  122 passed (122)
+   Start at  19:37:40
+   Duration  7.23s (transform 2.07s, setup 4.64s, collect 17.70s, tests 19.71s, environment 8.90s, prepare 970ms)
+
+
+--- stderr ---
+stderr | src/shell/desktop-shell.test.tsx > desktop shell > lists every native feature and shows unavailable destinations explicitly
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+react-router@1.170.16_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | src/shell/desktop-shell.test.tsx > desktop shell > hands focus to the Academy page heading once the page renders
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+react-router@1.170.16_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | src/features/academy/academy-view.test.tsx > page failures > shows a plain failure view without the error text when a learner page throws
+Warning: Error in route match: /units/$unitId/units/u-bad
+

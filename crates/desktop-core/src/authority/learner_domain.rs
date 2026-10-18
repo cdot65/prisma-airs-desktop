@@ -429,6 +429,7 @@ impl State {
             LearnerPhase::SignedIn => match (saved, &self.learner_ref) {
                 (Some(saved), Some(learner)) => AcademyView::SignedIn {
                     display_name: saved.display_name.clone(),
+                    account_id: saved.account_id.clone(),
                     learner: learner.clone(),
                 },
                 _ => AcademyView::SignedOut,
@@ -486,7 +487,7 @@ impl State {
             return Vec::new();
         };
         let client = self.academy_client();
-        let starts = self.reissue_learner(true);
+        let starts = self.reissue_learner();
         match (client, self.learner_ref.clone()) {
             (Some(client), Some(learner)) => {
                 self.learner_session = Some(LearnerSession::new(
@@ -509,11 +510,13 @@ impl State {
         starts
     }
 
-    /// Issues a new learner reference (or none) and retires every learner
-    /// operation bound to the previous one.
-    pub(super) fn reissue_learner(&mut self, signed_in: bool) -> Vec<crate::runtime::Start> {
+    /// Issues a new learner reference (an account or the guest generation)
+    /// and retires every learner operation bound to the previous one.
+    pub(super) fn reissue_learner(&mut self) -> Vec<crate::runtime::Start> {
         self.learner_epoch += 1;
-        self.learner_ref = signed_in.then(|| LearnerRef::issue(&self.salt, self.learner_epoch));
+        // Signed out, the reference names a guest generation (public catalog
+        // reads only); either way a new value retires the previous one.
+        self.learner_ref = Some(LearnerRef::issue(&self.salt, self.learner_epoch));
         let keep = self.learner_ref.as_ref().map(|l| l.as_str().to_owned());
         let starts =
             self.operations
@@ -536,7 +539,7 @@ impl State {
         self.learner = LearnerPhase::SignedOut;
         let session = self.learner_session.take();
         self.data.learner = None;
-        (self.reissue_learner(false), session)
+        (self.reissue_learner(), session)
     }
 
     /// Delivers settled learner call results to their single observation.
@@ -626,10 +629,13 @@ impl State {
         {
             return Err(Refusal::StaleContext);
         }
-        if !matches!(self.learner, LearnerPhase::SignedIn) {
-            return Err(Refusal::CapabilityMissing);
-        }
-        if crate::learner::procedure_kind(procedure) != Some(kind) {
+        // With the account credential: the pinned desktop-token allowlist,
+        // signed in only. Without any credential: the public catalog set
+        // (guests, and public-only procedures for signed-in learners).
+        let signed_in = matches!(self.learner, LearnerPhase::SignedIn);
+        let authenticated = signed_in && crate::learner::procedure_kind(procedure) == Some(kind);
+        let public = crate::learner::is_public(procedure) && kind == ProcedureKind::Query;
+        if !authenticated && !public {
             return Err(Refusal::CapabilityMissing);
         }
         if let Some(input) = &input
@@ -638,14 +644,24 @@ impl State {
         {
             return Err(Refusal::InvalidInput);
         }
-        let session = self
-            .learner_session
-            .clone()
-            .ok_or(Refusal::CapabilityMissing)?;
+        let session = if authenticated {
+            Some(
+                self.learner_session
+                    .clone()
+                    .ok_or(Refusal::CapabilityMissing)?,
+            )
+        } else {
+            None
+        };
+        let client = match &session {
+            Some(session) => session.client.clone(),
+            None => self.academy_client().ok_or(Refusal::CapabilityMissing)?,
+        };
         let slot: Slot = Arc::default();
         let bytes = input.as_ref().map_or(0, String::len);
         let job = CallJob {
             session,
+            client,
             procedure: procedure.to_owned(),
             kind,
             input,
@@ -667,7 +683,9 @@ impl State {
 }
 
 struct CallJob {
-    session: Arc<LearnerSession>,
+    /// None for a public call (no credential is ever attached).
+    session: Option<Arc<LearnerSession>>,
+    client: AcademyClient,
     procedure: String,
     kind: ProcedureKind,
     input: Option<String>,
@@ -690,16 +708,19 @@ impl CallJob {
         force: bool,
         claim: &Claim,
     ) -> Result<Result<CallReply, CallFailure>, CallFailure> {
-        let token = tokio::select! {
-            token = self.session.access(force) => token?,
-            () = claim.cancel.cancelled() => return Err(CallFailure::Cancelled),
+        let token = match &self.session {
+            Some(session) => Some(tokio::select! {
+                token = session.access(force) => token?,
+                () = claim.cancel.cancelled() => return Err(CallFailure::Cancelled),
+            }),
+            None => None,
         };
         let remaining = claim
             .deadline
             .saturating_duration_since(Instant::now())
             .min(CALL_TIMEOUT);
         Ok(tokio::select! {
-            reply = self.session.client.call(&self.procedure, self.kind, self.input.as_deref(), &token, remaining) => reply,
+            reply = self.client.call(&self.procedure, self.kind, self.input.as_deref(), token.as_deref().map(|t| t.as_str()), remaining) => reply,
             () = claim.cancel.cancelled() => Err(CallFailure::Cancelled),
         })
     }
@@ -716,7 +737,7 @@ impl CallJob {
         // A refused token is renewed once. A query is then asked again; a
         // mutation is never resent (the operator retries explicitly) and its
         // refusal is returned as is.
-        if matches!(reply, Ok(CallReply::Error { status: 401, .. })) {
+        if self.session.is_some() && matches!(reply, Ok(CallReply::Error { status: 401, .. })) {
             match self.kind {
                 ProcedureKind::Query => match self.send(true, &claim).await {
                     Ok(again) => reply = again,
@@ -726,7 +747,9 @@ impl CallJob {
                     }
                 },
                 ProcedureKind::Mutation => {
-                    let _ = self.session.access(true).await;
+                    if let Some(session) = &self.session {
+                        let _ = session.access(true).await;
+                    }
                 }
             }
         }
@@ -817,7 +840,7 @@ pub(super) async fn sign_in(inner: Arc<Inner>, flow: u64, client: AcademyClient)
             "desktop.me",
             ProcedureKind::Query,
             None,
-            &tokens.access,
+            Some(&tokens.access),
             CALL_TIMEOUT,
         )
         .await;
@@ -884,7 +907,7 @@ pub(super) async fn sign_in(inner: Arc<Inner>, flow: u64, client: AcademyClient)
         state
             .save_with(&before)
             .map_err(|_| Abandon::Failed(VaultError::Unavailable))?;
-        let starts = state.reissue_learner(true);
+        let starts = state.reissue_learner();
         let learner = state.learner_ref.clone().expect("issued");
         state.learner_session = Some(LearnerSession::new(
             learner,

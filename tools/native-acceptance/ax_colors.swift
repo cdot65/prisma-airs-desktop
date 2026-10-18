@@ -1,8 +1,9 @@
 // Reads the text colors WebKit exposes through accessibility for the fixture
 // window's web area, without screen capture. It asks the AXWebArea for an
 // attributed string over its whole text-marker range and reports the distinct
-// foreground/background colors with sample text.
-// Usage: swift ax_colors.swift <pid>
+// foreground/background colors with sample text. With a needle, it reports
+// the colors of the first run containing that text instead.
+// Usage: swift ax_colors.swift <pid> [needle]
 import AppKit
 import ApplicationServices
 
@@ -36,6 +37,19 @@ guard let area = web,
       let text = param(area, "AXAttributedStringForTextMarkerRange", range) as? NSAttributedString else {
     print("{\"error\":\"web area attributed text unavailable\"}")
     exit(1)
+}
+if CommandLine.arguments.count > 2 {
+    let needle = CommandLine.arguments[2]
+    let found = (text.string as NSString).range(of: needle)
+    var result: [String: Any] = ["needle": needle, "found": found.location != NSNotFound]
+    if found.location != NSNotFound {
+        let attrs = text.attributes(at: found.location, effectiveRange: nil)
+        result["foreground"] = hex(attrs[NSAttributedString.Key("AXForegroundColor")]) ?? "none"
+        result["background"] = hex(attrs[NSAttributedString.Key("AXBackgroundColor")]) ?? "none"
+    }
+    let data = try! JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
+    print(String(data: data, encoding: .utf8)!)
+    exit(0)
 }
 var runs: [String: [String: Any]] = [:]
 text.enumerateAttributes(in: NSRange(location: 0, length: text.length)) { attrs, r, _ in

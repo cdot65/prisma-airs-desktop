@@ -10,7 +10,12 @@ export type AcademyView = { "state": "signedOut" } | { "state": "starting" } | {
 /**
  * Seconds until the code expires, as of this snapshot.
  */
-expiresIn: number, } | { "state": "completing" } | { "state": "signedIn", displayName: string, learner: LearnerRef, } | { "state": "failed", failure: AcademyFailure, vault: VaultError | null, 
+expiresIn: number, } | { "state": "completing" } | { "state": "signedIn", displayName: string, 
+/**
+ * Academy's `user_…` account id (not a credential); learner pages
+ * key per-learner local state by it.
+ */
+accountId: string, learner: LearnerRef, } | { "state": "failed", failure: AcademyFailure, vault: VaultError | null, 
 /**
  * A saved account whose session needs signing in again.
  */

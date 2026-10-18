@@ -10,7 +10,7 @@
       },
       {
         "id": "C01-N02",
-        "check": "Native menus: app menu (About, Settings\u2026 Cmd+,, Hide, Quit), Edit, View (Command Palette\u2026 Cmd+K, Appearance, zoom), Go (destinations Cmd+1\u2013Cmd+9), Window."
+        "check": "Native menus: app menu (About, Settings… Cmd+,, Hide, Quit), Edit, View (Command Palette… Cmd+K, Appearance, zoom), Go (destinations Cmd+1–Cmd+9), Window."
       },
       {
         "id": "C01-N03",
@@ -96,7 +96,7 @@
       },
       {
         "id": "C02-N10",
-        "check": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make \u2026 active', 'Delete \u2026'); a refusal is exposed as an alert."
+        "check": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make … active', 'Delete …'); a refusal is exposed as an alert."
       },
       {
         "id": "C02-N11",
@@ -114,7 +114,7 @@
       },
       {
         "id": "C03-N02",
-        "check": "Real UI submission through Tauri \u2192 Rust \u2192 SDK to the synthetic TLS endpoint: the endpoint receives exactly one POST /v1/scan/sync/request (application/json, x-pan-token equal to the synthetic key, x-payload-hash the HMAC-SHA256 of the received body, no Authorization header) carrying the entered profile name, prompt and application name; the window shows 'Blocked' with the verbatim action 'block', category 'malicious' and the reported detectors (including an unrecognized one)."
+        "check": "Real UI submission through Tauri → Rust → SDK to the synthetic TLS endpoint: the endpoint receives exactly one POST /v1/scan/sync/request (application/json, x-pan-token equal to the synthetic key, x-payload-hash the HMAC-SHA256 of the received body, no Authorization header) carrying the entered profile name, prompt and application name; the window shows 'Blocked' with the verbatim action 'block', category 'malicious' and the reported detectors (including an unrecognized one)."
       },
       {
         "id": "C03-N03",
@@ -168,7 +168,7 @@
       },
       {
         "id": "C04-N02",
-        "check": "Starting sign-in shows the device code (accessible name 'Sign-in code \u2026') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL."
+        "check": "Starting sign-in shows the device code (accessible name 'Sign-in code …') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL."
       },
       {
         "id": "C04-N03",
@@ -209,6 +209,68 @@
       {
         "id": "C04-N12",
         "check": "Reset local data signs the Academy account out and empties the learner Keychain namespace."
+      }
+    ],
+    "C05": [
+      {
+        "id": "C05-N01",
+        "check": "Signed out, the Academy destination shows Academy's own catalog ('What will you take up next?') with a note that the learner is browsing as a guest; the endpoint receives only public catalog procedures, none with an Authorization header, and no identity-provider requests."
+      },
+      {
+        "id": "C05-N02",
+        "check": "After signing in, the Academy catalog is read again under the account without the guest note; requests carry the account credential exactly for procedures on the desktop account allowlist."
+      },
+      {
+        "id": "C05-N03",
+        "check": "From the catalog's Courses filter, the course page and its module units open; a lesson exposes its heading and first paragraph and all section headings of a 50 KiB lesson; the trail 'Learn › <course>' links back to the course."
+      },
+      {
+        "id": "C05-N04",
+        "check": "A lesson diagram shows its pre-rendered image ('Lesson diagram') with its source under a disclosure, a diagram without an artifact shows its source, and no diagram video is requested; an external lesson link opens nothing, keeps the window on the lesson and states it was not opened; an in-page anchor stays on the lesson; a learner-path link routes to the catalog in place."
+      },
+      {
+        "id": "C05-N05",
+        "check": "Signed in, a knowledge check starts, takes an answer and submits through the endpoint with the literal fixture request bodies and the account credential; the server's grade ('You scored 100%', '1 of 1 correct') is shown; no answer key appears in any AX snapshot."
+      },
+      {
+        "id": "C05-N06",
+        "check": "As a guest, starting a knowledge check says 'Sign in to take this knowledge check.' and sends nothing to Academy."
+      },
+      {
+        "id": "C05-N07",
+        "check": "A hands-on lab unit is previewed with its title and brief and says no lab sandbox was started; no lab start, step or submit request is made."
+      },
+      {
+        "id": "C05-N08",
+        "check": "Signing out while on a lesson returns the Academy destination to the catalog as a guest with only uncredentialed calls; signing in again reads the catalog under the account."
+      },
+      {
+        "id": "C05-N09",
+        "check": "Navigating Academy → Runtime Security → Harness placeholder shows no learner chrome or effects (XP, trail, reading progress, knowledge check, lab, guest note, probe) outside Academy, and no learner request is made while away."
+      },
+      {
+        "id": "C05-N10",
+        "check": "Keyboard only: Tab reaches the Courses filter and the course link, Return opens the course with focus on its heading, Tab reaches a lesson link, and Return opens the lesson with focus on its heading."
+      },
+      {
+        "id": "C05-N11",
+        "check": "In View > Appearance Dark and Light the lesson text uses the light Gruvbox ink and the dark Paper ink respectively (AX text colors)."
+      },
+      {
+        "id": "C05-N12",
+        "check": "At 200% zoom and at the minimum window size, a lesson's 'Complete & continue' control is reachable by Tab and lies inside the window clear of the bottom fade."
+      },
+      {
+        "id": "C05-N13",
+        "check": "Reset local data while signed in signs the learner out, empties the learner Keychain namespace and returns Academy to the guest catalog."
+      },
+      {
+        "id": "C05-N14",
+        "check": "Content access as Academy decides it: a guest at members-only or progression-locked content sees Academy's sign-in gate (endpoint 401, no credential); signed in, locked content shows 'This content is locked' with its progression reason (endpoint 403 FORBIDDEN with the domain code), members-only content opens, and retired content says 'Unit not found.' without any gate."
+      },
+      {
+        "id": "C05-N15",
+        "check": "Failures stay visible and truthful: a guest pressing 'Complete & continue' is asked to sign in, stays on the lesson and sends nothing; a knowledge-check submission the server fails after receiving it says Academy may have recorded it, keeps the answer, hides the server text and is sent once."
       }
     ]
   }

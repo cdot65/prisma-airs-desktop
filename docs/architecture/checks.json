@@ -592,6 +592,16 @@
           "--config",
           "vitest.config.ts",
           "src/features/academy/trpc-link.test.ts"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
         ]
       ]
     },

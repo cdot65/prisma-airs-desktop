@@ -294,11 +294,36 @@ pub fn all(
     })
 }
 
-/// The shared presentation package locations actually consumed by builds:
-/// the locked input subtree, the staged scratch copy and the copy installed
-/// into the desktop's node_modules. Each is hashed into the dependency
-/// fingerprint; editing any of them invalidates bound receipts.
-pub const SHARED_PACKAGE: &str = "packages/presentation";
+/// The Academy packages the desktop installs from the staged input
+/// (`file:` dependencies) and compiles: each one's locked input subtree, its
+/// staged scratch copy and the copy installed into the desktop's
+/// node_modules are hashed into the dependency fingerprint; editing any of
+/// them invalidates bound receipts. The presentation package keeps its
+/// original labels.
+pub const SHARED_PACKAGES: [(&str, &str); 3] = [
+    ("presentation", "packages/presentation"),
+    ("learner", "packages/learner"),
+    ("shared", "packages/shared"),
+];
+
+/// Files a package's own checks generate in scratch; never consumed.
+const PACKAGE_GENERATED: [&str; 1] = ["tsconfig.tsbuildinfo"];
+
+fn package_hash(dir: &Path) -> Result<String> {
+    let mut entries = Vec::new();
+    collect_tree(dir, dir, &["node_modules"], &mut entries)?;
+    entries.retain(|e| !PACKAGE_GENERATED.contains(&e.path.as_str()));
+    entries.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(inventory_hash(&entries))
+}
+
+fn package_label(name: &str, place: &str) -> String {
+    if name == "presentation" {
+        format!("shared/{place}")
+    } else {
+        format!("shared/{name}/{place}")
+    }
+}
 
 pub fn consumed_shared(repo: &Repo) -> Result<Vec<(String, String)>> {
     let mut out = Vec::new();
@@ -311,30 +336,27 @@ pub fn consumed_shared(repo: &Repo) -> Result<Vec<(String, String)>> {
             "absent".to_owned()
         },
     ));
-    let locations = [
-        (
-            "shared/input",
-            repo.join(".inputs/academy").join(SHARED_PACKAGE),
-        ),
-        (
-            "shared/scratch",
-            repo.join(".work/academy").join(SHARED_PACKAGE),
-        ),
-        (
-            "shared/installed",
-            std::fs::canonicalize(
-                repo.join("apps/desktop/node_modules/@ai-security-academy/presentation"),
-            )
-            .unwrap_or_default(),
-        ),
-    ];
-    for (label, path) in locations {
-        let hash = if path.is_dir() {
-            tree_hash_excluding(&path, &["node_modules"])?
-        } else {
-            "absent".to_owned()
-        };
-        out.push((label.to_owned(), hash));
+    for (name, package) in SHARED_PACKAGES {
+        let locations = [
+            ("input", repo.join(".inputs/academy").join(package)),
+            ("scratch", repo.join(".work/academy").join(package)),
+            (
+                "installed",
+                std::fs::canonicalize(
+                    repo.join("apps/desktop/node_modules/@ai-security-academy")
+                        .join(name),
+                )
+                .unwrap_or_default(),
+            ),
+        ];
+        for (place, path) in locations {
+            let hash = if path.is_dir() {
+                package_hash(&path)?
+            } else {
+                "absent".to_owned()
+            };
+            out.push((package_label(name, place), hash));
+        }
     }
     Ok(out)
 }
@@ -366,8 +388,8 @@ pub fn academy_consumer_hash(dir: &Path) -> Result<String> {
     Ok(inventory_hash(&entries))
 }
 
-/// Fails unless the staged web scratch tree, the staged package and the
-/// installed package all equal the locked input.
+/// Fails unless the staged web scratch tree and every consumed package's
+/// staged and installed copies equal the locked input.
 pub fn verify_consumed_shared(repo: &Repo) -> Result<()> {
     let input_tree = repo.join(".inputs/academy");
     let scratch_tree = repo.join(".work/academy");
@@ -379,19 +401,112 @@ pub fn verify_consumed_shared(repo: &Repo) -> Result<()> {
             ".work/academy differs from the locked Academy input (outside documented generated outputs); re-run shared-prepare",
         ));
     }
-    let hashes = consumed_shared(repo)?;
-    let input = &hashes[1].1;
-    if input == "absent" {
-        return Err(invalid(
-            "locked shared input .inputs/academy is absent; run fetch-inputs",
-        ));
-    }
-    for (label, hash) in &hashes[2..] {
-        if hash != input {
+    let hashes: BTreeMap<String, String> = consumed_shared(repo)?.into_iter().collect();
+    for (name, _) in SHARED_PACKAGES {
+        let input = &hashes[&package_label(name, "input")];
+        if input == "absent" {
             return Err(invalid(format!(
-                "{label} differs from the locked shared input; re-run shared-prepare and pnpm install"
+                "locked shared input for {name} is absent from .inputs/academy; run fetch-inputs"
             )));
+        }
+        for place in ["scratch", "installed"] {
+            let label = package_label(name, place);
+            if &hashes[&label] != input {
+                return Err(invalid(format!(
+                    "{label} differs from the locked shared input; re-run shared-prepare and pnpm install"
+                )));
+            }
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+
+    fn write(path: &Path, text: &str) {
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("dir");
+        std::fs::write(path, text).expect("write");
+    }
+
+    /// A checkout with the three Academy packages locked, staged and
+    /// installed identically.
+    fn checkout(tag: &str) -> (Repo, PathBuf) {
+        let root =
+            std::env::temp_dir().join(format!("airs-xtask-consumed-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for tree in [".inputs/academy", ".work/academy"] {
+            write(
+                &root.join(tree).join("package.json"),
+                "{\"name\":\"academy\"}",
+            );
+            for (_, package) in SHARED_PACKAGES {
+                write(
+                    &root.join(tree).join(package).join("src/index.ts"),
+                    "export const v = 1\n",
+                );
+            }
+        }
+        for (name, _) in SHARED_PACKAGES {
+            write(
+                &root
+                    .join("apps/desktop/node_modules/@ai-security-academy")
+                    .join(name)
+                    .join("src/index.ts"),
+                "export const v = 1\n",
+            );
+        }
+        (Repo::new(&root), root)
+    }
+
+    #[test]
+    fn every_installed_academy_package_is_fingerprinted_and_verified() {
+        let (repo, root) = checkout("verify");
+        verify_consumed_shared(&repo).expect("identical copies verify");
+        let before = consumed_shared(&repo).expect("hashes");
+        // A package's own generated build info in scratch is not consumed.
+        write(
+            &root.join(".work/academy/packages/shared/tsconfig.tsbuildinfo"),
+            "{}",
+        );
+        verify_consumed_shared(&repo).expect("generated build info ignored");
+        for name in ["learner", "shared", "presentation"] {
+            let file = root
+                .join("apps/desktop/node_modules/@ai-security-academy")
+                .join(name)
+                .join("src/index.ts");
+            write(&file, "export const v = 2\n");
+            let error = verify_consumed_shared(&repo)
+                .expect_err("altered installed copy")
+                .to_string();
+            let label = package_label(name, "installed");
+            assert!(error.contains(&label), "{error}");
+            assert_ne!(
+                consumed_shared(&repo).expect("hashes"),
+                before,
+                "{name} changes the fingerprint"
+            );
+            write(&file, "export const v = 1\n");
+        }
+        // A symlink in place of a file is not the same copy.
+        let file = root.join("apps/desktop/node_modules/@ai-security-academy/learner/src/index.ts");
+        let target = root.join("elsewhere.ts");
+        write(&target, "export const v = 1\n");
+        std::fs::remove_file(&file).expect("remove");
+        std::os::unix::fs::symlink(&target, &file).expect("symlink");
+        assert!(verify_consumed_shared(&repo).is_err(), "symlinked file");
+        // A missing installed package fails too.
+        std::fs::remove_dir_all(
+            root.join("apps/desktop/node_modules/@ai-security-academy/learner"),
+        )
+        .expect("remove");
+        assert!(
+            verify_consumed_shared(&repo).is_err(),
+            "absent installed copy"
+        );
+        std::fs::remove_dir_all(&root).expect("cleanup");
+    }
 }

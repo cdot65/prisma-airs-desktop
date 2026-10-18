@@ -25,6 +25,12 @@ export interface DesktopLinkOptions {
     client: DesktopClient
     /** The current learner reference, read at each operation. */
     learner: () => LearnerRef | null
+    /**
+     * Whether that reference is a signed-in account (false for the guest
+     * generation). A refused procedure then reads as Academy's own sign-in
+     * gate for a guest, and as not available on the desktop when signed in.
+     */
+    signedIn?: () => boolean
     transformer: Transformer
 }
 
@@ -103,9 +109,24 @@ export function desktopLink<TRouter extends AnyRouter>(options: DesktopLinkOptio
                         )
                     }
                     if (response.outcome === 'refusal') {
+                        if (response.refusal === 'capabilityMissing') {
+                            // Not Academy's FORBIDDEN (a grant or progression
+                            // gate): a guest is asked to sign in, a signed-in
+                            // learner is told the desktop does not carry it.
+                            const guest = options.signedIn ? !options.signedIn() : false
+                            throw guest
+                                ? desktopError('Sign in to Academy to do this.', 'UNAUTHORIZED', 'notSent', {
+                                      httpStatus: 401,
+                                      failure: response.refusal,
+                                  })
+                                : desktopError(REFUSAL_TEXT.capabilityMissing!, 'METHOD_NOT_SUPPORTED', 'notSent', {
+                                      httpStatus: 405,
+                                      failure: response.refusal,
+                                  })
+                        }
                         throw desktopError(
                             REFUSAL_TEXT[response.refusal] ?? 'The request was refused.',
-                            response.refusal === 'capabilityMissing' ? 'FORBIDDEN' : 'PRECONDITION_FAILED',
+                            'PRECONDITION_FAILED',
                             'notSent',
                             { failure: response.refusal }
                         )

@@ -35,6 +35,8 @@ ROOT = os.getcwd()
 # evidence (AIRS_NATIVE_SUBJECT=Pxx); tools/native-acceptance/merge_phase.py
 # then combines the per-chunk records.
 SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C01")
+# Academy's catalog heading (the destination is available since C05).
+ACADEMY_HEADING = "What will you take up next?"
 EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
 NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C01" else "native-C01")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C01" else "native-acceptance-C01.json")
@@ -242,7 +244,8 @@ def evaluate_flows(run):
     reached = any(t and t["role"] == "AXButton" and (t["label"] or "").startswith("Academy") for t in tabs)
     current_seen = any(t and t.get("current") == "page" for t in tabs) or any(
         n.get("current") == "page" for n in step(run, "launch")["snapshot"])
-    results["C01-N03-keyboard"] = (reached and enter["role"] == "AXHeading" and enter["label"] == "Academy" and current_seen,
+    # Since C05 Academy is available: Return lands on its catalog heading.
+    results["C01-N03-keyboard"] = (reached and enter["role"] == "AXHeading" and enter["label"] == ACADEMY_HEADING and current_seen,
                                    f"Tab sequence {[t and t['label'] for t in tabs]}; Return focused {enter['role']} {enter['label']!r}; AXARIACurrent=page exposed: {current_seen}")
     pal = step(run, "palette")["observation"]
     esc = step(run, "palette-escape")["observation"]
@@ -252,18 +255,19 @@ def evaluate_flows(run):
     results["C01-N04"] = (ok, f"Cmd+K opened the dialog; typing 'gate' left options {pal['optionsAfterTyping']}; Return closed it and focused heading {pal['focusAfterReturn']['label']!r}; Escape returned focus to {esc['after']['label']!r} (was {esc['before']['label']!r})")
     ga = step(run, "go-academy")["observation"]["focused"]
     gs = step(run, "go-settings-with-palette-open")["observation"]
-    results["C01-N05"] = (ga["label"] == "Academy" and gs["focused"]["label"] == "Settings" and not gs["dialogOpen"],
+    results["C01-N05"] = (ga["label"] == ACADEMY_HEADING and gs["focused"]["label"] == "Settings" and not gs["dialogOpen"],
                           f"Cmd+2 focused heading {ga['label']!r}; Cmd+K then Cmd+, focused {gs['focused']['label']!r} with palette open={gs['dialogOpen']}")
-    # Runtime Security is available since C03 (its view's heading is shown);
-    # every other product destination is still unavailable.
-    expected = {"Academy": "C05", "Administration": "C08", "Sessions & Reports": "C11",
+    # Runtime Security is available since C03 and Academy since C05 (their
+    # views' headings are shown); every other product destination is still
+    # unavailable.
+    expected = {"Administration": "C08", "Sessions & Reports": "C11",
                 "Case Library": "C12", "Red Team & Models": "C13", "API Client": "C14", "AI Gateway": "C16",
                 "Harness": "C19", "Import from v1": "C23"}
-    available = {"Scan a prompt or response"}
+    available = {"Scan a prompt or response", ACADEMY_HEADING}
     dests = step(run, "destinations")["observation"]
     unavailable = [d for d in dests if d["heading"] not in available]
-    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 1
-          and len(unavailable) == 9 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
+    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 2
+          and len(unavailable) == 8 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
     results["C01-N06"] = (ok, "; ".join(f"{d['shortcut']}: {d['heading']} ({', '.join(d['planned'])})" for d in dests))
     dark = step(run, "appearance-view-dark")["observation"]
     light = step(run, "appearance-view-light")["observation"]
@@ -278,7 +282,7 @@ def evaluate_flows(run):
     buttons = [n for n in snap if n["role"] == "AXButton" and n["depth"] > 3]
     named = [b for b in buttons if b["label"]]
     heads = [n for n in snap if n["role"] == "AXHeading"]
-    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 9 and len(heads) == 1
+    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 8 and len(heads) == 1
     results["C01-N08"] = (ok, f"inspected AXRole, AXSubrole, AXTitle/AXDescription/AXValue, AXARIACurrent, AXFocused and tree order: 'Features' navigation landmark present={bool(nav)}; {len(named)}/{len(buttons)} buttons named; {sum('Not available in this build' in (b['label'] or '') for b in buttons)} destinations announce 'Not available in this build'; headings {[h['label'] for h in heads]}. Spoken VoiceOver output was not recorded.")
     mn = step(run, "min-size")["observation"]
     last = mn["lastDestination"]

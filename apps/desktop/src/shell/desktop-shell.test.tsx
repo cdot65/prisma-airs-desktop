@@ -3,7 +3,7 @@
  * transport: navigation, keyboard/focus behavior, native menu commands,
  * Rust-owned appearance, truthful refusal reporting and Academy isolation.
  */
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DesktopClient, type DesktopTransport, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
@@ -82,12 +82,16 @@ describe('desktop shell', () => {
         expect(nav().queryByRole('button', { name: /Runtime Security.*Not available in this build/ })).toBeNull()
         expect(screen.getByRole('heading', { level: 1, name: 'Scan a prompt or response' })).toBeInTheDocument()
         expect(screen.getByText('Add a tenant and its scan key in Settings to run scans.')).toBeInTheDocument()
-        await user.click(nav().getByRole('button', { name: /^Academy/ }))
-        expect(nav().getByRole('button', { name: /^Academy.*Not available in this build/ })).toBeInTheDocument()
-        expect(screen.getByRole('heading', { level: 1, name: 'Academy' })).toBeInTheDocument()
+        await user.click(nav().getByRole('button', { name: /^Administration/ }))
+        expect(nav().getByRole('button', { name: /^Administration.*Not available in this build/ })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { level: 1, name: 'Administration' })).toBeInTheDocument()
         expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C05')).toBeInTheDocument()
+        expect(screen.getByText('Planned in C08')).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
+        // Academy learning is available (C05) and opens its learner region.
+        await user.click(nav().getByRole('button', { name: /^Academy/ }))
+        expect(nav().queryByRole('button', { name: /^Academy.*Not available in this build/ })).toBeNull()
+        expect(screen.getByRole('region', { name: 'Academy' })).toBeInTheDocument()
         // The rail must scroll rather than clip destinations at high zoom or
         // the minimum window size.
         expect(document.querySelector('[data-slot="rail"]')).toHaveClass('overflow-y-auto')
@@ -96,13 +100,32 @@ describe('desktop shell', () => {
     it('supports keyboard-only navigation and moves focus to the new heading', async () => {
         const user = userEvent.setup()
         await launch()
-        const academy = nav().getByRole('button', { name: /^Academy/ })
-        while (document.activeElement !== academy) await user.tab()
+        const sessions = nav().getByRole('button', { name: /^Sessions/ })
+        while (document.activeElement !== sessions) await user.tab()
         await user.keyboard('{Enter}')
-        const heading = screen.getByRole('heading', { level: 1, name: 'Academy' })
+        const heading = screen.getByRole('heading', { level: 1, name: 'Sessions & Reports' })
         expect(heading).toHaveFocus()
-        expect(academy).toHaveAttribute('aria-current', 'page')
+        expect(sessions).toHaveAttribute('aria-current', 'page')
         expect(nav().getByRole('button', { name: /Runtime Security/ })).not.toHaveAttribute('aria-current')
+    })
+
+    it('hands focus to the Academy page heading once the page renders', async () => {
+        const user = userEvent.setup()
+        await launch()
+        // Academy's lab section reads matchMedia, which jsdom lacks.
+        const matchMedia = vi
+            .spyOn(window, 'matchMedia')
+            .mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() } as never)
+        try {
+            const academy = nav().getByRole('button', { name: /^Academy/ })
+            while (document.activeElement !== academy) await user.tab()
+            await user.keyboard('{Enter}')
+            const heading = await screen.findByRole('heading', { level: 1, name: 'What will you take up next?' }, { timeout: 5000 })
+            await waitFor(() => expect(heading).toHaveFocus())
+            expect(academy).toHaveAttribute('aria-current', 'page')
+        } finally {
+            matchMedia.mockRestore()
+        }
     })
 
     it('scrolls a control into view when arrow keys move focus within a radio group', async () => {
@@ -142,9 +165,9 @@ describe('desktop shell', () => {
         // focuses the destination heading (never focus behind a modal).
         s.push({ kind: 'menu', command: { kind: 'commandPalette' } })
         expect(screen.getByRole('dialog')).toBeInTheDocument()
-        s.push({ kind: 'menu', command: { kind: 'navigate', feature: 'academy' } })
+        s.push({ kind: 'menu', command: { kind: 'navigate', feature: 'library' } })
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-        expect(screen.getByRole('heading', { level: 1, name: 'Academy' })).toHaveFocus()
+        expect(screen.getByRole('heading', { level: 1, name: 'Case Library' })).toHaveFocus()
 
         const trigger = screen.getByRole('button', { name: /Go to/ })
         await user.click(trigger)
@@ -154,6 +177,23 @@ describe('desktop shell', () => {
         await user.keyboard('{Escape}')
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
         expect(trigger).toHaveFocus()
+    })
+
+    it('forgets Academy presentation storage when a reset completes, and keeps it when one stops', async () => {
+        const s = await launch()
+        const seed = () => {
+            localStorage.setItem('academy-completion-moments:user_2fixturelearner', '{"v":1}')
+            localStorage.setItem('unrelated', 'kept')
+        }
+        seed()
+        s.push({ kind: 'shell', snapshot: { ...base, revision: '2', storage: 'resetting' } })
+        s.push({ kind: 'shell', snapshot: { ...base, revision: '3', storage: 'ready', resetFailure: { stage: 'credentials', reason: 'unavailable' } } })
+        expect(localStorage.getItem('academy-completion-moments:user_2fixturelearner')).not.toBeNull()
+        s.push({ kind: 'shell', snapshot: { ...base, revision: '4', storage: 'resetting' } })
+        s.push({ kind: 'shell', snapshot: { ...base, revision: '5', storage: 'ready', resetFailure: null } })
+        expect(localStorage.getItem('academy-completion-moments:user_2fixturelearner')).toBeNull()
+        expect(localStorage.getItem('unrelated')).toBe('kept')
+        localStorage.clear()
     })
 
     it('applies the native theme in the same commit that first shows the shell', async () => {

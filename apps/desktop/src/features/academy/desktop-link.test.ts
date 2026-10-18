@@ -97,7 +97,7 @@ describe('desktop tRPC link', () => {
 
         const refused = native({}, 'capabilityMissing')
         const forbidden = await refused.trpc.shop.buy.mutate({ itemId: 'x' }).catch((e: unknown) => e)
-        expect((forbidden as TRPCClientError<Router>).data).toMatchObject({ code: 'FORBIDDEN' })
+        expect((forbidden as TRPCClientError<Router>).data).toMatchObject({ code: 'METHOD_NOT_SUPPORTED', httpStatus: 405 })
         expect(refused.observed).toEqual([])
     })
 

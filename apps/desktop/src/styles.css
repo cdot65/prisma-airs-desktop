@@ -13,6 +13,18 @@
 
 @source '../node_modules/@ai-security-academy/presentation/src';
 
+/* Academy's learner experience (C05): its reading styles and motion, and the
+ * Academy source its pages are built from (for utility classes). Caveat is
+ * the lab marginalia hand. Earned Academy skins are not imported. */
+@import '@fontsource-variable/inter/wght-italic.css';
+@import '@fontsource-variable/jetbrains-mono/wght-italic.css';
+@import '@fontsource-variable/caveat/index.css';
+@import '../../../.work/academy/src/styles/animations.css';
+@import '../../../.work/academy/src/styles/learner.css';
+@source '../../../.work/academy/src/features';
+@source '../../../.work/academy/src/components';
+@source '../../../.work/academy/packages/learner/src';
+
 /* The shared frame scrolls the document under a sticky 56px topbar and a
  * fixed 60px decorative bottom fade. Focused controls scrolled into view stay
  * clear of both, including at 200% zoom (C01-N10). */

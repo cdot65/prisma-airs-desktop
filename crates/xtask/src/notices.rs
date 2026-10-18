@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 
 use crate::env::Environment;
-use crate::{Repo, Result, invalid, io_err, read_json, write_json};
+use crate::{Repo, Result, invalid, io_err, read_json, sha256_hex, write_json};
 
 pub const INVENTORY: &str = "docs/architecture/notice-inventory.json";
 
@@ -104,6 +104,41 @@ fn rust_packages(env: &Environment, repo: &Repo) -> Result<Vec<Package>> {
         .collect())
 }
 
+/// Packages that state their license only in a license file, recorded after
+/// review with that file's SHA-256: the license counts as declared only
+/// while the installed file is byte-identical.
+const LICENSE_FILES: &[(&str, &str, &str, &str, &str)] = &[(
+    "khroma",
+    "2.1.0",
+    "license",
+    "66b333b0f66759a0b710459e03f7029abe17f4358114a128d2c972e642961b49",
+    "MIT",
+)];
+
+/// The license a package manifest declares: `license`, the legacy
+/// `licenses` array, or a reviewed license file.
+fn declared_license(manifest: &serde_json::Value, dir: &std::path::Path) -> String {
+    if let serde_json::Value::String(s) = &manifest["license"] {
+        return s.clone();
+    }
+    if let Some(list) = manifest["licenses"].as_array() {
+        let types: Vec<&str> = list.iter().filter_map(|l| l["type"].as_str()).collect();
+        if !types.is_empty() && types.len() == list.len() {
+            return types.join(" OR ");
+        }
+    }
+    let name = manifest["name"].as_str().unwrap_or_default();
+    let version = manifest["version"].as_str().unwrap_or_default();
+    LICENSE_FILES
+        .iter()
+        .find(|(n, v, ..)| *n == name && *v == version)
+        .and_then(|(_, _, file, sha, license)| {
+            let bytes = std::fs::read(dir.join(file)).ok()?;
+            (sha256_hex(&bytes) == *sha).then(|| (*license).to_owned())
+        })
+        .unwrap_or_default()
+}
+
 fn js_packages(env: &Environment, repo: &Repo) -> Result<Vec<Package>> {
     let bytes = output(
         env,
@@ -134,10 +169,7 @@ fn js_packages(env: &Environment, repo: &Repo) -> Result<Vec<Package>> {
         let manifest: serde_json::Value =
             read_json(&std::path::Path::new(path).join("package.json")).unwrap_or_default();
         let name = manifest["name"].as_str().unwrap_or_default().to_owned();
-        let license = match &manifest["license"] {
-            serde_json::Value::String(s) => s.clone(),
-            _ => String::new(),
-        };
+        let license = declared_license(&manifest, std::path::Path::new(path));
         // Workspace/Academy-owned inputs are covered by their own records.
         if !name.starts_with("@prisma-airs/") && !name.starts_with("@ai-security-academy/") {
             found.insert(Package {
@@ -189,5 +221,28 @@ pub fn run(env: &Environment, repo: &Repo, check: bool) -> Result<()> {
         Ok(())
     } else {
         write_json(&repo.join(INVENTORY), &fresh)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_and_reviewed_file_licenses_count_only_when_exact() {
+        let dir = std::env::temp_dir().join(format!("airs-notices-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("dir");
+        let legacy = serde_json::json!({"name": "fuzzy", "version": "0.1.3",
+            "licenses": [{"type": "MIT", "url": "x"}]});
+        assert_eq!(declared_license(&legacy, &dir), "MIT");
+        let partial = serde_json::json!({"name": "p", "version": "1", "licenses": [{"url": "x"}]});
+        assert_eq!(declared_license(&partial, &dir), "");
+        let khroma = serde_json::json!({"name": "khroma", "version": "2.1.0"});
+        assert_eq!(declared_license(&khroma, &dir), "", "no file");
+        std::fs::write(dir.join("license"), b"changed").expect("write");
+        assert_eq!(declared_license(&khroma, &dir), "", "different file");
+        let other = serde_json::json!({"name": "khroma", "version": "2.1.1"});
+        assert_eq!(declared_license(&other, &dir), "", "other version");
+        std::fs::remove_dir_all(&dir).expect("cleanup");
     }
 }

@@ -1,0 +1,807 @@
+{
+  "schema": "airs-v2/academy-truth-graph/1",
+  "academyCommit": "5d5d7616def42a98aade53b6460d5201bc15b3a9",
+  "moduleCount": 4598,
+  "academyModuleCount": 191,
+  "academyAreas": [
+    "packages/learner",
+    "packages/presentation",
+    "packages/shared",
+    "src/components",
+    "src/features/gamification",
+    "src/features/labs",
+    "src/features/learn",
+    "src/features/library",
+    "src/features/settings",
+    "src/features/tutor",
+    "src/features/units",
+    "src/lib",
+    "src/theme"
+  ],
+  "packages": [
+    "@ai-security-academy/learner",
+    "@ai-security-academy/presentation",
+    "@ai-security-academy/shared",
+    "@babel/runtime",
+    "@braintree/sanitize-url",
+    "@codemirror/autocomplete",
+    "@codemirror/commands",
+    "@codemirror/lang-python",
+    "@codemirror/lang-yaml",
+    "@codemirror/language",
+    "@codemirror/state",
+    "@codemirror/view",
+    "@dnd-kit/accessibility",
+    "@dnd-kit/core",
+    "@dnd-kit/utilities",
+    "@excalidraw/excalidraw",
+    "@excalidraw/laser-pointer",
+    "@excalidraw/markdown-to-text",
+    "@excalidraw/mermaid-to-excalidraw",
+    "@floating-ui/core",
+    "@floating-ui/dom",
+    "@floating-ui/react-dom",
+    "@floating-ui/utils",
+    "@iconify/utils",
+    "@lezer/common",
+    "@lezer/highlight",
+    "@lezer/lr",
+    "@lezer/python",
+    "@lezer/yaml",
+    "@marijn/find-cluster-break",
+    "@mermaid-js/parser",
+    "@radix-ui/primitive",
+    "@radix-ui/react-arrow",
+    "@radix-ui/react-collection",
+    "@radix-ui/react-compose-refs",
+    "@radix-ui/react-context",
+    "@radix-ui/react-dialog",
+    "@radix-ui/react-direction",
+    "@radix-ui/react-dismissable-layer",
+    "@radix-ui/react-focus-guards",
+    "@radix-ui/react-focus-scope",
+    "@radix-ui/react-id",
+    "@radix-ui/react-popover",
+    "@radix-ui/react-popper",
+    "@radix-ui/react-portal",
+    "@radix-ui/react-presence",
+    "@radix-ui/react-primitive",
+    "@radix-ui/react-roving-focus",
+    "@radix-ui/react-slot",
+    "@radix-ui/react-tabs",
+    "@radix-ui/react-use-callback-ref",
+    "@radix-ui/react-use-controllable-state",
+    "@radix-ui/react-use-effect-event",
+    "@radix-ui/react-use-escape-keydown",
+    "@radix-ui/react-use-layout-effect",
+    "@radix-ui/react-use-size",
+    "@tanstack/history",
+    "@tanstack/query-core",
+    "@tanstack/react-query",
+    "@tanstack/react-router",
+    "@tanstack/react-store",
+    "@tanstack/router-core",
+    "@tanstack/store",
+    "@tauri-apps/api",
+    "@trpc/client",
+    "@trpc/react-query",
+    "@trpc/server",
+    "@upsetjs/venn.js",
+    "aria-hidden",
+    "browser-fs-access",
+    "canvas-roundrect-polyfill",
+    "class-variance-authority",
+    "clsx",
+    "copy-anything",
+    "cose-base",
+    "crc-32",
+    "crelt",
+    "cytoscape",
+    "cytoscape-cose-bilkent",
+    "cytoscape-fcose",
+    "d3",
+    "d3-array",
+    "d3-axis",
+    "d3-brush",
+    "d3-chord",
+    "d3-color",
+    "d3-contour",
+    "d3-delaunay",
+    "d3-dispatch",
+    "d3-drag",
+    "d3-dsv",
+    "d3-ease",
+    "d3-fetch",
+    "d3-force",
+    "d3-format",
+    "d3-geo",
+    "d3-hierarchy",
+    "d3-interpolate",
+    "d3-path",
+    "d3-polygon",
+    "d3-quadtree",
+    "d3-random",
+    "d3-sankey",
+    "d3-scale",
+    "d3-scale-chromatic",
+    "d3-selection",
+    "d3-shape",
+    "d3-time",
+    "d3-time-format",
+    "d3-timer",
+    "d3-transition",
+    "d3-zoom",
+    "dagre-d3-es",
+    "dayjs",
+    "deepmerge",
+    "delaunator",
+    "detect-node-es",
+    "dom-serializer",
+    "domelementtype",
+    "domhandler",
+    "dompurify",
+    "domutils",
+    "entities",
+    "es-toolkit",
+    "es6-promise-pool",
+    "escape-string-regexp",
+    "fractional-indexing",
+    "fuzzy",
+    "get-nonce",
+    "hachure-fill",
+    "htmlparser2",
+    "image-blob-reduce",
+    "internmap",
+    "is-plain-object",
+    "jotai",
+    "jotai-scope",
+    "katex",
+    "khroma",
+    "launder",
+    "layout-base",
+    "lodash-es",
+    "lodash.debounce",
+    "lodash.throttle",
+    "lucide-react",
+    "marked",
+    "mermaid",
+    "nanoid",
+    "open-color",
+    "pako",
+    "parse-srcset",
+    "path-data-parser",
+    "perfect-freehand",
+    "pica",
+    "picocolors",
+    "png-chunk-text",
+    "png-chunks-encode",
+    "png-chunks-extract",
+    "points-on-curve",
+    "points-on-path",
+    "postcss",
+    "react",
+    "react-dom",
+    "react-remove-scroll",
+    "react-remove-scroll-bar",
+    "react-style-singleton",
+    "robust-predicates",
+    "roughjs",
+    "sanitize-html",
+    "scheduler",
+    "seroval",
+    "seroval-plugins",
+    "sliced",
+    "style-mod",
+    "stylis",
+    "superjson",
+    "tailwind-merge",
+    "ts-dedent",
+    "tslib",
+    "tunnel-rat",
+    "use-callback-ref",
+    "use-sidecar",
+    "use-sync-external-store",
+    "uuid",
+    "w3c-keyname",
+    "zod",
+    "zustand"
+  ],
+  "truthPrefixes": [
+    "src/server/",
+    "src/db/",
+    "src/content/",
+    "src/content-pipeline/",
+    "scripts/",
+    "src/features/admin/",
+    "src/lib/redis.ts",
+    "src/routes/_authenticated/admin",
+    "packages/shared/src/server"
+  ],
+  "truthNamePatterns": [
+    "/evaluat/i",
+    "/grader/i",
+    "/grading/i",
+    "/answer-?key/i",
+    "/goldens?/i",
+    "/rubric/i"
+  ],
+  "forbiddenPackageRules": [
+    "drizzle-orm",
+    "postgres",
+    "pg",
+    "ioredis",
+    "@upstash/redis",
+    "@clerk/",
+    "@sentry/",
+    "openai",
+    "@anthropic-ai/",
+    "stripe",
+    "resend"
+  ],
+  "truthModulesSeededButNotShipped": 0,
+  "truthModules": [],
+  "forbiddenPackages": [],
+  "nodeBuiltins": [],
+  "canaryHits": [],
+  "controlFound": true,
+  "procedures": [
+    {
+      "procedure": "caches.list",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/gamification/hooks/use-unopened-caches.ts"
+      ]
+    },
+    {
+      "procedure": "courses.list",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/units/hooks/use-course.ts",
+        "src/features/units/pages/path-landing-page.tsx"
+      ]
+    },
+    {
+      "procedure": "enrollment.affectedByCourseRemoval",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/units/components/remove-enrollment-action.tsx"
+      ]
+    },
+    {
+      "procedure": "enrollment.removeByCourse",
+      "kind": "mutation",
+      "access": "account",
+      "from": [
+        "src/features/units/hooks/use-remove-enrollment.ts"
+      ]
+    },
+    {
+      "procedure": "gamification.acknowledgeCommendations",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "reached only through the gamification barrel; no shipped learner page mounts the component, so the call is never made",
+      "from": [
+        "src/features/gamification/components/commendation-away-queue.tsx",
+        "src/features/gamification/hooks/use-award-toasts.ts"
+      ]
+    },
+    {
+      "procedure": "gamification.acknowledgeSko27Celebration",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "reached only through the gamification barrel; no shipped learner page mounts the component, so the call is never made",
+      "from": [
+        "src/features/gamification/components/sko27-celebration.tsx"
+      ]
+    },
+    {
+      "procedure": "gamification.claimCommendations",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "reached only through the gamification barrel; no shipped learner page mounts the component, so the call is never made",
+      "from": [
+        "src/features/gamification/components/commendation-away-queue.tsx"
+      ]
+    },
+    {
+      "procedure": "gamification.claimSko27Celebration",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "reached only through the gamification barrel; no shipped learner page mounts the component, so the call is never made",
+      "from": [
+        "src/features/gamification/components/sko27-celebration.tsx"
+      ]
+    },
+    {
+      "procedure": "gamification.setDailyGoal",
+      "kind": "mutation",
+      "access": "account",
+      "from": [
+        "src/features/gamification/hooks/use-daily-goal.ts"
+      ]
+    },
+    {
+      "procedure": "gamification.sko27LoginAward",
+      "kind": "query",
+      "access": "refusedByDesign",
+      "reason": "reached only through the gamification barrel; no shipped learner page mounts the component, so the call is never made",
+      "from": [
+        "src/features/gamification/components/sko27-celebration.tsx"
+      ]
+    },
+    {
+      "procedure": "gamification.summary",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/gamification/components/gamification-hud.tsx",
+        "src/features/gamification/hooks/use-daily-goal.ts"
+      ]
+    },
+    {
+      "procedure": "labs.execCommand",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.get",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.gradeTriage",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.list",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.requestHint",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.requestStepHint",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.resetTerminalSession",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.runScan",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.saveStepDraft",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.saveTerminalResponse",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.startScenario",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.submitLab",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.submitScenarioLab",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.submitStep",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "labs.submitTerminalLab",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "hands-on lab runs are previewed (LearnerHost labs=\"preview\"); no runner mounts, so no lab start, step or submit call is made",
+      "from": [
+        "src/features/labs/hooks/use-lab-queries.ts"
+      ]
+    },
+    {
+      "procedure": "library.list",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/library/pages/learn-page.tsx"
+      ]
+    },
+    {
+      "procedure": "modules.diagramVideo",
+      "kind": "query",
+      "access": "public",
+      "from": [
+        "src/features/units/components/diagram-media.tsx"
+      ]
+    },
+    {
+      "procedure": "modules.intro",
+      "kind": "query",
+      "access": "public",
+      "from": [
+        "src/features/units/components/module-intro-media.tsx"
+      ]
+    },
+    {
+      "procedure": "paths.forCourse",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/units/components/course-ceremony.tsx",
+        "src/features/units/pages/course-page.tsx"
+      ]
+    },
+    {
+      "procedure": "paths.get",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/units/components/course-ceremony.tsx",
+        "src/features/units/pages/path-landing-page.tsx"
+      ]
+    },
+    {
+      "procedure": "paths.list",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/library/pages/learn-page.tsx"
+      ]
+    },
+    {
+      "procedure": "progress.checkInline",
+      "kind": "mutation",
+      "access": "account",
+      "from": [
+        "src/features/learn/hooks/use-learn-queries.ts"
+      ]
+    },
+    {
+      "procedure": "settings.get",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/settings/hooks/use-user-settings.ts"
+      ]
+    },
+    {
+      "procedure": "settings.update",
+      "kind": "mutation",
+      "access": "account",
+      "from": [
+        "src/features/settings/hooks/use-user-settings.ts"
+      ]
+    },
+    {
+      "procedure": "telemetry.track",
+      "kind": "mutation",
+      "access": "refusedByDesign",
+      "reason": "award toasts fire it and forget it; the desktop sends no Academy product telemetry and the refusal shows nothing",
+      "from": [
+        "src/features/gamification/hooks/use-award-toasts.ts"
+      ]
+    },
+    {
+      "procedure": "tutor.critique",
+      "kind": "mutation",
+      "access": "account",
+      "from": [
+        "src/features/tutor/hooks/use-tutor.ts"
+      ]
+    },
+    {
+      "procedure": "units.certOverview",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/units/hooks/use-unit-queries.ts"
+      ]
+    },
+    {
+      "procedure": "units.complete",
+      "kind": "mutation",
+      "access": "account",
+      "from": [
+        "src/features/units/hooks/use-unit-queries.ts"
+      ]
+    },
+    {
+      "procedure": "units.get",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/units/hooks/use-unit-queries.ts"
+      ]
+    },
+    {
+      "procedure": "units.listByModule",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/units/hooks/use-unit-queries.ts"
+      ]
+    },
+    {
+      "procedure": "units.listByPath",
+      "kind": "query",
+      "access": "account",
+      "from": [
+        "src/features/units/components/completion-moments.tsx",
+        "src/features/units/components/path-course-card.tsx",
+        "src/features/units/hooks/use-unit-queries.ts"
+      ]
+    },
+    {
+      "procedure": "units.startKnowledgeCheck",
+      "kind": "mutation",
+      "access": "account",
+      "from": [
+        "src/features/units/hooks/use-unit-queries.ts"
+      ]
+    },
+    {
+      "procedure": "units.submitKnowledgeCheck",
+      "kind": "mutation",
+      "access": "account",
+      "from": [
+        "src/features/units/hooks/use-unit-queries.ts"
+      ]
+    }
+  ],
+  "unexplainedRefusals": [],
+  "emittedFiles": [
+    "assets/Assistant-Bold-gm-uSS1B.woff2",
+    "assets/Assistant-Medium-DrcxCXg3.woff2",
+    "assets/Assistant-Regular-DVxZuzxb.woff2",
+    "assets/Assistant-SemiBold-SCI4bEL9.woff2",
+    "assets/ConfigEditStep-BZNX0us7.js",
+    "assets/DiagramLabelStep-C29Y2LIv.js",
+    "assets/DrawStep-DJrKVI9j.js",
+    "assets/ExplainStep-CJp9Zaz_.js",
+    "assets/TerminalStep-C_Iv52Wa.js",
+    "assets/UnitLabSection-BGzS3ktG.js",
+    "assets/abnfDiagram-VRR7QNED-BlZHV32G.js",
+    "assets/ar-SA-G6X2FPQ2-DSln6474.js",
+    "assets/arc-jPE4zRe4.js",
+    "assets/architectureDiagram-ZJ3FMSHR-Dha50WMr.js",
+    "assets/az-AZ-76LH7QW2-Xgbx6prS.js",
+    "assets/bg-BG-XCXSNQG7-BIkGk5MR.js",
+    "assets/blockDiagram-677ZJIJ3-Vl62U7Q9.js",
+    "assets/bn-BD-2XOGV67Q-Cm8eh2sE.js",
+    "assets/c4Diagram-LMCZKHZV-fRBwmcWH.js",
+    "assets/ca-ES-6MX7JW3Y-B00MVjvh.js",
+    "assets/caveat-cyrillic-ext-wght-normal-DiMfzA-V.woff2",
+    "assets/caveat-cyrillic-wght-normal-D5lnP6kL.woff2",
+    "assets/caveat-latin-ext-wght-normal-Byk3UhVp.woff2",
+    "assets/caveat-latin-wght-normal-C1hSzPvX.woff2",
+    "assets/channel-Djbjkzvt.js",
+    "assets/chunk-2Q5K7J3B-DpwCFAq4.js",
+    "assets/chunk-32BRIVSS-B5zYKF-t.js",
+    "assets/chunk-5VM5RSS4-DZraHkST.js",
+    "assets/chunk-EX3LRPZG-DskKOJ3O.js",
+    "assets/chunk-JWPE2WC7-xmn1UnL_.js",
+    "assets/chunk-MOJQB5TN-C385Ms-D.js",
+    "assets/chunk-RYQCIY6F-DgIPRxth.js",
+    "assets/chunk-V7JOEXUC-FioyY1tc.js",
+    "assets/chunk-VR4S4FIN-vx0blUX2.js",
+    "assets/chunk-XXDRQBXY-hlmPaRJN.js",
+    "assets/classDiagram-OUVF2IWQ-B8PmbAQd.js",
+    "assets/classDiagram-v2-EOCWNBFH-B8PmbAQd.js",
+    "assets/cose-bilkent-JH36ORCC-CDfFwFyi.js",
+    "assets/course-ceremony-Cmd8m7EM.js",
+    "assets/cs-CZ-2BRQDIVT-BTBPSEbg.js",
+    "assets/cynefin-OW5HDTMX-CNDkbauc.js",
+    "assets/cynefinDiagram-TSTJHNR4-P1jbJUsQ.js",
+    "assets/cytoscape.esm-BDkkwuE4.js",
+    "assets/da-DK-5WZEPLOC-JJFtuUz5.js",
+    "assets/dagre-VKFMJZFB-DmXPBvSE.js",
+    "assets/dayjs.min-u3zuoSR8.js",
+    "assets/de-DE-XR44H4JA-Ck-3JXtF.js",
+    "assets/defaultLocale-DX6XiGOO.js",
+    "assets/diagram-FQU43EPY-DJlmffzH.js",
+    "assets/diagram-G47NLZAW-ClIFwHyT.js",
+    "assets/diagram-NH7WQ7WH-BcPZ_8ty.js",
+    "assets/diagram-OA4YK3LP-CfyBtNvr.js",
+    "assets/diagram-WEI45ONY-33tU6qPz.js",
+    "assets/directory-open-01563666-DWU9wJ6I.js",
+    "assets/directory-open-4ed118d0-CunoC1EB.js",
+    "assets/ebnfDiagram-CCIWWBDH-CoU8DdBw.js",
+    "assets/el-GR-BZB4AONW-CBvdpP3e.js",
+    "assets/erDiagram-Q63AITRT-7aYpHPgf.js",
+    "assets/es-ES-U4NZUMDT-DBXruPF5.js",
+    "assets/eu-ES-A7QVB2H4-BX8CqPG6.js",
+    "assets/fa-IR-HGAKTJCU-BBQqbc2A.js",
+    "assets/fi-FI-Z5N7JZ37-Cfu06vuq.js",
+    "assets/file-open-002ab408-DIuFHtCF.js",
+    "assets/file-open-7c801643-684qeFg4.js",
+    "assets/file-save-3189631c-C1wFhQhH.js",
+    "assets/file-save-745eba88-Bb9F9Kg7.js",
+    "assets/flowDiagram-23GEKE2U-rDJSprIH.js",
+    "assets/fr-FR-RHASNOE6-Cb6S6NSi.js",
+    "assets/ganttDiagram-NO4QXBWP-ym794Mzh.js",
+    "assets/gitGraphDiagram-IHSO6WYX-DsvqJv1W.js",
+    "assets/gl-ES-HMX3MZ6V-ZDBn0imK.js",
+    "assets/graph-DOmOIIwC.js",
+    "assets/he-IL-6SHJWFNN-CmYck4Sv.js",
+    "assets/hi-IN-IWLTKZ5I-B7XnMP0i.js",
+    "assets/hu-HU-A5ZG7DT2-C4awMwPr.js",
+    "assets/id-ID-SAP4L64H-B2Z98i7F.js",
+    "assets/image-blob-reduce.esm-BZtWH-rr.js",
+    "assets/index-C3pgR7t1.css",
+    "assets/index-DNRYK0f6.js",
+    "assets/index-svEp6P-w.js",
+    "assets/infoDiagram-FWYZ7A6U-DMiN0L7p.js",
+    "assets/init-Gi6I4Gst.js",
+    "assets/inter-cyrillic-ext-wght-italic-B5xAaiFk.woff2",
+    "assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2",
+    "assets/inter-cyrillic-wght-italic-DzZdc28x.woff2",
+    "assets/inter-cyrillic-wght-normal-DqGufNeO.woff2",
+    "assets/inter-greek-ext-wght-italic-DcOpz6Lw.woff2",
+    "assets/inter-greek-ext-wght-normal-DlzME5K_.woff2",
+    "assets/inter-greek-wght-italic-CILZdfAp.woff2",
+    "assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+    "assets/inter-latin-ext-wght-italic-0pjOp8NU.woff2",
+    "assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+    "assets/inter-latin-wght-italic-DpCbqKDY.woff2",
+    "assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+    "assets/inter-vietnamese-wght-italic-K3WlGtc8.woff2",
+    "assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2",
+    "assets/ishikawaDiagram-FXEZZL3T-Czz3taWd.js",
+    "assets/it-IT-JPQ66NNP-s517iVqx.js",
+    "assets/ja-JP-DBVTYXUO-CvuC5GN9.js",
+    "assets/jetbrains-mono-cyrillic-ext-wght-italic-BsXxL8dx.woff2",
+    "assets/jetbrains-mono-cyrillic-ext-wght-normal-EocZY2iu.woff2",
+    "assets/jetbrains-mono-cyrillic-wght-italic-CfQkWpeR.woff2",
+    "assets/jetbrains-mono-cyrillic-wght-normal-D73BlboJ.woff2",
+    "assets/jetbrains-mono-greek-wght-italic-Dmq-fBVQ.woff2",
+    "assets/jetbrains-mono-greek-wght-normal-Bw9x6K1M.woff2",
+    "assets/jetbrains-mono-latin-ext-wght-italic-BrDczivE.woff2",
+    "assets/jetbrains-mono-latin-ext-wght-normal-DBQx-q_a.woff2",
+    "assets/jetbrains-mono-latin-wght-italic-B2M6KQje.woff2",
+    "assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2",
+    "assets/jetbrains-mono-vietnamese-wght-italic-Dcombn6O.woff2",
+    "assets/jetbrains-mono-vietnamese-wght-normal-Bt-aOZkq.woff2",
+    "assets/journeyDiagram-5HDEW3XC-CWPE0eUp.js",
+    "assets/kaa-6HZHGXH3-CyXsXAsp.js",
+    "assets/kab-KAB-ZGHBKWFO-BliPhvtn.js",
+    "assets/kanban-definition-HUTT4EX6-D4PUWPCs.js",
+    "assets/katex-HP8lGamR.js",
+    "assets/kk-KZ-P5N5QNE5-tNzeGgc8.js",
+    "assets/km-KH-HSX4SM5Z-C5s6PkQE.js",
+    "assets/ko-KR-MTYHY66A-DozzpXW2.js",
+    "assets/ku-TR-6OUDTVRD-DGsebNMN.js",
+    "assets/layout-D-LzfAck.js",
+    "assets/learner-call-probe-BagOnyrs.js",
+    "assets/linear-T835YhRp.js",
+    "assets/lt-LT-XHIRWOB4-DhtzVr8d.js",
+    "assets/lv-LV-5QDEKY6T-BlyrPLrC.js",
+    "assets/map-DxJ2ADlA.js",
+    "assets/mermaid.core-C8LUa5Ze.js",
+    "assets/mindmap-definition-LN4V7U3C-D_qm9uTb.js",
+    "assets/mr-IN-CRQNXWMA-D6uxAI6l.js",
+    "assets/my-MM-5M5IBNSE-1LZhQe3L.js",
+    "assets/nb-NO-T6EIAALU-CI7QP2un.js",
+    "assets/nl-NL-IS3SIHDZ-BEECE8-9.js",
+    "assets/nn-NO-6E72VCQL-hXCD7K80.js",
+    "assets/oc-FR-POXYY2M6-TimQ_3d9.js",
+    "assets/ordinal-Cboi1Yqb.js",
+    "assets/pa-IN-N4M65BXN-dzd8vcGI.js",
+    "assets/pegDiagram-2B236MQR-CEVKtB49.js",
+    "assets/percentages-BXMCSKIN-CtgP6T5D.css",
+    "assets/percentages-BXMCSKIN-_A0GsTwO.js",
+    "assets/pica-C35wxhSQ.js",
+    "assets/pieDiagram-ENE6RG2P-D7YvkSLl.js",
+    "assets/pl-PL-T2D74RX3-ChIG8UJJ.js",
+    "assets/pt-BR-5N22H2LF-Chet-y5R.js",
+    "assets/pt-PT-UZXXM6DQ-9Kw0OZc2.js",
+    "assets/quadrantDiagram-ABIIQ3AL-DQu7t1Yp.js",
+    "assets/railroadDiagram-RFXS5EU6-EBub5DJU.js",
+    "assets/requirementDiagram-TGXJPOKE-KiEcuTLp.js",
+    "assets/ro-RO-JPDTUUEW-DYGl_WlW.js",
+    "assets/roundRect-mAH3dD0p.js",
+    "assets/ru-RU-B4JR7IUQ-DrxcKizh.js",
+    "assets/sankeyDiagram-HTMAVEWB-CvAjZuSf.js",
+    "assets/sequenceDiagram-DBY2YBRQ-2GB9wcf7.js",
+    "assets/si-LK-N5RQ5JYF-BQqORWdN.js",
+    "assets/sizeCapture-X5ZJPWSS-B9z7hO8s.js",
+    "assets/sk-SK-C5VTKIMK-Bx4x4AXe.js",
+    "assets/sl-SI-NN7IZMDC-Bgqcf8m7.js",
+    "assets/stateDiagram-2N3HPSRC-Bq2ejghl.js",
+    "assets/stateDiagram-v2-6OUMAXLB-DXoa5u2v.js",
+    "assets/subset-shared.chunk-CerXqKA_.js",
+    "assets/subset-worker.chunk-BAlq_Oa9.js",
+    "assets/sv-SE-XGPEYMSR-DG4TGS1B.js",
+    "assets/swimlanes-5IMT3BWC-Ba0fnXSp.js",
+    "assets/swimlanesDiagram-G3AALYLV-BtjdE_m5.js",
+    "assets/ta-IN-2NMHFXQM-D8fTrvX4.js",
+    "assets/th-TH-HPSO5L25-Dl8f4D0a.js",
+    "assets/timeline-definition-FHXFAJF6-CT1Wavbr.js",
+    "assets/tr-TR-DEFEU3FU-BCMl9V23.js",
+    "assets/uk-UA-QMV73CPH-CZ4kGqdg.js",
+    "assets/vennDiagram-L72KCM5P-C9MiZF5c.js",
+    "assets/vi-VN-M7AON7JQ-XldEG5fF.js",
+    "assets/wardleyDiagram-EHGQE667-5khFRmQ_.js",
+    "assets/xychartDiagram-FW5EYKEG-mzncS6a2.js",
+    "assets/zh-CN-LNUGB5OW-BN5daAej.js",
+    "assets/zh-HK-E62DVLB3-DTAgke29.js",
+    "assets/zh-TW-RAJ6MFWO-C_UvZTe0.js",
+    "index.html"
+  ],
+  "passed": true
+}

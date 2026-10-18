@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ShellBrand, ShellFrame, ShellRail, ShellTopbar, type ShellNavItem } from '@ai-security-academy/presentation'
-import type { FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import type { DesktopClient, FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import { AcademyView } from '../features/academy/academy-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { CommandPalette } from './command-palette'
@@ -18,6 +19,8 @@ export interface DesktopShellProps {
     onClosePalette: () => void
     onSetAppearance: (theme: Theme) => void
     dispatch: Dispatch
+    /** The native client, for the Academy learner transport. */
+    client: DesktopClient
 }
 
 function navItem(feature: FeatureEntry): ShellNavItem {
@@ -33,7 +36,9 @@ function navItem(feature: FeatureEntry): ShellNavItem {
 /**
  * Desktop composition of the Academy-owned shell: local feature navigation,
  * native-menu-driven palette and Rust-owned appearance. No learner account,
- * gamification, router or hosted provider is mounted here.
+ * gamification, router or hosted provider is mounted at the shell level:
+ * Academy's learner pages and their router mount only inside the Academy
+ * destination.
  */
 export function DesktopShell(props: DesktopShellProps) {
     const { snapshot, active } = props
@@ -134,6 +139,8 @@ export function DesktopShell(props: DesktopShellProps) {
                     onSetAppearance={props.onSetAppearance}
                     dispatch={props.dispatch}
                 />
+            ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
+                <AcademyView ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
             ) : feature.id === 'runtime' && feature.availability.state === 'available' ? (
                 <RuntimeView ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
             ) : (

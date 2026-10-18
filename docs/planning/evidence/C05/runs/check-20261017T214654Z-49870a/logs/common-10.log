@@ -1,0 +1,25 @@
+
+--- stderr ---
+    Checking desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+    Checking desktop-host v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/src-tauri)
+    Checking xtask v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/xtask)
+error: struct pattern is not needed for a unit variant
+  --> crates/desktop-core/tests/academy_learner/main.rs:47:60
+   |
+47 |     assert!(matches!(desk.academy(), AcademyView::SignedOut { .. }));
+   |                                                            ^^^^^^^ help: remove the struct pattern
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unneeded_struct_pattern
+   = note: `-D clippy::unneeded-struct-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unneeded_struct_pattern)]`
+
+error: struct pattern is not needed for a unit variant
+   --> crates/desktop-core/tests/academy_learner/main.rs:210:70
+    |
+210 |         eventually(|| matches!(desk.academy(), AcademyView::SignedOut { .. })).await,
+    |                                                                      ^^^^^^^ help: remove the struct pattern
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unneeded_struct_pattern
+
+error: could not compile `desktop-core` (test "academy_learner") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...

@@ -12,6 +12,11 @@
 //       can reach no other application) and polls the focused element's
 //       AXValue every 0.5 ms until the character arrived. Prints
 //       {"samples": [ms, ...]}.
+//   probe activate <pid> <role> <label prefix> <heading> <text prefix> <timeout ms>
+//       AXPresses the first element with that role whose label starts with
+//       the prefix, then polls the Accessibility tree every 2 ms until an
+//       AXHeading titled exactly <heading> and an AXStaticText whose value
+//       starts with <text prefix> both exist. Prints {"ms": elapsed, "polls": n}.
 
 import AppKit
 import ApplicationServices
@@ -55,7 +60,7 @@ func emit(_ object: [String: Any]) {
 }
 
 let args = CommandLine.arguments
-guard args.count >= 3 else { fail("usage: probe launch|type ...") }
+guard args.count >= 3 else { fail("usage: probe launch|type|activate ...") }
 switch args[1] {
 case "launch":
     guard args.count == 5, let timeout = Double(args[4]) else { fail("launch <executable> <prefix> <timeout ms>") }
@@ -107,6 +112,44 @@ case "type":
         usleep(40_000)
     }
     emit(["samples": samples])
+case "activate":
+    guard args.count == 8, let pid = pid_t(args[2]), let timeout = Double(args[7]) else {
+        fail("activate <pid> <role> <label prefix> <heading> <text prefix> <timeout ms>")
+    }
+    let app = AXUIElementCreateApplication(pid)
+    func elements() -> [AXUIElement] {
+        var out: [AXUIElement] = []
+        var stack = (attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []
+        while let el = stack.popLast(), out.count < 20000 {
+            out.append(el)
+            stack.append(contentsOf: (attr(el, kAXChildrenAttribute) as? [AXUIElement]) ?? [])
+        }
+        return out
+    }
+    guard let target = elements().first(where: {
+        (attr($0, kAXRoleAttribute) as? String) == args[3] && label($0).hasPrefix(args[4])
+    }) else { fail("no \(args[3]) labelled \(args[4])") }
+    let start = DispatchTime.now().uptimeNanoseconds
+    guard AXUIElementPerformAction(target, kAXPressAction as CFString) == .success else { fail("press failed") }
+    var polls = 0
+    while ms(since: start) < timeout {
+        polls += 1
+        var heading = false
+        var text = false
+        for el in elements() {
+            let role = attr(el, kAXRoleAttribute) as? String
+            if role == "AXHeading", label(el) == args[5] { heading = true }
+            if role == "AXStaticText", (attr(el, kAXValueAttribute) as? String)?.hasPrefix(args[6]) == true { text = true }
+            if heading && text { break }
+        }
+        if heading && text {
+            emit(["ms": ms(since: start), "polls": polls])
+            exit(0)
+        }
+        usleep(2_000)
+    }
+    emit(["ms": NSNull(), "polls": polls])
+    exit(2)
 default:
     fail("unknown command \(args[1])")
 }

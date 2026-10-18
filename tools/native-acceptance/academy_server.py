@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Synthetic Academy + Clerk endpoint for C04 native acceptance: the public
-desktop configuration, RFC 8414 metadata, device authorization, token,
-revocation and the learner `desktop.me` procedure, over HTTPS on localhost
-with a disposable test CA (certificates from scan_server.make_certs). It
-never contacts the network and issues only synthetic tokens.
+"""Synthetic Academy + Clerk endpoint for C04/C05 native acceptance: the
+public desktop configuration, RFC 8414 metadata, device authorization,
+token, revocation, the learner `desktop.me` procedure and (C05) the learner
+catalog procedures from <scratch>/catalog.json (academy_catalog.build), over
+HTTPS on localhost with a disposable test CA (certificates from
+scan_server.make_certs). It never contacts the network and issues only
+synthetic tokens.
 
   academy_server.py --dir <scratch> --port <port>
 
 <scratch>/mode.json: {"approval": "pending"|"granted"|"denied",
 "displayName": "..."}; <scratch>/requests.jsonl records each request's
 method, path, form field names, client_id, grant type and whether an
-Authorization header was present (token values are never recorded).
+Authorization header was present (token values are never recorded); learner
+procedure requests also record the procedure, the SuperJSON input and the
+endpoint's own handling time in milliseconds.
 """
 
 import argparse
@@ -36,6 +40,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def reply(self, status, body):
         payload = json.dumps(body).encode()
+        self.handled_ms = (time.perf_counter() - self.started) * 1000
         self.send_response(status)
         self.send_header("content-type", "application/json")
         self.send_header("content-length", str(len(payload)))
@@ -44,23 +49,62 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
         self.close_connection = True
 
-    def record(self, form):
+    def record(self, form, extra=None):
         entry = {"t": time.time(), "method": self.command, "path": self.path.split("?")[0],
                  "fields": sorted(form), "clientId": form.get("client_id"),
                  "grantType": form.get("grant_type"), "tokenHint": form.get("token_type_hint"),
                  "revokedToken": form.get("token") if self.path == "/oauth/revoke" else None,
                  "authorization": self.headers.get("authorization") is not None,
-                 "clientSecret": "client_secret" in form}
+                 "clientSecret": "client_secret" in form, **(extra or {})}
         with self.server.lock, open(os.path.join(self.server.dir, "requests.jsonl"), "a") as f:
             f.write(json.dumps(entry) + "\n")
 
     def do_GET(self):
+        self.started = time.perf_counter()
+        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query))
+        if self.path.startswith("/api/trpc/"):
+            return self.learner_call(query.get("input"))
         self.handle_request({})
 
     def do_POST(self):
+        self.started = time.perf_counter()
         length = int(self.headers.get("content-length") or 0)
-        form = dict(urllib.parse.parse_qsl(self.rfile.read(length).decode()))
+        body = self.rfile.read(length).decode()
+        if self.path.startswith("/api/trpc/") and not self.path.startswith("/api/trpc/desktop.me"):
+            return self.learner_call(body or None)
+        form = dict(urllib.parse.parse_qsl(body))
         self.handle_request(form)
+
+    def learner_call(self, raw_input):
+        """A catalog procedure: the reply for its input, else NOT_FOUND."""
+        procedure = self.path.split("?")[0][len("/api/trpc/"):]
+        if procedure == "desktop.me":
+            return self.handle_request({})
+        entry = self.server.catalog().get(procedure, KeyError)
+        try:
+            value = (json.loads(raw_input).get("json") if raw_input else None) or {}
+        except ValueError:
+            value = {}
+        if isinstance(entry, dict) and set(entry) == {"by", "values"}:
+            entry = entry["values"].get(str(value.get(entry["by"])), KeyError) if isinstance(value, dict) else KeyError
+        # Access as Academy decides it: guest (no credential) or account.
+        if isinstance(entry, dict) and set(entry) == {"__auth__"}:
+            entry = entry["__auth__"]["account" if self.headers.get("authorization") else "guest"]
+        if isinstance(entry, dict) and set(entry) == {"__error__"}:
+            err = entry["__error__"]
+            self.reply(err["status"], {"error": {"json": {"message": err["message"], "code": err["rpc"],
+                                                          "data": {"code": err["code"], "httpStatus": err["status"],
+                                                                   "path": procedure, **err.get("data", {})}}}})
+            self.record({}, {"procedure": procedure, "input": raw_input, "status": err["status"],
+                             "handlingMs": round(self.handled_ms, 3)})
+            return
+        if entry is KeyError:
+            self.reply(404, {"error": {"json": {"message": "No such procedure or item", "code": -32004,
+                                                "data": {"code": "NOT_FOUND", "httpStatus": 404, "path": procedure}}}})
+        else:
+            self.reply(200, {"result": {"data": {"json": entry}}})
+        self.record({}, {"procedure": procedure, "input": raw_input, "status": 404 if entry is KeyError else 200,
+                         "handlingMs": round(self.handled_ms, 3)})
 
     def handle_request(self, form):
         self.record(form)
@@ -106,6 +150,16 @@ class Server(ThreadingHTTPServer):
         self.dir = directory
         self.origin = f"https://localhost:{port}"
         self.lock = threading.Lock()
+        self._catalog = None
+
+    def catalog(self):
+        if self._catalog is None:
+            try:
+                with open(os.path.join(self.dir, "catalog.json")) as f:
+                    self._catalog = json.load(f)
+            except (OSError, ValueError):
+                self._catalog = {}
+        return self._catalog
 
     def mode(self):
         try:

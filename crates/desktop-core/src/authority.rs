@@ -314,6 +314,9 @@ pub struct ShellSnapshot {
     pub scans: Vec<ScanRecordView>,
     /// The Academy learner account (independent of the tenant).
     pub academy: AcademyView,
+    /// The current learner generation: the signed-in account's, or a guest
+    /// generation for public catalog reads while signed out.
+    pub learner: Option<LearnerRef>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -564,6 +567,7 @@ impl State {
             durability_unconfirmed: self.durability_unconfirmed,
             scans: self.scan_views(),
             academy: self.academy_view(),
+            learner: self.learner_ref.clone(),
         }
     }
 
@@ -988,6 +992,9 @@ impl Core {
             if state.data.learner.is_some() {
                 state.learner = LearnerPhase::SignedIn;
                 state.restore_learner_session(&inner);
+            } else {
+                // A guest generation for public catalog reads.
+                let _ = state.reissue_learner();
             }
         }
         Self { inner }

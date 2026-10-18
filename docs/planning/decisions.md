@@ -350,6 +350,29 @@ Decided in C04 (implementer decision, recorded for review).
 - C20/C22 (company SSO, MCP) re-evaluate openidconnect/oauth2 for their own
   contracts; this decision covers Academy device sign-in only.
 
+## D029 — Desktop learner host: Academy's own pages with declared host capabilities
+
+Decided in C05 (implementer decision, recorded for review).
+
+- The desktop hosts Academy's learner pages unchanged and declares what its
+  host cannot do through `LearnerHost` props that Academy implements and
+  Academy web leaves at their defaults: `labs: 'preview'` (lab runs use
+  procedures outside the desktop account allowlist; a previewed lab starts
+  no sandbox and says so) and `diagrams: 'prerendered'` (the WebView keeps
+  Tauri's `freezePrototype` and its style CSP, under which mermaid's
+  runtime cannot load; Academy's pipeline already ships light/dark SVG
+  artifacts, shown as images). Loosening `freezePrototype` or the CSP for
+  a diagram renderer is rejected.
+- Lesson links never navigate or open other sites from lesson content:
+  opening external pages would give server-authored content a browser
+  hand-off the desktop does not otherwise grant (C04 opens only the issuer's
+  verification page). The learner is told where the link points.
+- Procedures the shipped learner modules call but the desktop refuses are
+  listed with their reason in `tools/academy/truth-graph.mjs`; a new refused
+  procedure without a reason fails the C05 gate.
+- C06 revisits labs (guided lab submission through the desktop attempt
+  contracts) and gamification; C07 offline content.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

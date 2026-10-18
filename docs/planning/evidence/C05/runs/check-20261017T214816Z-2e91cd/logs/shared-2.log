@@ -1,0 +1,11 @@
+Scope: all 9 workspace projects
+ ERR_PNPM_OUTDATED_LOCKFILE  Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date with <ROOT>/packages/learner/package.json
+
+Note that in CI environments this setting is true by default. If you still need to run install in such cases, use "pnpm install --no-frozen-lockfile"
+
+  Failure reason:
+  specifiers in the lockfile ({}) don't match specs in package.json ({"@tanstack/react-query":"5.101.2","@trpc/client":"11.18.0","@trpc/server":"11.18.0","react":"19.2.3","react-dom":"19.2.3"})
+
+--- stderr ---
+(node:55453) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)

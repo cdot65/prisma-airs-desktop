@@ -269,7 +269,13 @@ function isAcademyView(value: unknown): boolean {
                 isCount(value.expiresIn)
             )
         case 'signedIn':
-            return isString(value.displayName) && typeof value.learner === 'string' && LEARNER_REF.test(value.learner)
+            return (
+                isString(value.displayName) &&
+                typeof value.accountId === 'string' &&
+                /^user_[A-Za-z0-9_]{1,123}$/.test(value.accountId) &&
+                typeof value.learner === 'string' &&
+                LEARNER_REF.test(value.learner)
+            )
         case 'failed':
             return (
                 oneOf(ACADEMY_FAILURES, value.failure) &&
@@ -387,7 +393,8 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         typeof value.durabilityUnconfirmed !== 'boolean' ||
         !Array.isArray(value.scans) ||
         !value.scans.every(isScanRecord) ||
-        !isAcademyView(value.academy)
+        !isAcademyView(value.academy) ||
+        !optional((l) => typeof l === 'string' && LEARNER_REF.test(l), value.learner)
     ) {
         throw new ContractViolation('shell snapshot')
     }

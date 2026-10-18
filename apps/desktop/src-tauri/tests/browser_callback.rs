@@ -267,6 +267,7 @@ fn learner_results_cross_ipc_once_with_no_credential() {
     let AcademyView::SignedIn {
         learner,
         display_name,
+        ..
     } = view
     else {
         panic!("{view:?}")

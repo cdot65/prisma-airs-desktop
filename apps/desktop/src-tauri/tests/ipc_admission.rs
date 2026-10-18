@@ -114,6 +114,21 @@ fn shell_observation_matches_the_literal_snapshot() {
         raw(&fixture("observe-shell-request.json")),
     )
     .expect("observe");
+    // The learner reference is salted per launch: check its shape, then
+    // compare everything else literally.
+    let mut response = response;
+    let learner = response["snapshot"]["learner"]
+        .as_str()
+        .expect("learner")
+        .to_owned();
+    assert!(
+        learner.len() == 27
+            && learner.starts_with("lx-")
+            && learner[3..].bytes().all(|b| b.is_ascii_hexdigit()),
+        "{learner}"
+    );
+    response["snapshot"]["learner"] =
+        fixture("observe-shell-response.json")["snapshot"]["learner"].clone();
     assert_eq!(response, fixture("observe-shell-response.json"));
     let text = response.to_string();
     for forbidden in ["secret", "token", "password", "apiKey", "credential"] {

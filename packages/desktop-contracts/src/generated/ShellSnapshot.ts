@@ -4,6 +4,7 @@ import type { ActiveContext } from "./ActiveContext";
 import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
 import type { ImportView } from "./ImportView";
+import type { LearnerRef } from "./LearnerRef";
 import type { ResetFailure } from "./ResetFailure";
 import type { ScanRecordView } from "./ScanRecordView";
 import type { StorageHealth } from "./StorageHealth";
@@ -39,4 +40,9 @@ scans: Array<ScanRecordView>,
 /**
  * The Academy learner account (independent of the tenant).
  */
-academy: AcademyView, };
+academy: AcademyView, 
+/**
+ * The current learner generation: the signed-in account's, or a guest
+ * generation for public catalog reads while signed out.
+ */
+learner: LearnerRef | null, };

@@ -254,10 +254,177 @@ pub fn required(repo: &Repo, manifest: &Manifest, subject: Subject) -> Result<Op
 
 /// Reasons the subject's budget evidence does not pass (empty when it does).
 pub fn status(repo: &Repo, manifest: &Manifest, subject: Subject) -> Vec<String> {
-    match required(repo, manifest, subject) {
+    let mut failures = match required(repo, manifest, subject) {
         Ok(None) => Vec::new(),
         Ok(Some(chunk)) => evaluate(repo, subject, &chunk).unwrap_or_else(|e| vec![e.to_string()]),
         Err(e) => vec![e.to_string()],
+    };
+    match manifest.native_members(subject) {
+        Ok(members) => {
+            for workload in WORKLOADS {
+                if members.iter().any(|m| m == workload.measured_by) {
+                    failures.extend(
+                        evaluate_workload(repo, subject, workload)
+                            .unwrap_or_else(|e| vec![e.to_string()]),
+                    );
+                }
+            }
+        }
+        Err(e) => failures.push(e.to_string()),
+    }
+    failures
+}
+
+/// A later workload's budgets, registered (as a reviewed table) by one chunk
+/// before the chunk that implements the workload measures it.
+pub struct Workload {
+    pub registered_by: &'static str,
+    pub registration: &'static str,
+    pub measured_by: &'static str,
+    pub evidence: &'static str,
+}
+
+/// The Academy hosted content and learner sync workload: registered in C04,
+/// measured in C05 (and phases containing C05).
+pub const WORKLOADS: &[Workload] = &[Workload {
+    registered_by: "C04",
+    registration: "docs/planning/evidence/C04/workload-budget-registration.json",
+    measured_by: "C05",
+    evidence: "workload-perf.json",
+}];
+
+/// Budgets from a registered Markdown table:
+/// `| id | statistic | <limit> <unit> | samples | method |`.
+pub fn workload_budgets(table: &str) -> Result<Vec<Budget>> {
+    let mut budgets = Vec::new();
+    for line in table.lines() {
+        let cells: Vec<&str> = line
+            .trim()
+            .trim_matches('|')
+            .split('|')
+            .map(str::trim)
+            .collect();
+        if cells.len() < 5 || cells[0] == "Budget" || cells[0].starts_with("---") {
+            continue;
+        }
+        let (limit, unit) = cells[2]
+            .split_once(' ')
+            .ok_or_else(|| invalid(format!("budget row without a unit: {line}")))?;
+        budgets.push(Budget {
+            id: cells[0].to_owned(),
+            statistic: cells[1].to_owned(),
+            limit: limit
+                .parse()
+                .map_err(|_| invalid(format!("budget limit is not a number: {line}")))?,
+            unit: unit.to_owned(),
+            samples: cells[3]
+                .parse()
+                .map_err(|_| invalid(format!("budget sample count is not a number: {line}")))?,
+        });
+    }
+    if budgets.is_empty() {
+        return Err(invalid("the registered workload table lists no budgets"));
+    }
+    Ok(budgets)
+}
+
+/// The workload measurement record (tools/perf/measure_c05.py).
+#[derive(Clone, Debug, Deserialize)]
+pub struct WorkloadPerf {
+    pub schema: String,
+    pub label: String,
+    pub registration_sha256: String,
+    pub started_utc: String,
+    pub executable_sha256: String,
+    pub metrics: BTreeMap<String, Metric>,
+}
+
+fn evaluate_workload(repo: &Repo, subject: Subject, workload: &Workload) -> Result<Vec<String>> {
+    let record: Registration = read_json(&repo.join(workload.registration))?;
+    let table_path = repo.join(&record.budgets);
+    let table = std::fs::read(&table_path).map_err(io_err(&table_path))?;
+    let table_sha = sha256_hex(&table);
+    if table_sha != record.budgets_sha256 {
+        return Err(invalid(format!(
+            "{} (sha256 {table_sha}) does not match its {} registration ({}); a change needs a new registered version",
+            record.budgets, workload.registered_by, record.budgets_sha256
+        )));
+    }
+    let budgets = workload_budgets(&String::from_utf8_lossy(&table))?;
+    let dir = repo.evidence_dir(subject);
+    let mut failures = Vec::new();
+    let prepared: Option<Prepared> = read_json(&dir.join("native-prepare.json")).ok();
+    let perf: WorkloadPerf = match read_json(&dir.join(workload.evidence)) {
+        Ok(perf) => perf,
+        Err(e) => return Ok(vec![format!("blocked: {e}")]),
+    };
+    if perf.schema != "airs-v2-workload-perf/1" || perf.label != "acceptance" {
+        failures.push(format!(
+            "{} is not an acceptance measurement",
+            workload.evidence
+        ));
+    }
+    if perf.registration_sha256 != table_sha {
+        failures.push(format!(
+            "{} names budgets {} not the registered {table_sha}",
+            workload.evidence, perf.registration_sha256
+        ));
+    }
+    if perf.started_utc < record.registered_utc {
+        failures.push(format!(
+            "{} started before the budgets were registered",
+            workload.evidence
+        ));
+    }
+    if prepared.as_ref().map(|p| p.executable_sha256.as_str())
+        != Some(perf.executable_sha256.as_str())
+    {
+        failures.push(format!(
+            "{} was not measured on the prepared fixture executable",
+            workload.evidence
+        ));
+    }
+    for budget in &budgets {
+        failures.extend(judge(budget, perf.metrics.get(&budget.id)));
+    }
+    Ok(failures)
+}
+
+/// One budget against its raw samples (statistic recomputed here).
+fn judge(budget: &Budget, metric: Option<&Metric>) -> Option<String> {
+    let Some(metric) = metric else {
+        return Some(format!("{}: no measurement", budget.id));
+    };
+    if metric.unit != budget.unit {
+        return Some(format!(
+            "{}: unit {} is not {}",
+            budget.id, metric.unit, budget.unit
+        ));
+    }
+    if metric.samples.len() < budget.samples {
+        return Some(format!(
+            "{}: {} samples, {} required",
+            budget.id,
+            metric.samples.len(),
+            budget.samples
+        ));
+    }
+    match statistic(&budget.statistic, &metric.samples) {
+        Some(value) if value <= budget.limit => {
+            println!(
+                "budget {} {} {:.1} {} <= {}",
+                budget.id, budget.statistic, value, budget.unit, budget.limit
+            );
+            None
+        }
+        Some(value) => Some(format!(
+            "{}: {} {:.1} {} exceeds {}",
+            budget.id, budget.statistic, value, budget.unit, budget.limit
+        )),
+        None => Some(format!(
+            "{}: undefined statistic {}",
+            budget.id, budget.statistic
+        )),
     }
 }
 
@@ -308,49 +475,82 @@ fn evaluate(repo: &Repo, subject: Subject, chunk: &str) -> Result<Vec<String>> {
         Err(e) => failures.push(format!("blocked: {e}")),
     }
     for budget in &budgets.budgets {
-        let Some(metric) = metrics.get(&budget.id) else {
-            failures.push(format!("{}: no measurement", budget.id));
-            continue;
-        };
-        if metric.unit != budget.unit {
-            failures.push(format!(
-                "{}: unit {} is not {}",
-                budget.id, metric.unit, budget.unit
-            ));
-            continue;
-        }
-        if metric.samples.len() < budget.samples {
-            failures.push(format!(
-                "{}: {} samples, {} required",
-                budget.id,
-                metric.samples.len(),
-                budget.samples
-            ));
-            continue;
-        }
-        match statistic(&budget.statistic, &metric.samples) {
-            Some(value) if value <= budget.limit => {
-                println!(
-                    "budget {} {} {:.1} {} <= {}",
-                    budget.id, budget.statistic, value, budget.unit, budget.limit
-                );
-            }
-            Some(value) => failures.push(format!(
-                "{}: {} {:.1} {} exceeds {}",
-                budget.id, budget.statistic, value, budget.unit, budget.limit
-            )),
-            None => failures.push(format!(
-                "{}: undefined statistic {}",
-                budget.id, budget.statistic
-            )),
-        }
+        failures.extend(judge(budget, metrics.get(&budget.id)));
     }
     Ok(failures)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::statistic;
+    use super::{Budget, Metric, judge, statistic, workload_budgets};
+
+    #[test]
+    fn a_budget_fails_over_its_limit_short_of_samples_or_in_another_unit() {
+        let budget = Budget {
+            id: "b".into(),
+            statistic: "p95".into(),
+            limit: 10.0,
+            unit: "ms".into(),
+            samples: 3,
+        };
+        let metric = |unit: &str, samples: Vec<f64>| Metric {
+            unit: unit.into(),
+            samples,
+        };
+        assert_eq!(
+            judge(&budget, Some(&metric("ms", vec![1.0, 2.0, 10.0]))),
+            None
+        );
+        assert!(judge(&budget, Some(&metric("ms", vec![1.0, 2.0, 10.5]))).is_some());
+        assert!(judge(&budget, Some(&metric("ms", vec![1.0, 2.0]))).is_some());
+        assert!(judge(&budget, Some(&metric("s", vec![1.0, 2.0, 3.0]))).is_some());
+        assert!(judge(&budget, None).is_some());
+    }
+
+    #[test]
+    fn the_registered_workload_table_parses_exactly() {
+        let table = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../docs/planning/evidence/C04/workload-budget.md"),
+        )
+        .expect("table");
+        let parsed: Vec<(String, String, f64, String, usize)> = workload_budgets(&table)
+            .expect("budgets")
+            .into_iter()
+            .map(|b| (b.id, b.statistic, b.limit, b.unit, b.samples))
+            .collect();
+        assert_eq!(
+            parsed,
+            vec![
+                (
+                    "learner-call-overhead".into(),
+                    "p95".into(),
+                    75.0,
+                    "ms".into(),
+                    100
+                ),
+                (
+                    "catalog-to-lesson".into(),
+                    "p95".into(),
+                    1500.0,
+                    "ms".into(),
+                    20
+                ),
+                (
+                    "academy-process-tree-resident".into(),
+                    "max".into(),
+                    450.0,
+                    "MiB".into(),
+                    20
+                ),
+            ]
+        );
+        assert!(workload_budgets("| Budget | Statistic |\n|---|---|").is_err());
+        assert!(
+            workload_budgets("| x | p95 | 75 | 1 | m |").is_err(),
+            "no unit"
+        );
+    }
 
     #[test]
     fn nearest_rank_statistics() {

@@ -641,8 +641,7 @@ namespace, browser opener) and `apps/desktop/src/features/academy`.
   learner reference and remounts the learner subtree on account change.
   Literal SuperJSON/envelope fixtures in
   `packages/desktop-contracts/fixtures/academy` drive both the Rust and the
-  TypeScript suites. Academy content arrives in C05; the Academy destination
-  states "Planned in C05".
+  TypeScript suites. Academy content arrived in C05 (below).
 - **Sign-out** moves the saved record into the ledger in one save (a save
   failure refuses sign-out before anything changes), retires learner work,
   revokes the refresh token (read from the Keychain first when this launch
@@ -651,6 +650,106 @@ namespace, browser opener) and `apps/desktop/src/features/academy`.
 - **Reset** signs the learner out, waits for admitted learner writes like
   scan writes, and purges the learner namespace with the scan namespace
   (stage `credentials`).
+
+### C05 implementation: Academy catalog, lessons and knowledge checks
+
+Implemented in Academy's `@ai-security-academy/learner` package (branch
+`v2/desktop-presentation`, pinned in `docs/architecture/inputs.lock.json`),
+`crates/desktop-core` (`learner`, `authority/learner_domain`) and
+`apps/desktop/src/features/academy`.
+
+- **Shared learner source.** The desktop compiles Academy's own learner pages
+  (catalog `LearnPage`, `PathLandingPage`, `CoursePage`, `UnitPage` with
+  lessons, diagrams and knowledge checks, `CompletionMoments`) from the
+  pinned, hash-verified Academy input: the learner package exports them with
+  `LearnerHost`, which supplies the tRPC links, the account-scoped
+  QueryClient, a provider-neutral learner identity (Academy web supplies it
+  from Clerk, the desktop from its native account) and the read-only theme.
+  Academy-relative `@/` imports resolve to `.work/academy/src` and every
+  bare import to the desktop's pinned copy (`academy-source.ts`, Vite
+  `dedupe`), so one React, React Query and router exist. Public types are
+  declared in the package and checked against the implementation
+  (`src/conformance.ts`). Academy web keeps its routed composition. The
+  hermetic shared suite (`vitest.presentation.config.ts`, run by the shared
+  gate on the pinned input) covers the learner export and host and the web
+  learner compositions (units, learn, library, labs). Every file-installed
+  Academy package (presentation, learner, shared) is fingerprinted and
+  verified against the pinned input in its staged and installed copies.
+- **Guest and account generations.** A `LearnerRef` exists whenever the core
+  runs: the guest generation while signed out, an account generation once
+  signed in (`ShellSnapshot.learner`; `AcademyView::SignedIn.accountId`).
+  `AcademyCall` admits a signed-in learner's procedures on the pinned
+  account allowlist with the account credential, and the public catalog
+  queries (`PUBLIC_PROCEDURES`: catalog, course, path, module and unit
+  reads, as Academy's public procedures) without any credential, for guests
+  and for signed-in public-only procedures; everything else is refused
+  before a request, and a guest call is never renewed or resent. Each
+  sign-in, sign-out, account change and reset retires the previous
+  generation (`StaleContext` for its calls) and the presentation remounts
+  the learner subtree with a fresh QueryClient and router.
+- **Desktop learner host** (D029). The Academy destination routes Academy's
+  paths in memory (`/learn`, `/paths`, `/paths/$pathSlug`,
+  `/courses/$courseSlug` with Academy's retired-slug redirects,
+  `/units/$unitId`, `/sign-in` pointing to Settings); any other learner path
+  (Program, assessments, shifts) says plainly it is not in this build, and
+  a page that fails to render shows a plain failure view without its error
+  text. Focus moves to each new page's heading. Learner pages' breadcrumb
+  trail (`useLearnerPageHeader`) renders as links in the destination.
+  Lesson-body anchors route learner paths in place, scroll in-page anchors,
+  and leave any other address out of the window (the navigation policy
+  already refuses remote pages), saying where it points. Hands-on labs are
+  previewed (`labs="preview"`: title, brief, no sandbox started); lesson
+  diagrams show the pipeline's pre-rendered SVG for the theme as an image
+  with its source under a disclosure, or the source when no artifact
+  exists (`diagrams="prerendered"`): mermaid cannot load under the
+  WebView's frozen prototypes and its SVGs rely on inline styles the CSP
+  refuses. Diagram walkthrough videos are not requested.
+- **Truthful denials.** Academy's own content-access decisions pass through
+  unchanged: a guest at gated content gets Academy's sign-in gate (401), a
+  signed-in learner without the grant or progression its locked gate with
+  the domain reason (403 `FORBIDDEN`), and retired content "Unit not
+  found." (404). A procedure the desktop refuses reads as Academy's sign-in
+  gate for a guest (`UNAUTHORIZED`: "Sign in to take this knowledge check.")
+  and as not carried by the desktop for a signed-in learner
+  (`METHOD_NOT_SUPPORTED`), never as Academy's grant/progression gate
+  (`FORBIDDEN`); none of these is retried.
+- **Learner effects stay in Academy and in their generation.** Completion
+  moments, XP and gamification components mount only inside the Academy
+  destination; the shell and other features mount none and make no learner
+  calls. The desktop passes its learner generation as Academy's learner
+  session; Academy's identity provider announces each session change before
+  any page effect of the new session runs; completion moments keep only the
+  current session's watch and queue and ignore late calls carrying another
+  session, and toasts, the level-up overlay, the lab-pass award and
+  in-progress answers are retired, so sign-out, another account, reset,
+  re-sign-in to the same account (even while Academy is unmounted) or
+  leaving and re-entering Academy never show an earlier generation's state.
+- **Visible failures.** `LearnerHost` mounts Academy's toaster and reports
+  its host QueryClient's mutation failures as Academy web does. A failed
+  learner mutation whose outcome is unknown (lost reply, timeout, 5xx after
+  receipt) re-reads the unit progress it would have changed and says what
+  the learner can do: starting a check again is safe, completing a unit
+  again is safe (idempotent), and a possibly recorded submission shows as
+  Done in the contents once Academy recorded it (its score cannot be
+  shown); a guest is asked to sign in (unit completion inline, knowledge
+  checks, the notice); nothing is resent. Academy's
+  WebView presentation keys (`academy-` completion latches, contents-rail
+  preference) survive sign-out as on Academy web and are removed when a
+  local-data reset completes.
+- **Truth exclusion.** `tools/academy/truth-graph.mjs` builds the production
+  frontend with a module-graph plugin: no Academy server, database, authored
+  content or question bank, content pipeline, script, admin, Redis or
+  grading/evaluation module is in the graph, no server or provider package
+  is bundled, a canary seeded into each such module never appears in the
+  output (a canary seeded into the learner host does, proving detection),
+  and every procedure the shipped modules call is on the account allowlist,
+  public, or listed as refused by design with its reason (lab runs —
+  previewed; event celebrations — never mounted; product telemetry). The
+  C05 test gate runs it (`vitest.truth.config.ts`); its report is in
+  `docs/planning/evidence/C05/truth-graph`.
+- **Fixture-only measurement.** In fixture builds (`snapshot.fixtureBuild`)
+  the destination offers a learner-call probe for the C04-registered
+  overhead budget; production builds never render or load it.
 
 ## 3. Native Harness, identity and protected storage
 

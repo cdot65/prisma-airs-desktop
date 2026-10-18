@@ -11,6 +11,7 @@ import {
 import { followAppearance } from './shell/appearance'
 import type { DispatchOutcome } from './features/tenants/dispatch'
 import { DesktopShell } from './shell/desktop-shell'
+import { forgetAcademyPresentation } from './features/academy/presentation-storage'
 
 export function App({ client }: { client: DesktopClient }) {
     const [snapshot, setSnapshot] = useState<ShellSnapshot | null>(null)
@@ -90,6 +91,18 @@ export function App({ client }: { client: DesktopClient }) {
         }
     }, [client])
 
+    // A completed reset also forgets Academy's WebView presentation state
+    // (completion latches keyed by account); a stopped reset keeps it.
+    const storage = snapshot?.storage
+    const resetFailed = Boolean(snapshot?.resetFailure)
+    const previousStorage = useRef(storage)
+    useEffect(() => {
+        if (previousStorage.current === 'resetting' && storage !== 'resetting' && !resetFailed) {
+            forgetAcademyPresentation()
+        }
+        previousStorage.current = storage
+    }, [storage, resetFailed])
+
     const appearance = snapshot?.appearance
     // Apply the theme in the same commit as the snapshot, before paint, so
     // the shell never shows a frame in the previous theme.
@@ -121,6 +134,7 @@ export function App({ client }: { client: DesktopClient }) {
             onClosePalette={() => setPaletteOpen(false)}
             onSetAppearance={(theme) => void setAppearance(theme)}
             dispatch={dispatch}
+            client={client}
         />
     )
 }

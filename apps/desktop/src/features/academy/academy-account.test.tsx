@@ -43,7 +43,7 @@ describe('Academy account', () => {
         expect(account().getByText(/https:\/\/clerk.academy.example\/activate · expires in 10 min/)).toBeInTheDocument()
         await user.click(account().getByRole('button', { name: 'Open sign-in page' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'openAcademyVerification' })
-        await native.push(withAcademy({ state: 'signedIn', displayName: 'Ada Lovelace', learner: 'lx-aaaaaaaaaaaaaaaaaaaaaaaa' }))
+        await native.push(withAcademy({ state: 'signedIn', displayName: 'Ada Lovelace', accountId: 'user_2fixturelearner', learner: 'lx-aaaaaaaaaaaaaaaaaaaaaaaa' }))
         expect(account().getByText('Ada Lovelace')).toBeInTheDocument()
         await user.click(account().getByRole('button', { name: 'Sign out of Academy' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'signOutAcademy' })

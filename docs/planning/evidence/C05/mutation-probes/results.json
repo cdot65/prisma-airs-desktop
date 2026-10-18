@@ -1,0 +1,629 @@
+[
+  {
+    "mutation": "public procedures admitted as mutations",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_learner"
+    ],
+    "guard": "a_guest_is_refused_everything_outside_the_public_queries_before_sending",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "signed-in public-only calls carry the account credential",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_learner"
+    ],
+    "guard": "a_signed_in_learner_sends_the_credential_only_on_the_account_allowlist",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an account procedure joins the public set",
+    "files": [
+      "crates/desktop-core/src/learner.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_learner"
+    ],
+    "guard": "a_guest_is_refused_everything_outside_the_public_queries_before_sending",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "sign-in keeps the guest generation",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_learner"
+    ],
+    "guard": "each_account_change_issues_a_new_generation_and_retires_the_old_one",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "guest refusals read as desktop limits",
+    "files": [
+      "apps/desktop/src/features/academy/desktop-link.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/trpc-link.test.ts"
+    ],
+    "guard": "asks a guest to sign in",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "signed-in refusals read as Academy's grant gate",
+    "files": [
+      "apps/desktop/src/features/academy/desktop-link.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/trpc-link.test.ts"
+    ],
+    "guard": "asks a guest to sign in",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the learner subtree survives a generation change",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "starts a fresh cache and route for each account generation",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "external lesson links routed into the window",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "routes learner paths in place and keeps other addresses out of the window",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "labs run instead of previewed",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "previews a lab instead of mounting a runner",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "diagrams rendered live",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "shows pre-rendered diagrams without loading the diagram renderer or video",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a completed reset keeps Academy presentation storage",
+    "files": [
+      "apps/desktop/src/app.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "guard": "forgets Academy presentation storage when a reset completes",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "failed pages show the router's raw error view",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "shows a plain failure view without the error text when a learner page throws",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "retired course slugs are not redirected",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "resolves a retired course slug before loading anything",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the measurement probe renders in production builds",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "offers the learner call probe only in fixture builds",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an Academy server module ships",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.truth.config.ts"
+    ],
+    "guard": "ships no Academy truth, privileged module or unexplained procedure",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused procedure loses its reason",
+    "files": [
+      "tools/academy/truth-graph.mjs"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.truth.config.ts"
+    ],
+    "guard": "ships no Academy truth, privileged module or unexplained procedure",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the registered workload table is misread",
+    "files": [
+      "crates/xtask/src/budgets.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--lib"
+    ],
+    "guard": "the_registered_workload_table_parses_exactly",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a workload budget over its limit passes",
+    "files": [
+      "crates/xtask/src/budgets.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--lib"
+    ],
+    "guard": "a_budget_fails_over_its_limit_short_of_samples_or_in_another_unit",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "legacy license arrays are ignored",
+    "files": [
+      "crates/xtask/src/notices.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--lib"
+    ],
+    "guard": "legacy_and_reviewed_file_licenses_count_only_when_exact",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "focus stays on the Academy region after its page renders",
+    "files": [
+      "apps/desktop/src/features/academy/academy-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "guard": "hands focus to the Academy page heading once the page renders",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "completion state survives a learner change",
+    "files": [
+      ".work/academy/src/features/units/components/completion-moments.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "never shows or watches a previous account completion in the next generation",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the host reports no mutation failures",
+    "files": [
+      "apps/desktop/node_modules/@ai-security-academy/learner/src/host.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "asks a guest to sign in when completing a unit, which the desktop never sends",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unknown submission outcome reads as a plain failure",
+    "files": [
+      ".work/academy/src/features/units/components/knowledge-check-runner.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "says a knowledge-check submission may have been recorded when the server fails after receiving it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "installed learner and shared copies escape verification",
+    "files": [
+      "crates/xtask/src/fingerprint.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--lib"
+    ],
+    "guard": "every_installed_academy_package_is_fingerprinted_and_verified",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the learner generation is not Academy's session",
+    "files": [
+      "apps/desktop/src/features/academy/learner-provider.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-generations.test.tsx"
+    ],
+    "guard": "does not bring back an earlier generation after reset and signing in to the same account",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unknown outcome is not read back",
+    "files": [
+      ".work/academy/src/features/units/hooks/use-unit-queries.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "guard": "says a knowledge-check submission may have been recorded when the server fails after receiving it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "guest public reads require an account session",
+    "files": [
+      "crates/desktop-core/src/authority/learner_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_learner"
+    ],
+    "guard": "a_guest_reads_the_public_catalog_without_any_credential",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "academy_learner"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--lib"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/trpc-link.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-view.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/academy/academy-generations.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.truth.config.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

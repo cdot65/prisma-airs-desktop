@@ -127,6 +127,30 @@ pub const LEARNER_PROCEDURES: &[(&str, ProcedureKind)] = &[
     ("units.submitKnowledgeCheck", Mutation),
 ];
 
+/// Public catalog procedures (Academy `publicProcedure`) the desktop calls
+/// with no credential: for guests, and for the two public-only module media
+/// procedures that Academy's desktop-token allowlist does not include. All
+/// are queries.
+pub const PUBLIC_PROCEDURES: &[&str] = &[
+    "courses.list",
+    "library.list",
+    "modules.diagramVideo",
+    "modules.intro",
+    "modules.listByCourse",
+    "paths.forCourse",
+    "paths.get",
+    "paths.list",
+    "units.get",
+    "units.listByModule",
+    "units.listByPath",
+    "units.moduleMeta",
+];
+
+/// True for a public catalog procedure.
+pub fn is_public(procedure: &str) -> bool {
+    PUBLIC_PROCEDURES.binary_search(&procedure).is_ok()
+}
+
 /// The kind of an allowed learner procedure.
 pub fn procedure_kind(procedure: &str) -> Option<ProcedureKind> {
     LEARNER_PROCEDURES
@@ -155,6 +179,9 @@ pub enum AcademyView {
     #[serde(rename_all = "camelCase")]
     SignedIn {
         display_name: String,
+        /// Academy's `user_…` account id (not a credential); learner pages
+        /// key per-learner local state by it.
+        account_id: String,
         learner: LearnerRef,
     },
     #[serde(rename_all = "camelCase")]
@@ -169,6 +196,55 @@ pub enum AcademyView {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_public_set_is_sorted_and_contains_only_queries() {
+        assert!(PUBLIC_PROCEDURES.windows(2).all(|w| w[0] < w[1]));
+        for p in PUBLIC_PROCEDURES {
+            assert!(procedure_kind(p).is_none_or(|k| k == Query), "{p}");
+        }
+        assert!(
+            is_public("modules.intro")
+                && !is_public("units.complete")
+                && !is_public("progress.get")
+        );
+    }
+
+    /// The TypeScript link suite and the shipped-procedure check read the
+    /// same sets from this fixture.
+    #[test]
+    fn the_shared_procedure_fixture_matches_the_pinned_sets() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../packages/desktop-contracts/fixtures/academy/learner-procedures.json");
+        let fixture: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).expect("fixture")).expect("json");
+        let learner: Vec<(String, String)> = LEARNER_PROCEDURES
+            .iter()
+            .map(|(name, kind)| {
+                let kind = if *kind == Query { "query" } else { "mutation" };
+                ((*name).to_owned(), kind.to_owned())
+            })
+            .collect();
+        let listed: Vec<(String, String)> = fixture["learner"]
+            .as_array()
+            .expect("learner")
+            .iter()
+            .map(|e| {
+                (
+                    e["procedure"].as_str().expect("procedure").to_owned(),
+                    e["kind"].as_str().expect("kind").to_owned(),
+                )
+            })
+            .collect();
+        assert_eq!(listed, learner);
+        let public: Vec<&str> = fixture["public"]
+            .as_array()
+            .expect("public")
+            .iter()
+            .map(|p| p.as_str().expect("name"))
+            .collect();
+        assert_eq!(public, PUBLIC_PROCEDURES);
+    }
 
     #[test]
     fn the_allowlist_is_sorted_unique_and_learner_only() {

@@ -464,7 +464,7 @@ impl AcademyClient {
         procedure: &str,
         kind: ProcedureKind,
         input: Option<&str>,
-        access_token: &str,
+        access_token: Option<&str>,
         timeout: Duration,
     ) -> Result<CallReply, CallFailure> {
         let mut url = Url::parse(&format!("{}/api/trpc/{procedure}", self.origin))
@@ -482,19 +482,21 @@ impl AcademyClient {
                 .header("content-type", "application/json")
                 .body(input.unwrap_or("{}").to_owned()),
         };
-        let response = request
+        let request = request
             .timeout(timeout)
-            .header("accept", "application/json")
-            .bearer_auth(access_token)
-            .send()
-            .await
-            .map_err(|e| {
-                if e.is_timeout() {
-                    CallFailure::Timeout
-                } else {
-                    CallFailure::Network
-                }
-            })?;
+            .header("accept", "application/json");
+        // Public procedures are sent with no credential at all.
+        let request = match access_token {
+            Some(token) => request.bearer_auth(token),
+            None => request,
+        };
+        let response = request.send().await.map_err(|e| {
+            if e.is_timeout() {
+                CallFailure::Timeout
+            } else {
+                CallFailure::Network
+            }
+        })?;
         let status = response.status().as_u16();
         if (300..400).contains(&status) {
             return Err(CallFailure::InvalidResponse);
