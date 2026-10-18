@@ -335,6 +335,16 @@ async fn desktop_observe<R: Runtime>(
                 result: handle.result().await,
             })
         }
+        WireScope::Management { operation } => {
+            let Observation::Management(handle) =
+                host.operator.observe(ViewScope::Management(operation))?
+            else {
+                return Err(Refusal::InvalidInput);
+            };
+            Ok(ObserveResponse::Management {
+                result: handle.result().await,
+            })
+        }
     }
 }
 
@@ -356,6 +366,11 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             #[cfg(feature = "test-fixtures")]
             if let Some(origin) = adapters::fixture_academy_origin(app.handle()) {
                 config.academy_origin = origin;
+            }
+            #[cfg(feature = "test-fixtures")]
+            if let Some(origin) = adapters::fixture_management_origin(app.handle()) {
+                config.management =
+                    desktop_core::management::ManagementEndpoints::at_origin(&origin);
             }
             let core = Core::new(config, adapters::production(app.handle()));
             #[cfg(feature = "test-fixtures")]

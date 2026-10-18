@@ -3,7 +3,7 @@
  * contract violations, never rendered.
  */
 import { describe, expect, it } from 'vitest'
-import { ContractViolation, parseShellSnapshot, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import { ContractViolation, parseManagementResult, parseShellSnapshot, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { baseSnapshot, tenant, withTenant } from '../test/native'
 
 const valid: ShellSnapshot = withTenant(baseSnapshot, tenant())
@@ -111,6 +111,15 @@ describe('shell snapshot validation', () => {
             },
         ],
         ['tenant with an unknown scan state', { ...valid, tenants: [{ ...tenant(), scan: { state: 'exfiltrated', mode: null, failure: null } }] }],
+        ['a tenant without its management view', { ...valid, tenants: [{ ...tenant(), management: undefined }] }],
+        [
+            'an unknown management state',
+            { ...valid, tenants: [{ ...tenant(), management: { ...tenant().management, state: 'exfiltrated' } }] },
+        ],
+        [
+            'a non-HTTPS management token origin',
+            { ...valid, tenants: [{ ...tenant(), management: { ...tenant().management, tokenOrigin: 'http://auth.example' } }] },
+        ],
         ['scans missing', { ...valid, scans: undefined }],
         ['a scan with a malformed operation', withScan({ operation: 'op-x' })],
         ['a result on a scan that did not complete', withScan({ outcome: 'unknown' })],
@@ -143,5 +152,48 @@ describe('shell snapshot validation', () => {
         ['a reachability flag that is not a flag', offline({ reachable: 'yes' })],
     ])('rejects %s', (_case, snapshot) => {
         expect(() => parseShellSnapshot(snapshot)).toThrow(ContractViolation)
+    })
+})
+
+describe('management result validation', () => {
+    const page = {
+        resource: 'profiles',
+        offset: 0,
+        limit: 25,
+        items: '[{"profile_id":"p-1","profile_name":"A"}]',
+        count: 1,
+        nextOffset: null,
+        complete: true,
+        total: null,
+    }
+
+    it('accepts well-formed results', () => {
+        expect(parseManagementResult({ kind: 'verified' })).toEqual({ kind: 'verified' })
+        expect(parseManagementResult({ kind: 'page', page })).toBeTruthy()
+        expect(parseManagementResult({ kind: 'page', page: { ...page, complete: false, nextOffset: 25 } })).toBeTruthy()
+        expect(
+            parseManagementResult({ kind: 'detail', detail: { resource: 'topics', id: 't', found: 'found', item: '{"topic_id":"t"}' } })
+        ).toBeTruthy()
+        expect(parseManagementResult({ kind: 'detail', detail: { resource: 'topics', id: 't', found: 'incomplete', item: null } })).toBeTruthy()
+        expect(parseManagementResult({ kind: 'failed', failure: 'denied', outcome: 'rejected' })).toBeTruthy()
+    })
+
+    it.each([
+        ['an unknown kind', { kind: 'raw', body: '<html>' }],
+        ['an unknown resource', { kind: 'page', page: { ...page, resource: 'secrets' } }],
+        ['a page larger than the native maximum', { kind: 'page', page: { ...page, limit: 101 } }],
+        ['more items than the limit', { kind: 'page', page: { ...page, limit: 1, count: 2, items: '[{},{}]' } }],
+        ['a count that disagrees with the items', { kind: 'page', page: { ...page, count: 3 } }],
+        ['items that are not JSON', { kind: 'page', page: { ...page, items: 'not json' } }],
+        ['items that are not objects', { kind: 'page', page: { ...page, items: '["a"]' } }],
+        ['a complete page with a continuation', { kind: 'page', page: { ...page, nextOffset: 25 } }],
+        ['an incomplete page without a continuation', { kind: 'page', page: { ...page, complete: false } }],
+        ['a continuation that does not advance', { kind: 'page', page: { ...page, complete: false, nextOffset: 0 } }],
+        ['an absent detail with an item', { kind: 'detail', detail: { resource: 'topics', id: 't', found: 'absent', item: '{}' } }],
+        ['a found detail without an item', { kind: 'detail', detail: { resource: 'topics', id: 't', found: 'found', item: null } }],
+        ['an unknown failure', { kind: 'failed', failure: 'teapot', outcome: 'rejected' }],
+        ['a failure without an outcome', { kind: 'failed', failure: 'denied' }],
+    ])('rejects %s', (_, value) => {
+        expect(() => parseManagementResult(value)).toThrow(ContractViolation)
     })
 })

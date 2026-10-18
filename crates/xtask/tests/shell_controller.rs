@@ -1521,7 +1521,7 @@ fn phases_require_integrated_native_runs_and_acceptance() {
     let error =
         xtask::evidence::required_checks(&inventory, &later).expect_err("P03 inventories pending");
     assert!(
-        error.to_string().contains("C08"),
+        error.to_string().contains("C09"),
         "a phase fails closed until each member has an inventory: {error}"
     );
 }
@@ -1707,5 +1707,58 @@ fn owner_acceptance_takes_only_the_threshold_and_is_honored_only_when_recorded()
     assert!(
         complete::is_completed(&repo, &ledger(), Subject::Chunk(1)),
         "8/10 with the owner's acceptance"
+    );
+}
+
+#[test]
+fn d034_phases_need_nine_and_every_eight_chunk_is_raised_before_sign_off() {
+    let dir = scratch("d034");
+    let repo = Repo::new(&dir);
+    let manifest = Manifest::load(&self::repo().manifest()).expect("manifest");
+    // A phase review is never owner-accepted.
+    let error = complete::complete_with(
+        &repo,
+        &manifest,
+        Subject::Phase(1),
+        fixtures::fingerprints(),
+        Some("good enough"),
+    )
+    .expect_err("phase owner acceptance");
+    assert!(error.to_string().contains("D034"), "{error}");
+    // A phase whose chunk was accepted at 8/10 cannot complete until that
+    // chunk passes a 9/10 review.
+    let completion = |subject: &str, owner: bool| complete::Entry::Completion {
+        subject: subject.into(),
+        generation: 1,
+        receipt_id: format!("r-{subject}"),
+        receipt: format!("docs/planning/reviews/{subject}/attempt-01/receipt.json"),
+        receipt_sha256: "0".repeat(64),
+        fingerprints: fixtures::fingerprints(),
+        completed_utc: "t".into(),
+        owner_acceptance: owner.then(|| complete::OwnerAcceptance {
+            decision: "D034".into(),
+            reason: "chunk gate 8/10".into(),
+            minimum_score: complete::OWNER_MINIMUM_SCORE,
+            accepted_failures: vec!["score overall=8 is below 9".into()],
+        }),
+    };
+    for (subject, owner) in [("C01", false), ("C02", true), ("C03", false)] {
+        ledger_line(&dir, &completion(subject, owner));
+    }
+    let entries = complete::read_ledger(&repo.completion_ledger()).expect("ledger");
+    assert!(complete::owner_accepted(&entries, Subject::Chunk(2)));
+    assert!(!complete::owner_accepted(&entries, Subject::Chunk(1)));
+    let error = complete::complete(
+        &repo,
+        &manifest,
+        Subject::Phase(1),
+        fixtures::fingerprints(),
+    )
+    .expect_err("C02 below 9");
+    assert!(
+        error
+            .to_string()
+            .contains("C02 must first pass a 9/10 review (D034)"),
+        "{error}"
     );
 }

@@ -10,6 +10,8 @@ import type {
     VaultError,
 } from '@prisma-airs/desktop-contracts'
 import { ScanKeyForm } from './credential-entry'
+import { ManagementCredentialForm } from './management-credential'
+import type { ObserveManagement } from '../administration/management-read'
 import { type Dispatch, outcomeMessage } from './dispatch'
 import { ProfileImport } from './profile-import'
 
@@ -424,10 +426,11 @@ function StorageNotice({ snapshot }: { snapshot: ShellSnapshot }) {
 interface Props {
     snapshot: ShellSnapshot
     dispatch: Dispatch
+    observeManagement: ObserveManagement
 }
 
 /** Tenant profiles, the active tenant's scan key and destination, import and reset. */
-export function TenantsSettings({ snapshot, dispatch }: Props) {
+export function TenantsSettings({ snapshot, dispatch, observeManagement }: Props) {
     const legend = useId()
     const active = snapshot.active ? snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) : undefined
     return (
@@ -450,6 +453,13 @@ export function TenantsSettings({ snapshot, dispatch }: Props) {
                         tenant={active}
                         context={snapshot.active.context}
                         dispatch={dispatch}
+                    />
+                    <ManagementCredentialForm
+                        key={`management-${snapshot.active.context}`}
+                        tenant={active}
+                        context={snapshot.active.context}
+                        dispatch={dispatch}
+                        observe={observeManagement}
                     />
                     <EndpointChange tenant={active} snapshot={snapshot} dispatch={dispatch} />
                 </div>

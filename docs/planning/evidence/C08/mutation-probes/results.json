@@ -1,0 +1,539 @@
+[
+  {
+    "mutation": "management reads use the scan capability",
+    "files": [
+      "crates/desktop-core/src/authority/management_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "guard": "a_scan_only_tenant_scans_and_management_never_uses_or_replaces_the_scan_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the secret is sent to a token origin it was not stored for",
+    "files": [
+      "crates/desktop-core/src/authority/management_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "guard": "the_management_credential_survives_restart_bound_to_its_token_origin",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a management client is configured without a TSG",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "guard": "only_bounded_requests_from_a_tenant_with_a_tsg_are_admitted",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "removing the management client retires the scan key",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "guard": "removal_deletion_and_reset_retire_each_capability_as_asked",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a retired generation's read is neither stopped nor discarded",
+    "files": [
+      "crates/desktop-core/src/authority/management_domain.rs",
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "guard": "credentials_replaced_mid_pagination_retire_the_old_pages",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a full page without a cursor is called the last page",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "management"
+    ],
+    "guard": "offset_pages_claim_completeness_only_from_the_service",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "completeness is claimed while a cursor follows",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "management"
+    ],
+    "guard": "offset_pages_claim_completeness_only_from_the_service",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the service's total is ignored",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "management"
+    ],
+    "guard": "offset_pages_claim_completeness_only_from_the_service",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a required inventory without its array reads as empty",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "management"
+    ],
+    "guard": "offset_pages_claim_completeness_only_from_the_service",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a walk that ends early claims the item is absent",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "guard": "a_walk_that_ends_before_the_inventory_claims_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a DLP denial reads as an absent item",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "guard": "dlp_details_use_their_own_read_and_a_404_means_absent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an API key value leaves Rust",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "management"
+    ],
+    "guard": "secret_fields_never_leave_and_unknown_values_stay",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "nested secret fields are kept",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "management"
+    ],
+    "guard": "secret_fields_never_leave_and_unknown_values_stay",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the presentation accepts a complete page with a continuation",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a complete page with a continuation",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a tenant without its management view is accepted",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a tenant without its management view",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an incomplete inventory is shown as a known total",
+    "files": [
+      "apps/desktop/src/features/administration/administration-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/administration-view.test.tsx"
+    ],
+    "guard": "reads later pages, reports partial inventories and claims completeness only from the service",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a denied refresh drops the earlier rows",
+    "files": [
+      "apps/desktop/src/features/administration/administration-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/administration-view.test.tsx"
+    ],
+    "guard": "keeps rows with their age when a refresh is denied",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a reply for a superseded read is applied",
+    "files": [
+      "apps/desktop/src/features/administration/administration-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/administration-view.test.tsx"
+    ],
+    "guard": "restarts from the first page when the credential is replaced mid-pagination",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed read is shown as an empty inventory",
+    "files": [
+      "apps/desktop/src/features/administration/administration-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/administration-view.test.tsx"
+    ],
+    "guard": "shows the service\u2019s empty inventory, and a failed first read is not empty",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "profile details do not classify local previews",
+    "files": [
+      "apps/desktop/src/features/administration/administration-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/administration-view.test.tsx"
+    ],
+    "guard": "renders unknown values and markup as text and filters only the current page",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the client secret stays in its field while the request is awaited",
+    "files": [
+      "apps/desktop/src/features/tenants/management-credential.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/tenants/management-credential.test.tsx"
+    ],
+    "guard": "saves a separate client, clearing the secret before awaiting and keeping it out of storage",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a focused control is left under the bottom fade",
+    "files": [
+      "apps/desktop/src/shell/desktop-shell.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "guard": "keeps a focused page control clear of the bottom fade and the topbar, but not rail controls",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a page's last control cannot scroll clear of the fade",
+    "files": [
+      "apps/desktop/src/shell/desktop-shell.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "guard": "lists every native feature and shows unavailable destinations explicitly",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "management"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/administration-view.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/tenants/management-credential.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

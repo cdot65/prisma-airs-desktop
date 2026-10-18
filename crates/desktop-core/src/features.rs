@@ -47,8 +47,7 @@ pub struct FeatureEntry {
     pub availability: Availability,
 }
 
-const PLANNED: [(FeatureId, &str, &str); 8] = [
-    (FeatureId::Administration, "Administration", "C08"),
+const PLANNED: [(FeatureId, &str, &str); 7] = [
     (FeatureId::Sessions, "Sessions & Reports", "C11"),
     (FeatureId::Library, "Case Library", "C12"),
     (FeatureId::RedTeam, "Red Team & Models", "C13"),
@@ -60,7 +59,8 @@ const PLANNED: [(FeatureId, &str, &str); 8] = [
 
 /// The catalogue shipped by this build, in navigation order.
 pub fn catalogue() -> Vec<FeatureEntry> {
-    // Runtime Security shipped in C03, Academy learning in C05.
+    // Runtime Security shipped in C03, Academy learning in C05, management
+    // reads (Administration) in C08.
     let mut entries = vec![
         FeatureEntry {
             id: FeatureId::Runtime,
@@ -70,6 +70,11 @@ pub fn catalogue() -> Vec<FeatureEntry> {
         FeatureEntry {
             id: FeatureId::Academy,
             label: "Academy".to_owned(),
+            availability: Availability::Available,
+        },
+        FeatureEntry {
+            id: FeatureId::Administration,
+            label: "Administration".to_owned(),
             availability: Availability::Available,
         },
     ];

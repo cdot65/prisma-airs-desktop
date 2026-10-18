@@ -13,6 +13,7 @@
 import type { AcademyCallResult } from './generated/AcademyCallResult'
 import type { DispatchResponse } from './generated/DispatchResponse'
 import type { Intent } from './generated/Intent'
+import type { ManagementResult } from './generated/ManagementResult'
 import type { MenuCommand } from './generated/MenuCommand'
 import type { ObservationUpdate } from './generated/ObservationUpdate'
 import type { Refusal } from './generated/Refusal'
@@ -155,6 +156,39 @@ const SCAN_FAILURES: readonly string[] = [
     'other',
 ]
 
+const MANAGEMENT_RESOURCES: readonly string[] = [
+    'profiles',
+    'topics',
+    'applications',
+    'apiKeys',
+    'deploymentProfiles',
+    'dlpCatalog',
+    'dataProfiles',
+    'dataPatterns',
+    'filteringProfiles',
+    'dictionaries',
+]
+const MANAGEMENT_FAILURES: readonly string[] = [
+    'unauthorized',
+    'denied',
+    'notFound',
+    'rateLimited',
+    'unavailable',
+    'rejected',
+    'timeout',
+    'cancelled',
+    'network',
+    'destination',
+    'invalidResponse',
+    'credentialLocked',
+    'credentialDenied',
+    'credentialMissing',
+    'configuration',
+]
+const DETAIL_FOUND: readonly string[] = ['found', 'absent', 'incomplete']
+/** Largest page the native side reads (`management::MAX_PAGE`). */
+const MANAGEMENT_MAX_PAGE = 100
+
 const oneOf = (allowed: readonly string[], value: unknown): boolean =>
     typeof value === 'string' && allowed.includes(value)
 const optional = (check: (v: unknown) => boolean, value: unknown): boolean =>
@@ -169,6 +203,17 @@ function isDestination(value: unknown): boolean {
     return value.kind === 'custom' && typeof value.origin === 'string' && value.origin.startsWith('https://')
 }
 
+function isManagementView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(SCAN_STATES, value.state) &&
+        optional((m) => oneOf(MODES, m), value.mode) &&
+        optional((f) => oneOf(VAULT_ERRORS, f), value.failure) &&
+        optional(isString, value.clientId) &&
+        optional((o) => typeof o === 'string' && o.startsWith('https://'), value.tokenOrigin)
+    )
+}
+
 function isTenant(value: unknown): boolean {
     return (
         isRecord(value) &&
@@ -181,7 +226,8 @@ function isTenant(value: unknown): boolean {
         isRecord(value.scan) &&
         oneOf(SCAN_STATES, value.scan.state) &&
         optional((m) => oneOf(MODES, m), value.scan.mode) &&
-        optional((f) => oneOf(VAULT_ERRORS, f), value.scan.failure)
+        optional((f) => oneOf(VAULT_ERRORS, f), value.scan.failure) &&
+        isManagementView(value.management)
     )
 }
 
@@ -364,6 +410,70 @@ export function parseAcademyCallResult(value: unknown): AcademyCallResult {
         }
     }
     throw new ContractViolation('academy call result')
+}
+
+/** A JSON array of objects (management items are rendered as data only). */
+function isItemArray(value: unknown): boolean {
+    if (typeof value !== 'string') return false
+    try {
+        const items: unknown = JSON.parse(value)
+        return Array.isArray(items) && items.every(isRecord)
+    } catch {
+        return false
+    }
+}
+
+function isManagementPage(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(MANAGEMENT_RESOURCES, value.resource) &&
+        isCount(value.offset) &&
+        isCount(value.limit) &&
+        (value.limit as number) >= 1 &&
+        (value.limit as number) <= MANAGEMENT_MAX_PAGE &&
+        isCount(value.count) &&
+        (value.count as number) <= (value.limit as number) &&
+        isItemArray(value.items) &&
+        (JSON.parse(value.items as string) as unknown[]).length === value.count &&
+        typeof value.complete === 'boolean' &&
+        optional(isCount, value.nextOffset) &&
+        // Complete pages have no continuation; incomplete ones advance.
+        (value.complete
+            ? value.nextOffset === null
+            : typeof value.nextOffset === 'number' && value.nextOffset > (value.offset as number)) &&
+        optional(isCount, value.total)
+    )
+}
+
+function isManagementDetail(value: unknown): boolean {
+    if (
+        !isRecord(value) ||
+        !oneOf(MANAGEMENT_RESOURCES, value.resource) ||
+        typeof value.id !== 'string' ||
+        !oneOf(DETAIL_FOUND, value.found)
+    ) {
+        return false
+    }
+    if (value.found !== 'found') return value.item === null
+    if (typeof value.item !== 'string') return false
+    try {
+        return isRecord(JSON.parse(value.item))
+    } catch {
+        return false
+    }
+}
+
+/** Validates a management read result (items stay JSON text). */
+export function parseManagementResult(value: unknown): ManagementResult {
+    if (isRecord(value)) {
+        if (value.kind === 'verified') return { kind: 'verified' }
+        if (value.kind === 'page' && isManagementPage(value.page)) return value as unknown as ManagementResult
+        if (value.kind === 'detail' && isManagementDetail(value.detail)) return value as unknown as ManagementResult
+        if (value.kind === 'failed' && oneOf(MANAGEMENT_FAILURES, value.failure) && oneOf(OUTCOMES, value.outcome)) {
+            return value as unknown as ManagementResult
+        }
+    }
+    throw new ContractViolation('management result')
 }
 
 function isDecimalU64(value: unknown): value is string {
@@ -573,6 +683,28 @@ export class DesktopClient {
         if (isRecord(response) && response.kind === 'academyCall') return parseAcademyCallResult(response.result)
         if (isRecord(response) && response.kind === 'refusal') throw new RefusedError(asRefusal(response.refusal))
         throw new ContractViolation('academy call observation')
+    }
+
+    /**
+     * Waits for the single result of an admitted management read. Not an
+     * admission: it may be called concurrently with dispatches.
+     */
+    async observeManagement(operation: string): Promise<ManagementResult> {
+        if (!OPERATION_ID.test(operation)) throw new ContractViolation('operation reference')
+        let response: unknown
+        try {
+            response = await this.#transport.observe(
+                encode({ protocol: PROTOCOL, scope: { kind: 'management', operation } })
+            )
+        } catch (error) {
+            if (typeof error === 'string' && (REFUSALS as readonly string[]).includes(error)) {
+                throw new RefusedError(error as Refusal)
+            }
+            throw error
+        }
+        if (isRecord(response) && response.kind === 'management') return parseManagementResult(response.result)
+        if (isRecord(response) && response.kind === 'refusal') throw new RefusedError(asRefusal(response.refusal))
+        throw new ContractViolation('management observation')
     }
 
     async #register(): Promise<Session> {

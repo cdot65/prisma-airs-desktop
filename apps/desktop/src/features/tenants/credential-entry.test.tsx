@@ -71,7 +71,8 @@ describe('scan-key entry', () => {
     it('sends the session-only choice when selected', async () => {
         const native = scriptedNative(withTenant(baseSnapshot, tenant()))
         const user = await openSettings(native)
-        await user.click(screen.getByRole('radio', { name: /For this session only/ }))
+        const scanKey = document.querySelector<HTMLElement>('[data-slot="scan-key"]') as HTMLElement
+        await user.click(within(scanKey).getByRole('radio', { name: /For this session only/ }))
         await user.type(keyField(), KEY)
         await user.click(screen.getByRole('button', { name: 'Save key' }))
         expect(native.dispatched.at(-1)).toMatchObject({ kind: 'configureScanCredential', mode: 'session' })

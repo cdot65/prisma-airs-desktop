@@ -58,9 +58,13 @@ Claude Code implements. Under D026, every implementation chunk and every phase
 architecture, behavior, authority_security, validation and overall, with empty
 required_fixes, blockers and evidence_gaps. Historical G00/G01 Claude reviews
 are retained unchanged and cover only their recorded inputs.
-Under D032 the owner may accept a review scoring at least 8 with no blockers
-(`xtask complete --owner-accept REASON`); the ledger records the owner's
-acceptance and every accepted failure (required fixes, evidence gaps).
+Under D034 (superseding D032 for chunks) a chunk completes on a review scoring
+at least 8 in all five dimensions with no blockers (`xtask complete
+--owner-accept REASON`); the ledger records the acceptance and every accepted
+failure (required fixes, evidence gaps). Phase reviews still need 9/10 with no
+owner acceptance, and every chunk of the phase accepted below 9 must first be
+remediated and re-reviewed to a passing 9/10 (a new generation, later chunks
+not reopened); `xtask complete` enforces both.
 Retain source/dependency fingerprints, raw verdicts, commands, test results, and
 remediation attempts. Re-review changed source. Never fabricate a score, substitute
 self-review, edit a verdict, or treat favorable scores as evidence that unrun tests

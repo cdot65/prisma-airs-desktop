@@ -413,7 +413,9 @@ def run():
         "make_active": node(tree, "AXButton", "Make Prod EU active") is not None,
         "delete": node(tree, "AXButton", "Delete Lab Session") is not None and node(tree, "AXButton", "Delete Prod EU") is not None,
     }
-    obs["tab_order_full"] = tab_walk(pid, 45)
+    # Since C08 the active tenant's management client form sits between
+    # the scan key and the destination, adding its stops to the walk.
+    obs["tab_order_full"] = tab_walk(pid, 60)
     # Locked store: lock the fixture keychain externally, then try to save.
     ax("press", pid, "AXButton", "Make Prod EU active")
     wait_for(pid, lambda t: has_text(t, "Active tenant: Prod EU"))

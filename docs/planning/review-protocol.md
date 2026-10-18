@@ -37,6 +37,12 @@ only when explicitly classified as nonrequired and consistent with the plan.
 Scores below 9 require concrete findings with locations, impact, and acceptance
 conditions. Even a 9/10 verdict with a required fix cannot pass.
 
+Owner rule D034 (2026-10-18): a chunk may complete on a review scoring at least
+8 in every dimension with no blockers; its remaining findings are recorded as
+accepted failures. The reviewer still scores against the 9/10 gate above. At
+the end of each phase every chunk accepted below 9 is remediated and
+re-reviewed until it passes the full gate, before the phase review.
+
 ## Phase reviews
 
 After the last chunk of a phase completes, request a cumulative Codex review of
@@ -46,7 +52,8 @@ committed tree, every chunk receipt in the phase and earlier phases' receipts,
 the phase's integrated test/native results rerun against that tree, and the
 diff since the previous phase. The reviewer assesses integration across the
 phase and the earlier features it affects. The same five-score threshold and
-empty required_fixes/blockers/evidence_gaps apply. The next phase does not
+empty required_fixes/blockers/evidence_gaps apply, with no owner acceptance
+(D034), and every member chunk must hold a passing 9/10 completion. The next phase does not
 begin until its predecessor phase review passes. Historical chunk scores are
 inputs to assess, never a substitute.
 

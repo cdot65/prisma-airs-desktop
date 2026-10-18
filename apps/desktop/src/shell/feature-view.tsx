@@ -5,6 +5,7 @@ import type { FeatureEntry, ShellSnapshot, Theme } from '@prisma-airs/desktop-co
 import type { Dispatch } from '../features/tenants/dispatch'
 import { AcademyAccount } from '../features/academy/academy-account'
 import { TenantsSettings } from '../features/tenants/tenants-settings'
+import type { ObserveManagement } from '../features/administration/management-read'
 
 interface HeadingProps {
     id: string
@@ -59,10 +60,11 @@ interface SettingsProps {
     pending: boolean
     onSetAppearance: (theme: Theme) => void
     dispatch: Dispatch
+    observeManagement: ObserveManagement
 }
 
 export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(function SettingsView(
-    { snapshot, pending, onSetAppearance, dispatch },
+    { snapshot, pending, onSetAppearance, dispatch, observeManagement },
     ref
 ) {
     const legend = useId()
@@ -98,7 +100,7 @@ export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(functi
                 <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
             </div>
             <div className='mt-6'>
-                <TenantsSettings snapshot={snapshot} dispatch={dispatch} />
+                <TenantsSettings snapshot={snapshot} dispatch={dispatch} observeManagement={observeManagement} />
             </div>
         </section>
     )

@@ -22,8 +22,9 @@ sha2.workspace = true
 hex.workspace = true
 getrandom = "=0.4.3"
 zeroize = { version = "=1.9.1", features = ["std"] }
-# D027: the published scan SDK, scan family only, with the app-owned transport.
-scm-sdk = { version = "=0.1.0", default-features = false, features = ["scan"] }
+# D027/D033: the published SDK, scan and management families, with the
+# app-owned transport.
+scm-sdk = { version = "=0.1.0", default-features = false, features = ["scan", "management"] }
 # DESIGN "Native transport policy": rustls with the platform verifier, explicit
 # proxy modes, gzip only; redirects and retries are disabled per client.
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "gzip", "stream", "system-proxy"] }
@@ -78,6 +79,11 @@ required-features = ["test-fixtures"]
 [[test]]
 name = "academy_offline"
 path = "tests/academy_offline/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "management_reads"
+path = "tests/management_reads/main.rs"
 required-features = ["test-fixtures"]
 
 [lints]

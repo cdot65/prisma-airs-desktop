@@ -16,6 +16,7 @@ pub mod features;
 pub mod fixtures;
 pub mod import;
 pub mod learner;
+pub mod management;
 mod observe;
 pub mod offline;
 pub mod runtime;

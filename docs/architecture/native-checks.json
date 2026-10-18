@@ -376,6 +376,56 @@
         "id": "C07-N10",
         "check": "Every learner request is an allowlisted or public procedure, and every desktop offline procedure carries the account credential."
       }
+    ],
+    "C08": [
+      {
+        "id": "C08-N01",
+        "check": "Administration is an available destination (no 'Soon'); without a tenant it directs to Settings; for a scan-only tenant it says no management client is ready and offers Open Settings, and a scan through the UI is allowed using the scan key alone (no Authorization header) while the management endpoint receives nothing."
+      },
+      {
+        "id": "C08-N02",
+        "check": "Management onboarding by keyboard in Settings: the status first says no management client is needed for scans; the client ID and secret are typed and Return saves them; the status says the secret is in the Keychain and shows the client ID; the secret field is empty afterwards; exactly one more fixture credential item exists while the scan key's item is kept and the scan key stays saved."
+      },
+      {
+        "id": "C08-N03",
+        "check": "Verify sends exactly one POST /oauth2/access_token to the configured token origin with HTTP Basic client authentication equal to the synthetic client (form-encoded), grant_type client_credentials and a scope naming the tenant's TSG, with no secret in the body, then exactly one profiles read under /aisec with the issued bearer token and limit 1 and no scan key; the window says the client can read this tenant."
+      },
+      {
+        "id": "C08-N04",
+        "check": "Profiles open at 'Items 1–25 of 25+' with rows Profile 00–24 and a note that unread rows are not assumed absent; Next page reads offset 25 (limit 25, issued bearer token) and shows 'Items 26–30 of 30' with Next page disabled and no partial note; exactly those two profile reads were made."
+      },
+      {
+        "id": "C08-N05",
+        "check": "A profile's details show its fields and say directional and customized prompt-injection settings were local previews and are not sent; an API key's details show its unknown status value 'FUTURE_STATUS' and last8 while none of the service's secret field values (api_key, auth_code) appear anywhere in the window; deployment profiles (local paging, 1–3 of 3) and DLP data patterns (Spring paging, 1–1 of 2) are listed."
+      },
+      {
+        "id": "C08-N06",
+        "check": "A 403 on custom topics is shown as the client not being allowed to read them, without server text and not as an empty inventory; after the service returns an empty list, Refresh shows that the service reports no custom topics."
+      },
+      {
+        "id": "C08-N07",
+        "check": "With profile rows shown, a denied Refresh shows the denial and keeps the earlier rows, marked with the time they were read and that they may be out of date."
+      },
+      {
+        "id": "C08-N08",
+        "check": "Replacing the management client in Settings while page 2 of profiles is delayed in flight: back in Administration the inventory restarts at 'Items 1–25 of 25+', the delayed reply for the retired credential neither shows its page nor an alert after it arrives, and exactly one new token grant is made for the new credential."
+      },
+      {
+        "id": "C08-N09",
+        "check": "A refused token grant (401) is reported as the management client not being accepted, without server text, after only the token request; a scan afterwards is still allowed with the scan key."
+      },
+      {
+        "id": "C08-N10",
+        "check": "After quitting and relaunching, the Keychain-held management client reads profiles again; 'Remove management client' returns the status to no management client while the scan key stays saved, leaves only the scan key's fixture credential item, Administration says no management client is ready, and a scan is still allowed."
+      },
+      {
+        "id": "C08-N11",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches Administration's 'Next page' inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C08-N12",
+        "check": "No file in the fixture data root other than the fixture keychain, and no fixture WebKit data, contains the client secret, the scan key or any redacted secret field value; no AX snapshot contains them; no management request carried the scan key and no scan request carried an Authorization header; v1 data is unchanged."
+      }
     ]
   }
 }

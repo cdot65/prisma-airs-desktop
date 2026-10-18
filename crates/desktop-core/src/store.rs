@@ -28,14 +28,35 @@ pub const MAX_STATE_BYTES: u64 = 4 * 1024 * 1024;
 const STATE_FILE: &str = "state.json";
 const LOCK_FILE: &str = "state.lock";
 
+/// Which capability a credential authorizes (D013: a management
+/// registration never supplies scan authentication, nor the reverse).
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+#[serde(rename_all = "camelCase")]
+pub enum CredentialClass {
+    /// The tenant's AIRS runtime scan key.
+    #[default]
+    Scan,
+    /// The tenant's management OAuth client secret (C08).
+    Management,
+}
+
 /// A Keychain credential the core may use after restart.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StoredCredential {
     pub record: RecordId,
     pub tenant: TenantId,
-    /// The approved origin this credential may be sent to.
+    /// The approved origin this credential may be sent to (the scan origin,
+    /// or the management OAuth token origin).
     pub destination: String,
+    /// The capability it authorizes (scan when absent, as before C08).
+    #[serde(default)]
+    pub class: CredentialClass,
+    /// The management OAuth client ID (management credentials only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
 }
 
 /// The signed-in Academy learner account (nonsecret; the refresh token is in
@@ -106,16 +127,32 @@ impl PersistedState {
         let mut records = BTreeSet::new();
         let credentials_ok = self.credentials.iter().all(|c| {
             records.insert(c.record.clone())
-                && self
-                    .tenants
-                    .iter()
-                    .any(|t| t.id == c.tenant && t.destination.origin() == c.destination)
+                && match c.class {
+                    CredentialClass::Scan => {
+                        c.client_id.is_none()
+                            && self.tenants.iter().any(|t| {
+                                t.id == c.tenant && t.destination.origin() == c.destination
+                            })
+                    }
+                    // A management credential needs the tenant's TSG, its
+                    // client ID and an exact HTTPS token origin.
+                    CredentialClass::Management => {
+                        c.client_id
+                            .as_deref()
+                            .is_some_and(crate::management::client_id_is_valid)
+                            && crate::management::is_origin(&c.destination)
+                            && self
+                                .tenants
+                                .iter()
+                                .any(|t| t.id == c.tenant && t.tsg_id.is_some())
+                    }
+                }
         });
         let one_per_tenant = {
             let mut seen = BTreeSet::new();
             self.credentials
                 .iter()
-                .all(|c| seen.insert(c.tenant.clone()))
+                .all(|c| seen.insert((c.tenant.clone(), c.class)))
         };
         let learner_ok = self.learner.as_ref().is_none_or(|l| {
             l.account_id.starts_with("user_")
@@ -391,6 +428,8 @@ mod tests {
                 record: RecordId::parse("cr-0123456789abcdef").expect("record"),
                 tenant: id,
                 destination: Region::Europe.origin().into(),
+                class: CredentialClass::Scan,
+                client_id: None,
             }],
             ..PersistedState::default()
         }

@@ -1,0 +1,176 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C05",
+  "recorded_utc": "2026-10-18T21:19:37Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, ax_colors.swift, System Events keystrokes) against the synthetic Academy endpoint tools/native-acceptance/academy_server.py serving tools/native-acceptance/academy_catalog.py; tools/native-acceptance/acceptance_c05.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "9d4e651e820e18f331c7328f90500c941d4051552ab750b559f5190eb7902fe3",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C05-N01",
+      "description": "Signed out, the Academy destination shows Academy's own catalog ('What will you take up next?') with a note that the learner is browsing as a guest; the endpoint receives only public catalog procedures, none with an Authorization header, and no identity-provider requests.",
+      "result": "pass",
+      "observation": "guest catalog with the guest note: True; learner calls ['paths.list', 'library.list'] all public and without Authorization: True; identity or other requests: 0",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-guest-catalog.json"
+      ]
+    },
+    {
+      "id": "C05-N02",
+      "description": "After signing in, the Academy catalog is read again under the account without the guest note; requests carry the account credential exactly for procedures on the desktop account allowlist.",
+      "result": "pass",
+      "observation": "signed in: True; catalog re-read under the account without the guest note: True; calls (procedure, Authorization): [['paths.list', True], ['library.list', True]]",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-account-catalog.json"
+      ]
+    },
+    {
+      "id": "C05-N03",
+      "description": "From the catalog's Courses filter, the course page and its module units open; a lesson exposes its heading and first paragraph and all section headings of a 50 KiB lesson; the trail 'Learn \u203a <course>' links back to the course.",
+      "result": "pass",
+      "observation": "lesson heading: True; first paragraph exposed: True; 22 section headings in a 51968 byte lesson; trail links ['Learn', 'Runtime Security Foundations']; trail back to the course: True",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-lesson.json"
+      ]
+    },
+    {
+      "id": "C05-N04",
+      "description": "A lesson diagram shows its pre-rendered image ('Lesson diagram') with its source under a disclosure, a diagram without an artifact shows its source, and no diagram video is requested; an external lesson link opens nothing, keeps the window on the lesson and states it was not opened; an in-page anchor stays on the lesson; a learner-path link routes to the catalog in place.",
+      "result": "pass",
+      "observation": "pre-rendered diagram image 'Lesson diagram': {'role': 'AXGroup', 'size': [460, 91]}; source disclosure: True; artifact-less diagram shows its source: True; diagram video requests: 0; external link notice: True, window still on the lesson: True, pages handed to the browser: []; in-page anchor stays on the lesson: True; learner-path link routes to the catalog: True",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-lesson.json",
+        "docs/planning/evidence/C08/native-C05/tree-after-internal-link.json"
+      ]
+    },
+    {
+      "id": "C05-N05",
+      "description": "Signed in, a knowledge check starts, takes an answer and submits through the endpoint with the literal fixture request bodies and the account credential; the server's grade ('You scored 100%', '1 of 1 correct') is shown; no answer key appears in any AX snapshot.",
+      "result": "pass",
+      "observation": "'You scored 100%': True; '1 of 1 correct': True; start body is the literal fixture: True; submit body is the literal fixture: True; both with Authorization: True; answer keys or canaries in AX snapshots: []",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-knowledge-check-graded.json"
+      ]
+    },
+    {
+      "id": "C05-N06",
+      "description": "As a guest, starting a knowledge check says 'Sign in to take this knowledge check.' and sends nothing to Academy.",
+      "result": "pass",
+      "observation": "guest 'Start knowledge check' shows 'Sign in to take this knowledge check.': True; learner calls sent for it: []",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-guest-knowledge-check.json"
+      ]
+    },
+    {
+      "id": "C05-N07",
+      "description": "A hands-on lab unit is previewed with its title and brief and says no lab sandbox was started; no lab start, step or submit request is made.",
+      "result": "pass",
+      "observation": "lab unit previewed with its brief and 'no lab sandbox was started': True; learner calls ['units.get', 'labs.get', 'desktop.attempt.list']; lab start/step/submit calls: []",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-lab-preview.json"
+      ]
+    },
+    {
+      "id": "C05-N08",
+      "description": "Signing out while on a lesson returns the Academy destination to the catalog as a guest with only uncredentialed calls; signing in again reads the catalog under the account.",
+      "result": "pass",
+      "observation": "signed out from a lesson: True; Academy back at the catalog as a guest: True; guest calls (procedure, Authorization) [['paths.list', False], ['library.list', False]]; signed in again: True; account catalog: True; calls [['paths.list', True], ['library.list', True]]",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-after-sign-out.json"
+      ]
+    },
+    {
+      "id": "C05-N09",
+      "description": "Navigating Academy \u2192 Runtime Security \u2192 Harness placeholder shows no learner chrome or effects (XP, trail, reading progress, knowledge check, lab, guest note, probe) outside Academy, and no learner request is made while away.",
+      "result": "pass",
+      "observation": "learner markers in Runtime Security: []; in Harness: []; learner calls while away from Academy: []",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-away-runtime.json",
+        "docs/planning/evidence/C08/native-C05/tree-away-harness.json"
+      ]
+    },
+    {
+      "id": "C05-N10",
+      "description": "Keyboard only: Tab reaches the Courses filter and the course link, Return opens the course with focus on its heading, Tab reaches a lesson link, and Return opens the lesson with focus on its heading.",
+      "result": "pass",
+      "observation": "Tab reached the Courses filter: True; Tab reached the course link: True; Return opened the course with focus on its heading: True; Tab reached the lesson link: True; Return opened the lesson with focus on its heading: True",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-lesson.json"
+      ]
+    },
+    {
+      "id": "C05-N11",
+      "description": "In View > Appearance Dark and Light the lesson text uses the light Gruvbox ink and the dark Paper ink respectively (AX text colors).",
+      "result": "pass",
+      "observation": "lesson paragraph ink in Dark #c9bba4 (luminance 0.7384933333333333), in Light #4b4b57 (luminance 0.29751529411764704)",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/colors-dark.json",
+        "docs/planning/evidence/C08/native-C05/colors-light.json"
+      ]
+    },
+    {
+      "id": "C05-N12",
+      "description": "At 200% zoom and at the minimum window size, a lesson's 'Complete & continue' control is reachable by Tab and lies inside the window clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Complete & continue', 'pos': [889, 617], 'size': [374, 89]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Complete & continue', 'pos': [740, 516], 'size': [188, 45]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json"
+      ]
+    },
+    {
+      "id": "C05-N13",
+      "description": "Reset local data while signed in signs the learner out, empties the learner Keychain namespace and returns Academy to the guest catalog.",
+      "result": "pass",
+      "observation": "after reset 'Not signed in to Academy.': True; Academy shows the guest catalog: True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json"
+      ]
+    },
+    {
+      "id": "C05-N14",
+      "description": "Content access as Academy decides it: a guest at members-only or progression-locked content sees Academy's sign-in gate (endpoint 401, no credential); signed in, locked content shows 'This content is locked' with its progression reason (endpoint 403 FORBIDDEN with the domain code), members-only content opens, and retired content says 'Unit not found.' without any gate.",
+      "result": "pass",
+      "observation": "guest at members-only and locked content: sign-in gate True/True, endpoint replies (status, Authorization) [[401, False]]/[[401, False]]; signed in, locked content shows 'This content is locked' with the progression reason: True (no sign-in gate: True), replies [[403, True]]; members-only content opens: True [[200, True]]; retired content 'Unit not found.' without a gate: True [[404, True]]",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-guest-members.json",
+        "docs/planning/evidence/C08/native-C05/tree-guest-locked.json",
+        "docs/planning/evidence/C08/native-C05/tree-account-locked.json",
+        "docs/planning/evidence/C08/native-C05/tree-account-missing.json"
+      ]
+    },
+    {
+      "id": "C05-N15",
+      "description": "Failures stay visible and truthful: a guest pressing 'Complete & continue' is asked to sign in, stays on the lesson and sends nothing; a knowledge-check submission the server fails after receiving it says Academy may have recorded it, keeps the answer, hides the server text and is sent once.",
+      "result": "pass",
+      "observation": "guest 'Complete & continue' asks to sign in and stays on the lesson: True; learner calls sent: []; a submission the server failed after receiving shows 'Academy may have recorded this submission': True, answer kept: True, server text hidden: True; submissions sent (status, Authorization): [[500, True]]",
+      "evidence": [
+        "docs/planning/evidence/C08/native-C05/observations.json",
+        "docs/planning/evidence/C08/native-C05/tree-guest-complete.json",
+        "docs/planning/evidence/C08/native-C05/tree-knowledge-check-unknown-outcome.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "Academy is a local synthetic endpoint answering Academy's learner procedures with synthetic catalog content shaped after Academy's routers at the pinned commit; hosted Academy is qualified in C25 (L11).",
+    "Browser approval is simulated by the synthetic token endpoint; the fixture build records pages instead of launching a browser.",
+    "Spoken VoiceOver output was not recorded; AX roles, names, focus and live status regions are inspected. Screen capture is not available to this session, so themes are checked through AX text colors."
+  ]
+}

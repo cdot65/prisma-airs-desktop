@@ -193,6 +193,23 @@ pub fn fixture_academy_origin<R: Runtime>(app: &AppHandle<R>) -> Option<String> 
     desktop_core::academy::origin_of(text.trim())
 }
 
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_MANAGEMENT_ORIGIN: &str = "fixture-management-origin";
+
+/// The fixture management origin (token, API and DLP endpoints under it),
+/// when the acceptance driver installed one.
+#[cfg(feature = "test-fixtures")]
+pub fn fixture_management_origin<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    let path = app
+        .path()
+        .app_data_dir()
+        .ok()?
+        .join(FIXTURE_MANAGEMENT_ORIGIN);
+    let text = std::fs::read_to_string(path).ok()?;
+    let origin = text.trim();
+    desktop_core::management::is_origin(origin).then(|| origin.to_owned())
+}
+
 #[cfg(all(target_os = "macos", not(feature = "test-fixtures")))]
 fn learner_store(_root: Option<&Path>) -> Arc<dyn CredentialStore> {
     crate::keychain::KeychainStore::login_service(crate::keychain::ACADEMY_SERVICE)

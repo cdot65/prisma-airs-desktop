@@ -62,8 +62,21 @@ pub enum Entry {
     },
 }
 
-/// The lowest score an owner may accept (D032).
+/// The lowest score an owner may accept (D032); since D034 the chunk gate.
 pub const OWNER_MINIMUM_SCORE: u8 = 8;
+
+/// Whether `subject`'s current completion was accepted below the threshold
+/// (D032/D034): such a chunk must be raised to a passing review before its
+/// phase completes.
+pub fn owner_accepted(entries: &[Entry], subject: Subject) -> bool {
+    matches!(
+        latest_completion(entries, subject),
+        Some(Entry::Completion {
+            owner_acceptance: Some(_),
+            ..
+        })
+    )
+}
 
 /// The owner's acceptance of a review below the threshold, as recorded.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -403,10 +416,36 @@ pub fn complete_with(
     if owner_accept.is_some_and(|r| r.trim().is_empty()) {
         return Err(invalid("--owner-accept needs the owner's reason"));
     }
+    // D034: chunks may complete at 8/10; phases always need the full gate.
+    if owner_accept.is_some() && matches!(subject, Subject::Phase(_)) {
+        return Err(invalid(format!(
+            "{subject} is a phase review: D034 requires 9/10 with no owner acceptance"
+        )));
+    }
+    if let Subject::Phase(_) = subject {
+        let entries = read_ledger(&repo.completion_ledger())?;
+        // D034: every chunk accepted below 9 is raised before sign-off.
+        let below: Vec<String> = manifest
+            .phase_chunks(subject)?
+            .into_iter()
+            .filter(|c| owner_accepted(&entries, *c))
+            .map(|c| c.to_string())
+            .collect();
+        if !below.is_empty() {
+            return Err(invalid(format!(
+                "{subject} cannot complete: {} must first pass a 9/10 review (D034)",
+                below.join(", ")
+            )));
+        }
+    }
     require_predecessors(repo, manifest, subject)?;
     let ledger = repo.completion_ledger();
     let entries = read_ledger(&ledger)?;
-    if is_completed(repo, &entries, subject) {
+    // An owner-accepted chunk may be raised to a passing review as a new
+    // generation without reopening later chunks (D034); it is never
+    // owner-accepted again.
+    let raising = owner_accepted(&entries, subject) && owner_accept.is_none();
+    if is_completed(repo, &entries, subject) && !raising {
         return Err(invalid(format!(
             "{subject} is already complete; reopen it before completing a new generation"
         )));
@@ -428,7 +467,7 @@ pub fn complete_with(
             (_, true) => None,
             (Some(reason), false) => match owner_acceptable(&receipt, &failures) {
                 Ok(accepted) => Some(OwnerAcceptance {
-                    decision: "D032".to_owned(),
+                    decision: "D034".to_owned(),
                     reason: reason.trim().to_owned(),
                     minimum_score: OWNER_MINIMUM_SCORE,
                     accepted_failures: accepted,

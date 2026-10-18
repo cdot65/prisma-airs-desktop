@@ -994,6 +994,100 @@ desktop draft hook (`LearnerHost localDrafts`, pinned in
   offline root. On quit the host closes the store (`Core::shutdown`) so its
   lock is released.
 
+### C08 implementation: management onboarding and Runtime/DLP reads
+
+Implemented in `crates/desktop-core` (`management`: endpoints, requests,
+results, the SDK binding and paging rules; `authority/management_domain`:
+per-generation bindings, admission and single observation; intents
+`ConfigureManagementCredential`, `RemoveManagementCredential`,
+`Management`; `TenantView.management`; `WireScope::Management`),
+`packages/desktop-contracts` (validators, `observeManagement`) and
+`apps/desktop/src/features` (`tenants/management-credential`,
+`administration`). D033 records the SDK feature and credential decisions.
+
+- **A separate capability.** Each tenant has a scan capability and a
+  management capability with their own state, storage mode and failure.
+  `ConfigureManagementCredential { context, mode, clientId, secret }`
+  needs the tenant's TSG (`CapabilityMissing` otherwise) and a client ID and
+  secret within limits; it stores the secret like a scan key (Keychain or
+  session vault, a fresh lease, the context reissued) as a
+  `CredentialClass::Management` record bound to the configured token origin,
+  with the client ID beside it. One credential per tenant and class;
+  removing, replacing, deleting the tenant or resetting retires only the
+  affected class, so a scan key survives management changes and the
+  reverse. `TenantView.management` shows state, mode, failure, client ID
+  and token origin, never the secret.
+- **Admission.** `Management { context, request }` requires the active
+  context, a ready management credential, a client ID and TSG, and a stored
+  token origin equal to the configured one; then it claims a runtime
+  operation. The job reads the secret off the lock (locked/denied/missing
+  settle as credential failures, `NotSent`) and builds the generation's
+  binding once: an SDK client with OAuth client credentials
+  (`AuthContext` over the token URL, client ID and TSG), retries off, the
+  app-owned transport and an `OriginPolicy` admitting only the token, AIRS
+  and DLP origins, plus the `ManagementClient` and its DLP client. The
+  binding and the SDK's token cache are reused by every read of that
+  generation and dropped with it; retiring a generation cancels its
+  session, so in-flight reads stop and their results are reported as
+  cancelled, never shown.
+- **Requests.** `Verify` reads one latest profile (v1 `checktenant`).
+  `Page { resource, offset, limit }` reads one page (limit 1–100; DLP
+  offsets on page boundaries). `Detail { resource, id }` reads a DLP item by
+  its own get (404 → absent) and any other item by a bounded walk of 40
+  pages of 25 (found, absent only when the service said the inventory
+  ended, otherwise incomplete), as v1. Each read has a 60 s deadline.
+- **Paging rules (v1).** AIRS inventories: `pagination.total_items` when
+  present decides what follows; otherwise `next_offset` (zero means none; a
+  cursor that does not advance is invalid); a short page without a cursor
+  is the last page; a full page without one proves nothing and the next
+  page is offered (stricter than v1, which treated it as the end). Profiles and topics without their array fail closed;
+  applications, API keys and the DLP catalog read an absent array as empty.
+  Deployment profiles and the AIRS DLP catalog are unpaginated and sliced
+  locally with their total. DLP Spring pages use `last`, then `totalPages`,
+  then `totalElements`, then a short page. A page holding more items than
+  asked for, or over 8 MiB serialized, is invalid.
+- **Data.** Items are the SDK models serialized to JSON (unknown enum values
+  and fields kept), with secret fields removed recursively before they
+  leave Rust. Failures are sanitized kinds (unauthorized, denied, not found,
+  rate limited, unavailable, rejected, timeout, cancelled, network,
+  destination, invalid response, credential locked/denied/missing,
+  configuration) with the SDK's remote outcome; no server text is shown.
+- **Presentation.** Settings adds the management client form (client ID,
+  secret read from its field at submission and cleared before awaiting,
+  storage mode, Verify, Remove) beside the scan key. Administration lists
+  the active tenant's inventories (security profiles, custom topics,
+  applications, API keys, deployment profiles; DLP profiles, data
+  profiles, data patterns, data filtering profiles, dictionaries) 25 rows a
+  page with First/Next page, Refresh and a filter over the current page
+  only. It says when an inventory continues ("of N+", unread rows not
+  assumed absent), reports empty only when the service did, keeps the last
+  rows marked with their read time when a refresh fails, and restarts from
+  the first page with nothing carried over when the tenant or management
+  credential changes. Details render every field as text. Directional
+  settings and customized prompt-injection modes, local previews in v1,
+  are labelled as such and never read or sent. Runtime's scan profile stays
+  an explicit typed name or ID; inventories never select one.
+- **Operation coverage (v1 bridge `operations.ts` → SDK `=0.1.0`).**
+
+  | v1 read | SDK call | Options |
+  |---|---|---|
+  | `checktenant` | `profiles().list` | limit 1, latest |
+  | profiles | `profiles().list` | offset, limit, latest |
+  | topics | `topics().list` | offset, limit |
+  | apps | `customer_apps().list` | offset, limit |
+  | keys | `api_keys().list` | offset, limit |
+  | dlp-catalog | `dlp_profiles().list` | none (sliced locally) |
+  | deployments | `deployment_profiles().list` | none (sliced locally) |
+  | patterns | `dlp.data_patterns().list` / `get` | page, size |
+  | data-profiles | `dlp.data_profiles().list` / `get` | page, size |
+  | filters | `dlp.data_filtering_profiles().list` / `get` | page, size |
+  | dictionaries | `dlp.dictionaries().list` / `get` | page, size, keywords false |
+  | profile/topic/app/key/deployment detail | bounded list walk | 40 × 25 |
+
+  v1's sessions and applications overviews belong to C11; writes, one-time
+  secrets and multipart DLP operations to C09/C10.
+- **Not done here.** No real management endpoint is called before C25.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

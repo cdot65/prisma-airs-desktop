@@ -82,11 +82,16 @@ describe('desktop shell', () => {
         expect(nav().queryByRole('button', { name: /Runtime Security.*Not available in this build/ })).toBeNull()
         expect(screen.getByRole('heading', { level: 1, name: 'Scan a prompt or response' })).toBeInTheDocument()
         expect(screen.getByText('Add a tenant and its scan key in Settings to run scans.')).toBeInTheDocument()
+        // Administration is available (C08) and asks for a tenant first.
         await user.click(nav().getByRole('button', { name: /^Administration/ }))
-        expect(nav().getByRole('button', { name: /^Administration.*Not available in this build/ })).toBeInTheDocument()
-        expect(screen.getByRole('heading', { level: 1, name: 'Administration' })).toBeInTheDocument()
+        expect(nav().queryByRole('button', { name: /^Administration.*Not available in this build/ })).toBeNull()
+        expect(screen.getByRole('heading', { level: 1, name: 'Tenant inventories' })).toBeInTheDocument()
+        expect(screen.getByText('Add a tenant in Settings to read its inventories.')).toBeInTheDocument()
+        // A planned destination still says so explicitly.
+        await user.click(nav().getByRole('button', { name: /^Sessions/ }))
+        expect(nav().getByRole('button', { name: /^Sessions.*Not available in this build/ })).toBeInTheDocument()
         expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C08')).toBeInTheDocument()
+        expect(screen.getByText('Planned in C11')).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
         // Academy learning is available (C05) and opens its learner region.
         await user.click(nav().getByRole('button', { name: /^Academy/ }))
@@ -95,6 +100,8 @@ describe('desktop shell', () => {
         // The rail must scroll rather than clip destinations at high zoom or
         // the minimum window size.
         expect(document.querySelector('[data-slot="rail"]')).toHaveClass('overflow-y-auto')
+        // The page ends with room for its last control to clear the 60px fade.
+        expect(document.querySelector('[data-slot="shell-status"]')).toHaveClass('pb-14')
     })
 
     it('supports keyboard-only navigation and moves focus to the new heading', async () => {
@@ -142,6 +149,50 @@ describe('desktop shell', () => {
             expect(scrolled).toHaveBeenLastCalledWith({ block: 'nearest' })
         } finally {
             scrolled.mockRestore()
+        }
+    })
+
+    it('keeps a focused page control clear of the bottom fade and the topbar, but not rail controls', async () => {
+        const user = userEvent.setup()
+        await launch()
+        await user.click(nav().getByRole('button', { name: /Settings/ }))
+        const scrollBy = vi.fn()
+        const original = window.scrollBy
+        window.scrollBy = scrollBy as unknown as typeof window.scrollBy
+        document.documentElement.style.scrollPaddingTop = '72px'
+        document.documentElement.style.scrollPaddingBottom = '76px'
+        // The correction runs on the frame after WebKit's own focus scroll.
+        const frame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+            callback(0)
+            return 0
+        })
+        const at = (element: Element, top: number, height = 44) =>
+            vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({ top, bottom: top + height, height } as DOMRect)
+        try {
+            // Under the fade: scrolled up by exactly the overlap.
+            const light = screen.getByRole('radio', { name: /Light/ })
+            at(light, window.innerHeight - 70)
+            light.focus()
+            expect(scrollBy).toHaveBeenLastCalledWith(0, 50)
+            // Under the sticky topbar: scrolled down to the padding.
+            const dark = screen.getByRole('radio', { name: /Dark/ })
+            at(dark, 20)
+            dark.focus()
+            expect(scrollBy).toHaveBeenLastCalledWith(0, -52)
+            // Inside the padded area: left alone; rail controls never scroll the page.
+            scrollBy.mockClear()
+            const system = screen.getByRole('radio', { name: /Match System/ })
+            at(system, 300)
+            system.focus()
+            const rail = nav().getByRole('button', { name: /Academy/ })
+            at(rail, window.innerHeight - 20)
+            rail.focus()
+            expect(scrollBy).not.toHaveBeenCalled()
+        } finally {
+            frame.mockRestore()
+            window.scrollBy = original
+            document.documentElement.style.scrollPaddingTop = ''
+            document.documentElement.style.scrollPaddingBottom = ''
         }
     })
 

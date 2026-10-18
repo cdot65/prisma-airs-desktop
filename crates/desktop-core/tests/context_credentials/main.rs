@@ -284,6 +284,8 @@ async fn a_keychain_scan_key_is_stored_indexed_and_never_observed() {
             record: records[0].clone(),
             tenant: TenantId::parse(&a).expect("id"),
             destination: Region::Europe.origin().to_owned(),
+            class: desktop_core::store::CredentialClass::Scan,
+            client_id: None,
         }]
     );
     let everything = format!("{} {:?}", redacted(&desk.snap()), saved);
@@ -1393,6 +1395,8 @@ fn persisted_state_rejects_dangling_references() {
             tenant: id,
             // Bound to another origin than the profile's.
             destination: Region::Europe.origin().into(),
+            class: desktop_core::store::CredentialClass::Scan,
+            client_id: None,
         }],
         ..PersistedState::default()
     };

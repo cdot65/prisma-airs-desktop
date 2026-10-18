@@ -63,6 +63,10 @@ pub enum WireScope {
     AcademyCall {
         operation: crate::runtime::OperationId,
     },
+    /// Wait for the single result of an admitted management read.
+    Management {
+        operation: crate::runtime::OperationId,
+    },
 }
 
 /// A native menu selection forwarded to the presentation.
@@ -108,6 +112,10 @@ pub enum ObserveResponse {
     /// A learner call's result (observed once).
     AcademyCall {
         result: crate::AcademyCallResult,
+    },
+    /// A management read's result (observed once).
+    Management {
+        result: crate::management::ManagementResult,
     },
     Refusal {
         refusal: Refusal,

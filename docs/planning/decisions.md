@@ -470,6 +470,62 @@ implementer.
   accepted review's required fixes remain recorded in its attempt directory
   as known follow-ups.
 
+## D033 — Management reads through the published SDK's `management` feature
+
+Decided in C08 (implementer decision, recorded for review).
+
+- The published `scm-sdk =0.1.0` (D027, built from `4f65dc48`) contains the
+  reviewed Phase4 management, DLP and bounded-pagination commit `32cbcb6d`
+  (an ancestor of `4f65dc48`, checked with `git merge-base` in the read-only
+  SDK repository). C08 enables its `management` feature next to `scan`; no
+  version, checksum or source changes, and the app-owned transport is still
+  the only transport compiled.
+- The management credential is its own class (`CredentialClass::Management`)
+  beside the scan key: the client secret in the Keychain or session vault,
+  the client ID in its stored credential record, the TSG from the tenant profile. The
+  secret is bound to the token origin it was stored for and sent only there
+  (`OriginPolicy` over the token, AIRS and DLP origins); a different
+  configured token origin refuses admission. Scanning never consults it and
+  management never consults the scan key.
+- Production builds use Palo Alto Networks' default token, AIRS management
+  and DLP endpoints only. Custom management endpoints are deferred (not
+  offered in C08); the fixture build reads a management origin
+  file in its own data root for synthetic acceptance only.
+- Every read is one explicit runtime operation with retries off, a 60 s
+  deadline and a 100-item page limit, observed once. Pages and details
+  carry SDK-serialized JSON with secret fields removed recursively
+  (`api_key`, `auth_code`, `client_secret`, `secret`, `token`,
+  `access_token`, `refresh_token`, `password`, `private_key`,
+  `api_key_value`) and unknown values kept. Completeness is claimed only
+  from the service's own signal (v1's paging rules); a missing page never
+  proves absence.
+- Clients and their token cache live per credential generation (an SDK
+  session and a lazily built binding); a replaced or removed credential, a
+  tenant switch or reset cancels that generation's reads and never shows
+  their results.
+
+## D034 — Chunk reviews at 8/10; phase sign-off at 9/10 with every chunk raised
+
+Decided by the owner on 2026-10-18 during C08 ("from now on the chunk reviews
+just need to clear a 8/10, but the phases themselves must continue to achieve a
+9/10 or higher ... each chunk will be pushed to achieve a 9/10 or higher before
+the phase is signed off on"); recorded by the implementer. Supersedes D032's
+case-by-case acceptance for chunks.
+
+- A chunk completes on a Codex review whose five scores are all at least 8
+  with no blockers, through `xtask complete --owner-accept REASON`; required
+  fixes, evidence gaps and the fail recommendation may remain and are
+  recorded (`owner_acceptance.decision = "D034"`). Everything else (packet,
+  verdict, transport, fingerprints, runs, native evidence) must still check.
+- A phase review is never owner-accepted: it needs 9/10 in all five scores
+  with empty required fixes, blockers and evidence gaps (`xtask complete`
+  refuses `--owner-accept` for a phase).
+- Before the phase review, every chunk in the phase whose current completion
+  was owner-accepted is remediated and re-reviewed until it passes the full
+  9/10 gate, then completed as a new generation without reopening later
+  chunks. `xtask complete` refuses a phase while any member chunk's current
+  completion is owner-accepted.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

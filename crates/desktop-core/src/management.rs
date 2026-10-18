@@ -1,0 +1,1175 @@
+//! Management OAuth binding and read operations (C08).
+//!
+//! A tenant's management capability is its own confidential OAuth client
+//! (client ID, client secret, the tenant's TSG), separate from the scan key
+//! (D013): it is bound to the management token, API and DLP origins, the
+//! grant goes only to the admitted token origin, and nothing here ever uses
+//! or reveals the scan key. Reads go through the pinned SDK's management and
+//! DLP clients (SDK Phase 4) with the app-owned transport, an exact-origin
+//! destination policy, explicit limits and no retries. Each page is one
+//! bounded request; completeness is claimed only when the service says no
+//! further page exists. Items travel as the SDK serialized them (unknown
+//! enum values and fields preserved) with secret-bearing fields removed.
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use tokio::time::Instant;
+
+use scm_sdk::airs::management::{
+    DeploymentProfileListOptions, ManagementClient, PaginationOptions, TopicListOptions,
+};
+use scm_sdk::auth::AuthContext;
+use scm_sdk::dlp::{
+    DataFilteringProfileListParams, DictionaryListParams, DlpClient, SpringListParams,
+};
+use scm_sdk::transport::Transport;
+use scm_sdk::{
+    Client, Endpoint, ErrorKind, Limits, OriginPolicy, RemoteOutcome, RequestOptions, Secret,
+    Session,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use tokio::sync::OnceCell;
+use ts_rs::TS;
+use zeroize::Zeroizing;
+
+use crate::authority::CredentialStore;
+use crate::runtime::{Claim, Outcome, Work};
+use crate::vault::{RecordId, SessionVault, StorageMode, Vault, VaultError};
+
+/// The production management OAuth token endpoint.
+pub const TOKEN_URL: &str = "https://auth.apps.paloaltonetworks.com/oauth2/access_token";
+/// The production AIRS management API base.
+pub const API_URL: &str = "https://api.apps.paloaltonetworks.com/aisec";
+/// The production DLP API base.
+pub const DLP_URL: &str = "https://api.dlp.paloaltonetworks.com";
+/// Largest page a read may ask for.
+pub const MAX_PAGE: u32 = 100;
+/// The bounded walk a detail read may make (v1: 40 pages of 25).
+pub const DETAIL_PAGES: u32 = 40;
+pub const DETAIL_PAGE_SIZE: u32 = 25;
+/// Interactive deadline for one management read, from submission.
+pub const READ_DEADLINE: Duration = Duration::from_secs(60);
+/// Largest serialized page handed to the presentation.
+pub const MAX_PAGE_BYTES: usize = 8 * 1024 * 1024;
+
+/// The management origins a tenant's management capability is bound to.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ManagementEndpoints {
+    /// The full OAuth token URL (the grant goes only to its origin).
+    pub token: String,
+    /// The AIRS management API base URL.
+    pub api: String,
+    /// The DLP API base URL.
+    pub dlp: String,
+}
+
+impl Default for ManagementEndpoints {
+    fn default() -> Self {
+        Self {
+            token: TOKEN_URL.to_owned(),
+            api: API_URL.to_owned(),
+            dlp: DLP_URL.to_owned(),
+        }
+    }
+}
+
+impl ManagementEndpoints {
+    /// All three endpoints at one origin (fixture builds).
+    pub fn at_origin(origin: &str) -> Self {
+        Self {
+            token: format!("{origin}/oauth2/access_token"),
+            api: format!("{origin}/aisec"),
+            dlp: format!("{origin}/dlp"),
+        }
+    }
+
+    /// The origin the client secret may be sent to.
+    pub fn token_origin(&self) -> Option<String> {
+        Endpoint::parse(&self.token)
+            .ok()
+            .map(|e| e.origin().to_owned())
+    }
+}
+
+/// Whether `value` is exactly an HTTPS origin.
+pub fn is_origin(value: &str) -> bool {
+    Endpoint::parse(value).is_ok_and(|e| e.origin() == value && value.starts_with("https://"))
+}
+
+/// The SDK's client ID rules (non-empty, bounded, no control characters).
+pub fn client_id_is_valid(value: &str) -> bool {
+    !value.trim().is_empty()
+        && value.len() <= 1024
+        && value == value.trim()
+        && !value.chars().any(char::is_control)
+}
+
+/// The SDK's TSG rules (1-32 digits).
+pub fn tsg_is_valid(value: &str) -> bool {
+    !value.is_empty() && value.len() <= 32 && value.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// A management inventory or catalog the desktop reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ManagementResource {
+    Profiles,
+    Topics,
+    Applications,
+    ApiKeys,
+    DeploymentProfiles,
+    DlpCatalog,
+    DataProfiles,
+    DataPatterns,
+    FilteringProfiles,
+    Dictionaries,
+}
+
+impl ManagementResource {
+    /// The item field that identifies an item for a detail read.
+    pub fn id_field(self) -> &'static str {
+        match self {
+            Self::Profiles => "profile_id",
+            Self::Topics => "topic_id",
+            Self::Applications => "customer_appId",
+            Self::ApiKeys => "api_key_id",
+            Self::DeploymentProfiles => "dp_name",
+            Self::DlpCatalog | Self::DataProfiles | Self::DataPatterns => "id",
+            Self::FilteringProfiles | Self::Dictionaries => "id",
+        }
+    }
+
+    fn is_dlp(self) -> bool {
+        matches!(
+            self,
+            Self::DataProfiles | Self::DataPatterns | Self::FilteringProfiles | Self::Dictionaries
+        )
+    }
+}
+
+/// One management read the presentation asks for.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ManagementRequest {
+    /// The credential check: a token and a one-item profile read.
+    Verify,
+    /// One page of an inventory.
+    Page {
+        resource: ManagementResource,
+        offset: u32,
+        limit: u32,
+    },
+    /// One item, found by a bounded walk of its inventory.
+    Detail {
+        resource: ManagementResource,
+        id: String,
+    },
+}
+
+impl ManagementRequest {
+    /// Admission-time validation (bounded pages, plain IDs).
+    pub fn is_valid(&self) -> bool {
+        match self {
+            Self::Verify => true,
+            Self::Page {
+                resource,
+                offset,
+                limit,
+            } => {
+                (1..=MAX_PAGE).contains(limit)
+                    && *offset <= 1_000_000
+                    && (!resource.is_dlp() || offset % limit == 0)
+            }
+            Self::Detail { id, .. } => {
+                (1..=256).contains(&id.len()) && !id.chars().any(char::is_control)
+            }
+        }
+    }
+}
+
+/// One page as the service returned it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagementPage {
+    pub resource: ManagementResource,
+    pub offset: u32,
+    pub limit: u32,
+    /// The page's items as a JSON array (SDK-serialized, secret fields
+    /// removed, unknown values preserved).
+    pub items: String,
+    pub count: u32,
+    /// Where the next page starts; `None` with `complete` when the service
+    /// said nothing follows.
+    pub next_offset: Option<u32>,
+    /// True only when the service said this is the last page.
+    pub complete: bool,
+    /// The service's total, when it reports one.
+    pub total: Option<u32>,
+}
+
+/// What a detail read found.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum DetailFound {
+    Found,
+    /// The whole inventory was read and the item is not in it.
+    Absent,
+    /// The bounded walk ended before the inventory did: nothing is claimed.
+    Incomplete,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagementDetail {
+    pub resource: ManagementResource,
+    pub id: String,
+    pub found: DetailFound,
+    /// The item as JSON when found.
+    pub item: Option<String>,
+}
+
+/// Why a management read did not produce data (sanitized; no server text).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ManagementFailure {
+    /// The token grant was refused (bad client ID or secret, wrong TSG).
+    Unauthorized,
+    /// The tenant's licensing or permissions do not allow this read.
+    Denied,
+    NotFound,
+    RateLimited,
+    /// The service failed (5xx).
+    Unavailable,
+    /// Another 4xx.
+    Rejected,
+    Timeout,
+    Cancelled,
+    Network,
+    /// A redirect or an origin outside the management destinations.
+    Destination,
+    /// The reply did not match the contract (or a page did not advance).
+    InvalidResponse,
+    CredentialLocked,
+    CredentialDenied,
+    CredentialMissing,
+    /// The client could not be configured for this tenant.
+    Configuration,
+}
+
+impl ManagementFailure {
+    pub fn from_sdk(error: &scm_sdk::Error) -> Self {
+        match (error.kind(), error.status()) {
+            (ErrorKind::Authentication, _) => Self::Unauthorized,
+            (ErrorKind::Http, Some(401)) => Self::Unauthorized,
+            (ErrorKind::Http, Some(403)) => Self::Denied,
+            (ErrorKind::Http, Some(404)) => Self::NotFound,
+            (ErrorKind::Http, Some(429)) => Self::RateLimited,
+            (ErrorKind::Http, Some(s)) if s >= 500 => Self::Unavailable,
+            (ErrorKind::Http, _) => Self::Rejected,
+            (ErrorKind::Deadline, _) => Self::Timeout,
+            (ErrorKind::Cancelled, _) => Self::Cancelled,
+            (ErrorKind::Transport | ErrorKind::Io, _) => Self::Network,
+            (ErrorKind::Destination, _) => Self::Destination,
+            (ErrorKind::Configuration, _) => Self::Configuration,
+            _ => Self::InvalidResponse,
+        }
+    }
+}
+
+pub fn outcome_of(error: &scm_sdk::Error) -> Outcome {
+    match error.remote_outcome() {
+        RemoteOutcome::NotSent => Outcome::NotSent,
+        RemoteOutcome::Rejected => Outcome::Rejected,
+        _ => Outcome::Unknown,
+    }
+}
+
+/// What a management operation produced.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ManagementResult {
+    /// The credential check passed: a token was granted and one profile
+    /// read succeeded. It proves neither the scan key nor write access.
+    Verified,
+    Page {
+        page: ManagementPage,
+    },
+    Detail {
+        detail: ManagementDetail,
+    },
+    Failed {
+        failure: ManagementFailure,
+        outcome: Outcome,
+    },
+}
+
+/// Field names whose values are key material or licensing secrets. They are
+/// removed at any depth before an item leaves the core (an API key's value
+/// is a C09 one-time reveal, never inventory).
+const SECRET_FIELDS: [&str; 10] = [
+    "api_key",
+    "auth_code",
+    "client_secret",
+    "secret",
+    "token",
+    "access_token",
+    "refresh_token",
+    "password",
+    "private_key",
+    "api_key_value",
+];
+
+/// Removes secret-bearing fields at any depth.
+pub fn redact(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            map.retain(|key, _| !SECRET_FIELDS.contains(&key.as_str()));
+            for item in map.values_mut() {
+                redact(item);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                redact(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The explicit management client limits.
+fn limits() -> Limits {
+    let mut limits = Limits::default();
+    limits.max_response_bytes = 16 * 1024 * 1024;
+    limits.operation_timeout = READ_DEADLINE;
+    limits.max_retries = 0;
+    limits
+}
+
+/// Management and DLP clients bound to one credential generation.
+pub struct ManagementBinding {
+    management: ManagementClient,
+    dlp: DlpClient,
+}
+
+impl ManagementBinding {
+    /// Builds the binding: the client secret goes only to the token origin,
+    /// reads only to the API and DLP origins.
+    pub fn new(
+        endpoints: &ManagementEndpoints,
+        client_id: &str,
+        tsg: &str,
+        secret: Zeroizing<String>,
+        transport: Arc<dyn Transport>,
+        session: Session,
+    ) -> Result<Self, ManagementFailure> {
+        let parse = |url: &str| Endpoint::parse(url).map_err(|_| ManagementFailure::Configuration);
+        let token = parse(&endpoints.token)?;
+        let api = parse(&endpoints.api)?;
+        let dlp = parse(&endpoints.dlp)?;
+        if ![&token, &api, &dlp]
+            .iter()
+            .all(|e| e.origin().starts_with("https://"))
+        {
+            return Err(ManagementFailure::Destination);
+        }
+        let context = AuthContext::new(token.clone(), client_id, 1, tsg)
+            .map_err(|_| ManagementFailure::Configuration)?;
+        let secret =
+            Secret::new(secret.as_str()).map_err(|_| ManagementFailure::CredentialMissing)?;
+        let client = Client::builder(api.clone())
+            .oauth_credentials(context, secret, false)
+            .transport(transport)
+            .destination_policy(Arc::new(OriginPolicy::new([api, token, dlp.clone()])))
+            .limits(limits())
+            .session(session)
+            .build()
+            .map_err(|_| ManagementFailure::Configuration)?;
+        let management =
+            ManagementClient::new(client).map_err(|_| ManagementFailure::Configuration)?;
+        let dlp = management
+            .dlp(dlp)
+            .map_err(|_| ManagementFailure::Configuration)?;
+        Ok(Self { management, dlp })
+    }
+
+    fn options(deadline: Instant) -> Option<RequestOptions> {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        RequestOptions::with_timeout(remaining.max(Duration::from_millis(1)))
+            .and_then(|o| o.with_retries(0))
+            .ok()
+    }
+
+    /// The credential check (v1 `checktenant`): one profile, latest only.
+    pub async fn verify(&self, deadline: Instant) -> Result<(), scm_sdk::Error> {
+        let mut page = PaginationOptions::default();
+        page.limit = 1;
+        page.latest = Some(true);
+        self.management
+            .profiles()
+            .list(page, Self::options(deadline).as_ref())
+            .await
+            .map(|_| ())
+    }
+
+    /// One page of `resource`, normalized.
+    pub async fn page(
+        &self,
+        resource: ManagementResource,
+        offset: u32,
+        limit: u32,
+        deadline: Instant,
+    ) -> Result<ManagementPage, PageError> {
+        let options = Self::options(deadline);
+        let options = options.as_ref();
+        let offset_page = || {
+            let mut page = PaginationOptions::default();
+            page.offset = u64::from(offset);
+            page.limit = limit;
+            page
+        };
+        let json = |value: &dyn erased::Json| value.to_json().map_err(|_| PageError::Invalid);
+        let (value, paging) = match resource {
+            ManagementResource::Profiles => {
+                let mut page = offset_page();
+                page.latest = Some(true);
+                let reply = self.management.profiles().list(page, options).await?;
+                (
+                    json(&reply)?,
+                    Paging::Offset {
+                        key: "ai_profiles",
+                        required: true,
+                    },
+                )
+            }
+            ManagementResource::Topics => {
+                let mut page = TopicListOptions::default();
+                page.offset = u64::from(offset);
+                page.limit = limit;
+                let reply = self.management.topics().list(page, options).await?;
+                (
+                    json(&reply)?,
+                    Paging::Offset {
+                        key: "custom_topics",
+                        required: true,
+                    },
+                )
+            }
+            ManagementResource::Applications => {
+                let reply = self
+                    .management
+                    .customer_apps()
+                    .list(offset_page(), options)
+                    .await?;
+                (
+                    json(&reply)?,
+                    Paging::Offset {
+                        key: "customer_apps",
+                        required: false,
+                    },
+                )
+            }
+            ManagementResource::ApiKeys => {
+                let reply = self
+                    .management
+                    .api_keys()
+                    .list(offset_page(), options)
+                    .await?;
+                (
+                    json(&reply)?,
+                    Paging::Offset {
+                        key: "api_keys",
+                        required: false,
+                    },
+                )
+            }
+            ManagementResource::DeploymentProfiles => {
+                let reply = self
+                    .management
+                    .deployment_profiles()
+                    .list(DeploymentProfileListOptions::default(), options)
+                    .await?;
+                (
+                    json(&reply)?,
+                    Paging::Local {
+                        key: "deployment_profiles",
+                        required: true,
+                    },
+                )
+            }
+            ManagementResource::DlpCatalog => {
+                let reply = self.management.dlp_profiles().list(options).await?;
+                (
+                    json(&reply)?,
+                    Paging::Local {
+                        key: "dlp_profiles",
+                        required: false,
+                    },
+                )
+            }
+            ManagementResource::DataProfiles => {
+                let params = SpringListParams::new()
+                    .page(u64::from(offset / limit))
+                    .size(limit);
+                let reply = self.dlp.data_profiles().list(&params, options).await?;
+                (json(&reply)?, Paging::Spring)
+            }
+            ManagementResource::DataPatterns => {
+                let params = SpringListParams::new()
+                    .page(u64::from(offset / limit))
+                    .size(limit);
+                let reply = self.dlp.data_patterns().list(&params, options).await?;
+                (json(&reply)?, Paging::Spring)
+            }
+            ManagementResource::FilteringProfiles => {
+                let mut params = DataFilteringProfileListParams::default();
+                params.page = Some(u64::from(offset / limit));
+                params.size = Some(limit);
+                let reply = self
+                    .dlp
+                    .data_filtering_profiles()
+                    .list(&params, options)
+                    .await?;
+                (json(&reply)?, Paging::Spring)
+            }
+            ManagementResource::Dictionaries => {
+                let mut params = DictionaryListParams::default();
+                params.page = Some(u64::from(offset / limit));
+                params.size = Some(limit);
+                // v1 lists dictionaries without their keyword lists.
+                params.keywords = Some(false);
+                let reply = self.dlp.dictionaries().list(&params, options).await?;
+                (json(&reply)?, Paging::Spring)
+            }
+        };
+        normalize(resource, offset, limit, value, paging)
+    }
+
+    /// One item: a DLP resource by its own read (a 404 means absent), any
+    /// other by a bounded walk of its inventory (40 pages of 25), as v1.
+    pub async fn detail(
+        &self,
+        resource: ManagementResource,
+        id: &str,
+        deadline: Instant,
+    ) -> Result<ManagementDetail, PageError> {
+        if let Some(found) = self.dlp_get(resource, id, deadline).await {
+            let found = match found {
+                Ok(mut item) => {
+                    redact(&mut item);
+                    Some(item.to_string())
+                }
+                Err(PageError::Sdk(error))
+                    if ManagementFailure::from_sdk(&error) == ManagementFailure::NotFound =>
+                {
+                    None
+                }
+                Err(error) => return Err(error),
+            };
+            return Ok(ManagementDetail {
+                resource,
+                id: id.to_owned(),
+                found: if found.is_some() {
+                    DetailFound::Found
+                } else {
+                    DetailFound::Absent
+                },
+                item: found,
+            });
+        }
+        let field = resource.id_field();
+        let mut offset = 0u32;
+        for _ in 0..DETAIL_PAGES {
+            let page = self
+                .page(resource, offset, DETAIL_PAGE_SIZE, deadline)
+                .await?;
+            let items: Vec<Value> =
+                serde_json::from_str(&page.items).map_err(|_| PageError::Invalid)?;
+            if let Some(item) = items
+                .into_iter()
+                .find(|item| identity(item.get(field)).as_deref() == Some(id))
+            {
+                return Ok(ManagementDetail {
+                    resource,
+                    id: id.to_owned(),
+                    found: DetailFound::Found,
+                    item: Some(item.to_string()),
+                });
+            }
+            match (page.complete, page.next_offset) {
+                (true, _) => {
+                    return Ok(ManagementDetail {
+                        resource,
+                        id: id.to_owned(),
+                        found: DetailFound::Absent,
+                        item: None,
+                    });
+                }
+                (false, Some(next)) => offset = next,
+                (false, None) => break,
+            }
+        }
+        Ok(ManagementDetail {
+            resource,
+            id: id.to_owned(),
+            found: DetailFound::Incomplete,
+            item: None,
+        })
+    }
+}
+
+impl ManagementBinding {
+    /// The DLP resources' own reads; `None` for resources read by a walk.
+    async fn dlp_get(
+        &self,
+        resource: ManagementResource,
+        id: &str,
+        deadline: Instant,
+    ) -> Option<Result<Value, PageError>> {
+        let options = Self::options(deadline);
+        let options = options.as_ref();
+        let json = |value: &dyn erased::Json| value.to_json().map_err(|_| PageError::Invalid);
+        let value = match resource {
+            ManagementResource::DataProfiles => self
+                .dlp
+                .data_profiles()
+                .get(id, options)
+                .await
+                .map(|r| json(&r)),
+            ManagementResource::DataPatterns => self
+                .dlp
+                .data_patterns()
+                .get(id, options)
+                .await
+                .map(|r| json(&r)),
+            ManagementResource::FilteringProfiles => self
+                .dlp
+                .data_filtering_profiles()
+                .get(id, options)
+                .await
+                .map(|r| json(&r)),
+            ManagementResource::Dictionaries => self
+                .dlp
+                .dictionaries()
+                .get(id, None, options)
+                .await
+                .map(|r| json(&r)),
+            _ => return None,
+        };
+        Some(match value {
+            Ok(Ok(Value::Object(item))) => Ok(Value::Object(item)),
+            Ok(_) => Err(PageError::Invalid),
+            Err(error) => Err(PageError::Sdk(error)),
+        })
+    }
+}
+
+/// An item's identity as text: a string, or a number's decimal form (DLP
+/// identifiers may be numeric).
+fn identity(value: Option<&Value>) -> Option<String> {
+    match value? {
+        Value::String(s) => Some(s.clone()),
+        Value::Number(n) => Some(n.to_string()),
+        _ => None,
+    }
+}
+
+/// How a resource pages.
+#[derive(Clone, Copy, Debug)]
+enum Paging {
+    /// AIRS offset/limit with `pagination.total_items` or `next_offset`
+    /// (items under `key`). v1 fails closed when a required inventory's
+    /// array is absent and reads an absent optional one as empty.
+    Offset { key: &'static str, required: bool },
+    /// Unpaginated: the whole list, sliced here (items under `key`).
+    Local { key: &'static str, required: bool },
+    /// DLP Spring pages (`content`, `last`, `totalPages`, `totalElements`).
+    Spring,
+}
+
+/// The items array under `key`: absent or null is empty unless required.
+fn array_at(value: &mut Value, key: &str, required: bool) -> Result<Vec<Value>, PageError> {
+    match value.get_mut(key).map(Value::take) {
+        Some(Value::Array(items)) => Ok(items),
+        Some(Value::Null) | None if !required => Ok(Vec::new()),
+        _ => Err(PageError::Invalid),
+    }
+}
+
+/// Why a page could not be produced.
+#[derive(Debug)]
+pub enum PageError {
+    Sdk(scm_sdk::Error),
+    /// The reply did not match the paging contract.
+    Invalid,
+}
+
+impl From<scm_sdk::Error> for PageError {
+    fn from(error: scm_sdk::Error) -> Self {
+        Self::Sdk(error)
+    }
+}
+
+mod erased {
+    /// Serializes an SDK model to JSON (they all implement `Serialize`).
+    pub trait Json {
+        fn to_json(&self) -> Result<serde_json::Value, serde_json::Error>;
+    }
+    impl<T: serde::Serialize> Json for T {
+        fn to_json(&self) -> Result<serde_json::Value, serde_json::Error> {
+            serde_json::to_value(self)
+        }
+    }
+}
+
+fn number(value: Option<&Value>) -> Option<u64> {
+    value.and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)))
+}
+
+/// Normalizes one reply into a page. Completeness is claimed only from the
+/// service's own signal; a page that does not advance, or holds more items
+/// than asked for, is an invalid reply.
+fn normalize(
+    resource: ManagementResource,
+    offset: u32,
+    limit: u32,
+    mut value: Value,
+    paging: Paging,
+) -> Result<ManagementPage, PageError> {
+    let (mut items, next_offset, complete, total) = match paging {
+        Paging::Offset { key, required } => {
+            let items = array_at(&mut value, key, required)?;
+            if items.len() > limit as usize {
+                return Err(PageError::Invalid);
+            }
+            let end = u64::from(offset) + u64::from(limit);
+            let total_items = value
+                .get("pagination")
+                .and_then(|p| p.get("total_items"))
+                .and_then(Value::as_u64);
+            if let Some(total) = total_items {
+                // The service's own total decides what follows (v1).
+                let total = u32::try_from(total).map_err(|_| PageError::Invalid)?;
+                let next = (end < u64::from(total)).then(|| offset + limit);
+                (items, next, next.is_none(), Some(total))
+            } else {
+                // v1 reads a zero cursor as none.
+                let reported = number(value.get("next_offset")).filter(|n| *n != 0);
+                let next = match reported {
+                    Some(next) if next <= u64::from(offset) => return Err(PageError::Invalid),
+                    Some(next) => Some(u32::try_from(next).map_err(|_| PageError::Invalid)?),
+                    // No cursor and a short page: the service says nothing
+                    // follows. A full page without a cursor proves nothing.
+                    None if items.len() < limit as usize => None,
+                    None => Some(offset + limit),
+                };
+                let complete = reported.is_none() && items.len() < limit as usize;
+                (items, next, complete, None)
+            }
+        }
+        Paging::Local { key, required } => {
+            let all = array_at(&mut value, key, required)?;
+            let total = all.len();
+            let start = (offset as usize).min(total);
+            let end = (start + limit as usize).min(total);
+            let items: Vec<Value> = all.into_iter().skip(start).take(end - start).collect();
+            let complete = end >= total;
+            let next = (!complete).then(|| offset + limit);
+            (
+                items,
+                next,
+                complete,
+                Some(u32::try_from(total).map_err(|_| PageError::Invalid)?),
+            )
+        }
+        Paging::Spring => {
+            let items = match value.get_mut("content").map(Value::take) {
+                Some(Value::Array(items)) => items,
+                _ => return Err(PageError::Invalid),
+            };
+            if items.len() > limit as usize {
+                return Err(PageError::Invalid);
+            }
+            let last = value.get("last").and_then(Value::as_bool);
+            let pages = value.get("totalPages").and_then(Value::as_u64);
+            let total = number(value.get("totalElements"));
+            let complete = match (last, pages, total) {
+                (Some(last), ..) => last,
+                (None, Some(pages), _) => u64::from(offset / limit) + 1 >= pages,
+                (None, None, Some(total)) => u64::from(offset) + items.len() as u64 >= total,
+                (None, None, None) => items.len() < limit as usize,
+            };
+            let next = (!complete).then(|| offset + limit);
+            let total = total
+                .map(u32::try_from)
+                .transpose()
+                .map_err(|_| PageError::Invalid)?;
+            (items, next, complete, total)
+        }
+    };
+    for item in &mut items {
+        redact(item);
+    }
+    let count = u32::try_from(items.len()).map_err(|_| PageError::Invalid)?;
+    let items = Value::Array(items).to_string();
+    if items.len() > MAX_PAGE_BYTES {
+        return Err(PageError::Invalid);
+    }
+    Ok(ManagementPage {
+        resource,
+        offset,
+        limit,
+        items,
+        count,
+        next_offset,
+        complete,
+        total,
+    })
+}
+
+/// The bound clients of one credential generation, built once by the first
+/// read that needs them and reused (with the SDK's token cache) until the
+/// generation retires.
+pub type BindingCell = Arc<OnceCell<Result<ManagementBinding, ManagementFailure>>>;
+
+pub type ResultSlot = Arc<std::sync::Mutex<Option<ManagementResult>>>;
+
+/// Everything one admitted management read needs at dispatch.
+pub(crate) struct ManagementJob {
+    pub keychain: Arc<dyn CredentialStore>,
+    pub session_vault: Arc<SessionVault>,
+    pub record: RecordId,
+    pub mode: StorageMode,
+    pub client_id: String,
+    pub tsg: String,
+    pub endpoints: ManagementEndpoints,
+    pub transport: Arc<dyn Transport>,
+    pub session: Session,
+    pub binding: BindingCell,
+    pub request: ManagementRequest,
+    pub slot: ResultSlot,
+}
+
+impl ManagementJob {
+    pub fn into_work(self) -> Work {
+        Box::new(move |claim| Box::pin(self.run(claim)))
+    }
+
+    fn leave(&self, result: ManagementResult) {
+        if let Ok(mut slot) = self.slot.lock() {
+            *slot = Some(result);
+        }
+    }
+
+    fn fail(&self, failure: ManagementFailure, outcome: Outcome) -> Outcome {
+        self.leave(ManagementResult::Failed { failure, outcome });
+        outcome
+    }
+
+    async fn bind(&self) -> Result<&ManagementBinding, ManagementFailure> {
+        let built = self
+            .binding
+            .get_or_init(|| async {
+                let keychain = Arc::clone(&self.keychain);
+                let session_vault = Arc::clone(&self.session_vault);
+                let record = self.record.clone();
+                let mode = self.mode;
+                let read = tokio::task::spawn_blocking(move || match mode {
+                    StorageMode::Keychain => keychain.get(&record),
+                    StorageMode::Session => session_vault.get(&record),
+                })
+                .await
+                .unwrap_or(Err(VaultError::Unavailable));
+                let secret = match read {
+                    Ok(secret) => secret,
+                    Err(VaultError::Locked) => return Err(ManagementFailure::CredentialLocked),
+                    Err(VaultError::Denied) => return Err(ManagementFailure::CredentialDenied),
+                    Err(_) => return Err(ManagementFailure::CredentialMissing),
+                };
+                let secret = match std::str::from_utf8(&secret) {
+                    Ok(text) => Zeroizing::new(text.to_owned()),
+                    Err(_) => return Err(ManagementFailure::CredentialMissing),
+                };
+                ManagementBinding::new(
+                    &self.endpoints,
+                    &self.client_id,
+                    &self.tsg,
+                    secret,
+                    Arc::clone(&self.transport),
+                    self.session.clone(),
+                )
+            })
+            .await;
+        built.as_ref().map_err(|failure| *failure)
+    }
+
+    async fn run(self, claim: Claim) -> Outcome {
+        let binding = match self.bind().await {
+            Ok(binding) => binding,
+            Err(failure) => return self.fail(failure, Outcome::NotSent),
+        };
+        if claim.cancel.is_cancelled() {
+            return self.fail(ManagementFailure::Cancelled, Outcome::NotSent);
+        }
+        let deadline = claim.deadline;
+        let work = async {
+            match &self.request {
+                ManagementRequest::Verify => binding
+                    .verify(deadline)
+                    .await
+                    .map(|()| ManagementResult::Verified)
+                    .map_err(PageError::Sdk),
+                ManagementRequest::Page {
+                    resource,
+                    offset,
+                    limit,
+                } => binding
+                    .page(*resource, *offset, *limit, deadline)
+                    .await
+                    .map(|page| ManagementResult::Page { page }),
+                ManagementRequest::Detail { resource, id } => binding
+                    .detail(*resource, id, deadline)
+                    .await
+                    .map(|detail| ManagementResult::Detail { detail }),
+            }
+        };
+        tokio::pin!(work);
+        let result = tokio::select! {
+            result = &mut work => Some(result),
+            () = claim.cancel.cancelled() => None,
+        };
+        match result {
+            // Reads change nothing: a cancelled read is simply not shown.
+            None => self.fail(ManagementFailure::Cancelled, Outcome::Unknown),
+            Some(Ok(result)) => {
+                self.leave(result);
+                Outcome::Completed
+            }
+            Some(Err(PageError::Invalid)) => {
+                self.fail(ManagementFailure::InvalidResponse, Outcome::Completed)
+            }
+            Some(Err(PageError::Sdk(error))) => {
+                self.fail(ManagementFailure::from_sdk(&error), outcome_of(&error))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    const PROFILES: Paging = Paging::Offset {
+        key: "ai_profiles",
+        required: true,
+    };
+    const DEPLOYMENTS: Paging = Paging::Local {
+        key: "deployment_profiles",
+        required: true,
+    };
+
+    fn items(page: &ManagementPage) -> Vec<Value> {
+        serde_json::from_str(&page.items).expect("items")
+    }
+
+    #[test]
+    fn offset_pages_claim_completeness_only_from_the_service() {
+        let page = |value: Value| normalize(ManagementResource::Profiles, 0, 2, value, PROFILES);
+        // A cursor: more follows.
+        let more = page(
+            json!({"ai_profiles": [{"profile_id": "a"}, {"profile_id": "b"}], "next_offset": 2}),
+        )
+        .expect("page");
+        assert_eq!((more.next_offset, more.complete), (Some(2), false));
+        // A short page with a cursor: more still follows.
+        let short =
+            page(json!({"ai_profiles": [{"profile_id": "a"}], "next_offset": 1})).expect("page");
+        assert_eq!((short.next_offset, short.complete), (Some(1), false));
+        // A short page without a cursor: the last page.
+        let last = page(json!({"ai_profiles": [{"profile_id": "a"}]})).expect("page");
+        assert_eq!((last.next_offset, last.complete), (None, true));
+        // A full page without a cursor proves nothing: the next page is asked.
+        let full =
+            page(json!({"ai_profiles": [{"profile_id": "a"}, {"profile_id": "b"}]})).expect("page");
+        assert_eq!((full.next_offset, full.complete), (Some(2), false));
+        // A cursor that does not advance, or too many items: invalid.
+        assert!(
+            normalize(
+                ManagementResource::Profiles,
+                4,
+                2,
+                json!({"ai_profiles": [], "next_offset": 4}),
+                PROFILES
+            )
+            .is_err()
+        );
+        assert!(page(json!({"ai_profiles": [{}, {}, {}]})).is_err());
+        // A zero cursor is no cursor (v1).
+        let zero =
+            page(json!({"ai_profiles": [{"profile_id": "a"}], "next_offset": 0})).expect("page");
+        assert_eq!((zero.next_offset, zero.complete), (None, true));
+        // The service's total decides what follows (v1 `pagination`).
+        let counted =
+            page(json!({"ai_profiles": [{}, {}], "pagination": {"total_items": 3}})).expect("page");
+        assert_eq!(
+            (counted.next_offset, counted.complete, counted.total),
+            (Some(2), false, Some(3))
+        );
+        let ended =
+            page(json!({"ai_profiles": [{}, {}], "pagination": {"total_items": 2}})).expect("page");
+        assert_eq!((ended.next_offset, ended.complete), (None, true));
+        // A required inventory without its array fails closed; an optional
+        // one (applications, API keys, the DLP catalog) is empty (v1).
+        assert!(page(json!({})).is_err());
+        let optional = normalize(
+            ManagementResource::ApiKeys,
+            0,
+            2,
+            json!({}),
+            Paging::Offset {
+                key: "api_keys",
+                required: false,
+            },
+        )
+        .expect("page");
+        assert_eq!((optional.count, optional.complete), (0, true));
+        assert!(
+            normalize(
+                ManagementResource::DeploymentProfiles,
+                0,
+                2,
+                json!({"status": "ok"}),
+                DEPLOYMENTS
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn local_and_spring_pages_slice_and_report_totals() {
+        let all = json!({"deployment_profiles": [{"dp_name": "a"}, {"dp_name": "b"}, {"dp_name": "c"}], "status": "ok"});
+        let first = normalize(
+            ManagementResource::DeploymentProfiles,
+            0,
+            2,
+            all.clone(),
+            DEPLOYMENTS,
+        )
+        .expect("page");
+        assert_eq!(
+            (first.count, first.next_offset, first.complete, first.total),
+            (2, Some(2), false, Some(3))
+        );
+        let second = normalize(
+            ManagementResource::DeploymentProfiles,
+            2,
+            2,
+            all,
+            DEPLOYMENTS,
+        )
+        .expect("page");
+        assert_eq!((second.count, second.complete), (1, true));
+        let spring = normalize(
+            ManagementResource::DataPatterns,
+            0,
+            2,
+            json!({"content": [{"id": "p"}], "last": false, "totalElements": 9}),
+            Paging::Spring,
+        )
+        .expect("page");
+        assert_eq!(
+            (spring.next_offset, spring.complete, spring.total),
+            (Some(2), false, Some(9))
+        );
+        // `totalPages` without `last` (v1).
+        let paged = normalize(
+            ManagementResource::DataPatterns,
+            2,
+            2,
+            json!({"content": [{"id": "p"}, {"id": "q"}], "totalPages": 2}),
+            Paging::Spring,
+        )
+        .expect("page");
+        assert_eq!((paged.next_offset, paged.complete), (None, true));
+        assert!(
+            normalize(
+                ManagementResource::DataPatterns,
+                0,
+                2,
+                json!({"items": []}),
+                Paging::Spring
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn secret_fields_never_leave_and_unknown_values_stay() {
+        let page = normalize(
+            ManagementResource::ApiKeys,
+            0,
+            5,
+            json!({"api_keys": [{"api_key_id": "k1", "api_key": "SECRET-VALUE", "auth_code": "AUTH-CODE",
+                                 "status": "SOME_FUTURE_STATUS", "nested": {"client_secret": "x", "kept": 1},
+                                 "brand_new_field": {"x": 1}}]}),
+            Paging::Offset { key: "api_keys", required: false },
+        )
+        .expect("page");
+        assert!(
+            !page.items.contains("SECRET-VALUE")
+                && !page.items.contains("AUTH-CODE")
+                && !page.items.contains("client_secret")
+        );
+        let item = &items(&page)[0];
+        assert_eq!(item["status"], "SOME_FUTURE_STATUS");
+        assert_eq!(item["brand_new_field"]["x"], 1);
+        assert_eq!(item["nested"]["kept"], 1);
+    }
+
+    #[test]
+    fn requests_are_bounded() {
+        let page = |resource, offset, limit| {
+            ManagementRequest::Page {
+                resource,
+                offset,
+                limit,
+            }
+            .is_valid()
+        };
+        assert!(page(ManagementResource::Profiles, 25, 25));
+        assert!(!page(ManagementResource::Profiles, 0, 0));
+        assert!(!page(ManagementResource::Profiles, 0, 101));
+        assert!(page(ManagementResource::DataPatterns, 50, 25));
+        assert!(
+            !page(ManagementResource::DataPatterns, 10, 25),
+            "DLP pages start on a page boundary"
+        );
+        assert!(
+            !ManagementRequest::Detail {
+                resource: ManagementResource::Topics,
+                id: String::new()
+            }
+            .is_valid()
+        );
+        assert!(tsg_is_valid("1234567890") && !tsg_is_valid("12a"));
+        assert!(
+            client_id_is_valid("svc@1234.iam.panserviceaccount.com") && !client_id_is_valid(" x")
+        );
+        assert_eq!(
+            ManagementEndpoints::default().token_origin().as_deref(),
+            Some("https://auth.apps.paloaltonetworks.com")
+        );
+    }
+
+    #[test]
+    fn identities_match_strings_and_numbers_only() {
+        assert_eq!(identity(Some(&json!("p-1"))).as_deref(), Some("p-1"));
+        assert_eq!(identity(Some(&json!(42))).as_deref(), Some("42"));
+        assert_eq!(identity(Some(&json!(null))), None);
+        assert_eq!(identity(Some(&json!({"id": "x"}))), None);
+        assert_eq!(identity(None), None);
+    }
+}

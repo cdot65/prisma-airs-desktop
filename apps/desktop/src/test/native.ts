@@ -18,6 +18,7 @@ export function tenant(overrides: Partial<TenantView> = {}): TenantView {
         destination: { kind: 'region', region: 'europe' },
         origin: 'https://service-de.api.aisecurity.paloaltonetworks.com',
         scan: { state: 'missing', mode: null, failure: null },
+        management: { state: 'missing', mode: null, failure: null, clientId: null, tokenOrigin: null },
         ...overrides,
     }
 }
@@ -27,6 +28,8 @@ export function withTenant(snapshot: ShellSnapshot, view: TenantView, context = 
 }
 
 type Respond = (intent: Intent) => unknown
+/** Answers one management observation (the native `management` scope). */
+type ObserveManagement = (operation: string) => unknown | Promise<unknown>
 
 export interface Native {
     transport: DesktopTransport
@@ -36,6 +39,7 @@ export interface Native {
     /** Every update delivered to the presentation. */
     delivered: string[]
     respond: Respond
+    observeManagement: ObserveManagement
     push(snapshot: ShellSnapshot): Promise<void>
     current: ShellSnapshot
 }
@@ -51,6 +55,7 @@ export function scriptedNative(initial: ShellSnapshot): Native {
         delivered: [],
         current: initial,
         respond: () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } }),
+        observeManagement: () => ({ kind: 'refusal', refusal: 'invalidInput' }),
         push: (next) =>
             act(async () => {
                 // Native revisions only increase; the client ignores others.
@@ -66,11 +71,16 @@ export function scriptedNative(initial: ShellSnapshot): Native {
             async observe(bytes) {
                 const text = decoder.decode(bytes)
                 native.sent.push(text)
-                const body = JSON.parse(text) as { scope: { kind: string } }
+                const body = JSON.parse(text) as { scope: { kind: string; operation?: string } }
                 if (body.scope.kind === 'deliverySession') {
                     return { kind: 'deliverySession', session: `ds-${'a'.repeat(32)}`, nextSequence: '1' }
                 }
                 if (body.scope.kind === 'closeShell') return { kind: 'closed' }
+                if (body.scope.kind === 'management') {
+                    const response = await native.observeManagement(body.scope.operation ?? '')
+                    native.delivered.push(JSON.stringify(response))
+                    return response
+                }
                 const response = { kind: 'shell', snapshot: native.current }
                 native.delivered.push(JSON.stringify(response))
                 return response

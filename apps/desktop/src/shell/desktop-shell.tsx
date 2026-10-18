@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { ShellBrand, ShellFrame, ShellRail, ShellTopbar, type ShellNavItem } from '@ai-security-academy/presentation'
 import type { DesktopClient, FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import { AcademyView } from '../features/academy/academy-view'
+import { AdministrationView } from '../features/administration/administration-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { CommandPalette } from './command-palette'
@@ -45,6 +46,8 @@ export function DesktopShell(props: DesktopShellProps) {
     const heading = useRef<HTMLHeadingElement>(null)
     const firstRender = useRef(true)
     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
+    const client = props.client
+    const observeManagement = useCallback((operation: string) => client.observeManagement(operation), [client])
 
     useEffect(() => {
         // Move focus to the new page heading after navigation (not on launch).
@@ -61,7 +64,24 @@ export function DesktopShell(props: DesktopShellProps) {
         // scroll padding keeps it clear of the sticky topbar and the shared
         // frame's bottom fade (C01-N10).
         const reveal = (event: FocusEvent) => {
-            if (event.target instanceof Element) event.target.scrollIntoView({ block: 'nearest' })
+            const target = event.target
+            if (!(target instanceof Element)) return
+            target.scrollIntoView({ block: 'nearest' })
+            // WebKit's own Tab scrolling ignores scroll-padding and runs after
+            // focus events, which can leave a control under the bottom fade at
+            // the minimum window size (C08-N11): on the next frame, move a
+            // focused page control inside the padded area.
+            if (!target.closest('[data-slot="app-main"]')) return
+            window.requestAnimationFrame(() => {
+                if (document.activeElement !== target) return
+                const rect = target.getBoundingClientRect()
+                if (rect.height === 0) return
+                const style = getComputedStyle(document.documentElement)
+                const top = parseFloat(style.scrollPaddingTop) || 0
+                const bottom = window.innerHeight - (parseFloat(style.scrollPaddingBottom) || 0)
+                if (rect.bottom > bottom && rect.top - (rect.bottom - bottom) >= top) window.scrollBy(0, rect.bottom - bottom)
+                else if (rect.top < top) window.scrollBy(0, rect.top - top)
+            })
         }
         document.addEventListener('focusin', reveal)
         return () => document.removeEventListener('focusin', reveal)
@@ -138,6 +158,15 @@ export function DesktopShell(props: DesktopShellProps) {
                     pending={props.appearancePending}
                     onSetAppearance={props.onSetAppearance}
                     dispatch={props.dispatch}
+                    observeManagement={observeManagement}
+                />
+            ) : feature.id === 'administration' && feature.availability.state === 'available' ? (
+                <AdministrationView
+                    ref={heading}
+                    snapshot={snapshot}
+                    dispatch={props.dispatch}
+                    observe={observeManagement}
+                    onNavigate={props.onNavigate}
                 />
             ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
                 <AcademyView ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
@@ -146,7 +175,10 @@ export function DesktopShell(props: DesktopShellProps) {
             ) : (
                 <UnavailableView ref={heading} feature={feature} />
             )}
-            <p role='status' aria-live='polite' data-slot='shell-status' className='text-academy-ink-soft mt-4 text-[13px]'>
+            {/* At 900 CSS px and wider the shared frame pads the page bottom by
+             * only 32px under its 60px fade; this space lets a page's last
+             * control scroll clear of the fade (C08-N11). */}
+            <p role='status' aria-live='polite' data-slot='shell-status' className='text-academy-ink-soft mt-4 pb-14 text-[13px]'>
                 {props.status}
             </p>
         </ShellFrame>

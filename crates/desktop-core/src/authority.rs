@@ -18,10 +18,12 @@ use ts_rs::TS;
 use zeroize::Zeroizing;
 
 mod learner_domain;
+mod management_domain;
 mod offline_domain;
 
 pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
 use learner_domain::{LearnerPhase, LearnerSession};
+pub use management_domain::ManagementHandle;
 pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineState, OfflineView};
 
 use crate::academy::AcademyClient;
@@ -30,6 +32,7 @@ use crate::delivery::{Admit, Delivery, DeliverySession, Sessions};
 use crate::features::{self, FeatureEntry};
 use crate::import::{self, Discarded, ImportCandidate, ImportError, ImportFormat, ImportPreview};
 use crate::learner::{AcademyView, ProcedureKind};
+use crate::management::{ManagementEndpoints, ManagementRequest};
 use crate::observe::{Subscribers, Subscription, Update};
 use crate::runtime::{
     self, OperationId, OperationLimits, OperationState, Operations, Outcome, StopReason,
@@ -37,7 +40,9 @@ use crate::runtime::{
 use crate::scanning::{
     HISTORY_PER_TENANT, PayloadSlot, ScanDraft, ScanFailure, ScanJob, ScanPayload, ScanResultView,
 };
-use crate::store::{AppStore, PersistedState, StoreError, StoredCredential, StoredLearner};
+use crate::store::{
+    AppStore, CredentialClass, PersistedState, StoreError, StoredCredential, StoredLearner,
+};
 use crate::tenants::{Destination, ProfileDraft, TenantId, TenantProfile};
 use crate::transport::{PolicyError, TransportFactory, TransportPolicy};
 use crate::vault::{MAX_SECRET_BYTES, RecordId, SessionVault, StorageMode, Vault, VaultError};
@@ -80,6 +85,23 @@ pub enum Intent {
     },
     /// Sign the active tenant's scan capability out.
     RemoveScanCredential { context: ContextRef },
+    /// Store the active tenant's management OAuth client (its own
+    /// credential class, never the scan key), replacing any previous one.
+    #[serde(rename_all = "camelCase")]
+    ConfigureManagementCredential {
+        context: ContextRef,
+        mode: StorageMode,
+        client_id: String,
+        secret: EnteredSecret,
+    },
+    /// Sign the active tenant's management capability out.
+    RemoveManagementCredential { context: ContextRef },
+    /// One management read (verify, a page or a detail) for the active
+    /// tenant's management capability.
+    Management {
+        context: ContextRef,
+        request: ManagementRequest,
+    },
     /// Prepare a reviewed change of the active tenant's scan destination.
     ReviewEndpointChange {
         context: ContextRef,
@@ -233,6 +255,8 @@ pub enum ViewScope {
     Shell,
     /// The single result of an admitted learner call.
     AcademyCall(OperationId),
+    /// The single result of an admitted management read.
+    Management(OperationId),
 }
 
 /// A scoped, redacted view of desktop state plus its ordered updates.
@@ -245,6 +269,7 @@ pub enum Observation {
         updates: Subscription,
     },
     AcademyCall(AcademyCallHandle),
+    Management(ManagementHandle),
 }
 
 /// Health of Rust-owned local storage.
@@ -288,6 +313,21 @@ pub struct TenantView {
     /// The exact origin the scan key may be sent to.
     pub origin: String,
     pub scan: ScanView,
+    /// The separate management OAuth capability (no secret material).
+    pub management: ManagementView,
+}
+
+/// Redacted management-capability state. Never contains the client secret.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagementView {
+    pub state: ScanState,
+    pub mode: Option<StorageMode>,
+    pub failure: Option<VaultError>,
+    /// The OAuth client ID (not a secret).
+    pub client_id: Option<String>,
+    /// The only origin the client secret may be sent to.
+    pub token_origin: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -427,6 +467,9 @@ pub struct CoreConfig {
     pub operations: OperationLimits,
     /// The Academy server origin (fixture builds may point it elsewhere).
     pub academy_origin: String,
+    /// The management token, API and DLP endpoints (fixture builds may
+    /// point them elsewhere).
+    pub management: ManagementEndpoints,
 }
 
 /// The production Academy origin.
@@ -439,6 +482,7 @@ impl Default for CoreConfig {
             observer_queue: 256,
             operations: OperationLimits::default(),
             academy_origin: ACADEMY_ORIGIN.to_owned(),
+            management: ManagementEndpoints::default(),
         }
     }
 }
@@ -523,6 +567,35 @@ enum ScanCapability {
 struct Tenant {
     profile: TenantProfile,
     scan: ScanCapability,
+    /// The management OAuth client secret (destination: the token origin).
+    management: ScanCapability,
+    /// The management OAuth client ID that goes with it.
+    management_client: Option<String>,
+}
+
+impl Tenant {
+    fn new(profile: TenantProfile) -> Self {
+        Self {
+            profile,
+            scan: ScanCapability::Missing,
+            management: ScanCapability::Missing,
+            management_client: None,
+        }
+    }
+
+    fn capability(&self, class: CredentialClass) -> &ScanCapability {
+        match class {
+            CredentialClass::Scan => &self.scan,
+            CredentialClass::Management => &self.management,
+        }
+    }
+
+    fn capability_mut(&mut self, class: CredentialClass) -> &mut ScanCapability {
+        match class {
+            CredentialClass::Scan => &mut self.scan,
+            CredentialClass::Management => &mut self.management,
+        }
+    }
 }
 
 /// Everything persisted, plus capability state that rides with it.
@@ -582,6 +655,11 @@ struct State {
     scans: Vec<ScanRecord>,
     /// One SDK session per issued context; cancelled when it retires.
     scan_sessions: Vec<(ContextRef, Session)>,
+    /// The management endpoints credentials are bound to.
+    management_endpoints: ManagementEndpoints,
+    /// One management binding per issued context; cancelled when it retires.
+    management_bindings: Vec<management_domain::GenerationBinding>,
+    management_calls: Vec<management_domain::ManagementRecord>,
     academy_origin: String,
     learner: LearnerPhase,
     learner_ref: Option<LearnerRef>,
@@ -684,17 +762,26 @@ impl State {
                 .data
                 .tenants
                 .iter()
-                .filter_map(|t| match &t.scan {
-                    ScanCapability::Ready {
-                        record,
-                        mode: StorageMode::Keychain,
-                        destination,
-                    } => Some(StoredCredential {
-                        record: record.clone(),
-                        tenant: t.profile.id.clone(),
-                        destination: destination.clone(),
-                    }),
-                    _ => None,
+                .flat_map(|t| {
+                    [CredentialClass::Scan, CredentialClass::Management]
+                        .into_iter()
+                        .filter_map(move |class| match t.capability(class) {
+                            ScanCapability::Ready {
+                                record,
+                                mode: StorageMode::Keychain,
+                                destination,
+                            } => Some(StoredCredential {
+                                record: record.clone(),
+                                tenant: t.profile.id.clone(),
+                                destination: destination.clone(),
+                                class,
+                                client_id: match class {
+                                    CredentialClass::Scan => None,
+                                    CredentialClass::Management => t.management_client.clone(),
+                                },
+                            }),
+                            _ => None,
+                        })
                 })
                 .collect(),
             pending_cleanup: self.data.pending_cleanup.clone(),
@@ -713,6 +800,7 @@ impl State {
         // Every published snapshot reflects settled scans' outcomes.
         self.sync_scans();
         self.sync_academy_calls();
+        self.sync_management_calls();
         self.revision += 1;
         let update = Update::Shell(Box::new(self.snapshot()));
         self.subscribers.publish(&update);
@@ -739,7 +827,9 @@ impl State {
             self.operations
                 .retire_contexts(ContextRef::PREFIX, keep.as_deref(), Instant::now());
         self.retire_scan_sessions();
+        self.retire_management_bindings();
         self.sync_scans();
+        self.sync_management_calls();
         starts
     }
 
@@ -867,8 +957,16 @@ impl State {
     /// the durable cleanup ledger; a session record is returned so the caller
     /// deletes it once the change is committed.
     fn retire_credential(&mut self, tenant: &TenantId) -> Option<RecordId> {
+        self.retire_class(tenant, CredentialClass::Scan)
+    }
+
+    /// [`State::retire_credential`] for either credential class.
+    fn retire_class(&mut self, tenant: &TenantId, class: CredentialClass) -> Option<RecordId> {
         let t = self.tenant_mut(tenant)?;
-        match std::mem::replace(&mut t.scan, ScanCapability::Missing) {
+        if class == CredentialClass::Management {
+            t.management_client = None;
+        }
+        match std::mem::replace(t.capability_mut(class), ScanCapability::Missing) {
             ScanCapability::Ready {
                 record,
                 mode: StorageMode::Keychain,
@@ -941,7 +1039,9 @@ impl State {
         self.endpoint_review = None;
         let starts = self.operations.retire_contexts("", None, Instant::now());
         self.retire_scan_sessions();
+        self.retire_management_bindings();
         self.sync_scans();
+        self.sync_management_calls();
         starts
     }
 }
@@ -966,6 +1066,32 @@ fn tenant_view(t: &Tenant) -> TenantView {
             mode,
             failure,
         },
+        management: {
+            let (state, mode, failure, token_origin) = match &t.management {
+                ScanCapability::Missing => (ScanState::Missing, None, None, None),
+                ScanCapability::Storing { mode, .. } => {
+                    (ScanState::Storing, Some(*mode), None, None)
+                }
+                ScanCapability::Ready {
+                    mode, destination, ..
+                } => (
+                    ScanState::Ready,
+                    Some(*mode),
+                    None,
+                    Some(destination.clone()),
+                ),
+                ScanCapability::Failed { mode, failure } => {
+                    (ScanState::Failed, Some(*mode), Some(*failure), None)
+                }
+            };
+            ManagementView {
+                state,
+                mode,
+                failure,
+                client_id: t.management_client.clone(),
+                token_origin,
+            }
+        },
     }
 }
 
@@ -981,6 +1107,7 @@ fn store_refusal(error: StoreError) -> Refusal {
 enum Effect {
     Store {
         tenant: TenantId,
+        class: CredentialClass,
         lease: u64,
         record: RecordId,
         mode: StorageMode,
@@ -1062,6 +1189,9 @@ impl Core {
             store: Arc::clone(&adapters.store),
             scans: Vec::new(),
             scan_sessions: Vec::new(),
+            management_endpoints: config.management,
+            management_bindings: Vec::new(),
+            management_calls: Vec::new(),
             academy_origin: config.academy_origin,
             learner: LearnerPhase::SignedOut,
             learner_ref: None,
@@ -1176,14 +1306,32 @@ fn data_from(doc: PersistedState) -> Data {
             let scan = doc
                 .credentials
                 .iter()
-                .find(|c| c.tenant == profile.id && c.destination == profile.destination.origin())
+                .find(|c| {
+                    c.class == CredentialClass::Scan
+                        && c.tenant == profile.id
+                        && c.destination == profile.destination.origin()
+                })
                 .map(|c| ScanCapability::Ready {
                     record: c.record.clone(),
                     mode: StorageMode::Keychain,
                     destination: c.destination.clone(),
                 })
                 .unwrap_or(ScanCapability::Missing);
-            Tenant { profile, scan }
+            let management = doc
+                .credentials
+                .iter()
+                .find(|c| c.class == CredentialClass::Management && c.tenant == profile.id);
+            let mut tenant = Tenant::new(profile);
+            tenant.scan = scan;
+            if let Some(c) = management {
+                tenant.management = ScanCapability::Ready {
+                    record: c.record.clone(),
+                    mode: StorageMode::Keychain,
+                    destination: c.destination.clone(),
+                };
+                tenant.management_client = c.client_id.clone();
+            }
+            tenant
         })
         .collect();
     Data {
@@ -1269,6 +1417,9 @@ impl AuthorityHandle {
             }
             ViewScope::AcademyCall(operation) => Ok(Observation::AcademyCall(
                 state.observe_academy_call(&operation)?,
+            )),
+            ViewScope::Management(operation) => Ok(Observation::Management(
+                state.observe_management(&operation)?,
             )),
         }
     }
@@ -1403,15 +1554,12 @@ fn admit(
             let id = TenantId::issue().ok_or(Refusal::ShuttingDown)?;
             let before = state.data.clone();
             let select = state.data.active.is_none();
-            state.data.tenants.push(Tenant {
-                profile: TenantProfile {
-                    id: id.clone(),
-                    label: profile.label,
-                    tsg_id: profile.tsg_id,
-                    destination: profile.destination,
-                },
-                scan: ScanCapability::Missing,
-            });
+            state.data.tenants.push(Tenant::new(TenantProfile {
+                id: id.clone(),
+                label: profile.label,
+                tsg_id: profile.tsg_id,
+                destination: profile.destination,
+            }));
             if select {
                 state.data.active = Some(id);
             }
@@ -1440,6 +1588,7 @@ fn admit(
             let before = state.data.clone();
             let was_active = state.data.active.as_ref() == Some(&tenant);
             let retired_session = state.retire_credential(&tenant);
+            let retired_management = state.retire_class(&tenant, CredentialClass::Management);
             state.data.tenants.retain(|t| t.profile.id != tenant);
             if was_active {
                 state.data.active = None;
@@ -1448,7 +1597,7 @@ fn admit(
             // Only an accepted deletion drops the tenant's scan records; a
             // refused one keeps them observable and cancellable.
             state.scans.retain(|r| r.tenant != tenant);
-            if let Some(record) = retired_session {
+            for record in [retired_session, retired_management].into_iter().flatten() {
                 let _ = session.delete(&record);
             }
             if state
@@ -1465,96 +1614,80 @@ fn admit(
             state.changed();
         }
         Intent::ConfigureScanCredential { context, mode, key } => {
-            let tenant = state.check_context(&context)?;
-            if mode == StorageMode::Keychain {
-                state.require_storage()?;
-            } else if state.storage == StorageHealth::Resetting {
-                return Err(Refusal::Busy);
-            }
             if key.expose().is_empty()
                 || key.expose().len() > MAX_SECRET_BYTES
                 || !crate::scan::key_is_usable(key.expose())
             {
                 return Err(Refusal::InvalidInput);
             }
-            let current = state.tenant(&tenant).ok_or(Refusal::StaleContext)?;
-            if matches!(current.scan, ScanCapability::Storing { .. }) {
-                return Err(Refusal::Busy);
+            configure_credential(
+                state,
+                session,
+                effects,
+                &context,
+                CredentialClass::Scan,
+                mode,
+                key,
+                None,
+            )?;
+        }
+        Intent::ConfigureManagementCredential {
+            context,
+            mode,
+            client_id,
+            secret,
+        } => {
+            let tenant = state.check_context(&context)?;
+            // Management needs the tenant's TSG and its own OAuth client; the
+            // client secret goes only to the configured token origin.
+            let tsg_ok = state
+                .tenant(&tenant)
+                .and_then(|t| t.profile.tsg_id.as_deref())
+                .is_some_and(crate::management::tsg_is_valid);
+            if !tsg_ok {
+                return Err(Refusal::CapabilityMissing);
             }
-            let record = RecordId::issue().ok_or(Refusal::ShuttingDown)?;
-            let lease = state.lease();
-            let before = state.data.clone();
-            let retired_session = state.retire_credential(&tenant);
-            if let Some(t) = state.tenant_mut(&tenant) {
-                t.scan = ScanCapability::Storing {
-                    lease,
-                    record: record.clone(),
-                    mode,
-                };
+            if !crate::management::client_id_is_valid(&client_id)
+                || secret.expose().is_empty()
+                || secret.expose().len() > MAX_SECRET_BYTES
+                || secret.expose().chars().any(char::is_control)
+                || state.management_endpoints.token_origin().is_none()
+            {
+                return Err(Refusal::InvalidInput);
             }
-            if mode == StorageMode::Keychain {
-                // Write-ahead: the new record is in the cleanup ledger until
-                // it is committed, so a crash never leaves an untracked item.
-                state.data.pending_cleanup.push(record.clone());
-            }
-            if state.storage == StorageHealth::Ready {
-                state.save_with(&before)?;
-            }
-            if let Some(old) = retired_session {
-                let _ = session.delete(&old);
-            }
-            // A Keychain secret may be written only once its write-ahead
-            // ledger entry is confirmed durable: if a crash could restore a
-            // document without that entry, the secret would be untracked.
-            // The retirement of the previous key stays visible either way.
-            let authorized = mode == StorageMode::Session
-                || !state.durability_unconfirmed
-                || state.confirm_durable();
-            effects.push(Effect::Start(state.reissue_context()));
-            if authorized {
-                if mode == StorageMode::Keychain {
-                    state.writes_in_flight.push(record.clone());
-                }
-                effects.push(Effect::Store {
-                    tenant,
-                    lease,
-                    record,
-                    mode,
-                    key,
-                });
-            } else if let Some(t) = state.tenant_mut(&tenant) {
-                // Nothing was written; the ledger entry settles as absent.
-                t.scan = ScanCapability::Failed {
-                    mode,
-                    failure: VaultError::Unavailable,
-                };
-            }
-            effects.push(Effect::Cleanup);
+            configure_credential(
+                state,
+                session,
+                effects,
+                &context,
+                CredentialClass::Management,
+                mode,
+                secret,
+                Some(client_id),
+            )?;
+        }
+        Intent::RemoveManagementCredential { context } => {
+            remove_credential(
+                state,
+                session,
+                effects,
+                &context,
+                CredentialClass::Management,
+            )?;
+        }
+        Intent::Management { context, request } => {
+            let (operation, starts) = state.admit_management(
+                context,
+                request,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
             state.changed();
         }
         Intent::RemoveScanCredential { context } => {
-            let tenant = state.check_context(&context)?;
-            let has_keychain = matches!(
-                state.tenant(&tenant).map(|t| &t.scan),
-                Some(ScanCapability::Ready {
-                    mode: StorageMode::Keychain,
-                    ..
-                })
-            );
-            if has_keychain {
-                state.require_storage()?;
-            }
-            let before = state.data.clone();
-            let retired_session = state.retire_credential(&tenant);
-            if state.storage == StorageHealth::Ready {
-                state.save_with(&before)?;
-            }
-            if let Some(old) = retired_session {
-                let _ = session.delete(&old);
-            }
-            effects.push(Effect::Start(state.reissue_context()));
-            effects.push(Effect::Cleanup);
-            state.changed();
+            remove_credential(state, session, effects, &context, CredentialClass::Scan)?;
         }
         Intent::ReviewEndpointChange {
             context,
@@ -1668,15 +1801,12 @@ fn admit(
                 }
                 .validate()
                 .ok_or(Refusal::InvalidInput)?;
-                state.data.tenants.push(Tenant {
-                    profile: TenantProfile {
-                        id: TenantId::issue().ok_or(Refusal::ShuttingDown)?,
-                        label: profile.label,
-                        tsg_id: profile.tsg_id,
-                        destination: profile.destination,
-                    },
-                    scan: ScanCapability::Missing,
-                });
+                state.data.tenants.push(Tenant::new(TenantProfile {
+                    id: TenantId::issue().ok_or(Refusal::ShuttingDown)?,
+                    label: profile.label,
+                    tsg_id: profile.tsg_id,
+                    destination: profile.destination,
+                }));
             }
             state.save_with(&before)?;
             state.import = ImportState::Idle;
@@ -1703,7 +1833,13 @@ fn admit(
                 .collect();
             let retired_sessions: Vec<RecordId> = ids
                 .iter()
-                .filter_map(|id| state.retire_credential(id))
+                .flat_map(|id| {
+                    [
+                        state.retire_credential(id),
+                        state.retire_class(id, CredentialClass::Management),
+                    ]
+                })
+                .flatten()
                 .collect();
             // The Academy learner is signed out with everything else; its
             // namespace is purged by the reset below (after admitted learner
@@ -1952,6 +2088,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
             }
             Effect::Store {
                 tenant,
+                class,
                 lease,
                 record,
                 mode,
@@ -1976,7 +2113,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     })
                     .await
                     .unwrap_or(Err(VaultError::Unavailable));
-                    settle_store(&inner, &tenant, lease, record, mode, result);
+                    settle_store(&inner, &tenant, class, lease, record, mode, result);
                 });
             }
             Effect::Cleanup => {
@@ -2088,9 +2225,125 @@ fn complete_operation(
     run_effects(inner, vec![Effect::Start(starts)]);
 }
 
+/// Stores a new credential of `class` for the active tenant, replacing any
+/// previous one of that class (the other class is untouched). The record is
+/// written ahead into the cleanup ledger and its secret stored only once
+/// that entry is durable.
+#[allow(clippy::too_many_arguments)]
+fn configure_credential(
+    state: &mut State,
+    session: &Arc<SessionVault>,
+    effects: &mut Vec<Effect>,
+    context: &ContextRef,
+    class: CredentialClass,
+    mode: StorageMode,
+    key: EnteredSecret,
+    client_id: Option<String>,
+) -> Result<(), Refusal> {
+    let tenant = state.check_context(context)?;
+    if mode == StorageMode::Keychain {
+        state.require_storage()?;
+    } else if state.storage == StorageHealth::Resetting {
+        return Err(Refusal::Busy);
+    }
+    let current = state.tenant(&tenant).ok_or(Refusal::StaleContext)?;
+    if matches!(current.capability(class), ScanCapability::Storing { .. }) {
+        return Err(Refusal::Busy);
+    }
+    let record = RecordId::issue().ok_or(Refusal::ShuttingDown)?;
+    let lease = state.lease();
+    let before = state.data.clone();
+    let retired_session = state.retire_class(&tenant, class);
+    if let Some(t) = state.tenant_mut(&tenant) {
+        *t.capability_mut(class) = ScanCapability::Storing {
+            lease,
+            record: record.clone(),
+            mode,
+        };
+        if class == CredentialClass::Management {
+            t.management_client = client_id;
+        }
+    }
+    if mode == StorageMode::Keychain {
+        // Write-ahead: the new record is in the cleanup ledger until
+        // it is committed, so a crash never leaves an untracked item.
+        state.data.pending_cleanup.push(record.clone());
+    }
+    if state.storage == StorageHealth::Ready {
+        state.save_with(&before)?;
+    }
+    if let Some(old) = retired_session {
+        let _ = session.delete(&old);
+    }
+    // A Keychain secret may be written only once its write-ahead
+    // ledger entry is confirmed durable: if a crash could restore a
+    // document without that entry, the secret would be untracked.
+    // The retirement of the previous key stays visible either way.
+    let authorized =
+        mode == StorageMode::Session || !state.durability_unconfirmed || state.confirm_durable();
+    effects.push(Effect::Start(state.reissue_context()));
+    if authorized {
+        if mode == StorageMode::Keychain {
+            state.writes_in_flight.push(record.clone());
+        }
+        effects.push(Effect::Store {
+            tenant,
+            class,
+            lease,
+            record,
+            mode,
+            key,
+        });
+    } else if let Some(t) = state.tenant_mut(&tenant) {
+        // Nothing was written; the ledger entry settles as absent.
+        *t.capability_mut(class) = ScanCapability::Failed {
+            mode,
+            failure: VaultError::Unavailable,
+        };
+    }
+    effects.push(Effect::Cleanup);
+    state.changed();
+    Ok(())
+}
+
+/// Signs the active tenant's `class` capability out (the other class is
+/// untouched).
+fn remove_credential(
+    state: &mut State,
+    session: &Arc<SessionVault>,
+    effects: &mut Vec<Effect>,
+    context: &ContextRef,
+    class: CredentialClass,
+) -> Result<(), Refusal> {
+    let tenant = state.check_context(context)?;
+    let has_keychain = matches!(
+        state.tenant(&tenant).map(|t| t.capability(class)),
+        Some(ScanCapability::Ready {
+            mode: StorageMode::Keychain,
+            ..
+        })
+    );
+    if has_keychain {
+        state.require_storage()?;
+    }
+    let before = state.data.clone();
+    let retired_session = state.retire_class(&tenant, class);
+    if state.storage == StorageHealth::Ready {
+        state.save_with(&before)?;
+    }
+    if let Some(old) = retired_session {
+        let _ = session.delete(&old);
+    }
+    effects.push(Effect::Start(state.reissue_context()));
+    effects.push(Effect::Cleanup);
+    state.changed();
+    Ok(())
+}
+
 fn settle_store(
     inner: &Arc<Inner>,
     tenant: &TenantId,
+    class: CredentialClass,
     lease: u64,
     record: RecordId,
     mode: StorageMode,
@@ -2101,7 +2354,7 @@ fn settle_store(
     };
     state.writes_in_flight.retain(|r| r != &record);
     let current = state.tenant(tenant).is_some_and(
-        |t| matches!(&t.scan, ScanCapability::Storing { lease: l, .. } if *l == lease),
+        |t| matches!(t.capability(class), ScanCapability::Storing { lease: l, .. } if *l == lease),
     );
     if !current {
         // Stale: replaced, signed out, retargeted, deleted or reset while the
@@ -2124,10 +2377,16 @@ fn settle_store(
         return;
     }
     let before = state.data.clone();
-    let destination = state
-        .tenant(tenant)
-        .map(|t| t.profile.destination.origin().to_owned())
-        .unwrap_or_default();
+    let destination = match class {
+        CredentialClass::Scan => state
+            .tenant(tenant)
+            .map(|t| t.profile.destination.origin().to_owned())
+            .unwrap_or_default(),
+        CredentialClass::Management => state
+            .management_endpoints
+            .token_origin()
+            .unwrap_or_default(),
+    };
     let next = match result {
         Ok(()) => {
             if mode == StorageMode::Keychain {
@@ -2142,13 +2401,13 @@ fn settle_store(
         Err(failure) => ScanCapability::Failed { mode, failure },
     };
     if let Some(t) = state.tenant_mut(tenant) {
-        t.scan = next;
+        *t.capability_mut(class) = next;
     }
     if mode == StorageMode::Keychain && state.save_with(&before).is_err() {
         // The record could not be committed: it stays in the ledger and the
         // capability fails explicitly instead of becoming usable unsaved.
         if let Some(t) = state.tenant_mut(tenant) {
-            t.scan = ScanCapability::Failed {
+            *t.capability_mut(class) = ScanCapability::Failed {
                 mode,
                 failure: VaultError::Unavailable,
             };
