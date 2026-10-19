@@ -34,3 +34,17 @@ checks run `context_credentials`. Tests:
 the recovery tail of `protected_storage_failures_are_reported_without_any_fallback`,
 and the remount assertions in `administration-view.test.tsx`; three new
 mutation probes.
+
+## P03 probe re-run (hardened harness)
+
+The C08-C12 harness now credits a mutation only when its named test fails.
+Re-run on the P03 tree, two C08 probes survived and were corrected:
+- "a reply for a superseded read is applied": the named credential test
+  remounts the view, so the token check was never exercised. New test
+  "drops a late reply for an inventory the view has left" (a profiles read
+  fails late after the view moved to Custom topics; no alert, the empty
+  topics inventory stays) now guards it.
+- "a failed binding is cached until reconfiguration": the mutation only
+  matched failed reads, so a later successful read bypassed it (an
+  equivalent mutant). It now replaces later reads with the cached failure,
+  and `protected_storage_failures_are_reported_without_any_fallback` kills it.

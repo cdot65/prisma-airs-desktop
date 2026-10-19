@@ -28,3 +28,12 @@ P03 push):
 - E1 (P03 push): C10-N10 drives the production NSOpenPanel (fixture switch
   `fixture-native-sheets`): choose, cancel, a file over the read bound
   refused, the source unchanged, focus returning to the window.
+
+## P03 probe re-run (hardened harness)
+
+"a cancelled file choice leaves the file option in use" survived the
+hardened harness: its second edit set the file option when the sheet
+opened, which the settle effect then reset (an equivalent mutant; the
+earlier record showed it uncaught). The mutation now makes the settle
+effect keep the file option, and "keeps typed keywords in use when a file
+choice is cancelled or fails" kills it.

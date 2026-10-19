@@ -1,5 +1,89 @@
 [
   {
+    "inputs": {
+      "apps/desktop/src/features/administration/administration-view.tsx": "1cc215506f3c04cd9d653eefcb53c7def5b2922d76c985064d231cef268b88f4",
+      "apps/desktop/src/features/administration/runtime-changes.tsx": "7787c7a1f741e8ecf5a2e8348a376f62bef3fb29d73fefe7fa68d900b4f1a19d",
+      "crates/desktop-core/src/authority/change_domain.rs": "bff3b5a5843fc94b18114c1605bd60d7645efb5e26c06c4052ac247184460c72",
+      "crates/desktop-core/src/changes.rs": "661ee1b6947c586cd9dd19f630a1d8c2b5d47d6d45526ca62cf74a02d1e0e11b",
+      "crates/desktop-core/src/management.rs": "77c232f24bee840c2d8743c1a6aca9fd1360a0bc2a464a8e1c15b0872ad623b1",
+      "packages/desktop-contracts/src/client.ts": "c4136d400bc5a04a12715bd3c6cbfcd6401d6b2255dc5ef2ba0731f2e9c7bfde"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/dlp-authoring.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
     "mutation": "filtering profiles can be deleted",
     "files": [
       "crates/desktop-core/src/changes.rs"
@@ -354,8 +438,8 @@
       "src/features/administration/dlp-authoring.test.tsx"
     ],
     "guard": "keeps typed keywords in use when a file choice is cancelled or fails",
-    "exit_code": 0,
-    "guard_failed": false
+    "exit_code": 1,
+    "guard_failed": true
   },
   {
     "mutation": "raw metadata is spliced into the dictionary body",
@@ -376,63 +460,5 @@
     "guard": "refuses metadata that is not exactly one JSON object without dispatching",
     "exit_code": 1,
     "guard_failed": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--features",
-      "test-fixtures",
-      "--test",
-      "dlp_subset"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--lib",
-      "changes"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/features/administration/dlp-authoring.test.tsx"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/contracts/snapshot-validation.test.ts"
-    ],
-    "exit_code": 0,
-    "passes": true
   }
 ]

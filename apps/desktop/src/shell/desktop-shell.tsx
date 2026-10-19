@@ -50,10 +50,14 @@ export function DesktopShell(props: DesktopShellProps) {
     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
     const client = props.client
     const observeManagement = useCallback((operation: string) => client.observeManagement(operation), [client])
-    // A Library case or starter to fill the scan form with; another tenant
-    // or credential generation never inherits it.
-    const [prefill, setPrefill] = useState<CasePrefill | null>(null)
-    useEffect(() => setPrefill(null), [snapshot.active?.context])
+    // A Library case or starter to fill the scan form with, bound to the
+    // context it was loaded in: another tenant or credential generation
+    // never renders it (checked while rendering) and it is dropped when the
+    // context changes, so returning never revives it.
+    const context = snapshot.active?.context ?? null
+    const [loaded, setLoaded] = useState<(CasePrefill & { context: string }) | null>(null)
+    const prefill = loaded !== null && loaded.context === context ? loaded : null
+    useEffect(() => setLoaded(null), [context])
 
     useEffect(() => {
         // Move focus to the new page heading after navigation (not on launch).
@@ -195,12 +199,25 @@ export function DesktopShell(props: DesktopShellProps) {
                     snapshot={snapshot}
                     dispatch={props.dispatch}
                     onNavigate={props.onNavigate}
-                    onLoad={(fields) => setPrefill((p) => ({ ...fields, nonce: (p?.nonce ?? 0) + 1 }))}
+                    onLoad={(fields) => {
+                        if (context) setLoaded((p) => ({ ...fields, context, nonce: (p?.nonce ?? 0) + 1 }))
+                    }}
                 />
             ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
                 <AcademyView ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
             ) : feature.id === 'runtime' && feature.availability.state === 'available' ? (
-                <RuntimeView ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} prefill={prefill} />
+                // Keyed by context like the other views: a new tenant or
+                // credential generation starts a fresh form, case name and
+                // save status, and a late reply for the old one has nowhere
+                // to land.
+                <RuntimeView
+                    key={context ?? 'none'}
+                    ref={heading}
+                    snapshot={snapshot}
+                    dispatch={props.dispatch}
+                    onNavigate={props.onNavigate}
+                    prefill={prefill}
+                />
             ) : (
                 <UnavailableView ref={heading} feature={feature} />
             )}

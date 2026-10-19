@@ -1,5 +1,91 @@
 [
   {
+    "inputs": {
+      "apps/desktop/src/features/sessions/sessions-model.ts": "31ac5889f4f22d0beb399e025bdb0d911718a442478ab3242c10d260943fdab6",
+      "apps/desktop/src/features/sessions/sessions-view.tsx": "73a42b7814a919a1fb4e253043a9f9544e1465ed8d4da630f22992b419196d35",
+      "crates/desktop-core/src/authority.rs": "985861608978a0b8209fa4b3921de10492542b196d422e533a74546acb75620e",
+      "crates/desktop-core/src/authority/management_domain.rs": "28b96405063af540425192f37d789419bd6fcda429699259456e813e70804df1",
+      "crates/desktop-core/src/authority/sessions_domain.rs": "e786a43310d46f84211069068d45f562ba51c16c0be883d72266d8403cf48f25",
+      "crates/desktop-core/src/management.rs": "77c232f24bee840c2d8743c1a6aca9fd1360a0bc2a464a8e1c15b0872ad623b1",
+      "crates/desktop-core/src/sessions.rs": "c0ee01b512c97f6c993728949472b3e4c7854452e275eb9c1d97841c11aeb2fe",
+      "packages/desktop-contracts/src/client.ts": "c4136d400bc5a04a12715bd3c6cbfcd6401d6b2255dc5ef2ba0731f2e9c7bfde"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "sessions"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/sessions/sessions-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
     "mutation": "a session read keeps its prompts",
     "files": [
       "crates/desktop-core/src/sessions.rs"
@@ -554,63 +640,5 @@
     "guard": "rejects a report with an unknown kind",
     "exit_code": 1,
     "guard_failed": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--features",
-      "test-fixtures",
-      "--test",
-      "sessions_reports"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--lib",
-      "sessions"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/features/sessions/sessions-view.test.tsx"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/contracts/snapshot-validation.test.ts"
-    ],
-    "exit_code": 0,
-    "passes": true
   }
 ]

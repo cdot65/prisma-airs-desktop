@@ -1,5 +1,128 @@
 [
   {
+    "inputs": {
+      "apps/desktop/src/features/administration/administration-view.tsx": "1cc215506f3c04cd9d653eefcb53c7def5b2922d76c985064d231cef268b88f4",
+      "apps/desktop/src/features/tenants/management-credential.tsx": "82a68ed5bec26347de579fc7cb2524dc113ad44d8546bb7449f473918f172dde",
+      "apps/desktop/src/shell/desktop-shell.tsx": "5d8d869b30cb20261949fdb96b11917347caac3386a1d5edc8a2ee08e47e3167",
+      "crates/desktop-core/src/authority.rs": "985861608978a0b8209fa4b3921de10492542b196d422e533a74546acb75620e",
+      "crates/desktop-core/src/authority/management_domain.rs": "28b96405063af540425192f37d789419bd6fcda429699259456e813e70804df1",
+      "crates/desktop-core/src/management.rs": "77c232f24bee840c2d8743c1a6aca9fd1360a0bc2a464a8e1c15b0872ad623b1",
+      "packages/desktop-contracts/src/client.ts": "c4136d400bc5a04a12715bd3c6cbfcd6401d6b2255dc5ef2ba0731f2e9c7bfde"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "management"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/administration-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/tenants/management-credential.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/shell/desktop-shell.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
     "mutation": "management reads use the scan capability",
     "files": [
       "crates/desktop-core/src/authority/management_domain.rs"
@@ -344,7 +467,7 @@
       "vitest.config.ts",
       "src/features/administration/administration-view.test.tsx"
     ],
-    "guard": "restarts from the first page when the credential is replaced mid-pagination",
+    "guard": "drops a late reply for an inventory the view has left",
     "exit_code": 1,
     "guard_failed": true
   },
@@ -449,7 +572,11 @@
     "guard_failed": true
   },
   {
-    "baseline": [
+    "mutation": "a retired context's settled result is delivered when observed later",
+    "files": [
+      "crates/desktop-core/src/authority/management_domain.rs"
+    ],
+    "command": [
       "cargo",
       "test",
       "--locked",
@@ -460,24 +587,36 @@
       "--test",
       "management_reads"
     ],
-    "exit_code": 0,
-    "passes": true
+    "guard": "a_result_settled_before_its_context_retired_is_never_delivered_afterwards",
+    "exit_code": 101,
+    "guard_failed": true
   },
   {
-    "baseline": [
+    "mutation": "a failed binding is cached until reconfiguration",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
       "cargo",
       "test",
       "--locked",
       "-p",
       "desktop-core",
-      "--lib",
-      "management"
+      "--features",
+      "test-fixtures",
+      "--test",
+      "management_reads"
     ],
-    "exit_code": 0,
-    "passes": true
+    "guard": "protected_storage_failures_are_reported_without_any_fallback",
+    "exit_code": 101,
+    "guard_failed": true
   },
   {
-    "baseline": [
+    "mutation": "Administration keeps its instance across contexts",
+    "files": [
+      "apps/desktop/src/shell/desktop-shell.tsx"
+    ],
+    "command": [
       "pnpm",
       "--filter",
       "@prisma-airs/desktop",
@@ -488,52 +627,8 @@
       "vitest.config.ts",
       "src/features/administration/administration-view.test.tsx"
     ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/features/tenants/management-credential.test.tsx"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/contracts/snapshot-validation.test.ts"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/shell/desktop-shell.test.tsx"
-    ],
-    "exit_code": 0,
-    "passes": true
+    "guard": "restarts from the first page when the credential is replaced mid-pagination",
+    "exit_code": 1,
+    "guard_failed": true
   }
 ]

@@ -99,7 +99,7 @@ PROBES = [
      DLP_T, "a_staged_files_content_never_reaches_a_projection_and_the_pending_hold_keeps_it"),
     ("a cancelled file choice leaves the file option in use",
      [(WORKBENCH, "    const usingFile = useFile && fileReady", "    const usingFile = useFile"),
-      (WORKBENCH, "        setAwaitingFile(true)\n", "        setAwaitingFile(true)\n        setUseFile(true)\n")],
+      (WORKBENCH, "        setUseFile(staged?.state === 'ready')", "        setUseFile(true)")],
      FE_DLP, "keeps typed keywords in use when a file choice is cancelled or fails"),
     ("raw metadata is spliced into the dictionary body",
      [(WORKBENCH, "            if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) {", "            if (false) {")],

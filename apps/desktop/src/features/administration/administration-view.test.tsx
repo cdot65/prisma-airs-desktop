@@ -158,6 +158,26 @@ describe('administration inventories', () => {
         expect(rows()[0]).toBe('Profile 100')
     })
 
+    it('drops a late reply for an inventory the view has left', async () => {
+        const native = scriptedNative(ready())
+        let release: () => void = () => undefined
+        management(native, async ({ request }) => {
+            if (request.kind === 'page' && request.resource === 'profiles') {
+                await new Promise<void>((resolve) => (release = resolve))
+                return { kind: 'failed', failure: 'unavailable', outcome: 'rejected' }
+            }
+            return page(request, [], false, 0)
+        })
+        const user = await openAdministration(native)
+        await user.click(screen.getByRole('button', { name: 'Custom topics' }))
+        expect(await screen.findByText('The service reports no custom topics in this tenant.')).toBeInTheDocument()
+        // The profiles read the view left fails late; its reply is dropped.
+        release()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(screen.queryByRole('alert')).toBeNull()
+        expect(screen.getByText('The service reports no custom topics in this tenant.')).toBeInTheDocument()
+    })
+
     it('keeps rows with their age when a refresh is denied', async () => {
         const native = scriptedNative(ready())
         let denied = false

@@ -1,0 +1,53 @@
+
+running 44 tests
+test a_failed_save_refuses_and_changes_nothing ... ok
+test a_context_change_discards_a_pending_endpoint_review ... ok
+test a_transport_policy_change_retires_contexts ... ok
+test a_corrupt_store_is_reported_untouched_until_reset ... ok
+test a_confirming_retry_lets_the_write_proceed ... ok
+test a_keychain_scan_key_is_stored_indexed_and_never_observed ... ok
+test deleting_a_tenant_cleans_its_credential_and_context ... ok
+test a_failed_purge_retires_keys_durably_and_cleanup_finishes_after_restart ... ok
+test cancelled_or_unsupported_import_leaves_tenants_unchanged ... ok
+test invalid_profiles_are_refused_and_nothing_is_stored ... ok
+test delivery_gaps_changed_duplicates_eviction_and_rotation_never_replay ... ok
+test persisted_state_rejects_dangling_references ... ok
+test an_unconfirmed_commit_after_a_landed_write_stays_owned_by_the_ledger ... ok
+test profile_import_previews_whitelisted_metadata_and_creates_keyless_tenants ... ok
+test a_first_key_is_written_only_after_a_confirmed_write_ahead ... ok
+test an_unavailable_store_refuses_reset_and_touches_nothing ... ok
+test saves_are_refused_only_when_nothing_was_written ... ok
+test endpoint_changes_are_reviewed_and_never_carry_the_old_key ... ok
+test session_only_keys_are_never_persisted_and_end_with_the_app ... ok
+test a_replacement_is_written_only_after_a_confirmed_write_ahead ... ok
+test the_last_sequence_is_usable_and_exhaustion_requires_rotation ... ok
+test tenants_are_created_selected_and_contexts_never_revive ... ok
+test transport::a_retired_generation_sends_nothing ... ok
+test transport::bindings_require_an_exact_https_origin_and_a_usable_key ... ok
+test transport::a_cross_origin_redirect_never_forwards_the_credential ... ok
+test reset_purges_the_namespace_and_removes_the_document ... ok
+test a_partial_purge_and_a_failed_document_removal_report_their_stage ... ok
+test restart_restores_profiles_credentials_and_appearance_and_finishes_cleanup ... ok
+test locked_and_denied_stores_fail_explicitly_without_fallback ... ok
+test sign_out_and_replacement_retire_the_old_record ... ok
+test a_renderer_reload_keeps_unsettled_work_observable ... ok
+test transport::transport_failures_are_unknown_and_never_retried ... ok
+test transport::response_headers_are_bounded ... ok
+test unusable_keys_and_stale_contexts_store_nothing ... ok
+test transport::the_exact_request_reaches_the_server_with_scan_headers_only ... ok
+test transport::redirects_are_returned_to_the_sdk_not_followed ... ok
+test transport::proxy_modes_follow_the_policy_not_ambient_settings ... ok
+test transport::transport_errors_are_sanitized ... ok
+test transport::untrusted_wrong_host_and_root_less_policies_fail_before_any_request ... ok
+test a_switch_during_a_write_leaves_the_stale_record_unattached_and_cleaned ... ok
+test work_is_bounded_and_retired_with_its_context_without_replay ... ok
+test reset_waits_for_in_flight_writes_and_retires_authority_at_admission ... ok
+test transport::gzip_is_decoded_and_the_decoded_size_is_bounded ... ok
+test transport::dropping_a_request_releases_its_connection ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/context_credentials/main.rs (target/debug/deps/context_credentials-2b8f50158e05e490)

@@ -46,6 +46,7 @@ AUTHORITY = "crates/desktop-core/src/authority.rs"
 LVIEW = "apps/desktop/src/features/library/library-view.tsx"
 OVIEW = "apps/desktop/src/features/runtime/overview-inbox.tsx"
 CLIENT = "packages/desktop-contracts/src/client.ts"
+SHELL = "apps/desktop/src/shell/desktop-shell.tsx"
 
 PROBES = [
     ("a specification keeps a profile",
@@ -106,6 +107,13 @@ PROBES = [
     ("an earlier write's success replaces a later refusal",
      [(LDOMAIN, "                Ok(_) if library.status != stamp => {}\n", "")],
      LO_T, "catalogs_import_examples_once_and_report_unusable_catalogs"),
+    ("the Playground keeps its instance across contexts",
+     [(SHELL, "                    key={context ?? 'none'}\n                    ref={heading}\n                    snapshot={snapshot}\n                    dispatch={props.dispatch}\n                    onNavigate={props.onNavigate}\n                    prefill={prefill}",
+       "                    ref={heading}\n                    snapshot={snapshot}\n                    dispatch={props.dispatch}\n                    onNavigate={props.onNavigate}\n                    prefill={prefill}")],
+     FE_LIBRARY, "retires a loaded case and a pending save with their context"),
+    ("a loaded case renders under another context until an effect clears it",
+     [(SHELL, "loaded !== null && loaded.context === context ? loaded : null", "loaded")],
+     FE_LIBRARY, "retires a loaded case and a pending save with their context"),
     ("a failed refresh replaces the last read",
      [(ODOMAIN, "                if record.read.is_none() {\n                    record.read = Some(overview);\n                }", "                record.read = Some(overview);")],
      LO_T, "a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence"),

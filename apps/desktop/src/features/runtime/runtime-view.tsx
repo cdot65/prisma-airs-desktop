@@ -23,11 +23,14 @@ const TEXTAREA = cn(
 )
 
 /**
- * Runtime Security synchronous scan for the active tenant. Every field is
- * read when Scan is pressed (nothing is pre-captured), each press is one
- * explicit submission, and nothing is ever resubmitted automatically. Scan
- * records come only from native snapshots, which already exclude other
- * tenants and discard replies for a retired tenant or key.
+ * Runtime Security synchronous scan for the active tenant. The shell keys
+ * this view by context, so one instance only ever serves one tenant and
+ * credential generation: its form, case name and save status, and any late
+ * reply to it, retire with that context. Every field is read when Scan is
+ * pressed (nothing is pre-captured), each press is one explicit submission,
+ * and nothing is ever resubmitted automatically. Scan records come only
+ * from native snapshots, which already exclude other tenants and discard
+ * replies for a retired tenant or key.
  */
 export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate, prefill = null }, ref) {
     const ids = useId()
@@ -43,14 +46,6 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
     const active = snapshot.active
     const tenant = snapshot.tenants.find((t) => t.id === active?.tenant)
     const context = active?.context ?? null
-
-    useEffect(() => {
-        // A new context (tenant switch, key change, reset) retires anything
-        // this view showed for the previous one.
-        setMessage(null)
-        setSelected(null)
-        setCaseMessage(null)
-    }, [context])
 
     useEffect(() => {
         if (!prefill) return

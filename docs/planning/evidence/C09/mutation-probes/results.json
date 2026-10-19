@@ -1,5 +1,128 @@
 [
   {
+    "inputs": {
+      "apps/desktop/src-tauri/src/clipboard_secret.rs": "760dcbde94297ccb4fbc419fb00b8a82605239e67207e2927f77f3a81e78aaa7",
+      "apps/desktop/src-tauri/src/native_confirmation.rs": "a7acd58600e5c03609ddbedb3eb3ef5ff76e6ec103627129e0a81fab594b7bad",
+      "apps/desktop/src/features/administration/runtime-changes.tsx": "7787c7a1f741e8ecf5a2e8348a376f62bef3fb29d73fefe7fa68d900b4f1a19d",
+      "crates/desktop-core/src/authority.rs": "985861608978a0b8209fa4b3921de10492542b196d422e533a74546acb75620e",
+      "crates/desktop-core/src/authority/change_domain.rs": "bff3b5a5843fc94b18114c1605bd60d7645efb5e26c06c4052ac247184460c72",
+      "crates/desktop-core/src/changes.rs": "661ee1b6947c586cd9dd19f630a1d8c2b5d47d6d45526ca62cf74a02d1e0e11b",
+      "packages/desktop-contracts/src/client.ts": "c4136d400bc5a04a12715bd3c6cbfcd6401d6b2255dc5ef2ba0731f2e9c7bfde"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_confirmation"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "clipboard_secret"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/review-apply.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
     "mutation": "Apply ignores input edited after Review",
     "files": [
       "crates/desktop-core/src/authority/change_domain.rs"
@@ -470,93 +593,5 @@
     "guard": "preview_only_profile_options_are_refused_before_any_request",
     "exit_code": 101,
     "guard_failed": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--features",
-      "test-fixtures",
-      "--test",
-      "runtime_changes"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--lib",
-      "changes"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-host",
-      "--features",
-      "test-fixtures",
-      "--test",
-      "native_confirmation"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-host",
-      "--features",
-      "test-fixtures",
-      "--test",
-      "clipboard_secret"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/features/runtime/review-apply.test.tsx"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/contracts/snapshot-validation.test.ts"
-    ],
-    "exit_code": 0,
-    "passes": true
   }
 ]

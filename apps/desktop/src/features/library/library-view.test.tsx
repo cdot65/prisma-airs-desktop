@@ -5,7 +5,7 @@
  * inspected, explicit import/export/catalog/copy intents, and refusals
  * shown with v1's messages.
  */
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { type CaseView, DesktopClient, type Intent, type LibraryView, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
@@ -66,6 +66,23 @@ async function openLibrary(native: Native) {
 
 const sent = (native: Native, kind: Intent['kind']) => native.dispatched.filter((i) => i.kind === kind)
 
+/** Runs a context change and requires that no node mounted meanwhile ever
+ * carried the loaded case (its banner, prompt or name). */
+async function framesFree(change: () => Promise<void>) {
+    const added: Node[] = []
+    const watcher = new MutationObserver((records) => records.forEach((r) => added.push(...Array.from(r.addedNodes))))
+    watcher.observe(document.body, { childList: true, subtree: true })
+    await change()
+    watcher.takeRecords().forEach((r) => added.push(...Array.from(r.addedNodes)))
+    watcher.disconnect()
+    const fields = added.flatMap((n) =>
+        n instanceof Element ? [...(n.matches('textarea, input') ? [n] : []), ...Array.from(n.querySelectorAll('textarea, input'))] : []
+    ) as (HTMLInputElement | HTMLTextAreaElement)[]
+    expect(fields.length).toBeGreaterThan(0)
+    expect(fields.filter((f) => f.value === RUNTIME.prompt || f.value === RUNTIME.name)).toEqual([])
+    expect(added.filter((n) => (n.textContent ?? '').includes(`${RUNTIME.name} is loaded`))).toEqual([])
+}
+
 describe('Case Library', () => {
     it('opens the tenant library and authors cases from the fields read at Save', async () => {
         const native = scriptedNative(snap())
@@ -114,6 +131,59 @@ describe('Case Library', () => {
         expect(screen.getByRole('textbox', { name: /Application name/ })).toHaveValue('Desktop examples')
         expect(screen.getByText(/Benign question is loaded\. Goal: A benign control/)).toBeInTheDocument()
         expect(sent(native, 'scan')).toEqual([])
+    })
+
+    it('retires a loaded case and a pending save with their context', async () => {
+        const b = tenant({ id: 'tn-ffffffffffffffff', label: 'Tenant B' })
+        const both = [tenant(), b]
+        const inA = (context = CONTEXT, lib = library({ cases: [RUNTIME] })) => ({ ...snap(lib, both), active: { tenant: tenant().id, context } })
+        const inB = (lib = library()) => ({ ...snap(lib, both), active: { tenant: b.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
+        const native = scriptedNative(inA())
+        let admit: (receipt: unknown) => void = () => undefined
+        native.respond = (intent) =>
+            intent.kind === 'saveCase'
+                ? new Promise((resolve) => (admit = resolve))
+                : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } }
+        const user = await openLibrary(native)
+        await user.click(screen.getByRole('button', { name: `Load ${RUNTIME.name}` }))
+        await screen.findByRole('heading', { level: 1, name: 'Scan a prompt or response' })
+        const promptA = screen.getByRole('textbox', { name: 'Prompt' })
+        expect(promptA).toHaveValue(RUNTIME.prompt)
+        // A's save is pressed and its admission held across the switch.
+        await user.click(screen.getByRole('button', { name: 'Save this case' }))
+        expect(sent(native, 'saveCase')).toHaveLength(1)
+        // Tenant B becomes active while Playground stays mounted: a fresh
+        // form with nothing of A's case, in every frame committed for B
+        // (each node mounted during the switch is inspected, even if a
+        // later effect replaced it).
+        await framesFree(() => native.push(inB()))
+        expect(promptA.isConnected).toBe(false)
+        expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('')
+        expect(screen.getByRole('textbox', { name: 'Case name' })).toHaveValue('')
+        expect(screen.queryByText(/Benign question is loaded/)).toBeNull()
+        expect(document.body.textContent).not.toContain(RUNTIME.prompt)
+        // A's late admission and a Saved notice under B report nothing.
+        await act(async () => {
+            admit({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-9', operation: null } })
+            await new Promise((resolve) => setTimeout(resolve, 0))
+        })
+        expect(screen.queryByText('Saving to this tenant’s case Library…')).toBeNull()
+        await native.push(inB(library({ notice: { kind: 'saved', name: RUNTIME.name } })))
+        expect(screen.queryByText('Saved to this tenant’s case Library.')).toBeNull()
+        // Returning to A does not revive the retired handoff.
+        await native.push(inA())
+        expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('')
+        expect(screen.queryByText(/Benign question is loaded/)).toBeNull()
+        // A replaced credential (a new context for the same tenant) retires
+        // a case loaded under the old one; loading again works as usual.
+        native.respond = () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
+        await user.click(within(screen.getByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Case Library/ }))
+        await user.click(await screen.findByRole('button', { name: `Load ${RUNTIME.name}` }))
+        expect(await screen.findByRole('textbox', { name: 'Prompt' })).toHaveValue(RUNTIME.prompt)
+        await framesFree(() => native.push(inA('cx-cccccccccccccccccccccccc')))
+        expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('')
+        expect(screen.getByRole('textbox', { name: 'Case name' })).toHaveValue('')
+        expect(screen.queryByText(/Benign question is loaded/)).toBeNull()
     })
 
     it('offers v1’s unsaved starters when the library is empty', async () => {

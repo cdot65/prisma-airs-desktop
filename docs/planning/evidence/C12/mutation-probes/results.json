@@ -3,6 +3,7 @@
     "inputs": {
       "apps/desktop/src/features/library/library-view.tsx": "32b6ca6990fa46dec38977b971656eb209eb7226d260d88497c5e077bd0d3a50",
       "apps/desktop/src/features/runtime/overview-inbox.tsx": "14b1bdd988890e4a45e48362bf8936dfe7716a1766cd0b972539c972090ff655",
+      "apps/desktop/src/shell/desktop-shell.tsx": "5d8d869b30cb20261949fdb96b11917347caac3386a1d5edc8a2ee08e47e3167",
       "crates/desktop-core/src/authority.rs": "985861608978a0b8209fa4b3921de10492542b196d422e533a74546acb75620e",
       "crates/desktop-core/src/authority/library_domain.rs": "2f1bb568010d312e6015b8f7cb5d9cc5b065b49b2df855adcff94f885f83f4a1",
       "crates/desktop-core/src/authority/observation_domain.rs": "347d7722f1b5e4fa0a5377ffe3d790bd00c686ba12a1bf43fc4f970afd0b0c57",
@@ -485,6 +486,46 @@
     ],
     "guard": "catalogs_import_examples_once_and_report_unusable_catalogs",
     "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the Playground keeps its instance across contexts",
+    "files": [
+      "apps/desktop/src/shell/desktop-shell.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/library/library-view.test.tsx"
+    ],
+    "guard": "retires a loaded case and a pending save with their context",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a loaded case renders under another context until an effect clears it",
+    "files": [
+      "apps/desktop/src/shell/desktop-shell.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/library/library-view.test.tsx"
+    ],
+    "guard": "retires a loaded case and a pending save with their context",
+    "exit_code": 1,
     "guard_failed": true
   },
   {
