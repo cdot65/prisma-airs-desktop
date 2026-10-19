@@ -80,7 +80,7 @@ PROBES = [
      [(MGMT, "                        None => Ok(Value::Object(serde_json::Map::new())),", "                        None => Err(PageError::Invalid),")],
      DLP_T, "a_typed_dictionary_is_uploaded_as_literal_multipart"),
     ("the presentation sends the token as file content",
-     [(WORKBENCH, "? `\"fileRef\":${JSON.stringify(staged.token)}`", "? `\"file\":${JSON.stringify(staged.token)}`")],
+     [(WORKBENCH, "? { metadata, fileRef: staged.token }", "? { metadata, file: staged.token }")],
      FE_DLP, "references a file chosen in the native sheet by its token only"),
     ("data profiles offer a delete",
      [(ADMIN, "        case 'dataProfiles':\n        case 'filteringProfiles':\n            return [edit]", "        case 'dataProfiles':\n        case 'filteringProfiles':\n            return [edit, remove]")],
@@ -88,6 +88,19 @@ PROBES = [
     ("the presentation accepts a path as a staged token",
      [(CLIENT, "typeof value.token === 'string' && STAGED_TOKEN.test(value.token)", "typeof value.token === 'string'")],
      FE_SNAPSHOT, "rejects a staged file whose token is a path"),
+    ("a dictionary preview carries the file text",
+     [(CHANGES, "        if mutation.kind == ChangeKind::Dictionaries\n", "        if false && mutation.kind == ChangeKind::Dictionaries\n")],
+     DLP_T, "a_staged_files_content_never_reaches_a_projection_and_the_pending_hold_keeps_it"),
+    ("a file can be chosen while a confirmation holds the editor",
+     [(DOMAIN, "        if matches!(self.staging, Some(Staging::Choosing { .. }))\n            || matches!(", "        if matches!(self.staging, Some(Staging::Choosing { .. }))\n            || false && matches!(")],
+     DLP_T, "a_staged_files_content_never_reaches_a_projection_and_the_pending_hold_keeps_it"),
+    ("a cancelled file choice leaves the file option in use",
+     [(WORKBENCH, "    const usingFile = useFile && fileReady", "    const usingFile = useFile"),
+      (WORKBENCH, "        setAwaitingFile(true)\n", "        setAwaitingFile(true)\n        setUseFile(true)\n")],
+     FE_DLP, "keeps typed keywords in use when a file choice is cancelled or fails"),
+    ("raw metadata is spliced into the dictionary body",
+     [(WORKBENCH, "            if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) {", "            if (false) {")],
+     FE_DLP, "refuses metadata that is not exactly one JSON object without dispatching"),
 ]
 
 

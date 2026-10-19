@@ -1199,6 +1199,55 @@ records the decisions.
   count, never content or a path; the source file is only read.
 - **Not done here.** No real DLP endpoint is called before C25.
 
+### C11 implementation: Sessions investigations and metadata-only reports
+
+Implemented in `crates/desktop-core` (`sessions`: classification, v1's
+verdict and detector rules, the report model and CSV, the investigation
+cache and its sealed persistence, the report file; `management`: the
+`Sessions` page resource, `Session`/`Transaction`/`Content`/`Search`
+requests and the bounded walks; `authority/sessions_domain`: reports,
+cache clear/export and the save sheet; intents `OpenReports`, `SaveReport`,
+`RemoveReport`, `UndoReport`, `ExportReports`, `ClearInvestigation`,
+`ExportInvestigation`; `ShellSnapshot.sessions`; adapters `saver` and
+`sessions_root`), `apps/desktop/src-tauri` (`NativeSaver`, the fixture
+saver) and the Sessions & Reports destination. D037 records the decisions.
+
+- **Reads (v1 → SDK `=0.1.0` raw dashboard).**
+
+  | Read | SDK | Parameters |
+  |---|---|---|
+  | Inventory page | `sessions_overview_raw` | `time_interval=1`, `time_unit=day`, `limit=25`, `offset` |
+  | Session | `session_raw` | session, app ID, app name, `offset=0`, `limit=25`, 30 days |
+  | Transaction | `session_transaction_raw` | session, app, name, scan, sub-request |
+  | Content (reveal only) | `scan_content_raw` | scan, sub-request |
+  | Search walk | `sessions_overview_raw` | `limit=100`; 30 days × 40 pages, or 1 day × 1,000 sessions |
+
+- **Content.** Every read except Content has secret fields redacted and
+  `prompt`, `response`, `scan_contents` and masked data removed. The
+  presentation holds revealed content in component state keyed by scan, so
+  Hide, leaving Sessions or a new context drops it.
+- **Cache.** Per credential generation (`GenerationBinding.investigation`):
+  sessions, transactions and revealed contents, 50 each, newest first. A
+  Keychain credential's cache loads its sealed snapshot once, merges older
+  entries behind newer ones and is re-sealed after each read (one writer at
+  a time, the cache as it is then; empty removes the file). The key record is
+  `cr-` + the first 16 hex of SHA-256("investigation-key:" + record), the
+  file `sessions/investigations/<digest>.sealed`; `drain_cleanup` removes
+  both with the credential, reset removes the sessions root.
+- **Reports.** `OpenReports` loads the active tenant's file off the lock
+  (an unreadable file is reported and kept). `SaveReport` edits an existing
+  report (kind, category, reason; metadata and time kept) or builds a new one
+  with `report_of` from the cached session's matching action row; refusals
+  publish their `ReportProblem`. Remove keeps one undo; Undo never restores
+  over a newer report. Each change bumps a generation and only the newest is
+  written (0600, atomic); a failed write is shown as unsaved. CSV is v1's 16
+  columns with the formula guard and CRLF, named
+  `fpfn-reports-<slug>-<YYYYMMDD-HHMM>.csv`.
+- **Budgets.** The large management collections workload is measured by
+  `tools/perf/measure_c11.py` against the budgets registered before C11
+  (`evidence/C11/workload-budget-registration.json`).
+- **Not done here.** No real dashboard endpoint is called before C25.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

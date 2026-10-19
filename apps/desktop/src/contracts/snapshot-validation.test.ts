@@ -8,6 +8,11 @@ import { baseSnapshot, tenant, withTenant } from '../test/native'
 
 const valid: ShellSnapshot = withTenant(baseSnapshot, tenant())
 
+const report = {
+    scanId: 'scn-1', scanSubReqId: 0, sessionId: 'ses-1', applicationId: 'app-1', application: 'Bot', kind: 'false_positive',
+    verdict: 'malicious', action: 'Blocked', detectors: ['dlp'], profile: 'P', category: '', reason: 'r', reportedAt: '2026-10-18T10:00:00Z',
+}
+
 const scan = {
     operation: 'op-1',
     progress: 'settled',
@@ -105,6 +110,16 @@ const changeResult = {
 
 describe('shell snapshot validation', () => {
     it('accepts a well-formed snapshot with C02 fields', () => {
+        expect(
+            parseShellSnapshot({
+                ...valid,
+                sessions: {
+                    reports: { state: 'ready', failure: null, items: [report], undo: { scanId: 'scn-1', subRequest: 0 }, problem: 'reason', unsaved: true },
+                    investigation: { storage: 'protected', sessions: 1, transactions: 0, contents: 1 },
+                    export: { kind: 'investigation', state: 'saved', name: 'investigation.json' },
+                },
+            })
+        ).toBeTruthy()
         expect(parseShellSnapshot(valid)).toEqual(valid)
         expect(parseShellSnapshot(review({}))).toBeTruthy()
         expect(parseShellSnapshot(withScan({}))).toBeTruthy()
@@ -159,6 +174,20 @@ describe('shell snapshot validation', () => {
             { ...valid, tenants: [{ ...tenant(), management: { ...tenant().management, tokenOrigin: 'http://auth.example' } }] },
         ],
         ['changes missing', { ...valid, changes: undefined }],
+        ['sessions missing', { ...valid, sessions: undefined }],
+        ['an unknown reports state', { ...valid, sessions: { ...valid.sessions, reports: { ...valid.sessions.reports, state: 'syncing' } } }],
+        ['failed reports without a reason', { ...valid, sessions: { ...valid.sessions, reports: { ...valid.sessions.reports, state: 'failed' } } }],
+        [
+            'a report with an unknown kind',
+            { ...valid, sessions: { ...valid.sessions, reports: { ...valid.sessions.reports, items: [{ ...report, kind: 'suppression' }] } } },
+        ],
+        [
+            'a report with an unknown verdict',
+            { ...valid, sessions: { ...valid.sessions, reports: { ...valid.sessions.reports, items: [{ ...report, verdict: 'allow' }] } } },
+        ],
+        ['an unknown investigation storage', { ...valid, sessions: { ...valid.sessions, investigation: { storage: 'cloud', sessions: 0, transactions: 0, contents: 0 } } }],
+        ['a saved export without its name', { ...valid, sessions: { ...valid.sessions, export: { kind: 'reports', state: 'saved', name: null } } }],
+        ['a cancelled export with a name', { ...valid, sessions: { ...valid.sessions, export: { kind: 'reports', state: 'cancelled', name: 'x.csv' } } }],
         [
             'a staged file whose token is a path',
             { ...valid, changes: { review: null, results: [], staged: { state: 'ready', token: '/Users/x/k.txt', name: 'k.txt', bytes: 3, lines: 1, failure: null } } },
@@ -213,6 +242,7 @@ describe('shell snapshot validation', () => {
 })
 
 describe('management result validation', () => {
+    const search = { kind: 'detector', query: 'dlp', sessions: '[{"session_id":"s"}]', scanned: 100, complete: true, matchLimit: false, scan: null, cached: false }
     const page = {
         resource: 'profiles',
         offset: 0,
@@ -233,6 +263,12 @@ describe('management result validation', () => {
         ).toBeTruthy()
         expect(parseManagementResult({ kind: 'detail', detail: { resource: 'topics', id: 't', found: 'incomplete', item: null } })).toBeTruthy()
         expect(parseManagementResult({ kind: 'failed', failure: 'denied', outcome: 'rejected' })).toBeTruthy()
+        expect(parseManagementResult({ kind: 'page', page: { ...page, resource: 'sessions' } })).toBeTruthy()
+        expect(parseManagementResult({ kind: 'session', session: { session: '{"session_id":"s"}', actions: 1, more: false } })).toBeTruthy()
+        expect(parseManagementResult({ kind: 'transaction', transaction: '{"scan_id":"x"}' })).toBeTruthy()
+        expect(parseManagementResult({ kind: 'content', content: { prompt: 'p', response: null } })).toBeTruthy()
+        expect(parseManagementResult({ kind: 'search', search })).toBeTruthy()
+        expect(parseManagementResult({ kind: 'search', search: { ...search, kind: 'scanId', scan: '{"scan_id":"x"}' } })).toBeTruthy()
     })
 
     it.each([
@@ -250,6 +286,12 @@ describe('management result validation', () => {
         ['a found detail without an item', { kind: 'detail', detail: { resource: 'topics', id: 't', found: 'found', item: null } }],
         ['an unknown failure', { kind: 'failed', failure: 'teapot', outcome: 'rejected' }],
         ['a failure without an outcome', { kind: 'failed', failure: 'denied' }],
+        ['a session that is not JSON', { kind: 'session', session: { session: '<b>', actions: 1, more: false } }],
+        ['a transaction that is not an object', { kind: 'transaction', transaction: '[]' }],
+        ['content that is not text', { kind: 'content', content: { prompt: 1, response: null } }],
+        ['an unknown search kind', { kind: 'search', search: { ...search, kind: 'fullText' } }],
+        ['search sessions that are not objects', { kind: 'search', search: { ...search, sessions: '["s"]' } }],
+        ['a search without its coverage', { kind: 'search', search: { ...search, complete: undefined } }],
     ])('rejects %s', (_, value) => {
         expect(() => parseManagementResult(value)).toThrow(ContractViolation)
     })

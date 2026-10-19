@@ -506,6 +506,44 @@
         "id": "C10-N09",
         "check": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file… and Review change inside the window and clear of the bottom fade."
       }
+    ],
+    "C11": [
+      {
+        "id": "C11-N01",
+        "check": "Sessions lists the last 24 hours in pages of 25 ('Sessions 1–25 of 60', Next page 'Sessions 26–50 of 60'); every inventory read asks for time_interval=1, time_unit=day, limit=25; the Malicious filter shows only this page's malicious sessions."
+      },
+      {
+        "id": "C11-N02",
+        "check": "Opening a session lists its scans without reading content: no scancontent request and no prompt text in the AX tree until Show content; then exactly one content read and the prompt is shown; Hide removes it from the AX tree, and leaving Sessions and returning shows none."
+      },
+      {
+        "id": "C11-N03",
+        "check": "Searches say what they covered: a detector search over a 60-session day reports its matches among every session of the last 24 hours; an unknown session ID reports none among the 60 sessions of 30 days read (time_interval=30); a scan ID shows the scan's metadata with no prompt or response in the AX tree."
+      },
+      {
+        "id": "C11-N04",
+        "check": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV… saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response."
+      },
+      {
+        "id": "C11-N05",
+        "check": "With a Keychain management client the investigation is sealed in the data root (no prompt or session ID in plaintext); after relaunch a revealed scan is shown again without a new content read; removing the management client removes the sealed file."
+      },
+      {
+        "id": "C11-N06",
+        "check": "Export metadata… saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again."
+      },
+      {
+        "id": "C11-N07",
+        "check": "Reports write nothing to the tenant: over the whole run the management endpoint receives only GET reads and token grants."
+      },
+      {
+        "id": "C11-N08",
+        "check": "Exception patterns is labelled 'Synthetic data · Memory only · No live integrations' and opening it sends no request."
+      },
+      {
+        "id": "C11-N09",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches the Sessions Refresh and Next page buttons inside the window and clear of the bottom fade."
+      }
     ]
   }
 }

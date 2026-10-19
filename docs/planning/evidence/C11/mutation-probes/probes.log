@@ -1,0 +1,29 @@
+a session read keeps its prompts 101 True
+a transaction keeps its content 101 True
+a revealed scan is read again instead of from the cache 101 True
+session IDs are not classified 101 True
+a detector matches any violating entry 101 True
+the session ID walk reads past 40 pages 101 True
+the detector search ignores its match bound 101 True
+a capped session ID walk claims absence 101 True
+a scan ID search returns content 101 True
+a session credential's investigation is sealed on disk 101 True
+the snapshot is written in plaintext 101 True
+a removed credential leaves its sealed investigation 0 False
+reset leaves sealed investigations and reports 101 True
+an edit resets the report time 0 False
+any category is accepted 101 True
+a report is built from another scan of the session 101 True
+a deleted tenant's reports stay on disk 101 True
+undo overwrites a newer report 101 True
+CSV cells lose v1's formula guard 101 True
+the metadata export carries revealed content 101 True
+Hide keeps the content shown 1 True
+reports open without a management client 1 True
+a capped session ID search claims absence 1 True
+a cancelled export may carry a file name 1 True
+a report of an unknown kind is accepted 1 True
+baseline sessions_reports 0
+baseline sessions 0
+baseline src/features/sessions/sessions-view.test.tsx 0
+baseline src/contracts/snapshot-validation.test.ts 0

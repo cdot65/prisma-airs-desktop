@@ -18,7 +18,8 @@ use desktop_core::import::{ImportError, MAX_IMPORT_BYTES};
 use desktop_core::store::{AppStore, FileStore, UnavailableStore};
 use desktop_core::vault::UnavailableVault;
 use desktop_core::{
-    Adapters, CredentialStore, ImagePicker, ImportFile, ImportPicker, PagePrinter, UrlOpener,
+    Adapters, CredentialStore, FileSaver, ImagePicker, ImportFile, ImportPicker, PagePrinter,
+    UrlOpener,
 };
 use futures_util::future::BoxFuture;
 use tauri::{AppHandle, Manager, Runtime};
@@ -52,6 +53,124 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         secrets: secrets(app),
         text_files: text_files(app, root.as_deref()),
         offline_root: root.as_ref().map(|r| r.join("academy-offline")),
+        saver: saver(app, root.as_deref()),
+        sessions_root: root.as_ref().map(|r| r.join("sessions")),
+    }
+}
+
+/// The native save sheet for report and investigation exports (C11).
+#[cfg(not(feature = "test-fixtures"))]
+fn saver<R: Runtime>(app: &AppHandle<R>, _root: Option<&Path>) -> Arc<dyn FileSaver> {
+    Arc::new(NativeSaver { app: app.clone() })
+}
+
+/// The fixture build saves exports into `fixture-exports/` under its data
+/// root without a sheet (never replacing a file), so acceptance can read
+/// exactly what an operator would have saved.
+#[cfg(feature = "test-fixtures")]
+fn saver<R: Runtime>(_app: &AppHandle<R>, root: Option<&Path>) -> Arc<dyn FileSaver> {
+    struct FixtureSaver(Option<PathBuf>);
+    impl FileSaver for FixtureSaver {
+        fn save(
+            &self,
+            suggested: String,
+            bytes: Vec<u8>,
+        ) -> BoxFuture<'static, Result<Option<String>, ()>> {
+            let dir = self.0.clone();
+            Box::pin(async move {
+                let dir = dir.ok_or(())?;
+                tokio::task::spawn_blocking(move || {
+                    std::fs::create_dir_all(&dir).map_err(|_| ())?;
+                    write_owner_only(&dir.join(&suggested), &bytes, false)?;
+                    Ok(Some(suggested))
+                })
+                .await
+                .map_err(|_| ())?
+            })
+        }
+    }
+    Arc::new(FixtureSaver(root.map(|r| r.join("fixture-exports"))))
+}
+
+/// Writes `bytes` owner-only: atomically through a temporary file beside the
+/// target, replacing an existing file only when `replace` (the save sheet
+/// already confirmed it).
+fn write_owner_only(path: &Path, bytes: &[u8], replace: bool) -> Result<(), ()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let dir = path.parent().ok_or(())?;
+    let mut suffix = [0u8; 8];
+    getrandom::fill(&mut suffix).map_err(|_| ())?;
+    let temp = dir.join(format!(".airs-export-{}.tmp", hex_of(&suffix)));
+    let written = (|| {
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&temp)?;
+        file.write_all(bytes)?;
+        file.sync_all()
+    })();
+    let placed = written.and_then(|()| {
+        if replace {
+            std::fs::rename(&temp, path)
+        } else {
+            // Never replace: a hard link fails if the target exists.
+            std::fs::hard_link(&temp, path).and_then(|()| std::fs::remove_file(&temp))
+        }
+    });
+    if placed.is_err() {
+        let _ = std::fs::remove_file(&temp);
+    }
+    placed.map_err(|_| ())
+}
+
+fn hex_of(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+#[cfg_attr(feature = "test-fixtures", allow(dead_code))]
+pub struct NativeSaver<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> FileSaver for NativeSaver<R> {
+    fn save(
+        &self,
+        suggested: String,
+        bytes: Vec<u8>,
+    ) -> BoxFuture<'static, Result<Option<String>, ()>> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
+            let window = app.get_webview_window(MAIN_WINDOW).ok_or(())?;
+            let extension = if suggested.ends_with(".csv") {
+                "csv"
+            } else {
+                "json"
+            };
+            app.run_on_main_thread(move || {
+                let chosen = rfd::FileDialog::new()
+                    .set_parent(&window)
+                    .set_title("Export")
+                    .set_file_name(&suggested)
+                    .add_filter(extension.to_uppercase(), &[extension])
+                    .save_file();
+                let _ = tx.send(chosen);
+            })
+            .map_err(|_| ())?;
+            let Some(path) = rx.await.map_err(|_| ())? else {
+                return Ok(None);
+            };
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            tokio::task::spawn_blocking(move || write_owner_only(&path, &bytes, true))
+                .await
+                .map_err(|_| ())??;
+            Ok(Some(name))
+        })
     }
 }
 

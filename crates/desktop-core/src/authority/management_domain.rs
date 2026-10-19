@@ -18,7 +18,9 @@ use crate::management::{
     ManagementResult, ResultSlot,
 };
 use crate::runtime::{OperationId, OperationState, Outcome, Settlement};
+use crate::sessions::{Investigation, Persistence};
 use crate::vault::SessionVault;
+use crate::vault::StorageMode;
 
 /// Settled results kept for observation.
 const RETAINED_RESULTS: usize = 64;
@@ -65,25 +67,47 @@ pub(super) struct GenerationBinding {
     context: ContextRef,
     session: Session,
     cell: BindingCell,
+    pub(super) investigation: Arc<Investigation>,
 }
 
 impl State {
-    fn management_binding(&mut self, context: &ContextRef) -> (Session, BindingCell) {
+    fn management_binding(
+        &mut self,
+        context: &ContextRef,
+        persistence: impl FnOnce() -> Option<Persistence>,
+    ) -> (Session, BindingCell, Arc<Investigation>) {
         if let Some(b) = self
             .management_bindings
             .iter()
             .find(|b| &b.context == context)
         {
-            return (b.session.clone(), Arc::clone(&b.cell));
+            return (
+                b.session.clone(),
+                Arc::clone(&b.cell),
+                Arc::clone(&b.investigation),
+            );
         }
         let binding = GenerationBinding {
             context: context.clone(),
             session: Session::new(),
             cell: BindingCell::default(),
+            investigation: Investigation::new(persistence()),
         };
-        let pair = (binding.session.clone(), Arc::clone(&binding.cell));
+        let triple = (
+            binding.session.clone(),
+            Arc::clone(&binding.cell),
+            Arc::clone(&binding.investigation),
+        );
         self.management_bindings.push(binding);
-        pair
+        triple
+    }
+
+    /// The active context's investigation, when its binding exists.
+    pub(super) fn investigation(&self, context: &ContextRef) -> Option<Arc<Investigation>> {
+        self.management_bindings
+            .iter()
+            .find(|b| &b.context == context)
+            .map(|b| Arc::clone(&b.investigation))
     }
 
     /// Cancels every binding but the current context's (its session ends
@@ -142,7 +166,22 @@ impl State {
             .ok_or(Refusal::CapabilityMissing)?
             .for_admission()
             .map_err(|_| Refusal::CapabilityMissing)?;
-        let (session, binding) = self.management_binding(context);
+        // Only a Keychain-stored credential's investigation is sealed on
+        // disk (its key in the same namespace); a session credential's stays
+        // in memory with its generation.
+        let root = self.sessions_root.clone();
+        let sealing: Arc<dyn crate::vault::Vault> = keychain.clone();
+        let credential = record.clone();
+        let (session, binding, investigation) = self.management_binding(context, || {
+            (mode == StorageMode::Keychain)
+                .then_some(root)
+                .flatten()
+                .map(|root| Persistence {
+                    root,
+                    credential,
+                    keychain: sealing,
+                })
+        });
         Ok(BindingSource {
             keychain,
             session_vault,
@@ -154,6 +193,7 @@ impl State {
             transport,
             session,
             binding,
+            investigation,
         })
     }
 

@@ -15,6 +15,11 @@ Files in <scratch>: mode.json ({"grant": "ok"|"deny", "profiles": "ok"|"deny",
 "topicDescription": text (changes the stored topic, as another writer would)})
 and requests.jsonl.
 
+Sessions reads (C11) serve a generated inventory of mode "sessionCount"
+sessions (default 60; every mode "detectorEvery"-th, default 7, reports
+prompt_injection), their sessions, transactions and scan content. Content
+reads are logged by scan ID only, never their text.
+
 Writes (C09) change an in-memory inventory: topics create/update/delete,
 API key create/regenerate/delete (a one-time api_key in the reply). The log
 records each write's body field names, its authorship and auth-code match,
@@ -35,6 +40,25 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlsplit
 
 TOKEN_PREFIX = "c08-mgmt-access-"
+
+
+CONTENT_PROMPT = "SYNTHETIC-C11-PROMPT-CONTENT"
+CONTENT_RESPONSE = "SYNTHETIC-C11-RESPONSE-CONTENT"
+
+
+def session_row(n, every):
+    breakdown = [{"detection_type": "prompt_injection", "violation_breakdown": {"total": 1, "high": 1}}] if n % every == 0 else \
+        [{"detection_type": "dlp", "violation_breakdown": {"total": 0}}]
+    return {"session_id": f"ses-{n:05d}", "application_id": f"app-{n % 3}", "application_name": f"Bot {n % 3}",
+            "status": "block" if n % every == 0 else "allow", "detection_type_violation_breakdown": breakdown,
+            "start_time": "2026-10-18T10:00:00Z"}
+
+
+def session_action(session, app, k):
+    return {"scan_id": f"scn-{session}-{k}", "scan_sub_req_id": 0, "session_id": session, "application_id": app,
+            "status": "block" if k == 0 else "allow", "profile_name": "Production guardrails",
+            "detection_type_violation_breakdown": [{"detection_type": "prompt_injection", "violation_breakdown": {"total": 1}}] if k == 0 else [],
+            "violation_breakdown": {"total": 1 if k == 0 else 0}, "prompt": CONTENT_PROMPT, "response": CONTENT_RESPONSE}
 
 
 def profile(n):
@@ -159,6 +183,24 @@ class Handler(BaseHTTPRequestHandler):
         if path == f"/aisec/v1/mgmt/apikeys/tsg/{tsg}":
             with srv.lock:
                 return 200, {"api_keys": [dict(k) for k in srv.keys[offset:offset + limit]]}
+        if path == "/aisec/v1/mgmt/dashboard/v2/sessions/sessionsoverview":
+            count = int(mode.get("sessionCount", 60))
+            every = int(mode.get("detectorEvery", 7))
+            end = min(offset + limit, count)
+            return 200, {"items": [session_row(n, every) for n in range(offset, end)], "pagination": {"total_items": count}}
+        if path == "/aisec/v1/mgmt/dashboard/v2/sessions/session":
+            session, app = query.get("session_id", ""), query.get("app_id", "")
+            return 200, {"session_id": session, "application_id": app, "application_name": query.get("app_name", ""),
+                         "session_actions": [session_action(session, app, k) for k in range(3)]}
+        if path == "/aisec/v1/mgmt/dashboard/v2/sessions/sessiontransaction":
+            return 200, {"scan_id": query.get("scan_id"), "scan_sub_req_id": 0, "verdict": "malicious",
+                         "profile_name": "Production guardrails", "prompt": CONTENT_PROMPT, "response": CONTENT_RESPONSE}
+        if path == "/aisec/v1/mgmt/reports/scancontent":
+            record["contentScan"] = query.get("scan_id")
+            if query.get("scan_id") == "scn-missing":
+                return 404, {"error": "not found"}
+            return 200, {"scan_id": query.get("scan_id"), "report_id": "R-C11", "category": "malicious",
+                         "scan_contents": {"prompt": CONTENT_PROMPT, "response": CONTENT_RESPONSE}}
         if path == "/aisec/v1/mgmt/deploymentprofiles":
             return 200, {"deployment_profiles": [{"dp_name": f"dp-{n}", "auth_code": srv.auth_code if n == 0 else f"SYNTHETIC-C08-DP-CODE-{n}",
                                                   "status": "active"} for n in range(3)], "status": "success"}

@@ -3,6 +3,7 @@ import { ShellBrand, ShellFrame, ShellRail, ShellTopbar, type ShellNavItem } fro
 import type { DesktopClient, FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import { AcademyView } from '../features/academy/academy-view'
 import { AdministrationView } from '../features/administration/administration-view'
+import { SessionsView } from '../features/sessions/sessions-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { CommandPalette } from './command-palette'
@@ -164,6 +165,17 @@ export function DesktopShell(props: DesktopShellProps) {
                 <AdministrationView
                     // A new tenant or management credential remounts the view,
                     // so no render ever pairs it with the previous one's rows.
+                    key={snapshot.active?.context ?? 'none'}
+                    ref={heading}
+                    snapshot={snapshot}
+                    dispatch={props.dispatch}
+                    observe={observeManagement}
+                    onNavigate={props.onNavigate}
+                />
+            ) : feature.id === 'sessions' && feature.availability.state === 'available' ? (
+                <SessionsView
+                    // A new tenant or management credential remounts the view:
+                    // revealed content never outlives its credential.
                     key={snapshot.active?.context ?? 'none'}
                     ref={heading}
                     snapshot={snapshot}

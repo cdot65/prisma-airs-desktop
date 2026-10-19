@@ -3,8 +3,15 @@ import type { ManagementDetail } from "./ManagementDetail";
 import type { ManagementFailure } from "./ManagementFailure";
 import type { ManagementPage } from "./ManagementPage";
 import type { Outcome } from "./Outcome";
+import type { ScanContent } from "./ScanContent";
+import type { SessionRead } from "./SessionRead";
+import type { SessionSearch } from "./SessionSearch";
 
 /**
  * What a management operation produced.
  */
-export type ManagementResult = { "kind": "verified" } | { "kind": "page", page: ManagementPage, } | { "kind": "detail", detail: ManagementDetail, } | { "kind": "failed", failure: ManagementFailure, outcome: Outcome, };
+export type ManagementResult = { "kind": "verified" } | { "kind": "page", page: ManagementPage, } | { "kind": "detail", detail: ManagementDetail, } | { "kind": "session", session: SessionRead, } | { "kind": "transaction", 
+/**
+ * The transaction's metadata as JSON (no prompt or response).
+ */
+transaction: string, } | { "kind": "content", content: ScanContent, } | { "kind": "search", search: SessionSearch, } | { "kind": "failed", failure: ManagementFailure, outcome: Outcome, };

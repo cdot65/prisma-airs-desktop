@@ -1,0 +1,22 @@
+
+running 13 tests
+test reports_need_the_active_context_and_an_unreadable_file_is_kept ... ok
+test a_failed_read_reports_its_failure_and_caches_nothing ... ok
+test a_small_window_proves_absence_and_a_cached_session_answers_its_search ... ok
+test a_session_credentials_investigation_stays_in_memory ... ok
+test reports_export_as_v1_csv_through_the_save_sheet ... ok
+test the_inventory_is_the_last_day_in_bounded_pages_with_secret_fields_removed ... ok
+test reset_removes_sealed_investigations_and_reports ... ok
+test a_keychain_credentials_investigation_is_sealed_and_survives_a_restart ... ok
+test content_is_read_only_on_reveal_and_never_kept_with_metadata ... ok
+test removing_the_credential_removes_its_sealed_investigation_and_key ... ok
+test reports_are_built_from_scan_metadata_and_kept_edited_removed_and_undone ... ok
+test clearing_empties_the_cache_and_exports_carry_metadata_only ... ok
+test searches_are_bounded_like_v1_and_say_what_they_covered ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/sessions_reports/main.rs (target/debug/deps/sessions_reports-5b917fe01009550d)

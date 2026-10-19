@@ -726,8 +726,27 @@ pub fn preview_after(mutation: &Mutation, before: Option<&Value>) -> Option<Valu
     };
     after.map(|mut value| {
         redact(&mut value);
+        // A dictionary's keyword file stays native: the preview names its
+        // size and digest, never its text.
+        if mutation.kind == ChangeKind::Dictionaries
+            && let Some(Value::String(file)) = value.get("file").cloned()
+        {
+            value["file"] = Value::String(file_summary(&file));
+        }
         value
     })
+}
+
+/// A keyword file as the presentation may show it: line and byte counts and
+/// a SHA-256 prefix.
+pub fn file_summary(text: &str) -> String {
+    let digest = hex::encode(Sha256::digest(text.as_bytes()));
+    format!(
+        "{} keywords, {} bytes, sha256 {}",
+        text.lines().filter(|l| !l.trim().is_empty()).count(),
+        text.len(),
+        &digest[..16]
+    )
 }
 
 /// Removes a one-time API key from a write response, returning it in a
@@ -983,6 +1002,21 @@ mod tests {
         assert!(!valid_data_profile(&profile(
             json!({"rule_item": leaf(json!({"occurrence_operator_type": "more_than_equal_to"}))})
         )));
+        // A pattern leaf needs its match, confidence and occurrence fields.
+        for key in [
+            "confidence_level",
+            "match_type",
+            "occurrence_operator_type",
+            "version",
+            "id",
+        ] {
+            let mut missing = leaf(json!({}));
+            missing.as_object_mut().expect("leaf").remove(key);
+            assert!(
+                !valid_data_profile(&profile(json!({"rule_item": missing}))),
+                "{key}"
+            );
+        }
         // Confidence levels must include the chosen one.
         assert!(!valid_data_profile(&profile(
             json!({"rule_item": leaf(json!({"supported_confidence_levels": ["low"]}))})

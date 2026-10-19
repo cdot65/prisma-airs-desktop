@@ -323,6 +323,8 @@ type PickerReply = Option<Result<(String, Vec<u8>), ImportError>>;
 pub struct ScriptedPicker {
     replies: Mutex<VecDeque<PickerReply>>,
     opened: Mutex<usize>,
+    /// While set, sheets stay open until [`ScriptedPicker::release`].
+    gate: Mutex<Option<Arc<tokio::sync::Notify>>>,
 }
 
 impl ScriptedPicker {
@@ -337,6 +339,22 @@ impl ScriptedPicker {
     }
 }
 
+impl ScriptedPicker {
+    /// Keeps later sheets open (their replies wait) until released.
+    pub fn hold(&self) {
+        if let Ok(mut g) = self.gate.lock() {
+            *g = Some(Arc::new(tokio::sync::Notify::new()));
+        }
+    }
+
+    /// Lets held sheets answer.
+    pub fn release(&self) {
+        if let Some(gate) = self.gate.lock().ok().and_then(|mut g| g.take()) {
+            gate.notify_waiters();
+        }
+    }
+}
+
 impl ImportPicker for ScriptedPicker {
     fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
         if let Ok(mut o) = self.opened.lock() {
@@ -348,7 +366,11 @@ impl ImportPicker for ScriptedPicker {
             .ok()
             .and_then(|mut r| r.pop_front())
             .flatten();
+        let gate = self.gate.lock().ok().and_then(|g| g.clone());
         Box::pin(async move {
+            if let Some(gate) = gate {
+                gate.notified().await;
+            }
             reply.map(|r| {
                 r.map(|(name, bytes)| ImportFile {
                     name,
@@ -564,6 +586,55 @@ impl crate::authority::SecretPresenter for ScriptedSecrets {
     }
 }
 
+/// What a scripted save sheet does with the next export.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SaveScript {
+    #[default]
+    Save,
+    Cancel,
+    Fail,
+}
+
+/// A scripted save sheet: records each export it was handed.
+#[derive(Default)]
+pub struct ScriptedSaver {
+    saved: Mutex<Vec<(String, Vec<u8>)>>,
+    next: Mutex<SaveScript>,
+}
+
+impl ScriptedSaver {
+    /// Every (suggested name, bytes) the sheet was handed.
+    pub fn saved(&self) -> Vec<(String, Vec<u8>)> {
+        self.saved.lock().map(|s| s.clone()).unwrap_or_default()
+    }
+
+    pub fn script(&self, next: SaveScript) {
+        if let Ok(mut n) = self.next.lock() {
+            *n = next;
+        }
+    }
+}
+
+impl crate::authority::FileSaver for ScriptedSaver {
+    fn save(
+        &self,
+        suggested: String,
+        bytes: Vec<u8>,
+    ) -> futures_util::future::BoxFuture<'static, Result<Option<String>, ()>> {
+        let next = self.next.lock().map(|n| *n).unwrap_or_default();
+        if let Ok(mut s) = self.saved.lock() {
+            s.push((suggested.clone(), bytes));
+        }
+        Box::pin(async move {
+            match next {
+                SaveScript::Save => Ok(Some(suggested)),
+                SaveScript::Cancel => Ok(None),
+                SaveScript::Fail => Err(()),
+            }
+        })
+    }
+}
+
 /// Handles to the scripted adapters behind an [`Adapters`] value.
 pub struct Handles {
     pub vault: Arc<ScriptedVault>,
@@ -579,6 +650,9 @@ pub struct Handles {
     pub text_files: Arc<ScriptedPicker>,
     /// This instance's offline work root (a fresh temporary directory).
     pub offline_root: std::path::PathBuf,
+    pub saver: Arc<ScriptedSaver>,
+    /// This instance's sealed investigations and report files.
+    pub sessions_root: std::path::PathBuf,
 }
 
 /// Fresh scripted adapters with empty storage.
@@ -599,6 +673,8 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         secrets: Arc::new(ScriptedSecrets::default()),
         text_files: Arc::new(ScriptedPicker::default()),
         offline_root: fresh_offline_root(),
+        saver: Arc::new(ScriptedSaver::default()),
+        sessions_root: fresh_offline_root().with_extension("sessions"),
     };
     (
         Adapters {
@@ -613,6 +689,8 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             secrets: handles.secrets.clone(),
             text_files: handles.text_files.clone(),
             offline_root: Some(handles.offline_root.clone()),
+            saver: handles.saver.clone(),
+            sessions_root: Some(handles.sessions_root.clone()),
         },
         handles,
     )

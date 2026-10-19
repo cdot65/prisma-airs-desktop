@@ -3,4 +3,4 @@
 /**
  * A management inventory or catalog the desktop reads.
  */
-export type ManagementResource = "profiles" | "topics" | "applications" | "apiKeys" | "deploymentProfiles" | "dlpCatalog" | "dataProfiles" | "dataPatterns" | "filteringProfiles" | "dictionaries";
+export type ManagementResource = "profiles" | "topics" | "applications" | "apiKeys" | "deploymentProfiles" | "dlpCatalog" | "dataProfiles" | "dataPatterns" | "filteringProfiles" | "dictionaries" | "sessions";

@@ -362,21 +362,42 @@ impl Desk {
         let review = self.review(&draft).await;
         assert_eq!(review.state, ChangeReviewState::Ready, "{review:?}");
         let before = self.writes().len();
+        let known = self.known();
         self.send(json!({"kind": "requestApply", "review": review.review, "draft": draft, "confirmation": typed}))
             .await
             .expect("requested");
-        let seen = self.results_seen;
+        let result = self.next_result(&known).await;
+        let writes = self.writes();
+        (result, writes.get(before).cloned())
+    }
+
+    /// Operations already listed (results are retained up to a bound).
+    fn known(&self) -> Vec<desktop_core::runtime::OperationId> {
+        self.snap()
+            .changes
+            .results
+            .iter()
+            .map(|r| r.operation.clone())
+            .collect()
+    }
+
+    /// The first settled result not in `known`.
+    async fn next_result(
+        &mut self,
+        known: &[desktop_core::runtime::OperationId],
+    ) -> ChangeResultView {
         assert!(
-            eventually(|| {
-                let results = self.snap().changes.results;
-                results.len() > seen && results[0].settled
-            })
+            eventually(|| self
+                .snap()
+                .changes
+                .results
+                .first()
+                .is_some_and(|r| r.settled && !known.contains(&r.operation)))
             .await
         );
         let results = self.snap().changes.results;
         self.results_seen = results.len();
-        let writes = self.writes();
-        (results[0].clone(), writes.get(before).cloned())
+        results[0].clone()
     }
 
     fn writes(&self) -> Vec<Seen> {
@@ -921,5 +942,324 @@ async fn denial_conflict_and_lost_settlement_keep_faithful_outcomes() {
         .filter(|w| w.request_line.starts_with("POST /dlp/v2/api/dictionaries"))
         .count();
     assert_eq!(uploads, 2, "denied once, lost once, never retried");
+    assert!(!format!("{:?}", desk.snap()).contains("SERVER-TEXT"));
+}
+
+async fn stage_file(desk: &mut Desk, name: &str, bytes: &[u8]) -> String {
+    let context = desk.context();
+    desk.adapters
+        .text_files
+        .reply(Some(Ok((name.into(), bytes.to_vec()))));
+    desk.send(json!({"kind": "chooseDictionaryFile", "context": context}))
+        .await
+        .expect("chosen");
+    assert!(
+        eventually(|| desk
+            .snap()
+            .changes
+            .staged
+            .as_ref()
+            .is_some_and(|s| s.name.as_deref() == Some(name)))
+        .await
+    );
+    desk.snap()
+        .changes
+        .staged
+        .and_then(|s| s.token)
+        .expect("token")
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_staged_files_content_never_reaches_a_projection_and_the_pending_hold_keeps_it() {
+    let mut desk = desk().await;
+    desk.adapters.confirmer.auto(None);
+    let Observation::Shell { mut updates, .. } =
+        desk.handle.observe(ViewScope::Shell).expect("observe")
+    else {
+        unreachable!("shell scope")
+    };
+    let canary = "canary-keyword-c10\nsecond-canary\n";
+    let token = stage_file(&mut desk, "canary.txt", canary.as_bytes()).await;
+    let by_file = draft(
+        "dictionaries",
+        "create",
+        "",
+        json!({"metadata": metadata("canary.txt"), "fileRef": token}),
+    );
+    let review = desk.review(&by_file).await;
+    let after: Value = serde_json::from_str(review.after.as_deref().expect("after")).expect("json");
+    assert!(
+        after["file"]
+            .as_str()
+            .expect("summary")
+            .starts_with("2 keywords, "),
+        "{after}"
+    );
+    desk.send(json!({"kind": "requestApply", "review": review.review, "draft": by_file, "confirmation": "CREATE"}))
+        .await
+        .expect("requested");
+    assert!(eventually(|| desk.adapters.confirmer.held() == 1).await);
+    // While the confirmation holds the editor, the file cannot be replaced.
+    let context = desk.context();
+    assert_eq!(
+        desk.send(json!({"kind": "chooseDictionaryFile", "context": context}))
+            .await
+            .err(),
+        Some(Refusal::Busy)
+    );
+    let mut projections = vec![serde_json::to_string(&desk.snap()).expect("json")];
+    while let Some(update) = updates.try_next() {
+        if let desktop_core::Update::Shell(snapshot) = update {
+            projections.push(serde_json::to_string(&snapshot).expect("json"));
+        }
+    }
+    for projection in &projections {
+        assert!(
+            !projection.contains("canary-keyword-c10"),
+            "selected-file content in a projection"
+        );
+    }
+    // The old confirmation applies exactly the reviewed file.
+    assert!(desk.adapters.confirmer.complete(true));
+    assert!(
+        eventually(|| desk
+            .snap()
+            .changes
+            .results
+            .first()
+            .is_some_and(|r| r.settled))
+        .await
+    );
+    let upload = desk.writes().pop().expect("upload");
+    assert_eq!(multipart(&upload)[1].body, canary.as_bytes());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_sheet_answering_during_a_confirmation_ends_it_and_late_or_retired_choices_stage_nothing()
+{
+    let mut desk = desk().await;
+    desk.adapters.confirmer.auto(None);
+    let token = stage_file(&mut desk, "first.txt", b"first\n").await;
+    let by_file = draft(
+        "dictionaries",
+        "create",
+        "",
+        json!({"metadata": metadata("first.txt"), "fileRef": token}),
+    );
+    let review = desk.review(&by_file).await;
+    // A sheet opened before the confirmation answers while it is pending.
+    let context = desk.context();
+    desk.adapters.text_files.hold();
+    desk.adapters
+        .text_files
+        .reply(Some(Ok(("second.txt".into(), b"second\n".to_vec()))));
+    desk.send(json!({"kind": "chooseDictionaryFile", "context": context}))
+        .await
+        .expect("chosen");
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    // RequestApply cannot start while a sheet is open (the staging is busy);
+    // so the sheet answers first here, then confirm with the old review.
+    desk.adapters.text_files.release();
+    assert!(
+        eventually(|| desk
+            .snap()
+            .changes
+            .staged
+            .as_ref()
+            .is_some_and(|s| s.name.as_deref() == Some("second.txt")))
+        .await
+    );
+    assert_eq!(
+        desk.send(json!({"kind": "requestApply", "review": review.review, "draft": by_file, "confirmation": "CREATE"})).await.err(),
+        Some(Refusal::ReviewInvalid),
+        "the reviewed file is no longer the staged one"
+    );
+    // A late answer after the context retired stages nothing.
+    desk.adapters.text_files.hold();
+    desk.adapters
+        .text_files
+        .reply(Some(Ok(("late.txt".into(), b"late\n".to_vec()))));
+    desk.send(json!({"kind": "chooseDictionaryFile", "context": context}))
+        .await
+        .expect("chosen");
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    desk.send(
+        json!({"kind": "configureManagementCredential", "context": context, "mode": "session",
+        "clientId": CLIENT_ID, "secret": "replacement-secret-c10"}),
+    )
+    .await
+    .expect("replaced");
+    desk.adapters.text_files.release();
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert!(
+        desk.snap().changes.staged.is_none(),
+        "nothing staged for the retired context"
+    );
+    // A token staged for the old context does not resolve in the new one.
+    let stale = desk
+        .review(&draft(
+            "dictionaries",
+            "create",
+            "",
+            json!({"metadata": metadata("x.txt"), "fileRef": token}),
+        ))
+        .await;
+    assert_eq!(
+        stale.failure,
+        Some(ChangeFailure::Problem {
+            problem: ChangeProblem::StagedFile
+        })
+    );
+    assert!(desk.writes().is_empty());
+}
+
+/// Each supported DLP mutation: denial, unknown outcome and (for an
+/// existing item) a changed baseline, each without retry.
+#[tokio::test(flavor = "multi_thread")]
+async fn every_supported_dlp_mutation_reports_denial_unknown_and_conflict_truthfully() {
+    let mut desk = desk().await;
+    // (draft, typed confirmation, method, path, existing item (collection, id))
+    type Op<'a> = (Value, &'a str, &'a str, &'a str, Option<(&'a str, &'a str)>);
+    let ops: Vec<Op> = vec![
+        (
+            draft("dataPatterns", "create", "", pattern("P")),
+            "CREATE",
+            "POST",
+            "/dlp/v2/api/data-patterns",
+            None,
+        ),
+        (
+            draft("dataPatterns", "update", "pattern-1", pattern("P2")),
+            "Card numbers",
+            "PUT",
+            "/dlp/v2/api/data-patterns/pattern-1",
+            Some(("data-patterns", "pattern-1")),
+        ),
+        (
+            draft("dataPatterns", "delete", "pattern-1", json!({})),
+            "Card numbers",
+            "DELETE",
+            "/dlp/v2/api/data-patterns/pattern-1",
+            Some(("data-patterns", "pattern-1")),
+        ),
+        (
+            draft("dataProfiles", "create", "", data_profile("New")),
+            "CREATE",
+            "POST",
+            "/dlp/v2/api/data-profiles",
+            None,
+        ),
+        (
+            draft("dataProfiles", "update", "dp-1", data_profile("PCI")),
+            "PCI",
+            "PUT",
+            "/dlp/v2/api/data-profiles/dp-1",
+            Some(("data-profiles", "dp-1")),
+        ),
+        (
+            draft(
+                "filteringProfiles",
+                "update",
+                "filter-1",
+                json!({"name": "Default", "file_based": false, "non_file_based": true}),
+            ),
+            "Default",
+            "PUT",
+            "/dlp/v2/api/data-filtering-profiles/filter-1",
+            Some(("data-filtering-profiles", "filter-1")),
+        ),
+        (
+            draft(
+                "dictionaries",
+                "create",
+                "",
+                json!({"metadata": metadata("k.txt"), "file": KEYWORDS}),
+            ),
+            "CREATE",
+            "POST",
+            "/dlp/v2/api/dictionaries",
+            None,
+        ),
+        (
+            draft(
+                "dictionaries",
+                "update",
+                "dict-1",
+                json!({"metadata": metadata("codes.txt"), "file": KEYWORDS}),
+            ),
+            "Codes",
+            "PUT",
+            "/dlp/v2/api/dictionaries/dict-1",
+            Some(("dictionaries", "dict-1")),
+        ),
+        (
+            draft("dictionaries", "delete", "dict-1", json!({})),
+            "Codes",
+            "DELETE",
+            "/dlp/v2/api/dictionaries/dict-1",
+            Some(("dictionaries", "dict-1")),
+        ),
+    ];
+    for (op, typed, method, path, existing) in ops {
+        // Denied.
+        desk.service.lock().expect("service").overrides.push((
+            method.into(),
+            path.into(),
+            raw(403, &json!({"message": "SERVER-TEXT"})),
+        ));
+        let sent = desk.writes().len();
+        let (denied, _) = desk.apply(op.clone(), typed).await;
+        assert_eq!(
+            (denied.outcome, denied.failure),
+            (
+                Some(Outcome::Rejected),
+                Some(ChangeFailure::Service {
+                    failure: ManagementFailure::Denied
+                })
+            ),
+            "{op}"
+        );
+        // Unknown (the connection drops after the request).
+        desk.service.lock().expect("service").overrides.push((
+            method.into(),
+            path.into(),
+            Reply::Close,
+        ));
+        let (lost, _) = desk.apply(op.clone(), typed).await;
+        assert_eq!(lost.outcome, Some(Outcome::Unknown), "{op}");
+        assert_eq!(
+            desk.writes().len(),
+            sent + 2,
+            "one attempt each, never retried: {op}"
+        );
+        // A changed baseline: conflict, not sent.
+        if let Some((collection, id)) = existing {
+            let review = desk.review(&op).await;
+            {
+                let mut service = desk.service.lock().expect("service");
+                let store = service.store(collection).expect("store");
+                if let Some(item) = store.iter_mut().find(|i| i["id"] == id) {
+                    item["changed_elsewhere"] = json!(true);
+                }
+            }
+            let before = desk.writes().len();
+            let known = desk.known();
+            desk.send(json!({"kind": "requestApply", "review": review.review, "draft": op, "confirmation": typed}))
+                .await
+                .expect("requested");
+            let conflicted = desk.next_result(&known).await;
+            assert_eq!(conflicted.failure, Some(ChangeFailure::Conflict), "{op}");
+            assert_eq!(desk.writes().len(), before, "conflict sends nothing: {op}");
+            let mut service = desk.service.lock().expect("service");
+            if let Some(item) = service
+                .store(collection)
+                .and_then(|s| s.iter_mut().find(|i| i["id"] == id))
+            {
+                item.as_object_mut()
+                    .expect("object")
+                    .remove("changed_elsewhere");
+            }
+        }
+    }
     assert!(!format!("{:?}", desk.snap()).contains("SERVER-TEXT"));
 }

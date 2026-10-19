@@ -164,4 +164,44 @@ describe('DLP authoring', () => {
         expect(metadata).toEqual({ name: 'Codes', original_file_name: 'codes.txt', category: 'Confidential', region_name: 'United States' })
         expect((screen.getByLabelText('Dictionary keywords, one per line') as HTMLTextAreaElement).value).toBe('')
     })
+
+    it('keeps typed keywords in use when a file choice is cancelled or fails', async () => {
+        const native = scriptedNative(ready())
+        service(native)
+        const user = await openInventory(native, 'Dictionaries')
+        await user.click(screen.getByRole('button', { name: 'New dictionary' }))
+        const keywords = screen.getByLabelText('Dictionary keywords, one per line') as HTMLTextAreaElement
+        await user.click(screen.getByRole('button', { name: 'Choose keyword file…' }))
+        await native.push(ready({ state: 'choosing', token: null, name: null, bytes: null, lines: null, failure: null }))
+        // The sheet was cancelled: nothing staged.
+        await native.push(ready(null))
+        expect(screen.getByRole('radio', { name: /Type them/ })).toBeChecked()
+        expect(screen.getByRole('radio', { name: /Use the chosen file/ })).not.toBeChecked()
+        expect(keywords).toBeEnabled()
+        await user.clear(keywords)
+        await user.type(keywords, 'typed')
+        await user.click(screen.getByRole('button', { name: 'Review change' }))
+        const prepare = sent(native, 'reviewChange')[0] as Extract<Intent, { kind: 'reviewChange' }>
+        expect(JSON.parse(prepare.draft.body)).toMatchObject({ file: 'typed' })
+        // A failed choice likewise leaves typing in use.
+        await user.click(screen.getByRole('button', { name: 'Choose keyword file…' }))
+        await native.push(ready({ state: 'failed', token: null, name: null, bytes: null, lines: null, failure: 'tooLarge' }))
+        expect(keywords).toBeEnabled()
+        expect(screen.getByRole('radio', { name: /Type them/ })).toBeChecked()
+    })
+
+    it('refuses metadata that is not exactly one JSON object without dispatching', async () => {
+        const native = scriptedNative(ready())
+        service(native)
+        const user = await openInventory(native, 'Dictionaries')
+        await user.click(screen.getByRole('button', { name: 'New dictionary' }))
+        const metadata = screen.getByLabelText('dictionary metadata (JSON)') as HTMLTextAreaElement
+        await user.clear(metadata)
+        await user.click(metadata)
+        // A valid object followed by a top-level fragment must not be spliced.
+        await user.paste('{"name":"N","original_file_name":"a.txt","category":"Confidential","region_name":"United States"},"file":"injected"')
+        await user.click(screen.getByRole('button', { name: 'Review change' }))
+        expect(screen.getByText('The dictionary metadata must be one JSON object.')).toBeInTheDocument()
+        expect(sent(native, 'reviewChange')).toEqual([])
+    })
 })

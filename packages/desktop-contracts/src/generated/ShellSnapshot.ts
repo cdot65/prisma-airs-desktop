@@ -9,6 +9,7 @@ import type { LearnerRef } from "./LearnerRef";
 import type { OfflineView } from "./OfflineView";
 import type { ResetFailure } from "./ResetFailure";
 import type { ScanRecordView } from "./ScanRecordView";
+import type { SessionsView } from "./SessionsView";
 import type { StorageHealth } from "./StorageHealth";
 import type { TenantView } from "./TenantView";
 import type { Theme } from "./Theme";
@@ -61,4 +62,8 @@ academyOffline: OfflineView,
 /**
  * The active tenant's change review and applied changes (no secrets).
  */
-changes: ChangesView, };
+changes: ChangesView, 
+/**
+ * The active tenant's FP/FN reports, investigation cache and exports.
+ */
+sessions: SessionsView, };

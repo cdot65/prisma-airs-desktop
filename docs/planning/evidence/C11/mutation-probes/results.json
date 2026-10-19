@@ -1,0 +1,558 @@
+[
+  {
+    "mutation": "a session read keeps its prompts",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "content_is_read_only_on_reveal_and_never_kept_with_metadata",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a transaction keeps its content",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "content_is_read_only_on_reveal_and_never_kept_with_metadata",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a revealed scan is read again instead of from the cache",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "content_is_read_only_on_reveal_and_never_kept_with_metadata",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "session IDs are not classified",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "searches_are_bounded_like_v1_and_say_what_they_covered",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a detector matches any violating entry",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "searches_are_bounded_like_v1_and_say_what_they_covered",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the session ID walk reads past 40 pages",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "searches_are_bounded_like_v1_and_say_what_they_covered",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the detector search ignores its match bound",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "searches_are_bounded_like_v1_and_say_what_they_covered",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a capped session ID walk claims absence",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "searches_are_bounded_like_v1_and_say_what_they_covered",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a scan ID search returns content",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "searches_are_bounded_like_v1_and_say_what_they_covered",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a session credential's investigation is sealed on disk",
+    "files": [
+      "crates/desktop-core/src/authority/management_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "a_session_credentials_investigation_stays_in_memory",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the snapshot is written in plaintext",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "a_keychain_credentials_investigation_is_sealed_and_survives_a_restart",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a removed credential leaves its sealed investigation",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "removing_the_credential_removes_its_sealed_investigation_and_key",
+    "exit_code": 0,
+    "guard_failed": false
+  },
+  {
+    "mutation": "reset leaves sealed investigations and reports",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "reset_removes_sealed_investigations_and_reports",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an edit resets the report time",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "reports_are_built_from_scan_metadata_and_kept_edited_removed_and_undone",
+    "exit_code": 0,
+    "guard_failed": false
+  },
+  {
+    "mutation": "any category is accepted",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "reports_are_built_from_scan_metadata_and_kept_edited_removed_and_undone",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a report is built from another scan of the session",
+    "files": [
+      "crates/desktop-core/src/authority/sessions_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "reports_are_built_from_scan_metadata_and_kept_edited_removed_and_undone",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a deleted tenant's reports stay on disk",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "reports_are_built_from_scan_metadata_and_kept_edited_removed_and_undone",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "undo overwrites a newer report",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "sessions"
+    ],
+    "guard": "reports_upsert_remove_and_undo_without_overwriting_newer",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "CSV cells lose v1's formula guard",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "reports_export_as_v1_csv_through_the_save_sheet",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the metadata export carries revealed content",
+    "files": [
+      "crates/desktop-core/src/authority/sessions_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "clearing_empties_the_cache_and_exports_carry_metadata_only",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Hide keeps the content shown",
+    "files": [
+      "apps/desktop/src/features/sessions/sessions-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/sessions/sessions-view.test.tsx"
+    ],
+    "guard": "shows content only after an explicit reveal and forgets it on Hide and on leaving",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reports open without a management client",
+    "files": [
+      "apps/desktop/src/features/sessions/sessions-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/sessions/sessions-view.test.tsx"
+    ],
+    "guard": "asks for a management client before reading sessions",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a capped session ID search claims absence",
+    "files": [
+      "apps/desktop/src/features/sessions/sessions-model.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/sessions/sessions-view.test.tsx"
+    ],
+    "guard": "says what each search covered and never claims more",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a cancelled export may carry a file name",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a cancelled export with a name",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a report of an unknown kind is accepted",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a report with an unknown kind",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "sessions"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/sessions/sessions-view.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

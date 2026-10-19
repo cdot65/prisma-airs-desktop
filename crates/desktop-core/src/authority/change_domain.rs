@@ -568,7 +568,14 @@ impl State {
         lease: u64,
     ) -> Result<(), Refusal> {
         self.check_context(&context)?;
-        if matches!(self.staging, Some(Staging::Choosing { .. })) {
+        // The native confirmation holds the editor lease: the file a pending
+        // change was reviewed with cannot be replaced or cleared meanwhile.
+        if matches!(self.staging, Some(Staging::Choosing { .. }))
+            || matches!(
+                self.change_review.as_ref().map(|r| &r.phase),
+                Some(Phase::Confirming { .. })
+            )
+        {
             return Err(Refusal::Busy);
         }
         self.staging = Some(Staging::Choosing { context, lease });
@@ -589,6 +596,15 @@ impl State {
             return;
         }
         let context = context.clone();
+        // A sheet opened before a confirmation began must not change the file
+        // under it: end that confirmation, whose late completion then applies
+        // nothing, and require a new review.
+        if let Some(review) = self.change_review.as_mut()
+            && let Phase::Confirming { nonce, .. } = review.phase
+        {
+            self.confirmer.dismiss(nonce);
+            review.phase = Phase::Failed(ChangeProblem::StagedFile.into());
+        }
         self.staging = match chosen {
             None => None,
             Some(Err(failure)) => Some(Staging::Failed(failure)),

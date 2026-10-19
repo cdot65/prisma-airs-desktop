@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button, Callout, Input, cn } from '@ai-security-academy/presentation'
 import { AlertTriangle, Info, KeyRound } from 'lucide-react'
 import type {
@@ -146,41 +146,68 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
     const confirming = mine?.state === 'confirming'
     const deletes = change.action === 'delete'
 
-    function draft(): ChangeDraft {
+    // The chosen file is used only once one is actually staged; a cancelled
+    // or failed choice leaves the typed keywords in use.
+    const fileReady = staged?.state === 'ready' && !!staged.token
+    const usingFile = useFile && fileReady
+    const [awaitingFile, setAwaitingFile] = useState(false)
+    useEffect(() => {
+        if (!awaitingFile || staged?.state === 'choosing') return
+        setAwaitingFile(false)
+        setUseFile(staged?.state === 'ready')
+    }, [awaitingFile, staged?.state])
+
+    /** The draft as entered now, or null (with a message) when it cannot be sent. */
+    function draft(): ChangeDraft | null {
         const text = editor.current?.value ?? ''
         let body = deletes ? '{}' : text
         if (dictionary && !deletes) {
-            // Read fresh from the fields; the metadata text is passed as written.
-            const file =
-                useFile && staged?.state === 'ready' && staged.token
-                    ? `"fileRef":${JSON.stringify(staged.token)}`
-                    : `"file":${JSON.stringify(keywords.current?.value ?? '')}`
-            body = `{"metadata":${text},${file}}`
+            // Read fresh from the fields. The metadata must be exactly one JSON
+            // object: it is parsed, never spliced into the body as text.
+            let metadata: unknown
+            try {
+                metadata = JSON.parse(text)
+            } catch {
+                metadata = null
+            }
+            if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) {
+                setMessage('The dictionary metadata must be one JSON object.')
+                return null
+            }
+            body = JSON.stringify(
+                usingFile && staged?.token
+                    ? { metadata, fileRef: staged.token }
+                    : { metadata, file: keywords.current?.value ?? '' }
+            )
         }
         return { kind: change.kind, action: change.action, target: change.target, body }
     }
 
     async function chooseFile() {
+        setAwaitingFile(true)
         setMessage(outcomeMessage(await dispatch({ kind: 'chooseDictionaryFile', context })))
-        setUseFile(true)
     }
 
     async function prepare() {
-        setBusy(true)
         setMessage(null)
-        const outcome = await dispatch({ kind: 'reviewChange', context, draft: draft() })
+        const captured = draft()
+        if (!captured) return
+        setBusy(true)
+        const outcome = await dispatch({ kind: 'reviewChange', context, draft: captured })
         setBusy(false)
         setMessage(outcomeMessage(outcome))
     }
 
     async function apply() {
         if (!mine) return
-        setBusy(true)
         setMessage(null)
+        const captured = draft()
+        if (!captured) return
+        setBusy(true)
         const outcome = await dispatch({
             kind: 'requestApply',
             review: mine.review,
-            draft: draft(),
+            draft: captured,
             confirmation: typed.current?.value ?? '',
         })
         setBusy(false)
@@ -235,7 +262,7 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
                                 <input
                                     type='radio'
                                     name={`${ids}-source`}
-                                    checked={!useFile}
+                                    checked={!usingFile}
                                     disabled={confirming}
                                     onChange={() => setUseFile(false)}
                                     className='size-4 accent-[var(--academy-accent)]'
@@ -247,7 +274,7 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
                                 aria-label='Dictionary keywords, one per line'
                                 defaultValue={parts.keywords}
                                 readOnly={confirming}
-                                disabled={useFile}
+                                disabled={usingFile}
                                 spellCheck={false}
                                 className={TEXTAREA}
                                 data-slot='dictionary-text'
@@ -256,8 +283,8 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
                                 <input
                                     type='radio'
                                     name={`${ids}-source`}
-                                    checked={useFile}
-                                    disabled={confirming || staged?.state !== 'ready'}
+                                    checked={usingFile}
+                                    disabled={confirming || !fileReady}
                                     onChange={() => setUseFile(true)}
                                     className='size-4 accent-[var(--academy-accent)]'
                                 />

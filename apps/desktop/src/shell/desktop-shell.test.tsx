@@ -87,11 +87,16 @@ describe('desktop shell', () => {
         expect(nav().queryByRole('button', { name: /^Administration.*Not available in this build/ })).toBeNull()
         expect(screen.getByRole('heading', { level: 1, name: 'Tenant inventories' })).toBeInTheDocument()
         expect(screen.getByText('Add a tenant in Settings to read its inventories.')).toBeInTheDocument()
-        // A planned destination still says so explicitly.
+        // Sessions & Reports is available (C11) and asks for a tenant first.
         await user.click(nav().getByRole('button', { name: /^Sessions/ }))
-        expect(nav().getByRole('button', { name: /^Sessions.*Not available in this build/ })).toBeInTheDocument()
+        expect(nav().queryByRole('button', { name: /^Sessions.*Not available in this build/ })).toBeNull()
+        expect(screen.getByRole('heading', { level: 1, name: 'Investigate sessions' })).toBeInTheDocument()
+        expect(screen.getByText('Add a tenant in Settings to investigate its sessions.')).toBeInTheDocument()
+        // A planned destination still says so explicitly.
+        await user.click(nav().getByRole('button', { name: /^Case Library/ }))
+        expect(nav().getByRole('button', { name: /^Case Library.*Not available in this build/ })).toBeInTheDocument()
         expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C11')).toBeInTheDocument()
+        expect(screen.getByText('Planned in C12')).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
         // Academy learning is available (C05) and opens its learner region.
         await user.click(nav().getByRole('button', { name: /^Academy/ }))
@@ -110,7 +115,7 @@ describe('desktop shell', () => {
         const sessions = nav().getByRole('button', { name: /^Sessions/ })
         while (document.activeElement !== sessions) await user.tab()
         await user.keyboard('{Enter}')
-        const heading = screen.getByRole('heading', { level: 1, name: 'Sessions & Reports' })
+        const heading = screen.getByRole('heading', { level: 1, name: 'Investigate sessions' })
         expect(heading).toHaveFocus()
         expect(sessions).toHaveAttribute('aria-current', 'page')
         expect(nav().getByRole('button', { name: /Runtime Security/ })).not.toHaveAttribute('aria-current')

@@ -600,6 +600,48 @@ Decided in C10 (implementer decision, recorded for review).
   a different file chosen after review changes the draft Apply compares
   and is refused.
 
+## D037 — Sessions investigations, the protected cache and metadata-only reports
+
+Decided in C11 (implementer decision, recorded for review).
+
+- Sessions are read through the tenant's management binding (C08) with the
+  SDK's raw dashboard reads, leniently as v1 read them: the inventory is the
+  last 24 hours (`time_interval=1`, `time_unit=day`) in pages of 25; a
+  session is one page of 25 actions over 30 days ("at least 25" when full);
+  a transaction and a scan's content are read by scan and sub-request.
+  Secret fields are redacted and prompt/response text is removed from every
+  read except Content, which runs only on an explicit reveal.
+- Searches keep v1's classification and bounds (`bridge/src/runtime.ts`): a
+  session ID walks 30 days in pages of 100 for at most 40 pages; a scan ID is
+  one scan report whose metadata (never content) is returned, a 404 proving
+  absence; a detector walks the last day for at most 1,000 sessions and
+  stops after the page that reaches 100 matches. Completeness is claimed
+  only when the window ended (and, for a detector, with no more than 100
+  matches); the presentation words each result by what was read.
+- The investigation cache belongs to one credential generation and never
+  authorizes anything: every read, cached or not, first binds the current
+  credential. It keeps v1's 50 entries per category and 4 MiB snapshot
+  bound. For a Keychain credential it is sealed (XChaCha20-Poly1305, AAD
+  bound to the credential) under a random key in the credential namespace
+  whose record is derived from the credential's record; the sealed file and
+  key are removed with the credential through the cleanup ledger and by a
+  reset. A session credential's cache stays in memory. Unlike v1, the
+  snapshot is a 0600 file rather than a Keychain item (one key item per
+  credential, any size); a snapshot that does not open is discarded. Clear
+  empties it; Export writes its session and transaction metadata only.
+- FP/FN reports keep v1's model, limits, upsert/remove/undo and CSV. Unlike
+  v1, a new report is built in Rust from the scan's action row in this
+  credential's investigation (the operator supplies only kind, category and
+  reason, the category being one of v1's quick picks), so a report can
+  never carry content or invented metadata; an existing report can be
+  edited without its session. Reports are a 0600 JSON file per tenant
+  (named by a digest of the tenant ID), loaded off the lock, written
+  newest-generation-only, removed with the tenant and by reset. Exports go
+  through the native save sheet (rfd/NSSavePanel, owner-only atomic write;
+  the fixture build writes into its data root without replacing a file).
+  Nothing is written to the tenant.
+- Exception Patterns stays v1's inert synthetic preview.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

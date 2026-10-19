@@ -125,6 +125,8 @@ pub enum ManagementResource {
     DataPatterns,
     FilteringProfiles,
     Dictionaries,
+    /// The 24-hour Runtime sessions inventory (C11).
+    Sessions,
 }
 
 impl ManagementResource {
@@ -138,6 +140,7 @@ impl ManagementResource {
             Self::DeploymentProfiles => "dp_name",
             Self::DlpCatalog | Self::DataProfiles | Self::DataPatterns => "id",
             Self::FilteringProfiles | Self::Dictionaries => "id",
+            Self::Sessions => "session_id",
         }
     }
 
@@ -166,6 +169,27 @@ pub enum ManagementRequest {
         resource: ManagementResource,
         id: String,
     },
+    /// One session's actions (one page of 25, over 30 days; v1).
+    #[serde(rename_all = "camelCase")]
+    Session {
+        session_id: String,
+        app_id: String,
+        app_name: String,
+    },
+    /// One transaction's metadata (no content).
+    #[serde(rename_all = "camelCase")]
+    Transaction {
+        session_id: String,
+        app_id: String,
+        app_name: String,
+        scan_id: String,
+        sub_request: u32,
+    },
+    /// A scan's prompt and response: only when the operator reveals it.
+    #[serde(rename_all = "camelCase")]
+    Content { scan_id: String, sub_request: u32 },
+    /// A bounded search by session ID, scan ID or detector (v1).
+    Search { query: String },
 }
 
 impl ManagementRequest {
@@ -182,11 +206,69 @@ impl ManagementRequest {
                     && *offset <= 1_000_000
                     && (!resource.is_dlp() || offset % limit == 0)
             }
-            Self::Detail { id, .. } => {
-                (1..=256).contains(&id.len()) && !id.chars().any(char::is_control)
-            }
+            Self::Detail { id, .. } => plain(id),
+            Self::Session {
+                session_id,
+                app_id,
+                app_name,
+            } => plain(session_id) && plain(app_id) && plain(app_name),
+            Self::Transaction {
+                session_id,
+                app_id,
+                app_name,
+                scan_id,
+                ..
+            } => plain(session_id) && plain(app_id) && plain(app_name) && plain(scan_id),
+            Self::Content { scan_id, .. } => plain(scan_id),
+            Self::Search { query } => crate::sessions::classify(query).is_some(),
         }
     }
+}
+
+/// A plain identifier: 1-256 bytes, no control characters.
+fn plain(id: &str) -> bool {
+    (1..=256).contains(&id.len()) && !id.chars().any(char::is_control)
+}
+
+/// One session's actions as the service returned them (secret fields
+/// removed). The service reports no total, so `more` says only that a full
+/// page came back ("at least 25").
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionRead {
+    /// The session as JSON (its `session_actions` included).
+    pub session: String,
+    pub actions: u32,
+    pub more: bool,
+}
+
+/// A scan's content, only ever in the single result of a Content read.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanContent {
+    pub prompt: Option<String>,
+    pub response: Option<String>,
+}
+
+/// What a bounded search found and how far it looked.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionSearch {
+    pub kind: crate::sessions::SearchKind,
+    pub query: String,
+    /// Matching sessions as a JSON array.
+    pub sessions: String,
+    /// Sessions read by the walk (0 when answered from the cache or a scan
+    /// lookup).
+    pub scanned: u32,
+    /// The walk reached the end of its window (absence is proven).
+    pub complete: bool,
+    /// The detector search stopped at its match bound.
+    pub match_limit: bool,
+    /// A scan found by ID: its metadata (never content), as JSON.
+    pub scan: Option<String>,
+    /// Answered from this credential's investigation cache.
+    pub cached: bool,
 }
 
 /// One page as the service returned it.
@@ -298,6 +380,19 @@ pub enum ManagementResult {
     },
     Detail {
         detail: ManagementDetail,
+    },
+    Session {
+        session: SessionRead,
+    },
+    Transaction {
+        /// The transaction's metadata as JSON (no prompt or response).
+        transaction: String,
+    },
+    Content {
+        content: ScanContent,
+    },
+    Search {
+        search: SessionSearch,
     },
     Failed {
         failure: ManagementFailure,
@@ -534,6 +629,16 @@ impl ManagementBinding {
                     .await?;
                 (json(&reply)?, Paging::Spring)
             }
+            ManagementResource::Sessions => {
+                let value = self.overview(1, "day", offset, limit, options).await?;
+                (
+                    value,
+                    Paging::Offset {
+                        key: "items",
+                        required: true,
+                    },
+                )
+            }
             ManagementResource::Dictionaries => {
                 let mut params = DictionaryListParams::default();
                 params.page = Some(u64::from(offset / limit));
@@ -760,6 +865,184 @@ impl ManagementBinding {
             }
             _ => Err(PageError::Invalid),
         }
+    }
+}
+
+/// Sessions investigation reads (C11): the dashboard's raw replies, as v1
+/// read them leniently, with secret fields removed.
+impl ManagementBinding {
+    fn dashboard(&self) -> Result<scm_sdk::airs::management::DashboardClient, PageError> {
+        Ok(self.management.dashboard())
+    }
+
+    /// One sessions-overview reply over the last `interval` `unit`s.
+    async fn overview(
+        &self,
+        interval: u64,
+        unit: &str,
+        offset: u32,
+        limit: u32,
+        options: Option<&RequestOptions>,
+    ) -> Result<Value, PageError> {
+        let mut query = scm_sdk::airs::management::DashboardSessionsOverviewQuery::default();
+        query.time_interval = Some(interval);
+        query.time_unit = Some(unit.to_owned());
+        query.offset = Some(u64::from(offset));
+        query.limit = Some(u64::from(limit));
+        self.dashboard()?
+            .sessions_overview_raw(&query, options)
+            .await?
+            .map(Value::from)
+            .ok_or(PageError::Invalid)
+    }
+
+    /// One session's first page of actions (v1: 25 over 30 days).
+    pub async fn session(
+        &self,
+        session_id: &str,
+        app_id: &str,
+        app_name: &str,
+        deadline: Instant,
+    ) -> Result<SessionRead, PageError> {
+        let options = Self::options(deadline);
+        let mut query =
+            scm_sdk::airs::management::DashboardSessionQuery::new(session_id, app_id, app_name);
+        query.time_interval = Some(30);
+        query.time_unit = Some("days".into());
+        query.offset = Some(0);
+        query.limit = Some(u64::from(crate::sessions::SESSION_ACTIONS));
+        let mut value = self
+            .dashboard()?
+            .session_raw(&query, options.as_ref())
+            .await?
+            .map(Value::from)
+            .ok_or(PageError::Invalid)?;
+        if !value.is_object() {
+            return Err(PageError::Invalid);
+        }
+        redact(&mut value);
+        crate::sessions::strip_content(&mut value);
+        let actions = value
+            .get("session_actions")
+            .and_then(Value::as_array)
+            .map_or(0, Vec::len);
+        let actions = u32::try_from(actions).map_err(|_| PageError::Invalid)?;
+        Ok(SessionRead {
+            session: value.to_string(),
+            actions,
+            more: actions >= crate::sessions::SESSION_ACTIONS,
+        })
+    }
+
+    /// One transaction's metadata, content removed.
+    pub async fn transaction(
+        &self,
+        session_id: &str,
+        app_id: &str,
+        app_name: &str,
+        scan_id: &str,
+        sub_request: u32,
+        deadline: Instant,
+    ) -> Result<Value, PageError> {
+        let options = Self::options(deadline);
+        let query = scm_sdk::airs::management::DashboardSessionTransactionQuery::new(
+            session_id,
+            app_id,
+            app_name,
+            scan_id,
+            u64::from(sub_request),
+        );
+        let mut value = self
+            .dashboard()?
+            .session_transaction_raw(&query, options.as_ref())
+            .await?
+            .map(Value::from)
+            .ok_or(PageError::Invalid)?;
+        if !value.is_object() {
+            return Err(PageError::Invalid);
+        }
+        redact(&mut value);
+        crate::sessions::strip_content(&mut value);
+        Ok(value)
+    }
+
+    /// A scan's report with its content (`scan_contents` or flat fields).
+    pub async fn scan_report(
+        &self,
+        scan_id: &str,
+        sub_request: u32,
+        deadline: Instant,
+    ) -> Result<Value, PageError> {
+        let options = Self::options(deadline);
+        let query = scm_sdk::airs::management::DashboardScanContentQuery::new(
+            scan_id,
+            u64::from(sub_request),
+        );
+        let mut value = self
+            .dashboard()?
+            .scan_content_raw(&query, options.as_ref())
+            .await?
+            .map(Value::from)
+            .ok_or(PageError::Invalid)?;
+        if !value.is_object() {
+            return Err(PageError::Invalid);
+        }
+        redact(&mut value);
+        Ok(value)
+    }
+
+    /// A bounded walk of the sessions overview, newest first, in pages of
+    /// [`crate::sessions::SEARCH_PAGE`] over `days`, reading at most
+    /// `max_sessions`: collects rows `wanted` accepts and stops after the page
+    /// on which `stop_at` matched (v1 `runtime.ts`). Returns the matches (at
+    /// most `stop_at`), the sessions read, and whether the window ended with
+    /// no more than `stop_at` matches (absence proven).
+    pub async fn walk_sessions(
+        &self,
+        days: u64,
+        max_sessions: u32,
+        stop_at: usize,
+        deadline: Instant,
+        mut wanted: impl FnMut(&Value) -> bool,
+    ) -> Result<(Vec<Value>, u32, bool), PageError> {
+        let options = Self::options(deadline);
+        let (interval, unit) = if days == 1 {
+            (1, "day")
+        } else {
+            (days, "days")
+        };
+        let limit = crate::sessions::SEARCH_PAGE;
+        let mut offset = 0u32;
+        let mut matches = Vec::new();
+        let mut scanned = 0u32;
+        while offset < max_sessions {
+            let value = self
+                .overview(interval, unit, offset, limit, options.as_ref())
+                .await?;
+            let page = normalize(
+                ManagementResource::Sessions,
+                offset,
+                limit,
+                value,
+                Paging::Offset {
+                    key: "items",
+                    required: true,
+                },
+            )?;
+            let items: Vec<Value> =
+                serde_json::from_str(&page.items).map_err(|_| PageError::Invalid)?;
+            scanned = scanned.saturating_add(page.count);
+            matches.extend(items.into_iter().filter(|row| wanted(row)));
+            let last = page.complete || page.count < limit;
+            if last || matches.len() >= stop_at {
+                let complete = last && matches.len() <= stop_at;
+                matches.truncate(stop_at);
+                return Ok((matches, scanned, complete));
+            }
+            offset = offset.saturating_add(limit);
+        }
+        matches.truncate(stop_at);
+        Ok((matches, scanned, false))
     }
 }
 
@@ -1028,6 +1311,8 @@ pub(crate) struct BindingSource {
     pub transport: Arc<dyn Transport>,
     pub session: Session,
     pub binding: BindingCell,
+    /// The generation's investigation cache (C11).
+    pub investigation: Arc<crate::sessions::Investigation>,
 }
 
 /// Everything one admitted management read needs at dispatch.
@@ -1075,7 +1360,215 @@ impl BindingSource {
     }
 }
 
+/// Cache identities: a session by (session, app, name); a transaction and
+/// its content by (scan, sub-request).
+fn session_key(session_id: &str, app_id: &str, app_name: &str) -> String {
+    format!("{session_id}\u{1f}{app_id}\u{1f}{app_name}")
+}
+
+fn scan_key(scan_id: &str, sub_request: u32) -> String {
+    format!("{scan_id}\u{1f}{sub_request}")
+}
+
+/// A scan report's prompt and response: flat fields or `scan_contents` (an
+/// object or the first of an array), as v1 read them.
+fn scan_content(report: &Value) -> ScanContent {
+    let text = |v: &Value, key: &str| v.get(key).and_then(Value::as_str).map(str::to_owned);
+    let nested = match report.get("scan_contents") {
+        Some(Value::Array(items)) => items.first(),
+        Some(value @ Value::Object(_)) => Some(value),
+        _ => None,
+    };
+    ScanContent {
+        prompt: text(report, "prompt").or_else(|| nested.and_then(|n| text(n, "prompt"))),
+        response: text(report, "response").or_else(|| nested.and_then(|n| text(n, "response"))),
+    }
+}
+
 impl ManagementJob {
+    /// Sessions investigation reads (C11). The binding is already bound, so
+    /// a cached answer is only ever given to the current credential.
+    async fn investigate(
+        &self,
+        binding: &ManagementBinding,
+        request: &ManagementRequest,
+        deadline: Instant,
+    ) -> Result<ManagementResult, PageError> {
+        let investigation = &self.source.investigation;
+        investigation.ready().await;
+        let result = match request {
+            ManagementRequest::Session {
+                session_id,
+                app_id,
+                app_name,
+            } => {
+                let key = session_key(session_id, app_id, app_name);
+                if let Some(Some(session)) = investigation
+                    .with(|c| crate::sessions::InvestigationCache::get(&c.sessions, &key).cloned())
+                    && let Ok(session) = serde_json::from_value::<SessionRead>(session)
+                {
+                    return Ok(ManagementResult::Session { session });
+                }
+                let session = binding
+                    .session(session_id, app_id, app_name, deadline)
+                    .await?;
+                if let Ok(value) = serde_json::to_value(&session) {
+                    investigation.with(|c| c.put_session(key, value));
+                }
+                ManagementResult::Session { session }
+            }
+            ManagementRequest::Transaction {
+                session_id,
+                app_id,
+                app_name,
+                scan_id,
+                sub_request,
+            } => {
+                let key = scan_key(scan_id, *sub_request);
+                if let Some(Some(transaction)) = investigation.with(|c| {
+                    crate::sessions::InvestigationCache::get(&c.transactions, &key).cloned()
+                }) {
+                    return Ok(ManagementResult::Transaction {
+                        transaction: transaction.to_string(),
+                    });
+                }
+                let value = binding
+                    .transaction(
+                        session_id,
+                        app_id,
+                        app_name,
+                        scan_id,
+                        *sub_request,
+                        deadline,
+                    )
+                    .await?;
+                let transaction = value.to_string();
+                investigation.with(|c| c.put_transaction(key, value));
+                ManagementResult::Transaction { transaction }
+            }
+            ManagementRequest::Content {
+                scan_id,
+                sub_request,
+            } => {
+                let key = scan_key(scan_id, *sub_request);
+                let cached = investigation
+                    .with(|c| crate::sessions::InvestigationCache::get(&c.contents, &key).cloned())
+                    .flatten()
+                    .map(|v| scan_content(&v));
+                if let Some(content) = cached {
+                    return Ok(ManagementResult::Content { content });
+                }
+                let report = binding.scan_report(scan_id, *sub_request, deadline).await?;
+                let content = scan_content(&report);
+                let kept =
+                    serde_json::json!({"prompt": content.prompt, "response": content.response});
+                investigation.with(|c| c.put_content(key, kept));
+                ManagementResult::Content { content }
+            }
+            ManagementRequest::Search { query } => {
+                let (kind, query) = crate::sessions::classify(query).ok_or(PageError::Invalid)?;
+                ManagementResult::Search {
+                    search: self.search(binding, kind, query, deadline).await?,
+                }
+            }
+            _ => return Err(PageError::Invalid),
+        };
+        investigation.persist().await;
+        Ok(result)
+    }
+
+    /// v1's bounded searches: a session ID over 30 days (40 pages of 100), a
+    /// scan ID by its report (metadata only), a detector over 24 hours
+    /// (1,000 sessions, stopping at 100 matches). The cache answers first.
+    async fn search(
+        &self,
+        binding: &ManagementBinding,
+        kind: crate::sessions::SearchKind,
+        query: String,
+        deadline: Instant,
+    ) -> Result<SessionSearch, PageError> {
+        use crate::sessions::{
+            DETECTOR_MATCHES, DETECTOR_SCAN, SEARCH_PAGE, SESSION_SEARCH_PAGES, SearchKind,
+        };
+        let investigation = &self.source.investigation;
+        let mut search = SessionSearch {
+            kind,
+            query: query.clone(),
+            sessions: "[]".into(),
+            scanned: 0,
+            complete: false,
+            match_limit: false,
+            scan: None,
+            cached: false,
+        };
+        match kind {
+            SearchKind::SessionId => {
+                let cached = investigation
+                    .with(|c| {
+                        c.sessions.iter().find_map(|(_, v)| {
+                            let session: Value =
+                                serde_json::from_str(v.get("session")?.as_str()?).ok()?;
+                            (session.get("session_id")?.as_str()? == query).then_some(session)
+                        })
+                    })
+                    .flatten();
+                if let Some(session) = cached {
+                    let mut row = session;
+                    crate::sessions::strip_content(&mut row);
+                    if let Some(map) = row.as_object_mut() {
+                        map.remove("session_actions");
+                    }
+                    search.sessions = Value::Array(vec![row]).to_string();
+                    search.complete = true;
+                    search.cached = true;
+                    return Ok(search);
+                }
+                let (found, scanned, complete) = binding
+                    .walk_sessions(
+                        30,
+                        SEARCH_PAGE * SESSION_SEARCH_PAGES,
+                        usize::MAX,
+                        deadline,
+                        |row| row.get("session_id").and_then(Value::as_str) == Some(query.as_str()),
+                    )
+                    .await?;
+                search.complete = complete;
+                search.scanned = scanned;
+                search.sessions = Value::Array(found).to_string();
+            }
+            SearchKind::ScanId => {
+                match binding.scan_report(&query, 0, deadline).await {
+                    Ok(mut report) => {
+                        crate::sessions::strip_content(&mut report);
+                        search.scan = Some(report.to_string());
+                        search.complete = true;
+                    }
+                    // The service says there is no such scan: absence is
+                    // proven for this credential.
+                    Err(PageError::Sdk(error))
+                        if ManagementFailure::from_sdk(&error) == ManagementFailure::NotFound =>
+                    {
+                        search.complete = true;
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+            SearchKind::Detector => {
+                let limit = DETECTOR_MATCHES as usize;
+                let (found, scanned, complete) = binding
+                    .walk_sessions(1, DETECTOR_SCAN, limit, deadline, |row| {
+                        crate::sessions::reports_detector(row, &query)
+                    })
+                    .await?;
+                search.match_limit = found.len() >= limit;
+                search.complete = complete;
+                search.scanned = scanned;
+                search.sessions = Value::Array(found).to_string();
+            }
+        }
+        Ok(search)
+    }
+
     pub fn into_work(self) -> Work {
         Box::new(move |claim| Box::pin(self.run(claim)))
     }
@@ -1119,6 +1612,7 @@ impl ManagementJob {
                     .detail(*resource, id, deadline)
                     .await
                     .map(|detail| ManagementResult::Detail { detail }),
+                request => self.investigate(binding, request, deadline).await,
             }
         };
         tokio::pin!(work);

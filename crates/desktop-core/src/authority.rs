@@ -21,6 +21,7 @@ mod change_domain;
 mod learner_domain;
 mod management_domain;
 mod offline_domain;
+mod sessions_domain;
 
 pub use change_domain::{
     ChangeFailure, ChangeResultView, ChangeReviewState, ChangeReviewView, ChangesView, Readback,
@@ -30,6 +31,10 @@ pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
 use learner_domain::{LearnerPhase, LearnerSession};
 pub use management_domain::ManagementHandle;
 pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineState, OfflineView};
+pub use sessions_domain::{
+    ExportKind, ExportState, ExportView, InvestigationView, ReportTarget, ReportUndoView,
+    ReportsState, ReportsView, SessionsView,
+};
 
 use crate::academy::AcademyClient;
 use crate::context::{ContextRef, EnteredSecret, LearnerRef, ReviewId};
@@ -45,6 +50,7 @@ use crate::runtime::{
 use crate::scanning::{
     HISTORY_PER_TENANT, PayloadSlot, ScanDraft, ScanFailure, ScanJob, ScanPayload, ScanResultView,
 };
+use crate::sessions::ReportInput;
 use crate::store::{
     AppStore, CredentialClass, PersistedState, StoreError, StoredCredential, StoredLearner,
 };
@@ -130,6 +136,28 @@ pub enum Intent {
     RevealSecret { operation: OperationId },
     /// Clear an applied change's one-time API key from memory.
     ForgetSecret { operation: OperationId },
+    /// Open the active tenant's FP/FN reports (C11).
+    OpenReports { context: ContextRef },
+    /// Save an FP/FN report of a scan this investigation read (or edit one).
+    SaveReport {
+        context: ContextRef,
+        target: ReportTarget,
+        input: ReportInput,
+    },
+    #[serde(rename_all = "camelCase")]
+    RemoveReport {
+        context: ContextRef,
+        scan_id: String,
+        sub_request: u32,
+    },
+    /// Restore the last removed report.
+    UndoReport { context: ContextRef },
+    /// Export the reports as CSV through the native save sheet.
+    ExportReports { context: ContextRef },
+    /// Empty this credential's investigation cache (sealed copy included).
+    ClearInvestigation { context: ContextRef },
+    /// Export the investigation's metadata (never content) as JSON.
+    ExportInvestigation { context: ContextRef },
     /// Prepare a reviewed change of the active tenant's scan destination.
     ReviewEndpointChange {
         context: ContextRef,
@@ -450,6 +478,8 @@ pub struct ShellSnapshot {
     pub academy_offline: offline_domain::OfflineView,
     /// The active tenant's change review and applied changes (no secrets).
     pub changes: ChangesView,
+    /// The active tenant's FP/FN reports, investigation cache and exports.
+    pub sessions: SessionsView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -590,6 +620,17 @@ pub trait SecretPresenter: Send + Sync + 'static {
     fn dismiss(&self);
 }
 
+/// The native save sheet (host adapter): writes `bytes` owner-only to the
+/// file the operator chooses (replacing one only when the sheet confirmed
+/// it). Resolves `Ok(None)` when cancelled, else the saved file's name.
+pub trait FileSaver: Send + Sync + 'static {
+    fn save(
+        &self,
+        suggested: String,
+        bytes: Vec<u8>,
+    ) -> futures_util::future::BoxFuture<'static, Result<Option<String>, ()>>;
+}
+
 /// Keychain operations the core needs beyond single records.
 pub trait CredentialStore: Vault {
     /// Deletes every record in this build's v2 credential namespace.
@@ -613,6 +654,11 @@ pub struct Adapters {
     pub text_files: Arc<dyn ImportPicker>,
     /// Where account-scoped encrypted offline work lives (None: unavailable).
     pub offline_root: Option<std::path::PathBuf>,
+    /// The native save sheet for report and investigation exports (C11).
+    pub saver: Arc<dyn FileSaver>,
+    /// Where sealed investigations and report files live (None: reports
+    /// unavailable, investigations kept in memory only).
+    pub sessions_root: Option<std::path::PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -757,6 +803,13 @@ struct State {
     learner_cleaning: bool,
     /// The signed-in generation's offline work (dropped with it).
     offline: Option<Arc<offline_domain::OfflineGen>>,
+    sessions_root: Option<std::path::PathBuf>,
+    /// The active tenant's FP/FN reports (C11).
+    reports: Option<sessions_domain::Reports>,
+    /// The last report or investigation export.
+    export: Option<sessions_domain::Export>,
+    /// Report file writes, one at a time.
+    report_writer: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl State {
@@ -817,6 +870,7 @@ impl State {
                 .as_ref()
                 .map_or_else(offline_domain::OfflineView::signed_out, |o| o.view()),
             changes: self.changes_view(),
+            sessions: self.sessions_view(),
         }
     }
 
@@ -1226,6 +1280,20 @@ enum Effect {
     ChooseTextFile {
         lease: u64,
     },
+    LoadReports {
+        lease: u64,
+    },
+    StoreReports {
+        generation: u64,
+    },
+    /// Remove a deleted tenant's report file.
+    ForgetReports(std::path::PathBuf),
+    SaveFile {
+        lease: u64,
+        suggested: String,
+        bytes: Vec<u8>,
+    },
+    ClearInvestigation(Arc<crate::sessions::Investigation>),
 }
 
 struct Inner {
@@ -1306,6 +1374,10 @@ impl Core {
             offline_writers: 0,
             learner_cleaning: false,
             offline: None,
+            sessions_root: adapters.sessions_root.clone(),
+            reports: None,
+            export: None,
+            report_writer: Arc::default(),
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -1699,6 +1771,9 @@ fn admit(
             // Only an accepted deletion drops the tenant's scan records; a
             // refused one keeps them observable and cancellable.
             state.scans.retain(|r| r.tenant != tenant);
+            if let Some(path) = state.forget_reports(&tenant) {
+                effects.push(Effect::ForgetReports(path));
+            }
             for record in [retired_session, retired_management].into_iter().flatten() {
                 let _ = session.delete(&record);
             }
@@ -1821,6 +1896,59 @@ fn admit(
         Intent::ForgetSecret { operation } => {
             state.forget_secret(&operation)?;
             state.changed();
+        }
+        Intent::OpenReports { context } => {
+            if let Some(lease) = state.open_reports(&context)? {
+                effects.push(Effect::LoadReports { lease });
+            }
+            state.changed();
+        }
+        Intent::SaveReport {
+            context,
+            target,
+            input,
+        } => {
+            let saved = state.save_report(&context, target, input);
+            // A refused save still publishes its problem.
+            state.changed();
+            effects.push(Effect::StoreReports { generation: saved? });
+        }
+        Intent::RemoveReport {
+            context,
+            scan_id,
+            sub_request,
+        } => {
+            let generation = state.remove_report(&context, &scan_id, sub_request)?;
+            effects.push(Effect::StoreReports { generation });
+            state.changed();
+        }
+        Intent::UndoReport { context } => {
+            let generation = state.undo_report(&context)?;
+            effects.push(Effect::StoreReports { generation });
+            state.changed();
+        }
+        Intent::ExportReports { context } => {
+            let (lease, suggested, bytes) = state.export_reports(&context)?;
+            effects.push(Effect::SaveFile {
+                lease,
+                suggested,
+                bytes,
+            });
+            state.changed();
+        }
+        Intent::ExportInvestigation { context } => {
+            let (lease, suggested, bytes) = state.export_investigation(&context)?;
+            effects.push(Effect::SaveFile {
+                lease,
+                suggested,
+                bytes,
+            });
+            state.changed();
+        }
+        Intent::ClearInvestigation { context } => {
+            state.check_context(&context)?;
+            let investigation = state.investigation(&context).ok_or(Refusal::InvalidInput)?;
+            effects.push(Effect::ClearInvestigation(investigation));
         }
         Intent::Management { context, request } => {
             let (operation, starts) = state.admit_management(
@@ -2317,6 +2445,83 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
             Effect::RevealSecret { label, secret } => {
                 inner.adapters.secrets.reveal(label, secret);
             }
+            Effect::LoadReports { lease } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let Some(path) = lock(&inner).ok().and_then(|s| s.report_load_target(lease))
+                    else {
+                        return;
+                    };
+                    let loaded =
+                        tokio::task::spawn_blocking(move || crate::sessions::load_reports(&path))
+                            .await
+                            .unwrap_or(Err(crate::sessions::ReportStoreFailure::Unavailable));
+                    if let Ok(mut state) = lock(&inner) {
+                        state.settle_reports(lease, loaded);
+                        state.changed();
+                    }
+                });
+            }
+            Effect::StoreReports { generation } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let Some(writer) = lock(&inner).ok().map(|s| Arc::clone(&s.report_writer))
+                    else {
+                        return;
+                    };
+                    let _write = writer.lock().await;
+                    // Only the newest book is written; an older generation's
+                    // write is skipped (the newer one follows it).
+                    let Some((path, book)) =
+                        lock(&inner).ok().and_then(|s| s.report_write(generation))
+                    else {
+                        return;
+                    };
+                    let stored = tokio::task::spawn_blocking(move || {
+                        crate::sessions::store_reports(&path, &book).is_ok()
+                    })
+                    .await
+                    .unwrap_or(false);
+                    if let Ok(mut state) = lock(&inner) {
+                        state.settle_report_write(generation, stored);
+                        state.changed();
+                    }
+                });
+            }
+            Effect::ForgetReports(path) => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let Some(writer) = lock(&inner).ok().map(|s| Arc::clone(&s.report_writer))
+                    else {
+                        return;
+                    };
+                    let _write = writer.lock().await;
+                    let _ = tokio::task::spawn_blocking(move || std::fs::remove_file(path)).await;
+                });
+            }
+            Effect::SaveFile {
+                lease,
+                suggested,
+                bytes,
+            } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let saved = inner.adapters.saver.save(suggested, bytes).await;
+                    if let Ok(mut state) = lock(&inner) {
+                        state.settle_export(lease, saved);
+                        state.changed();
+                    }
+                });
+            }
+            Effect::ClearInvestigation(investigation) => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    investigation.clear().await;
+                    if let Ok(mut state) = lock(&inner) {
+                        state.changed();
+                    }
+                });
+            }
             Effect::ChooseImport { lease } => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
@@ -2352,6 +2557,20 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                                 stage: ResetStage::Credentials,
                                 reason,
                             })?;
+                        }
+                        // Sealed investigations go with their keys (purged
+                        // above), and report files with the tenants.
+                        if let Some(root) = &worker.adapters.sessions_root {
+                            match std::fs::remove_dir_all(root) {
+                                Ok(()) => {}
+                                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                                Err(_) => {
+                                    return Err(ResetFailure {
+                                        stage: ResetStage::Document,
+                                        reason: VaultError::Unavailable,
+                                    });
+                                }
+                            }
                         }
                         // Offline work goes with its keys (purged above).
                         if let Some(root) = &worker.adapters.offline_root {
@@ -2647,10 +2866,18 @@ fn drain_cleanup(inner: &Arc<Inner>) {
             records
                 .into_iter()
                 .filter(|r| {
-                    matches!(
-                        worker.adapters.keychain.delete(r),
-                        Ok(()) | Err(VaultError::NotFound)
-                    )
+                    // A management credential's sealed investigation and its
+                    // key go with it (absent for every other record).
+                    let investigation = crate::sessions::forget(
+                        worker.adapters.sessions_root.as_deref(),
+                        worker.adapters.keychain.as_ref(),
+                        r,
+                    );
+                    investigation
+                        && matches!(
+                            worker.adapters.keychain.delete(r),
+                            Ok(()) | Err(VaultError::NotFound)
+                        )
                 })
                 .collect::<Vec<_>>()
         })

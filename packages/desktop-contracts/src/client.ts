@@ -157,6 +157,7 @@ const SCAN_FAILURES: readonly string[] = [
 ]
 
 const MANAGEMENT_RESOURCES: readonly string[] = [
+    'sessions',
     'profiles',
     'topics',
     'applications',
@@ -565,6 +566,83 @@ function isStagedFile(value: unknown): boolean {
     )
 }
 
+const SEARCH_KINDS: readonly string[] = ['sessionId', 'scanId', 'detector']
+const REPORT_KINDS: readonly string[] = ['false_positive', 'false_negative']
+const REPORT_VERDICTS: readonly string[] = ['malicious', 'benign', 'unknown']
+export const REPORT_PROBLEMS: readonly string[] = ['reason', 'field', 'detectors', 'full', 'verdict', 'scan']
+const REPORTS_STATES: readonly string[] = ['idle', 'loading', 'ready', 'failed']
+const REPORT_STORE_FAILURES: readonly string[] = ['unavailable', 'unreadable']
+const INVESTIGATION_STORAGE: readonly string[] = ['memory', 'protected', 'unavailable']
+const EXPORT_KINDS: readonly string[] = ['reports', 'investigation']
+const EXPORT_STATES: readonly string[] = ['saving', 'saved', 'cancelled', 'failed']
+
+function isReport(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isString(value.scanId) &&
+        isCount(value.scanSubReqId) &&
+        isString(value.sessionId) &&
+        isString(value.applicationId) &&
+        isString(value.application) &&
+        oneOf(REPORT_KINDS, value.kind) &&
+        oneOf(REPORT_VERDICTS, value.verdict) &&
+        isString(value.action) &&
+        Array.isArray(value.detectors) &&
+        value.detectors.every(isString) &&
+        isString(value.profile) &&
+        isString(value.category) &&
+        isString(value.reason) &&
+        isString(value.reportedAt)
+    )
+}
+
+function isSessionsView(value: unknown): boolean {
+    if (!isRecord(value) || !isRecord(value.reports)) return false
+    const reports = value.reports
+    return (
+        oneOf(REPORTS_STATES, reports.state) &&
+        // A failure is reported exactly when the reports failed to open.
+        (reports.state === 'failed' ? oneOf(REPORT_STORE_FAILURES, reports.failure) : reports.failure === null) &&
+        Array.isArray(reports.items) &&
+        reports.items.every(isReport) &&
+        optional((u) => isRecord(u) && isString(u.scanId) && isCount(u.subRequest), reports.undo) &&
+        optional((p) => oneOf(REPORT_PROBLEMS, p), reports.problem) &&
+        typeof reports.unsaved === 'boolean' &&
+        optional(
+            (i) =>
+                isRecord(i) &&
+                oneOf(INVESTIGATION_STORAGE, i.storage) &&
+                isCount(i.sessions) &&
+                isCount(i.transactions) &&
+                isCount(i.contents),
+            value.investigation
+        ) &&
+        optional(
+            (e) =>
+                isRecord(e) &&
+                oneOf(EXPORT_KINDS, e.kind) &&
+                oneOf(EXPORT_STATES, e.state) &&
+                // Only a saved export names its file.
+                (e.state === 'saved' ? isString(e.name) : e.name === null),
+            value.export
+        )
+    )
+}
+
+function isSessionSearch(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(SEARCH_KINDS, value.kind) &&
+        isString(value.query) &&
+        isItemArray(value.sessions) &&
+        isCount(value.scanned) &&
+        typeof value.complete === 'boolean' &&
+        typeof value.matchLimit === 'boolean' &&
+        optional(isJsonObjectText, value.scan) &&
+        typeof value.cached === 'boolean'
+    )
+}
+
 function isChangesView(value: unknown): boolean {
     return (
         isRecord(value) &&
@@ -581,6 +659,25 @@ export function parseManagementResult(value: unknown): ManagementResult {
         if (value.kind === 'verified') return { kind: 'verified' }
         if (value.kind === 'page' && isManagementPage(value.page)) return value as unknown as ManagementResult
         if (value.kind === 'detail' && isManagementDetail(value.detail)) return value as unknown as ManagementResult
+        if (
+            value.kind === 'session' &&
+            isRecord(value.session) &&
+            isJsonObjectText(value.session.session) &&
+            isCount(value.session.actions) &&
+            typeof value.session.more === 'boolean'
+        ) {
+            return value as unknown as ManagementResult
+        }
+        if (value.kind === 'transaction' && isJsonObjectText(value.transaction)) return value as unknown as ManagementResult
+        if (
+            value.kind === 'content' &&
+            isRecord(value.content) &&
+            optional(isString, value.content.prompt) &&
+            optional(isString, value.content.response)
+        ) {
+            return value as unknown as ManagementResult
+        }
+        if (value.kind === 'search' && isSessionSearch(value.search)) return value as unknown as ManagementResult
         if (value.kind === 'failed' && oneOf(MANAGEMENT_FAILURES, value.failure) && oneOf(OUTCOMES, value.outcome)) {
             return value as unknown as ManagementResult
         }
@@ -681,6 +778,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !ACADEMY_ORIGIN.test(value.academyOrigin) ||
         !isOfflineView(value.academyOffline) ||
         !isChangesView(value.changes) ||
+        !isSessionsView(value.sessions) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')
