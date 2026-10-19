@@ -576,6 +576,7 @@ pub struct Handles {
     pub images: Arc<ScriptedImagePicker>,
     pub confirmer: Arc<ScriptedConfirmer>,
     pub secrets: Arc<ScriptedSecrets>,
+    pub text_files: Arc<ScriptedPicker>,
     /// This instance's offline work root (a fresh temporary directory).
     pub offline_root: std::path::PathBuf,
 }
@@ -596,6 +597,7 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         images: Arc::new(ScriptedImagePicker::default()),
         confirmer: Arc::new(ScriptedConfirmer::default()),
         secrets: Arc::new(ScriptedSecrets::default()),
+        text_files: Arc::new(ScriptedPicker::default()),
         offline_root: fresh_offline_root(),
     };
     (
@@ -609,6 +611,7 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             images: handles.images.clone(),
             confirmer: handles.confirmer.clone(),
             secrets: handles.secrets.clone(),
+            text_files: handles.text_files.clone(),
             offline_root: Some(handles.offline_root.clone()),
         },
         handles,

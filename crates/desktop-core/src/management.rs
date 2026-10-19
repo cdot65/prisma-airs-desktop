@@ -701,6 +701,63 @@ impl ManagementBinding {
                     .await?,
             ),
             (K::ApiKeys, A::Delete) => json(&m.api_keys().delete(&name()?, author, o).await?),
+            (K::DataPatterns, A::Create) => json(
+                &self
+                    .dlp
+                    .data_patterns()
+                    .create(&model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::DataPatterns, A::Update) => json(
+                &self
+                    .dlp
+                    .data_patterns()
+                    .replace(target, &model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::DataPatterns, A::Delete) => {
+                self.dlp.data_patterns().delete(target, o).await?;
+                Ok(Value::Object(serde_json::Map::new()))
+            }
+            (K::DataProfiles, A::Create) => json(
+                &self
+                    .dlp
+                    .data_profiles()
+                    .create(&model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::DataProfiles, A::Update) => json(
+                &self
+                    .dlp
+                    .data_profiles()
+                    .replace(target, &model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::FilteringProfiles, A::Update) => json(
+                &self
+                    .dlp
+                    .data_filtering_profiles()
+                    .replace(target, &model(&mutation.body)?, o)
+                    .await?,
+            ),
+            (K::Dictionaries, A::Create | A::Update) => {
+                let metadata = model(&mutation.body["metadata"])?;
+                let file = mutation.body["file"].as_str().ok_or(PageError::Invalid)?;
+                let upload = scm_sdk::dlp::DictionaryUpload::text(metadata, file)?;
+                if mutation.action == A::Create {
+                    json(&self.dlp.dictionaries().create(&upload, o).await?)
+                } else {
+                    // A 204 replies with no body.
+                    match self.dlp.dictionaries().replace(target, &upload, o).await? {
+                        Some(reply) => json(&reply),
+                        None => Ok(Value::Object(serde_json::Map::new())),
+                    }
+                }
+            }
+            (K::Dictionaries, A::Delete) => {
+                self.dlp.dictionaries().delete(target, o).await?;
+                Ok(Value::Object(serde_json::Map::new()))
+            }
             _ => Err(PageError::Invalid),
         }
     }
@@ -717,6 +774,29 @@ pub enum Walk {
 }
 
 impl ManagementBinding {
+    /// A DLP item by its own read, secret fields removed; `None` when the
+    /// service answers 404.
+    pub async fn dlp_item(
+        &self,
+        resource: ManagementResource,
+        id: &str,
+        deadline: Instant,
+    ) -> Result<Option<Value>, PageError> {
+        match self.dlp_get(resource, id, deadline).await {
+            Some(Ok(mut item)) => {
+                redact(&mut item);
+                Ok(Some(item))
+            }
+            Some(Err(PageError::Sdk(error)))
+                if ManagementFailure::from_sdk(&error) == ManagementFailure::NotFound =>
+            {
+                Ok(None)
+            }
+            Some(Err(error)) => Err(error),
+            None => Err(PageError::Invalid),
+        }
+    }
+
     /// The DLP resources' own reads; `None` for resources read by a walk.
     async fn dlp_get(
         &self,

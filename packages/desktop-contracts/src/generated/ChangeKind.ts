@@ -3,4 +3,4 @@
 /**
  * What a change applies to.
  */
-export type ChangeKind = "profiles" | "topics" | "applications" | "apiKeys";
+export type ChangeKind = "profiles" | "topics" | "applications" | "apiKeys" | "dataPatterns" | "dataProfiles" | "filteringProfiles" | "dictionaries";

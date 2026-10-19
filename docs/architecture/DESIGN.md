@@ -1157,6 +1157,48 @@ D035 records the decisions.
 - **Not done here.** No real management endpoint is called before C25; DLP
   writes are C10.
 
+### C10 implementation: supported DLP authoring and multipart workflows
+
+Implemented in `crates/desktop-core` (`changes`: DLP kinds, v1's
+`validDataProfile`, dictionary bodies; `authority/change_domain`: DLP
+baselines and readback by get, staged keyword files; intent
+`ChooseDictionaryFile`; `ChangesView.staged`; adapter `text_files`),
+`management` (`dlp_item`, the DLP writes and the dictionary multipart
+upload), `apps/desktop/src-tauri` (`NativeTextPicker`, the fixture's staged
+file) and the Administration DLP actions and dictionary workbench. D036
+records the decisions.
+
+- **Capability table (v1 → SDK `=0.1.0`).**
+
+  | Kind | Create | Replace | Delete |
+  |---|---|---|---|
+  | Data patterns | `data_patterns().create` | `replace(id)` | `delete(id)` |
+  | Data profiles | `data_profiles().create` | `replace(id)` | — |
+  | Data filtering profiles | — | `data_filtering_profiles().replace(id)` | — |
+  | Dictionaries | `dictionaries().create(DictionaryUpload)` | `replace(id, DictionaryUpload)` (204 → no body) | `delete(id)` |
+  | Deployment profiles, AIRS DLP catalog | read only | read only | read only |
+
+- **Review and apply.** Exactly as C09: a DLP item's baseline is its own get
+  (404 refuses the review), the confirmation is "CREATE" or the item's
+  name, and the apply re-reads it and refuses on any change. Readback reads
+  the item by the reply's `id` (a create) or the target; a dictionary
+  replace that replies 204 is read back the same way; absent after a delete.
+- **Dictionaries.** The workbench holds the metadata JSON and either typed
+  keywords or the chosen file; Review and Apply build `{"metadata": …,
+  "file": …}` or `{…, "fileRef": token}` from the fields when pressed. Rust
+  resolves `fileRef` to the staged text of the active context, validates
+  the body and uploads the SDK's multipart: part `json` (`metadata.json`,
+  application/json) and part `file` (the `original_file_name`, text/plain),
+  under a checked `scm-sdk-` boundary within the 8 MiB request limit.
+- **Keyword files.** `ChooseDictionaryFile` opens the native sheet (one at a
+  time); the host reads at most 256 KiB of a regular file; the core accepts
+  UTF-8 text (byte-order mark dropped) that is non-empty and at most 64 Ki
+  UTF-16 units, reports too large / not text / empty / unreadable, and
+  stages it with a random `sf-` token for the active context only (dropped
+  when the context retires). The snapshot shows its name, size and line
+  count, never content or a path; the source file is only read.
+- **Not done here.** No real DLP endpoint is called before C25.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

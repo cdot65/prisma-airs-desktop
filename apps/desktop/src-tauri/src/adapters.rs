@@ -50,6 +50,7 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         images: images(app, root.as_deref()),
         confirmer: confirmer(app),
         secrets: secrets(app),
+        text_files: text_files(app, root.as_deref()),
         offline_root: root.as_ref().map(|r| r.join("academy-offline")),
     }
 }
@@ -77,6 +78,51 @@ fn confirmer<R: Runtime>(_app: &AppHandle<R>) -> Arc<dyn desktop_core::OperatorC
 fn secrets<R: Runtime>(_app: &AppHandle<R>) -> Arc<dyn desktop_core::SecretPresenter> {
     Arc::new(crate::native_confirmation::Unsupported)
 }
+
+/// Keyword files read for a dictionary are bounded well above v1's 64 Ki
+/// UTF-16 units so the core can report "too large" precisely.
+pub const MAX_TEXT_FILE_BYTES: usize = 256 * 1024;
+
+/// The native file sheet for dictionary keyword files (C10).
+#[cfg(not(feature = "test-fixtures"))]
+fn text_files<R: Runtime>(app: &AppHandle<R>, _root: Option<&Path>) -> Arc<dyn ImportPicker> {
+    Arc::new(NativeTextPicker { app: app.clone() })
+}
+
+/// The fixture build answers the keyword-file sheet with the first file the
+/// acceptance driver staged in `fixture-dictionary-files/` (none: cancelled),
+/// so automation never blocks on a modal sheet. The file is only read.
+#[cfg(feature = "test-fixtures")]
+fn text_files<R: Runtime>(_app: &AppHandle<R>, root: Option<&Path>) -> Arc<dyn ImportPicker> {
+    struct StagedText(Option<PathBuf>);
+    impl ImportPicker for StagedText {
+        fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+            let dir = self.0.clone();
+            Box::pin(async move {
+                let dir = dir?;
+                tokio::task::spawn_blocking(move || {
+                    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+                        .ok()?
+                        .filter_map(|e| e.ok().map(|e| e.path()))
+                        .collect();
+                    files.sort();
+                    let path = files.into_iter().next()?;
+                    let name = path.file_name()?.to_string_lossy().into_owned();
+                    Some(
+                        read_limited(&path, MAX_TEXT_FILE_BYTES)
+                            .map(|bytes| ImportFile { name, bytes }),
+                    )
+                })
+                .await
+                .ok()?
+            })
+        }
+    }
+    Arc::new(StagedText(root.map(|r| r.join(FIXTURE_DICTIONARY_FILES))))
+}
+
+/// Where the fixture driver stages dictionary keyword files.
+pub const FIXTURE_DICTIONARY_FILES: &str = "fixture-dictionary-files";
 
 /// The native image picker for the learner's avatar.
 #[cfg(not(feature = "test-fixtures"))]
@@ -414,6 +460,42 @@ impl<R: Runtime> ImportPicker for NativePicker<R> {
             let read = tokio::task::spawn_blocking(move || read_bounded(&path))
                 .await
                 .ok()?;
+            Some(read.map(|bytes| ImportFile { name, bytes }))
+        })
+    }
+}
+
+/// The native file sheet for a dictionary's keyword file, attached to the
+/// main window; the file is only read, bounded to [`MAX_TEXT_FILE_BYTES`].
+#[cfg_attr(feature = "test-fixtures", allow(dead_code))]
+pub struct NativeTextPicker<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> ImportPicker for NativeTextPicker<R> {
+    fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
+            let window = app.get_webview_window(MAIN_WINDOW)?;
+            app.run_on_main_thread(move || {
+                let chosen = rfd::FileDialog::new()
+                    .set_parent(&window)
+                    .set_title("Choose a dictionary keyword file")
+                    .add_filter("Text", &["txt", "csv"])
+                    .pick_file();
+                let _ = tx.send(chosen);
+            })
+            .ok()?;
+            let path = rx.await.ok()??;
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let read =
+                tokio::task::spawn_blocking(move || read_limited(&path, MAX_TEXT_FILE_BYTES))
+                    .await
+                    .ok()?;
             Some(read.map(|bytes| ImportFile { name, bytes }))
         })
     }

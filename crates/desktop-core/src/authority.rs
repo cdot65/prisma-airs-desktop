@@ -24,7 +24,7 @@ mod offline_domain;
 
 pub use change_domain::{
     ChangeFailure, ChangeResultView, ChangeReviewState, ChangeReviewView, ChangesView, Readback,
-    SecretState,
+    SecretState, StagedFileFailure, StagedFileState, StagedFileView,
 };
 pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
 use learner_domain::{LearnerPhase, LearnerSession};
@@ -123,6 +123,9 @@ pub enum Intent {
     },
     /// Discard the open change review (ends its confirmation if shown).
     DiscardChange { review: ReviewId },
+    /// Choose a dictionary keyword file in the native file sheet (C10); the
+    /// desktop reads it once and stages it for `fileRef` in a draft.
+    ChooseDictionaryFile { context: ContextRef },
     /// Show an applied change's one-time API key in the native secret sheet.
     RevealSecret { operation: OperationId },
     /// Clear an applied change's one-time API key from memory.
@@ -497,6 +500,8 @@ pub struct CoreConfig {
     /// The management token, API and DLP endpoints (fixture builds may
     /// point them elsewhere).
     pub management: ManagementEndpoints,
+    /// How long a prepared change review may be applied.
+    pub review_lifetime: std::time::Duration,
 }
 
 /// The production Academy origin.
@@ -510,6 +515,7 @@ impl Default for CoreConfig {
             operations: OperationLimits::default(),
             academy_origin: ACADEMY_ORIGIN.to_owned(),
             management: ManagementEndpoints::default(),
+            review_lifetime: change_domain::REVIEW_LIFETIME,
         }
     }
 }
@@ -603,6 +609,8 @@ pub struct Adapters {
     pub images: Arc<dyn ImagePicker>,
     pub confirmer: Arc<dyn OperatorConfirmation>,
     pub secrets: Arc<dyn SecretPresenter>,
+    /// The native file sheet for dictionary keyword files (bounded reads).
+    pub text_files: Arc<dyn ImportPicker>,
     /// Where account-scoped encrypted offline work lives (None: unavailable).
     pub offline_root: Option<std::path::PathBuf>,
 }
@@ -726,8 +734,11 @@ struct State {
     /// The open Runtime change review (one at a time).
     change_review: Option<change_domain::ChangeReview>,
     change_results: Vec<change_domain::ChangeRecord>,
+    /// The dictionary keyword file being chosen or staged.
+    staging: Option<change_domain::Staging>,
     confirmer: Arc<dyn OperatorConfirmation>,
     secrets: Arc<dyn SecretPresenter>,
+    review_lifetime: std::time::Duration,
     academy_origin: String,
     learner: LearnerPhase,
     learner_ref: Option<LearnerRef>,
@@ -1212,6 +1223,9 @@ enum Effect {
         label: String,
         secret: Zeroizing<String>,
     },
+    ChooseTextFile {
+        lease: u64,
+    },
 }
 
 struct Inner {
@@ -1276,8 +1290,10 @@ impl Core {
             management_calls: Vec::new(),
             change_review: None,
             change_results: Vec::new(),
+            staging: None,
             confirmer: Arc::clone(&adapters.confirmer),
             secrets: Arc::clone(&adapters.secrets),
+            review_lifetime: config.review_lifetime,
             academy_origin: config.academy_origin,
             learner: LearnerPhase::SignedOut,
             learner_ref: None,
@@ -1785,6 +1801,12 @@ fn admit(
             });
             state.changed();
         }
+        Intent::ChooseDictionaryFile { context } => {
+            let lease = state.lease();
+            state.choose_dictionary_file(context, lease)?;
+            effects.push(Effect::ChooseTextFile { lease });
+            state.changed();
+        }
         Intent::DiscardChange { review } => {
             state.discard_change(&review)?;
             state.changed();
@@ -1792,6 +1814,9 @@ fn admit(
         Intent::RevealSecret { operation } => {
             let (label, secret) = state.reveal_secret(&operation)?;
             effects.push(Effect::RevealSecret { label, secret });
+            // The key is no longer held: publish that, or the presentation
+            // keeps offering a reveal that will be refused.
+            state.changed();
         }
         Intent::ForgetSecret { operation } => {
             state.forget_secret(&operation)?;
@@ -2270,6 +2295,23 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                 tokio::spawn(async move {
                     let accepted = inner.adapters.confirmer.confirm(nonce, request).await;
                     settle_confirmation(&inner, &review, nonce, accepted);
+                });
+            }
+            Effect::ChooseTextFile { lease } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let chosen = inner.adapters.text_files.choose().await.map(|r| {
+                        r.map(|file| (display_name(&file.name), file.bytes.to_vec()))
+                            .map_err(|error| match error {
+                                ImportError::TooLarge => StagedFileFailure::TooLarge,
+                                ImportError::Empty => StagedFileFailure::Empty,
+                                ImportError::Unsupported => StagedFileFailure::Unreadable,
+                            })
+                    });
+                    if let Ok(mut state) = lock(&inner) {
+                        state.settle_dictionary_file(lease, chosen);
+                        state.changed();
+                    }
                 });
             }
             Effect::RevealSecret { label, secret } => {

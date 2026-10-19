@@ -241,6 +241,11 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                 ) : null}
             </div>
 
+            {READ_ONLY[resource] ? (
+                <p className='text-academy-ink-faint text-[12px]' data-slot='administration-read-only'>
+                    {READ_ONLY[resource]}
+                </p>
+            ) : null}
             <div role='status' aria-live='polite' className='text-academy-ink-soft text-[13px]' data-slot='administration-progress'>
                 {loading ? `Reading ${info.label.toLowerCase()}…` : page ? `${rangeText(page)} · read at ${time(shown.readAt)}` : ''}
             </div>
@@ -342,6 +347,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                     key={`${change.kind}-${change.action}-${change.target}`}
                     change={change}
                     review={snapshot.changes.review}
+                    staged={snapshot.changes.staged}
                     context={context}
                     dispatch={dispatch}
                     onClose={() => setChange(null)}
@@ -357,6 +363,15 @@ const CREATE: Partial<Record<ManagementResource, ChangeTarget>> = {
     profiles: { kind: 'profiles', action: 'create', target: '', title: 'New security profile', body: pretty(TEMPLATES.profile) },
     topics: { kind: 'topics', action: 'create', target: '', title: 'New custom topic', body: pretty(TEMPLATES.topic) },
     apiKeys: { kind: 'apiKeys', action: 'create', target: '', title: 'Create API key', body: pretty(TEMPLATES.key) },
+    dataPatterns: { kind: 'dataPatterns', action: 'create', target: '', title: 'New data pattern', body: pretty(TEMPLATES.pattern) },
+    dataProfiles: { kind: 'dataProfiles', action: 'create', target: '', title: 'New data profile', body: pretty(TEMPLATES.dataProfile) },
+    dictionaries: { kind: 'dictionaries', action: 'create', target: '', title: 'New dictionary', body: JSON.stringify(TEMPLATES.dictionary) },
+}
+
+/** Inventories v1 shows read-only. */
+const READ_ONLY: Partial<Record<ManagementResource, string>> = {
+    deploymentProfiles: 'Read only. Deployment profiles are used when creating API keys; they are not changed here.',
+    dlpCatalog: 'Read only. The AIRS DLP profile catalog is not changed here.',
 }
 
 const CHANGE_KIND: Partial<Record<ManagementResource, ChangeTarget['kind']>> = {
@@ -364,6 +379,10 @@ const CHANGE_KIND: Partial<Record<ManagementResource, ChangeTarget['kind']>> = {
     topics: 'topics',
     applications: 'applications',
     apiKeys: 'apiKeys',
+    dataPatterns: 'dataPatterns',
+    dataProfiles: 'dataProfiles',
+    filteringProfiles: 'filteringProfiles',
+    dictionaries: 'dictionaries',
 }
 
 /** The changes v1 offers for one item. */
@@ -384,10 +403,20 @@ function itemChanges(info: ResourceInfo, item: Item, name: string): ChangeTarget
             { kind, action: 'delete', target: id, title: `Delete ${name}`, body: '{}' },
         ]
     }
-    return [
-        { kind, action: 'update', target: id, title: `Edit ${name}`, body: pretty(item) },
-        { kind, action: 'delete', target: id, title: `Delete ${name}`, body: '{}' },
-    ]
+    const edit: ChangeTarget = { kind, action: 'update', target: id, title: `Edit ${name}`, body: pretty(item) }
+    const remove: ChangeTarget = { kind, action: 'delete', target: id, title: `Delete ${name}`, body: '{}' }
+    switch (kind) {
+        case 'dictionaries': {
+            // v1: a replace re-sends the whole keyword list with the metadata.
+            const metadata = Object.fromEntries(Object.entries(item).filter(([k]) => k !== 'id'))
+            return [{ ...edit, body: JSON.stringify({ metadata, file: '' }) }, remove]
+        }
+        case 'dataProfiles':
+        case 'filteringProfiles':
+            return [edit]
+        default:
+            return [edit, remove]
+    }
 }
 
 const ACTION_LABEL: Record<ChangeTarget['action'], string> = {

@@ -10,6 +10,8 @@ import type {
     ChangeResultView,
     ChangeReviewView,
     ContextRef,
+    StagedFileFailure,
+    StagedFileView,
 } from '@prisma-airs/desktop-contracts'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
 import { MANAGEMENT_FAILURE_TEXT } from './management-read'
@@ -37,6 +39,18 @@ const PROBLEM_TEXT: Record<ChangeProblem, string> = {
     deploymentProfile: 'The deployment profile was not found exactly once.',
     sourceMismatch: 'The key version must use the existing key’s application.',
     notFound: 'The item is no longer in the service’s inventory.',
+    dataProfile:
+        'The data profile is incomplete: check the name (at most 32 characters), its rules, techniques, confidence levels and occurrence bounds.',
+    dictionaryFile: 'The keyword list must be non-empty text of at most 65,536 characters.',
+    fileName: 'The original file name cannot contain slashes, quotes or control characters (at most 255 characters).',
+    stagedFile: 'The chosen file is no longer available. Choose it again.',
+}
+
+const STAGED_TEXT: Record<StagedFileFailure, string> = {
+    tooLarge: 'That file is larger than 65,536 characters.',
+    notText: 'That file is not UTF-8 text.',
+    empty: 'That file has no keywords.',
+    unreadable: 'That file could not be read.',
 }
 
 export function changeFailureText(failure: ChangeFailure): string {
@@ -47,6 +61,10 @@ export function changeFailureText(failure: ChangeFailure): string {
             return 'The item changed since it was reviewed. Review the change again.'
         case 'service':
             return MANAGEMENT_FAILURE_TEXT[failure.failure]
+        case 'expired':
+            return 'This review expired before it was applied. Review the change again.'
+        case 'capacity':
+            return 'The desktop could not start the change right now, so nothing was sent. Review it again.'
     }
 }
 
@@ -55,6 +73,10 @@ const NOUN: Record<ChangeKind, string> = {
     topics: 'custom topic',
     applications: 'application',
     apiKeys: 'API key',
+    dataPatterns: 'data pattern',
+    dataProfiles: 'data profile',
+    filteringProfiles: 'data filtering profile',
+    dictionaries: 'dictionary',
 }
 
 const TEXTAREA = cn(
@@ -83,9 +105,21 @@ function Json({ label, text }: { label: string; text: string | null }) {
 interface WorkbenchProps {
     change: ChangeTarget
     review: ChangeReviewView | null
+    /** The dictionary keyword file chosen in the native sheet, if any. */
+    staged?: StagedFileView | null
     context: ContextRef
     dispatch: Dispatch
     onClose: () => void
+}
+
+/** Splits a dictionary body into its metadata JSON and keyword text. */
+function dictionaryParts(body: string): { metadata: string; keywords: string } {
+    try {
+        const parsed = JSON.parse(body) as { metadata?: unknown; file?: unknown }
+        return { metadata: JSON.stringify(parsed.metadata ?? {}, null, 2), keywords: typeof parsed.file === 'string' ? parsed.file : '' }
+    } catch {
+        return { metadata: body, keywords: '' }
+    }
 }
 
 /**
@@ -95,9 +129,13 @@ interface WorkbenchProps {
  * draft. While the native confirmation is open the editor is read-only and
  * the main window is held by the sheet.
  */
-export function ChangeWorkbench({ change, review, context, dispatch, onClose }: WorkbenchProps) {
+export function ChangeWorkbench({ change, review, staged = null, context, dispatch, onClose }: WorkbenchProps) {
     const ids = useId()
     const editor = useRef<HTMLTextAreaElement>(null)
+    const keywords = useRef<HTMLTextAreaElement>(null)
+    const [useFile, setUseFile] = useState(false)
+    const dictionary = change.kind === 'dictionaries'
+    const parts = dictionary ? dictionaryParts(change.body) : null
     const typed = useRef<HTMLInputElement>(null)
     const [message, setMessage] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
@@ -109,7 +147,22 @@ export function ChangeWorkbench({ change, review, context, dispatch, onClose }: 
     const deletes = change.action === 'delete'
 
     function draft(): ChangeDraft {
-        return { kind: change.kind, action: change.action, target: change.target, body: deletes ? '{}' : editor.current?.value ?? '' }
+        const text = editor.current?.value ?? ''
+        let body = deletes ? '{}' : text
+        if (dictionary && !deletes) {
+            // Read fresh from the fields; the metadata text is passed as written.
+            const file =
+                useFile && staged?.state === 'ready' && staged.token
+                    ? `"fileRef":${JSON.stringify(staged.token)}`
+                    : `"file":${JSON.stringify(keywords.current?.value ?? '')}`
+            body = `{"metadata":${text},${file}}`
+        }
+        return { kind: change.kind, action: change.action, target: change.target, body }
+    }
+
+    async function chooseFile() {
+        setMessage(outcomeMessage(await dispatch({ kind: 'chooseDictionaryFile', context })))
+        setUseFile(true)
     }
 
     async function prepare() {
@@ -157,12 +210,12 @@ export function ChangeWorkbench({ change, review, context, dispatch, onClose }: 
             ) : (
                 <div className='flex flex-col gap-1'>
                     <label htmlFor={`${ids}-editor`} className='text-academy-ink text-[13px] font-medium'>
-                        {NOUN[change.kind]} draft (JSON)
+                        {dictionary ? 'dictionary metadata (JSON)' : `${NOUN[change.kind]} draft (JSON)`}
                     </label>
                     <textarea
                         ref={editor}
                         id={`${ids}-editor`}
-                        defaultValue={change.body}
+                        defaultValue={parts ? parts.metadata : change.body}
                         readOnly={confirming}
                         spellCheck={false}
                         aria-describedby={`${ids}-editor-hint`}
@@ -175,6 +228,58 @@ export function ChangeWorkbench({ change, review, context, dispatch, onClose }: 
                             ? ' Directional settings and customized prompt-injection modes were local previews in the previous desktop; they are not part of a draft and are never sent.'
                             : ''}
                     </p>
+                    {parts ? (
+                        <fieldset className='mt-2 flex flex-col gap-2' data-slot='dictionary-keywords'>
+                            <legend className='text-academy-ink text-[13px] font-medium'>Keywords</legend>
+                            <label className='flex min-h-11 items-center gap-2 text-[13px]'>
+                                <input
+                                    type='radio'
+                                    name={`${ids}-source`}
+                                    checked={!useFile}
+                                    disabled={confirming}
+                                    onChange={() => setUseFile(false)}
+                                    className='size-4 accent-[var(--academy-accent)]'
+                                />
+                                Type them (one per line)
+                            </label>
+                            <textarea
+                                ref={keywords}
+                                aria-label='Dictionary keywords, one per line'
+                                defaultValue={parts.keywords}
+                                readOnly={confirming}
+                                disabled={useFile}
+                                spellCheck={false}
+                                className={TEXTAREA}
+                                data-slot='dictionary-text'
+                            />
+                            <label className='flex min-h-11 items-center gap-2 text-[13px]'>
+                                <input
+                                    type='radio'
+                                    name={`${ids}-source`}
+                                    checked={useFile}
+                                    disabled={confirming || staged?.state !== 'ready'}
+                                    onChange={() => setUseFile(true)}
+                                    className='size-4 accent-[var(--academy-accent)]'
+                                />
+                                Use the chosen file
+                                {staged?.state === 'ready' ? ` (${staged.name}, ${staged.lines} lines)` : ''}
+                            </label>
+                            <div>
+                                <Button type='button' tier='secondary' disabled={busy || confirming} onClick={() => void chooseFile()}>
+                                    Choose keyword file…
+                                </Button>
+                            </div>
+                            <p role='status' className='text-academy-ink-faint text-[12px]' data-slot='dictionary-file-status'>
+                                {staged?.state === 'choosing'
+                                    ? 'Choose a text file in the desktop’s file sheet.'
+                                    : staged?.state === 'failed' && staged.failure
+                                      ? STAGED_TEXT[staged.failure]
+                                      : staged?.state === 'ready'
+                                        ? `Chosen: ${staged.name} (${staged.bytes} bytes). The file itself is only read.`
+                                        : 'A file is read once by the desktop; it is never changed.'}
+                            </p>
+                        </fieldset>
+                    ) : null}
                 </div>
             )}
             <div className='flex flex-wrap gap-2'>
@@ -191,7 +296,7 @@ export function ChangeWorkbench({ change, review, context, dispatch, onClose }: 
                         <p role='status' className='text-academy-ink-soft text-[13px]'>
                             Reading the current item for review…
                         </p>
-                    ) : mine.state === 'failed' && mine.failure ? (
+                    ) : (mine.state === 'failed' || mine.state === 'expired') && mine.failure ? (
                         <Callout tone='danger' icon={AlertTriangle} role='alert' data-slot='change-review-failed'>
                             {changeFailureText(mine.failure)}
                         </Callout>
@@ -315,6 +420,10 @@ export function ChangeResults({ results, dispatch }: { results: ChangeResultView
                             </Callout>
                         ) : result.secret === 'forgotten' ? (
                             <p className='text-academy-ink-faint text-[12px]'>The new key was cleared from memory.</p>
+                        ) : result.secret === 'shown' ? (
+                            <p className='text-academy-ink-faint text-[12px]'>
+                                The new key was shown once and is no longer held by the desktop.
+                            </p>
                         ) : null}
                     </li>
                 ))}
@@ -343,6 +452,18 @@ export const TEMPLATES = {
         rotation_time_unit: 'days',
     },
     rotate: { rotation_time_interval: 30, rotation_time_unit: 'days' },
+    pattern: { name: '', type: 'custom', description: '', detection_config: { technique: 'regex' } },
+    dataProfile: { name: '', detection_rules: [] as unknown[] },
+    dictionary: {
+        metadata: {
+            name: 'New dictionary',
+            original_file_name: 'keywords.txt',
+            type: 'custom',
+            category: 'Confidential',
+            region_name: 'United States',
+        },
+        file: 'internal\nconfidential\n',
+    },
 }
 
 export const pretty = (value: unknown) => JSON.stringify(value, null, 2)

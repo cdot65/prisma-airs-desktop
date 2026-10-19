@@ -3,4 +3,4 @@
 /**
  * Why a draft or its review could not proceed (sanitized; no server text).
  */
-export type ChangeProblem = "unsupported" | "target" | "body" | "contract" | "description" | "rotation" | "keyFields" | "applicationExists" | "keyExists" | "inventoryLimit" | "deploymentProfile" | "sourceMismatch" | "notFound";
+export type ChangeProblem = "unsupported" | "target" | "body" | "contract" | "description" | "rotation" | "keyFields" | "applicationExists" | "keyExists" | "inventoryLimit" | "deploymentProfile" | "sourceMismatch" | "notFound" | "dataProfile" | "dictionaryFile" | "fileName" | "stagedFile";

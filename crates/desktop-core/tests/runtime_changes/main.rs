@@ -156,6 +156,20 @@ impl Service {
                 self.topics.retain(|t| t["topic_id"] != id.as_str());
                 raw(200, &json!({"message": "deleted"}))
             }
+            ("POST", "/aisec/v1/mgmt/profile") => {
+                self.serial += 1;
+                let mut profile = body.clone();
+                profile["profile_id"] =
+                    json!(format!("44444444-4444-4444-8444-{:012}", self.serial));
+                profile["revision"] = json!(1);
+                self.profiles.push(profile.clone());
+                raw(200, &profile)
+            }
+            ("DELETE", p) if p.starts_with("/aisec/v1/mgmt/profile/") => {
+                let id = p.rsplit('/').next().unwrap_or("").to_owned();
+                self.profiles.retain(|t| t["profile_id"] != id.as_str());
+                raw(200, &json!({"message": "deleted"}))
+            }
             ("PUT", p) if p.starts_with("/aisec/v1/mgmt/profile/uuid/") => {
                 let id = p.rsplit('/').next().unwrap_or("");
                 let Some(profile) = self.profiles.iter_mut().find(|t| t["profile_id"] == id) else {
@@ -176,8 +190,13 @@ impl Service {
                 else {
                     return raw(404, &json!({"error": "not found"}));
                 };
+                // The service keeps its own fields (tsg_id) on update.
+                let tsg = app.get("tsg_id").cloned();
                 *app = body.clone();
                 app["customer_appId"] = json!(id);
+                if let Some(tsg) = tsg {
+                    app["tsg_id"] = tsg;
+                }
                 raw(200, &app.clone())
             }
             ("DELETE", "/aisec/v1/mgmt/customerapp") => {
@@ -250,6 +269,10 @@ struct Desk {
 }
 
 async fn desk() -> Desk {
+    desk_with(|_| {}).await
+}
+
+async fn desk_with(configure: impl FnOnce(&mut CoreConfig)) -> Desk {
     let ca = TestCa::new("airs-v2 c09 ca");
     let service = Arc::new(Mutex::new(Service::new()));
     let routed = Arc::clone(&service);
@@ -262,13 +285,12 @@ async fn desk() -> Desk {
     .await;
     let origin = format!("https://localhost:{}", server.port);
     let (adapters, handles) = fixtures::adapters();
-    let core = Core::new(
-        CoreConfig {
-            management: ManagementEndpoints::at_origin(&origin),
-            ..CoreConfig::default()
-        },
-        adapters,
-    );
+    let mut config = CoreConfig {
+        management: ManagementEndpoints::at_origin(&origin),
+        ..CoreConfig::default()
+    };
+    configure(&mut config);
+    let core = Core::new(config, adapters);
     core.start();
     core.set_transport_policy(TransportPolicy {
         revision: 2,
@@ -707,6 +729,12 @@ async fn key_creation_checks_names_injects_the_deployment_code_and_holds_the_sec
         "from the one matching deployment profile"
     );
     assert_eq!(sent["created_by"], CLIENT_ID);
+    // The presentation follows published updates: subscribe before revealing.
+    let Observation::Shell { mut updates, .. } =
+        desk.handle.observe(ViewScope::Shell).expect("observe")
+    else {
+        unreachable!("shell scope")
+    };
     // The one-time secret is in no snapshot, and only the native sheet shows it.
     let snapshot = serde_json::to_string(&desk.snap()).expect("json");
     assert!(!snapshot.contains(ONE_TIME) && !snapshot.contains(AUTH_CODE));
@@ -716,12 +744,19 @@ async fn key_creation_checks_names_injects_the_deployment_code_and_holds_the_sec
     let shown = desk.adapters.secrets.shown();
     assert_eq!(shown.len(), 1);
     assert!(shown[0].1.starts_with(ONE_TIME) && shown[0].0.contains("New key"));
-    desk.send(json!({"kind": "forgetSecret", "operation": created.operation}))
-        .await
-        .expect("forgotten");
+    // Shown once: the core keeps no copy, so it cannot be revealed again,
+    // and the published update says so (the presentation stops offering it).
+    assert_eq!(desk.snap().changes.results[0].secret, SecretState::Shown);
+    let mut published = None;
+    while let Some(update) = updates.try_next() {
+        if let desktop_core::Update::Shell(snapshot) = update {
+            published = snapshot.changes.results.first().map(|r| r.secret);
+        }
+    }
     assert_eq!(
-        desk.snap().changes.results[0].secret,
-        SecretState::Forgotten
+        published,
+        Some(SecretState::Shown),
+        "the reveal is published"
     );
     assert_eq!(
         desk.send(json!({"kind": "revealSecret", "operation": created.operation}))
@@ -729,6 +764,7 @@ async fn key_creation_checks_names_injects_the_deployment_code_and_holds_the_sec
             .err(),
         Some(Refusal::CapabilityMissing)
     );
+    assert_eq!(desk.adapters.secrets.shown().len(), 1);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -749,10 +785,22 @@ async fn rotation_deletion_and_their_readback() {
         .await
         .expect("requested");
     let rotated = desk.settled().await;
+    // A held key the operator clears is never revealed.
+    desk.send(json!({"kind": "forgetSecret", "operation": rotated.operation}))
+        .await
+        .expect("forgotten");
     assert_eq!(
-        (rotated.outcome, rotated.secret),
-        (Some(Outcome::Completed), SecretState::Held)
+        desk.snap().changes.results[0].secret,
+        SecretState::Forgotten
     );
+    assert_eq!(
+        desk.send(json!({"kind": "revealSecret", "operation": rotated.operation}))
+            .await
+            .err(),
+        Some(Refusal::CapabilityMissing)
+    );
+    assert!(desk.adapters.secrets.shown().is_empty());
+    assert_eq!(rotated.outcome, Some(Outcome::Completed));
     let sent = body(&desk.writes()[0]);
     assert_eq!(
         sent,
@@ -916,4 +964,278 @@ async fn nothing_about_a_change_or_its_secret_is_persisted_or_replayed_after_res
     };
     assert!(snapshot.changes.review.is_none() && snapshot.changes.results.is_empty());
     assert_eq!(desk.writes().len(), writes, "nothing replayed");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_confirmation_that_outlives_its_review_applies_nothing() {
+    let mut desk = desk_with(|c| c.review_lifetime = Duration::from_millis(800)).await;
+    let draft = topic_update("Late");
+    let review = desk.review(&draft).await;
+    desk.request(&review, &draft, "Finance")
+        .await
+        .expect("requested");
+    assert!(eventually(|| desk.adapters.confirmer.held() == 1).await);
+    tokio::time::sleep(Duration::from_millis(1_000)).await;
+    assert!(desk.adapters.confirmer.complete(true));
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(desk.writes().is_empty() && desk.snap().changes.results.is_empty());
+    let expired = desk.snap().changes.review.expect("review kept");
+    assert_eq!(
+        (expired.state, expired.failure),
+        (ChangeReviewState::Expired, Some(ChangeFailure::Expired))
+    );
+    assert_eq!(
+        desk.request(&review, &draft, "Finance").await.err(),
+        Some(Refusal::ReviewInvalid)
+    );
+    // A new review proceeds.
+    let again = desk.review(&draft).await;
+    assert_eq!(again.state, ChangeReviewState::Ready);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_change_that_cannot_be_started_is_not_consumed_silently() {
+    let mut desk = desk_with(|c| {
+        // One running and one waiting operation fill the desktop.
+        c.operations.max_active = 1;
+        c.operations.max_queued = 1;
+    })
+    .await;
+    let draft = topic_update("Queued");
+    let review = desk.review(&draft).await;
+    desk.request(&review, &draft, "Finance")
+        .await
+        .expect("requested");
+    assert!(eventually(|| desk.adapters.confirmer.held() == 1).await);
+    // Other operations hold every slot when the operator confirms.
+    for _ in 0..2 {
+        desk.service.lock().expect("service").overrides.push((
+            "GET".into(),
+            "/aisec/v1/mgmt/profiles".into(),
+            Reply::Delayed {
+                millis: 2_000,
+                then: Box::new(raw(200, &json!({"ai_profiles": []}))),
+            },
+        ));
+    }
+    let context = desk.context();
+    for _ in 0..2 {
+        let _ = desk
+            .send(json!({"kind": "management", "context": context,
+                "request": {"kind": "detail", "resource": "profiles", "id": "x"}}))
+            .await;
+    }
+    assert_eq!(
+        desk.send(json!({"kind": "management", "context": context, "request": {"kind": "verify"}}))
+            .await
+            .err(),
+        Some(Refusal::Busy),
+        "every slot is taken"
+    );
+    assert!(desk.adapters.confirmer.complete(true));
+    assert!(
+        eventually(|| desk
+            .snap()
+            .changes
+            .review
+            .as_ref()
+            .is_some_and(|r| r.state == ChangeReviewState::Failed))
+        .await
+    );
+    let failed = desk.snap().changes.review.expect("review");
+    assert_eq!(failed.failure, Some(ChangeFailure::Capacity));
+    assert!(desk.snap().changes.results.is_empty() && desk.writes().is_empty());
+    // An explicit retry needs a fresh review and confirmation, and writes once.
+    tokio::time::sleep(Duration::from_millis(3_500)).await;
+    desk.adapters.confirmer.auto(Some(true));
+    let review = desk.review(&draft).await;
+    desk.request(&review, &draft, "Finance")
+        .await
+        .expect("requested");
+    let applied = desk.settled().await;
+    assert_eq!(applied.outcome, Some(Outcome::Completed));
+    assert_eq!(desk.writes().len(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_draft_captured_while_confirming_ends_the_pending_confirmation() {
+    let mut desk = desk().await;
+    let draft = topic_update("First");
+    let review = desk.review(&draft).await;
+    desk.request(&review, &draft, "Finance")
+        .await
+        .expect("requested");
+    assert!(eventually(|| desk.adapters.confirmer.held() == 1).await);
+    let nonce = desk.adapters.confirmer.requests()[0].0;
+    // A programmatic/captured change of the draft while the sheet is open.
+    let replaced = desk.review(&topic_update("Second")).await;
+    assert!(
+        desk.adapters.confirmer.dismissed().contains(&nonce),
+        "the pending sheet is ended"
+    );
+    assert!(
+        !desk.adapters.confirmer.complete(true),
+        "its late completion has nothing to apply"
+    );
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(desk.writes().is_empty());
+    assert_ne!(replaced.review, review.review);
+    assert_eq!(
+        desk.request(&review, &draft, "Finance").await.err(),
+        Some(Refusal::ReviewInvalid)
+    );
+}
+
+/// Independently authored expectations for every remaining supported
+/// operation: exact method, path, query and body, and the readback.
+#[tokio::test(flavor = "multi_thread")]
+async fn every_supported_operation_sends_exactly_v1s_request_and_reads_back() {
+    let mut desk = desk().await;
+    desk.adapters.confirmer.auto(Some(true));
+    let apply = async |desk: &mut Desk, draft: Value, typed: &str| {
+        let review = desk.review(&draft).await;
+        assert_eq!(review.state, ChangeReviewState::Ready, "{review:?}");
+        desk.request(&review, &draft, typed)
+            .await
+            .expect("requested");
+        let result = desk.settled().await;
+        let write = desk.writes().pop().expect("write");
+        (result, write)
+    };
+    // Profile create.
+    let profile = json!({"profile_name": "Native guardrails", "active": true, "policy": {"ai-security-profiles": []}});
+    let (created, write) = apply(
+        &mut desk,
+        json!({"kind": "profiles", "action": "create", "target": "", "body": profile.to_string()}),
+        "CREATE",
+    )
+    .await;
+    assert!(
+        write
+            .request_line
+            .starts_with("POST /aisec/v1/mgmt/profile HTTP/1.1"),
+        "{}",
+        write.request_line
+    );
+    assert_eq!(
+        body(&write),
+        json!({"profile_name": "Native guardrails", "active": true,
+        "policy": {"ai-security-profiles": []}, "created_by": CLIENT_ID})
+    );
+    assert_eq!(
+        write
+            .header("authorization")
+            .map(|h| h.starts_with("Bearer c09-access-")),
+        Some(true)
+    );
+    assert_eq!(
+        (created.outcome, created.readback),
+        (Some(Outcome::Completed), Some(Readback::Found))
+    );
+    // Profile update (by UUID) and delete.
+    let update = json!({"profile_name": "Production guardrails", "active": false, "policy": {}, "revision": 3,
+                        "last_modified_ts": "ignored"});
+    let (updated, write) = apply(
+        &mut desk,
+        json!({"kind": "profiles", "action": "update", "target": PROFILE_ID,
+        "body": update.to_string()}),
+        "Production guardrails",
+    )
+    .await;
+    assert!(
+        write
+            .request_line
+            .starts_with(&format!("PUT /aisec/v1/mgmt/profile/uuid/{PROFILE_ID} "))
+    );
+    assert_eq!(
+        body(&write),
+        json!({"profile_name": "Production guardrails", "active": false, "policy": {},
+        "revision": 3, "updated_by": CLIENT_ID}),
+        "only authorship is added; server fields stripped"
+    );
+    assert_eq!(updated.readback, Some(Readback::Found));
+    let (deleted, write) = apply(
+        &mut desk,
+        json!({"kind": "profiles", "action": "delete", "target": PROFILE_ID, "body": "{}"}),
+        "Production guardrails",
+    )
+    .await;
+    assert!(
+        write
+            .request_line
+            .starts_with(&format!("DELETE /aisec/v1/mgmt/profile/{PROFILE_ID} "))
+    );
+    assert!(write.body.is_empty());
+    assert_eq!(deleted.readback, Some(Readback::Absent));
+    // Application update (query identifier).
+    let app =
+        json!({"app_name": "Support bot", "cloud_provider": "azure", "environment": "staging"});
+    let (app_updated, write) = apply(
+        &mut desk,
+        json!({"kind": "applications", "action": "update", "target": "app-1",
+        "body": app.to_string()}),
+        "Support bot",
+    )
+    .await;
+    assert!(
+        write
+            .request_line
+            .starts_with("PUT /aisec/v1/mgmt/customerapp?customer_app_id=app-1 "),
+        "{}",
+        write.request_line
+    );
+    assert_eq!(
+        body(&write),
+        json!({"app_name": "Support bot", "cloud_provider": "azure", "environment": "staging",
+        "updated_by": CLIENT_ID})
+    );
+    assert_eq!(app_updated.readback, Some(Readback::Found));
+    // API key version (same application as the source key) and delete by name.
+    let version = json!({"cust_app": "Support bot", "cust_env": "production", "cust_cloud_provider": "aws",
+        "api_key_name": "Support key 2", "dp_name": "dp-2", "revoked": false,
+        "rotation_time_interval": 180, "rotation_time_unit": "days"});
+    let (versioned, write) = apply(
+        &mut desk,
+        json!({"kind": "apiKeys", "action": "version", "target": "key-1",
+        "body": version.to_string()}),
+        "CREATE",
+    )
+    .await;
+    assert!(
+        write
+            .request_line
+            .starts_with("POST /aisec/v1/mgmt/apikey HTTP/1.1")
+    );
+    let mut expected = version.clone();
+    expected["auth_code"] = json!("OTHER-CODE");
+    expected["created_by"] = json!(CLIENT_ID);
+    assert_eq!(body(&write), expected);
+    assert_eq!(
+        (versioned.readback, versioned.secret),
+        (Some(Readback::Found), SecretState::Held)
+    );
+    let (key_deleted, write) = apply(
+        &mut desk,
+        json!({"kind": "apiKeys", "action": "delete", "target": "key-1", "body": "{}"}),
+        "Support key",
+    )
+    .await;
+    assert!(
+        write
+            .request_line
+            .starts_with("DELETE /aisec/v1/mgmt/apikey/delete/Support%20key?updated_by="),
+        "{}",
+        write.request_line
+    );
+    assert_eq!(key_deleted.readback, Some(Readback::Absent));
+    // A key version for another application is refused before any write.
+    let mismatched = desk.review(&json!({"kind": "apiKeys", "action": "version", "target": format!("key-{}", 3),
+        "body": json!({"cust_app": "Other", "cust_env": "p", "cust_cloud_provider": "aws", "api_key_name": "z",
+        "dp_name": "dp-1", "revoked": false, "rotation_time_interval": 30, "rotation_time_unit": "days"}).to_string()})).await;
+    assert_eq!(
+        mismatched.failure,
+        Some(ChangeFailure::Problem {
+            problem: desktop_core::changes::ChangeProblem::SourceMismatch
+        })
+    );
 }

@@ -113,9 +113,15 @@ describe('shell snapshot validation', () => {
             parseShellSnapshot(withScan({ outcome: 'rejected', result: null, failure: { kind: 'unauthorized', status: 401 } }))
         ).toBeTruthy()
         expect(parseShellSnapshot(offline({}))).toBeTruthy()
-        expect(parseShellSnapshot({ ...valid, changes: { review: changeReview, results: [changeResult] } })).toBeTruthy()
+        expect(parseShellSnapshot({ ...valid, changes: { staged: null, review: changeReview, results: [changeResult] } })).toBeTruthy()
         expect(
-            parseShellSnapshot({ ...valid, changes: { review: { ...changeReview, state: 'failed', failure: { kind: 'conflict' } }, results: [] } })
+            parseShellSnapshot({
+                ...valid,
+                changes: { review: null, results: [], staged: { state: 'ready', token: 'sf-0011223344556677', name: 'k.txt', bytes: 3, lines: 1, failure: null } },
+            })
+        ).toBeTruthy()
+        expect(
+            parseShellSnapshot({ ...valid, changes: { staged: null, review: { ...changeReview, state: 'failed', failure: { kind: 'conflict' } }, results: [] } })
         ).toBeTruthy()
         expect(parseShellSnapshot(offline({ state: 'empty', downloads: [], localDrafts: [] }))).toBeTruthy()
         expect(parseShellSnapshot(offline({ downloads: [{ ...download, status: 'withdrawn' }] }))).toBeTruthy()
@@ -154,14 +160,23 @@ describe('shell snapshot validation', () => {
         ],
         ['changes missing', { ...valid, changes: undefined }],
         [
-            'a failed review without its failure',
-            { ...valid, changes: { review: { ...changeReview, state: 'failed' }, results: [] } },
+            'a staged file whose token is a path',
+            { ...valid, changes: { review: null, results: [], staged: { state: 'ready', token: '/Users/x/k.txt', name: 'k.txt', bytes: 3, lines: 1, failure: null } } },
         ],
-        ['a review with an unknown action', { ...valid, changes: { review: { ...changeReview, action: 'forceDelete' }, results: [] } }],
-        ['a review whose preview is not JSON', { ...valid, changes: { review: { ...changeReview, after: '<b>x</b>' }, results: [] } }],
-        ['an unsettled change with an outcome', { ...valid, changes: { review: null, results: [{ ...changeResult, settled: false }] } }],
-        ['a change with an unknown secret state', { ...valid, changes: { review: null, results: [{ ...changeResult, secret: 'revealed' }] } }],
-        ['a change failure with server text', { ...valid, changes: { review: null, results: [{ ...changeResult, failure: { kind: 'service', failure: 'Forbidden: x' } }] } }],
+        [
+            'a failed staged file without its reason',
+            { ...valid, changes: { review: null, results: [], staged: { state: 'failed', token: null, name: null, bytes: null, lines: null, failure: null } } },
+        ],
+        ['a review of an unknown DLP kind', { ...valid, changes: { staged: null, review: { ...changeReview, kind: 'deploymentProfiles' }, results: [] } }],
+        [
+            'a failed review without its failure',
+            { ...valid, changes: { staged: null, review: { ...changeReview, state: 'failed' }, results: [] } },
+        ],
+        ['a review with an unknown action', { ...valid, changes: { staged: null, review: { ...changeReview, action: 'forceDelete' }, results: [] } }],
+        ['a review whose preview is not JSON', { ...valid, changes: { staged: null, review: { ...changeReview, after: '<b>x</b>' }, results: [] } }],
+        ['an unsettled change with an outcome', { ...valid, changes: { staged: null, review: null, results: [{ ...changeResult, settled: false }] } }],
+        ['a change with an unknown secret state', { ...valid, changes: { staged: null, review: null, results: [{ ...changeResult, secret: 'revealed' }] } }],
+        ['a change failure with server text', { ...valid, changes: { staged: null, review: null, results: [{ ...changeResult, failure: { kind: 'service', failure: 'Forbidden: x' } }] } }],
         ['scans missing', { ...valid, scans: undefined }],
         ['a scan with a malformed operation', withScan({ operation: 'op-x' })],
         ['a result on a scan that did not complete', withScan({ outcome: 'unknown' })],

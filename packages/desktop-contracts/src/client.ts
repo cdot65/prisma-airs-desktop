@@ -186,7 +186,16 @@ const MANAGEMENT_FAILURES: readonly string[] = [
     'configuration',
 ]
 const DETAIL_FOUND: readonly string[] = ['found', 'absent', 'incomplete']
-const CHANGE_KINDS: readonly string[] = ['profiles', 'topics', 'applications', 'apiKeys']
+const CHANGE_KINDS: readonly string[] = [
+    'profiles',
+    'topics',
+    'applications',
+    'apiKeys',
+    'dataPatterns',
+    'dataProfiles',
+    'filteringProfiles',
+    'dictionaries',
+]
 const CHANGE_ACTIONS: readonly string[] = ['create', 'update', 'delete', 'version', 'rotate']
 const CHANGE_PROBLEMS: readonly string[] = [
     'unsupported',
@@ -202,10 +211,17 @@ const CHANGE_PROBLEMS: readonly string[] = [
     'deploymentProfile',
     'sourceMismatch',
     'notFound',
+    'dataProfile',
+    'dictionaryFile',
+    'fileName',
+    'stagedFile',
 ]
-const REVIEW_STATES: readonly string[] = ['preparing', 'ready', 'confirming', 'failed']
+const STAGED_STATES: readonly string[] = ['choosing', 'ready', 'failed']
+const STAGED_FAILURES: readonly string[] = ['tooLarge', 'notText', 'empty', 'unreadable']
+const STAGED_TOKEN = /^sf-[0-9a-f]{16}$/
+const REVIEW_STATES: readonly string[] = ['preparing', 'ready', 'confirming', 'expired', 'failed']
 const READBACKS: readonly string[] = ['found', 'absent', 'incomplete', 'failed']
-const SECRET_STATES: readonly string[] = ['none', 'held', 'forgotten']
+const SECRET_STATES: readonly string[] = ['none', 'held', 'forgotten', 'shown']
 /** Largest page the native side reads (`management::MAX_PAGE`). */
 const MANAGEMENT_MAX_PAGE = 100
 
@@ -494,7 +510,7 @@ function isJsonObjectText(value: unknown): boolean {
 
 function isChangeFailure(value: unknown): boolean {
     if (!isRecord(value)) return false
-    if (value.kind === 'conflict') return true
+    if (value.kind === 'conflict' || value.kind === 'expired' || value.kind === 'capacity') return true
     if (value.kind === 'problem') return oneOf(CHANGE_PROBLEMS, value.problem)
     return value.kind === 'service' && oneOf(MANAGEMENT_FAILURES, value.failure)
 }
@@ -509,7 +525,8 @@ function isChangeReview(value: unknown): boolean {
         isString(value.target) &&
         oneOf(REVIEW_STATES, value.state) &&
         optional(isChangeFailure, value.failure) &&
-        (value.state === 'failed') === (value.failure !== null) &&
+        // A failure is reported exactly when the review failed or expired.
+        (value.state === 'failed' || value.state === 'expired') === (value.failure !== null) &&
         optional(isJsonObjectText, value.before) &&
         optional(isJsonObjectText, value.after) &&
         optional(isJsonObjectText, value.sourceKey) &&
@@ -537,10 +554,22 @@ function isChangeResult(value: unknown): boolean {
     )
 }
 
+function isStagedFile(value: unknown): boolean {
+    if (!isRecord(value) || !oneOf(STAGED_STATES, value.state)) return false
+    const ready = value.state === 'ready'
+    return (
+        (ready
+            ? typeof value.token === 'string' && STAGED_TOKEN.test(value.token) && isString(value.name) && isCount(value.bytes) && isCount(value.lines)
+            : value.token === null && value.name === null && value.bytes === null && value.lines === null) &&
+        (value.state === 'failed' ? oneOf(STAGED_FAILURES, value.failure) : value.failure === null)
+    )
+}
+
 function isChangesView(value: unknown): boolean {
     return (
         isRecord(value) &&
         optional(isChangeReview, value.review) &&
+        optional(isStagedFile, value.staged) &&
         Array.isArray(value.results) &&
         value.results.every(isChangeResult)
     )

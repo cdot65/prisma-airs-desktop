@@ -919,6 +919,53 @@
         "--test",
         "dlp_subset"
       ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/features/administration/dlp-authoring.test.tsx",
+          "src/features/runtime/review-apply.test.tsx",
+          "src/features/administration/administration-view.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "runtime_changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
       "native_prepare": [
         "cargo",
         "run",

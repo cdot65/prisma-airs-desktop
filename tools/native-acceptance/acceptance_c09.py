@@ -286,18 +286,12 @@ def run():
     wait_no_sheet(app)
     copied_at = time.time()
     obs["copied_matches"] = bool(secret) and sha(clipboard()) == sha(secret)
-    # Shown again and left open: the sheet ends itself after 60 s.
-    app.ax("press", "AXButton", "Show new key…")
-    wait_sheet(app)
-    time.sleep(max(0, 62 - (time.time() - copied_at)))
-    tree = app.tree()
-    obs["reveal_expired"] = sheet(app, tree) is None
-    obs["clipboard_cleared"] = bool(secret) and clipboard() != secret
-    app.ax("press", "AXButton", "Clear key")
-    tree, cleared = c8.text(app, "The new key was cleared from memory.")
-    obs["key_cleared"] = cleared and fx.App.node(tree, "AXButton", "Show new key…") is None
+    # Shown once: the desktop no longer holds it, so it cannot be shown again.
+    tree, shown_once = c8.text(app, "The new key was shown once and is no longer held by the desktop.")
+    obs["shown_once"] = shown_once and fx.App.node(tree, "AXButton", "Show new key…") is None
+    first_secret = secret
 
-    # ---- N07: rotation; a foreign clipboard write is kept ----
+    # ---- N07: rotation; the rotated key's sheet left open ends itself ----
     app.ax("press", "AXButton", "Refresh")
     app.wait_for(lambda t: fx.App.node(t, "AXButton", "Details for Native key") is not None)
     close_workbench(app)
@@ -319,6 +313,43 @@ def run():
     c8.text(app, "held in memory only", 15)
     rotated = writes(mgmt, "POST", "/aisec/v1/mgmt/apikey/regenerate")
     obs["rotated"] = len(rotated) == 1 and rotated[0].get("fields") == ["rotation_time_interval", "rotation_time_unit", "updated_by"]
+    app.ax("press", "AXButton", "Show new key…")
+    tree, _ = wait_sheet(app)
+    secret = secret_in(sheet(app, tree))
+    if secret:
+        SEEN_SECRETS.append(secret)
+    shown_at = time.time()
+    # Left open, the sheet ends itself after 60 s; by then the first key
+    # copied above (nothing else was copied) has been cleared.
+    time.sleep(max(0, 62 - (time.time() - shown_at)))
+    tree = app.tree()
+    obs["reveal_expired"] = sheet(app, tree) is None
+    obs["clipboard_cleared"] = bool(first_secret) and clipboard() != first_secret and time.time() - copied_at >= 60
+
+    # ---- Clear key forgets a held key; a later copy keeps foreign text ----
+    def create_key(name, app_name):
+        close_workbench(app)
+        app.ax("press", "AXButton", "Create API key")
+        app.wait_for(lambda t: fx.App.node(t, "AXButton", "Review change") is not None)
+        app.type_into("AXTextArea", "API key draft (JSON)",
+                      '{"api_key_name":"%s","cust_app":"%s","cust_env":"production","cust_cloud_provider":"aws",'
+                      '"dp_name":"dp-0","revoked":false,"rotation_time_interval":30,"rotation_time_unit":"days"}' % (name, app_name))
+        tree, ready = review(app, "Applies only to this tenant")
+        if not ready or fx.App.node(tree, "AXTextField", "Type CREATE to confirm") is None:
+            obs.setdefault("create_key_problems", []).append(
+                [t for t in app.texts(tree) if any(w in t for w in ("already", "could not", "not ", "Reading", "draft", "inventory"))][:12])
+            save_tree(f"create-{name.replace(' ', '-')}", tree)
+        app.type_into("AXTextField", "Type CREATE to confirm", "CREATE")
+        app.ax("press", "AXButton", "Apply…")
+        wait_sheet(app)
+        app.keycode(36)
+        return app.wait_for(lambda t: fx.App.node(t, "AXButton", "Show new key…") is not None, 15)
+
+    create_key("Native key 2", "Native app 2")
+    app.ax("press", "AXButton", "Clear key")
+    tree, cleared = c8.text(app, "The new key was cleared from memory.")
+    obs["key_cleared"] = cleared and fx.App.node(tree, "AXButton", "Show new key…") is None
+    create_key("Native key 3", "Native app 3")
     app.ax("press", "AXButton", "Show new key…")
     tree, _ = wait_sheet(app)
     secret = secret_in(sheet(app, tree))
@@ -449,9 +480,10 @@ def evaluate(prepared, o):
         and not o["auth_code_shown"] and not o["secret_in_trees"] and not o["persisted_secret_files"],
         f"'held in memory only': {o['key_created']}; POST {kp}; auth code shown in the window: {o['auth_code_shown']}; AX snapshots with a key or the code: "
         f"{o['secret_in_trees']}; data-root files with one: {o['persisted_secret_files']}", [o["tree_key_held"]])
-    add("C09-N06", o["revealed_matches_issued"] and o["copied_matches"] and o["reveal_expired"] and o["clipboard_cleared"],
-        f"sheet showed the issued key (hash): {o['revealed_matches_issued']}; Copy and Close put it on the clipboard: {o['copied_matches']}; sheet left open "
-        f"ended after 60 s: {o['reveal_expired']}; clipboard cleared after 60 s: {o['clipboard_cleared']}", [])
+    add("C09-N06", o["revealed_matches_issued"] and o["copied_matches"] and o["shown_once"] and o["reveal_expired"] and o["clipboard_cleared"],
+        f"sheet showed the issued key (hash): {o['revealed_matches_issued']}; Copy and Close put it on the clipboard: {o['copied_matches']}; then shown "
+        f"once and no longer offered: {o['shown_once']}; another key's sheet left open ended after 60 s: {o['reveal_expired']}; the copied key cleared "
+        f"from the clipboard after 60 s: {o['clipboard_cleared']}", [])
     add("C09-N07", o["return_cancelled_rotate"] and o["rotated"] and o["foreign_clipboard_kept"] and o["key_cleared"],
         f"Return cancelled the destructive rotation: {o['return_cancelled_rotate']}; one regenerate with the reduced body: {o['rotated']}; operator's later "
         f"clipboard text kept after 60 s: {o['foreign_clipboard_kept']}; Clear key forgot the held key: {o['key_cleared']}", [])

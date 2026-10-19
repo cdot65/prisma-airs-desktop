@@ -26,6 +26,8 @@ pub const MAX_TARGET: usize = 256;
 pub const MAX_TOPIC_DESCRIPTION: usize = 240;
 /// Key rotation intervals v1 offers (days).
 pub const ROTATION_DAYS: [u64; 3] = [30, 90, 180];
+/// Largest dictionary keyword file in UTF-16 units (v1's 64 Ki limit).
+pub const MAX_DICTIONARY_FILE: usize = 64 * 1024;
 
 /// What a change applies to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
@@ -35,6 +37,11 @@ pub enum ChangeKind {
     Topics,
     Applications,
     ApiKeys,
+    /// DLP (C10).
+    DataPatterns,
+    DataProfiles,
+    FilteringProfiles,
+    Dictionaries,
 }
 
 impl ChangeKind {
@@ -45,7 +52,19 @@ impl ChangeKind {
             Self::Topics => ManagementResource::Topics,
             Self::Applications => ManagementResource::Applications,
             Self::ApiKeys => ManagementResource::ApiKeys,
+            Self::DataPatterns => ManagementResource::DataPatterns,
+            Self::DataProfiles => ManagementResource::DataProfiles,
+            Self::FilteringProfiles => ManagementResource::FilteringProfiles,
+            Self::Dictionaries => ManagementResource::Dictionaries,
         }
+    }
+
+    /// DLP items are read and written by their own identifier (`id`).
+    pub fn is_dlp(self) -> bool {
+        matches!(
+            self,
+            Self::DataPatterns | Self::DataProfiles | Self::FilteringProfiles | Self::Dictionaries
+        )
     }
 
     /// The field naming an item for the operator (and the typed confirmation).
@@ -55,6 +74,10 @@ impl ChangeKind {
             Self::Topics => "topic_name",
             Self::Applications => "app_name",
             Self::ApiKeys => "api_key_name",
+            Self::DataPatterns
+            | Self::DataProfiles
+            | Self::FilteringProfiles
+            | Self::Dictionaries => "name",
         }
     }
 }
@@ -114,6 +137,14 @@ pub enum ChangeProblem {
     SourceMismatch,
     /// The item to change was not found in its complete inventory.
     NotFound,
+    /// An advanced data profile fails v1's structure checks.
+    DataProfile,
+    /// The dictionary keyword file is empty, too large or not text.
+    DictionaryFile,
+    /// The dictionary's original file name cannot be sent.
+    FileName,
+    /// The chosen file is no longer staged; choose it again.
+    StagedFile,
 }
 
 /// A validated, normalized change (v1 `validateMutation` plus authorship).
@@ -135,6 +166,12 @@ fn allowed(kind: ChangeKind, action: ChangeAction) -> bool {
             Create | Update | Delete
         ) | (ChangeKind::Applications, Update | Delete)
             | (ChangeKind::ApiKeys, Create | Version | Rotate | Delete)
+            | (
+                ChangeKind::DataPatterns | ChangeKind::Dictionaries,
+                Create | Update | Delete
+            )
+            | (ChangeKind::DataProfiles, Create | Update)
+            | (ChangeKind::FilteringProfiles, Update)
     )
 }
 
@@ -153,6 +190,11 @@ fn schema(kind: ChangeKind, action: ChangeAction) -> Option<&'static str> {
         (ChangeKind::Applications, _) => Some("CustomerAppSchema"),
         (ChangeKind::ApiKeys, ChangeAction::Rotate) => Some("ApiKeyRegenerateRequestSchema"),
         (ChangeKind::ApiKeys, _) => Some("ApiKeyCreateRequestSchema"),
+        (ChangeKind::DataPatterns, _) => Some("DataPatternRequestSchema"),
+        (ChangeKind::DataProfiles, _) => Some("AdvancedDataProfileRequestSchema"),
+        (ChangeKind::FilteringProfiles, _) => Some("DataFilteringProfileRequestSchema"),
+        // A dictionary's metadata is checked on its own; the file is text.
+        (ChangeKind::Dictionaries, _) => None,
     }
 }
 
@@ -195,6 +237,24 @@ pub fn normalize(draft: &ChangeDraft, client_id: &str) -> Result<Mutation, Chang
     body.remove("auth_code");
     body.remove("api_key");
     match kind {
+        // v1 adds no authorship to DLP writes.
+        ChangeKind::DataPatterns | ChangeKind::FilteringProfiles => {}
+        ChangeKind::DataProfiles => {
+            // A response-only legacy rendering never goes back with the
+            // authoritative detection_rules; nulls are dropped (v1).
+            body.remove("advance_data_patterns_rule_request");
+            for key in ["description", "is_granular_data_profile"] {
+                if body.get(key).is_some_and(Value::is_null) {
+                    body.remove(key);
+                }
+            }
+            if !valid_data_profile(&body) {
+                return Err(ChangeProblem::DataProfile);
+            }
+        }
+        ChangeKind::Dictionaries => {
+            body = dictionary(body)?;
+        }
         ChangeKind::Profiles | ChangeKind::Topics => {
             let field = if action == ChangeAction::Create {
                 "created_by"
@@ -272,6 +332,249 @@ pub fn normalize(draft: &ChangeDraft, client_id: &str) -> Result<Mutation, Chang
     Ok(mutation)
 }
 
+/// v1's dictionary body: exactly `{metadata, file}`, the keyword file as
+/// non-empty text of at most 64 Ki UTF-16 units, the metadata checked by
+/// the SDK's `DictionaryRequestSchema` and a file name the SDK can send.
+fn dictionary(mut body: Map<String, Value>) -> Result<Map<String, Value>, ChangeProblem> {
+    if body.len() != 2 || !body.contains_key("metadata") || !body.contains_key("file") {
+        return Err(ChangeProblem::Body);
+    }
+    let file = match body.remove("file") {
+        Some(Value::String(text))
+            if !text.is_empty() && text.encode_utf16().count() <= MAX_DICTIONARY_FILE =>
+        {
+            text
+        }
+        _ => return Err(ChangeProblem::DictionaryFile),
+    };
+    let metadata = body.remove("metadata").unwrap_or(Value::Null);
+    let metadata = scm_sdk::validation::parse(
+        "DictionaryRequestSchema",
+        metadata,
+        scm_sdk::validation::Mode::Request,
+    )
+    .map_err(|_| ChangeProblem::Contract)?;
+    // The file part is named after original_file_name (SDK multipart rules).
+    let name_ok = metadata
+        .get("original_file_name")
+        .and_then(Value::as_str)
+        .is_some_and(|n| {
+            !n.is_empty()
+                && n.chars().count() <= 255
+                && !n
+                    .chars()
+                    .any(|c| c.is_control() || matches!(c, '/' | '\\' | '"'))
+        });
+    if !name_ok {
+        return Err(ChangeProblem::FileName);
+    }
+    let mut normalized = Map::new();
+    normalized.insert("metadata".into(), metadata);
+    normalized.insert("file".into(), Value::String(file));
+    Ok(normalized)
+}
+
+/// v1's advanced data profile check (`bridge/src/protocol.ts`
+/// `validDataProfile`, 74754c02): the SDK accepts sparse requests, so an
+/// edited profile must resolve catalog metadata and carry meaningful
+/// expression and occurrence constraints. JavaScript string lengths count
+/// UTF-16 units; so does this.
+pub fn valid_data_profile(body: &Map<String, Value>) -> bool {
+    const TECHNIQUES: [&str; 13] = [
+        "edm",
+        "document_fingerprint",
+        "trainable_classifier",
+        "ml_document",
+        "regex",
+        "weighted_regex",
+        "ml",
+        "titus_tag",
+        "wildfire",
+        "file_property",
+        "dictionary",
+        "pab",
+        "document_classifier",
+    ];
+    const OPERATORS: [&str; 5] = ["and", "or", "not", "and_not", "or_not"];
+    const MATCH: [&str; 2] = ["include", "exclude"];
+    const CONFIDENCE: [&str; 3] = ["low", "medium", "high"];
+    const OCCURRENCE: [&str; 4] = ["any", "less_than_equal_to", "more_than_equal_to", "between"];
+    fn units(s: &str) -> usize {
+        s.encode_utf16().count()
+    }
+    fn present(v: Option<&Value>) -> Option<&Value> {
+        v.filter(|v| !v.is_null())
+    }
+    fn choice(v: Option<&Value>, choices: &[&str]) -> bool {
+        v.and_then(Value::as_str)
+            .is_some_and(|s| choices.contains(&s))
+    }
+    fn reference(v: Option<&Value>) -> bool {
+        v.and_then(Value::as_str)
+            .is_some_and(|s| !s.trim().is_empty() && units(s) <= 256)
+    }
+    /// A safe, non-negative integer (JavaScript `Number.isSafeInteger`).
+    fn count(v: Option<&Value>) -> Option<u64> {
+        let n = v?;
+        n.as_u64()
+            .or_else(|| {
+                n.as_f64()
+                    .filter(|f| f.fract() == 0.0 && *f >= 0.0)
+                    .map(|f| f as u64)
+            })
+            .filter(|n| *n < (1u64 << 53))
+    }
+    fn leaf(leaf: &Value) -> bool {
+        let Some(map) = leaf.as_object() else {
+            return false;
+        };
+        let get = |k: &str| map.get(k);
+        if !choice(get("detection_technique"), &TECHNIQUES) {
+            return false;
+        }
+        let pattern = choice(
+            get("detection_technique"),
+            &["regex", "weighted_regex", "ml"],
+        );
+        if pattern
+            && (!reference(get("id"))
+                || !reference(get("name"))
+                || count(get("version")).is_none()
+                || !choice(get("match_type"), &MATCH)
+                || !choice(get("confidence_level"), &CONFIDENCE)
+                || !choice(get("occurrence_operator_type"), &OCCURRENCE))
+        {
+            return false;
+        }
+        if !pattern
+            && !reference(get("id"))
+            && !reference(get("name"))
+            && !reference(get("edm_dataset_id"))
+        {
+            return false;
+        }
+        for (key, values) in [
+            ("match_type", &MATCH[..]),
+            ("confidence_level", &CONFIDENCE[..]),
+            ("occurrence_operator_type", &OCCURRENCE[..]),
+        ] {
+            if present(get(key)).is_some() && !choice(get(key), values) {
+                return false;
+            }
+        }
+        for key in [
+            "version",
+            "occurrence_count",
+            "occurrence_low",
+            "occurrence_high",
+        ] {
+            if present(get(key)).is_some() && count(get(key)).is_none() {
+                return false;
+            }
+        }
+        if let Some(levels) = present(get("supported_confidence_levels")) {
+            let Some(levels) = levels.as_array() else {
+                return false;
+            };
+            if levels.is_empty()
+                || !levels.iter().all(|v| choice(Some(v), &CONFIDENCE))
+                || present(get("confidence_level")).is_some_and(|c| !levels.contains(c))
+            {
+                return false;
+            }
+        }
+        match get("occurrence_operator_type").and_then(Value::as_str) {
+            Some("between") => {
+                match (count(get("occurrence_low")), count(get("occurrence_high"))) {
+                    (Some(low), Some(high)) => low <= high,
+                    _ => false,
+                }
+            }
+            Some("less_than_equal_to" | "more_than_equal_to") => {
+                count(get("occurrence_count")).is_some()
+            }
+            _ => true,
+        }
+    }
+    fn tree(value: &Value, depth: usize) -> bool {
+        let Some(map) = value.as_object() else {
+            return false;
+        };
+        if depth > 32 {
+            return false;
+        }
+        if let Some(item) = present(map.get("rule_item")) {
+            return leaf(item)
+                && present(map.get("operator_type")).is_none()
+                && match present(map.get("sub_expressions")) {
+                    None => true,
+                    Some(children) => children.as_array().is_some_and(Vec::is_empty),
+                };
+        }
+        let Some(children) = map.get("sub_expressions").and_then(Value::as_array) else {
+            return false;
+        };
+        if children.is_empty() || !choice(map.get("operator_type"), &OPERATORS) {
+            return false;
+        }
+        match map.get("operator_type").and_then(Value::as_str) {
+            Some("not") if children.len() != 1 => return false,
+            Some("and_not" | "or_not") if children.len() < 2 => return false,
+            _ => {}
+        }
+        children.iter().all(|child| tree(child, depth + 1))
+    }
+    let name_ok = body
+        .get("name")
+        .and_then(Value::as_str)
+        .is_some_and(|n| !n.trim().is_empty() && units(n) <= 32);
+    let Some(rules) = body.get("detection_rules").and_then(Value::as_array) else {
+        return false;
+    };
+    if !name_ok || rules.is_empty() {
+        return false;
+    }
+    if present(body.get("profile_type")).is_some_and(|t| t.as_str() != Some("advanced")) {
+        return false;
+    }
+    let granular = match present(body.get("is_granular_data_profile")) {
+        Some(Value::Bool(b)) => *b,
+        Some(_) => return false,
+        None => rules
+            .iter()
+            .any(|r| r.get("rule_type").and_then(Value::as_str) == Some("multi_profile")),
+    };
+    rules.iter().all(|rule| {
+        let Some(map) = rule.as_object() else {
+            return false;
+        };
+        let kind = map.get("rule_type").and_then(Value::as_str);
+        if granular != (kind == Some("multi_profile")) {
+            return false;
+        }
+        if kind == Some("expression_tree") {
+            return map.get("expression_tree").is_some_and(|t| tree(t, 0));
+        }
+        let Some(multi) = map.get("multi_profile").and_then(Value::as_object) else {
+            return false;
+        };
+        if kind != Some("multi_profile") || !choice(multi.get("operator_type"), &OPERATORS) {
+            return false;
+        }
+        let Some(ids) = multi.get("data_profile_ids").and_then(Value::as_array) else {
+            return false;
+        };
+        if ids.is_empty() || !ids.iter().all(|v| count(Some(v)).is_some_and(|n| n > 0)) {
+            return false;
+        }
+        match multi.get("operator_type").and_then(Value::as_str) {
+            Some("not") => ids.len() == 1,
+            Some("and_not" | "or_not") => ids.len() >= 2,
+            _ => true,
+        }
+    })
+}
+
 /// Parses `body` with the SDK request contract (v1's schema parse).
 fn contract(kind: ChangeKind, action: ChangeAction, body: Value) -> Result<Value, ChangeProblem> {
     match schema(kind, action) {
@@ -342,9 +645,15 @@ pub fn digest(value: &Value) -> String {
     hex::encode(Sha256::digest(canonical(value).as_bytes()))
 }
 
-/// The operator-facing name of an item (v1 `resourceName`).
+/// The operator-facing name of an item (v1 `resourceName`); a dictionary
+/// draft names it in its metadata.
 pub fn item_name(kind: ChangeKind, item: &Value) -> Option<String> {
     item.get(kind.name_field())
+        .or_else(|| {
+            (kind == ChangeKind::Dictionaries)
+                .then(|| item.get("metadata").and_then(|m| m.get("name")))
+                .flatten()
+        })
         .and_then(Value::as_str)
         .map(str::to_owned)
 }
@@ -641,5 +950,91 @@ mod tests {
         );
         assert!(!rest.to_string().contains("ONE-TIME-SECRET") && rest.get("auth_code").is_none());
         assert_eq!(rest["api_key_last8"], "SECRET");
+    }
+
+    fn leaf(extra: Value) -> Value {
+        let mut leaf = json!({"detection_technique": "regex", "id": "p", "name": "Cards", "version": 1,
+            "match_type": "include", "confidence_level": "high", "occurrence_operator_type": "any"});
+        for (k, v) in extra.as_object().expect("object") {
+            leaf[k] = v.clone();
+        }
+        leaf
+    }
+
+    fn profile(tree: Value) -> Map<String, Value> {
+        json!({"name": "PCI", "detection_rules": [{"rule_type": "expression_tree", "expression_tree": tree}]})
+            .as_object()
+            .expect("object")
+            .clone()
+    }
+
+    #[test]
+    fn data_profiles_follow_v1s_structure_rules() {
+        assert!(valid_data_profile(&profile(
+            json!({"rule_item": leaf(json!({}))})
+        )));
+        // Occurrence bounds.
+        assert!(valid_data_profile(&profile(
+            json!({"rule_item": leaf(json!({"occurrence_operator_type": "between", "occurrence_low": 1, "occurrence_high": 3}))})
+        )));
+        assert!(!valid_data_profile(&profile(
+            json!({"rule_item": leaf(json!({"occurrence_operator_type": "between", "occurrence_low": 4, "occurrence_high": 3}))})
+        )));
+        assert!(!valid_data_profile(&profile(
+            json!({"rule_item": leaf(json!({"occurrence_operator_type": "more_than_equal_to"}))})
+        )));
+        // Confidence levels must include the chosen one.
+        assert!(!valid_data_profile(&profile(
+            json!({"rule_item": leaf(json!({"supported_confidence_levels": ["low"]}))})
+        )));
+        // Operators and arity.
+        let child = json!({"rule_item": leaf(json!({}))});
+        assert!(valid_data_profile(&profile(
+            json!({"operator_type": "and", "sub_expressions": [child, child]})
+        )));
+        assert!(!valid_data_profile(&profile(
+            json!({"operator_type": "not", "sub_expressions": [child, child]})
+        )));
+        assert!(!valid_data_profile(&profile(
+            json!({"operator_type": "or_not", "sub_expressions": [child]})
+        )));
+        assert!(!valid_data_profile(&profile(
+            json!({"operator_type": "xor", "sub_expressions": [child]})
+        )));
+        // A leaf carries no operator; depth is bounded at 32.
+        assert!(!valid_data_profile(&profile(
+            json!({"rule_item": leaf(json!({})), "operator_type": "and"})
+        )));
+        let mut deep = child.clone();
+        for _ in 0..34 {
+            deep = json!({"operator_type": "and", "sub_expressions": [deep]});
+        }
+        assert!(!valid_data_profile(&profile(deep)));
+        // Non-pattern techniques need an id, name or EDM dataset.
+        assert!(valid_data_profile(&profile(
+            json!({"rule_item": {"detection_technique": "edm", "edm_dataset_id": "e1"}})
+        )));
+        assert!(!valid_data_profile(&profile(
+            json!({"rule_item": {"detection_technique": "edm"}})
+        )));
+        // Names count UTF-16 units (an emoji is two).
+        let mut named = profile(json!({"rule_item": leaf(json!({}))}));
+        named.insert("name".into(), json!("\u{1F600}".repeat(16)));
+        assert!(valid_data_profile(&named));
+        named.insert("name".into(), json!(format!("{}a", "\u{1F600}".repeat(16))));
+        assert!(!valid_data_profile(&named));
+        // Granular profiles are multi-profile rules only, with positive ids.
+        let granular = json!({"name": "G", "is_granular_data_profile": true, "detection_rules": [
+            {"rule_type": "multi_profile", "multi_profile": {"operator_type": "or", "data_profile_ids": [1, 2]}}]});
+        assert!(valid_data_profile(granular.as_object().expect("object")));
+        let zero = json!({"name": "G", "detection_rules": [
+            {"rule_type": "multi_profile", "multi_profile": {"operator_type": "or", "data_profile_ids": [0]}}]});
+        assert!(!valid_data_profile(zero.as_object().expect("object")));
+        let mixed = json!({"name": "G", "is_granular_data_profile": true, "detection_rules": [
+            {"rule_type": "expression_tree", "expression_tree": {"rule_item": leaf(json!({}))}}]});
+        assert!(!valid_data_profile(mixed.as_object().expect("object")));
+        let typed = json!({"name": "G", "profile_type": "basic", "detection_rules": [
+            {"rule_type": "expression_tree", "expression_tree": {"rule_item": leaf(json!({}))}}]});
+        assert!(!valid_data_profile(typed.as_object().expect("object")));
     }
 }

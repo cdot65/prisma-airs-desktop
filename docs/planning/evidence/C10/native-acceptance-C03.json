@@ -1,0 +1,152 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C03",
+  "recorded_utc": "2026-10-19T02:15:58Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic TLS endpoint tools/native-acceptance/scan_server.py; tools/native-acceptance/acceptance_c03.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "ed3f8bf3117fc0a26a104bf7672d65b5e2a13af0cc4ae0ebeb327413de94b37d",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C03-N01",
+      "description": "Runtime Security is an available destination (no 'Soon'), opens with the heading 'Scan a prompt or response', directs to Settings when no tenant exists, and its scan form is reachable by Tab in order: By name, Profile name or ID, Prompt, Response, Application name (optional), Scan.",
+      "result": "pass",
+      "observation": "Runtime Security available without 'Not available': True; landing heading: True; Settings guidance without a tenant: True; Tab reached ['By name', 'Profile name or ID', 'Prompt', 'Response', 'Application name (optional)', 'Scan'] in order: True",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-landing-no-tenant.json"
+      ]
+    },
+    {
+      "id": "C03-N02",
+      "description": "Real UI submission through Tauri \u2192 Rust \u2192 SDK to the synthetic TLS endpoint: the endpoint receives exactly one POST /v1/scan/sync/request (application/json, x-pan-token equal to the synthetic key, x-payload-hash the HMAC-SHA256 of the received body, no Authorization header) carrying the entered profile name, prompt and application name; the window shows 'Blocked' with the verbatim action 'block', category 'malicious' and the reported detectors (including an unrecognized one).",
+      "result": "pass",
+      "observation": "endpoint requests for the scan: 1; POST /v1/scan/sync/request content-type application/json; token equals the synthetic key: True; x-payload-hash is the HMAC of the received body: True; Authorization present: False; profile {'profile_name': 'Production guardrails'}; metadata {'app_name': 'Desktop workbench'}; 'Blocked' shown: True; action/category/detectors shown: True",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-blocked.json"
+      ]
+    },
+    {
+      "id": "C03-N03",
+      "description": "An unrecognized service action, and an allow/benign reply carrying a content-level error while its global timeout and error flags are false, are each shown as 'Not determined' with the explanation that they must not be treated as allowed (the content error listed); 'Allowed' is not shown.",
+      "result": "pass",
+      "observation": "'Not determined' with 'Do not treat this as allowed' and the verbatim action 'quarantine-v2': True; a bare 'Allowed' label present: False; allow/benign with a prompt DLP content error and global flags false shown as 'Not determined' with the content error listed and no 'Allowed': True",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-unknown-action.json",
+        "docs/planning/evidence/C10/native-C03/tree-content-error.json"
+      ]
+    },
+    {
+      "id": "C03-N04",
+      "description": "A denied key (HTTP 401) is reported as the tenant not accepting the scan key and as refused (not scanned); the endpoint received exactly one request (no retry).",
+      "result": "pass",
+      "observation": "401 reported as not accepted and refused: True; endpoint requests: 1",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-denied.json"
+      ]
+    },
+    {
+      "id": "C03-N05",
+      "description": "Cancelling a scan whose reply is delayed shows that the request may already have reached the service (never that it was sent) with no verdict, re-enables Scan, and nothing further reaches the endpoint after the delayed reply time.",
+      "result": "pass",
+      "observation": "'Cancelled. The request may already have reached the service': True; no verdict after the delayed reply: True; Scan enabled: True; endpoint requests: 1",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-cancelled.json"
+      ]
+    },
+    {
+      "id": "C03-N06",
+      "description": "Switching the active tenant while a scan's reply is delayed: the other tenant's Runtime view shows none of the first tenant's scans; after the reply time, the first tenant's record says the reply was discarded and shows no verdict; the endpoint received one request.",
+      "result": "pass",
+      "observation": "Tenant B's Runtime view shows no Tenant A scans: True; Tenant A's record says the reply was discarded: True; endpoint requests: 1",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-tenant-b.json",
+        "docs/planning/evidence/C10/native-C03/tree-tenant-a-after-switch.json"
+      ]
+    },
+    {
+      "id": "C03-N07",
+      "description": "A lost response (the endpoint closes the connection) is shown as a connection failure with an unknown outcome and the 'send it again only if' guidance; nothing is resent automatically within 6 s; pressing Scan sends exactly one new request.",
+      "result": "pass",
+      "observation": "connection failure with unknown outcome and resend guidance: True; requests 6 s later: 1; after pressing Scan: 2",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-lost.json"
+      ]
+    },
+    {
+      "id": "C03-N08",
+      "description": "T23 offline: with the endpoint stopped the app launches and the scan form is editable; a scan reports an unknown outcome that may or may not have reached the service (never claiming it was sent); after the endpoint returns nothing is sent automatically within 6 s; an explicit Scan sends exactly one request and shows its verdict.",
+      "result": "pass",
+      "observation": "offline launch and scan reported unknown (connection failed; 'may or may not have reached the service', never 'was sent'): True; requests while offline: 0; 6 s after the endpoint returned: 0; explicit Scan: verdict True, requests 1",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-offline-unknown.json"
+      ]
+    },
+    {
+      "id": "C03-N09",
+      "description": "Quitting while a scan is in flight and relaunching: the relaunched app shows no scan history and sends nothing to the endpoint within 6 s of launch (no replay).",
+      "result": "pass",
+      "observation": "in-flight scan sent before quitting: 1; history after relaunch: False; requests within 6 s of relaunch: 0",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-relaunch.json"
+      ]
+    },
+    {
+      "id": "C03-N10",
+      "description": "Keyboard-only scan: the operator tabs to the fields, types the profile and prompt and submits with the keyboard; the verdict is announced through the result's live status region.",
+      "result": "pass",
+      "observation": "Tab reached Prompt: True; then Scan: True; Space submitted and 'Blocked' shown: True; AX status regions: 1; endpoint requests 1 with profile {'profile_name': 'Keyboard profile'}",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-keyboard.json"
+      ]
+    },
+    {
+      "id": "C03-N11",
+      "description": "Working v1-sized input (a 64 KiB prompt and 32 KiB response, typed as real key events) reaches the endpoint intact (exact character counts, valid payload hash) and shows a verdict.",
+      "result": "pass",
+      "observation": "64 KiB prompt and 32 KiB response typed and present in the fields: True; request received [{'promptChars': 65536, 'responseChars': 32768, 'bodyBytes': 98395, 'tokenMatches': True, 'payloadHashMatches': True}]; verdict shown: True",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json",
+        "docs/planning/evidence/C10/native-C03/tree-v1-sized.json"
+      ]
+    },
+    {
+      "id": "C03-N12",
+      "description": "At 200% zoom and at the minimum window size, the Prompt field and the Scan button are reachable by Tab and lie inside the window clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'prompt': {'pos': [649, 481], 'size': [652, 224]}, 'scan': {'pos': [649, 617], 'size': [127, 88]}} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'prompt': {'pos': [384, 261], 'size': [562, 113]}, 'scan': {'pos': [384, 516], 'size': [64, 45]}} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json"
+      ]
+    },
+    {
+      "id": "C03-N13",
+      "description": "After the scans, no file in the fixture data root other than the fixture keychain contains the synthetic key or any submitted prompt marker, and no AX snapshot contains the key.",
+      "result": "pass",
+      "observation": "data root files ['~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/.fl8C9901EB', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/fixture-transport-roots.pem', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/state.json', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/state.lock', '~/Library/Caches/io.cdot.prisma-airs-desktop.v2.fixture/WebKit/CacheStorage/salt', '~/Library/Caches/io.cdot.prisma-airs-desktop.v2.fixture/WebKit/NetworkCache/Version 17/salt', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/Default/salt', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db-shm', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db-wal', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/MediaKeys/v1/salt', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db-shm', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db-wal', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db-shm', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db-wal']; files containing the key or a prompt marker: []; AX snapshots containing the key: []",
+      "evidence": [
+        "docs/planning/evidence/C10/native-C03/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The endpoint is a local synthetic fixture with a disposable test CA trusted only by the fixture build; live Prisma AIRS behavior is qualified in C25.",
+    "v1-sized input is typed as key events posted to the app's process (20 characters per event) because System Events typing is too slow for 96 KiB and the WebView ignores accessibility value writes; smaller inputs are typed through System Events. The 2 MiB and 8 MiB refusals are covered by scan-submit.test.tsx and sync_scan, not natively.",
+    "Offline is simulated by a stopped local endpoint (connection refused), not by disabling the host network.",
+    "Spoken VoiceOver output was not recorded; AX roles, names, focus and live status regions are inspected."
+  ]
+}

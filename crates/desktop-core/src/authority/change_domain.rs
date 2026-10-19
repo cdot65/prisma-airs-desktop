@@ -31,7 +31,8 @@ use crate::runtime::{Claim, OperationId, OperationState, Outcome, Work};
 use crate::tenants::TenantId;
 use crate::vault::SessionVault;
 
-/// How long a prepared review may be applied.
+/// How long a prepared review may be applied (the default of
+/// `CoreConfig::review_lifetime`).
 pub const REVIEW_LIFETIME: Duration = Duration::from_secs(15 * 60);
 /// Settled change results kept for the active context.
 const RETAINED_RESULTS: usize = 16;
@@ -46,6 +47,11 @@ pub enum ChangeFailure {
     Conflict,
     /// The service or the management credential.
     Service { failure: ManagementFailure },
+    /// The review expired before it was confirmed; review it again.
+    Expired,
+    /// The desktop could not start the change (its work queue was full);
+    /// nothing was sent. Review it again.
+    Capacity,
 }
 
 impl From<ChangeProblem> for ChangeFailure {
@@ -75,6 +81,8 @@ pub enum ChangeReviewState {
     Ready,
     /// The native confirmation is open; the editor is held.
     Confirming,
+    /// Older than [`REVIEW_LIFETIME`]: it can no longer be applied.
+    Expired,
     Failed,
 }
 
@@ -100,6 +108,8 @@ pub enum SecretState {
     Held,
     /// The operator cleared it (or it was never kept).
     Forgotten,
+    /// It was handed to the native sheet once and is no longer held here.
+    Shown,
 }
 
 /// The review the presentation may show (no secrets).
@@ -143,10 +153,63 @@ pub struct ChangeResultView {
     pub secret: SecretState,
 }
 
+/// Why a chosen dictionary file was not staged.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum StagedFileFailure {
+    /// Over v1's 64 Ki UTF-16 units (or the read bound).
+    TooLarge,
+    /// Not UTF-8 text.
+    NotText,
+    Empty,
+    /// The file could not be read (not a regular file, permissions).
+    Unreadable,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum StagedFileState {
+    /// The native file sheet is open.
+    Choosing,
+    Ready,
+    Failed,
+}
+
+/// A keyword file the operator chose in the native sheet, read once by the
+/// desktop and referenced from a dictionary draft by its token (the source
+/// file is never written; the renderer never sees a path).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct StagedFileView {
+    pub state: StagedFileState,
+    /// Use as `fileRef` in a dictionary draft.
+    pub token: Option<String>,
+    /// Display name only (no directory).
+    pub name: Option<String>,
+    pub bytes: Option<u32>,
+    pub lines: Option<u32>,
+    pub failure: Option<StagedFileFailure>,
+}
+
+pub(super) struct StagedFile {
+    token: String,
+    context: ContextRef,
+    name: String,
+    text: String,
+}
+
+pub(super) enum Staging {
+    Choosing { context: ContextRef, lease: u64 },
+    Ready(StagedFile),
+    Failed(StagedFileFailure),
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangesView {
     pub review: Option<ChangeReviewView>,
+    /// The dictionary keyword file chosen in the native sheet, if any.
+    pub staged: Option<StagedFileView>,
     /// The active context's applied changes, newest first.
     pub results: Vec<ChangeResultView>,
 }
@@ -248,15 +311,16 @@ impl State {
         session_vault: Arc<SessionVault>,
     ) -> Result<(Option<OperationId>, Vec<crate::runtime::Start>), Refusal> {
         let tenant = self.check_context(&context)?;
-        if matches!(
-            self.change_review.as_ref().map(|r| &r.phase),
-            Some(Phase::Confirming { .. })
-        ) {
-            return Err(Refusal::Busy);
-        }
         let source = self.binding_source(&context, keychain, session_vault)?;
+        // A newly captured draft invalidates a pending confirmation: its sheet
+        // is ended and its late completion can no longer apply anything.
+        if let Some(Phase::Confirming { nonce, .. }) = self.change_review.as_ref().map(|r| &r.phase)
+        {
+            self.confirmer.dismiss(*nonce);
+        }
         let id = ReviewId::issue().ok_or(Refusal::ShuttingDown)?;
-        let draft = match normalize(&draft, &source.client_id) {
+        let resolved = self.resolve_staged(&context, &draft);
+        let draft = match resolved.and_then(|d| normalize(&d, &source.client_id)) {
             Ok(mutation) => mutation,
             Err(problem) => {
                 // Kept so the operator can see why; nothing is read or sent.
@@ -313,6 +377,7 @@ impl State {
             return Err(Refusal::ReviewConsumed);
         }
         let active = self.active_ref.clone();
+        let lifetime = self.review_lifetime;
         let label = self
             .change_review
             .as_ref()
@@ -324,8 +389,7 @@ impl State {
             .as_mut()
             .filter(|r| &r.id == review)
             .ok_or(Refusal::ReviewInvalid)?;
-        if active.as_ref() != Some(&current.context) || current.created.elapsed() > REVIEW_LIFETIME
-        {
+        if active.as_ref() != Some(&current.context) || current.created.elapsed() > lifetime {
             return Err(Refusal::ReviewInvalid);
         }
         let prepared = match &current.phase {
@@ -345,7 +409,14 @@ impl State {
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_owned();
-        let fresh = normalize(draft, &author).map_err(|_| Refusal::ReviewInvalid)?;
+        let context = current.context.clone();
+        let fresh = match self.resolve_staged(&context, draft) {
+            Ok(draft) => normalize(&draft, &author).map_err(|_| Refusal::ReviewInvalid)?,
+            Err(_) => return Err(Refusal::ReviewInvalid),
+        };
+        let Some(current) = self.change_review.as_mut().filter(|r| &r.id == review) else {
+            return Err(Refusal::ReviewInvalid);
+        };
         if fresh != current.draft {
             return Err(Refusal::ReviewInvalid);
         }
@@ -379,51 +450,74 @@ impl State {
         {
             return Vec::new();
         }
+        let expired = current.created.elapsed() > self.review_lifetime;
         let Phase::Confirming { prepared, .. } =
             std::mem::replace(&mut current.phase, Phase::Failed(ChangeFailure::Conflict))
         else {
             return Vec::new();
         };
-        if !accepted {
+        // A denial, or a confirmation that outlived the review, applies
+        // nothing; the review stays (an expired one shows as expired).
+        if !accepted || expired {
             current.phase = Phase::Ready(prepared);
             return Vec::new();
         }
-        let Some(taken) = self.change_review.take() else {
-            return Vec::new();
-        };
-        self.consumed_reviews.push(taken.id.clone());
-        let source = match self.binding_source(&taken.context, keychain, session_vault) {
+        let (context, tenant, draft) = (
+            current.context.clone(),
+            current.tenant.clone(),
+            current.draft.clone(),
+        );
+        // Admission and consumption are one step: if the change cannot be
+        // started, the review is not consumed and the operator sees why.
+        let source = match self.binding_source(&context, keychain, session_vault) {
             Ok(source) => source,
-            Err(_) => return Vec::new(),
+            Err(_) => {
+                if let Some(r) = self.change_review.as_mut() {
+                    r.phase = Phase::Failed(ChangeFailure::Service {
+                        failure: ManagementFailure::CredentialMissing,
+                    });
+                }
+                return Vec::new();
+            }
         };
         let slot: ApplySlot = Arc::default();
-        let name = item_name(taken.draft.kind, &prepared.mutation.body).or_else(|| {
+        let name = item_name(draft.kind, &prepared.mutation.body).or_else(|| {
             prepared
                 .before
                 .as_ref()
-                .and_then(|b| item_name(taken.draft.kind, b))
+                .and_then(|b| item_name(draft.kind, b))
         });
         let job = ApplyJob {
             source,
-            tenant: taken.tenant,
-            draft: taken.draft.clone(),
+            tenant,
+            draft: draft.clone(),
             prepared: *prepared,
             slot: Arc::clone(&slot),
         };
-        let Ok((operation, starts)) =
-            self.operations
-                .admit(taken.context.as_str(), 0, job.into_work(), Instant::now())
-        else {
-            return Vec::new();
-        };
+        let (operation, starts) =
+            match self
+                .operations
+                .admit(context.as_str(), 0, job.into_work(), Instant::now())
+            {
+                Ok(admitted) => admitted,
+                Err(_) => {
+                    if let Some(r) = self.change_review.as_mut() {
+                        r.phase = Phase::Failed(ChangeFailure::Capacity);
+                    }
+                    return Vec::new();
+                }
+            };
+        if let Some(taken) = self.change_review.take() {
+            self.consumed_reviews.push(taken.id);
+        }
         self.change_results.insert(
             0,
             ChangeRecord {
                 operation,
-                context: taken.context,
-                kind: taken.draft.kind,
-                action: taken.draft.action,
-                target: taken.draft.target,
+                context,
+                kind: draft.kind,
+                action: draft.action,
+                target: draft.target,
                 name,
                 slot,
                 output: None,
@@ -431,6 +525,86 @@ impl State {
             },
         );
         starts
+    }
+
+    /// Replaces a dictionary draft's `fileRef` with the staged file's text
+    /// (the file staged for this context, by its token).
+    fn resolve_staged(
+        &self,
+        context: &ContextRef,
+        draft: &ChangeDraft,
+    ) -> Result<ChangeDraft, ChangeProblem> {
+        if draft.kind != ChangeKind::Dictionaries {
+            return Ok(draft.clone());
+        }
+        let Ok(Value::Object(mut body)) = serde_json::from_str::<Value>(&draft.body) else {
+            return Ok(draft.clone());
+        };
+        let Some(reference) = body.remove("fileRef") else {
+            return Ok(draft.clone());
+        };
+        let staged = match &self.staging {
+            Some(Staging::Ready(file))
+                if &file.context == context && Some(file.token.as_str()) == reference.as_str() =>
+            {
+                file
+            }
+            _ => return Err(ChangeProblem::StagedFile),
+        };
+        if body.contains_key("file") {
+            return Err(ChangeProblem::Body);
+        }
+        body.insert("file".into(), Value::String(staged.text.clone()));
+        Ok(ChangeDraft {
+            body: Value::Object(body).to_string(),
+            ..draft.clone()
+        })
+    }
+
+    /// ChooseDictionaryFile: opens the native file sheet (one at a time).
+    pub(super) fn choose_dictionary_file(
+        &mut self,
+        context: ContextRef,
+        lease: u64,
+    ) -> Result<(), Refusal> {
+        self.check_context(&context)?;
+        if matches!(self.staging, Some(Staging::Choosing { .. })) {
+            return Err(Refusal::Busy);
+        }
+        self.staging = Some(Staging::Choosing { context, lease });
+        Ok(())
+    }
+
+    /// The sheet's result: a bounded UTF-8 text file is staged; anything else
+    /// is reported. A cancelled sheet keeps nothing.
+    pub(super) fn settle_dictionary_file(
+        &mut self,
+        lease: u64,
+        chosen: Option<Result<(String, Vec<u8>), StagedFileFailure>>,
+    ) {
+        let Some(Staging::Choosing { context, lease: l }) = &self.staging else {
+            return;
+        };
+        if *l != lease || self.active_ref.as_ref() != Some(context) {
+            return;
+        }
+        let context = context.clone();
+        self.staging = match chosen {
+            None => None,
+            Some(Err(failure)) => Some(Staging::Failed(failure)),
+            Some(Ok((name, bytes))) => Some(match staged_text(bytes) {
+                Err(failure) => Staging::Failed(failure),
+                Ok(text) => match nonce() {
+                    Some(n) => Staging::Ready(StagedFile {
+                        token: format!("sf-{n:016x}"),
+                        context,
+                        name,
+                        text,
+                    }),
+                    None => Staging::Failed(StagedFileFailure::Unreadable),
+                },
+            }),
+        };
     }
 
     pub(super) fn discard_change(&mut self, review: &ReviewId) -> Result<(), Refusal> {
@@ -446,7 +620,9 @@ impl State {
         }
     }
 
-    /// The held one-time secret of an applied change, for the native sheet.
+    /// Hands the held one-time secret of an applied change to the native
+    /// sheet, once: the core keeps no copy afterwards, so closing, copying
+    /// or the sheet's expiry ends it for good (DESIGN: one reveal).
     pub(super) fn reveal_secret(
         &mut self,
         operation: &OperationId,
@@ -454,14 +630,15 @@ impl State {
         let active = self.active_ref.clone();
         let record = self
             .change_results
-            .iter()
+            .iter_mut()
             .find(|r| &r.operation == operation && Some(&r.context) == active.as_ref())
             .ok_or(Refusal::InvalidInput)?;
         let secret = record
             .output
-            .as_ref()
-            .and_then(|o| o.secret.clone())
+            .as_mut()
+            .and_then(|o| o.secret.take())
             .ok_or(Refusal::CapabilityMissing)?;
+        record.secret = SecretState::Shown;
         let label = format!(
             "New API key{}",
             record
@@ -515,6 +692,14 @@ impl State {
                     Some(_) => {}
                 }
             }
+        }
+        let stale = match &self.staging {
+            Some(Staging::Choosing { context, .. }) => active.as_ref() != Some(context),
+            Some(Staging::Ready(file)) => active.as_ref() != Some(&file.context),
+            _ => false,
+        };
+        if stale {
+            self.staging = None;
         }
         let before = self.change_results.len();
         self.change_results
@@ -572,6 +757,11 @@ impl State {
             .map(|r| {
                 let (state, failure, prepared) = match &r.phase {
                     Phase::Preparing { .. } => (ChangeReviewState::Preparing, None, None),
+                    Phase::Ready(p) if r.created.elapsed() > self.review_lifetime => (
+                        ChangeReviewState::Expired,
+                        Some(ChangeFailure::Expired),
+                        Some(p.as_ref()),
+                    ),
                     Phase::Ready(p) => (ChangeReviewState::Ready, None, Some(p.as_ref())),
                     Phase::Confirming { prepared, .. } => {
                         (ChangeReviewState::Confirming, None, Some(prepared.as_ref()))
@@ -628,8 +818,58 @@ impl State {
                 secret: r.secret,
             })
             .collect();
-        ChangesView { review, results }
+        let staged = self.staging.as_ref().map(|s| match s {
+            Staging::Choosing { .. } => StagedFileView {
+                state: StagedFileState::Choosing,
+                token: None,
+                name: None,
+                bytes: None,
+                lines: None,
+                failure: None,
+            },
+            Staging::Ready(file) => StagedFileView {
+                state: StagedFileState::Ready,
+                token: Some(file.token.clone()),
+                name: Some(file.name.clone()),
+                bytes: u32::try_from(file.text.len()).ok(),
+                lines: u32::try_from(file.text.lines().count()).ok(),
+                failure: None,
+            },
+            Staging::Failed(failure) => StagedFileView {
+                state: StagedFileState::Failed,
+                token: None,
+                name: None,
+                bytes: None,
+                lines: None,
+                failure: Some(*failure),
+            },
+        });
+        ChangesView {
+            review,
+            staged,
+            results,
+        }
     }
+}
+
+/// A chosen keyword file as text: UTF-8 (a byte-order mark is dropped),
+/// non-empty, at most 64 Ki UTF-16 units (v1).
+fn staged_text(bytes: Vec<u8>) -> Result<String, StagedFileFailure> {
+    let bytes = bytes
+        .strip_prefix(&[0xEF, 0xBB, 0xBF])
+        .map(<[u8]>::to_vec)
+        .unwrap_or(bytes);
+    let text = String::from_utf8(bytes).map_err(|_| StagedFileFailure::NotText)?;
+    if text.contains('\0') {
+        return Err(StagedFileFailure::NotText);
+    }
+    if text.trim().is_empty() {
+        return Err(StagedFileFailure::Empty);
+    }
+    if text.encode_utf16().count() > crate::changes::MAX_DICTIONARY_FILE {
+        return Err(StagedFileFailure::TooLarge);
+    }
+    Ok(text)
 }
 
 fn verb(action: ChangeAction) -> &'static str {
@@ -648,6 +888,10 @@ fn noun(kind: ChangeKind) -> &'static str {
         ChangeKind::Topics => "custom topic",
         ChangeKind::Applications => "application",
         ChangeKind::ApiKeys => "API key",
+        ChangeKind::DataPatterns => "data pattern",
+        ChangeKind::DataProfiles => "data profile",
+        ChangeKind::FilteringProfiles => "data filtering profile",
+        ChangeKind::Dictionaries => "dictionary",
     }
 }
 
@@ -771,6 +1015,14 @@ async fn baseline(
             Ok((with_auth_code(draft, &deployments)?, source))
         }
         (_, A::Create) => Ok((draft.clone(), None)),
+        // DLP items are read by their own get (v1 `current`); 404 is absent.
+        (kind, _) if kind.is_dlp() => match binding
+            .dlp_item(kind.resource(), &draft.target, deadline)
+            .await?
+        {
+            Some(item) => Ok((draft.clone(), Some(item))),
+            None => Err(ChangeProblem::NotFound.into()),
+        },
         (kind, action) => {
             let mut before = find_id(binding, kind.resource(), &draft.target, deadline).await?;
             if (kind, action) == (ChangeKind::Applications, A::Delete) {
@@ -817,6 +1069,17 @@ async fn readback(
                 == name
         }
     };
+    if kind.is_dlp() {
+        // By identifier: the reply's for a create, the target otherwise (a
+        // dictionary replace may reply 204 with no body).
+        let id = crate::management::identity(response.get("id"))
+            .unwrap_or_else(|| mutation.target.clone());
+        return match binding.dlp_item(resource, &id, deadline).await {
+            Ok(Some(item)) => (Readback::Found, Some(item.to_string())),
+            Ok(None) => (Readback::Absent, None),
+            Err(_) => (Readback::Failed, None),
+        };
+    }
     let walked = match mutation.action {
         ChangeAction::Create | ChangeAction::Version => {
             binding

@@ -566,6 +566,40 @@ Decided in C09 (implementer decision, recorded for review).
 - v1's directional and customized prompt-injection options were local
   previews with no API fields; they are not part of any draft.
 
+## D036 — DLP authoring subset with staged keyword files
+
+Decided in C10 (implementer decision, recorded for review).
+
+- C10 implements exactly v1's DLP write subset (`bridge/src/protocol.ts`
+  allowed matrix at 74754c02): data patterns create, replace and delete;
+  data profiles create and replace; data filtering profiles replace;
+  dictionaries create, replace and delete. There is no filtering profile
+  create or delete, no data profile delete, and the SDK's merge-patch
+  methods are not used; deployment profiles and the AIRS DLP catalog stay
+  read-only. Unsupported variants fail review before any request.
+- The same review authority as C09 applies (fresh input, typed
+  confirmation, native confirmation, baseline re-read and digest, no
+  retries, faithful outcomes); DLP baselines and readback use each item's
+  own get, where a 404 is absent. v1 added no authorship to DLP writes;
+  neither does C10, and the SDK's DLP deletes send no body.
+- Bodies are normalized with the SDK's request contracts; data profiles
+  first drop the response-only `advance_data_patterns_rule_request` and
+  null fields and must pass v1's `validDataProfile` (ported exactly, UTF-16
+  name length). Dictionaries are exactly `{metadata, file}` with the file
+  as non-empty text of at most 64 Ki UTF-16 units (v1), metadata checked by
+  `DictionaryRequestSchema` and an `original_file_name` the SDK's multipart
+  rules accept; uploads are the SDK's multipart (`json` metadata part,
+  `file` part named by the file name, text/plain).
+- v1 entered keywords only as text. C10's milestone asks for file
+  selection, so a dictionary may also use a keyword file chosen in a native
+  sheet (rfd/NSOpenPanel; the fixture build reads a file staged in its data
+  root). Rust reads it once (bounded to 256 KiB, then UTF-8, a byte-order
+  mark dropped, non-empty, at most 64 Ki UTF-16 units), never writes it,
+  and stages it for the active context under a random token; a draft
+  refers to it as `fileRef`. The renderer never sees a path or the content;
+  a different file chosen after review changes the draft Apply compares
+  and is refused.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

@@ -1,0 +1,358 @@
+[
+  {
+    "mutation": "filtering profiles can be deleted",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "data_profiles_follow_v1s_structure_rules_and_have_no_delete",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "data profiles can be deleted",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "data_profiles_follow_v1s_structure_rules_and_have_no_delete",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the legacy rendering is sent back with a data profile",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "data_profiles_follow_v1s_structure_rules_and_have_no_delete",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "data profiles skip v1's structure rules",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "data_profiles_follow_v1s_structure_rules_and_have_no_delete",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a pattern leaf may omit its confidence level",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "guard": "data_profiles_follow_v1s_structure_rules",
+    "exit_code": 0,
+    "guard_failed": false
+  },
+  {
+    "mutation": "dictionary files are unbounded",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "dictionary_files_and_names_are_bounded_before_any_request",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a dictionary file name may hold a path",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "dictionary_files_and_names_are_bounded_before_any_request",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "any staged token resolves",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "a_file_chosen_in_the_native_sheet_is_staged_validated_and_uploaded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an oversized chosen file is staged",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "a_file_chosen_in_the_native_sheet_is_staged_validated_and_uploaded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a chosen file's byte-order mark is uploaded",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "a_file_chosen_in_the_native_sheet_is_staged_validated_and_uploaded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a deleted DLP item reads back as present",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "data_patterns_are_created_replaced_and_deleted_exactly",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a dictionary replace without a body is an invalid reply",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "a_typed_dictionary_is_uploaded_as_literal_multipart",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the presentation sends the token as file content",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/dlp-authoring.test.tsx"
+    ],
+    "guard": "references a file chosen in the native sheet by its token only",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "data profiles offer a delete",
+    "files": [
+      "apps/desktop/src/features/administration/administration-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/dlp-authoring.test.tsx"
+    ],
+    "guard": "offers exactly v1\u2019s actions per inventory",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the presentation accepts a path as a staged token",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a staged file whose token is a path",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "changes"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/dlp-authoring.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

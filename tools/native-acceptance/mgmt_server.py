@@ -114,7 +114,7 @@ class Handler(BaseHTTPRequestHandler):
         record["status"] = status
         with srv.lock, open(srv.log, "a") as f:
             f.write(json.dumps(record) + "\n")
-        self.respond(status, json.dumps(payload).encode())
+        self.respond(status, json.dumps(payload).encode() if payload is not None else b"")
 
     def reply(self, path, query, record, mode):
         srv = self.server
@@ -162,16 +162,78 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/aisec/v1/mgmt/deploymentprofiles":
             return 200, {"deployment_profiles": [{"dp_name": f"dp-{n}", "auth_code": srv.auth_code if n == 0 else f"SYNTHETIC-C08-DP-CODE-{n}",
                                                   "status": "active"} for n in range(3)], "status": "success"}
-        if path == "/dlp/v2/api/data-patterns":
-            page = int(query.get("page", 0))
-            return 200, {"content": [{"id": f"pattern-{page}", "name": "Card numbers"}], "last": page >= 1,
-                         "totalElements": 2, "number": page}
+        if path.startswith("/dlp/v2/api/"):
+            rest = path[len("/dlp/v2/api/"):]
+            collection, _, item_id = rest.partition("/")
+            if mode.get("patternName") and collection == "data-patterns":
+                with srv.lock:
+                    srv.dlp["data-patterns"][0]["name"] = mode["patternName"]
+            with srv.lock:
+                store = srv.dlp.get(collection)
+                if store is None:
+                    return 404, {"error": "not found"}
+                if item_id:
+                    found = next((dict(i) for i in store if i["id"] == item_id), None)
+                    return (200, found) if found else (404, {"error": "not found"})
+                page = int(query.get("page", 0))
+                if collection == "data-patterns":
+                    # One item per page, whatever the size asked (C08's
+                    # Spring paging check: "Items 1-1 of 2").
+                    content = [dict(store[page])] if page < len(store) else []
+                    return 200, {"content": content, "last": page >= len(store) - 1,
+                                 "totalElements": len(store), "number": page}
+                return 200, {"content": [dict(i) for i in store], "last": True, "totalElements": len(store)}
         return 404, {"error": "not found"}
+
+    def dlp_write(self, method, path, record, mode):
+        """DLP writes (C10): JSON bodies, or a dictionary's multipart upload."""
+        srv = self.server
+        collection, _, item_id = path[len("/dlp/v2/api/"):].partition("/")
+        if mode.get("dlpDeny") == collection and method != "DELETE":
+            return 403, {"message": "SERVER-TEXT-NEVER-SHOWN"}
+        if collection == "dictionaries" and method in ("POST", "PUT"):
+            parts = multipart(self.headers.get("content-type") or "", self.sent_body)
+            record["parts"] = [{"name": p["name"], "filename": p["filename"], "contentType": p["contentType"],
+                                "sha256": hashlib.sha256(p["body"]).hexdigest(), "bytes": len(p["body"])} for p in parts]
+            record["contentType"] = (self.headers.get("content-type") or "").split(";")[0]
+            record["boundaryPrefix"] = "boundary=scm-sdk-" in (self.headers.get("content-type") or "")
+            meta = next((p for p in parts if p["name"] == "json"), None)
+            try:
+                body = json.loads(meta["body"]) if meta else {}
+            except ValueError:
+                body = {}
+        else:
+            try:
+                body = json.loads(self.sent_body or b"{}")
+            except ValueError:
+                body = {}
+            record["dlpBody"] = body if collection != "dictionaries" else None
+        with srv.lock:
+            store = srv.dlp.get(collection)
+            if store is None:
+                return 404, {"error": "not found"}
+            if method == "POST" and not item_id:
+                srv.serial += 1
+                item = dict(body, id=f"{collection}-{srv.serial}")
+                store.append(item)
+                return 200, item
+            index = next((n for n, i in enumerate(store) if i["id"] == item_id), None)
+            if index is None:
+                return 404, {"error": "not found"}
+            if method == "PUT":
+                store[index] = dict(body, id=item_id)
+                return (204, None) if collection == "dictionaries" else (200, store[index])
+            if method == "DELETE":
+                store.pop(index)
+                return 204, None
+        return 405, {"error": "method"}
 
     def write(self, method, path, query, record, mode):
         srv = self.server
         if record["auth"] != "bearer-issued":
             return 401, {"error": "unauthorized"}
+        if path.startswith("/dlp/v2/api/"):
+            return self.dlp_write(method, path, record, mode)
         try:
             body = json.loads(self.sent_body or b"{}")
         except ValueError:
@@ -204,7 +266,7 @@ class Handler(BaseHTTPRequestHandler):
                        "expiration": "2027-06-01T00:00:00Z", "revoked": False, "auth_code": body.get("auth_code", "")}
                 srv.keys.append(key)
                 if not any(a["app_name"] == body.get("cust_app") for a in srv.apps):
-                    srv.apps.append({"customer_appId": f"app-{srv.serial + 1}", "app_name": body.get("cust_app"),
+                    srv.apps.append({"customer_appId": f"app-{srv.serial + 1}", "tsg_id": srv.tsg, "app_name": body.get("cust_app"),
                                      "cloud_provider": body.get("cust_cloud_provider"), "environment": body.get("cust_env")})
                 record["issuedSha256"] = hashlib.sha256(secret.encode()).hexdigest()
                 return 200, dict(key, api_key=secret)
@@ -225,6 +287,13 @@ class Handler(BaseHTTPRequestHandler):
         return 404, {"error": "not found"}
 
     def respond(self, status, payload):
+        if status == 204:
+            self.send_response(204)
+            self.send_header("content-length", "0")
+            self.send_header("connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            return
         self.send_response(status)
         self.send_header("content-type", "application/json")
         self.send_header("content-length", str(len(payload)))
@@ -232,6 +301,30 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
         self.close_connection = True
+
+
+def multipart(content_type, body):
+    """An independent multipart/form-data reader for the request log."""
+    boundary = content_type.split("boundary=")[-1].strip('"') if "boundary=" in content_type else None
+    if not boundary:
+        return []
+    parts = []
+    for chunk in body.split(("--" + boundary).encode())[1:-1]:
+        chunk = chunk.removeprefix(b"\r\n").removesuffix(b"\r\n")
+        head, _, content = chunk.partition(b"\r\n\r\n")
+        part = {"name": None, "filename": None, "contentType": None, "body": content}
+        for line in head.decode("utf-8", "replace").split("\r\n"):
+            lower = line.lower()
+            if lower.startswith("content-disposition:"):
+                for field in [f.strip() for f in line.split(";")]:
+                    if field.startswith("name="):
+                        part["name"] = field[5:].strip('"')
+                    if field.startswith("filename="):
+                        part["filename"] = field[9:].strip('"')
+            elif lower.startswith("content-type:"):
+                part["contentType"] = line.split(":", 1)[1].strip()
+        parts.append(part)
+    return parts
 
 
 class Server(ThreadingHTTPServer):
@@ -249,6 +342,16 @@ class Server(ThreadingHTTPServer):
             self.issued = set()
         self.counter = len(self.issued) + 1000 * int(time.time() % 1000)
         self.serial = 0
+        self.dlp = {
+            "data-patterns": [{"id": "pattern-1", "name": "Card numbers", "type": "custom",
+                               "detection_config": {"technique": "regex"}},
+                              {"id": "pattern-2", "name": "Badge numbers", "type": "custom",
+                               "detection_config": {"technique": "regex"}}],
+            "data-profiles": [{"id": "dp-1", "name": "PCI", "detection_rules": []}],
+            "data-filtering-profiles": [{"id": "filter-1", "name": "Default", "file_based": True, "non_file_based": False}],
+            "dictionaries": [{"id": "dict-1", "name": "Codes", "original_file_name": "codes.txt",
+                              "category": "Confidential", "region_name": "United States"}],
+        }
         self.auth_code = "SYNTHETIC-C08-DP-CODE"
         self.topics = [{"topic_id": "11111111-1111-4111-8111-111111111111", "topic_name": "Finance",
                         "revision": 1, "description": "Money talk"}]

@@ -184,7 +184,9 @@ fn status(desk: &Desk) -> Option<DownloadStatus> {
 async fn a_downloaded_course_is_kept_sealed_for_its_account_under_academys_lease() {
     let mut desk = desk().await;
     desk.sign_in().await;
-    assert_eq!(desk.snap().academy_offline.state, OfflineState::Empty);
+    // Offline work opens after sign-in settles; wait rather than race it
+    // (the assertion flaked once under a loaded parallel run).
+    assert!(eventually(|| desk.snap().academy_offline.state == OfflineState::Empty).await);
     assert!(
         desk.adapters.learner_vault.records().len() == 1,
         "no offline key before any download"

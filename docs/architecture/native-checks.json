@@ -450,11 +450,11 @@
       },
       {
         "id": "C09-N06",
-        "check": "Show new key… opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; a key shown again and left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied."
+        "check": "Show new key… opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; the key is then shown once and no longer offered (the desktop keeps no copy); another key's sheet left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied."
       },
       {
         "id": "C09-N07",
-        "check": "Rotating a key: the rotation sheet is destructive (Return cancels; Rotate key applies); after copying the rotated key, text copied by the operator in the meantime is left on the clipboard after 60 s; Clear key forgets a held key and the window says so."
+        "check": "Rotating a key: the rotation sheet is destructive (Return cancels; Rotate key applies); Clear key forgets a held key and the window says so; after copying another key, text copied by the operator in the meantime is left on the clipboard after 60 s."
       },
       {
         "id": "C09-N08",
@@ -467,6 +467,44 @@
       {
         "id": "C09-N10",
         "check": "At 200% zoom and at the minimum window size, Tab reaches the workbench's Review change inside the window and clear of the bottom fade."
+      }
+    ],
+    "C10": [
+      {
+        "id": "C10-N01",
+        "check": "Editing a data pattern: Edit… opens it as a JSON draft; Review change reads it by its own get; Apply… opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-patterns/<id> with the draft (no authorship added) and the window says it was read back."
+      },
+      {
+        "id": "C10-N02",
+        "check": "Creating a dictionary from typed keywords: the endpoint receives exactly one multipart/form-data POST (boundary scm-sdk-…) with a json part (metadata.json, application/json) holding the metadata and a file part named by original_file_name (text/plain) whose bytes are exactly the typed keywords; the window says it was read back."
+      },
+      {
+        "id": "C10-N03",
+        "check": "Native file selection: Choose keyword file… reads the staged text file (the window shows its name, size and line count), Use the chosen file and Review/Apply upload exactly its bytes as the file part; the source file is unchanged afterwards and no AX snapshot holds its path."
+      },
+      {
+        "id": "C10-N04",
+        "check": "A chosen file that is not UTF-8 text is reported ('That file is not UTF-8 text.') and nothing is staged or sent; a cancelled sheet stages nothing."
+      },
+      {
+        "id": "C10-N05",
+        "check": "Unavailable operations are not offered: data profiles have Edit… but no Delete…, data filtering profiles have no New, and deployment profiles say they are read only."
+      },
+      {
+        "id": "C10-N06",
+        "check": "A data pattern changed by another writer between Review and Apply is reported as changed since review after confirming, and nothing is written."
+      },
+      {
+        "id": "C10-N07",
+        "check": "A denied dictionary upload (403) is reported as not allowed, without server text, with nothing changed."
+      },
+      {
+        "id": "C10-N08",
+        "check": "T23: with the endpoint stopped, a confirmed data pattern create reports that the service could not be reached and may or may not have been applied, nothing is queued, and nothing is sent within 6 s after the endpoint returns."
+      },
+      {
+        "id": "C10-N09",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file… and Review change inside the window and clear of the bottom fade."
       }
     ]
   }

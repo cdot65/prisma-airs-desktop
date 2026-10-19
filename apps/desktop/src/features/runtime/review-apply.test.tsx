@@ -22,7 +22,7 @@ import { baseSnapshot, type Native, scriptedNative, tenant, withTenant } from '.
 
 const CONTEXT = 'cx-aaaaaaaaaaaaaaaaaaaaaaaa'
 const TOPIC = { topic_id: '11111111-1111-4111-8111-111111111111', topic_name: 'Finance', description: 'Money talk', revision: 1 }
-const ready = (changes: ShellSnapshot['changes'] = { review: null, results: [] }): ShellSnapshot => ({
+const ready = (changes: ShellSnapshot['changes'] = { review: null, staged: null, results: [] }): ShellSnapshot => ({
     ...withTenant(
         baseSnapshot,
         tenant({
@@ -118,7 +118,7 @@ describe('review and apply', () => {
             context: CONTEXT,
             draft: { kind: 'topics', action: 'update', target: TOPIC.topic_id, body: reviewed },
         })
-        await native.push(ready({ review: review(), results: [] }))
+        await native.push(ready({ staged: null, review: review(), results: [] }))
         expect(screen.getByText(/Applies only to this tenant/)).toBeInTheDocument()
         await user.type(screen.getByLabelText('Type Finance to confirm'), 'Finance')
         // An edit made right before Apply is what Apply sends (fresh capture);
@@ -144,7 +144,7 @@ describe('review and apply', () => {
         service(native)
         const user = await openTopicEditor(native)
         await user.click(screen.getByRole('button', { name: 'Review change' }))
-        await native.push(ready({ review: review({ state: 'confirming' }), results: [] }))
+        await native.push(ready({ staged: null, review: review({ state: 'confirming' }), results: [] }))
         expect(editor()).toHaveAttribute('readonly')
         expect(screen.getByLabelText('Type Finance to confirm')).toHaveAttribute('readonly')
         expect(screen.getByRole('button', { name: 'Apply…' })).toBeDisabled()
@@ -209,19 +209,20 @@ describe('review and apply', () => {
             current: null,
             secret: 'held',
         }
-        await native.push(ready({ review: null, results: [result] }))
+        await native.push(ready({ staged: null, review: null, results: [result] }))
         expect(screen.getByText(/held in memory only/)).toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: 'Show new key…' }))
         await user.click(screen.getByRole('button', { name: 'Clear key' }))
         expect(sentOf(native, 'revealSecret')).toEqual([{ kind: 'revealSecret', operation: 'op-9' }])
         expect(sentOf(native, 'forgetSecret')).toEqual([{ kind: 'forgetSecret', operation: 'op-9' }])
-        await native.push(ready({ review: null, results: [{ ...result, secret: 'forgotten' }] }))
+        await native.push(ready({ staged: null, review: null, results: [{ ...result, secret: 'forgotten' }] }))
         await waitFor(() => expect(screen.getByText('The new key was cleared from memory.')).toBeInTheDocument())
     })
 
     it('reports an uncertain outcome without claiming success', async () => {
         const native = scriptedNative(
             ready({
+                staged: null,
                 review: null,
                 results: [
                     {
