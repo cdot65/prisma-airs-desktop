@@ -482,6 +482,50 @@ def run():
                             "clipboard_untouched": clipboard() == marker,
                             "not_offered_again": fx.App.node(tree, "AXButton", "Show new key…") is None}
     obs["tree_retired_secret"] = save_tree("retired-secret", tree)
+
+    # ---- N12: an older reveal's expiry never ends a newer reveal ----
+    for name in ("Ownership key one", "Ownership key two"):
+        app.ax("press", "AXButton", "API keys")
+        app.wait_for(lambda t: fx.App.node(t, "AXButton", "Create API key") is not None)
+        app.ax("press", "AXButton", "Create API key")
+        app.wait_for(lambda t: fx.App.node(t, "AXButton", "Review change") is not None)
+        app.type_into("AXTextArea", "API key draft (JSON)",
+                      '{"api_key_name":"' + name + '","cust_app":"' + name + ' app","cust_env":"production","cust_cloud_provider":"aws",'
+                      '"dp_name":"dp-0","revoked":false,"rotation_time_interval":30,"rotation_time_unit":"days"}')
+        tree, ready = review(app, "Applies only to this tenant")
+        if not ready:
+            save_tree("n12-review-" + name.split()[-1], tree)
+            raise RuntimeError(f"{name} review did not become ready: " + " | ".join(
+                str(n.get("value") or n.get("label")) for n in tree if n.get("role") == "AXStaticText")[-600:])
+        app.type_into("AXTextField", "Type CREATE to confirm", "CREATE")
+        app.ax("press", "AXButton", "Apply…")
+        wait_sheet(app)
+        app.keycode(36)
+        c8.text(app, "held in memory only", 15)
+        close_workbench(app)
+    app.ax("press", "AXButton", "Show new key…", 0)
+    first_at = time.time()
+    tree, _ = wait_sheet(app)
+    first = secret_in(sheet(app, tree))
+    if first:
+        SEEN_SECRETS.append(first)
+    press_exact(app, "Close")
+    wait_no_sheet(app)
+    time.sleep(max(0.0, first_at + 40 - time.time()))
+    app.ax("press", "AXButton", "Show new key…", 0)
+    tree, second_shown = wait_sheet(app)
+    second = secret_in(sheet(app, tree))
+    if second:
+        SEEN_SECRETS.append(second)
+    # The first reveal's 60 s expiry passes while the second is shown.
+    time.sleep(max(0.0, first_at + 66 - time.time()))
+    tree = app.tree()
+    still = secret_in(sheet(app, tree))
+    obs["reveal_ownership"] = {"second_shown": second_shown and bool(second) and second != first,
+                               "survives_older_expiry": still == second and still is not None}
+    press_exact(app, "Close")
+    _, closed = wait_no_sheet(app)
+    obs["reveal_ownership"]["closed_by_operator"] = closed
     app.quit()
 
     trees = [os.path.join(NATIVE, n) for n in os.listdir(NATIVE) if n.startswith("tree-")]
@@ -515,6 +559,7 @@ def run():
 def evaluate(prepared, o):
     o.setdefault("retire_confirmation", {"missing": False})
     o.setdefault("retire_secret", {"missing": False})
+    o.setdefault("reveal_ownership", {"missing": False})
     inventory = {c["id"]: c["check"] for c in json.load(open(os.path.join(ROOT, "docs/architecture/native-checks.json")))["chunks"]["C09"]}
     obs_path = rel(os.path.join(NATIVE, "observations.json"))
     checks = []
@@ -561,6 +606,9 @@ def evaluate(prepared, o):
         f"200% zoom: {o['zoom']['found']} in window {o['zoom']['window']}, clear: {o['zoom']['clear']}; minimum size: {o['min_size']['found']} in window "
         f"{o['min_size']['window']}, clear: {o['min_size']['clear']}", [])
 
+    ro = o["reveal_ownership"]
+    add("C09-N12", all(ro.values()),
+        f"a second key revealed 40 s after the first was closed stays shown past the first reveal's 60 s expiry: {ro}", [])
     rc, rs = o["retire_confirmation"], o["retire_secret"]
     add("C09-N11", all(rc.values()) and all(rs.values()),
         f"confirmation sheet retired by a tenant switch: {rc}; secret sheet retired: {rs}",

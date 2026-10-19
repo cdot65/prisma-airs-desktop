@@ -1,0 +1,70 @@
+{
+  "request_id": "rq-C09-20261019T095220Z-72e9e2e8",
+  "attempt_id": "attempt-03",
+  "subject": "C09",
+  "fingerprints": {
+    "source": "538c5cf224cbbad26296b30c3b68574d4d80dcf462a621c5b6631b1c6797bfe3",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "abec2185120966633927becb35a30255bbc1146648c8089b93d6b88d6cffb316",
+    "evidence": "32636be7135b5a8c4468dfd5c88affbadf0bac6e2b948af2c137a7b298c1e88d"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [
+    "O1 (nonrequired) — crates/desktop-core/src/changes.rs:155-182: consider documenting reserved preview paths and narrowing the generic recursive mode=Customized match to them. The current guard also rejects that pair inside unrelated extension objects. No supported current SDK profile field was found to require it, so this is a compatibility suggestion, not a demonstrated supported-operation defect."
+  ],
+  "limitations": [
+    "Attempt-02 R1 is resolved: both native expiry and completion cleanup check the reveal generation before touching the shared sheet registration. The production SecretOwnership regression passes, and current native C09-N12 records a distinct second key surviving the first reveal's deadline and then closing explicitly. The independent execution described below additionally passed the ownership regression.",
+    "Attempt-02 E1 is resolved: the production authority-to-transport fixture submits directional and customized-PI drafts, requires PreviewOnly failures, and verifies no mutation or preview fields reach the service; an ordinary PI profile still passes review. Existing exact per-operation request/readback fixtures remain passing. Earlier confirmation-expiry, admission-capacity, one-time transfer and pending-context/draft retirement fixes remain present and covered.",
+    "Independently recomputed all four supplied fingerprints twice: 427 source entries and 185 packet references matched, including run inputs, retained command logs and native artifacts. Compared source inventories with attempt-02 and inspected all nine changed entries; unchanged scoped implementation retains the prior review's coverage. The supplied C08 attempt-02 receipt/request/verdict/raw-output hashes verify a passing predecessor with all five scores at 9.",
+    "Independently ran the existing native_confirmation test executable with --exact an_older_reveal_never_ends_or_unregisters_a_newer_sheet: one passed, four filtered out. This pure ownership test builds nothing and accesses no product endpoint or credential. Broader tests and native acceptance were assessed from retained evidence, not independently rerun; execution of the existing test binary is not a separate reconstruction of its build provenance.",
+    "Retained check logs report 303 frontend tests and 87 core unit tests passing. Scoped logs report 15 runtime-change, 5 native-confirmation, 2 clipboard, 115 overlapping frontend, 8 overlapping changes-unit, 13 management-read and 44 controller tests passing. Mutation evidence reports 24 guarded mutations rejected and six baselines passing, including the new ownership and preview-refusal mutations. These are scoped checks, not exhaustive coverage.",
+    "Current C09 native evidence reports 12 passing checks against executable SHA-256 339a61046565d5c339c020d8aa6980863007571f342b730a640f018c3f57a813, including overlapping reveals, expiry, clipboard ownership and open-sheet retirement. The included C01-C08 native records use an older executable and were not counted as current-bundle regression evidence. I did not independently launch the application; spoken VoiceOver output and clipboard-manager behavior remain unobserved.",
+    "Verified SDK archive SHA-256 6d555d955c3734dd5ee78f7173569bdecd4426095b2ffedc4b77d8f0f2c2e8d9 and all 131 packaged files against consumed registry source; packaged revision is 4f65dc48686a3b701ed0585812fcca46859f7e5a. No application files were changed, and no credentials or product endpoints were accessed; only the designated verdict was written.",
+    "This pass covers C09 and its reviewed frozen inputs, not P03 or other chunks. Live writes, signing and installed-package validation remain C25/C26 gates. The accepted race after the final baseline read remains; this implementation does not establish server-side atomic conflict protection. Evidence hashes bind retained bytes and do not independently authenticate their authorship."
+  ],
+  "inspected_files": [
+    "AGENTS.md",
+    "docs/adr/0001-native-operation-authority.md",
+    "docs/planning/chunks/C09.md",
+    "docs/planning/review-protocol.md",
+    "docs/architecture/DESIGN.md",
+    "docs/architecture/qualification.md",
+    "docs/architecture/native-checks.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/planning/reviews/C09/attempt-03/request.json",
+    "docs/planning/reviews/C09/attempt-03/source-inventory.json",
+    "docs/planning/reviews/C09/attempt-03/diff.patch",
+    "docs/planning/reviews/C09/attempt-02/source-inventory.json",
+    "docs/planning/reviews/C09/attempt-02/verdict.json",
+    "docs/planning/reviews/C09/follow-ups.md",
+    "docs/planning/reviews/C08/attempt-02/receipt.json",
+    "docs/planning/reviews/C08/attempt-02/verdict.json",
+    "apps/desktop/src-tauri/src/native_confirmation.rs",
+    "apps/desktop/src-tauri/tests/native_confirmation.rs",
+    "crates/desktop-core/src/changes.rs",
+    "crates/desktop-core/tests/runtime_changes/main.rs",
+    "apps/desktop/src/features/administration/runtime-changes.tsx",
+    "packages/desktop-contracts/src/client.ts",
+    "packages/desktop-contracts/src/generated/ChangeProblem.ts",
+    "tools/native-acceptance/acceptance_c09.py",
+    "docs/planning/evidence/C09/native-acceptance.json",
+    "docs/planning/evidence/C09/native/observations.json",
+    "docs/planning/evidence/C09/mutation-probes/probes.py",
+    "docs/planning/evidence/C09/mutation-probes/probes.log",
+    "docs/planning/evidence/C09/mutation-probes/results.json",
+    "docs/planning/evidence/C09/runs/check-20261019T094647Z-ebf19d/run.json",
+    "docs/planning/evidence/C09/runs/test-20261019T094847Z-31bf67/run.json",
+    "docs/planning/evidence/C09/runs/native-prepare-20261019T095004Z-ee2408/run.json",
+    "/Users/cdot/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/scm-sdk-0.1.0/src/validation/schema_graph.json"
+  ],
+  "recommendation": "pass"
+}

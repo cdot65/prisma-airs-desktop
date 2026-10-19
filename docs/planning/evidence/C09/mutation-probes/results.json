@@ -332,6 +332,146 @@
     "guard_failed": true
   },
   {
+    "mutation": "a revealed key stays revealable",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "key_creation_checks_names_injects_the_deployment_code_and_holds_the_secret",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a confirmation outliving its review still applies",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "a_confirmation_that_outlives_its_review_applies_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a change that cannot start consumes its review silently",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "a_change_that_cannot_be_started_is_not_consumed_silently",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a captured draft leaves the pending confirmation open",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "a_draft_captured_while_confirming_ends_the_pending_confirmation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a reveal is not published to the presentation",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "key_creation_checks_names_injects_the_deployment_code_and_holds_the_secret",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an older reveal still owns the secret sheet",
+    "files": [
+      "apps/desktop/src-tauri/src/native_confirmation.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_confirmation"
+    ],
+    "guard": "an_older_reveal_never_ends_or_unregisters_a_newer_sheet",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "preview-only profile options reach the service",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "preview_only_profile_options_are_refused_before_any_request",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
     "baseline": [
       "cargo",
       "test",

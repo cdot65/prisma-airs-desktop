@@ -3,7 +3,7 @@
 //! exercised by native acceptance (C09-N*); these cover the registry the
 //! sheet's completion handler resolves and the wire contract.
 
-use desktop_host::native_confirmation::{REVEAL_FOR, Registry, outcome};
+use desktop_host::native_confirmation::{REVEAL_FOR, Registry, SecretOwnership, outcome};
 
 #[tokio::test]
 async fn a_confirmation_resolves_once_and_only_for_its_nonce() {
@@ -59,4 +59,24 @@ fn no_wire_intent_can_carry_an_approval() {
 fn first_reveal_and_clipboard_timers_are_separate() {
     assert_eq!(REVEAL_FOR.as_secs(), 60);
     assert_eq!(desktop_host::clipboard_secret::CLEAR_AFTER.as_secs(), 60);
+}
+
+#[test]
+fn an_older_reveal_never_ends_or_unregisters_a_newer_sheet() {
+    let owner = SecretOwnership::new();
+    let a = owner.begin();
+    assert!(owner.owns(a));
+    // A is closed; B is revealed before A's expiry fires.
+    let b = owner.begin();
+    // A's expiry and stale completion find B owning the sheet: no effect.
+    assert!(
+        !owner.owns(a),
+        "an older timer does not end the newer sheet"
+    );
+    assert!(
+        owner.owns(b),
+        "B stays until its own expiry, close or retirement"
+    );
+    let c = owner.begin();
+    assert!(!owner.owns(b) && owner.owns(c));
 }

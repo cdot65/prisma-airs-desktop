@@ -54,8 +54,8 @@ PROBES = [
      [(AUTHORITY, "            if !tsg_ok {\n                return Err(Refusal::CapabilityMissing);\n            }\n", "")],
      READS_T, "only_bounded_requests_from_a_tenant_with_a_tsg_are_admitted"),
     ("removing the management client retires the scan key",
-     [(AUTHORITY, "                &context,\n                CredentialClass::Management,\n            )?;\n        }\n        Intent::Management",
-       "                &context,\n                CredentialClass::Scan,\n            )?;\n        }\n        Intent::Management")],
+     [(AUTHORITY, "                CredentialClass::Management,\n            )?;\n        }\n        Intent::ReviewChange",
+       "                CredentialClass::Scan,\n            )?;\n        }\n        Intent::ReviewChange")],
      READS_T, "removal_deletion_and_reset_retire_each_capability_as_asked"),
     # Retirement is layered (the operation's cancel token, the generation's
     # SDK session and the delivery check); removing all three lets the old
@@ -82,11 +82,11 @@ PROBES = [
      [(MGMT, "        Some(Value::Null) | None if !required => Ok(Vec::new()),", "        Some(Value::Null) | None => Ok(Vec::new()),")],
      UNIT_T, "offset_pages_claim_completeness_only_from_the_service"),
     ("a walk that ends early claims the item is absent",
-     [(MGMT, "            found: DetailFound::Incomplete,\n            item: None,", "            found: DetailFound::Absent,\n            item: None,")],
+     [(MGMT, "            Walk::Incomplete => (DetailFound::Incomplete, None),", "            Walk::Incomplete => (DetailFound::Absent, None),")],
      READS_T, "a_walk_that_ends_before_the_inventory_claims_nothing"),
     ("a DLP denial reads as an absent item",
-     [(MGMT, "                    if ManagementFailure::from_sdk(&error) == ManagementFailure::NotFound =>",
-       "                    if ManagementFailure::from_sdk(&error) != ManagementFailure::Unavailable =>")],
+     [(MGMT, "                    Some(item.to_string())\n                }\n                Err(PageError::Sdk(error))\n                    if ManagementFailure::from_sdk(&error) == ManagementFailure::NotFound =>",
+       "                    Some(item.to_string())\n                }\n                Err(PageError::Sdk(error))\n                    if ManagementFailure::from_sdk(&error) != ManagementFailure::Unavailable =>")],
      READS_T, "dlp_details_use_their_own_read_and_a_404_means_absent"),
     ("an API key value leaves Rust",
      [(MGMT, "const SECRET_FIELDS: [&str; 10] = [\n    \"api_key\",\n", "const SECRET_FIELDS: [&str; 10] = [\n    \"api_key_placeholder\",\n")],
@@ -138,7 +138,7 @@ PROBES = [
        "                    Err(VaultError::Locked) => {\n                        POISON.store(true, std::sync::atomic::Ordering::SeqCst);\n                        return Err(ManagementFailure::CredentialLocked);\n                    }\n                    _ if POISON.load(std::sync::atomic::Ordering::SeqCst) => return Err(ManagementFailure::CredentialLocked),")],
      READS_T, "protected_storage_failures_are_reported_without_any_fallback"),
     ("Administration keeps its instance across contexts",
-     [(SHELL, "                    key={snapshot.active?.context ?? 'none'}\n", "")],
+     [(SHELL, "                    // so no render ever pairs it with the previous one's rows.\n                    key={snapshot.active?.context ?? 'none'}\n", "                    // so no render ever pairs it with the previous one's rows.\n")],
      FE_ADMIN, "restarts from the first page when the credential is replaced mid-pagination"),
 ]
 

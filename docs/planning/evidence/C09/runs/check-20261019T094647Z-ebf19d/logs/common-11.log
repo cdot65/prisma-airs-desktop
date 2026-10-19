@@ -1,0 +1,97 @@
+
+running 87 tests
+test authority::offline_domain::tests::expired_or_rolled_back_leases_are_not_readable ... ok
+test avatar::tests::base64_matches_rfc_4648_vectors ... ok
+test authority::learner_domain::tests::identity_requires_an_academy_account_and_a_display_name ... ok
+test academy::tests::token_replies_require_bearer_scope_and_refresh ... ok
+test academy::tests::private_fields_are_screened_except_the_orientation_drill ... ok
+test authority::offline_domain::tests::iso_times_round_trip ... ok
+test academy::tests::origins_are_bare_https ... ok
+test authority::tests::observers_beyond_the_cap_are_refused_not_evicted ... ok
+test authority::tests::observer_queue_overflow_ends_with_resync ... ok
+test avatar::tests::only_avatars_on_academys_origin_are_read ... ok
+test avatar::tests::uploads_go_only_to_reviewed_destinations ... ok
+test changes::tests::data_profiles_follow_v1s_structure_rules ... ok
+test changes::tests::deletes_carry_only_the_desktops_author ... ok
+test changes::tests::digests_are_canonical_and_previews_label_server_fields ... ok
+test avatar::tests::malformed_unsupported_oversize_and_huge_photos_are_refused ... ok
+test changes::tests::key_creation_needs_its_fields_and_one_deployment_profiles_code ... ok
+test changes::tests::key_rotation_is_reduced_and_bounded ... ok
+test changes::tests::only_v1_actions_are_supported ... ok
+test changes::tests::topics_are_authored_stripped_and_bounded ... ok
+test changes::tests::write_responses_give_up_their_one_time_secret ... ok
+test context::tests::entered_secrets_never_format_their_value ... ok
+test context::tests::references_are_unique_per_epoch_and_bounded_on_input ... ok
+test import::tests::airs_cli_registry_imports_names_and_tsg_ids_only ... ok
+test import::tests::profile_documents_keep_whitelisted_fields_and_flag_invalid_entries ... ok
+test learner::tests::the_allowlist_is_sorted_unique_and_learner_only ... ok
+test learner::tests::the_public_set_is_sorted_and_contains_only_queries ... ok
+test learner::tests::the_shared_procedure_fixture_matches_the_pinned_sets ... ok
+test import::tests::unsupported_oversized_and_empty_sources_are_refused ... ok
+test library::tests::catalog_urls_follow_v1s_rule_for_the_configured_origin ... ok
+test library::tests::drafts_follow_v1s_product_rules_and_limits ... ok
+test library::tests::exports_and_imports_keep_v1s_file_and_refuse_foreign_or_malformed_files ... ok
+test library::tests::the_bundled_catalog_has_v1s_eleven_examples_across_five_products ... ok
+test management::tests::identities_match_strings_and_numbers_only ... ok
+test management::tests::local_and_spring_pages_slice_and_report_totals ... ok
+test library::tests::the_library_is_bounded_and_imports_merge_like_v1 ... ok
+test management::tests::offset_pages_claim_completeness_only_from_the_service ... ok
+test management::tests::requests_are_bounded ... ok
+test management::tests::secret_fields_never_leave_and_unknown_values_stay ... ok
+test observation::tests::activity_needs_known_totals ... ok
+test observation::tests::instants_parse_offsets_and_reject_other_text ... ok
+test observation::tests::key_expiry_is_inclusive_at_thirty_days_and_skips_inactive_keys ... ok
+test observation::tests::summaries_never_fabricate_benign_or_detector_counts ... ok
+test observation::tests::the_chart_contract_follows_v1 ... ok
+test offline::tests::a_commit_whose_directory_sync_failed_is_not_durable_until_one_completes ... ok
+test offline::tests::a_record_moved_to_another_name_does_not_authenticate ... ok
+test avatar::tests::exif_orientation_is_applied_to_the_prepared_square ... ok
+test offline::tests::an_interrupted_write_leaves_the_previous_version ... ok
+test avatar::tests::served_avatars_are_re_encoded_only_when_type_and_image_agree ... ok
+test avatar::tests::extreme_landscape_and_portrait_photos_are_prepared_from_their_centre ... ok
+test offline::tests::an_update_sees_the_current_record_and_can_leave_it ... ok
+test offline::tests::a_wrong_key_opens_nothing_and_loses_nothing ... ok
+test offline::tests::one_instance_holds_an_account_and_keys_must_be_32_bytes ... ok
+test offline::tests::records_are_sealed_and_never_on_disk_in_plaintext ... ok
+test offline::tests::another_account_or_key_cannot_read_it_and_unreadable_records_are_kept ... ok
+test runtime::tests::admission_is_bounded_by_count_and_bytes_without_dropping_work ... ok
+test runtime::tests::cancelling_queued_work_is_not_sent_and_claimed_work_is_signalled ... ok
+test runtime::tests::retirement_settles_queued_not_sent_and_cancels_claimed ... ok
+test runtime::tests::settlement_is_single_use_and_queued_deadlines_are_not_sent ... ok
+test scanning::tests::drafts_need_content_a_valid_profile_and_bounded_text ... ok
+test scanning::tests::drafts_never_format_their_text ... ok
+test scanning::tests::verdicts_follow_v1_and_never_default_to_allow ... ok
+test sessions::tests::csv_is_rfc4180_with_v1s_formula_guard ... ok
+test sessions::tests::queries_are_classified_like_v1 ... ok
+test sessions::tests::reports_are_bounded ... ok
+test sessions::tests::reports_upsert_remove_and_undo_without_overwriting_newer ... ok
+test offline::tests::records_kept_aside_are_bounded_and_count_toward_the_budget ... ok
+test store::tests::a_planted_symlink_is_not_written_through ... ok
+test store::tests::a_second_instance_cannot_take_the_lease ... ok
+test store::tests::failures_before_the_rename_change_nothing_and_after_it_are_unconfirmed ... ok
+test store::tests::saves_atomically_with_owner_only_modes_and_reloads ... ok
+test store::tests::unreadable_or_inconsistent_documents_are_corrupt_and_untouched ... ok
+test tenants::tests::drafts_are_trimmed_and_bounded ... ok
+test tenants::tests::origins_are_https_hosts_without_extra_parts ... ok
+test tenants::tests::tenant_ids_have_the_issued_shape_only ... ok
+test transport::tests::chunks_are_bounded_without_losing_bytes ... ok
+test transport::tests::invalid_policies_are_refused ... ok
+test vault::tests::record_ids_have_the_issued_shape_only ... ok
+test vault::tests::session_records_are_isolated_and_removable ... ok
+test offline::tests::records_are_bounded_and_listed_by_kind ... ok
+test sessions::tests::the_cache_is_bounded_sealed_and_exports_metadata_only ... ok
+test avatar::tests::a_photo_larger_than_academys_upload_cap_is_still_accepted_as_a_source ... ok
+test avatar::tests::chosen_photos_become_512_pixel_jpegs_within_academys_cap ... ok
+test avatar::tests::decoded_pixels_beyond_the_memory_budget_are_refused_before_decoding ... ok
+test avatar::tests::decoded_pixels_and_their_resampling_together_stay_within_the_budget ... ok
+test offline::tests::concurrent_writers_commit_whole_records_within_the_budget ... ok
+test offline::tests::an_account_is_bounded_in_bytes_and_records ... ok
+test avatar::tests::a_24_megapixel_rotated_photo_within_the_budget_is_prepared ... ok
+
+test result: ok. 87 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.83s
+
+
+--- stderr ---
+   Compiling desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.92s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-8c72f5fbbe399f77)

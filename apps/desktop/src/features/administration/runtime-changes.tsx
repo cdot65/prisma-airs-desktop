@@ -44,6 +44,7 @@ const PROBLEM_TEXT: Record<ChangeProblem, string> = {
     dictionaryFile: 'The keyword list must be non-empty text of at most 65,536 characters.',
     fileName: 'The original file name cannot contain slashes, quotes or control characters (at most 255 characters).',
     stagedFile: 'The chosen file is no longer available. Choose it again.',
+    previewOnly: 'Directional settings and customized prompt-injection modes were local previews in the previous desktop; remove them from the draft. They are never sent.',
 }
 
 const STAGED_TEXT: Record<StagedFileFailure, string> = {

@@ -1239,3 +1239,47 @@ async fn every_supported_operation_sends_exactly_v1s_request_and_reads_back() {
         })
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn preview_only_profile_options_are_refused_before_any_request() {
+    let mut desk = desk().await;
+    desk.adapters.confirmer.auto(Some(true));
+    let before = desk.writes().len();
+    for body in [
+        json!({"profile_name": "Directional", "active": true, "policy": {"ai-security-profiles": []},
+               "directional": {"prompt": true, "response": false}}),
+        json!({"profile_name": "Customized PI", "active": true, "policy": {"ai-security-profiles": [
+            {"model-type": "default", "model-configuration": {"model-protection": [
+                {"name": "prompt-injection", "action": "block", "mode": "Customized"}]}}]}}),
+    ] {
+        let review = desk
+            .review(&json!({"kind": "profiles", "action": "create", "target": "", "body": body.to_string()}))
+            .await;
+        assert_eq!(
+            review.failure,
+            Some(ChangeFailure::Problem {
+                problem: desktop_core::changes::ChangeProblem::PreviewOnly
+            }),
+            "{body}"
+        );
+    }
+    assert_eq!(desk.writes().len(), before, "nothing reached the service");
+    assert!(
+        desk.server
+            .seen()
+            .iter()
+            .all(
+                |s| !String::from_utf8_lossy(&s.body).contains("directional")
+                    && !String::from_utf8_lossy(&s.body).contains("Customized")
+            ),
+        "no preview field on the wire"
+    );
+    // The service's own fields still go through.
+    let legit = json!({"profile_name": "Legit", "active": true, "policy": {"ai-security-profiles": [
+        {"model-type": "default", "model-configuration": {"model-protection": [
+            {"name": "prompt-injection", "action": "block"}]}}]}});
+    let review = desk
+        .review(&json!({"kind": "profiles", "action": "create", "target": "", "body": legit.to_string()}))
+        .await;
+    assert_eq!(review.failure, None);
+}

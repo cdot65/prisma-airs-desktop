@@ -113,6 +113,14 @@ PROBES = [
      [("crates/desktop-core/src/authority.rs", "            effects.push(Effect::RevealSecret { label, secret });\n            // The key is no longer held: publish that, or the presentation\n            // keeps offering a reveal that will be refused.\n            state.changed();",
        "            effects.push(Effect::RevealSecret { label, secret });")],
      CHANGES_T, "key_creation_checks_names_injects_the_deployment_code_and_holds_the_secret"),
+    ("an older reveal still owns the secret sheet",
+     [("apps/desktop/src-tauri/src/native_confirmation.rs", "        self.current.load(std::sync::atomic::Ordering::SeqCst) == generation", "        let _ = generation;\n        true")],
+     ["cargo", "test", "--locked", "-p", "desktop-host", "--features", "test-fixtures", "--test", "native_confirmation"],
+     "an_older_reveal_never_ends_or_unregisters_a_newer_sheet"),
+    ("preview-only profile options reach the service",
+     [("crates/desktop-core/src/changes.rs", "    if kind == ChangeKind::Profiles && holds_preview(", "    if false && holds_preview(")],
+     ["cargo", "test", "--locked", "-p", "desktop-core", "--features", "test-fixtures", "--test", "runtime_changes"],
+     "preview_only_profile_options_are_refused_before_any_request"),
 ]
 
 

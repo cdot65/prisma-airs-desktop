@@ -58,11 +58,12 @@
   "tree_key_held": "docs/planning/evidence/C09/native/tree-key-held.json",
   "revealed_matches_issued": true,
   "copied_matches": true,
+  "shown_once": true,
+  "return_cancelled_rotate": true,
+  "rotated": true,
   "reveal_expired": true,
   "clipboard_cleared": true,
   "key_cleared": true,
-  "return_cancelled_rotate": true,
-  "rotated": true,
   "foreign_clipboard_kept": true,
   "offline_review": true,
   "offline_texts": [
@@ -129,9 +130,28 @@
   "in_flight_posts": 1,
   "relaunch_posts": 1,
   "tree_relaunch": "docs/planning/evidence/C09/native/tree-relaunch.json",
+  "retire_confirmation": {
+   "shown": true,
+   "ended": true,
+   "no_write": true,
+   "tenant_b_active": true
+  },
+  "tree_retired_confirmation": "docs/planning/evidence/C09/native/tree-retired-confirmation.json",
+  "retire_secret": {
+   "shown": true,
+   "ended": true,
+   "clipboard_untouched": true,
+   "not_offered_again": true
+  },
+  "tree_retired_secret": "docs/planning/evidence/C09/native/tree-retired-secret.json",
+  "reveal_ownership": {
+   "second_shown": true,
+   "survives_older_expiry": true,
+   "closed_by_operator": true
+  },
   "secret_in_trees": [],
   "persisted_secret_files": [],
-  "secrets_seen": 2,
+  "secrets_seen": 6,
   "v1_unchanged": true,
   "mgmt_writes": [
    {
@@ -189,6 +209,44 @@
    },
    {
     "method": "POST",
+    "path": "/aisec/v1/mgmt/apikey",
+    "author": "c08-native@1234567890.iam.panserviceaccount.com",
+    "authCodeMatches": true,
+    "fields": [
+     "api_key_name",
+     "auth_code",
+     "created_by",
+     "cust_app",
+     "cust_cloud_provider",
+     "cust_env",
+     "dp_name",
+     "revoked",
+     "rotation_time_interval",
+     "rotation_time_unit"
+    ],
+    "status": 200
+   },
+   {
+    "method": "POST",
+    "path": "/aisec/v1/mgmt/apikey",
+    "author": "c08-native@1234567890.iam.panserviceaccount.com",
+    "authCodeMatches": true,
+    "fields": [
+     "api_key_name",
+     "auth_code",
+     "created_by",
+     "cust_app",
+     "cust_cloud_provider",
+     "cust_env",
+     "dp_name",
+     "revoked",
+     "rotation_time_interval",
+     "rotation_time_unit"
+    ],
+    "status": 200
+   },
+   {
+    "method": "POST",
     "path": "/aisec/v1/mgmt/topic",
     "author": "c08-native@1234567890.iam.panserviceaccount.com",
     "authCodeMatches": null,
@@ -199,120 +257,261 @@
      "topic_name"
     ],
     "status": 200
+   },
+   {
+    "method": "POST",
+    "path": "/aisec/v1/mgmt/apikey",
+    "author": "c08-native@1234567890.iam.panserviceaccount.com",
+    "authCodeMatches": true,
+    "fields": [
+     "api_key_name",
+     "auth_code",
+     "created_by",
+     "cust_app",
+     "cust_cloud_provider",
+     "cust_env",
+     "dp_name",
+     "revoked",
+     "rotation_time_interval",
+     "rotation_time_unit"
+    ],
+    "status": 200
+   },
+   {
+    "method": "POST",
+    "path": "/aisec/v1/mgmt/apikey",
+    "author": "c08-native@1234567890.iam.panserviceaccount.com",
+    "authCodeMatches": true,
+    "fields": [
+     "api_key_name",
+     "auth_code",
+     "created_by",
+     "cust_app",
+     "cust_cloud_provider",
+     "cust_env",
+     "dp_name",
+     "revoked",
+     "rotation_time_interval",
+     "rotation_time_unit"
+    ],
+    "status": 200
+   },
+   {
+    "method": "POST",
+    "path": "/aisec/v1/mgmt/apikey",
+    "author": "c08-native@1234567890.iam.panserviceaccount.com",
+    "authCodeMatches": true,
+    "fields": [
+     "api_key_name",
+     "auth_code",
+     "created_by",
+     "cust_app",
+     "cust_cloud_provider",
+     "cust_env",
+     "dp_name",
+     "revoked",
+     "rotation_time_interval",
+     "rotation_time_unit"
+    ],
+    "status": 200
    }
   ]
  },
  "log": [
   {
-   "t": "17:28:16",
+   "t": "04:36:01",
    "step": "typed",
    "field": "TSG ID (optional)",
    "attempts": 1
   },
   {
-   "t": "17:28:17",
+   "t": "04:36:03",
    "step": "typed",
    "field": "Label",
    "attempts": 1
   },
   {
-   "t": "17:28:19",
+   "t": "04:36:05",
    "step": "typed",
    "field": "Endpoint origin",
    "attempts": 1
   },
   {
-   "t": "17:28:22",
+   "t": "04:36:07",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "17:28:25",
+   "t": "04:36:10",
    "step": "typed",
    "field": "Client ID",
    "attempts": 1
   },
   {
-   "t": "17:28:26",
+   "t": "04:36:12",
    "step": "typed",
    "field": "Client secret",
    "attempts": 1
   },
   {
-   "t": "17:28:33",
+   "t": "04:36:18",
    "step": "typed",
    "field": "custom topic draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "17:28:35",
+   "t": "04:36:20",
    "step": "typed",
    "field": "Type Finance to confirm",
    "attempts": 1
   },
   {
-   "t": "17:28:44",
+   "t": "04:36:29",
    "step": "typed",
    "field": "custom topic draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "17:28:46",
+   "t": "04:36:31",
    "step": "typed",
    "field": "Type Finance to confirm",
    "attempts": 1
   },
   {
-   "t": "17:28:51",
+   "t": "04:36:34",
    "step": "typed",
    "field": "Type Finance to confirm",
    "attempts": 1
   },
   {
-   "t": "17:28:56",
+   "t": "04:36:39",
    "step": "typed",
    "field": "custom topic draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "17:28:59",
+   "t": "04:36:42",
    "step": "typed",
    "field": "Type Finance to confirm",
    "attempts": 1
   },
   {
-   "t": "17:29:08",
+   "t": "04:36:50",
    "step": "typed",
    "field": "API key draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "17:29:10",
+   "t": "04:36:52",
    "step": "typed",
    "field": "Type CREATE to confirm",
    "attempts": 1
   },
   {
-   "t": "17:30:16",
+   "t": "04:36:56",
    "step": "typed",
    "field": "Type Native key to confirm",
    "attempts": 1
   },
   {
-   "t": "17:31:27",
+   "t": "04:38:07",
    "step": "typed",
-   "field": "custom topic draft (JSON)",
+   "field": "API key draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "17:31:29",
+   "t": "04:38:09",
    "step": "typed",
    "field": "Type CREATE to confirm",
    "attempts": 1
   },
   {
-   "t": "17:32:51",
+   "t": "04:38:15",
+   "step": "typed",
+   "field": "API key draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "04:38:17",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "04:39:27",
+   "step": "typed",
+   "field": "custom topic draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "04:39:28",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "04:40:42",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "04:41:02",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "04:41:04",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  },
+  {
+   "t": "04:41:10",
+   "step": "typed",
+   "field": "custom topic draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "04:41:12",
+   "step": "typed",
+   "field": "Type Finance to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "04:41:21",
+   "step": "typed",
+   "field": "API key draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "04:41:22",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "04:41:31",
+   "step": "typed",
+   "field": "API key draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "04:41:33",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "04:41:40",
+   "step": "typed",
+   "field": "API key draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "04:41:42",
    "step": "typed",
    "field": "Type CREATE to confirm",
    "attempts": 1

@@ -145,6 +145,37 @@ pub enum ChangeProblem {
     FileName,
     /// The chosen file is no longer staged; choose it again.
     StagedFile,
+    /// A profile draft holds a v1 preview-only option (directional settings
+    /// or a customized prompt-injection mode): never sent (C09).
+    PreviewOnly,
+}
+
+/// Field names of v1's profile previews (`profiles/configuration.rs`:
+/// "Directional settings are a local UI preview ... not sent to SCM"; the
+/// "Customized" detector mode). They were UI state in v1; a v2 draft that
+/// carries one is refused before any request.
+const PREVIEW_KEYS: [&str; 6] = [
+    "directional",
+    "directional_settings",
+    "directionality",
+    "direction_config",
+    "customized_levels",
+    "custom_thresholds",
+];
+
+/// Whether a profile body carries a preview-only option at any depth.
+fn holds_preview(value: &Value) -> bool {
+    match value {
+        Value::Object(map) => map.iter().any(|(k, v)| {
+            PREVIEW_KEYS.contains(&k.to_ascii_lowercase().as_str())
+                || (k.eq_ignore_ascii_case("mode")
+                    && v.as_str()
+                        .is_some_and(|m| m.eq_ignore_ascii_case("customized")))
+                || holds_preview(v)
+        }),
+        Value::Array(items) => items.iter().any(holds_preview),
+        _ => false,
+    }
 }
 
 /// A validated, normalized change (v1 `validateMutation` plus authorship).
@@ -232,6 +263,9 @@ pub fn normalize(draft: &ChangeDraft, client_id: &str) -> Result<Mutation, Chang
             target: draft.target.clone(),
             body: Value::Object(only),
         });
+    }
+    if kind == ChangeKind::Profiles && holds_preview(&Value::Object(body.clone())) {
+        return Err(ChangeProblem::PreviewOnly);
     }
     // Server-assigned or secret fields never come from a draft.
     body.remove("auth_code");

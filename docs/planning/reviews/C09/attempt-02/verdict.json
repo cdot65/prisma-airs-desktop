@@ -1,0 +1,73 @@
+{
+  "request_id": "rq-C09-20261019T083219Z-dc175fc2",
+  "attempt_id": "attempt-02",
+  "subject": "C09",
+  "fingerprints": {
+    "source": "5bf9a2d0fa080a071e8d20b47367f7a58980fc8b628b21fb141b29bbc56e2792",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "7cb7f38476daeb72e4660dbd013371b4e4f2181dd38fe3f6b0ca544e81db0e6f",
+    "evidence": "d6e23142a9cb16ca7b5d3959ebbd33132770f2adf373dd7dfc20e0ecb8c537ce"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "required_fixes": [
+    "R1 (medium, partially remediated) — apps/desktop/src-tauri/src/native_confirmation.rs:207,230,247-255: the core now transfers a key only once, but every secret sheet still shares SECRET_SHEET. Closing A does not cancel its timer; after B replaces that entry, A's timer calls end_sheet(SECRET_SHEET) and closes B. For example, reveal A at t=0, close it at t=5, then reveal B at t=55: A's expiry closes B at t=60, only five seconds into B's reveal. B cannot be revealed again because the core correctly surrendered its copy. Bind expiry and completion cleanup to the particular presentation, and ignore callbacks belonging to an older reveal. Acceptance: close/copy A, open B before A's deadline, then deliver A's expiry and stale cleanup; B remains registered and visible until its own expiry, explicit close or retirement. Exercise this ownership case in the host lifecycle tests and native acceptance, retaining the separate clipboard copy-time deadline and owner checks. This is the still-open 'another key's reveal is unaffected by an older timer' condition from attempt-01 R1."
+  ],
+  "blockers": [],
+  "evidence_gaps": [
+    "E1 (partially remediated) — docs/planning/chunks/C09.md:26 still requires a transport-level negative test for preview-only customized PI/directionality options. The new runtime_changes fixture covers all six previously missing mutation paths with exact requests and readback, but contains no preview-only case. review-apply.test.tsx:160-186 checks an ordinary profile through a scripted renderer transport; it does not exercise production Rust-to-SDK dispatch with preview-only state. Exact ordinary profile requests alone do not demonstrate that exclusion. Add a negative case proving that preview-only state cannot enter a submitted profile request, or is explicitly refused before dispatch, while legitimate service fields remain supported. Retain the result against the new frozen inputs. The SDK profile schema is passthrough, so schema parsing alone is not evidence of exclusion."
+  ],
+  "optional_suggestions": [],
+  "limitations": [
+    "Attempt-01 R2 and R3 are resolved: confirmation settlement revalidates review age, and successful operation admission precedes review consumption with visible capacity failure. E2 is resolved by the captured-draft retirement regression and native C09-N11. R1's repeated-reveal defect is fixed by taking the core-held secret and publishing Shown; only the host presentation ownership issue remains. The Rust authority and private confirmation architecture merit 9; the remaining behavior defect and mandatory evidence gap keep behavior, validation and overall at 8.",
+    "Independently recomputed all four supplied fingerprints twice: 427 source entries and 185 packet references matched, including retained logs, run inputs and native artifacts. No application files were changed, and no product endpoints or credentials were accessed. Only the designated verdict was written.",
+    "Reviewed retained execution evidence rather than rerunning build, test or native commands, which would write outside the permitted review artifact. The timer defect is established by source inspection; its overlapping-reveal scenario was not independently executed.",
+    "Retained checks report 303 frontend tests and 87 core unit tests passing. Scoped logs report 14 runtime-change, 4 native-confirmation, 2 clipboard, 115 overlapping frontend, 8 overlapping changes-unit, 13 management-read and 44 controller tests passing. The mutation evidence reports 22 guarded mutations rejected and six baselines passing. These results do not exercise the remaining cases.",
+    "The current C09 native record reports 11 passing checks against executable SHA-256 bc42682636a98970d1694e4e2c35214837fc62b1fe629b50ccd162878f8f07bd. Its reveal-expiry procedure checks only that B's sheet is absent after B's deadline, so an earlier timer closing B also passes. The included C01-C08 native records use an older executable and were not counted as current-bundle regression evidence. I did not independently launch the application; spoken VoiceOver output and clipboard-manager behavior remain unobserved.",
+    "Verified SDK archive SHA-256 6d555d955c3734dd5ee78f7173569bdecd4426095b2ffedc4b77d8f0f2c2e8d9 and all 131 packaged files against the consumed registry source; packaged revision is 4f65dc48686a3b701ed0585812fcca46859f7e5a. Inspected the profile request schema and pinned v1 preview separation as behavioral references.",
+    "Verified the supplied C08 attempt-02 predecessor receipt and its request/verdict/raw-output hashes; it passes all five dimensions at 9. This verdict covers C09 only and does not certify other chunks or P03. Live writes, signing and installed-package validation remain C25/C26 gates; the accepted race after the final baseline read is not server-side atomic conflict protection."
+  ],
+  "inspected_files": [
+    "docs/planning/chunks/C09.md",
+    "docs/planning/reviews/C09/attempt-02/request.json",
+    "docs/planning/reviews/C09/attempt-02/source-inventory.json",
+    "docs/planning/reviews/C09/attempt-01/verdict.json",
+    "docs/planning/reviews/C09/follow-ups.md",
+    "docs/planning/reviews/C08/attempt-02/receipt.json",
+    "docs/planning/reviews/C08/attempt-02/request.json",
+    "docs/planning/reviews/C08/attempt-02/verdict.json",
+    "docs/architecture/DESIGN.md",
+    "docs/architecture/qualification.md",
+    "docs/architecture/review-verdict.schema.json",
+    "crates/desktop-core/src/changes.rs",
+    "crates/desktop-core/src/authority/change_domain.rs",
+    "crates/desktop-core/tests/runtime_changes/main.rs",
+    "apps/desktop/src-tauri/src/native_confirmation.rs",
+    "apps/desktop/src-tauri/src/clipboard_secret.rs",
+    "apps/desktop/src-tauri/tests/native_confirmation.rs",
+    "apps/desktop/src-tauri/tests/clipboard_secret.rs",
+    "apps/desktop/src/features/administration/runtime-changes.tsx",
+    "apps/desktop/src/features/administration/administration-view.tsx",
+    "apps/desktop/src/features/runtime/review-apply.test.tsx",
+    "tools/native-acceptance/acceptance_c09.py",
+    "docs/planning/evidence/C09/native-acceptance.json",
+    "docs/planning/evidence/C09/native/observations.json",
+    "docs/planning/evidence/C09/native/tree-retired-confirmation.json",
+    "docs/planning/evidence/C09/native/tree-retired-secret.json",
+    "docs/planning/evidence/C09/mutation-probes/probes.py",
+    "docs/planning/evidence/C09/mutation-probes/probes.log",
+    "docs/planning/evidence/C09/mutation-probes/results.json",
+    "docs/planning/evidence/C09/runs/check-20261019T082700Z-76a5d7/run.json",
+    "docs/planning/evidence/C09/runs/test-20261019T082846Z-a09fbe/run.json",
+    "docs/planning/evidence/C09/runs/native-prepare-20261019T083005Z-0afb96/run.json",
+    "/Users/cdot/development/cdot65/prisma-airs-desktop/src/ui/pages/profiles/configuration.rs (74754c02)",
+    "/Users/cdot/development/cdot65/prisma-airs-desktop/src/ui/pages/profiles/options.rs (74754c02)",
+    "/Users/cdot/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/scm-sdk-0.1.0/src/validation/schema_graph.json"
+  ],
+  "recommendation": "fail"
+}

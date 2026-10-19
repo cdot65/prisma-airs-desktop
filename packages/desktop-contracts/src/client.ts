@@ -216,6 +216,7 @@ const CHANGE_PROBLEMS: readonly string[] = [
     'dictionaryFile',
     'fileName',
     'stagedFile',
+    'previewOnly',
 ]
 const STAGED_STATES: readonly string[] = ['choosing', 'ready', 'failed']
 const STAGED_FAILURES: readonly string[] = ['tooLarge', 'notText', 'empty', 'unreadable']

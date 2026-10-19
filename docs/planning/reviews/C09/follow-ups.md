@@ -29,3 +29,18 @@ P03 push):
   Accessibility while the confirmation or the one-time key sheet is open
   dismisses it; a late Return writes nothing, the clipboard is untouched and
   the key is not offered again.
+
+## Attempt-02 (P03 re-review, 9/8/9/8/8) remediation
+
+- R1: each secret reveal takes a generation (`SecretOwnership`); an older
+  reveal's expiry and completion only end or unregister their own sheet, so
+  a newer reveal stays until its own expiry, close or retirement. Tests:
+  host `an_older_reveal_never_ends_or_unregisters_a_newer_sheet`; native
+  C09-N12 (a second key revealed 40 s after the first was closed stays
+  shown past the first reveal's 60 s expiry). The clipboard's copy-time
+  deadline and owner checks are unchanged.
+- E1: v1's profile previews (directional settings, the Customized
+  prompt-injection mode) are refused in a profile draft before any request
+  (`ChangeProblem::PreviewOnly`); legitimate service fields still go
+  through. Test: `preview_only_profile_options_are_refused_before_any_request`
+  (production authority-to-transport path, no preview field on the wire).

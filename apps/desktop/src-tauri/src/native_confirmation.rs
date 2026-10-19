@@ -53,6 +53,34 @@ impl Registry {
     }
 }
 
+/// Which reveal owns the one secret sheet. Every reveal takes a new
+/// generation; an older reveal's expiry or completion never ends or
+/// unregisters a newer reveal's sheet.
+#[derive(Debug, Default)]
+pub struct SecretOwnership {
+    current: std::sync::atomic::AtomicU64,
+}
+
+impl SecretOwnership {
+    pub const fn new() -> Self {
+        Self {
+            current: std::sync::atomic::AtomicU64::new(0),
+        }
+    }
+
+    /// A new reveal: it owns the sheet from now on.
+    pub fn begin(&self) -> u64 {
+        self.current
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            .wrapping_add(1)
+    }
+
+    /// Whether `generation` is still the sheet's reveal.
+    pub fn owns(&self, generation: u64) -> bool {
+        self.current.load(std::sync::atomic::Ordering::SeqCst) == generation
+    }
+}
+
 /// The receiver side of a confirmation: false if it was dropped.
 pub async fn outcome(receiver: Option<oneshot::Receiver<bool>>) -> bool {
     match receiver {
@@ -184,6 +212,9 @@ mod appkit {
         pub app: AppHandle<R>,
     }
 
+    /// The secret sheet's current reveal.
+    static SECRET_OWNER: super::SecretOwnership = super::SecretOwnership::new();
+
     impl<R: Runtime> SecretPresenter for NativeSecrets<R> {
         fn reveal(&self, label: String, secret: Zeroizing<String>) {
             let app = self.app.clone();
@@ -205,6 +236,7 @@ mod appkit {
             return;
         };
         end_sheet(SECRET_SHEET);
+        let generation = SECRET_OWNER.begin();
         let alert = NSAlert::new(mtm);
         alert.setMessageText(&NSString::from_str(label));
         alert.setInformativeText(&NSString::from_str(
@@ -227,7 +259,11 @@ mod appkit {
             // The host's copy is dropped (zeroized) whatever the choice.
             let secret = held.borrow_mut().take();
             shown_field.setStringValue(&NSString::from_str(""));
-            SHEETS.with(|s| s.borrow_mut().remove(&SECRET_SHEET));
+            // Only this reveal's own registration is removed: a newer
+            // reveal may already own the sheet slot.
+            if SECRET_OWNER.owns(generation) {
+                SHEETS.with(|s| s.borrow_mut().remove(&SECRET_SHEET));
+            }
             if response != NSAlertFirstButtonReturn {
                 return;
             }
@@ -248,11 +284,16 @@ mod appkit {
             s.borrow_mut()
                 .insert(SECRET_SHEET, (window, alert.window()))
         });
-        // First reveal expiry: the sheet ends itself.
+        // First reveal expiry: this reveal's sheet ends itself; a newer
+        // reveal is never ended by an older one's timer.
         let app = app.clone();
         tauri::async_runtime::spawn(async move {
             tokio::time::sleep(REVEAL_FOR).await;
-            let _ = app.run_on_main_thread(|| end_sheet(SECRET_SHEET));
+            let _ = app.run_on_main_thread(move || {
+                if SECRET_OWNER.owns(generation) {
+                    end_sheet(SECRET_SHEET);
+                }
+            });
         });
     }
 
