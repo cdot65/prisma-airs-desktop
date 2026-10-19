@@ -2,7 +2,8 @@
 
 G00 and G01 passed (historical Claude reviews). C01–C04 and the P01 cumulative review completed on
 2026-10-17; C05–C07 and the P02 cumulative review completed on 2026-10-18;
-implementation is at **C12** (P03). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+C08–C12 and the P03 cumulative review completed on 2026-10-19; implementation
+is at **C13** (P04). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no
 blockers; each phase review still needs 9/10, after every chunk accepted below
@@ -21,12 +22,13 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C06 | **Complete** (generation 1): Codex attempt-05 passed; committed as 8718ac9 and verified against the reviewed source fingerprint | Attempts 01–04 remediated (records retained); D030 recorded |
 | C07 | **Complete** (generation 1): Codex attempt-06 scored 9 in all five dimensions; committed as 960e340 and verified against the reviewed source fingerprint | Attempts 01–05 remediated (`reviews/C07/remediation-attempt-0{1..5}.md`); D031 and D032 recorded |
 | P02 | **Complete**: Codex phase attempt-01 scored 9 in all five dimensions; committed as 3decccc and verified against the reviewed source fingerprint | Integrated native checks for C04–C07 and the workload budget on the P02 bundle |
-| C08 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as c07cc8b and verified | Follow-ups R1–R3/E1 remediated in the tree (`reviews/C08/follow-ups.md`); raised to 9/10 before the P03 review |
-| C09 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as aef8431 and verified | Follow-ups R1–R3/E1 and the core part of E2 remediated in the tree (`reviews/C09/follow-ups.md`); raised to 9/10 before the P03 review |
-| C10 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as 90dbc40 and verified | Follow-ups R1–R3/E2 remediated in the tree (`reviews/C10/follow-ups.md`); E1 (real NSOpenPanel evidence) open; raised to 9/10 before the P03 review |
-| C11 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as 0e4bda6 and verified | Follow-ups R1–R4/E2 remediated in the tree (`reviews/C11/follow-ups.md`); E1 (production save sheet evidence) open; raised to 9/10 before the P03 review |
-| C12 | **In progress**: Case Library and Runtime Home/Inbox implemented; native acceptance, probes and the Codex review next | D038 recorded; evidence in `evidence/C12` |
-| C13–C26 | Planned | Ordered predecessors required; P03 phase review after C12 |
+| C08 | **Complete** (generation 2): completed at 8/10 under D034 (c07cc8b), then raised; Codex attempt-03 passed with 9 in all five dimensions; committed as ada9234 and verified | Follow-ups R1–R3/E1 remediated (`reviews/C08/follow-ups.md`) |
+| C09 | **Complete** (generation 2): completed at 8/10 under D034 (aef8431), then raised; Codex attempt-03 passed with 9 in all five dimensions; committed as deb34c6 and verified | Follow-ups remediated, including native sheet retirement and reveal ownership (`reviews/C09/follow-ups.md`) |
+| C10 | **Complete** (generation 2): completed at 8/10 under D034 (90dbc40), then raised; Codex attempt-03 passed with 9 in all five dimensions; committed as a38b4f8 and verified | Follow-ups remediated, including production NSOpenPanel evidence (`reviews/C10/follow-ups.md`) |
+| C11 | **Complete** (generation 2): completed at 8/10 under D034 (0e4bda6), then raised; Codex attempt-03 passed with 9 in all five dimensions; committed as aec2cbc and verified | Follow-ups remediated, including production save panel evidence (`reviews/C11/follow-ups.md`) |
+| C12 | **Complete** (generation 2): completed at 8/10 under D034 (1911da6), then raised; Codex attempt-04 passed with 9 in all five dimensions; committed as 962747b and verified | Attempts 02–03 remediated: status stamps for library outcomes, hardened mutation harness, C12-N11 offline Library (`reviews/C12/follow-ups.md`) |
+| P03 | **Complete**: Codex phase attempt-02 scored 9 in all five dimensions; committed as bbbad43 and verified against the reviewed source fingerprint | Attempt-01 R1 (context-bound Playground handoff) remediated (`reviews/P03/follow-ups.md`); integrated native checks for C08–C12, the C11 workload and 129/129 mutation probes on the P03 bundle |
+| C13–C26 | Planned | Ordered predecessors required; C13 budgets are registered before its implementation |
 
 ## C01 evidence (docs/planning/evidence/C01)
 
