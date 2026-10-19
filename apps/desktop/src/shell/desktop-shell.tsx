@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ShellBrand, ShellFrame, ShellRail, ShellTopbar, type ShellNavItem } from '@ai-security-academy/presentation'
 import type { DesktopClient, FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import { AcademyView } from '../features/academy/academy-view'
 import { AdministrationView } from '../features/administration/administration-view'
 import { SessionsView } from '../features/sessions/sessions-view'
+import { type CasePrefill, LibraryView } from '../features/library/library-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { CommandPalette } from './command-palette'
@@ -49,6 +50,10 @@ export function DesktopShell(props: DesktopShellProps) {
     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
     const client = props.client
     const observeManagement = useCallback((operation: string) => client.observeManagement(operation), [client])
+    // A Library case or starter to fill the scan form with; another tenant
+    // or credential generation never inherits it.
+    const [prefill, setPrefill] = useState<CasePrefill | null>(null)
+    useEffect(() => setPrefill(null), [snapshot.active?.context])
 
     useEffect(() => {
         // Move focus to the new page heading after navigation (not on launch).
@@ -183,10 +188,19 @@ export function DesktopShell(props: DesktopShellProps) {
                     observe={observeManagement}
                     onNavigate={props.onNavigate}
                 />
+            ) : feature.id === 'library' && feature.availability.state === 'available' ? (
+                <LibraryView
+                    key={snapshot.active?.context ?? 'none'}
+                    ref={heading}
+                    snapshot={snapshot}
+                    dispatch={props.dispatch}
+                    onNavigate={props.onNavigate}
+                    onLoad={(fields) => setPrefill((p) => ({ ...fields, nonce: (p?.nonce ?? 0) + 1 }))}
+                />
             ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
                 <AcademyView ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
             ) : feature.id === 'runtime' && feature.availability.state === 'available' ? (
-                <RuntimeView ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
+                <RuntimeView ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} prefill={prefill} />
             ) : (
                 <UnavailableView ref={heading} feature={feature} />
             )}

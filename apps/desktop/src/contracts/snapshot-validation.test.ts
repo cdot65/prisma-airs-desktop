@@ -8,6 +8,19 @@ import { baseSnapshot, tenant, withTenant } from '../test/native'
 
 const valid: ShellSnapshot = withTenant(baseSnapshot, tenant())
 
+const caseView = {
+    id: '11111111-2222-4333-8444-555555555555', product: 'model-security', name: 'Spec', profile: '', prompt: 'p', response: '',
+    appName: '', expected: '', payload: '{}',
+}
+const inbox = {
+    id: 'runtime-activity', title: 't', detail: 'd', source: 's', action: false, tone: 'ok', destination: 'sessions', actionLabel: 'a',
+    facts: [{ label: 'Sessions', value: '1' }], perMille: 0,
+}
+const runtimeRead = {
+    readAt: 1792000000, chart: { bucketSeconds: 3600, buckets: [{ time: '2026-10-19T00:00:00Z', total: 1, violating: 0, detections: null }] },
+    chartFailure: null, summary: { sessions: 1, violating: 0, benign: 1, detectionEvents: null }, keysComplete: true, keysFailure: null,
+    items: [inbox], gaps: [],
+}
 const report = {
     scanId: 'scn-1', scanSubReqId: 0, sessionId: 'ses-1', applicationId: 'app-1', application: 'Bot', kind: 'false_positive',
     verdict: 'malicious', action: 'Blocked', detectors: ['dlp'], profile: 'P', category: '', reason: 'r', reportedAt: '2026-10-18T10:00:00Z',
@@ -113,6 +126,13 @@ describe('shell snapshot validation', () => {
         expect(
             parseShellSnapshot({
                 ...valid,
+                library: { ...valid.library, state: 'ready', cases: [caseView], notice: { kind: 'examplesAdded', added: 11 } },
+                overview: { read: runtimeRead, refreshing: false, failure: null, failedAt: null, fresh: true, attention: [], held: [], face: 'allClear' },
+            })
+        ).toBeTruthy()
+        expect(
+            parseShellSnapshot({
+                ...valid,
                 sessions: {
                     reports: { state: 'ready', failure: null, items: [report], undo: { scanId: 'scn-1', subRequest: 0 }, problem: 'reason', unsaved: true },
                     investigation: { storage: 'protected', sessions: 1, transactions: 0, contents: 1 },
@@ -175,6 +195,25 @@ describe('shell snapshot validation', () => {
         ],
         ['changes missing', { ...valid, changes: undefined }],
         ['sessions missing', { ...valid, sessions: undefined }],
+        ['library missing', { ...valid, library: undefined }],
+        ['a case of an unknown product', { ...valid, library: { ...valid.library, cases: [{ ...caseView, product: 'prisma-access' }] } }],
+        ['a Runtime case with a payload', { ...valid, library: { ...valid.library, cases: [{ ...caseView, product: 'runtime-security' }] } }],
+        ['a failed library without its reason', { ...valid, library: { ...valid.library, state: 'failed' } }],
+        ['a library export of another kind', { ...valid, library: { ...valid.library, export: { kind: 'reports', state: 'saving', name: null } } }],
+        ['overview missing', { ...valid, overview: undefined }],
+        ['all clear without a fresh read', { ...valid, overview: { ...valid.overview, face: 'allClear' } }],
+        [
+            'a chart with its failure',
+            { ...valid, overview: { ...valid.overview, read: { ...runtimeRead, chartFailure: 'unavailable' } } },
+        ],
+        [
+            'an inbox item of an unknown tone',
+            { ...valid, overview: { ...valid.overview, read: { ...runtimeRead, items: [{ ...inbox, tone: 'fine' }] } } },
+        ],
+        [
+            'a negative session count',
+            { ...valid, overview: { ...valid.overview, read: { ...runtimeRead, summary: { ...runtimeRead.summary, sessions: -1 } } } },
+        ],
         ['an unknown reports state', { ...valid, sessions: { ...valid.sessions, reports: { ...valid.sessions.reports, state: 'syncing' } } }],
         ['failed reports without a reason', { ...valid, sessions: { ...valid.sessions, reports: { ...valid.sessions.reports, state: 'failed' } } }],
         [

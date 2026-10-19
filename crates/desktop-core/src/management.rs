@@ -190,6 +190,9 @@ pub enum ManagementRequest {
     Content { scan_id: String, sub_request: u32 },
     /// A bounded search by session ID, scan ID or detector (v1).
     Search { query: String },
+    /// The Runtime Home/Inbox sources: the last day's sessions chart and
+    /// the API key inventory's first page (C12).
+    Overview,
 }
 
 impl ManagementRequest {
@@ -221,6 +224,7 @@ impl ManagementRequest {
             } => plain(session_id) && plain(app_id) && plain(app_name) && plain(scan_id),
             Self::Content { scan_id, .. } => plain(scan_id),
             Self::Search { query } => crate::sessions::classify(query).is_some(),
+            Self::Overview => true,
         }
     }
 }
@@ -393,6 +397,9 @@ pub enum ManagementResult {
     },
     Search {
         search: SessionSearch,
+    },
+    Overview {
+        overview: crate::observation::RuntimeOverview,
     },
     Failed {
         failure: ManagementFailure,
@@ -991,12 +998,33 @@ impl ManagementBinding {
         Ok(value)
     }
 
+    /// The last day's sessions chart (raw; `None` for an empty reply).
+    pub async fn sessions_chart(&self, deadline: Instant) -> Result<Option<Value>, PageError> {
+        let options = Self::options(deadline);
+        let mut query = scm_sdk::airs::management::DashboardTimeRangeQuery::default();
+        query.time_interval = Some(1);
+        query.time_unit = Some("day".to_owned());
+        let mut value = self
+            .dashboard()?
+            .sessions_chart_raw(&query, options.as_ref())
+            .await?
+            .map(Value::from);
+        if let Some(value) = value.as_mut() {
+            redact(value);
+        }
+        Ok(value)
+    }
+
     /// A bounded walk of the sessions overview, newest first, in pages of
-    /// [`crate::sessions::SEARCH_PAGE`] over `days`, reading at most
-    /// `max_sessions`: collects rows `wanted` accepts and stops after the page
-    /// on which `stop_at` matched (v1 `runtime.ts`). Returns the matches (at
-    /// most `stop_at`), the sessions read, and whether the window ended with
-    /// no more than `stop_at` matches (absence proven).
+    /// [`crate::sessions::SEARCH_PAGE`] over `days`: at most `max_sessions /
+    /// SEARCH_PAGE` requests and `max_sessions` sessions read (v1
+    /// `runtime.ts`). It collects rows `wanted` accepts and stops after the
+    /// page on which `stop_at` matched. The service's own pagination decides
+    /// what follows: a short or empty page that reports more (a total or a
+    /// cursor) is continued from where the service says, never taken as the
+    /// end. Returns the matches (at most `stop_at`), the sessions read, and
+    /// whether the window ended with no more than `stop_at` matches (absence
+    /// proven).
     pub async fn walk_sessions(
         &self,
         days: u64,
@@ -1015,7 +1043,7 @@ impl ManagementBinding {
         let mut offset = 0u32;
         let mut matches = Vec::new();
         let mut scanned = 0u32;
-        while offset < max_sessions {
+        for _ in 0..max_sessions.div_ceil(limit) {
             let value = self
                 .overview(interval, unit, offset, limit, options.as_ref())
                 .await?;
@@ -1033,13 +1061,19 @@ impl ManagementBinding {
                 serde_json::from_str(&page.items).map_err(|_| PageError::Invalid)?;
             scanned = scanned.saturating_add(page.count);
             matches.extend(items.into_iter().filter(|row| wanted(row)));
-            let last = page.complete || page.count < limit;
-            if last || matches.len() >= stop_at {
-                let complete = last && matches.len() <= stop_at;
+            if page.complete || matches.len() >= stop_at {
+                let complete = page.complete && matches.len() <= stop_at;
                 matches.truncate(stop_at);
                 return Ok((matches, scanned, complete));
             }
-            offset = offset.saturating_add(limit);
+            match page.next_offset {
+                Some(next) if next > offset => offset = next,
+                // An incomplete page with no way forward proves nothing.
+                _ => break,
+            }
+            if scanned >= max_sessions {
+                break;
+            }
         }
         matches.truncate(stop_at);
         Ok((matches, scanned, false))
@@ -1360,6 +1394,78 @@ impl BindingSource {
     }
 }
 
+fn failure_of(error: PageError) -> ManagementFailure {
+    match error {
+        PageError::Invalid => ManagementFailure::InvalidResponse,
+        PageError::Sdk(e) => ManagementFailure::from_sdk(&e),
+    }
+}
+
+/// One Runtime overview read: both sources are read; each keeps its own
+/// data or sanitized failure, and what they could not establish is a gap.
+async fn runtime_overview(
+    binding: &ManagementBinding,
+    deadline: Instant,
+) -> crate::observation::RuntimeOverview {
+    use crate::observation as obs;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let chart = binding
+        .sessions_chart(deadline)
+        .await
+        .and_then(|v| obs::parse_chart(v).ok_or(PageError::Invalid));
+    let keys = binding
+        .page(ManagementResource::ApiKeys, 0, obs::KEY_PAGE, deadline)
+        .await;
+    let mut gaps = Vec::new();
+    let mut items = Vec::new();
+    let (chart, chart_failure, summary) = match chart {
+        Ok(chart) => {
+            let (summary, chart_gaps) = obs::summarize(&chart);
+            gaps.extend(chart_gaps);
+            items.extend(obs::activity_item(&summary));
+            (Some(chart), None, summary)
+        }
+        Err(error) => {
+            gaps.push("Runtime activity unavailable".to_owned());
+            (
+                None,
+                Some(failure_of(error)),
+                obs::RuntimeSummary::default(),
+            )
+        }
+    };
+    let (keys_complete, keys_failure) = match keys {
+        Ok(page) => {
+            let rows: Vec<Value> = serde_json::from_str(&page.items).unwrap_or_default();
+            let complete = page.complete;
+            let (key_items, key_gaps) =
+                obs::key_items(&rows, complete, i64::try_from(now).unwrap_or(i64::MAX));
+            items.extend(key_items);
+            gaps.extend(key_gaps);
+            (complete, None)
+        }
+        Err(error) => {
+            gaps.push("Runtime API keys unavailable".to_owned());
+            (false, Some(failure_of(error)))
+        }
+    };
+    obs::sort_items(&mut items);
+    gaps.sort();
+    gaps.dedup();
+    obs::RuntimeOverview {
+        read_at: u32::try_from(now).unwrap_or(u32::MAX),
+        chart,
+        chart_failure,
+        summary,
+        keys_complete,
+        keys_failure,
+        items,
+        gaps,
+    }
+}
+
 /// Cache identities: a session by (session, app, name); a transaction and
 /// its content by (scan, sub-request).
 fn session_key(session_id: &str, app_id: &str, app_name: &str) -> String {
@@ -1612,6 +1718,9 @@ impl ManagementJob {
                     .detail(*resource, id, deadline)
                     .await
                     .map(|detail| ManagementResult::Detail { detail }),
+                ManagementRequest::Overview => Ok(ManagementResult::Overview {
+                    overview: runtime_overview(binding, deadline).await,
+                }),
                 request => self.investigate(binding, request, deadline).await,
             }
         };

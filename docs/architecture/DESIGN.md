@@ -1248,6 +1248,43 @@ saver) and the Sessions & Reports destination. D037 records the decisions.
   (`evidence/C11/workload-budget-registration.json`).
 - **Not done here.** No real dashboard endpoint is called before C25.
 
+### C12 implementation: Case Library and Runtime Home/Inbox observations
+
+Implemented in `crates/desktop-core` (`library`: the case model, drafts,
+limits, export/import, catalogs and the sealed file; `observation`: the
+chart contract, Runtime summary, key-expiry and activity items and their
+order; `authority/library_domain`: per-tenant libraries, imports, catalog
+reads and copies; `authority/observation_domain`: the overview record,
+freshness, attention faces and holds; `ManagementRequest::Overview`;
+intents `OpenLibrary`, `SaveCase`, `DeleteCase`, `ImportCases`,
+`ImportExamples`, `CopyCase`, `ExportCases`, `HoldInsight`,
+`RestoreInsight`; `ShellSnapshot.library` and `.overview`; adapters
+`case_files`, `library_root`; `CoreConfig.case_catalog`),
+`apps/desktop/src-tauri` (`NativeCasePicker`, the fixture case files and
+catalog URL) and the Case Library destination and Runtime Overview & Inbox.
+D038 records the decisions.
+
+- **Case compatibility and execution.**
+
+  | Product | Fields | Execution |
+  |---|---|---|
+  | Runtime Security | name, profile, application, prompt, response, goal | Fills the scan form (Load / starters); a scan is one explicit press |
+  | AI Gateway, AI Red Teaming, Model Security, Skill Scanning | name, specification, response, goal, payload object | None: inspect and transfer only |
+  | Unknown product | refused by the wire contract and by import/catalog parsing | — |
+
+- **Storage.** `library/<digest>.sealed`, key record `cr-` + 16 hex of
+  SHA-256("case-library-key:" + tenant); loads off the lock; an unopenable
+  file becomes `.unreadable`; writes by (tenant, generation) under the
+  local-data writer, which `ForgetLibrary` (tenant deletion) and reset take.
+- **Overview sources.** `sessions_chart_raw` (1 day) validated like v1
+  (bucket size ≥ 1 s, ≤ 2,048 buckets, parseable times, integer totals) and
+  the API key list (first page of 100, secrets redacted). Each source keeps
+  its data or failure; gaps name what is loading, unavailable, partial or
+  inconsistent. Faces: Items, First launch, All clear (fresh, both sources
+  complete, no gap, nothing open), Gap.
+- **Not done here.** No real endpoint is called before C25; Gateway data is
+  added to the same observation presentation in C18.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

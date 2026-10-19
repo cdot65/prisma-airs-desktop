@@ -19,7 +19,9 @@ use zeroize::Zeroizing;
 
 mod change_domain;
 mod learner_domain;
+mod library_domain;
 mod management_domain;
+mod observation_domain;
 mod offline_domain;
 mod sessions_domain;
 
@@ -29,7 +31,9 @@ pub use change_domain::{
 };
 pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
 use learner_domain::{LearnerPhase, LearnerSession};
+pub use library_domain::{CatalogSource, LibraryNotice, LibraryState, LibraryView};
 pub use management_domain::ManagementHandle;
+pub use observation_domain::{AttentionFace, HeldItem, HoldKind, OverviewView};
 pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineState, OfflineView};
 pub use sessions_domain::{
     ExportKind, ExportState, ExportView, InvestigationView, ReportTarget, ReportUndoView,
@@ -42,6 +46,7 @@ use crate::delivery::{Admit, Delivery, DeliverySession, Sessions};
 use crate::features::{self, FeatureEntry};
 use crate::import::{self, Discarded, ImportCandidate, ImportError, ImportFormat, ImportPreview};
 use crate::learner::{AcademyView, ProcedureKind};
+use crate::library::CaseDraft;
 use crate::management::{ManagementEndpoints, ManagementRequest};
 use crate::observe::{Subscribers, Subscription, Update};
 use crate::runtime::{
@@ -81,13 +86,21 @@ pub enum Principal {
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Intent {
     /// Set the desktop-wide appearance preference (not an Academy setting).
-    SetAppearance { theme: Theme },
+    SetAppearance {
+        theme: Theme,
+    },
     /// Create a tenant profile with no credential.
-    CreateTenant { profile: ProfileDraft },
+    CreateTenant {
+        profile: ProfileDraft,
+    },
     /// Make a tenant active; issues a new context reference.
-    SelectTenant { tenant: TenantId },
+    SelectTenant {
+        tenant: TenantId,
+    },
     /// Remove a tenant profile and clean up its credential.
-    DeleteTenant { tenant: TenantId },
+    DeleteTenant {
+        tenant: TenantId,
+    },
     /// Store a new scan key for the active tenant, replacing any previous one.
     ConfigureScanCredential {
         context: ContextRef,
@@ -95,7 +108,9 @@ pub enum Intent {
         key: EnteredSecret,
     },
     /// Sign the active tenant's scan capability out.
-    RemoveScanCredential { context: ContextRef },
+    RemoveScanCredential {
+        context: ContextRef,
+    },
     /// Store the active tenant's management OAuth client (its own
     /// credential class, never the scan key), replacing any previous one.
     #[serde(rename_all = "camelCase")]
@@ -106,7 +121,9 @@ pub enum Intent {
         secret: EnteredSecret,
     },
     /// Sign the active tenant's management capability out.
-    RemoveManagementCredential { context: ContextRef },
+    RemoveManagementCredential {
+        context: ContextRef,
+    },
     /// One management read (verify, a page or a detail) for the active
     /// tenant's management capability.
     Management {
@@ -128,16 +145,26 @@ pub enum Intent {
         confirmation: String,
     },
     /// Discard the open change review (ends its confirmation if shown).
-    DiscardChange { review: ReviewId },
+    DiscardChange {
+        review: ReviewId,
+    },
     /// Choose a dictionary keyword file in the native file sheet (C10); the
     /// desktop reads it once and stages it for `fileRef` in a draft.
-    ChooseDictionaryFile { context: ContextRef },
+    ChooseDictionaryFile {
+        context: ContextRef,
+    },
     /// Show an applied change's one-time API key in the native secret sheet.
-    RevealSecret { operation: OperationId },
+    RevealSecret {
+        operation: OperationId,
+    },
     /// Clear an applied change's one-time API key from memory.
-    ForgetSecret { operation: OperationId },
+    ForgetSecret {
+        operation: OperationId,
+    },
     /// Open the active tenant's FP/FN reports (C11).
-    OpenReports { context: ContextRef },
+    OpenReports {
+        context: ContextRef,
+    },
     /// Save an FP/FN report of a scan this investigation read (or edit one).
     SaveReport {
         context: ContextRef,
@@ -151,13 +178,64 @@ pub enum Intent {
         sub_request: u32,
     },
     /// Restore the last removed report.
-    UndoReport { context: ContextRef },
+    UndoReport {
+        context: ContextRef,
+    },
     /// Export the reports as CSV through the native save sheet.
-    ExportReports { context: ContextRef },
+    ExportReports {
+        context: ContextRef,
+    },
     /// Empty this credential's investigation cache (sealed copy included).
-    ClearInvestigation { context: ContextRef },
+    ClearInvestigation {
+        context: ContextRef,
+    },
     /// Export the investigation's metadata (never content) as JSON.
-    ExportInvestigation { context: ContextRef },
+    ExportInvestigation {
+        context: ContextRef,
+    },
+    /// Open the active tenant's case Library (C12).
+    OpenLibrary {
+        context: ContextRef,
+    },
+    /// Save a new case authored in the Library or the scan form.
+    SaveCase {
+        context: ContextRef,
+        draft: CaseDraft,
+    },
+    DeleteCase {
+        context: ContextRef,
+        id: String,
+    },
+    /// Import a case export of this tenant through the native file sheet.
+    ImportCases {
+        context: ContextRef,
+    },
+    /// Import the bundled or public example catalog (never executed).
+    ImportExamples {
+        context: ContextRef,
+        source: CatalogSource,
+    },
+    /// Copy a case into another tenant's library as a new case.
+    CopyCase {
+        context: ContextRef,
+        id: String,
+        tenant: TenantId,
+    },
+    /// Export the active tenant's cases through the native save sheet.
+    ExportCases {
+        context: ContextRef,
+    },
+    /// Acknowledge or snooze a Runtime attention item (C12).
+    HoldInsight {
+        context: ContextRef,
+        id: String,
+        hold: HoldKind,
+    },
+    /// Reopen an acknowledged or snoozed attention item.
+    RestoreInsight {
+        context: ContextRef,
+        id: String,
+    },
     /// Prepare a reviewed change of the active tenant's scan destination.
     ReviewEndpointChange {
         context: ContextRef,
@@ -169,7 +247,9 @@ pub enum Intent {
         review: ReviewId,
     },
     /// Discard a pending review.
-    DiscardReview { review: ReviewId },
+    DiscardReview {
+        review: ReviewId,
+    },
     /// Open the native file sheet to choose a profile file to preview.
     ChooseProfileImport,
     /// Create tenants from selected preview entries (no credentials).
@@ -186,7 +266,9 @@ pub enum Intent {
     },
     /// Cancel a scan: queued work is not sent; a running request is
     /// cancelled and its outcome reported as the service left it.
-    CancelScan { operation: OperationId },
+    CancelScan {
+        operation: OperationId,
+    },
     /// Start Academy device sign-in (the learner account is independent of
     /// the selected tenant).
     StartAcademySignIn,
@@ -203,18 +285,25 @@ pub enum Intent {
     /// Nothing is printed without the operator's choice in that sheet.
     /// Observed like a learner call: whether the sheet opened.
     #[serde(rename_all = "camelCase")]
-    PrintPage { learner: LearnerRef },
+    PrintPage {
+        learner: LearnerRef,
+    },
     /// Replace the signed-in learner's avatar with an image the operator
     /// chooses in the native picker (JPEG, PNG or WebP, at most 2 MiB),
     /// stored at Academy's presigned destination and confirmed with Academy.
     /// Observed like a learner call (`settings.confirmAvatar`'s reply).
     #[serde(rename_all = "camelCase")]
-    UploadAvatar { learner: LearnerRef },
+    UploadAvatar {
+        learner: LearnerRef,
+    },
     /// Read an avatar Academy returned (on Academy's origin, public) for a
     /// presentation that cannot load remote images. Observed like a learner
     /// call: `{"json": {"src": "data:image/..."}}`.
     #[serde(rename_all = "camelCase")]
-    LoadAcademyImage { learner: LearnerRef, url: String },
+    LoadAcademyImage {
+        learner: LearnerRef,
+        url: String,
+    },
     /// Download a course for offline reading (Academy's access check and
     /// bundle, kept sealed under its lease in this account's store).
     /// Observed like a learner call.
@@ -480,6 +569,10 @@ pub struct ShellSnapshot {
     pub changes: ChangesView,
     /// The active tenant's FP/FN reports, investigation cache and exports.
     pub sessions: SessionsView,
+    /// The active tenant's case Library.
+    pub library: LibraryView,
+    /// The active context's Runtime Home/Inbox observations.
+    pub overview: OverviewView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -532,6 +625,9 @@ pub struct CoreConfig {
     pub management: ManagementEndpoints,
     /// How long a prepared change review may be applied.
     pub review_lifetime: std::time::Duration,
+    /// The public example catalog (fixture builds may point it at a local
+    /// snapshot server).
+    pub case_catalog: url::Url,
 }
 
 /// The production Academy origin.
@@ -546,6 +642,7 @@ impl Default for CoreConfig {
             academy_origin: ACADEMY_ORIGIN.to_owned(),
             management: ManagementEndpoints::default(),
             review_lifetime: change_domain::REVIEW_LIFETIME,
+            case_catalog: url::Url::parse(crate::library::PUBLIC_CATALOG).expect("catalog URL"),
         }
     }
 }
@@ -659,6 +756,10 @@ pub struct Adapters {
     /// Where sealed investigations and report files live (None: reports
     /// unavailable, investigations kept in memory only).
     pub sessions_root: Option<std::path::PathBuf>,
+    /// The native file sheet for case imports (bounded reads).
+    pub case_files: Arc<dyn ImportPicker>,
+    /// Where sealed case libraries live (None: the Library is unavailable).
+    pub library_root: Option<std::path::PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -804,12 +905,22 @@ struct State {
     /// The signed-in generation's offline work (dropped with it).
     offline: Option<Arc<offline_domain::OfflineGen>>,
     sessions_root: Option<std::path::PathBuf>,
-    /// The active tenant's FP/FN reports (C11).
-    reports: Option<sessions_domain::Reports>,
+    /// Every opened tenant's FP/FN reports (C11), each with its own pending
+    /// writes.
+    reports: Vec<sessions_domain::Reports>,
     /// The last report or investigation export.
     export: Option<sessions_domain::Export>,
-    /// Report file writes, one at a time.
+    /// Report and case Library file writes, one at a time (tenant deletion
+    /// and reset take it too).
     report_writer: Arc<tokio::sync::Mutex<()>>,
+    library_root: Option<std::path::PathBuf>,
+    /// Every opened tenant's case Library (C12).
+    libraries: Vec<library_domain::Library>,
+    case_catalog: url::Url,
+    /// The active context's last Runtime overview (C12).
+    overview: Option<observation_domain::OverviewRecord>,
+    /// Attention holds per tenant (memory only, like v1).
+    holds: Vec<(TenantId, Vec<observation_domain::Hold>)>,
 }
 
 impl State {
@@ -871,6 +982,8 @@ impl State {
                 .map_or_else(offline_domain::OfflineView::signed_out, |o| o.view()),
             changes: self.changes_view(),
             sessions: self.sessions_view(),
+            library: self.library_view(),
+            overview: self.overview_view(),
         }
     }
 
@@ -1284,6 +1397,7 @@ enum Effect {
         lease: u64,
     },
     StoreReports {
+        tenant: TenantId,
         generation: u64,
     },
     /// Remove a deleted tenant's report file.
@@ -1294,6 +1408,22 @@ enum Effect {
         bytes: Vec<u8>,
     },
     ClearInvestigation(Arc<crate::sessions::Investigation>),
+    LoadLibrary {
+        lease: u64,
+    },
+    StoreLibrary {
+        tenant: TenantId,
+        generation: u64,
+    },
+    /// Remove a deleted tenant's sealed library and its key.
+    ForgetLibrary(TenantId),
+    ChooseCaseFile {
+        lease: u64,
+    },
+    FetchCatalog {
+        lease: u64,
+        url: url::Url,
+    },
 }
 
 struct Inner {
@@ -1375,9 +1505,14 @@ impl Core {
             learner_cleaning: false,
             offline: None,
             sessions_root: adapters.sessions_root.clone(),
-            reports: None,
+            reports: Vec::new(),
             export: None,
             report_writer: Arc::default(),
+            library_root: adapters.library_root.clone(),
+            libraries: Vec::new(),
+            case_catalog: config.case_catalog.clone(),
+            overview: None,
+            holds: Vec::new(),
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -1402,6 +1537,16 @@ impl Core {
     /// Makes the signed-in generation's offline store fail its next write at
     /// `fault` (a `DirectorySync` fault persists until cleared with `None`)
     /// (fixture builds only).
+    #[cfg(feature = "test-fixtures")]
+    /// Holds every report file write (and reset's purge) until the returned
+    /// guard drops (fixture builds only).
+    pub async fn hold_report_writes(&self) -> tokio::sync::OwnedMutexGuard<()> {
+        let writer = lock(&self.inner)
+            .map(|s| Arc::clone(&s.report_writer))
+            .expect("authority");
+        writer.lock_owned().await
+    }
+
     #[cfg(feature = "test-fixtures")]
     pub fn inject_offline_fault(&self, fault: Option<crate::offline::WriteFault>) {
         let store = lock(&self.inner)
@@ -1774,6 +1919,9 @@ fn admit(
             if let Some(path) = state.forget_reports(&tenant) {
                 effects.push(Effect::ForgetReports(path));
             }
+            state.forget_library(&tenant);
+            state.forget_holds(&tenant);
+            effects.push(Effect::ForgetLibrary(tenant.clone()));
             for record in [retired_session, retired_management].into_iter().flatten() {
                 let _ = session.delete(&record);
             }
@@ -1911,20 +2059,21 @@ fn admit(
             let saved = state.save_report(&context, target, input);
             // A refused save still publishes its problem.
             state.changed();
-            effects.push(Effect::StoreReports { generation: saved? });
+            let (tenant, generation) = saved?;
+            effects.push(Effect::StoreReports { tenant, generation });
         }
         Intent::RemoveReport {
             context,
             scan_id,
             sub_request,
         } => {
-            let generation = state.remove_report(&context, &scan_id, sub_request)?;
-            effects.push(Effect::StoreReports { generation });
+            let (tenant, generation) = state.remove_report(&context, &scan_id, sub_request)?;
+            effects.push(Effect::StoreReports { tenant, generation });
             state.changed();
         }
         Intent::UndoReport { context } => {
-            let generation = state.undo_report(&context)?;
-            effects.push(Effect::StoreReports { generation });
+            let (tenant, generation) = state.undo_report(&context)?;
+            effects.push(Effect::StoreReports { tenant, generation });
             state.changed();
         }
         Intent::ExportReports { context } => {
@@ -1943,6 +2092,79 @@ fn admit(
                 suggested,
                 bytes,
             });
+            state.changed();
+        }
+        Intent::OpenLibrary { context } => {
+            if let Some(lease) = state.open_library(&context)? {
+                effects.push(Effect::LoadLibrary { lease });
+            }
+            state.changed();
+        }
+        Intent::SaveCase { context, draft } => {
+            let saved = state.save_case(&context, draft);
+            state.changed();
+            let (write, load) = saved?;
+            if let Some((tenant, generation)) = write {
+                effects.push(Effect::StoreLibrary { tenant, generation });
+            }
+            if let Some(lease) = load {
+                effects.push(Effect::LoadLibrary { lease });
+            }
+        }
+        Intent::DeleteCase { context, id } => {
+            let deleted = state.delete_case(&context, &id);
+            state.changed();
+            let (tenant, generation) = deleted?;
+            effects.push(Effect::StoreLibrary { tenant, generation });
+        }
+        Intent::ImportCases { context } => {
+            let lease = state.begin_case_import(&context)?;
+            effects.push(Effect::ChooseCaseFile { lease });
+            state.changed();
+        }
+        Intent::ImportExamples { context, source } => match source {
+            CatalogSource::Bundled => {
+                let added = state.import_bundled(&context);
+                state.changed();
+                let (tenant, generation) = added?;
+                effects.push(Effect::StoreLibrary { tenant, generation });
+            }
+            CatalogSource::Public => {
+                let (lease, url) = state.begin_catalog(&context)?;
+                effects.push(Effect::FetchCatalog { lease, url });
+                state.changed();
+            }
+        },
+        Intent::CopyCase {
+            context,
+            id,
+            tenant,
+        } => {
+            let copied = state.copy_case(&context, &id, &tenant);
+            state.changed();
+            let (write, load) = copied?;
+            if let Some((tenant, generation)) = write {
+                effects.push(Effect::StoreLibrary { tenant, generation });
+            }
+            if let Some(lease) = load {
+                effects.push(Effect::LoadLibrary { lease });
+            }
+        }
+        Intent::ExportCases { context } => {
+            let (lease, suggested, bytes) = state.export_cases(&context)?;
+            effects.push(Effect::SaveFile {
+                lease,
+                suggested,
+                bytes,
+            });
+            state.changed();
+        }
+        Intent::HoldInsight { context, id, hold } => {
+            state.hold_insight(&context, &id, hold)?;
+            state.changed();
+        }
+        Intent::RestoreInsight { context, id } => {
+            state.restore_insight(&context, &id)?;
             state.changed();
         }
         Intent::ClearInvestigation { context } => {
@@ -2134,6 +2356,12 @@ fn admit(
             state.storage = StorageHealth::Resetting;
             state.reset_failure = None;
             state.import = ImportState::Idle;
+            // Report books go with the data; pending writes find nothing.
+            state.reports.clear();
+            state.libraries.clear();
+            state.holds.clear();
+            state.overview = None;
+            state.export = None;
             effects.push(Effect::Start(state.retire_all_contexts()));
             effects.push(Effect::Reset);
             state.changed();
@@ -2462,7 +2690,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     }
                 });
             }
-            Effect::StoreReports { generation } => {
+            Effect::StoreReports { tenant, generation } => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
                     let Some(writer) = lock(&inner).ok().map(|s| Arc::clone(&s.report_writer))
@@ -2472,8 +2700,9 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     let _write = writer.lock().await;
                     // Only the newest book is written; an older generation's
                     // write is skipped (the newer one follows it).
-                    let Some((path, book)) =
-                        lock(&inner).ok().and_then(|s| s.report_write(generation))
+                    let Some((path, book)) = lock(&inner)
+                        .ok()
+                        .and_then(|s| s.report_write(&tenant, generation))
                     else {
                         return;
                     };
@@ -2483,7 +2712,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     .await
                     .unwrap_or(false);
                     if let Ok(mut state) = lock(&inner) {
-                        state.settle_report_write(generation, stored);
+                        state.settle_report_write(&tenant, generation, stored);
                         state.changed();
                     }
                 });
@@ -2510,6 +2739,122 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     if let Ok(mut state) = lock(&inner) {
                         state.settle_export(lease, saved);
                         state.changed();
+                    }
+                });
+            }
+            Effect::LoadLibrary { lease } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let Some((root, tenant)) =
+                        lock(&inner).ok().and_then(|s| s.library_load_target(lease))
+                    else {
+                        return;
+                    };
+                    let worker = Arc::clone(&inner);
+                    let loaded = tokio::task::spawn_blocking(move || {
+                        crate::library::load(&root, worker.adapters.keychain.as_ref(), &tenant)
+                    })
+                    .await
+                    .unwrap_or(Err(crate::library::LibraryFailure::Unavailable));
+                    let write = lock(&inner).ok().and_then(|mut state| {
+                        let write = state.settle_library(lease, loaded);
+                        state.changed();
+                        write
+                    });
+                    if let Some((tenant, generation)) = write {
+                        run_effects(&inner, vec![Effect::StoreLibrary { tenant, generation }]);
+                    }
+                });
+            }
+            Effect::StoreLibrary { tenant, generation } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let Some(writer) = lock(&inner).ok().map(|s| Arc::clone(&s.report_writer))
+                    else {
+                        return;
+                    };
+                    let _write = writer.lock().await;
+                    // Only the newest library is written; a deleted tenant's
+                    // or reset data's write finds nothing.
+                    let Some(write) = lock(&inner)
+                        .ok()
+                        .and_then(|s| s.library_write(&tenant, generation))
+                    else {
+                        return;
+                    };
+                    let worker = Arc::clone(&inner);
+                    let stored = tokio::task::spawn_blocking(move || {
+                        crate::library::store(
+                            &write.root,
+                            worker.adapters.keychain.as_ref(),
+                            &write.tenant,
+                            &write.library,
+                        )
+                    })
+                    .await
+                    .unwrap_or(Err(crate::library::LibraryFailure::Unavailable));
+                    if let Ok(mut state) = lock(&inner) {
+                        state.settle_library_write(&tenant, generation, stored);
+                        state.changed();
+                    }
+                });
+            }
+            Effect::ForgetLibrary(tenant) => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let Some(writer) = lock(&inner).ok().map(|s| Arc::clone(&s.report_writer))
+                    else {
+                        return;
+                    };
+                    let _write = writer.lock().await;
+                    let worker = Arc::clone(&inner);
+                    let _ = tokio::task::spawn_blocking(move || {
+                        crate::library::forget(
+                            worker.adapters.library_root.as_deref(),
+                            worker.adapters.keychain.as_ref(),
+                            tenant.as_str(),
+                        )
+                    })
+                    .await;
+                });
+            }
+            Effect::ChooseCaseFile { lease } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let chosen = inner
+                        .adapters
+                        .case_files
+                        .choose()
+                        .await
+                        .map(|r| r.ok().map(|file| file.bytes.to_vec()));
+                    let write = lock(&inner).ok().and_then(|mut state| {
+                        let write = state.settle_case_import(lease, chosen);
+                        state.changed();
+                        write
+                    });
+                    if let Some((tenant, generation)) = write {
+                        run_effects(&inner, vec![Effect::StoreLibrary { tenant, generation }]);
+                    }
+                });
+            }
+            Effect::FetchCatalog { lease, url } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let transport = lock(&inner)
+                        .ok()
+                        .and_then(|s| s.transport.clone())
+                        .and_then(|t| t.for_admission().ok());
+                    let fetched = match transport {
+                        Some(transport) => library_domain::fetch_catalog(&transport, &url).await,
+                        None => None,
+                    };
+                    let write = lock(&inner).ok().and_then(|mut state| {
+                        let write = state.settle_catalog(lease, fetched);
+                        state.changed();
+                        write
+                    });
+                    if let Some((tenant, generation)) = write {
+                        run_effects(&inner, vec![Effect::StoreLibrary { tenant, generation }]);
                     }
                 });
             }
@@ -2548,8 +2893,19 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                         }
                         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
                     }
+                    // A report write already past its check finishes before the
+                    // purge; none starts after it (the books were cleared).
+                    let writer = lock(&inner).map(|s| Arc::clone(&s.report_writer)).ok();
+                    let _write = match &writer {
+                        Some(writer) => Some(writer.lock().await),
+                        None => None,
+                    };
                     let worker = Arc::clone(&inner);
                     let result = tokio::task::spawn_blocking(move || {
+                        // No investigation key or snapshot is placed while the
+                        // namespace and the sessions root are removed (every
+                        // investigation was retired above).
+                        let _placement = crate::sessions::placement();
                         for namespace in
                             [&worker.adapters.keychain, &worker.adapters.learner_keychain]
                         {
@@ -2561,6 +2917,19 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                         // Sealed investigations go with their keys (purged
                         // above), and report files with the tenants.
                         if let Some(root) = &worker.adapters.sessions_root {
+                            match std::fs::remove_dir_all(root) {
+                                Ok(()) => {}
+                                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                                Err(_) => {
+                                    return Err(ResetFailure {
+                                        stage: ResetStage::Document,
+                                        reason: VaultError::Unavailable,
+                                    });
+                                }
+                            }
+                        }
+                        // Sealed case libraries go with their keys too.
+                        if let Some(root) = &worker.adapters.library_root {
                             match std::fs::remove_dir_all(root) {
                                 Ok(()) => {}
                                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}

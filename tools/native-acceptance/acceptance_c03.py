@@ -139,7 +139,8 @@ def run():
     obs["tenant_b"] = created_b
     app.make_active("Tenant A")
     tree = app.open_runtime()
-    obs["tab_order"] = app.tab_walk(14)
+    # C12 added the Playground / Overview & Inbox tabs and the case controls.
+    obs["tab_order"] = app.tab_walk(18)
     # Offline scan (connection refused).
     scan(app, f"{MARK}-offline", app_name=APP_NAME)
     tree, offline = settled(app, "The connection failed before a reply arrived.")

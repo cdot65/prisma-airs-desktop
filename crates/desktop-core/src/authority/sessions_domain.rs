@@ -78,6 +78,8 @@ pub struct InvestigationView {
 pub enum ExportKind {
     Reports,
     Investigation,
+    /// The case Library (C12).
+    Cases,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -129,6 +131,20 @@ pub(super) struct Export {
     name: Option<String>,
 }
 
+impl Export {
+    pub(super) fn is_kind(&self, kind: ExportKind) -> bool {
+        self.kind == kind
+    }
+
+    pub(super) fn view(&self) -> ExportView {
+        ExportView {
+            kind: self.kind,
+            state: self.state,
+            name: self.name.clone(),
+        }
+    }
+}
+
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -139,8 +155,8 @@ impl State {
     fn ready_reports(&mut self, tenant: &TenantId) -> Result<&mut Reports, Refusal> {
         let reports = self
             .reports
-            .as_mut()
-            .filter(|r| &r.tenant == tenant)
+            .iter_mut()
+            .find(|r| &r.tenant == tenant)
             .ok_or(Refusal::CapabilityMissing)?;
         match reports.state {
             ReportsState::Ready => Ok(reports),
@@ -149,20 +165,23 @@ impl State {
         }
     }
 
-    /// Opens the active tenant's reports (once per tenant generation);
-    /// returns the load lease when a read must start.
+    /// Opens the active tenant's reports (once; a failed open is retried);
+    /// returns the load lease when a read must start. Every opened tenant
+    /// keeps its own book, so a pending write of one tenant is never lost or
+    /// confused with another's.
     pub(super) fn open_reports(&mut self, context: &ContextRef) -> Result<Option<u64>, Refusal> {
         let tenant = self.check_context(context)?;
         self.sessions_root
             .as_ref()
             .ok_or(Refusal::CapabilityMissing)?;
-        if self.reports.as_ref().is_some_and(|r| {
+        if self.reports.iter().any(|r| {
             r.tenant == tenant && matches!(r.state, ReportsState::Loading | ReportsState::Ready)
         }) {
             return Ok(None);
         }
         let lease = self.lease();
-        self.reports = Some(Reports {
+        self.reports.retain(|r| r.tenant != tenant);
+        self.reports.push(Reports {
             tenant,
             lease,
             state: ReportsState::Loading,
@@ -177,7 +196,7 @@ impl State {
     }
 
     pub(super) fn report_load_target(&self, lease: u64) -> Option<std::path::PathBuf> {
-        let reports = self.reports.as_ref().filter(|r| r.lease == lease)?;
+        let reports = self.reports.iter().find(|r| r.lease == lease)?;
         let root = self.sessions_root.as_ref()?;
         Some(crate::sessions::reports_path(root, reports.tenant.as_str()))
     }
@@ -189,8 +208,8 @@ impl State {
     ) {
         let Some(reports) = self
             .reports
-            .as_mut()
-            .filter(|r| r.lease == lease && r.state == ReportsState::Loading)
+            .iter_mut()
+            .find(|r| r.lease == lease && r.state == ReportsState::Loading)
         else {
             return;
         };
@@ -208,13 +227,14 @@ impl State {
 
     /// Saves a report: an already-reported scan is edited (its metadata and
     /// reported time kept); a new one is built from the scan's metadata in
-    /// this credential's investigation. Returns the generation to write.
+    /// this credential's investigation. Returns the tenant and generation to
+    /// write.
     pub(super) fn save_report(
         &mut self,
         context: &ContextRef,
         target: ReportTarget,
         input: ReportInput,
-    ) -> Result<u64, Refusal> {
+    ) -> Result<(TenantId, u64), Refusal> {
         let tenant = self.check_context(context)?;
         let investigation = self.investigation(context);
         let reports = self.ready_reports(&tenant)?;
@@ -278,7 +298,7 @@ impl State {
             Ok(_) => {
                 reports.problem = None;
                 reports.generation += 1;
-                Ok(reports.generation)
+                Ok((tenant, reports.generation))
             }
             Err(problem) => {
                 reports.problem = Some(problem);
@@ -292,7 +312,7 @@ impl State {
         context: &ContextRef,
         scan_id: &str,
         sub_request: u32,
-    ) -> Result<u64, Refusal> {
+    ) -> Result<(TenantId, u64), Refusal> {
         let tenant = self.check_context(context)?;
         let reports = self.ready_reports(&tenant)?;
         let displaced = reports
@@ -301,11 +321,11 @@ impl State {
             .ok_or(Refusal::InvalidInput)?;
         reports.undo = Some(displaced);
         reports.generation += 1;
-        Ok(reports.generation)
+        Ok((tenant, reports.generation))
     }
 
     /// Restores the last removal, never over a newer report of that scan.
-    pub(super) fn undo_report(&mut self, context: &ContextRef) -> Result<u64, Refusal> {
+    pub(super) fn undo_report(&mut self, context: &ContextRef) -> Result<(TenantId, u64), Refusal> {
         let tenant = self.check_context(context)?;
         let reports = self.ready_reports(&tenant)?;
         let displaced = reports.undo.take().ok_or(Refusal::InvalidInput)?;
@@ -313,18 +333,22 @@ impl State {
             return Err(Refusal::InvalidInput);
         }
         reports.generation += 1;
-        Ok(reports.generation)
+        Ok((tenant, reports.generation))
     }
 
-    /// The newest report book to write, if `generation` is still newest.
-    pub(super) fn report_write(&self, generation: u64) -> Option<(std::path::PathBuf, ReportBook)> {
+    /// A tenant's newest report book to write, if `generation` is still its
+    /// newest (nothing once the tenant was deleted or the data reset).
+    pub(super) fn report_write(
+        &self,
+        tenant: &TenantId,
+        generation: u64,
+    ) -> Option<(std::path::PathBuf, ReportBook)> {
         if self.storage == super::StorageHealth::Resetting {
             return None;
         }
-        let reports = self
-            .reports
-            .as_ref()
-            .filter(|r| r.generation == generation && r.state == ReportsState::Ready)?;
+        let reports = self.reports.iter().find(|r| {
+            &r.tenant == tenant && r.generation == generation && r.state == ReportsState::Ready
+        })?;
         let root = self.sessions_root.as_ref()?;
         Some((
             crate::sessions::reports_path(root, reports.tenant.as_str()),
@@ -332,8 +356,12 @@ impl State {
         ))
     }
 
-    pub(super) fn settle_report_write(&mut self, generation: u64, stored: bool) {
-        if let Some(reports) = self.reports.as_mut().filter(|r| r.generation == generation) {
+    pub(super) fn settle_report_write(&mut self, tenant: &TenantId, generation: u64, stored: bool) {
+        if let Some(reports) = self
+            .reports
+            .iter_mut()
+            .find(|r| &r.tenant == tenant && r.generation == generation)
+        {
             reports.unsaved = !stored;
         }
     }
@@ -341,15 +369,17 @@ impl State {
     /// Drops a deleted tenant's reports from memory; returns the file to
     /// remove.
     pub(super) fn forget_reports(&mut self, tenant: &TenantId) -> Option<std::path::PathBuf> {
-        if self.reports.as_ref().is_some_and(|r| &r.tenant == tenant) {
-            self.reports = None;
-        }
+        self.reports.retain(|r| &r.tenant != tenant);
         self.sessions_root
             .as_ref()
             .map(|root| crate::sessions::reports_path(root, tenant.as_str()))
     }
 
-    fn begin_export(&mut self, context: &ContextRef, kind: ExportKind) -> Result<u64, Refusal> {
+    pub(super) fn begin_export(
+        &mut self,
+        context: &ContextRef,
+        kind: ExportKind,
+    ) -> Result<u64, Refusal> {
         if self
             .export
             .as_ref()
@@ -445,8 +475,8 @@ impl State {
         let tenant = self.data.active.as_ref();
         let reports = match self
             .reports
-            .as_ref()
-            .filter(|r| Some(&r.tenant) == tenant && active.is_some())
+            .iter()
+            .find(|r| Some(&r.tenant) == tenant && active.is_some())
         {
             Some(r) => ReportsView {
                 state: r.state,
@@ -480,12 +510,8 @@ impl State {
         let export = self
             .export
             .as_ref()
-            .filter(|e| Some(&e.context) == active)
-            .map(|e| ExportView {
-                kind: e.kind,
-                state: e.state,
-                name: e.name.clone(),
-            });
+            .filter(|e| Some(&e.context) == active && !e.is_kind(ExportKind::Cases))
+            .map(Export::view);
         SessionsView {
             reports,
             investigation,

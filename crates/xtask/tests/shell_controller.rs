@@ -1511,22 +1511,27 @@ fn phases_require_integrated_native_runs_and_acceptance() {
             "{member}'s checks are part of P01: {required:?}"
         );
     }
-    // A phase fails closed while any member has no inventory yet.
-    let later: Vec<String> = manifest
-        .phase_chunks(Subject::Phase(3))
-        .expect("P03")
-        .iter()
-        .map(Subject::to_string)
-        .collect();
-    let error =
-        xtask::evidence::required_checks(&inventory, &later).expect_err("P03 inventories pending");
-    // The first member still without an inventory (it moves as chunks land).
+    // A phase fails closed while any member has no inventory yet: the first
+    // phase with such a member (it moves as chunks land).
     let inventories: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&inventory).expect("inventory")).expect("json");
-    let pending = later
-        .iter()
-        .find(|c| inventories["chunks"].get(c.as_str()).is_none())
-        .expect("a P03 member without an inventory");
+    let (later, pending) = (1..=8)
+        .find_map(|phase| {
+            let members: Vec<String> = manifest
+                .phase_chunks(Subject::Phase(phase))
+                .ok()?
+                .iter()
+                .map(Subject::to_string)
+                .collect();
+            let pending = members
+                .iter()
+                .find(|c| inventories["chunks"].get(c.as_str()).is_none())?
+                .clone();
+            Some((members, pending))
+        })
+        .expect("a phase with a member without an inventory");
+    let error =
+        xtask::evidence::required_checks(&inventory, &later).expect_err("inventories pending");
     assert!(
         error.to_string().contains(pending.as_str()),
         "a phase fails closed until each member has an inventory: {error}"

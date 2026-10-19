@@ -653,6 +653,9 @@ pub struct Handles {
     pub saver: Arc<ScriptedSaver>,
     /// This instance's sealed investigations and report files.
     pub sessions_root: std::path::PathBuf,
+    pub case_files: Arc<ScriptedPicker>,
+    /// This instance's sealed case libraries.
+    pub library_root: std::path::PathBuf,
 }
 
 /// Fresh scripted adapters with empty storage.
@@ -675,6 +678,8 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         offline_root: fresh_offline_root(),
         saver: Arc::new(ScriptedSaver::default()),
         sessions_root: fresh_offline_root().with_extension("sessions"),
+        case_files: Arc::new(ScriptedPicker::default()),
+        library_root: fresh_offline_root().with_extension("library"),
     };
     (
         Adapters {
@@ -691,6 +696,8 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             offline_root: Some(handles.offline_root.clone()),
             saver: handles.saver.clone(),
             sessions_root: Some(handles.sessions_root.clone()),
+            case_files: handles.case_files.clone(),
+            library_root: Some(handles.library_root.clone()),
         },
         handles,
     )

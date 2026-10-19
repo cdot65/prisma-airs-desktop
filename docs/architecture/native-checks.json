@@ -544,6 +544,44 @@
         "id": "C11-N09",
         "check": "At 200% zoom and at the minimum window size, Tab reaches the Sessions Refresh and Next page buttons inside the window and clear of the bottom fade."
       }
+    ],
+    "C12": [
+      {
+        "id": "C12-N01",
+        "check": "Create a case authors a Runtime Security case and a Model Security specification from the fields read at Save; both are listed, the tenant's library is sealed on disk (no prompt in plaintext, owner-only) and both are listed again after relaunch."
+      },
+      {
+        "id": "C12-N02",
+        "check": "Load fills the Runtime scan form with a Runtime case (profile, prompt, application) and says nothing was scanned (no scan request); a specification offers Inspect, not Load, and its details say execution belongs to that product."
+      },
+      {
+        "id": "C12-N03",
+        "check": "Import bundled examples adds v1's eleven examples, a second import reports they are already present; Import public examples reads the fixture catalog snapshot without any credential and adds its example; a malformed catalog is reported and changes nothing."
+      },
+      {
+        "id": "C12-N04",
+        "check": "Export library… saves an owner-only version 2 file; after a case is removed, Import cases… restores it from that file; another tenant's file is refused with v1's message."
+      },
+      {
+        "id": "C12-N05",
+        "check": "An empty library offers v1's three starters; Try in Playground fills the scan form without scanning; Save this case adds it to the tenant's library."
+      },
+      {
+        "id": "C12-N06",
+        "check": "Overview & Inbox reads the sessions chart and API keys: totals and detection events are shown, an API key expiring within 30 days is an Inbox item and needs attention; Acknowledge sets it aside and Restore reopens it; the activity item's action opens Sessions."
+      },
+      {
+        "id": "C12-N07",
+        "check": "A failed chart read is stated as Runtime activity unavailable and Can’t confirm all clear (never zeros); with the endpoint stopped a refresh failure is reported while the last read stays visible, and nothing is sent within 6 s after the endpoint returns."
+      },
+      {
+        "id": "C12-N08",
+        "check": "Deleting the tenant removes its sealed library; over the run the management endpoint receives only reads and token grants, and no secret appears in any AX snapshot."
+      },
+      {
+        "id": "C12-N09",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches Create a case and Refresh Runtime insights inside the window and clear of the bottom fade."
+      }
     ]
   }
 }

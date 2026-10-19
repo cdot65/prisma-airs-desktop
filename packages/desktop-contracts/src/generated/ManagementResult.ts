@@ -3,6 +3,7 @@ import type { ManagementDetail } from "./ManagementDetail";
 import type { ManagementFailure } from "./ManagementFailure";
 import type { ManagementPage } from "./ManagementPage";
 import type { Outcome } from "./Outcome";
+import type { RuntimeOverview } from "./RuntimeOverview";
 import type { ScanContent } from "./ScanContent";
 import type { SessionRead } from "./SessionRead";
 import type { SessionSearch } from "./SessionSearch";
@@ -14,4 +15,4 @@ export type ManagementResult = { "kind": "verified" } | { "kind": "page", page: 
 /**
  * The transaction's metadata as JSON (no prompt or response).
  */
-transaction: string, } | { "kind": "content", content: ScanContent, } | { "kind": "search", search: SessionSearch, } | { "kind": "failed", failure: ManagementFailure, outcome: Outcome, };
+transaction: string, } | { "kind": "content", content: ScanContent, } | { "kind": "search", search: SessionSearch, } | { "kind": "overview", overview: RuntimeOverview, } | { "kind": "failed", failure: ManagementFailure, outcome: Outcome, };

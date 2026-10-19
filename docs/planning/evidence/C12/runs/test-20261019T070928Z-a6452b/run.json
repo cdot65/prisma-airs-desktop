@@ -1,0 +1,269 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "test-20261019T070928Z-a6452b",
+  "subject": "C12",
+  "kind": "test",
+  "started_utc": "2026-10-19T07:09:28Z",
+  "finished_utc": "2026-10-19T07:10:10Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/cdot/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/cdot/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "node",
+      "path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/"
+  },
+  "inputs_before": {
+    "source": "11035a40893b2d64c24812234c4f1b5e77ccd6a11b34964d7be3235efd8912ae",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "1da1f09e4b210a273804beb8664027d5c2a71aeb8d942a972b198962dc3d450c"
+  },
+  "inputs_after": {
+    "source": "11035a40893b2d64c24812234c4f1b5e77ccd6a11b34964d7be3235efd8912ae",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "1da1f09e4b210a273804beb8664027d5c2a71aeb8d942a972b198962dc3d450c"
+  },
+  "commands": [
+    {
+      "label": "setup/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 8237,
+      "output_sha256": "f2bef0f513f68ebf3898514fde2b759ac017fe0d0cc78fc0ed17cd90ce6dbae3",
+      "log": "logs/setup-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "setup/2",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 355,
+      "output_sha256": "4ad8434de2b84d2d6ede55a6f502d6dac5cd7fc004ed5308f6ea723c450bf06c",
+      "log": "logs/setup-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C12/fixture",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "library_observation"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1087,
+      "output_sha256": "1abce174f0a9bef13d8c42f0c7c918d42c035835c722246f74fd4c692f62f233",
+      "log": "logs/C12-fixture.log",
+      "tests": {
+        "passed": 9,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C12/frontend/1",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/features/library/library-view.test.tsx",
+        "src/features/runtime/overview-inbox.test.tsx",
+        "src/features/runtime/scan-submit.test.tsx",
+        "src/shell/desktop-shell.test.tsx",
+        "src/contracts/snapshot-validation.test.ts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 3368,
+      "output_sha256": "2b3aa09705efb0101500a34478c3ae60209137732cde096ea0f5e7a6da9746f7",
+      "log": "logs/C12-frontend-1.log",
+      "tests": {
+        "passed": 128,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C12/frontend/2",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--lib",
+        "library"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 107,
+      "output_sha256": "a9750c5ce21e9b12fe7844e33ca78987209687c9fc62b0175ca858539d4ca049",
+      "log": "logs/C12-frontend-2.log",
+      "tests": {
+        "passed": 5,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C12/frontend/3",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--lib",
+        "observation"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 96,
+      "output_sha256": "a110b2f05c85494613522d69e1ea95aa793fdd5f2bbe605f036400fc82938a4a",
+      "log": "logs/C12-frontend-3.log",
+      "tests": {
+        "passed": 5,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C12/frontend/4",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "sessions_reports"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2323,
+      "output_sha256": "e4b18dff75fa331dc9a3816044783f1474b364954fee68a550d298fa11b84677",
+      "log": "logs/C12-frontend-4.log",
+      "tests": {
+        "passed": 22,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C12/frontend/5",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "shell_controller"
+      ],
+      "cwd": ".",
+      "exit_code": 101,
+      "duration_ms": 3681,
+      "output_sha256": "bb514c9ddeda514f0bdd9f871d0bbf6f7458eea3d8c9d72a50f57f4f016f8bfb",
+      "log": "logs/C12-frontend-5.log",
+      "tests": {
+        "passed": 43,
+        "failed": 1
+      },
+      "status": "failed",
+      "note": "exit status Some(101)"
+    }
+  ],
+  "status": "failed",
+  "failure": "C12/frontend/5 exit status Some(101)",
+  "artifacts": []
+}

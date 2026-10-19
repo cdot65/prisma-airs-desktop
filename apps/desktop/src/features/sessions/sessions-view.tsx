@@ -98,10 +98,11 @@ export const SessionsView = forwardRef<HTMLHeadingElement, Props>(function Sessi
     const ready = tenant?.management.state === 'ready'
     const [tab, setTab] = useState<Tab>('sessions')
     // The tenant's reports open with Sessions, so a scan can be reported
-    // straight from its session.
+    // straight from its session. They are local work: existing reports stay
+    // usable without a management client (only new reports need one).
     useEffect(() => {
-        if (context && ready) void dispatch({ kind: 'openReports', context })
-    }, [context, ready])
+        if (context) void dispatch({ kind: 'openReports', context })
+    }, [context])
     const heading = <PageHeading ref={ref} id='sessions-heading' kicker='Sessions & Reports' title='Investigate sessions' />
 
     if (!tenant || !context) {
@@ -110,22 +111,6 @@ export const SessionsView = forwardRef<HTMLHeadingElement, Props>(function Sessi
                 {heading}
                 <Callout tone='default' icon={Info} data-slot='sessions-no-tenant'>
                     <p>Add a tenant in Settings to investigate its sessions.</p>
-                    <Button type='button' tier='secondary' className='mt-3' onClick={() => onNavigate('settings')}>
-                        Open Settings
-                    </Button>
-                </Callout>
-            </section>
-        )
-    }
-    if (!ready) {
-        return (
-            <section aria-labelledby='sessions-heading' data-slot='sessions'>
-                {heading}
-                <Callout tone='default' icon={Lock} data-slot='sessions-not-configured'>
-                    <p>
-                        {tenant.label} has no ready management client. Sessions are read with a separate OAuth client;
-                        scanning keeps working without one.
-                    </p>
                     <Button type='button' tier='secondary' className='mt-3' onClick={() => onNavigate('settings')}>
                         Open Settings
                     </Button>
@@ -142,8 +127,9 @@ export const SessionsView = forwardRef<HTMLHeadingElement, Props>(function Sessi
         <section aria-labelledby='sessions-heading' data-slot='sessions' className='flex flex-col gap-5'>
             {heading}
             <p className='text-academy-ink-soft -mt-4 text-[13px]'>
-                {tenant.label}, read with its management client. Prompts and responses stay hidden until you reveal
-                them.
+                {ready
+                    ? `${tenant.label}, read with its management client. Prompts and responses stay hidden until you reveal them.`
+                    : `${tenant.label}. Its FP/FN reports are kept on this Mac and stay available without a management client.`}
             </p>
             <div role='tablist' aria-label='Sessions sections' className='flex flex-wrap gap-2'>
                 {tabs.map((t) => (
@@ -161,7 +147,17 @@ export const SessionsView = forwardRef<HTMLHeadingElement, Props>(function Sessi
                     </Button>
                 ))}
             </div>
-            {tab === 'sessions' ? (
+            {tab === 'sessions' && !ready ? (
+                <Callout tone='default' icon={Lock} data-slot='sessions-not-configured'>
+                    <p>
+                        {tenant.label} has no ready management client. Sessions are read with a separate OAuth client;
+                        scanning keeps working without one.
+                    </p>
+                    <Button type='button' tier='secondary' className='mt-3' onClick={() => onNavigate('settings')}>
+                        Open Settings
+                    </Button>
+                </Callout>
+            ) : tab === 'sessions' ? (
                 <Investigation context={context} sessions={snapshot.sessions} dispatch={dispatch} observe={observe} />
             ) : tab === 'reports' ? (
                 <Reports context={context} sessions={snapshot.sessions} dispatch={dispatch} />

@@ -2,7 +2,7 @@
 
 G00 and G01 passed (historical Claude reviews). C01–C04 and the P01 cumulative review completed on
 2026-10-17; C05–C07 and the P02 cumulative review completed on 2026-10-18;
-implementation is at **C11** (P03). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+implementation is at **C12** (P03). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no
 blockers; each phase review still needs 9/10, after every chunk accepted below
@@ -24,8 +24,9 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C08 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as c07cc8b and verified | Follow-ups R1–R3/E1 remediated in the tree (`reviews/C08/follow-ups.md`); raised to 9/10 before the P03 review |
 | C09 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as aef8431 and verified | Follow-ups R1–R3/E1 and the core part of E2 remediated in the tree (`reviews/C09/follow-ups.md`); raised to 9/10 before the P03 review |
 | C10 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as 90dbc40 and verified | Follow-ups R1–R3/E2 remediated in the tree (`reviews/C10/follow-ups.md`); E1 (real NSOpenPanel evidence) open; raised to 9/10 before the P03 review |
-| C11 | **In progress**: Sessions investigations, the protected cache and metadata-only reports implemented; native acceptance, the workload measurement, probes and the Codex review next | D037 recorded; evidence in `evidence/C11` |
-| C12–C26 | Planned | Ordered predecessors required; P03 phase review after C12 |
+| C11 | **Complete** (generation 1) under D034: Codex attempt-01 scored 8/8/8/8/8; committed as 0e4bda6 and verified | Follow-ups R1–R4/E2 remediated in the tree (`reviews/C11/follow-ups.md`); E1 (production save sheet evidence) open; raised to 9/10 before the P03 review |
+| C12 | **In progress**: Case Library and Runtime Home/Inbox implemented; native acceptance, probes and the Codex review next | D038 recorded; evidence in `evidence/C12` |
+| C13–C26 | Planned | Ordered predecessors required; P03 phase review after C12 |
 
 ## C01 evidence (docs/planning/evidence/C01)
 

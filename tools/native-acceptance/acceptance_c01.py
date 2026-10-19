@@ -258,16 +258,16 @@ def evaluate_flows(run):
     results["C01-N05"] = (ga["label"] == ACADEMY_HEADING and gs["focused"]["label"] == "Settings" and not gs["dialogOpen"],
                           f"Cmd+2 focused heading {ga['label']!r}; Cmd+K then Cmd+, focused {gs['focused']['label']!r} with palette open={gs['dialogOpen']}")
     # Runtime Security is available since C03, Academy since C05,
-    # Administration since C08 and Sessions & Reports since C11 (their views'
-    # headings are shown); every other product destination is still
-    # unavailable.
-    expected = {"Case Library": "C12", "Red Team & Models": "C13", "API Client": "C14", "AI Gateway": "C16",
+    # Administration since C08, Sessions & Reports since C11 and the Case
+    # Library since C12 (their views' headings are shown); every other
+    # product destination is still unavailable.
+    expected = {"Red Team & Models": "C13", "API Client": "C14", "AI Gateway": "C16",
                 "Harness": "C19", "Import from v1": "C23"}
-    available = {"Scan a prompt or response", ACADEMY_HEADING, "Tenant inventories", "Investigate sessions"}
+    available = {"Scan a prompt or response", ACADEMY_HEADING, "Tenant inventories", "Investigate sessions", "Test case library"}
     dests = step(run, "destinations")["observation"]
     unavailable = [d for d in dests if d["heading"] not in available]
-    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 4
-          and len(unavailable) == 6 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
+    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 5
+          and len(unavailable) == 5 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
     results["C01-N06"] = (ok, "; ".join(f"{d['shortcut']}: {d['heading']} ({', '.join(d['planned'])})" for d in dests))
     dark = step(run, "appearance-view-dark")["observation"]
     light = step(run, "appearance-view-light")["observation"]
@@ -282,7 +282,7 @@ def evaluate_flows(run):
     buttons = [n for n in snap if n["role"] == "AXButton" and n["depth"] > 3]
     named = [b for b in buttons if b["label"]]
     heads = [n for n in snap if n["role"] == "AXHeading"]
-    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 6 and len(heads) == 1
+    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 5 and len(heads) == 1
     results["C01-N08"] = (ok, f"inspected AXRole, AXSubrole, AXTitle/AXDescription/AXValue, AXARIACurrent, AXFocused and tree order: 'Features' navigation landmark present={bool(nav)}; {len(named)}/{len(buttons)} buttons named; {sum('Not available in this build' in (b['label'] or '') for b in buttons)} destinations announce 'Not available in this build'; headings {[h['label'] for h in heads]}. Spoken VoiceOver output was not recorded.")
     mn = step(run, "min-size")["observation"]
     last = mn["lastDestination"]

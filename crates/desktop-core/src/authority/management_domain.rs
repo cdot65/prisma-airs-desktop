@@ -59,6 +59,9 @@ pub(super) struct ManagementRecord {
     cell: Arc<Cell>,
     settled: bool,
     observed: bool,
+    /// A Runtime overview read: its result also updates the shell's
+    /// Home/Inbox state.
+    overview: bool,
 }
 
 /// The binding of one credential generation (context): its session and
@@ -118,6 +121,9 @@ impl State {
             let current = Some(&b.context) == keep.as_ref();
             if !current {
                 b.session.cancel();
+                // A write already admitted for this cache finds it retired
+                // and places nothing (the credential's cleanup may follow).
+                b.investigation.retire();
             }
             current
         });
@@ -211,6 +217,7 @@ impl State {
             return Err(Refusal::InvalidInput);
         }
         let source = self.binding_source(&context, keychain, session_vault)?;
+        let overview = request == ManagementRequest::Overview;
         let slot: ResultSlot = Arc::default();
         let job = ManagementJob {
             source,
@@ -227,13 +234,21 @@ impl State {
             cell: Arc::default(),
             settled: false,
             observed: false,
+            overview,
         });
+        if overview {
+            let context = self.management_calls.last().map(|r| r.context.clone());
+            if let Some(context) = context {
+                self.overview_started(&context);
+            }
+        }
         Ok((operation, starts))
     }
 
     /// Delivers settled management results to their single observation.
     pub(super) fn sync_management_calls(&mut self) {
         let current = self.active_ref.clone();
+        let mut overviews = Vec::new();
         for record in self.management_calls.iter_mut().filter(|r| !r.settled) {
             let settlement = match self.operations.state(&record.operation) {
                 Some(OperationState::Settled(s)) => s,
@@ -254,10 +269,16 @@ impl State {
                 },
                 (Some(result), false, None) => result,
             };
+            if record.overview {
+                overviews.push((record.context.clone(), result.clone()));
+            }
             if let Ok(mut slot) = record.cell.result.lock() {
                 *slot = Some(result);
             }
             record.cell.ready.notify_waiters();
+        }
+        for (context, result) in overviews {
+            self.overview_settled(&context, result);
         }
         let mut settled = 0;
         let mut keep = vec![true; self.management_calls.len()];

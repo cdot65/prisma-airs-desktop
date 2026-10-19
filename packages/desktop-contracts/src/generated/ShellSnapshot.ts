@@ -6,7 +6,9 @@ import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
 import type { ImportView } from "./ImportView";
 import type { LearnerRef } from "./LearnerRef";
+import type { LibraryView } from "./LibraryView";
 import type { OfflineView } from "./OfflineView";
+import type { OverviewView } from "./OverviewView";
 import type { ResetFailure } from "./ResetFailure";
 import type { ScanRecordView } from "./ScanRecordView";
 import type { SessionsView } from "./SessionsView";
@@ -66,4 +68,12 @@ changes: ChangesView,
 /**
  * The active tenant's FP/FN reports, investigation cache and exports.
  */
-sessions: SessionsView, };
+sessions: SessionsView, 
+/**
+ * The active tenant's case Library.
+ */
+library: LibraryView, 
+/**
+ * The active context's Runtime Home/Inbox observations.
+ */
+overview: OverviewView, };

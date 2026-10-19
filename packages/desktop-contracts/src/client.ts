@@ -573,7 +573,7 @@ export const REPORT_PROBLEMS: readonly string[] = ['reason', 'field', 'detectors
 const REPORTS_STATES: readonly string[] = ['idle', 'loading', 'ready', 'failed']
 const REPORT_STORE_FAILURES: readonly string[] = ['unavailable', 'unreadable']
 const INVESTIGATION_STORAGE: readonly string[] = ['memory', 'protected', 'unavailable']
-const EXPORT_KINDS: readonly string[] = ['reports', 'investigation']
+const EXPORT_KINDS: readonly string[] = ['reports', 'investigation', 'cases']
 const EXPORT_STATES: readonly string[] = ['saving', 'saved', 'cancelled', 'failed']
 
 function isReport(value: unknown): boolean {
@@ -617,15 +617,7 @@ function isSessionsView(value: unknown): boolean {
                 isCount(i.contents),
             value.investigation
         ) &&
-        optional(
-            (e) =>
-                isRecord(e) &&
-                oneOf(EXPORT_KINDS, e.kind) &&
-                oneOf(EXPORT_STATES, e.state) &&
-                // Only a saved export names its file.
-                (e.state === 'saved' ? isString(e.name) : e.name === null),
-            value.export
-        )
+        optional((e) => isExportView(e) && (e as Record<string, unknown>).kind !== 'cases', value.export)
     )
 }
 
@@ -640,6 +632,157 @@ function isSessionSearch(value: unknown): boolean {
         typeof value.matchLimit === 'boolean' &&
         optional(isJsonObjectText, value.scan) &&
         typeof value.cached === 'boolean'
+    )
+}
+
+const CASE_PRODUCTS: readonly string[] = ['ai-gateway', 'ai-red-teaming', 'model-security', 'runtime-security', 'skill-scanning']
+export const CASE_PROBLEMS: readonly string[] = [
+    'fields',
+    'payload',
+    'foreignTenant',
+    'full',
+    'tooLarge',
+    'duplicate',
+    'format',
+    'catalog',
+    'allPresent',
+    'missing',
+]
+const LIBRARY_STATES: readonly string[] = ['idle', 'loading', 'ready', 'failed']
+const LIBRARY_FAILURES: readonly string[] = ['locked', 'denied', 'unavailable', 'unreadable']
+const TONES: readonly string[] = ['ok', 'warn', 'bad']
+const INBOX_DESTINATIONS: readonly string[] = ['apiKeys', 'sessions']
+const FACES: readonly string[] = ['items', 'firstLaunch', 'allClear', 'gap']
+const HOLD_KINDS: readonly string[] = ['acknowledge', 'snooze']
+
+function isExportView(e: unknown): boolean {
+    return (
+        isRecord(e) &&
+        oneOf(EXPORT_KINDS, e.kind) &&
+        oneOf(EXPORT_STATES, e.state) &&
+        // Only a saved export names its file.
+        (e.state === 'saved' ? isString(e.name) : e.name === null)
+    )
+}
+
+function isCaseView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isString(value.id) &&
+        oneOf(CASE_PRODUCTS, value.product) &&
+        isString(value.name) &&
+        isString(value.profile) &&
+        isString(value.prompt) &&
+        isString(value.response) &&
+        isString(value.appName) &&
+        isString(value.expected) &&
+        optional(isString, value.payload) &&
+        // Only specifications carry a payload (v1).
+        (value.product !== 'runtime-security' || value.payload === null)
+    )
+}
+
+function isLibraryNotice(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    if (value.kind === 'imported' || value.kind === 'examplesAdded') return isCount(value.added)
+    if (value.kind === 'copied') return isString(value.tenant)
+    return value.kind === 'catalogUnavailable' || value.kind === 'fileUnreadable'
+}
+
+function isLibraryView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(LIBRARY_STATES, value.state) &&
+        // A failure is reported exactly when the library failed to open.
+        (value.state === 'failed' ? oneOf(LIBRARY_FAILURES, value.failure) : value.failure === null) &&
+        Array.isArray(value.cases) &&
+        value.cases.length <= 32 &&
+        value.cases.every(isCaseView) &&
+        optional((p) => oneOf(CASE_PROBLEMS, p), value.problem) &&
+        optional((f) => oneOf(LIBRARY_FAILURES, f), value.unsaved) &&
+        optional(isLibraryNotice, value.notice) &&
+        typeof value.choosing === 'boolean' &&
+        typeof value.fetching === 'boolean' &&
+        optional((e) => isExportView(e) && (e as Record<string, unknown>).kind === 'cases', value.export)
+    )
+}
+
+const optionalCount = (value: unknown): boolean => value === null || isCount(value)
+
+function isInboxItem(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isString(value.id) &&
+        isString(value.title) &&
+        isString(value.detail) &&
+        isString(value.source) &&
+        typeof value.action === 'boolean' &&
+        oneOf(TONES, value.tone) &&
+        oneOf(INBOX_DESTINATIONS, value.destination) &&
+        isString(value.actionLabel) &&
+        Array.isArray(value.facts) &&
+        value.facts.every((f) => isRecord(f) && isString(f.label) && isString(f.value)) &&
+        optional((n) => isCount(n) && (n as number) <= 1000, value.perMille)
+    )
+}
+
+function isRuntimeOverview(value: unknown): boolean {
+    if (!isRecord(value) || !isRecord(value.summary)) return false
+    const summary = value.summary
+    const chart = value.chart
+    const chartOk =
+        chart === null ||
+        (isRecord(chart) &&
+            isCount(chart.bucketSeconds) &&
+            (chart.bucketSeconds as number) >= 1 &&
+            Array.isArray(chart.buckets) &&
+            chart.buckets.length <= 2048 &&
+            chart.buckets.every(
+                (b) =>
+                    isRecord(b) &&
+                    isString(b.time) &&
+                    isCount(b.total) &&
+                    isCount(b.violating) &&
+                    optional(
+                        (d) => Array.isArray(d) && d.every((c) => isRecord(c) && isString(c.detector) && isCount(c.count)),
+                        b.detections
+                    )
+            ))
+    return (
+        isCount(value.readAt) &&
+        chartOk &&
+        // A source has data or a failure, never both.
+        (chart === null) === (value.chartFailure !== null) &&
+        optional((f) => oneOf(MANAGEMENT_FAILURES, f), value.chartFailure) &&
+        optionalCount(summary.sessions) &&
+        optionalCount(summary.violating) &&
+        optionalCount(summary.benign) &&
+        optionalCount(summary.detectionEvents) &&
+        typeof value.keysComplete === 'boolean' &&
+        optional((f) => oneOf(MANAGEMENT_FAILURES, f), value.keysFailure) &&
+        Array.isArray(value.items) &&
+        value.items.every(isInboxItem) &&
+        Array.isArray(value.gaps) &&
+        value.gaps.every(isString)
+    )
+}
+
+function isOverviewView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        optional(isRuntimeOverview, value.read) &&
+        typeof value.refreshing === 'boolean' &&
+        optional((f) => oneOf(MANAGEMENT_FAILURES, f), value.failure) &&
+        optional(isCount, value.failedAt) &&
+        typeof value.fresh === 'boolean' &&
+        (value.read !== null || value.fresh === false) &&
+        Array.isArray(value.attention) &&
+        value.attention.every(isInboxItem) &&
+        Array.isArray(value.held) &&
+        value.held.every((h) => isRecord(h) && isInboxItem(h.item) && oneOf(HOLD_KINDS, h.kind)) &&
+        oneOf(FACES, value.face) &&
+        // All clear only from a fresh read with nothing open.
+        (value.face !== 'allClear' || (value.fresh === true && value.attention.length === 0))
     )
 }
 
@@ -678,6 +821,7 @@ export function parseManagementResult(value: unknown): ManagementResult {
             return value as unknown as ManagementResult
         }
         if (value.kind === 'search' && isSessionSearch(value.search)) return value as unknown as ManagementResult
+        if (value.kind === 'overview' && isRuntimeOverview(value.overview)) return value as unknown as ManagementResult
         if (value.kind === 'failed' && oneOf(MANAGEMENT_FAILURES, value.failure) && oneOf(OUTCOMES, value.outcome)) {
             return value as unknown as ManagementResult
         }
@@ -779,6 +923,8 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isOfflineView(value.academyOffline) ||
         !isChangesView(value.changes) ||
         !isSessionsView(value.sessions) ||
+        !isLibraryView(value.library) ||
+        !isOverviewView(value.overview) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')

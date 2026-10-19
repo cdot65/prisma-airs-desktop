@@ -17,7 +17,9 @@ pub mod features;
 pub mod fixtures;
 pub mod import;
 pub mod learner;
+pub mod library;
 pub mod management;
+pub mod observation;
 mod observe;
 pub mod offline;
 pub mod runtime;
@@ -31,16 +33,17 @@ pub mod vault;
 pub mod wire;
 
 pub use authority::{
-    ACADEMY_ORIGIN, AcademyCallHandle, AcademyCallResult, ActiveContext, Adapters, AuthorityHandle,
-    ChangeFailure, ChangeResultView, ChangeReviewState, ChangeReviewView, ChangesView,
-    ConfirmationRequest, Core, CoreConfig, CredentialStore, DownloadStatus, DownloadView,
-    EndpointReviewView, ExportKind, ExportState, ExportView, FileSaver, ImagePicker, ImportFile,
-    ImportPicker, ImportView, Intent, InvestigationView, LocalDraftView, MAX_TENANTS, Observation,
-    OfflineState, OfflineView, OperatorConfirmation, PagePrinter, Principal, Readback, Receipt,
-    Refusal, ReportTarget, ReportUndoView, ReportsState, ReportsView, ResetFailure, ResetStage,
-    ScanProgress, ScanRecordView, ScanState, ScanView, SecretPresenter, SecretState, SessionsView,
-    ShellSnapshot, StagedFileFailure, StagedFileState, StagedFileView, StorageHealth, TenantView,
-    UrlOpener, ViewScope,
+    ACADEMY_ORIGIN, AcademyCallHandle, AcademyCallResult, ActiveContext, Adapters, AttentionFace,
+    AuthorityHandle, CatalogSource, ChangeFailure, ChangeResultView, ChangeReviewState,
+    ChangeReviewView, ChangesView, ConfirmationRequest, Core, CoreConfig, CredentialStore,
+    DownloadStatus, DownloadView, EndpointReviewView, ExportKind, ExportState, ExportView,
+    FileSaver, HeldItem, HoldKind, ImagePicker, ImportFile, ImportPicker, ImportView, Intent,
+    InvestigationView, LibraryNotice, LibraryState, LibraryView, LocalDraftView, MAX_TENANTS,
+    Observation, OfflineState, OfflineView, OperatorConfirmation, OverviewView, PagePrinter,
+    Principal, Readback, Receipt, Refusal, ReportTarget, ReportUndoView, ReportsState, ReportsView,
+    ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView, SecretPresenter,
+    SecretState, SessionsView, ShellSnapshot, StagedFileFailure, StagedFileState, StagedFileView,
+    StorageHealth, TenantView, UrlOpener, ViewScope,
 };
 pub use delivery::{Delivery, DeliverySession, SEQUENCE_LIMIT};
 pub use observe::{Subscription, Update};

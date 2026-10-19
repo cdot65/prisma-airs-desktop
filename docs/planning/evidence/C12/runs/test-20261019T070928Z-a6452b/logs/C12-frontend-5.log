@@ -1,0 +1,67 @@
+
+running 44 tests
+test d034_phases_need_nine_and_every_eight_chunk_is_raised_before_sign_off ... ok
+test edited_verdict_after_receipt_is_rejected ... ok
+test consistent_attempt_passes ... ok
+test approved_manifest_parses_with_codex_threshold_nine ... ok
+test expired_attempts_cannot_advance ... ok
+test flag_verification_refuses_unadvertised_flags ... ok
+test completion_ledger_is_append_only_and_requires_predecessors ... ok
+test changed_or_missing_prepared_bytes_invalidate_native_acceptance ... ok
+test inputs_changing_during_review_are_rejected ... ok
+test fresh_exec_with_forbidden_tool_use_is_rejected ... ok
+test edited_packet_and_raw_output_are_rejected ... ok
+test fresh_exec_requires_a_completed_turn_whose_final_message_is_the_verdict ... ok
+test failed_or_incomplete_reviewer_turns_cannot_complete ... ok
+test edits_to_consumed_shared_source_are_detected ... ok
+test malformed_verdicts_are_rejected ... ok
+test native_status_and_completion_resolve_phase_members_alike ... ok
+test mismatched_request_or_fingerprints_are_rejected ... ok
+test missing_failed_or_mismatched_runs_are_rejected ... ok
+test queue_acknowledgement_without_verdict_is_rejected ... ok
+test ledger_generations_invalidation_and_receipt_integrity ... ok
+test missing_or_failing_native_proof_is_rejected ... ok
+test owner_acceptance_takes_only_the_threshold_and_is_honored_only_when_recorded ... ok
+test phases_require_integrated_native_runs_and_acceptance ... FAILED
+test receipt_self_reported_pass_is_not_trusted ... ok
+test edits_to_the_web_consumer_scratch_tree_are_detected ... ok
+test receipt_scores_must_match_the_verdict ... ok
+test on_disk_attempt_round_trips_and_detects_tampering ... ok
+test shared_staging_paths_cannot_escape_their_roots ... ok
+test native_record_must_match_the_required_inventory_and_identity ... ok
+test run_ids_must_match_their_references ... ok
+test shared_prepare_rejects_escapes_before_touching_anything ... ok
+test test_output_parsing_rejects_zero_test_targets ... ok
+test thread_wait_requires_a_completed_turn_not_progress ... ok
+test required_fix_blocker_or_gap_rejects_despite_nines ... ok
+test transport_argv_substitutes_only_validated_values ... ok
+test verdict_parser_rejects_scores_out_of_range ... ok
+test workflow_ledger_matches_markdown_with_live_requirements ... ok
+test prepared_bundle_bytes_path_and_identifier_are_bound ... ok
+test manifest_rejects_unlisted_programs_placeholders_and_weakened_review ... ok
+test score_eight_in_any_dimension_is_rejected ... ok
+test run_records_must_cover_the_exact_approved_plan ... ok
+test stale_inputs_are_rejected ... ok
+test run_identity_exit_status_tests_and_logs_are_verified ... ok
+test source_fingerprint_detects_edits_modes_untracked_files_and_git_config ... ok
+
+failures:
+
+---- phases_require_integrated_native_runs_and_acceptance stdout ----
+
+thread 'phases_require_integrated_native_runs_and_acceptance' (25136118) panicked at crates/xtask/tests/shell_controller.rs:1522:62:
+P03 inventories pending: (["C08-N01", "C08-N02", "C08-N03", "C08-N04", "C08-N05", "C08-N06", "C08-N07", "C08-N08", "C08-N09", "C08-N10", "C08-N11", "C08-N12", "C09-N01", "C09-N02", "C09-N03", "C09-N04", "C09-N05", "C09-N06", "C09-N07", "C09-N08", "C09-N09", "C09-N10", "C10-N01", "C10-N02", "C10-N03", "C10-N04", "C10-N05", "C10-N06", "C10-N07", "C10-N08", "C10-N09", "C11-N01", "C11-N02", "C11-N03", "C11-N04", "C11-N05", "C11-N06", "C11-N07", "C11-N08", "C11-N09", "C12-N01", "C12-N02", "C12-N03", "C12-N04", "C12-N05", "C12-N06", "C12-N07", "C12-N08", "C12-N09"], "io.cdot.prisma-airs-desktop.v2.fixture")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    phases_require_integrated_native_runs_and_acceptance
+
+test result: FAILED. 43 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+
+--- stderr ---
+   Compiling xtask v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.38s
+     Running tests/shell_controller.rs (target/debug/deps/shell_controller-ce2674656db77cfd)
+error: test failed, to rerun pass `-p xtask --test shell_controller`

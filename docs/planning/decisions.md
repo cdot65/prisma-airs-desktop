@@ -642,6 +642,52 @@ Decided in C11 (implementer decision, recorded for review).
   Nothing is written to the tenant.
 - Exception Patterns stays v1's inert synthetic preview.
 
+## D038 — Case Library storage and Runtime Home/Inbox scope
+
+Decided in C12 (implementer decision, recorded for review).
+
+- The case Library keeps v1's model and rules exactly (`settings.rs`,
+  `case_library.rs` at 74754c02): five products, 32 cases and 256 KiB per
+  tenant, v1's field limits, Runtime cases needing a profile and application
+  and never a payload, specifications never a profile or application,
+  `expected` a free-text goal that is never compared with a verdict (v1
+  never compared it), export file version 2, imports of version 1 or 2 for
+  the same tenant merged by identifier with nothing added past 32, the
+  bundled catalog's eleven examples and the catalog's version, kind,
+  deduplication and URL rules.
+- v1 kept a protected tenant's cases in a Keychain item and a session
+  tenant's in memory. v2 tenants have no tenant-level storage mode, so every
+  tenant's library is sealed on this Mac (XChaCha20-Poly1305, AAD bound to
+  the tenant) under a random key in the credential Keychain namespace whose
+  record is derived from the tenant; it is removed with the tenant and by
+  reset, written newest-generation-only by the local-data writer that tenant
+  deletion and reset also take. A library that does not open is set aside,
+  never overwritten. Imports, catalog imports and copies are saved when
+  accepted (v1 kept imports in memory until the next save; v2 has no
+  separate save step). A Runtime case saved from the scan form opens the
+  library if needed and is added when it opens.
+- v1's only case actions are kept (create, load, inspect, delete, import,
+  export, catalog import, copy); there is no edit or duplicate. Loading a
+  Runtime case or starter fills the scan form in the presentation and never
+  scans. Copy takes any case (v1 copied only the last) and always makes a
+  new case in the destination.
+- The public catalog is read once on request through the app transport
+  (HTTPS, 15 s, at most 256 KiB, no redirects, no credential) from the
+  configured catalog URL, which must pass v1's URL rule; fixture builds point
+  it at a local snapshot server (C12's "approved fixture/catalog snapshots").
+- Home/Inbox is Runtime-only here, shown as the Runtime destination's
+  Overview & Inbox section (no new navigation entry): one overview read takes
+  the last day's sessions chart and the API key inventory's first page,
+  summarized by v1's rules without fabricated zeros (unknown benign or
+  detector counts stay unknown), Inbox items (key expiry within 30 days
+  inclusive, Runtime activity), gaps, freshness (10 minutes) and Needs
+  attention faces and holds (acknowledge until worse, snooze 24 h, restore;
+  memory only, like v1). A refresh in which every source fails keeps the
+  last read, marked with the failure. Automatic reads happen only on
+  opening when nothing fresh is held and not within ten minutes of a failed
+  read; v1's idle polling, the encrypted metric history and baselines, and
+  every Gateway, Red Teaming and Supply Chain source belong to C16-C18.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

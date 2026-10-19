@@ -1,0 +1,574 @@
+[
+  {
+    "mutation": "a specification keeps a profile",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "cases_are_authored_sealed_and_survive_a_restart",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a 33rd case is accepted",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "limits_payloads_and_unknown_types_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Runtime case needs no profile",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "limits_payloads_and_unknown_types_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another tenant's export imports",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "exports_and_imports_are_explicit_bounded_and_tenant_bound",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an import duplicates present cases",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "exports_and_imports_are_explicit_bounded_and_tenant_bound",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "catalog examples are imported twice",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "catalogs_import_examples_once_and_report_unusable_catalogs",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a catalog example may have no goal",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "library"
+    ],
+    "guard": "the_bundled_catalog_has_v1s_eleven_examples_across_five_products",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a catalog URL may name another host",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "library"
+    ],
+    "guard": "catalog_urls_follow_v1s_rule_for_the_configured_origin",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the library is written in plaintext",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "cases_are_authored_sealed_and_survive_a_restart",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unreadable library is deleted",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "a_locked_keychain_or_unreadable_library_is_reported_and_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a deleted tenant's library stays",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "a_deleted_tenant_or_reset_takes_its_sealed_library_and_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset leaves case libraries",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "a_deleted_tenant_or_reset_takes_its_sealed_library_and_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a copy keeps the source identifier",
+    "files": [
+      "crates/desktop-core/src/authority/library_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "a_case_copied_to_another_tenant_is_a_new_case_there",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "benign is fabricated from inconsistent totals",
+    "files": [
+      "crates/desktop-core/src/observation.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "observation"
+    ],
+    "guard": "summaries_never_fabricate_benign_or_detector_counts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an empty breakdown while violating counts as zero detections",
+    "files": [
+      "crates/desktop-core/src/observation.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "observation"
+    ],
+    "guard": "summaries_never_fabricate_benign_or_detector_counts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a key thirty days out is not an item",
+    "files": [
+      "crates/desktop-core/src/observation.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "observation"
+    ],
+    "guard": "key_expiry_is_inclusive_at_thirty_days_and_skips_inactive_keys",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "revoked keys raise expiry items",
+    "files": [
+      "crates/desktop-core/src/observation.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "observation"
+    ],
+    "guard": "key_expiry_is_inclusive_at_thirty_days_and_skips_inactive_keys",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Inbox items lose v1's order",
+    "files": [
+      "crates/desktop-core/src/observation.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "observation"
+    ],
+    "guard": "key_expiry_is_inclusive_at_thirty_days_and_skips_inactive_keys",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an acknowledgement hides a worsened item",
+    "files": [
+      "crates/desktop-core/src/authority/observation_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed refresh replaces the last read",
+    "files": [
+      "crates/desktop-core/src/authority/observation_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a specification offers Load",
+    "files": [
+      "apps/desktop/src/features/library/library-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/library/library-view.test.tsx"
+    ],
+    "guard": "loads a Runtime case into the scan form without scanning and only inspects specifications",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the overview reads again right after a failure",
+    "files": [
+      "apps/desktop/src/features/runtime/overview-inbox.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/overview-inbox.test.tsx"
+    ],
+    "guard": "does not read again right after a failure and keeps the last read visible",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the overview reads although a fresh read is held",
+    "files": [
+      "apps/desktop/src/features/runtime/overview-inbox.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/overview-inbox.test.tsx"
+    ],
+    "guard": "reads on opening only when nothing fresh is held",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "all clear is accepted without a fresh read",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects all clear without a fresh read",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Runtime case may carry a payload",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a Runtime case with a payload",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "library"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "observation"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/library/library-view.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/overview-inbox.test.tsx"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

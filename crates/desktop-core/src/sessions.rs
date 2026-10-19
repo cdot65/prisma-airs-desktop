@@ -677,8 +677,21 @@ pub fn snapshot_path(root: &Path, credential: &RecordId) -> PathBuf {
         .join(format!("{}.sealed", &digest[..32]))
 }
 
+/// Serializes every placement of an investigation key or snapshot with
+/// their removal (credential cleanup, reset): a write checks under it that
+/// its investigation is still live, so nothing retired reappears after its
+/// removal succeeded.
+static PLACEMENT: Mutex<()> = Mutex::new(());
+
+pub fn placement() -> std::sync::MutexGuard<'static, ()> {
+    PLACEMENT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 /// Removes a retired credential's snapshot and key; true when both are gone.
 pub fn forget(root: Option<&Path>, keychain: &dyn Vault, credential: &RecordId) -> bool {
+    let _placement = placement();
     let file =
         root.is_none_or(
             |root| match std::fs::remove_file(snapshot_path(root, credential)) {
@@ -796,6 +809,8 @@ pub struct Investigation {
     /// Snapshot writes, one at a time, each of the cache as it is then.
     writes: tokio::sync::Mutex<()>,
     failed: std::sync::atomic::AtomicBool,
+    /// Set when its credential generation retires: nothing more is placed.
+    retired: std::sync::atomic::AtomicBool,
 }
 
 impl Investigation {
@@ -806,7 +821,17 @@ impl Investigation {
             loaded: tokio::sync::OnceCell::new(),
             writes: tokio::sync::Mutex::new(()),
             failed: std::sync::atomic::AtomicBool::new(false),
+            retired: std::sync::atomic::AtomicBool::new(false),
         })
+    }
+
+    /// Stops all further placement. A write already checked under the
+    /// placement lock finishes first; cleanup and reset remove under the same
+    /// lock, so they always come after it. (Never blocks: called with the
+    /// authority locked.)
+    pub fn retire(&self) {
+        self.retired
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn storage(&self) -> InvestigationStorage {
@@ -877,6 +902,10 @@ impl Investigation {
         let _write = self.writes.lock().await;
         let this = Arc::clone(self);
         let stored = tokio::task::spawn_blocking(move || {
+            let _placement = placement();
+            if this.retired.load(std::sync::atomic::Ordering::SeqCst) {
+                return true;
+            }
             let snapshot = this.with(|c| c.clone()).unwrap_or_default();
             this.persistence
                 .as_ref()

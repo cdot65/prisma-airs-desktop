@@ -374,6 +374,10 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
                 config.management =
                     desktop_core::management::ManagementEndpoints::at_origin(&origin);
             }
+            #[cfg(feature = "test-fixtures")]
+            if let Some(catalog) = adapters::fixture_case_catalog(app.handle()) {
+                config.case_catalog = catalog;
+            }
             let core = Core::new(config, adapters::production(app.handle()));
             #[cfg(feature = "test-fixtures")]
             if let Some(policy) = adapters::fixture_transport(app.handle()) {

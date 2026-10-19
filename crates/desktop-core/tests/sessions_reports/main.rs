@@ -41,6 +41,18 @@ struct Script {
     sessions: usize,
     /// Every seventh session reports this detector.
     detector_every: usize,
+    /// Each overview page serves at most this many rows while still
+    /// reporting the full total (short intermediate pages).
+    short: Option<usize>,
+    /// Overview pages starting before this offset serve no rows (empty
+    /// intermediate pages that report more).
+    empty_before: usize,
+    /// Dashboard reads are lost (the endpoint is unreachable).
+    down: bool,
+    /// Session reads are denied (403).
+    deny_session: bool,
+    /// Content reads answer after this delay.
+    content_delay_ms: u64,
 }
 
 fn session_row(n: usize, detector_every: usize) -> Value {
@@ -93,10 +105,18 @@ impl Script {
                 &json!({"access_token": "mgmt-access", "token_type": "Bearer", "expires_in": 3600}),
             );
         }
+        if self.down && path != "/oauth2/access_token" {
+            return Reply::Close;
+        }
         if path == format!("{DASH}sessionsoverview") {
             let offset: usize = q("offset").parse().unwrap_or(0);
             let limit: usize = q("limit").parse().unwrap_or(25);
-            let end = (offset + limit).min(self.sessions);
+            let served = if offset < self.empty_before {
+                0
+            } else {
+                self.short.unwrap_or(limit).min(limit)
+            };
+            let end = (offset + served).min(self.sessions);
             let items: Vec<Value> = (offset..end)
                 .map(|n| session_row(n, self.detector_every))
                 .collect();
@@ -106,6 +126,9 @@ impl Script {
             );
         }
         if path == format!("{DASH}session") {
+            if self.deny_session {
+                return raw(403, &json!({"message": "SERVER-TEXT-NEVER-SHOWN"}));
+            }
             let session = q("session_id");
             let app = q("app_id");
             let actions: Vec<Value> = (0..3).map(|k| action(&session, &app, k)).collect();
@@ -128,11 +151,19 @@ impl Script {
             if q("scan_id") == "scn-missing" {
                 return raw(404, &json!({"error": "not found"}));
             }
-            return raw(
+            let reply = raw(
                 200,
                 &json!({"scan_id": q("scan_id"), "report_id": "R-1", "category": "malicious",
                 "scan_contents": {"prompt": PROMPT, "response": RESPONSE}}),
             );
+            return if self.content_delay_ms > 0 {
+                Reply::Delayed {
+                    millis: self.content_delay_ms,
+                    then: Box::new(reply),
+                }
+            } else {
+                reply
+            };
         }
         raw(404, &json!({"error": "not found"}))
     }
@@ -165,6 +196,11 @@ async fn desk(sessions: usize) -> Desk {
     let script = Arc::new(Mutex::new(Script {
         sessions,
         detector_every: 7,
+        short: None,
+        empty_before: 0,
+        down: false,
+        deny_session: false,
+        content_delay_ms: 0,
     }));
     let routed = Arc::clone(&script);
     let server = TlsServer::start(
@@ -269,7 +305,43 @@ impl Desk {
         )
         .await
         .expect("management key");
-        assert!(eventually(|| self.snap().tenants[0].management.state == ScanState::Ready).await);
+        assert!(
+            eventually(|| self.snap().tenants.iter().any(|t| Some(&t.id)
+                == self.snap().active.as_ref().map(|a| &a.tenant)
+                && t.management.state == ScanState::Ready))
+            .await
+        );
+    }
+
+    /// Admits a read without waiting for its result.
+    async fn admit(&mut self, request: Value) -> desktop_core::runtime::OperationId {
+        let context = self.context();
+        match self
+            .send(json!({"kind": "management", "context": context, "request": request}))
+            .await
+            .expect("admitted")
+        {
+            Receipt::Admitted {
+                operation: Some(operation),
+                ..
+            } => operation,
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+
+    async fn result_of(&self, operation: desktop_core::runtime::OperationId) -> ManagementResult {
+        let Ok(Observation::Management(handle)) =
+            self.handle.observe(ViewScope::Management(operation))
+        else {
+            panic!("management observation");
+        };
+        tokio::time::timeout(Duration::from_secs(30), handle.result())
+            .await
+            .expect("result in time")
+    }
+
+    fn script(&self) -> std::sync::MutexGuard<'_, Script> {
+        self.script.lock().expect("script")
     }
 
     async fn read(&mut self, request: Value) -> ManagementResult {
@@ -944,4 +1016,318 @@ async fn a_failed_read_reports_its_failure_and_caches_nothing() {
         desk.snap().sessions.investigation.map(|i| i.contents),
         Some(0)
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn short_and_empty_pages_that_report_more_are_walked_not_taken_as_the_end() {
+    let mut desk = desk(500).await;
+    desk.management_key("session").await;
+    // Every page is short (60 of 100) but the total says 500 sessions.
+    desk.script().short = Some(60);
+    let found = desk.search("ses-420").await;
+    assert_eq!(
+        items(&found.sessions).len(),
+        1,
+        "found past the short pages"
+    );
+    assert!(found.complete && found.scanned == 300);
+    // Empty pages that still report more are not an end either; a later
+    // match is found, and an absent ID is only claimed after the window.
+    desk.script().short = None;
+    desk.script().empty_before = 200;
+    let later = desk.search("ses-250").await;
+    assert_eq!(items(&later.sessions).len(), 1);
+    let absent = desk.search("ses-9999").await;
+    assert!(absent.complete && items(&absent.sessions).is_empty());
+    assert_eq!(absent.scanned, 300);
+    // A detector walk over short pages stops at its request bound without
+    // claiming every session of the day.
+    desk.script().empty_before = 0;
+    desk.script().short = Some(10);
+    desk.script().sessions = 5_000;
+    let detector = desk.search("toxic_content").await;
+    assert_eq!((detector.scanned, detector.complete), (100, false));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_write_held_across_credential_removal_leaves_no_investigation_behind() {
+    let mut desk = desk(10).await;
+    desk.management_key("keychain").await;
+    // Build the binding without touching the investigation.
+    desk.read(json!({"kind": "page", "resource": "sessions", "offset": 0, "limit": 25}))
+        .await;
+    // The investigation key is not created yet: its write waits at the gate.
+    desk.adapters.vault.hold_writes();
+    let reveal = desk
+        .admit(json!({"kind": "content", "scanId": "scn-ses-1-0", "subRequest": 0}))
+        .await;
+    assert!(eventually(|| desk.adapters.vault.waiting() == 1).await);
+    let context = desk.context();
+    desk.send(json!({"kind": "removeManagementCredential", "context": context}))
+        .await
+        .expect("removed");
+    desk.adapters.vault.release();
+    let _ = desk.result_of(reveal).await;
+    assert!(eventually(|| desk.adapters.vault.records().is_empty()).await);
+    assert!(eventually(|| desk.snapshot_files().is_empty()).await);
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(desk.snapshot_files().is_empty() && desk.adapters.vault.records().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_write_held_across_reset_leaves_no_investigation_or_report_behind() {
+    let mut desk = desk(10).await;
+    desk.management_key("keychain").await;
+    desk.open_reports().await;
+    desk.open_session(1).await;
+    let held = desk.core.hold_report_writes().await;
+    desk.report(1, 0, "Pending reason").await.expect("accepted");
+    // The next investigation write must create its key again.
+    let key = desk
+        .adapters
+        .vault
+        .records()
+        .into_iter()
+        .find(|r| desk.adapters.vault.secret(r).is_some_and(|s| s.len() == 32))
+        .expect("investigation key");
+    desktop_core::vault::Vault::delete(desk.adapters.vault.as_ref(), &key).expect("deleted");
+    desk.adapters.vault.hold_writes();
+    let reveal = desk
+        .admit(json!({"kind": "content", "scanId": "scn-ses-1-0", "subRequest": 0}))
+        .await;
+    assert!(eventually(|| desk.adapters.vault.waiting() == 1).await);
+    desk.send(json!({"kind": "resetLocalData"}))
+        .await
+        .expect("reset");
+    desk.adapters.vault.release();
+    drop(held);
+    let _ = desk.result_of(reveal).await;
+    assert!(eventually(|| !desk.adapters.sessions_root.exists()).await);
+    assert!(eventually(|| desk.adapters.vault.records().is_empty()).await);
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(!desk.adapters.sessions_root.exists(), "nothing recreated");
+    assert!(desk.adapters.vault.records().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn held_report_writes_keep_each_tenants_own_latest_changes() {
+    let mut desk = desk(10).await;
+    desk.management_key("session").await;
+    desk.open_reports().await;
+    desk.open_session(1).await;
+    desk.report(1, 0, "A first").await.expect("a first");
+    let tenant_a = desk.snap().tenants[0].id.clone();
+    let path_a =
+        desktop_core::sessions::reports_path(&desk.adapters.sessions_root, tenant_a.as_str());
+    assert!(
+        eventually(
+            || desktop_core::sessions::load_reports(&path_a).is_ok_and(|b| b.reports.len() == 1)
+        )
+        .await
+    );
+    let held = desk.core.hold_report_writes().await;
+    desk.report(1, 1, "A second").await.expect("a second");
+    // Tenant B opens and edits its own reports while A's write waits.
+    let origin = format!("https://localhost:{}", desk.server.port);
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": TSG,
+        "destination": {"kind": "custom", "origin": origin}}}),
+    )
+    .await
+    .expect("tenant b");
+    let tenant_b = desk
+        .snap()
+        .tenants
+        .iter()
+        .find(|t| t.label == "Tenant B")
+        .expect("b")
+        .id
+        .clone();
+    desk.send(json!({"kind": "selectTenant", "tenant": tenant_b}))
+        .await
+        .expect("select b");
+    desk.management_key("session").await;
+    desk.open_reports().await;
+    assert!(desk.snap().sessions.reports.items.is_empty());
+    desk.open_session(2).await;
+    desk.report(2, 0, "B first").await.expect("b first");
+    // B's pending generation now equals A's: writes must still go by tenant.
+    desk.report(2, 1, "B second").await.expect("b second");
+    drop(held);
+    let path_b =
+        desktop_core::sessions::reports_path(&desk.adapters.sessions_root, tenant_b.as_str());
+    assert!(
+        eventually(
+            || desktop_core::sessions::load_reports(&path_a).is_ok_and(|b| b.reports.len() == 2)
+        )
+        .await
+    );
+    assert!(
+        eventually(|| desktop_core::sessions::load_reports(&path_b)
+            .is_ok_and(|b| b.reports.len() == 2 && b.reports[1].reason == "B first"))
+        .await
+    );
+    assert!(!desk.snap().sessions.reports.unsaved);
+    // Back on A, its book still holds both of its reports.
+    desk.send(json!({"kind": "selectTenant", "tenant": tenant_a}))
+        .await
+        .expect("select a");
+    desk.open_reports().await;
+    assert_eq!(desk.snap().sessions.reports.items.len(), 2);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_locked_keychain_keeps_the_investigation_in_memory_never_in_plaintext() {
+    let mut desk = desk(10).await;
+    desk.management_key("keychain").await;
+    desk.read(json!({"kind": "page", "resource": "sessions", "offset": 0, "limit": 25}))
+        .await;
+    // The binding is built; only the investigation key needs the Keychain.
+    desk.adapters
+        .vault
+        .fail_with(Some(desktop_core::vault::VaultError::Locked));
+    let content = desk.reveal("scn-ses-1-0").await;
+    assert_eq!(content.prompt.as_deref(), Some(PROMPT));
+    assert!(
+        eventually(|| desk.snap().sessions.investigation.map(|i| i.storage)
+            == Some(desktop_core::sessions::InvestigationStorage::Unavailable))
+        .await
+    );
+    assert!(desk.snapshot_files().is_empty(), "no unsealed fallback");
+    desk.adapters.vault.fail_with(None);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_denied_session_read_reports_denial_and_caches_nothing() {
+    let mut desk = desk(10).await;
+    desk.management_key("session").await;
+    desk.script().deny_session = true;
+    let result = desk
+        .read(
+            json!({"kind": "session", "sessionId": "ses-1", "appId": "app-1", "appName": "Bot 1"}),
+        )
+        .await;
+    assert!(matches!(
+        result,
+        ManagementResult::Failed {
+            failure: ManagementFailure::Denied,
+            ..
+        }
+    ));
+    assert_eq!(
+        desk.snap().sessions.investigation.map(|i| i.sessions),
+        Some(0)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_reveal_outliving_its_credential_is_withdrawn_and_kept_nowhere() {
+    let mut desk = desk(10).await;
+    desk.management_key("keychain").await;
+    desk.open_session(1).await;
+    assert!(eventually(|| desk.snapshot_files().len() == 1).await);
+    desk.script().content_delay_ms = 1_500;
+    let reveal = desk
+        .admit(json!({"kind": "content", "scanId": "scn-ses-1-0", "subRequest": 0}))
+        .await;
+    let context = desk.context();
+    desk.send(json!({"kind": "removeManagementCredential", "context": context}))
+        .await
+        .expect("removed");
+    let result = desk.result_of(reveal).await;
+    assert!(
+        matches!(
+            result,
+            ManagementResult::Failed {
+                failure: ManagementFailure::Cancelled,
+                ..
+            }
+        ),
+        "{result:?}"
+    );
+    assert!(eventually(|| desk.snapshot_files().is_empty()).await);
+    tokio::time::sleep(Duration::from_millis(2_000)).await;
+    assert!(
+        desk.snapshot_files().is_empty(),
+        "the late reply placed nothing"
+    );
+    assert!(desk.snap().sessions.investigation.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_unreachable_service_fails_the_read_and_only_an_explicit_retry_reads_again() {
+    let mut desk = desk(10).await;
+    desk.management_key("session").await;
+    desk.open_session(1).await;
+    desk.script().down = true;
+    let result = desk
+        .read(json!({"kind": "content", "scanId": "scn-ses-1-0", "subRequest": 0}))
+        .await;
+    assert!(
+        matches!(result, ManagementResult::Failed { .. }),
+        "{result:?}"
+    );
+    assert_eq!(
+        desk.snap().sessions.investigation.map(|i| i.contents),
+        Some(0)
+    );
+    desk.script().down = false;
+    let attempts = desk.requests(CONTENT).len();
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    assert_eq!(desk.requests(CONTENT).len(), attempts, "no replay");
+    let content = desk.reveal("scn-ses-1-0").await;
+    assert_eq!(content.prompt.as_deref(), Some(PROMPT));
+    assert_eq!(desk.requests(CONTENT).len(), attempts + 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn saved_reports_stay_usable_offline_without_a_management_client() {
+    let mut desk = desk(10).await;
+    desk.management_key("keychain").await;
+    desk.open_reports().await;
+    desk.open_session(1).await;
+    desk.report(1, 0, "Kept offline").await.expect("saved");
+    let tenant = desk.snap().tenants[0].id.clone();
+    let path = desktop_core::sessions::reports_path(&desk.adapters.sessions_root, tenant.as_str());
+    assert!(eventually(|| path.exists()).await);
+    let context = desk.context();
+    desk.send(json!({"kind": "removeManagementCredential", "context": context}))
+        .await
+        .expect("removed");
+    desk.script().down = true;
+    let mut desk = desk.restart().await;
+    let before = desk.server.seen().len();
+    desk.open_reports().await;
+    assert_eq!(desk.snap().sessions.reports.items[0].reason, "Kept offline");
+    let context = desk.context();
+    // Edit without the session or a client; remove, undo and export.
+    desk.send(json!({"kind": "saveReport", "context": context,
+        "target": {"scanId": "scn-ses-1-0", "subRequest": 0, "sessionId": "", "appId": "", "appName": ""},
+        "input": {"kind": "false_negative", "category": "", "reason": "Edited offline"}}))
+        .await
+        .expect("edited");
+    desk.send(json!({"kind": "removeReport", "context": context, "scanId": "scn-ses-1-0", "subRequest": 0}))
+        .await
+        .expect("removed");
+    desk.send(json!({"kind": "undoReport", "context": context}))
+        .await
+        .expect("undone");
+    desk.send(json!({"kind": "exportReports", "context": context}))
+        .await
+        .expect("export");
+    assert!(
+        eventually(|| desk
+            .snap()
+            .sessions
+            .export
+            .is_some_and(|e| e.state == ExportState::Saved))
+        .await
+    );
+    assert_eq!(
+        desk.snap().sessions.reports.items[0].reason,
+        "Edited offline"
+    );
+    // A new report still needs the scan's metadata (and so a client).
+    assert_eq!(desk.report(1, 1, "New").await, Err(Refusal::InvalidInput));
+    assert_eq!(desk.server.seen().len(), before, "no request to the tenant");
 }

@@ -20,6 +20,12 @@ sessions (default 60; every mode "detectorEvery"-th, default 7, reports
 prompt_injection), their sessions, transactions and scan content. Content
 reads are logged by scan ID only, never their text.
 
+Home/Inbox reads (C12): the sessions chart (mode "chartStatus", default
+200; two hourly buckets, one violating) and the API key inventory (mode
+"keyExpiresInDays" moves key-1's expiration). The public example catalog
+snapshot is served at /cdot65/prisma-airs-test-cases/main/catalog.json
+(mode "catalog": "ok", "bad" or "missing"); it needs no credential.
+
 Writes (C09) change an in-memory inventory: topics create/update/delete,
 API key create/regenerate/delete (a one-time api_key in the reply). The log
 records each write's body field names, its authorship and auth-code match,
@@ -154,6 +160,16 @@ class Handler(BaseHTTPRequestHandler):
                 with open(os.path.join(srv.directory, "issued.json"), "w") as f:
                     json.dump(sorted(srv.issued), f)
             return 200, {"access_token": token, "token_type": "Bearer", "expires_in": 3600}
+        if path == "/cdot65/prisma-airs-test-cases/main/catalog.json":
+            record["catalogAuthorization"] = record["auth"]
+            catalog = mode.get("catalog", "ok")
+            if catalog == "missing":
+                return 404, {"error": "not found"}
+            if catalog == "bad":
+                return 200, {"version": 1, "kind": "prisma-airs-test-case-examples", "examples": [], "api_key": "x"}
+            return 200, {"version": 1, "kind": "prisma-airs-test-case-examples", "examples": [
+                {"product": "skill-scanning", "name": "Public snapshot example", "prompt": "Review the skill's declared permissions.",
+                 "expected": "A goal for the reviewer; never a verdict."}]}
         if record["auth"] != "bearer-issued":
             return 401, {"error": "unauthorized"}
         offset = int(query.get("offset", 0))
@@ -182,7 +198,19 @@ class Handler(BaseHTTPRequestHandler):
                 return 200, {"customer_apps": [dict(a) for a in srv.apps[offset:offset + limit]]}
         if path == f"/aisec/v1/mgmt/apikeys/tsg/{tsg}":
             with srv.lock:
-                return 200, {"api_keys": [dict(k) for k in srv.keys[offset:offset + limit]]}
+                keys = [dict(k) for k in srv.keys[offset:offset + limit]]
+            if mode.get("keyExpiresInDays") is not None and keys:
+                when = time.time() + float(mode["keyExpiresInDays"]) * 86400
+                keys[0]["expiration"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(when))
+            return 200, {"api_keys": keys}
+        if path == "/aisec/v1/mgmt/dashboard/v2/sessions/sessionschart":
+            status = int(mode.get("chartStatus", 200))
+            if status != 200:
+                return status, {"message": "SERVER-TEXT-NEVER-SHOWN"}
+            return 200, {"bucket_size_seconds": 3600, "buckets": [
+                {"time": "2026-10-19T00:00:00Z", "total": 12, "violating": 3,
+                 "detection_type_violation_breakdown": [{"detection_type": "pi", "violation_breakdown": {"total": 3}}]},
+                {"time": "2026-10-19T01:00:00Z", "total": 8, "violating": 0, "detection_type_violation_breakdown": []}]}
         if path == "/aisec/v1/mgmt/dashboard/v2/sessions/sessionsoverview":
             count = int(mode.get("sessionCount", 60))
             every = int(mode.get("detectorEvery", 7))

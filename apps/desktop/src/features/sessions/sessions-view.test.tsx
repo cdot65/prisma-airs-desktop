@@ -270,6 +270,26 @@ describe('Sessions & Reports', () => {
         await openSessions(native)
         expect(screen.getByText(/has no ready management client/)).toBeInTheDocument()
         expect(sent(native, 'management')).toEqual([])
-        expect(sent(native, 'openReports')).toEqual([])
+    })
+
+    it('keeps existing reports usable without a management client', async () => {
+        const native = scriptedNative({
+            ...withTenant(baseSnapshot, tenant(), CONTEXT),
+            sessions: sessionsView({ reports: { state: 'ready', failure: null, items: [REPORT], undo: null, problem: null, unsaved: false } }),
+        })
+        service(native)
+        const user = await openSessions(native)
+        expect(sent(native, 'openReports')).toEqual([{ kind: 'openReports', context: CONTEXT }])
+        await user.click(screen.getByRole('tab', { name: /FP\/FN reports \(1\)/ }))
+        expect(screen.getByText('Order numbers')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Edit report for scn-1-0' }))
+        const form = screen.getByRole('form', { name: 'Report scan scn-1-0' })
+        await user.click(within(form).getByRole('button', { name: 'Save report' }))
+        await user.click(screen.getByRole('button', { name: 'Remove report for scn-1-0' }))
+        await user.click(screen.getByRole('button', { name: 'Export CSV…' }))
+        expect(sent(native, 'saveReport')).toHaveLength(1)
+        expect(sent(native, 'removeReport')).toHaveLength(1)
+        expect(sent(native, 'exportReports')).toHaveLength(1)
+        expect(sent(native, 'management')).toEqual([])
     })
 })

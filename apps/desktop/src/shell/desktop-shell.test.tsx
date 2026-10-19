@@ -92,11 +92,15 @@ describe('desktop shell', () => {
         expect(nav().queryByRole('button', { name: /^Sessions.*Not available in this build/ })).toBeNull()
         expect(screen.getByRole('heading', { level: 1, name: 'Investigate sessions' })).toBeInTheDocument()
         expect(screen.getByText('Add a tenant in Settings to investigate its sessions.')).toBeInTheDocument()
-        // A planned destination still says so explicitly.
+        // The Case Library is available (C12) and asks for a tenant first.
         await user.click(nav().getByRole('button', { name: /^Case Library/ }))
-        expect(nav().getByRole('button', { name: /^Case Library.*Not available in this build/ })).toBeInTheDocument()
+        expect(nav().queryByRole('button', { name: /^Case Library.*Not available in this build/ })).toBeNull()
+        expect(screen.getByRole('heading', { level: 1, name: 'Test case library' })).toBeInTheDocument()
+        // A planned destination still says so explicitly.
+        await user.click(nav().getByRole('button', { name: /^Red Team/ }))
+        expect(nav().getByRole('button', { name: /^Red Team.*Not available in this build/ })).toBeInTheDocument()
         expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C12')).toBeInTheDocument()
+        expect(screen.getByText('Planned in C13')).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
         // Academy learning is available (C05) and opens its learner region.
         await user.click(nav().getByRole('button', { name: /^Academy/ }))
@@ -223,7 +227,7 @@ describe('desktop shell', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument()
         s.push({ kind: 'menu', command: { kind: 'navigate', feature: 'library' } })
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-        expect(screen.getByRole('heading', { level: 1, name: 'Case Library' })).toHaveFocus()
+        expect(screen.getByRole('heading', { level: 1, name: 'Test case library' })).toHaveFocus()
 
         const trigger = screen.getByRole('button', { name: /Go to/ })
         await user.click(trigger)

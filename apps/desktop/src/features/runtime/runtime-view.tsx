@@ -5,11 +5,16 @@ import type { Detection, FeatureId, ScanRecordView, ShellSnapshot } from '@prism
 import { PageHeading } from '../../shell/feature-view'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
 import { type ScanInput, VERDICT_TEXT, draftFrom, outcomeText, recordSummary } from './scan-text'
+import type { CasePrefill } from '../library/library-view'
+import { CASE_PROBLEM_TEXT } from '../library/library-view'
+import { OverviewInbox } from './overview-inbox'
 
 interface Props {
     snapshot: ShellSnapshot
     dispatch: Dispatch
     onNavigate: (id: FeatureId) => void
+    /** A Library case or starter to fill the form with (never scanned). */
+    prefill?: CasePrefill | null
 }
 
 const TEXTAREA = cn(
@@ -24,8 +29,11 @@ const TEXTAREA = cn(
  * records come only from native snapshots, which already exclude other
  * tenants and discard replies for a retired tenant or key.
  */
-export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate }, ref) {
+export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate, prefill = null }, ref) {
     const ids = useId()
+    const [tab, setTab] = useState<'scan' | 'overview'>('scan')
+    const [caseName, setCaseName] = useState('')
+    const [caseMessage, setCaseMessage] = useState<string | null>(null)
     const form = useRef<HTMLFormElement>(null)
     const [busy, setBusy] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
@@ -39,7 +47,41 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
         // this view showed for the previous one.
         setMessage(null)
         setSelected(null)
+        setCaseMessage(null)
     }, [context])
+
+    useEffect(() => {
+        if (!prefill) return
+        setTab('scan')
+        setCaseName(prefill.name)
+        setCaseMessage(null)
+    }, [prefill?.nonce])
+
+    async function saveCase() {
+        const element = form.current
+        if (!element || !context) return
+        const data = new FormData(element)
+        const read = (name: string) => (data.get(name) as string | null) ?? ''
+        // A Runtime case from the form as it is now (v1 Playground save).
+        const outcome = await dispatch({
+            kind: 'saveCase',
+            context,
+            draft: {
+                product: 'runtime-security',
+                name: caseName,
+                profile: read('profile'),
+                prompt: read('prompt'),
+                response: read('response'),
+                appName: read('app-name'),
+                expected: '',
+                payload: '',
+            },
+        })
+        if (outcome.kind === 'admitted') setCaseMessage('Saved to this tenant’s case Library.')
+        else if (outcome.kind === 'refused' && outcome.refusal === 'invalidInput' && snapshot.library.problem) {
+            setCaseMessage(CASE_PROBLEM_TEXT[snapshot.library.problem])
+        } else setCaseMessage(outcomeMessage(outcome))
+    }
 
     const shown: ScanRecordView | undefined =
         snapshot.scans.find((s) => s.operation === selected) ?? snapshot.scans[0]
@@ -98,13 +140,60 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
         )
     }
     const ready = tenant.scan.state === 'ready'
+    const tabs = (
+        <div role='tablist' aria-label='Runtime Security sections' className='flex gap-2'>
+            {(
+                [
+                    ['scan', 'Playground'],
+                    ['overview', 'Overview & Inbox'],
+                ] as const
+            ).map(([id, label]) => (
+                <Button
+                    key={id}
+                    type='button'
+                    role='tab'
+                    aria-selected={tab === id}
+                    size='sm'
+                    tier={tab === id ? 'secondary' : 'tertiary'}
+                    className={tab === id ? 'bg-academy-paper-deep font-semibold' : undefined}
+                    onClick={() => setTab(id)}
+                >
+                    {label}
+                </Button>
+            ))}
+        </div>
+    )
+    if (tab === 'overview') {
+        return (
+            <section aria-labelledby='runtime-heading' data-slot='runtime' className='flex flex-col gap-6'>
+                {heading}
+                {tabs}
+                <OverviewInbox
+                    context={context}
+                    overview={snapshot.overview}
+                    ready={tenant.management.state === 'ready'}
+                    dispatch={dispatch}
+                    onNavigate={onNavigate}
+                />
+            </section>
+        )
+    }
 
     return (
         <section aria-labelledby='runtime-heading' data-slot='runtime' className='flex flex-col gap-6'>
             {heading}
+            {tabs}
             <p className='text-academy-ink-soft -mt-4 text-[13px]' data-slot='runtime-tenant'>
                 Scanning with {tenant.label} at {tenant.origin}.
             </p>
+            {prefill ? (
+                <Callout tone='default' icon={Info} data-slot='runtime-loaded-case'>
+                    <p>
+                        {prefill.name} is loaded. {prefill.expected ? `Goal: ${prefill.expected} ` : ''}Choose Scan to evaluate it; nothing
+                        was scanned.
+                    </p>
+                </Callout>
+            ) : null}
             {ready ? null : (
                 <Callout tone='warning' icon={AlertTriangle} data-slot='runtime-no-key'>
                     <p>{tenant.label} has no ready scan key. Enter one in Settings before scanning.</p>
@@ -114,6 +203,7 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
                 </Callout>
             )}
             <form
+                key={prefill?.nonce ?? 'empty'}
                 ref={form}
                 onSubmit={(e) => void submit(e)}
                 aria-busy={busy}
@@ -148,6 +238,7 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
                     <Input
                         id={`${ids}-profile`}
                         name='profile'
+                        defaultValue={prefill?.profile ?? ''}
                         data-field='profile'
                         autoComplete='off'
                         spellCheck={false}
@@ -158,19 +249,19 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
                     <label htmlFor={`${ids}-prompt`} className='text-academy-ink text-[13px] font-medium'>
                         Prompt
                     </label>
-                    <textarea id={`${ids}-prompt`} name='prompt' data-field='prompt' className={TEXTAREA} spellCheck={false} />
+                    <textarea id={`${ids}-prompt`} name='prompt' data-field='prompt' className={TEXTAREA} spellCheck={false} defaultValue={prefill?.prompt ?? ''} />
                 </div>
                 <div className='flex flex-col gap-2'>
                     <label htmlFor={`${ids}-response`} className='text-academy-ink text-[13px] font-medium'>
                         Response
                     </label>
-                    <textarea id={`${ids}-response`} name='response' data-field='response' className={TEXTAREA} spellCheck={false} />
+                    <textarea id={`${ids}-response`} name='response' data-field='response' className={TEXTAREA} spellCheck={false} defaultValue={prefill?.response ?? ''} />
                 </div>
                 <div className='flex flex-col gap-2'>
                     <label htmlFor={`${ids}-app`} className='text-academy-ink text-[13px] font-medium'>
                         Application name (optional)
                     </label>
-                    <Input id={`${ids}-app`} name='app-name' data-field='appName' autoComplete='off' spellCheck={false} />
+                    <Input id={`${ids}-app`} name='app-name' data-field='appName' autoComplete='off' spellCheck={false} defaultValue={prefill?.appName ?? ''} />
                 </div>
                 <p className='text-academy-ink-faint text-[12px]'>
                     Up to 2 MiB each for the prompt and response, 8 MiB per request. Sent only to {tenant.origin}.
@@ -186,6 +277,20 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
                         {message}
                     </p>
                 ) : null}
+                <div className='border-academy-rule flex flex-wrap items-end gap-2 border-t pt-3' data-slot='save-case'>
+                    <label className='flex min-w-48 flex-1 flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-case`}>
+                        Case name
+                        <Input id={`${ids}-case`} value={caseName} maxLength={128} onChange={(e) => setCaseName(e.target.value)} autoComplete='off' />
+                    </label>
+                    <Button type='button' tier='secondary' onClick={() => void saveCase()}>
+                        Save this case
+                    </Button>
+                    {caseMessage ? (
+                        <p role='status' className='text-academy-ink-soft w-full text-[13px]' data-slot='save-case-message'>
+                            {caseMessage}
+                        </p>
+                    ) : null}
+                </div>
             </form>
             {shown ? <ScanResult record={shown} onCancel={(op) => void cancel(op)} /> : null}
             {snapshot.scans.length > 0 ? (

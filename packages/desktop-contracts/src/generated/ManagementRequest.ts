@@ -4,4 +4,4 @@ import type { ManagementResource } from "./ManagementResource";
 /**
  * One management read the presentation asks for.
  */
-export type ManagementRequest = { "kind": "verify" } | { "kind": "page", resource: ManagementResource, offset: number, limit: number, } | { "kind": "detail", resource: ManagementResource, id: string, } | { "kind": "session", sessionId: string, appId: string, appName: string, } | { "kind": "transaction", sessionId: string, appId: string, appName: string, scanId: string, subRequest: number, } | { "kind": "content", scanId: string, subRequest: number, } | { "kind": "search", query: string, };
+export type ManagementRequest = { "kind": "verify" } | { "kind": "page", resource: ManagementResource, offset: number, limit: number, } | { "kind": "detail", resource: ManagementResource, id: string, } | { "kind": "session", sessionId: string, appId: string, appName: string, } | { "kind": "transaction", sessionId: string, appId: string, appName: string, scanId: string, subRequest: number, } | { "kind": "content", scanId: string, subRequest: number, } | { "kind": "search", query: string, } | { "kind": "overview" };

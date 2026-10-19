@@ -1074,6 +1074,63 @@
         "--test",
         "library_observation"
       ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/features/library/library-view.test.tsx",
+          "src/features/runtime/overview-inbox.test.tsx",
+          "src/features/runtime/scan-submit.test.tsx",
+          "src/shell/desktop-shell.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "library"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "observation"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "sessions_reports"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
       "native_prepare": [
         "cargo",
         "run",

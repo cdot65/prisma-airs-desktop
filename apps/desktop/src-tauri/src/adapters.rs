@@ -55,6 +55,85 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         offline_root: root.as_ref().map(|r| r.join("academy-offline")),
         saver: saver(app, root.as_deref()),
         sessions_root: root.as_ref().map(|r| r.join("sessions")),
+        case_files: case_files(app, root.as_deref()),
+        library_root: root.as_ref().map(|r| r.join("library")),
+    }
+}
+
+/// Case exports are bounded like v1 (256 KiB).
+pub const MAX_CASE_FILE_BYTES: usize = desktop_core::library::LIBRARY_BYTES;
+
+/// The native file sheet for case imports (C12).
+#[cfg(not(feature = "test-fixtures"))]
+fn case_files<R: Runtime>(app: &AppHandle<R>, _root: Option<&Path>) -> Arc<dyn ImportPicker> {
+    Arc::new(NativeCasePicker { app: app.clone() })
+}
+
+/// The fixture build answers the case-file sheet with the first file the
+/// acceptance driver staged in `fixture-case-files/` (none: cancelled).
+#[cfg(feature = "test-fixtures")]
+fn case_files<R: Runtime>(_app: &AppHandle<R>, root: Option<&Path>) -> Arc<dyn ImportPicker> {
+    struct StagedCases(Option<PathBuf>);
+    impl ImportPicker for StagedCases {
+        fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+            let dir = self.0.clone();
+            Box::pin(async move {
+                let dir = dir?;
+                tokio::task::spawn_blocking(move || {
+                    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+                        .ok()?
+                        .filter_map(|e| e.ok().map(|e| e.path()))
+                        .collect();
+                    files.sort();
+                    let path = files.into_iter().next()?;
+                    let name = path.file_name()?.to_string_lossy().into_owned();
+                    Some(
+                        read_limited(&path, MAX_CASE_FILE_BYTES)
+                            .map(|bytes| ImportFile { name, bytes }),
+                    )
+                })
+                .await
+                .ok()?
+            })
+        }
+    }
+    Arc::new(StagedCases(root.map(|r| r.join(FIXTURE_CASE_FILES))))
+}
+
+/// Where the fixture driver stages case import files.
+pub const FIXTURE_CASE_FILES: &str = "fixture-case-files";
+
+#[cfg_attr(feature = "test-fixtures", allow(dead_code))]
+pub struct NativeCasePicker<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> ImportPicker for NativeCasePicker<R> {
+    fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
+            let window = app.get_webview_window(MAIN_WINDOW)?;
+            app.run_on_main_thread(move || {
+                let chosen = rfd::FileDialog::new()
+                    .set_parent(&window)
+                    .set_title("Import test cases")
+                    .add_filter("JSON", &["json"])
+                    .pick_file();
+                let _ = tx.send(chosen);
+            })
+            .ok()?;
+            let path = rx.await.ok()??;
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let read =
+                tokio::task::spawn_blocking(move || read_limited(&path, MAX_CASE_FILE_BYTES))
+                    .await
+                    .ok()?;
+            Some(read.map(|bytes| ImportFile { name, bytes }))
+        })
     }
 }
 
@@ -382,6 +461,19 @@ pub fn fixture_academy_origin<R: Runtime>(app: &AppHandle<R>) -> Option<String> 
     let path = app.path().app_data_dir().ok()?.join(FIXTURE_ACADEMY_ORIGIN);
     let text = std::fs::read_to_string(path).ok()?;
     desktop_core::academy::origin_of(text.trim())
+}
+
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_CASE_CATALOG: &str = "fixture-case-catalog";
+
+/// The fixture public-catalog URL (a local snapshot server), when the
+/// acceptance driver installed one; it must still pass the catalog URL rule.
+#[cfg(feature = "test-fixtures")]
+pub fn fixture_case_catalog<R: Runtime>(app: &AppHandle<R>) -> Option<url::Url> {
+    let path = app.path().app_data_dir().ok()?.join(FIXTURE_CASE_CATALOG);
+    let text = std::fs::read_to_string(path).ok()?;
+    let url = url::Url::parse(text.trim()).ok()?;
+    desktop_core::library::catalog_url_ok(&url, &url).then_some(url)
 }
 
 #[cfg(feature = "test-fixtures")]
