@@ -15,6 +15,7 @@ import type { SessionsView } from "./SessionsView";
 import type { StorageHealth } from "./StorageHealth";
 import type { TenantView } from "./TenantView";
 import type { Theme } from "./Theme";
+import type { WorkbenchView } from "./WorkbenchView";
 
 /**
  * Redacted shell state.
@@ -76,4 +77,8 @@ library: LibraryView,
 /**
  * The active context's Runtime Home/Inbox observations.
  */
-overview: OverviewView, };
+overview: OverviewView, 
+/**
+ * API Client projects on this Mac (C14).
+ */
+workbench: WorkbenchView, };

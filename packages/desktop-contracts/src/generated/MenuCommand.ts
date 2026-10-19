@@ -5,4 +5,4 @@ import type { Theme } from "./Theme";
 /**
  * A native menu selection forwarded to the presentation.
  */
-export type MenuCommand = { "kind": "navigate", feature: FeatureId, } | { "kind": "commandPalette" } | { "kind": "setAppearance", theme: Theme, };
+export type MenuCommand = { "kind": "navigate", feature: FeatureId, } | { "kind": "commandPalette" } | { "kind": "setAppearance", theme: Theme, } | { "kind": "saveDocument" };

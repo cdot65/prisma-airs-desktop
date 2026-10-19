@@ -101,11 +101,16 @@ describe('desktop shell', () => {
         expect(nav().queryByRole('button', { name: /^Red Team.*Not available in this build/ })).toBeNull()
         expect(screen.getByRole('heading', { level: 1, name: 'Red Teaming and model observation' })).toBeInTheDocument()
         expect(screen.getByText('Add a tenant in Settings to observe its Red Teaming and model scans.')).toBeInTheDocument()
-        // A planned destination still says so explicitly.
+        // The API Client is available (C14), independent of any tenant.
         await user.click(nav().getByRole('button', { name: /^API Client/ }))
-        expect(nav().getByRole('button', { name: /^API Client.*Not available in this build/ })).toBeInTheDocument()
+        expect(nav().queryByRole('button', { name: /^API Client.*Not available in this build/ })).toBeNull()
+        expect(screen.getByRole('heading', { level: 1, name: 'API Client' })).toBeInTheDocument()
+        expect(screen.getByText('Opening the API Client…')).toBeInTheDocument()
+        // A planned destination still says so explicitly.
+        await user.click(nav().getByRole('button', { name: /^AI Gateway/ }))
+        expect(nav().getByRole('button', { name: /^AI Gateway.*Not available in this build/ })).toBeInTheDocument()
         expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C14')).toBeInTheDocument()
+        expect(screen.getByText('Planned in C16')).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
         // Academy learning is available (C05) and opens its learner region.
         await user.click(nav().getByRole('button', { name: /^Academy/ }))

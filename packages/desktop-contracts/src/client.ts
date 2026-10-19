@@ -18,6 +18,7 @@ import type { MenuCommand } from './generated/MenuCommand'
 import type { ObservationUpdate } from './generated/ObservationUpdate'
 import type { Refusal } from './generated/Refusal'
 import type { ShellSnapshot } from './generated/ShellSnapshot'
+import type { WorkbenchResult } from './generated/WorkbenchResult'
 
 export const PROTOCOL = 1
 
@@ -900,6 +901,278 @@ function isChangesView(value: unknown): boolean {
 }
 
 /** Validates a management read result (items stay JSON text). */
+
+// ------------------------------------------------------------- API Client
+
+const PRIVATE_FAILURES: readonly string[] = ['locked', 'denied', 'unavailable', 'unreadable']
+const CONFLICT_KINDS: readonly string[] = ['changed', 'deleted']
+const ISSUE_KINDS: readonly string[] = ['link', 'invalid', 'duplicate', 'schema', 'name', 'limit']
+const ENV_ORIGINS: readonly string[] = ['shared', 'local', 'both']
+const LAYERS: readonly string[] = ['collection', 'localDefaults', 'shared', 'local', 'request']
+const GIT_STATES: readonly string[] = ['unavailable', 'notRepository', 'ready', 'failed']
+const FIELD_NAMES: readonly string[] = ['method', 'url', 'headers', 'query', 'body', 'bodyKind', 'settings']
+const SAVE_REFUSALS: readonly string[] = ['conflict', 'incomplete', 'moved', 'sharedBody', 'interrupted', 'exists', 'io']
+const PROJECT_PROBLEMS: readonly string[] = ['notCollection', 'badPath', 'exists', 'notInRepository', 'incomplete', 'missing', 'tooLarge', 'io']
+const SCHEMA_PROBLEMS: readonly string[] = ['badPath', 'missing', 'notText', 'conflict', 'io']
+const CURL_PROBLEMS: readonly string[] = [
+    'tooLarge', 'notCurl', 'shell', 'unclosed', 'tooManyWords', 'unsupportedOption', 'missingArgument', 'url',
+    'urlCredentials', 'queryCredentials', 'glob', 'template', 'bodyCredentials', 'json', 'header', 'external', 'combination',
+]
+const EXPORT_PROBLEMS: readonly string[] = ['tooLarge', 'unreadable', 'version', 'structure', 'limit']
+const RESOURCE_PROBLEMS: readonly string[] = [
+    'fields', 'pathParameters', 'settings', 'method', 'url', 'template', 'header', 'parameter', 'credential', 'body',
+    'json', 'auth', 'authReview', 'authCombination', 'folder', 'path', 'environment',
+]
+const ADOPTION_PROBLEMS: readonly string[] = ['missing', 'unreadable']
+const WORKBENCH_PROBLEMS: Readonly<Record<string, readonly string[] | null>> = {
+    noCollection: null, missing: null, stale: null, unavailable: null, invalid: null, managed: null, limit: null, keychain: null, unprotected: null,
+    project: PROJECT_PROBLEMS, private: PRIVATE_FAILURES, schema: SCHEMA_PROBLEMS, curl: CURL_PROBLEMS,
+    export: EXPORT_PROBLEMS, adoption: ADOPTION_PROBLEMS,
+}
+/** A request document's identity (v1: letters, digits, `_` and `-`). */
+const DOCUMENT_ID = /^[A-Za-z0-9_-]{1,128}$/
+const REVISION = /^[0-9a-f]{32}$/
+const DIGEST = /^[0-9a-f]{64}$/
+/** Collection-relative paths: no absolute, parent or empty components. */
+const isRelative = (value: unknown): boolean =>
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 1024 &&
+    !value.startsWith('/') &&
+    value.split('/').every((part) => part !== '' && part !== '..' && part !== '.')
+const isStrings = (value: unknown, check: (v: unknown) => boolean = isString): boolean =>
+    Array.isArray(value) && value.every(check)
+
+function isFields(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        ['method', 'url', 'headers', 'query', 'body', 'bodyKind', 'settings'].every((k) => typeof value[k] === 'string')
+    )
+}
+
+const isFieldProblem = (p: unknown): boolean => isRecord(p) && oneOf(FIELD_NAMES, p.field) && optional(isCount, p.line)
+
+function isDocumentView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        DOCUMENT_ID.test(value.id) &&
+        isRelative(value.relative) &&
+        typeof value.revision === 'string' &&
+        REVISION.test(value.revision) &&
+        isFields(value.fields) &&
+        isFields(value.saved) &&
+        typeof value.new === 'boolean' &&
+        typeof value.recovered === 'boolean' &&
+        typeof value.bodyEditable === 'boolean' &&
+        optional(isRelative, value.schema) &&
+        optional((c) => oneOf(CONFLICT_KINDS, c), value.conflict) &&
+        typeof value.interrupted === 'boolean' &&
+        typeof value.metadataDirty === 'boolean'
+    )
+}
+
+function isTabView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        DOCUMENT_ID.test(value.id) &&
+        isRelative(value.relative) &&
+        isString(value.method) &&
+        ['draft', 'new', 'recovered', 'interrupted'].every((k) => typeof value[k] === 'boolean') &&
+        optional((c) => oneOf(CONFLICT_KINDS, c), value.conflict)
+    )
+}
+
+function isCollectionView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isString(value.id) &&
+        isString(value.name) &&
+        isString(value.folder) &&
+        typeof value.builtIn === 'boolean' &&
+        typeof value.complete === 'boolean' &&
+        Array.isArray(value.requests) &&
+        value.requests.every(
+            (r) => isRecord(r) && isRelative(r.relative) && typeof r.id === 'string' && DOCUMENT_ID.test(r.id) && isString(r.method) && isString(r.url)
+        ) &&
+        isStrings(value.folders, isRelative) &&
+        isStrings(value.schemas, isRelative) &&
+        Array.isArray(value.issues) &&
+        value.issues.every((i) => isRecord(i) && isString(i.relative) && oneOf(ISSUE_KINDS, i.kind)) &&
+        Array.isArray(value.environments) &&
+        value.environments.every((e) => isRecord(e) && isString(e.name) && oneOf(ENV_ORIGINS, e.origin)) &&
+        optional(isString, value.environment) &&
+        Array.isArray(value.tabs) &&
+        value.tabs.every(isTabView) &&
+        optional((t) => typeof t === 'string' && DOCUMENT_ID.test(t), value.selected) &&
+        Array.isArray(value.secrets) &&
+        value.secrets.every((x) => isRecord(x) && isString(x.reference) && typeof x.stored === 'boolean' && typeof x.managed === 'boolean') &&
+        optional((f) => oneOf(PRIVATE_FAILURES, f), value.unsaved) &&
+        isCount(value.archives)
+    )
+}
+
+const isResourceView = (r: unknown): boolean =>
+    isRecord(r) &&
+    isCount(r.index) &&
+    isString(r.label) &&
+    isRelative(r.relative) &&
+    typeof r.environment === 'boolean' &&
+    optional((p) => oneOf(RESOURCE_PROBLEMS, p), r.problem)
+
+const isCandidateView = (c: unknown): boolean =>
+    isRecord(c) && isCount(c.index) && isString(c.name) && isString(c.folder) && isStrings(c.environments) && isCount(c.skipped)
+
+function isGitView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(GIT_STATES, value.state) &&
+        optional(isString, value.branch) &&
+        optional(isString, value.head) &&
+        optional(isString, value.upstream) &&
+        optional(isCount, value.ahead) &&
+        optional(isCount, value.behind) &&
+        Array.isArray(value.changes) &&
+        value.changes.length <= 500 &&
+        value.changes.every((c) => isRecord(c) && isString(c.path) && isString(c.status)) &&
+        typeof value.truncated === 'boolean'
+    )
+}
+
+function isWorkbenchView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.available === 'boolean' &&
+        typeof value.loaded === 'boolean' &&
+        optional((f) => oneOf(PRIVATE_FAILURES, f), value.failure) &&
+        Array.isArray(value.recent) &&
+        value.recent.every((r) => isRecord(r) && isCount(r.index) && isString(r.name) && isString(r.folder)) &&
+        optional(isCollectionView, value.collection) &&
+        optional((i) => Array.isArray(i) && i.every(isResourceView), value.import) &&
+        optional((a) => Array.isArray(a) && a.every(isCandidateView), value.adoption) &&
+        typeof value.adoptionSettled === 'boolean' &&
+        optional(isGitView, value.git) &&
+        typeof value.busy === 'boolean' &&
+        typeof value.unprotected === 'boolean'
+    )
+}
+
+const isPair = (p: unknown): boolean => Array.isArray(p) && p.length === 2 && isString(p[0]) && isString(p[1])
+
+function isPreview(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isString(value.method) &&
+        isString(value.url) &&
+        Array.isArray(value.headers) &&
+        value.headers.every(isPair) &&
+        Array.isArray(value.query) &&
+        value.query.every(isPair) &&
+        isString(value.bodyKind) &&
+        isString(value.body) &&
+        isCount(value.bodyBytes) &&
+        Array.isArray(value.variables) &&
+        value.variables.every(
+            (v) =>
+                isRecord(v) &&
+                isString(v.name) &&
+                oneOf(LAYERS, v.layer) &&
+                optional(isString, v.secret) &&
+                optional((s) => typeof s === 'boolean', v.stored)
+        ) &&
+        isStrings(value.unresolved) &&
+        isStrings(value.missingSecrets) &&
+        optional(isString, value.auth) &&
+        isStrings(value.authReferences) &&
+        optional(isFieldProblem, value.problem) &&
+        typeof value.jsonWarning === 'boolean'
+    )
+}
+
+function isWorkbenchProblem(value: unknown): boolean {
+    if (!isRecord(value) || typeof value.kind !== 'string' || !(value.kind in WORKBENCH_PROBLEMS)) return false
+    const details = WORKBENCH_PROBLEMS[value.kind]
+    if (details === undefined) return false
+    return details === null ? value.detail === undefined : oneOf(details, value.detail)
+}
+
+function isImportNote(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    switch (value.kind) {
+        case 'flagOmitted':
+        case 'compressed':
+        case 'emptyCookie':
+            return true
+        case 'authRemoved':
+            return isString(value.reference)
+        case 'headerReplaced':
+            return isString(value.variable) && isString(value.reference)
+    }
+    return false
+}
+
+function isSaveRefusal(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    if (value.kind === 'invalid') return isFieldProblem(value.problem)
+    return oneOf(SAVE_REFUSALS, value.kind)
+}
+
+export function parseWorkbenchResult(value: unknown): WorkbenchResult {
+    if (isRecord(value)) {
+        const valid = (() => {
+            switch (value.kind) {
+                case 'done':
+                case 'cancelled':
+                    return true
+                case 'refused':
+                    return isWorkbenchProblem(value.problem)
+                case 'opened':
+                    return isString(value.name)
+                case 'document':
+                    return isDocumentView(value.document) && Array.isArray(value.notes) && value.notes.every(isImportNote)
+                case 'saved':
+                case 'unchanged':
+                    return isDocumentView(value.document)
+                case 'saveRefused':
+                    return isSaveRefusal(value.refusal)
+                case 'protected':
+                case 'closed':
+                    return typeof value.id === 'string' && DOCUMENT_ID.test(value.id)
+                case 'preview':
+                    return isPreview(value.preview)
+                case 'environment':
+                    return (
+                        isString(value.name) &&
+                        typeof value.private === 'boolean' &&
+                        isString(value.text) &&
+                        optional((r) => typeof r === 'string' && DIGEST.test(r), value.revision)
+                    )
+                case 'schema':
+                    return (
+                        isRecord(value.schema) &&
+                        isRelative(value.schema.relative) &&
+                        isString(value.schema.text) &&
+                        optional((r) => typeof r === 'string' && DIGEST.test(r), value.schema.revision)
+                    )
+                case 'import':
+                    return isString(value.collection) && Array.isArray(value.resources) && value.resources.every(isResourceView)
+                case 'created':
+                    return isCount(value.requests) && isCount(value.environments) && isCount(value.skipped)
+                case 'git':
+                    return isGitView(value.git)
+                case 'adoption':
+                    return Array.isArray(value.candidates) && value.candidates.every(isCandidateView)
+                case 'adopted':
+                    return isCount(value.collections) && isCount(value.environments)
+            }
+            return false
+        })()
+        if (valid) return value as unknown as WorkbenchResult
+    }
+    throw new ContractViolation('workbench result')
+}
+
 export function parseManagementResult(value: unknown): ManagementResult {
     if (isRecord(value)) {
         if (value.kind === 'verified') return { kind: 'verified' }
@@ -1033,6 +1306,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isSessionsView(value.sessions) ||
         !isLibraryView(value.library) ||
         !isOverviewView(value.overview) ||
+        !isWorkbenchView(value.workbench) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')
@@ -1066,6 +1340,8 @@ function parseMenuCommand(value: unknown): MenuCommand {
     switch (value.kind) {
         case 'commandPalette':
             return { kind: 'commandPalette' }
+        case 'saveDocument':
+            return { kind: 'saveDocument' }
         case 'navigate':
             if (typeof value.feature === 'string' && FEATURE_IDS.includes(value.feature)) {
                 return value as unknown as MenuCommand
@@ -1170,6 +1446,28 @@ export class DesktopClient {
         if (isRecord(response) && response.kind === 'management') return parseManagementResult(response.result)
         if (isRecord(response) && response.kind === 'refusal') throw new RefusedError(asRefusal(response.refusal))
         throw new ContractViolation('management observation')
+    }
+
+    /**
+     * Waits for the single result of an admitted API Client request. Not an
+     * admission: it may be called concurrently with dispatches.
+     */
+    async observeWorkbench(operation: string): Promise<WorkbenchResult> {
+        if (!OPERATION_ID.test(operation)) throw new ContractViolation('operation reference')
+        let response: unknown
+        try {
+            response = await this.#transport.observe(
+                encode({ protocol: PROTOCOL, scope: { kind: 'workbench', operation } })
+            )
+        } catch (error) {
+            if (typeof error === 'string' && (REFUSALS as readonly string[]).includes(error)) {
+                throw new RefusedError(error as Refusal)
+            }
+            throw error
+        }
+        if (isRecord(response) && response.kind === 'workbench') return parseWorkbenchResult(response.result)
+        if (isRecord(response) && response.kind === 'refusal') throw new RefusedError(asRefusal(response.refusal))
+        throw new ContractViolation('workbench observation')
     }
 
     async #register(): Promise<Session> {

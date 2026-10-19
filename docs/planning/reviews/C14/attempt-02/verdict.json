@@ -1,0 +1,75 @@
+{
+  "request_id": "rq-C14-20261019T215037Z-c85dca44",
+  "attempt_id": "attempt-02",
+  "subject": "C14",
+  "fingerprints": {
+    "source": "7c9460fc6a94b1fac62ea5768dde3548855788186bb025b2b844431c45ff8165",
+    "dependencies": "c23cf574be386ff230bdf4f43178532c97048c0f44e0e6e3a6504d6725cab072",
+    "build_flags": "46210ee67bfbb78fd27921e46f1bae437f9e8fa83714f730552c6a6fdb153bff",
+    "evidence": "93f5d8af80ef3b42eb95e588a8211d7d12a255e2e0cf62e32f287a845deb1b0d"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 8
+  },
+  "required_fixes": [
+    "R5 (remaining, medium): crates/desktop-core/src/workbench/project.rs:452-458 keys body ownership by the literal reference string, and document.rs:750-756 checks only that exact key. On the supported case-insensitive macOS filesystem, shared.body.txt and SHARED.body.txt can name the same file but produce separate ownership entries. Two otherwise valid requests using these spellings therefore each appear to own their body exclusively, allowing a Save to overwrite the other's body. A read-only stat probe confirmed that differently cased paths on this checkout's volume resolve to the same device/inode; the write-path bypass is established by source inspection. Compare ownership using filesystem path semantics, or refuse ambiguous aliases. Acceptance: on a case-insensitive volume, two requests referencing one body through differently cased paths cause body Save to return sharedBody with all project bytes unchanged; ordinary independent-body saves still succeed."
+  ],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [
+    "Strengthen the leaving-document React test to assert protection on unmount before the debounce expires. The mutation replacing cleanup's flush() with Promise.resolve(true) still passed, so the current eventual-request assertion does not isolate cleanup behavior. The surviving parent-component mutation remains neutralized by the final Component::Normal check."
+  ],
+  "limitations": [
+    "Attempt-01 R1-R4 are addressed by edit-generation tracking, protection before close, fresh metadata field loading, and durable Save snapshots before project writes. New production-interface tests cover those cases. The literal duplicate-body ownership case in R5 is also covered; the filesystem-alias case above remains.",
+    "Independently recomputed all four fingerprints, verified 502 source-inventory entries and 260 packet references, and checked run inputs, logs and artifact hashes. C13's predecessor receipt remains an 8/10 failed review accepted under D034, with remediation required before P04 sign-off.",
+    "Recorded results include 333 frontend tests, 117 core unit tests, 16 workbench integration tests and 14 focused React tests. All 167 submitted native checks report pass against executable f3e9b1a6bb66a825ee738a8df03258e57a86af3a607024eb2b99d08aff169efa. The added Use disk observations and accessibility tree show the disk URL, unchanged project file and archive count increasing from one to two, resolving E1.",
+    "Independent in-memory probes using the actual DocumentEditor and WorkbenchView now show a second Editing notification after Save and Protect preceding both tab and collection close. Rust persistence and shared-body write behavior were inspected in source and recorded tests, not newly executed by this reviewer. The filesystem alias probe was read-only. No application files were changed, endpoints called or credentials accessed.",
+    "Mutation target hashes match the reviewed production files. All 12 baseline executions passed; 38 of 40 mutations were caught, including the new remediation probes and YAML depth/node checks. The two survivors are disclosed in the optional suggestion rather than counted as killed.",
+    "Dependency and build-flag fingerprints are unchanged from attempt-01. Its dependency archive and SCM catalogue provenance checks remain applicable. Native evidence uses staged folder/export selections; production rfd sheets and spoken VoiceOver output were not exercised. Crash recovery is simulated by skipping post-write handling, rather than killing the native process. C15 execution, C25 live qualification and C26 signed packages remain outside this verdict."
+  ],
+  "inspected_files": [
+    "AGENTS.md",
+    "GLOSSARY.md",
+    "docs/planning/chunks/C14.md",
+    "docs/planning/IMPLEMENTATION-PLAN.md",
+    "docs/planning/review-protocol.md",
+    "docs/planning/test-catalogue.md",
+    "docs/planning/dependencies.md",
+    "docs/planning/parity-matrix.md",
+    "docs/planning/DECISIONS.md",
+    "docs/architecture/DESIGN.md",
+    "docs/architecture/checks.json",
+    "docs/architecture/native-checks.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/planning/reviews/C14/attempt-01/diff.patch",
+    "docs/planning/reviews/C14/attempt-01/verdict.json",
+    "docs/planning/reviews/C14/attempt-02/request.json",
+    "docs/planning/reviews/C14/attempt-02/source-inventory.json",
+    "docs/planning/reviews/C14/attempt-02/diff.patch",
+    "docs/planning/reviews/C13/attempt-01/receipt.json",
+    "docs/planning/evidence/completions.jsonl",
+    "crates/desktop-core/src/authority.rs",
+    "crates/desktop-core/src/authority/workbench_domain.rs",
+    "crates/desktop-core/src/workbench/project.rs",
+    "crates/desktop-core/src/workbench/document.rs",
+    "crates/desktop-core/src/workbench/profile.rs",
+    "crates/desktop-core/src/workbench/insomnia.rs",
+    "crates/desktop-core/tests/workbench_documents/main.rs",
+    "apps/desktop/src/features/workbench/document-editor.tsx",
+    "apps/desktop/src/features/workbench/workbench-view.tsx",
+    "apps/desktop/src/features/workbench/workbench-call.ts",
+    "apps/desktop/src/features/workbench/document-save.test.tsx",
+    "packages/desktop-contracts/src/client.ts",
+    "tools/native-acceptance/acceptance_c14.py",
+    "docs/planning/evidence/C14/native-acceptance.json",
+    "docs/planning/evidence/C14/native/observations.json",
+    "docs/planning/evidence/C14/native/tree-use-disk.json",
+    "docs/planning/evidence/C14/mutation-probes/probes.py",
+    "docs/planning/evidence/C14/mutation-probes/results.json"
+  ],
+  "recommendation": "fail"
+}

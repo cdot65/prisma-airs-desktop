@@ -1,0 +1,693 @@
+{
+ "observations": {
+  "scan_origin": "https://localhost:52112",
+  "management_origin": "https://localhost:52113",
+  "admin_available": true,
+  "admin_no_tenant": true,
+  "tree_no_tenant": "docs/planning/evidence/C14/native-C08/tree-admin-no-tenant.json",
+  "tenant": true,
+  "scan_key_saved": true,
+  "scan_items_before": [
+   "cr-69510777bd99e2e5"
+  ],
+  "admin_not_configured": true,
+  "tree_not_configured": "docs/planning/evidence/C14/native-C08/tree-admin-not-configured.json",
+  "scan_only": true,
+  "mgmt_requests_scan_only": 0,
+  "no_client_status": true,
+  "client_saved": true,
+  "secret_field_cleared": true,
+  "scan_items_after_client": [
+   "cr-2a676bf7cd809dbe",
+   "cr-69510777bd99e2e5"
+  ],
+  "scan_key_still_saved": true,
+  "tree_client_saved": "docs/planning/evidence/C14/native-C08/tree-client-saved.json",
+  "grant_refused": true,
+  "grant_refused_requests": [
+   {
+    "t": 1792444562.158873,
+    "method": "POST",
+    "path": "/oauth2/access_token",
+    "query": {},
+    "auth": "basic-ok",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "grantType": "client_credentials",
+    "scope": "tsg_id:1234567890",
+    "secretInBody": false,
+    "status": 401
+   }
+  ],
+  "tree_grant_refused": "docs/planning/evidence/C14/native-C08/tree-grant-refused.json",
+  "scan_after_refusal": true,
+  "verified": true,
+  "verify_requests": [
+   {
+    "t": 1792444566.673971,
+    "method": "POST",
+    "path": "/oauth2/access_token",
+    "query": {},
+    "auth": "basic-ok",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "grantType": "client_credentials",
+    "scope": "tsg_id:1234567890",
+    "secretInBody": false,
+    "status": 200
+   },
+   {
+    "t": 1792444566.675184,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "1",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   }
+  ],
+  "tree_verified": "docs/planning/evidence/C14/native-C08/tree-verified.json",
+  "page1": true,
+  "page1_partial": true,
+  "tree_page1": "docs/planning/evidence/C14/native-C08/tree-page1.json",
+  "page2": true,
+  "page2_next_disabled": true,
+  "page2_partial_gone": true,
+  "tree_page2": "docs/planning/evidence/C14/native-C08/tree-page2.json",
+  "page_requests": [
+   {
+    "t": 1792444566.7723498,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.059572,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "25",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   }
+  ],
+  "profile_detail": true,
+  "tree_profile_detail": "docs/planning/evidence/C14/native-C08/tree-profile-detail.json",
+  "api_key_detail": true,
+  "redacted_in_tree": [],
+  "tree_api_key_detail": "docs/planning/evidence/C14/native-C08/tree-api-key-detail.json",
+  "deployment_profiles": true,
+  "data_patterns": true,
+  "tree_data_patterns": "docs/planning/evidence/C14/native-C08/tree-data-patterns.json",
+  "topics_denied": true,
+  "tree_topics_denied": "docs/planning/evidence/C14/native-C08/tree-topics-denied.json",
+  "topics_empty": true,
+  "tree_topics_empty": "docs/planning/evidence/C14/native-C08/tree-topics-empty.json",
+  "refresh_denied": true,
+  "tree_refresh_denied": "docs/planning/evidence/C14/native-C08/tree-refresh-denied.json",
+  "replaced": true,
+  "restarted_first_page": true,
+  "no_alert_after_late_reply": true,
+  "grants_after_replace": 1,
+  "tree_replaced": "docs/planning/evidence/C14/native-C08/tree-replaced-mid-pagination.json",
+  "zoom": {
+   "zoom": 2,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     1280,
+     820
+    ]
+   },
+   "found": {
+    "label": "Next page",
+    "pos": [
+     815,
+     616
+    ],
+    "size": [
+     196,
+     89
+    ]
+   },
+   "clear": true
+  },
+  "min_size": {
+   "zoom": 1,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     900,
+     600
+    ]
+   },
+   "found": {
+    "label": "Next page",
+    "pos": [
+     467,
+     516
+    ],
+    "size": [
+     99,
+     45
+    ]
+   },
+   "clear": true
+  },
+  "relaunch_reads": true,
+  "tree_relaunch": "docs/planning/evidence/C14/native-C08/tree-relaunch.json",
+  "removed": true,
+  "scan_items_after_remove": [
+   "cr-69510777bd99e2e5"
+  ],
+  "admin_after_remove": true,
+  "scan_after_remove": true,
+  "secret_in_trees": [],
+  "redacted_in_trees": [],
+  "persisted_secrets": {
+   "files": [
+    "~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/.fl8C9901EB",
+    "~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/fixture-management-origin",
+    "~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/fixture-transport-roots.pem",
+    "~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/state.json",
+    "~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/state.lock",
+    "~/Library/Caches/io.cdot.prisma-airs-desktop.v2.fixture/WebKit/CacheStorage/salt",
+    "~/Library/Caches/io.cdot.prisma-airs-desktop.v2.fixture/WebKit/NetworkCache/Version 17/salt",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/Default/kc_1E7gzx3zVbWfPHIj8LOKXTGG_je7b0h1In8N0i_c/kc_1E7gzx3zVbWfPHIj8LOKXTGG_je7b0h1In8N0i_c/LocalStorage/localstorage.sqlite3",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/Default/kc_1E7gzx3zVbWfPHIj8LOKXTGG_je7b0h1In8N0i_c/kc_1E7gzx3zVbWfPHIj8LOKXTGG_je7b0h1In8N0i_c/LocalStorage/localstorage.sqlite3-shm",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/Default/kc_1E7gzx3zVbWfPHIj8LOKXTGG_je7b0h1In8N0i_c/kc_1E7gzx3zVbWfPHIj8LOKXTGG_je7b0h1In8N0i_c/LocalStorage/localstorage.sqlite3-wal",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/Default/kc_1E7gzx3zVbWfPHIj8LOKXTGG_je7b0h1In8N0i_c/kc_1E7gzx3zVbWfPHIj8LOKXTGG_je7b0h1In8N0i_c/origin",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/Default/salt",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db-shm",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db-wal",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/MediaKeys/v1/salt",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db-shm",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db-wal",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db-shm",
+    "~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db-wal"
+   ],
+   "hits": []
+  },
+  "v1_unchanged": true,
+  "mgmt_requests": [
+   {
+    "t": 1792444562.158873,
+    "method": "POST",
+    "path": "/oauth2/access_token",
+    "query": {},
+    "auth": "basic-ok",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "grantType": "client_credentials",
+    "scope": "tsg_id:1234567890",
+    "secretInBody": false,
+    "status": 401
+   },
+   {
+    "t": 1792444566.673971,
+    "method": "POST",
+    "path": "/oauth2/access_token",
+    "query": {},
+    "auth": "basic-ok",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "grantType": "client_credentials",
+    "scope": "tsg_id:1234567890",
+    "secretInBody": false,
+    "status": 200
+   },
+   {
+    "t": 1792444566.675184,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "1",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444566.7723498,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.059572,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "25",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.151881,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.313462,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.467552,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/apikeys/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.543235,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/apikeys/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.634814,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/deploymentprofiles",
+    "query": {},
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.716661,
+    "method": "GET",
+    "path": "/dlp/v2/api/data-patterns",
+    "query": {
+     "page": "0",
+     "size": "25"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.794261,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/topics/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 403
+   },
+   {
+    "t": 1792444567.858197,
+    "method": "POST",
+    "path": "/oauth2/access_token",
+    "query": {},
+    "auth": "basic-ok",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "grantType": "client_credentials",
+    "scope": "tsg_id:1234567890",
+    "secretInBody": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.859094,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/topics/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444567.9278169,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444568.082474,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 403
+   },
+   {
+    "t": 1792444568.239199,
+    "method": "POST",
+    "path": "/oauth2/access_token",
+    "query": {},
+    "auth": "basic-ok",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "grantType": "client_credentials",
+    "scope": "tsg_id:1234567890",
+    "secretInBody": false,
+    "status": 200
+   },
+   {
+    "t": 1792444568.2401989,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444572.0752928,
+    "method": "POST",
+    "path": "/oauth2/access_token",
+    "query": {},
+    "auth": "basic-ok",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "grantType": "client_credentials",
+    "scope": "tsg_id:1234567890",
+    "secretInBody": false,
+    "status": 200
+   },
+   {
+    "t": 1792444572.076598,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444568.396422,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "25",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   },
+   {
+    "t": 1792444677.196757,
+    "method": "POST",
+    "path": "/oauth2/access_token",
+    "query": {},
+    "auth": "basic-ok",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "grantType": "client_credentials",
+    "scope": "tsg_id:1234567890",
+    "secretInBody": false,
+    "status": 200
+   },
+   {
+    "t": 1792444677.1978948,
+    "method": "GET",
+    "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+    "query": {
+     "offset": "0",
+     "limit": "25",
+     "latest": "true"
+    },
+    "auth": "bearer-issued",
+    "tsgHeader": null,
+    "xTsgId": null,
+    "scanToken": false,
+    "status": 200
+   }
+  ],
+  "scan_requests": [
+   {
+    "t": 1792444556.855644,
+    "method": "POST",
+    "path": "/v1/scan/sync/request",
+    "contentType": "application/json",
+    "tokenMatches": true,
+    "payloadHashMatches": true,
+    "authorization": false,
+    "bodyBytes": 102,
+    "profile": {
+     "profile_name": "Production guardrails"
+    },
+    "metadata": null,
+    "promptChars": 20,
+    "responseChars": 0,
+    "promptHead": "c08-marker-scan-only",
+    "reply": "allow"
+   },
+   {
+    "t": 1792444565.657988,
+    "method": "POST",
+    "path": "/v1/scan/sync/request",
+    "contentType": "application/json",
+    "tokenMatches": true,
+    "payloadHashMatches": true,
+    "authorization": false,
+    "bodyBytes": 106,
+    "profile": {
+     "profile_name": "Production guardrails"
+    },
+    "metadata": null,
+    "promptChars": 24,
+    "responseChars": 0,
+    "promptHead": "c08-marker-after-refusal",
+    "reply": "allow"
+   },
+   {
+    "t": 1792444681.84213,
+    "method": "POST",
+    "path": "/v1/scan/sync/request",
+    "contentType": "application/json",
+    "tokenMatches": true,
+    "payloadHashMatches": true,
+    "authorization": false,
+    "bodyBytes": 105,
+    "profile": {
+     "profile_name": "Production guardrails"
+    },
+    "metadata": null,
+    "promptChars": 23,
+    "responseChars": 0,
+    "promptHead": "c08-marker-after-remove",
+    "reply": "allow"
+   }
+  ]
+ },
+ "log": [
+  {
+   "t": "16:15:46",
+   "step": "typed",
+   "field": "TSG ID (optional)",
+   "attempts": 1
+  },
+  {
+   "t": "16:15:47",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "16:15:49",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  },
+  {
+   "t": "16:15:52",
+   "step": "typed",
+   "field": "AIRS API key",
+   "attempts": 1
+  },
+  {
+   "t": "16:15:55",
+   "step": "typed",
+   "field": "Profile name or ID",
+   "attempts": 1
+  },
+  {
+   "t": "16:15:56",
+   "step": "typed",
+   "field": "Prompt",
+   "attempts": 1
+  },
+  {
+   "t": "16:15:59",
+   "step": "typed",
+   "field": "Client ID",
+   "attempts": 1
+  },
+  {
+   "t": "16:16:01",
+   "step": "typed",
+   "field": "Client secret",
+   "attempts": 1
+  },
+  {
+   "t": "16:16:03",
+   "step": "typed",
+   "field": "Profile name or ID",
+   "attempts": 1
+  },
+  {
+   "t": "16:16:05",
+   "step": "typed",
+   "field": "Prompt",
+   "attempts": 1
+  },
+  {
+   "t": "16:16:11",
+   "step": "typed",
+   "field": "Client secret",
+   "attempts": 1
+  },
+  {
+   "t": "16:18:00",
+   "step": "typed",
+   "field": "Profile name or ID",
+   "attempts": 1
+  },
+  {
+   "t": "16:18:01",
+   "step": "typed",
+   "field": "Prompt",
+   "attempts": 1
+  }
+ ]
+}

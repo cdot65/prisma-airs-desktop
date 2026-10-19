@@ -1,0 +1,155 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C02",
+  "recorded_utc": "2026-10-19T21:05:42Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift and System Events keystrokes) with fixture WebView self-capture; tools/native-acceptance/acceptance_c02.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "f3e9b1a6bb66a825ee738a8df03258e57a86af3a607024eb2b99d08aff169efa",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C02-N01",
+      "description": "Settings > Tenants: the labelled Add tenant form (Label, TSG ID, destination radios, Region pop-up) is operated by keyboard and creates a tenant that appears in the tenant list and becomes the active tenant.",
+      "result": "pass",
+      "observation": "empty list shown: True; Tab order reached ['Label', 'TSG ID (optional)', 'AIRS region', 'Region', 'Add tenant', 'Choose profile file\u2026', 'Reset local data\u2026'] in order: True; tenant created by keyboard (Return in the form): True; region pop-up value 'Europe (Germany)'; list row 'Prod EU (active)' with 'Europe (Germany) region \u00b7 scan key missing': True",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-created.json"
+      ]
+    },
+    {
+      "id": "C02-N02",
+      "description": "Keychain scan key: the AIRS API key field is a secure text field whose AX value never exposes the key; saving stores one item under the fixture namespace in the dedicated fixture test keychain (item attributes inspected, secret never read) and reports 'Scan key saved in the Keychain.'; the key appears in no AX snapshot.",
+      "result": "pass",
+      "observation": "field role AXTextField/AXSecureTextField with AX value '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' (not the key); status 'Scan key saved in the Keychain.': True; fixture-namespace items ['cr-c707116219c431e3'] (attributes only); key absent from the AX snapshot: True",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-keychain-saved.json",
+        "docs/planning/evidence/C14/native-C02/captures/keychain-key-saved.png"
+      ]
+    },
+    {
+      "id": "C02-N03",
+      "description": "Persistence across relaunch: after quitting and relaunching, the tenant, its active selection, its Keychain scan-key status and the Dark appearance are restored (C01 carry-over).",
+      "result": "pass",
+      "observation": "after quit and relaunch: 'Prod EU (active)' with 'Scan key saved in the Keychain.': True; Dark appearance radio checked: True",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-restored.json"
+      ]
+    },
+    {
+      "id": "C02-N04",
+      "description": "Session-only scan key: 'Scan key held for this session only.' with no Keychain item added; after relaunch that tenant reports a missing scan key.",
+      "result": "pass",
+      "observation": "'Lab Session' created and made active: True; 'Scan key held for this session only.': True; Keychain items unchanged ['cr-c707116219c431e3']: True; after relaunch 'India region \u00b7 scan key missing': True",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-session-held.json",
+        "docs/planning/evidence/C14/native-C02/tree-after-second-relaunch.json"
+      ]
+    },
+    {
+      "id": "C02-N05",
+      "description": "Reviewed endpoint override: Change destination with a custom HTTPS origin shows a review naming both origins and the key removal; confirming changes the destination, removes the scan key (its Keychain item is deleted) and requires a new key.",
+      "result": "pass",
+      "observation": "review names https://airs-proxy.example.com:8443 instead of the Europe origin and the key removal: True; after confirming, destination https://airs-proxy.example.com:8443 with 'No scan key.': True; Keychain items ['cr-ed592bc802308599'] \u2192 []",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-endpoint-review.json",
+        "docs/planning/evidence/C14/native-C02/captures/endpoint-review.png"
+      ]
+    },
+    {
+      "id": "C02-N06",
+      "description": "Profile import through the native open sheet attached to the main window: a synthetic airs-cli registry with an embedded synthetic secret and a credential-file reference previews names, TSG IDs and discarded-field counts, the secret appears nowhere in the AX tree, and importing creates keyless tenants.",
+      "result": "pass",
+      "observation": "AXSheet attached to the main window: True; preview listed 'Imported Prod'/'Imported Lab' from tenants.json: True; discarded counts '1 secret field(s), 2 file reference(s), 0 other field(s)': True; embedded secret absent from AX tree: True; referenced path absent: True; imported keyless tenants: True",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-import-sheet.json",
+        "docs/planning/evidence/C14/native-C02/tree-import-preview.json",
+        "docs/planning/evidence/C14/native-C02/captures/import-preview.png",
+        "docs/planning/evidence/C14/native-C02/tree-imported.json"
+      ]
+    },
+    {
+      "id": "C02-N07",
+      "description": "Locked credential store: with the fixture keychain locked through the app's own keychain reference (fixture-only menu), saving a scan key reports that the Keychain is locked, shows no OS prompt and falls back to nothing; after unlocking, saving succeeds and the retired record is cleaned up.",
+      "result": "pass",
+      "observation": "fixture keychain locked by the app's own SecKeychainLock (Fixture menu; `security show-keychain-info` then reports it locked): True; 'The Keychain is locked.' reported: True; no extra window or sheet (no prompt): True; Keychain items unchanged while locked: True; after the app unlocked its keychain (Fixture menu) the save succeeded: True; items ['cr-c707116219c431e3'] \u2192 ['cr-ed592bc802308599'] (retired record cleaned): True; another process's view after the unlock: unlocked=False (informational)",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-locked.json",
+        "docs/planning/evidence/C14/native-C02/captures/keychain-locked.png"
+      ]
+    },
+    {
+      "id": "C02-N08",
+      "description": "Reset local data (two-step confirmation) removes the v2 tenants, preference document and every fixture-namespace Keychain item; v1 Application Support data is unchanged.",
+      "result": "pass",
+      "observation": "'No tenants yet' after two-step reset: True; fixture-namespace items after reset []; state document present: False; v1 Application Support metadata (374 files: path, size, mtime) unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-reset.json"
+      ]
+    },
+    {
+      "id": "C02-N09",
+      "description": "Corrupt local data: an unreadable state document is reported ('Local desktop data could not be read'), left byte-identical, creating a tenant is refused, and Reset recovers.",
+      "result": "pass",
+      "observation": "notice shown: True; Add tenant refused with the storage message: True; document byte-identical: True; recovered by Reset: True",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-corrupt.json",
+        "docs/planning/evidence/C14/native-C02/captures/corrupt-notice.png"
+      ]
+    },
+    {
+      "id": "C02-N10",
+      "description": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make \u2026 active', 'Delete \u2026'); a refusal is exposed as an alert.",
+      "result": "pass",
+      "observation": "Tab reached ['AIRS API key', 'In the Keychain', 'Replace key', 'Change destination\u2026', 'Make Prod EU active', 'Delete Prod EU', 'Label'] of ['AIRS API key', 'In the Keychain', 'Replace key', 'Change destination\u2026', 'Make Prod EU active', 'Delete Prod EU', 'Label']; per-tenant named actions present: {'make_active': True, 'delete': True}; refusal message shown: True with AX alert roles [('AXGroup', 'AXApplicationAlert')]",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/tree-session-held.json",
+        "docs/planning/evidence/C14/native-C02/tree-refusal-alert.json"
+      ]
+    },
+    {
+      "id": "C02-N11",
+      "description": "No internet sockets during startup with tenants and stored scan keys present (C02 makes no scan or validation request).",
+      "result": "pass",
+      "observation": "0 internet sockets across 30 samples over 15s of the second launch (tenants and a stored Keychain key present) for the app and 3 new WebKit processes (0.5s polling; DNS via mDNSResponder not attributed).",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/startup-network-samples.log"
+      ]
+    },
+    {
+      "id": "C02-N12",
+      "description": "At 200% zoom and at the minimum window size the scan-key field and its Save action are reachable by Tab and lie inside the window, clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'field': {'pos': [649, 627], 'size': [652, 78]}, 'save': {'pos': [649, 617], 'size': [177, 88]}} in window {'pos': [95, 37], 'size': [1280, 820]}, clear of the fade: True; minimum size: {'field': {'pos': [384, 521], 'size': [562, 40]}, 'save': {'pos': [384, 517], 'size': [89, 45]}} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/C14/native-C02/observations.json",
+        "docs/planning/evidence/C14/native-C02/captures/zoom-200-scan-key.png",
+        "docs/planning/evidence/C14/native-C02/captures/min-size-scan-key.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "The fixture build stores credentials in a dedicated fixture test keychain (DESIGN); the production login-keychain path is qualified by keychain_access (read-only availability) and, with signing, in C26.",
+    "Keychain items are inspected by attributes only (security dump-keychain without -d); stored secrets are never read back.",
+    "v1 isolation is evidenced by unchanged Application Support metadata (path, size, mtime); the login keychain is not enumerated.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected.",
+    "Startup network evidence is sampled lsof output, not a packet capture.",
+    "That a referenced credential file is never opened is shown by the core tests and the absent file; file-system tracing was not recorded.",
+    "A trial run locked the fixture keychain from another process (`security lock-keychain`); the running app did not observe that lock and its writes still succeeded (macOS 27; retained under native-trial/). C02-N07 therefore locks through the app's own keychain reference (fixture-only menu item), which exercises the app's real locked-store path."
+  ]
+}

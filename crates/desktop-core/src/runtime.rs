@@ -165,6 +165,13 @@ impl Operations {
         self.limits
     }
 
+    /// Issues a reference for local work that this scheduler does not run
+    /// (API Client documents): unique among all references it issues.
+    pub fn reserve(&mut self) -> OperationId {
+        self.issued += 1;
+        OperationId(format!("op-{}", self.issued))
+    }
+
     /// Admits work bound to `context`. The deadline is measured from now.
     /// Returns its reference and any work that may start immediately.
     pub fn admit(

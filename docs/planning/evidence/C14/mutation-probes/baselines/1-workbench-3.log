@@ -1,0 +1,32 @@
+
+running 25 tests
+test workbench::curl::tests::ansi_quotes_and_continuations_lex_literally ... ok
+test workbench::document::tests::rows_round_trip_and_report_their_line ... ok
+test workbench::document::tests::checks_name_the_field_that_cannot_be_written ... ok
+test workbench::environments::tests::environment_texts_hold_variables_only ... ok
+test workbench::document::tests::edits_keep_comments_extensions_and_line_endings ... ok
+test workbench::document::tests::settings_hold_references_never_credentials ... ok
+test workbench::curl::tests::converts_a_literal_command_and_removes_credentials ... ok
+test workbench::curl::tests::refuses_what_it_cannot_import_faithfully ... ok
+test workbench::git::tests::porcelain_v2_records_are_parsed ... ok
+test workbench::environments::tests::layers_apply_in_order_and_secrets_stay_masked ... ok
+test workbench::insomnia::tests::templates_other_than_simple_variables_are_refused ... ok
+test workbench::insomnia::tests::converts_supported_requests_and_refuses_scripts ... ok
+test workbench::profile::tests::recent_collections_are_bounded_and_newest_first ... ok
+test workbench::profile::tests::workbench_secrets_never_share_a_tenant_record ... ok
+test workbench::project::tests::paths_stay_inside_and_visible ... ok
+test workbench::profile::tests::sealed_files_open_only_under_their_key_and_name ... ok
+test workbench::adoption::tests::reads_recent_collections_and_private_environments_only ... ok
+test workbench::project::tests::collections_are_created_inside_repositories_only ... ok
+test workbench::schema::tests::schemas_save_only_over_the_revision_they_were_read_at ... ok
+test workbench::project::tests::writes_refuse_links_git_and_nested_collections ... ok
+test workbench::project::tests::discovery_reports_duplicates_links_and_invalid_files ... ok
+test workbench::insomnia::tests::refuses_other_formats_and_oversized_structures ... ok
+test workbench::git::tests::repository_hooks_and_fsmonitor_never_run ... ok
+test workbench::scm::tests::the_catalog_is_v1s_and_every_entry_is_a_valid_request ... ok
+test workbench::scm::tests::refresh_keeps_edits_and_respects_deletions ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 3.53s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-fc4532e6588987b8)

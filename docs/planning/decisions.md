@@ -748,6 +748,92 @@ Decided in C13 (implementer decision, recorded for review).
   history, cached snapshots across sessions and Home tiles for these
   products are not reproduced here (C16-C18 own Home/observation history).
 
+## D040 — API Client projects and documents (local-first authoring)
+
+Decided in C14 (implementer decision, recorded for review).
+
+- **Format.** v1's portable project files are kept byte-compatible: a
+  collection is a folder with `collection.toml` (`format_version = 1`, `id`,
+  `name`, `[variables]`), `*.request.toml` request files (`method`, `url`,
+  `[[headers]]`, `[[query]]`, `body`/`schema` sidecar references,
+  `body_kind`, `[auth]`, `[variables]`), shared `environments/*.toml` and
+  JSON/YAML schema text. Edits go through `toml_edit` 0.25.17 (already in the
+  lock), so comments, row decoration, extension keys and CRLF survive a Save.
+  A new collection is created only inside a Git repository (v1).
+- **Inventory.** Discovery is read-only and bounded (1 MiB metadata, 2,000
+  requests, 20,000 entries, depth 24, 512-byte paths); it never follows a
+  link, enters `.git` or a nested collection; invalid files and every copy of
+  a duplicate identity are reported and left out, and an incomplete
+  inventory refuses every write (v1). Writes are atomic and refuse links,
+  `.git`, nested collections, absolute, hidden-on-create and `..` paths.
+- **Revisions and fresh input.** Rust holds each open document's baseline
+  (the SHA-256 of every file it read) and names it by a revision. Save,
+  Protect and Preview carry the editor's full snapshot and the revision it
+  was edited from; a different revision is refused (`stale`, the editor
+  reloads), a snapshot that cannot be written faithfully is refused with the
+  field and row ("Fix to save") and nothing is written, and files that
+  changed since the baseline are a conflict, never overwritten. The editor
+  captures the fields it holds at the click (not a debounced copy) and keeps
+  text typed while a save was in flight, protecting it against the new
+  revision.
+- **Saves and interruption.** A save writes its journal (each file's before
+  and after hash, sealed) first, then the body, then the metadata, then
+  clears the journal. On opening, a journal whose files hold neither the old
+  nor the new content marks the request interrupted: Save is refused until
+  the operator chooses Use disk or Keep mine. Nothing is written again by
+  itself after a restart.
+- **Conflicts.** Use disk and Keep mine archive both versions privately
+  first (at most 16 per collection); Keep mine rebases the edits onto the
+  files on disk and the next Save writes them.
+- **Private profile.** Recent collections (8), the value-free secret index,
+  the built-in collection's write record and, per collection, tabs, the
+  selected environment, private environments, protected drafts (64),
+  archives and the journal are sealed (XChaCha20-Poly1305) under one key in
+  the credential Keychain namespace in the app's `api-client` folder; reset
+  removes both, never the operator's collections. Drafts are protected 400
+  ms after typing pauses and when leaving a document; a closed tab keeps its
+  draft (v1).
+- **Environments and secrets.** v1's precedence (collection defaults, private
+  `_defaults`, the shared environment, the private environment of the same
+  name, the request's `[variables]`) and `{{name}}` one-level substitution are
+  kept for the preview, which masks every secret and lists unresolved
+  variables and secrets without a value. Workbench secret values are entered
+  in a secure field and stored as Keychain records derived from the
+  collection and reference; `tenant.*` references are reserved for native
+  tenant authority and are never stored, resolved or sent here.
+- **Imports.** cURL (v1's lexer and option list; credentials become secret
+  references; credential-named query, JSON or form fields are refused) and
+  Insomnia v5 / schema 5.1 exports (YAML or JSON through `serde_yaml_ng`
+  0.10.0, bounded to 1 MiB, depth 64, 50,000 nodes and 16 MiB expanded;
+  scripts, template expressions, path parameters and non-default settings
+  refuse that request). Imported requests are unsaved drafts; imported
+  environments are new shared files and never replace one; the source is
+  only read.
+- **Git view.** Read-only branch, HEAD, upstream and changed paths from an
+  absolute `git` (never PATH or the `/usr/bin` shim), with an empty
+  environment, no system or global configuration, fsmonitor and hooks
+  disabled, no optional locks, 5 s and 1 MiB. v1's hosting links and saved
+  diff are not reproduced here.
+- **Profile adoption.** v1's API Client profile (recent collections and
+  their private environments) is previewed and imported on request; the
+  source is only read; secret values, drafts, history and cookies do not
+  transfer (D015). v1's separate "Import Rusty profile" migration is not
+  reproduced.
+- **Built-in collection.** v1's sanitized catalog (193 request
+  specifications, `src/api_client/scm/catalog.json` at 74754c02, SHA-256
+  914a9ee7…037a8c) is written to the private folder and opened as an
+  ordinary collection; a refresh replaces or removes a file only while it is
+  exactly as last written. These are generic specifications, not dedicated
+  workflows or live qualification.
+- **Close guard.** Quitting (the app's own Quit item, since AppKit's
+  predefined one bypasses the event loop) or closing the window first waits
+  300 ms for intents already sent, then, while edits are not protected,
+  asks in a native sheet (Quit anyway / Cancel). File > Save (Cmd+S) is a
+  native menu item, because WKWebView receives Command shortcuts only
+  through menus.
+- **Not done here.** Nothing is sent: execution, history, cookies,
+  downloads, OAuth tokens and admission of managed requests arrive in C15.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

@@ -18,8 +18,8 @@ use desktop_core::import::{ImportError, MAX_IMPORT_BYTES};
 use desktop_core::store::{AppStore, FileStore, UnavailableStore};
 use desktop_core::vault::UnavailableVault;
 use desktop_core::{
-    Adapters, CredentialStore, FileSaver, ImagePicker, ImportFile, ImportPicker, PagePrinter,
-    UrlOpener,
+    Adapters, CredentialStore, FileSaver, FolderPicker, ImagePicker, ImportFile, ImportPicker,
+    PagePrinter, UrlOpener,
 };
 use futures_util::future::BoxFuture;
 use tauri::{AppHandle, Manager, Runtime};
@@ -69,6 +69,234 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
             Arc::new(NativeCasePicker { app: app.clone() }),
         ),
         library_root: root.as_ref().map(|r| r.join("library")),
+        folders: folders(app, root.as_deref()),
+        workbench_files: sheet_picker(
+            root.as_deref(),
+            workbench_files(root.as_deref()),
+            Arc::new(NativeExportPicker { app: app.clone() }),
+        ),
+        workbench_root: root.as_ref().map(|r| r.join("api-client")),
+    }
+}
+
+/// The v1 API Client profile offered for adoption (read only). Fixture
+/// builds use a staged copy under their data root, never a real profile.
+#[cfg(not(feature = "test-fixtures"))]
+pub fn adoption_source<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
+    app.path()
+        .data_dir()
+        .ok()
+        .map(|d| d.join("Prisma AIRS Desktop").join("api-client"))
+}
+
+#[cfg(feature = "test-fixtures")]
+pub fn adoption_source<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
+    app.path()
+        .app_data_dir()
+        .ok()
+        .map(|d| d.join("fixture-v1-api-client"))
+}
+
+/// A separate native sheet for the close guard (its own registry, so its
+/// nonce never meets a change review's).
+#[cfg(target_os = "macos")]
+pub fn close_guard<R: Runtime>(app: &AppHandle<R>) -> Arc<dyn desktop_core::OperatorConfirmation> {
+    Arc::new(crate::native_confirmation::NativeConfirmation::new(
+        app.clone(),
+    ))
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn close_guard<R: Runtime>(_app: &AppHandle<R>) -> Arc<dyn desktop_core::OperatorConfirmation> {
+    Arc::new(crate::native_confirmation::Unsupported)
+}
+
+/// Insomnia exports are bounded like v1 (1 MiB); one byte more is read so
+/// the core can report "too large".
+pub const MAX_EXPORT_BYTES: usize = desktop_core::workbench::insomnia::EXPORT_BYTES + 1;
+
+/// The native folder sheets for API Client collections (C14).
+fn folders<R: Runtime>(app: &AppHandle<R>, root: Option<&Path>) -> Arc<dyn FolderPicker> {
+    let native = Arc::new(NativeFolders { app: app.clone() });
+    staged_folders(root, native)
+}
+
+#[cfg(not(feature = "test-fixtures"))]
+fn staged_folders(
+    _root: Option<&Path>,
+    native: Arc<NativeFolders<impl Runtime>>,
+) -> Arc<dyn FolderPicker> {
+    native
+}
+
+/// Where the fixture driver names the folder the open sheet answers.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_OPEN_FOLDER: &str = "fixture-open-folder";
+/// Where the fixture driver names the folder the new-collection sheet
+/// answers.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_NEW_FOLDER: &str = "fixture-new-folder";
+
+/// The fixture build answers the folder sheets with the paths the driver
+/// staged (none: cancelled), unless the native-sheet flag asks for the real
+/// NSOpenPanel / NSSavePanel.
+#[cfg(feature = "test-fixtures")]
+fn staged_folders<R: Runtime>(
+    root: Option<&Path>,
+    native: Arc<NativeFolders<R>>,
+) -> Arc<dyn FolderPicker> {
+    struct Staged<R: Runtime>(Option<PathBuf>, Arc<NativeFolders<R>>);
+    impl<R: Runtime> Staged<R> {
+        fn staged(&self, name: &str) -> BoxFuture<'static, Option<PathBuf>> {
+            let file = self.0.as_ref().map(|r| r.join(name));
+            Box::pin(async move {
+                let text = std::fs::read_to_string(file?).ok()?;
+                Some(PathBuf::from(text.trim()))
+            })
+        }
+        fn native(&self) -> bool {
+            self.0
+                .as_ref()
+                .is_some_and(|r| r.join(FIXTURE_NATIVE_SHEETS).exists())
+        }
+    }
+    impl<R: Runtime> FolderPicker for Staged<R> {
+        fn choose_folder(&self) -> BoxFuture<'static, Option<PathBuf>> {
+            if self.native() {
+                self.1.choose_folder()
+            } else {
+                self.staged(FIXTURE_OPEN_FOLDER)
+            }
+        }
+        fn choose_new(&self) -> BoxFuture<'static, Option<PathBuf>> {
+            if self.native() {
+                self.1.choose_new()
+            } else {
+                self.staged(FIXTURE_NEW_FOLDER)
+            }
+        }
+    }
+    Arc::new(Staged(root.map(Path::to_path_buf), native))
+}
+
+pub struct NativeFolders<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> NativeFolders<R> {
+    fn sheet(&self, new: bool) -> BoxFuture<'static, Option<PathBuf>> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
+            let window = app.get_webview_window(MAIN_WINDOW)?;
+            app.run_on_main_thread(move || {
+                let dialog = rfd::FileDialog::new().set_parent(&window);
+                let chosen = if new {
+                    dialog
+                        .set_title("New collection")
+                        .set_file_name("New collection")
+                        .save_file()
+                } else {
+                    dialog.set_title("Open collection").pick_folder()
+                };
+                let _ = tx.send(chosen);
+            })
+            .ok()?;
+            rx.await.ok()?
+        })
+    }
+}
+
+impl<R: Runtime> FolderPicker for NativeFolders<R> {
+    fn choose_folder(&self) -> BoxFuture<'static, Option<PathBuf>> {
+        self.sheet(false)
+    }
+    fn choose_new(&self) -> BoxFuture<'static, Option<PathBuf>> {
+        self.sheet(true)
+    }
+}
+
+/// Where the fixture driver stages Insomnia exports.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_WORKBENCH_FILES: &str = "fixture-workbench-files";
+
+#[cfg(not(feature = "test-fixtures"))]
+fn workbench_files(_root: Option<&Path>) -> Arc<dyn ImportPicker> {
+    Arc::new(Cancelled)
+}
+
+/// Production builds use the native sheet (`sheet_picker` picks it).
+#[cfg(not(feature = "test-fixtures"))]
+struct Cancelled;
+
+#[cfg(not(feature = "test-fixtures"))]
+impl ImportPicker for Cancelled {
+    fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+        Box::pin(async { None })
+    }
+}
+
+/// The fixture build answers the export sheet with the first file staged
+/// in `fixture-workbench-files/` (none: cancelled). The file is only read.
+#[cfg(feature = "test-fixtures")]
+fn workbench_files(root: Option<&Path>) -> Arc<dyn ImportPicker> {
+    struct Staged(Option<PathBuf>);
+    impl ImportPicker for Staged {
+        fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+            let dir = self.0.clone();
+            Box::pin(async move {
+                let dir = dir?;
+                tokio::task::spawn_blocking(move || {
+                    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+                        .ok()?
+                        .filter_map(|e| e.ok().map(|e| e.path()))
+                        .collect();
+                    files.sort();
+                    let path = files.into_iter().next()?;
+                    let name = path.file_name()?.to_string_lossy().into_owned();
+                    Some(
+                        read_limited(&path, MAX_EXPORT_BYTES)
+                            .map(|bytes| ImportFile { name, bytes }),
+                    )
+                })
+                .await
+                .ok()?
+            })
+        }
+    }
+    Arc::new(Staged(root.map(|r| r.join(FIXTURE_WORKBENCH_FILES))))
+}
+
+/// The native file sheet for Insomnia exports (C14).
+pub struct NativeExportPicker<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> ImportPicker for NativeExportPicker<R> {
+    fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
+            let window = app.get_webview_window(MAIN_WINDOW)?;
+            app.run_on_main_thread(move || {
+                let chosen = rfd::FileDialog::new()
+                    .set_parent(&window)
+                    .set_title("Import an Insomnia export")
+                    .add_filter("Insomnia export", &["yaml", "yml", "json"])
+                    .pick_file();
+                let _ = tx.send(chosen);
+            })
+            .ok()?;
+            let path = rx.await.ok()??;
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let read = tokio::task::spawn_blocking(move || read_limited(&path, MAX_EXPORT_BYTES))
+                .await
+                .ok()?;
+            Some(read.map(|bytes| ImportFile { name, bytes }))
+        })
     }
 }
 

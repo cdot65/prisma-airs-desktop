@@ -32,6 +32,7 @@ pub mod tenants;
 pub mod transport;
 pub mod vault;
 pub mod wire;
+pub mod workbench;
 
 pub use authority::{
     ACADEMY_ORIGIN, AcademyCallHandle, AcademyCallResult, ActiveContext, Adapters, AttentionFace,
@@ -45,6 +46,11 @@ pub use authority::{
     ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView, SecretPresenter,
     SecretState, SessionsView, ShellSnapshot, StagedFileFailure, StagedFileState, StagedFileView,
     StorageHealth, TenantView, UrlOpener, ViewScope,
+};
+pub use authority::{
+    CollectionView, ConflictKind, DocumentView, EnvironmentView, FolderPicker, RecentView,
+    Resolution, SecretView, TabView, WorkbenchHandle, WorkbenchProblem, WorkbenchRequest,
+    WorkbenchResult, WorkbenchView,
 };
 pub use delivery::{Delivery, DeliverySession, SEQUENCE_LIMIT};
 pub use observe::{Subscription, Update};

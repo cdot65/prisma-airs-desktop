@@ -347,6 +347,16 @@ async fn desktop_observe<R: Runtime>(
                 result: handle.result().await,
             })
         }
+        WireScope::Workbench { operation } => {
+            let Observation::Workbench(handle) =
+                host.operator.observe(ViewScope::Workbench(operation))?
+            else {
+                return Err(Refusal::InvalidInput);
+            };
+            Ok(ObserveResponse::Workbench {
+                result: Box::new(handle.result().await),
+            })
+        }
     }
 }
 
@@ -361,10 +371,22 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             if matches!(event, WindowEvent::Destroyed) {
                 window.state::<Host>().retire_webview(window.label());
             }
+            // API Client edits not yet protected on this Mac: the operator
+            // decides in a native sheet (v1's close guard).
+            if let WindowEvent::CloseRequested { api, .. } = event
+                && window.label() == MAIN_WINDOW
+                && let Some(exit) = window.try_state::<Exit>()
+                && exit.guard(window.app_handle())
+            {
+                api.prevent_close();
+            }
         })
         .setup(|app| {
             #[allow(unused_mut)]
-            let mut config = CoreConfig::default();
+            let mut config = CoreConfig {
+                adoption_source: adapters::adoption_source(app.handle()),
+                ..CoreConfig::default()
+            };
             #[cfg(feature = "test-fixtures")]
             if let Some(origin) = adapters::fixture_academy_origin(app.handle()) {
                 config.academy_origin = origin;
@@ -385,22 +407,93 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
                     .map_err(|e| std::io::Error::other(e.to_string()))?;
             }
             app.manage(Host::new(&core));
-            app.manage(Exit(core.clone()));
+            app.manage(Exit {
+                core: core.clone(),
+                quitting: std::sync::atomic::AtomicBool::new(false),
+                asking: std::sync::atomic::AtomicBool::new(false),
+            });
             tauri::async_runtime::spawn(async move { core.start() });
             main_window(app)?;
             Ok(())
         })
         .build(context)?
         .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = &event
+                && code.is_none()
+                && let Some(exit) = app.try_state::<Exit>()
+                && exit.guard(app)
+            {
+                api.prevent_exit();
+            }
             // Offline work is locked as the app exits.
             if matches!(event, tauri::RunEvent::Exit)
                 && let Some(exit) = app.try_state::<Exit>()
             {
-                exit.0.shutdown();
+                exit.core.shutdown();
             }
         });
     Ok(())
 }
 
-/// The core, for shutdown at exit.
-struct Exit(Core);
+/// The core, for the close guard and shutdown at exit.
+struct Exit {
+    core: Core,
+    /// The operator chose Quit anyway.
+    quitting: std::sync::atomic::AtomicBool,
+    /// The close guard's sheet is shown.
+    asking: std::sync::atomic::AtomicBool,
+}
+
+impl Exit {
+    /// True when closing must wait. Edits typed just before the request may
+    /// still be on their way from the presentation, so closing always waits
+    /// a moment first; then, when API Client edits are not protected on this
+    /// Mac, the operator decides in a native sheet (Quit anyway exits) and
+    /// otherwise the app exits.
+    fn guard<R: Runtime>(&self, app: &tauri::AppHandle<R>) -> bool {
+        use std::sync::atomic::Ordering;
+        if self.quitting.load(Ordering::SeqCst) {
+            return false;
+        }
+        if self.asking.swap(true, Ordering::SeqCst) {
+            return true;
+        }
+        let confirmation = adapters::close_guard(app);
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(CLOSE_SETTLE).await;
+            let Some(exit) = app.try_state::<Exit>() else {
+                return;
+            };
+            let quit = !exit.core.workbench_unprotected()
+                || confirmation
+                    .confirm(
+                        u64::MAX,
+                        desktop_core::ConfirmationRequest {
+                            title: "Quit with unprotected API Client edits?".to_owned(),
+                            message: "A request has edits that are not protected on this Mac yet. Cancel, let them be kept, then close again; or quit anyway and lose them.".to_owned(),
+                            confirm_label: "Quit anyway".to_owned(),
+                            destructive: true,
+                        },
+                    )
+                    .await;
+            exit.asking.store(false, Ordering::SeqCst);
+            if quit {
+                exit.quitting.store(true, Ordering::SeqCst);
+                app.exit(0);
+            }
+        });
+        true
+    }
+}
+
+/// The app menu's Quit: through the close guard, then exit.
+fn request_quit<R: Runtime>(app: &tauri::AppHandle<R>) {
+    match app.try_state::<Exit>() {
+        Some(exit) if exit.guard(app) => {}
+        _ => app.exit(0),
+    }
+}
+
+/// How long closing waits for intents already sent by the presentation.
+const CLOSE_SETTLE: std::time::Duration = std::time::Duration::from_millis(300);

@@ -1,0 +1,863 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/workbench/document-editor.tsx": "794d6be8e639d823c92645fef4872ea2e814e4e6fa332f8466ba8621328d792d",
+      "apps/desktop/src/features/workbench/workbench-view.tsx": "eeb36953f59bd4d83c366497b1cdfd7561fbf6f6c3c15a0d6af1cd9a5db54d1c",
+      "crates/desktop-core/src/authority.rs": "fdbfd97eb27ce22b58ff0f274592f09e82d9cb825d6ae3ce654e9976b62a7867",
+      "crates/desktop-core/src/authority/workbench_domain.rs": "2d64545a8a1f52cdd44e7a00c6f99b036742cb285fee4d3ace16865c340591a4",
+      "crates/desktop-core/src/workbench/curl.rs": "5379c81a3c018c6ac73a3e6586f3aa15b7c0341fffab4ccb62fb4e6a5c271a37",
+      "crates/desktop-core/src/workbench/document.rs": "e46afa0b7ef9580976c844e9644f8ecea6cde59a7296260375bdb68d1708e4bd",
+      "crates/desktop-core/src/workbench/environments.rs": "daf5822b840e0a3bcfdcdf71eaa816c2eaccd455b52cdb74af701f41183291c5",
+      "crates/desktop-core/src/workbench/git.rs": "2b794bf1ddc5079780ab0470658894685d876980c31032e3f613f1018c73c3e3",
+      "crates/desktop-core/src/workbench/insomnia.rs": "41f25ef3f7576f909d4e1dfce2f38fb4035358485358a042b52ce4d120891463",
+      "crates/desktop-core/src/workbench/profile.rs": "d3adc7916d18dc7cbfaee0c50e07bbecc92b23df148a6071600e4123ea8de58b",
+      "crates/desktop-core/src/workbench/project.rs": "a0b75344dceedead1e07a23ba61b95f67727d9e38e3cf778eb95d9004ab85ca1",
+      "crates/desktop-core/src/workbench/scm.rs": "af02589251a4af1a2485f8e50e2ac3615e73ad5f7c7ba205816f6763e63f6131",
+      "packages/desktop-contracts/src/client.ts": "eaa6f4db01c43b52045851983182e39b04b66bc94c5c432c3d8b812a819c0a16"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "a stale revision is accepted",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "stale_and_invalid_snapshots_never_write_and_typing_during_save_stays_protected",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "invalid header rows are written",
+    "files": [
+      "crates/desktop-core/src/workbench/document.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "stale_and_invalid_snapshots_never_write_and_typing_during_save_stays_protected",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "inline credentials are accepted in settings",
+    "files": [
+      "crates/desktop-core/src/workbench/document.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "settings_hold_references_never_credentials",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "files changed on disk are overwritten",
+    "files": [
+      "crates/desktop-core/src/workbench/document.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "external_changes_become_conflicts_and_both_versions_are_archived",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "comments on edited values are dropped",
+    "files": [
+      "crates/desktop-core/src/workbench/document.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "edits_keep_comments_extensions_and_line_endings",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "CRLF files are rewritten with LF",
+    "files": [
+      "crates/desktop-core/src/workbench/document.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "edits_keep_comments_extensions_and_line_endings",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "files are written before the journal",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "an_interrupted_save_is_found_after_a_restart_and_nothing_replays",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an interrupted save looks unstarted",
+    "files": [
+      "crates/desktop-core/src/workbench/profile.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "an_interrupted_save_is_found_after_a_restart_and_nothing_replays",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "private data is stored unsealed",
+    "files": [
+      "crates/desktop-core/src/workbench/profile.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "sealed_files_open_only_under_their_key_and_name",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "writes follow symbolic links",
+    "files": [
+      "crates/desktop-core/src/workbench/project.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "writes_refuse_links_git_and_nested_collections",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "parent components are accepted in paths",
+    "files": [
+      "crates/desktop-core/src/workbench/project.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "paths_stay_inside_and_visible",
+    "exit_code": 0,
+    "guard_failed": false
+  },
+  {
+    "mutation": "duplicate identities stay in the inventory",
+    "files": [
+      "crates/desktop-core/src/workbench/project.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "discovery_reports_duplicates_links_and_invalid_files",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a secret variable shows its reference",
+    "files": [
+      "crates/desktop-core/src/workbench/environments.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "layers_apply_in_order_and_secrets_stay_masked",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "shared environments override private ones",
+    "files": [
+      "crates/desktop-core/src/workbench/environments.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "layers_apply_in_order_and_secrets_stay_masked",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "tenant references are stored as workbench secrets",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "environments_and_workbench_secrets_resolve_masked_in_the_preview",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "cURL credential headers stay literal",
+    "files": [
+      "crates/desktop-core/src/workbench/curl.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "converts_a_literal_command_and_removes_credentials",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "shell operators are taken literally",
+    "files": [
+      "crates/desktop-core/src/workbench/curl.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "refuses_what_it_cannot_import_faithfully",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Insomnia scripts are converted",
+    "files": [
+      "crates/desktop-core/src/workbench/insomnia.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "converts_supported_requests_and_refuses_scripts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "YAML expansion is unbounded",
+    "files": [
+      "crates/desktop-core/src/workbench/insomnia.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "refuses_other_formats_and_oversized_structures",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Git runs a repository fsmonitor",
+    "files": [
+      "crates/desktop-core/src/workbench/git.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "repository_hooks_and_fsmonitor_never_run",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refresh overwrites edited built-in files",
+    "files": [
+      "crates/desktop-core/src/workbench/scm.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "refresh_keeps_edits_and_respects_deletions",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset keeps the private folder",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "reset_removes_the_private_folder_and_keeps_the_operators_collections",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the close guard ignores unprotected edits",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "requests_wait_their_turn_and_the_close_guard_sees_unprotected_edits",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Save sends the loaded fields",
+    "files": [
+      "apps/desktop/src/features/workbench/document-editor.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "sends the fields typed before the protection debounce fires",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a save reply overwrites newer typing",
+    "files": [
+      "apps/desktop/src/features/workbench/document-editor.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "keeps text typed while a save is in flight and protects it against the new revision",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused save clears the editor",
+    "files": [
+      "apps/desktop/src/features/workbench/document-editor.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "refuses invalid input without changing what the editor holds",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "leaving a document drops pending edits",
+    "files": [
+      "apps/desktop/src/features/workbench/document-editor.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "protects pending edits when leaving the document",
+    "exit_code": 0,
+    "guard_failed": false
+  },
+  {
+    "mutation": "every keystroke reports editing",
+    "files": [
+      "apps/desktop/src/features/workbench/document-editor.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "protects the snapshot when typing pauses, marking unprotected edits once",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the menu Save is ignored",
+    "files": [
+      "apps/desktop/src/features/workbench/document-editor.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "sends the fields typed before the protection debounce fires",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "parent paths pass the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects paths, identities and revisions outside what Rust issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "problem details are not checked",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects paths, identities and revisions outside what Rust issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an older acknowledgement clears newer edits",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "an_older_acknowledgement_never_clears_newer_unprotected_edits",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "editing keeps only its first generation",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "an_older_acknowledgement_never_clears_newer_unprotected_edits",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "closing a tab drops unprotected edits",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "closing_with_unprotected_edits_waits_for_protection_or_an_explicit_discard",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Save writes before protecting its snapshot",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "a_save_stopped_between_writes_restores_every_submitted_field",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "documents open from the inventory",
+    "files": [
+      "crates/desktop-core/src/workbench/document.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "documents_open_from_their_own_metadata_not_the_inventory",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "duplicate requests lose their body ownership",
+    "files": [
+      "crates/desktop-core/src/workbench/document.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_documents"
+    ],
+    "guard": "a_duplicate_identity_pair_still_owns_its_body",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an outstanding protection silences new edits",
+    "files": [
+      "apps/desktop/src/features/workbench/document-editor.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "re-arms the close guard after a save and while an older protection is outstanding",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "closing does not protect first",
+    "files": [
+      "apps/desktop/src/features/workbench/workbench-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "protects the latest typing before a tab closes",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "closing never asks when protection fails",
+    "files": [
+      "apps/desktop/src/features/workbench/workbench-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/document-save.test.tsx"
+    ],
+    "guard": "asks before closing the collection when the latest typing cannot be kept",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

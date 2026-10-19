@@ -3,8 +3,9 @@ import type { AcademyCallResult } from "./AcademyCallResult";
 import type { ManagementResult } from "./ManagementResult";
 import type { Refusal } from "./Refusal";
 import type { ShellSnapshot } from "./ShellSnapshot";
+import type { WorkbenchResult } from "./WorkbenchResult";
 
 /**
  * Result of `desktop_observe`.
  */
-export type ObserveResponse = { "kind": "deliverySession", session: string, nextSequence: string, } | { "kind": "shell", snapshot: ShellSnapshot, } | { "kind": "closed" } | { "kind": "academyCall", result: AcademyCallResult, } | { "kind": "management", result: ManagementResult, } | { "kind": "refusal", refusal: Refusal, };
+export type ObserveResponse = { "kind": "deliverySession", session: string, nextSequence: string, } | { "kind": "shell", snapshot: ShellSnapshot, } | { "kind": "closed" } | { "kind": "academyCall", result: AcademyCallResult, } | { "kind": "management", result: ManagementResult, } | { "kind": "workbench", result: WorkbenchResult, } | { "kind": "refusal", refusal: Refusal, };

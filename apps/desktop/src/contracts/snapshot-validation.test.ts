@@ -3,7 +3,13 @@
  * contract violations, never rendered.
  */
 import { describe, expect, it } from 'vitest'
-import { ContractViolation, parseManagementResult, parseShellSnapshot, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import {
+    ContractViolation,
+    parseManagementResult,
+    parseShellSnapshot,
+    parseWorkbenchResult,
+    type ShellSnapshot,
+} from '@prisma-airs/desktop-contracts'
 import { baseSnapshot, tenant, withTenant } from '../test/native'
 
 const valid: ShellSnapshot = withTenant(baseSnapshot, tenant())
@@ -385,5 +391,78 @@ describe('management result validation', () => {
             bad({ kind: 'attacks', attacks: { ...attacks, rows: [{ ...attacks.rows[0], number: 1 }] } })
             bad({ kind: 'attacks', attacks: { ...attacks, rows: [{ ...attacks.rows[0], threat: 'yes' }] } })
         })
+    })
+})
+
+describe('API Client validation', () => {
+    const fields = { method: 'GET', url: 'https://a.example/', headers: '', query: '', body: '', bodyKind: 'text', settings: '' }
+    const document = {
+        id: 'list',
+        relative: 'items/list.request.toml',
+        revision: 'a'.repeat(32),
+        fields,
+        saved: fields,
+        new: false,
+        recovered: false,
+        bodyEditable: true,
+        schema: null,
+        conflict: null,
+        interrupted: false,
+        metadataDirty: false,
+    }
+    const collection = {
+        id: 'c14',
+        name: 'Items API',
+        folder: 'api',
+        builtIn: false,
+        complete: true,
+        requests: [{ relative: 'items/list.request.toml', id: 'list', method: 'GET', url: 'https://a.example/' }],
+        folders: ['items'],
+        schemas: [],
+        issues: [{ relative: 'bad.request.toml', kind: 'invalid' }],
+        environments: [{ name: 'dev', origin: 'both' }],
+        environment: 'dev',
+        tabs: [{ id: 'list', relative: 'items/list.request.toml', method: 'GET', draft: true, new: false, recovered: false, conflict: 'changed', interrupted: false }],
+        selected: 'list',
+        secrets: [{ reference: 'dev-token', stored: true, managed: false }],
+        unsaved: null,
+        archives: 1,
+    }
+    const snapshot = (workbench: unknown) => ({ ...baseSnapshot, workbench }) as unknown as ShellSnapshot
+    const bad = (value: unknown) => expect(() => parseWorkbenchResult(value)).toThrow(ContractViolation)
+
+    it('accepts an open collection and every result shape', () => {
+        expect(parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, collection }))).toBeTruthy()
+        for (const result of [
+            { kind: 'done' },
+            { kind: 'document', document, notes: [{ kind: 'authRemoved', reference: 'import-1' }] },
+            { kind: 'saved', document },
+            { kind: 'saveRefused', refusal: { kind: 'invalid', problem: { field: 'headers', line: 2 } } },
+            { kind: 'saveRefused', refusal: { kind: 'conflict' } },
+            { kind: 'refused', problem: { kind: 'stale' } },
+            { kind: 'refused', problem: { kind: 'curl', detail: 'shell' } },
+            { kind: 'environment', name: 'dev', private: true, text: 'format_version = 1\n', revision: 'b'.repeat(64) },
+            { kind: 'git', git: { state: 'ready', branch: 'main', head: 'abc', upstream: null, ahead: null, behind: null, changes: [], truncated: false } },
+        ]) {
+            expect(parseWorkbenchResult(result)).toEqual(result)
+        }
+    })
+
+    it('rejects paths, identities and revisions outside what Rust issues', () => {
+        expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, collection: { ...collection, requests: [{ ...collection.requests[0], relative: '../x' }] } }))).toThrow(
+            ContractViolation
+        )
+        expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, collection: { ...collection, tabs: [{ ...collection.tabs[0], conflict: 'gone' }] } }))).toThrow(
+            ContractViolation
+        )
+        expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, unprotected: 'no' }))).toThrow(ContractViolation)
+        bad({ kind: 'document', document: { ...document, relative: '/etc/passwd' }, notes: [] })
+        bad({ kind: 'document', document: { ...document, id: 'a b' }, notes: [] })
+        bad({ kind: 'saved', document: { ...document, revision: 'not-a-revision' } })
+        bad({ kind: 'saved', document: { ...document, fields: { ...fields, body: 1 } } })
+        bad({ kind: 'refused', problem: { kind: 'curl', detail: 'other' } })
+        bad({ kind: 'refused', problem: { kind: 'stale', detail: 'x' } })
+        bad({ kind: 'saveRefused', refusal: { kind: 'invalid', problem: { field: 'cookies', line: null } } })
+        bad({ kind: 'sent' })
     })
 })

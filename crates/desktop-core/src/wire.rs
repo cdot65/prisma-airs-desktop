@@ -67,15 +67,25 @@ pub enum WireScope {
     Management {
         operation: crate::runtime::OperationId,
     },
+    /// Wait for the single result of an admitted API Client request.
+    Workbench {
+        operation: crate::runtime::OperationId,
+    },
 }
 
 /// A native menu selection forwarded to the presentation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum MenuCommand {
-    Navigate { feature: FeatureId },
+    Navigate {
+        feature: FeatureId,
+    },
     CommandPalette,
-    SetAppearance { theme: Theme },
+    SetAppearance {
+        theme: Theme,
+    },
+    /// File > Save (Cmd+S): save the open API Client request.
+    SaveDocument,
 }
 
 /// Result of `desktop_dispatch`.
@@ -116,6 +126,10 @@ pub enum ObserveResponse {
     /// A management read's result (observed once).
     Management {
         result: crate::management::ManagementResult,
+    },
+    /// An API Client request's result (observed once).
+    Workbench {
+        result: Box<crate::WorkbenchResult>,
     },
     Refusal {
         refusal: Refusal,

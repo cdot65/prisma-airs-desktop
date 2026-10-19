@@ -381,6 +381,55 @@ impl ImportPicker for ScriptedPicker {
     }
 }
 
+/// Folder sheets returning queued folders (or cancelling).
+#[derive(Default)]
+pub struct ScriptedFolders {
+    folders: Mutex<VecDeque<Option<std::path::PathBuf>>>,
+    created: Mutex<VecDeque<Option<std::path::PathBuf>>>,
+    opened: Mutex<usize>,
+}
+
+impl ScriptedFolders {
+    /// The next existing-folder sheet answers `folder` (None: cancel).
+    pub fn reply(&self, folder: Option<std::path::PathBuf>) {
+        if let Ok(mut f) = self.folders.lock() {
+            f.push_back(folder);
+        }
+    }
+
+    /// The next new-folder sheet answers `folder` (None: cancel).
+    pub fn reply_new(&self, folder: Option<std::path::PathBuf>) {
+        if let Ok(mut f) = self.created.lock() {
+            f.push_back(folder);
+        }
+    }
+
+    pub fn opened(&self) -> usize {
+        self.opened.lock().map(|o| *o).unwrap_or(0)
+    }
+
+    fn next(
+        &self,
+        queue: &Mutex<VecDeque<Option<std::path::PathBuf>>>,
+    ) -> BoxFuture<'static, Option<std::path::PathBuf>> {
+        if let Ok(mut o) = self.opened.lock() {
+            *o += 1;
+        }
+        let reply = queue.lock().ok().and_then(|mut q| q.pop_front()).flatten();
+        Box::pin(async move { reply })
+    }
+}
+
+impl crate::FolderPicker for ScriptedFolders {
+    fn choose_folder(&self) -> BoxFuture<'static, Option<std::path::PathBuf>> {
+        self.next(&self.folders)
+    }
+
+    fn choose_new(&self) -> BoxFuture<'static, Option<std::path::PathBuf>> {
+        self.next(&self.created)
+    }
+}
+
 /// Records the pages the core asked to open; opens nothing.
 #[derive(Default)]
 pub struct ScriptedOpener {
@@ -656,6 +705,10 @@ pub struct Handles {
     pub case_files: Arc<ScriptedPicker>,
     /// This instance's sealed case libraries.
     pub library_root: std::path::PathBuf,
+    pub folders: Arc<ScriptedFolders>,
+    pub workbench_files: Arc<ScriptedPicker>,
+    /// This instance's private API Client folder.
+    pub workbench_root: std::path::PathBuf,
 }
 
 /// Fresh scripted adapters with empty storage.
@@ -680,6 +733,9 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         sessions_root: fresh_offline_root().with_extension("sessions"),
         case_files: Arc::new(ScriptedPicker::default()),
         library_root: fresh_offline_root().with_extension("library"),
+        folders: Arc::new(ScriptedFolders::default()),
+        workbench_files: Arc::new(ScriptedPicker::default()),
+        workbench_root: fresh_offline_root().with_extension("workbench"),
     };
     (
         Adapters {
@@ -698,6 +754,9 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             sessions_root: Some(handles.sessions_root.clone()),
             case_files: handles.case_files.clone(),
             library_root: Some(handles.library_root.clone()),
+            folders: handles.folders.clone(),
+            workbench_files: handles.workbench_files.clone(),
+            workbench_root: Some(handles.workbench_root.clone()),
         },
         handles,
     )

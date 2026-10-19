@@ -7,6 +7,7 @@ import { SessionsView } from '../features/sessions/sessions-view'
 import { type CasePrefill, LibraryView } from '../features/library/library-view'
 import { RedTeamView } from '../features/red-team/red-team-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
+import { WorkbenchView } from '../features/workbench/workbench-view'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { CommandPalette } from './command-palette'
 import { SettingsView, UnavailableView } from './feature-view'
@@ -51,6 +52,7 @@ export function DesktopShell(props: DesktopShellProps) {
     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
     const client = props.client
     const observeManagement = useCallback((operation: string) => client.observeManagement(operation), [client])
+    const observeWorkbench = useCallback((operation: string) => client.observeWorkbench(operation), [client])
     // A Library case or starter to fill the scan form with, bound to the
     // context it was loaded in: another tenant or credential generation
     // never renders it (checked while rendering) and it is dropped when the
@@ -213,6 +215,10 @@ export function DesktopShell(props: DesktopShellProps) {
                     observe={observeManagement}
                     onNavigate={props.onNavigate}
                 />
+            ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
+                // Not keyed by tenant: API Client documents are on this Mac,
+                // independent of the selected tenant.
+                <WorkbenchView ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
             ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
                 <AcademyView ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
             ) : feature.id === 'runtime' && feature.availability.state === 'available' ? (

@@ -24,6 +24,7 @@ mod management_domain;
 mod observation_domain;
 mod offline_domain;
 mod sessions_domain;
+mod workbench_domain;
 
 pub use change_domain::{
     ChangeFailure, ChangeResultView, ChangeReviewState, ChangeReviewView, ChangesView, Readback,
@@ -38,6 +39,11 @@ pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineSt
 pub use sessions_domain::{
     ExportKind, ExportState, ExportView, InvestigationView, ReportTarget, ReportUndoView,
     ReportsState, ReportsView, SessionsView,
+};
+pub use workbench_domain::{
+    CollectionView, ConflictKind, DocumentView, EnvironmentView, RecentView, Resolution,
+    SecretView, TabView, WorkbenchHandle, WorkbenchProblem, WorkbenchRequest, WorkbenchResult,
+    WorkbenchView,
 };
 
 use crate::academy::AcademyClient;
@@ -229,6 +235,11 @@ pub enum Intent {
     SaveLibraryAgain {
         context: ContextRef,
     },
+    /// One API Client request (C14): projects and documents on this Mac,
+    /// independent of the tenant; observed once by its operation.
+    Workbench {
+        request: WorkbenchRequest,
+    },
     /// Acknowledge or snooze a Runtime attention item (C12).
     HoldInsight {
         context: ContextRef,
@@ -406,6 +417,8 @@ pub enum ViewScope {
     AcademyCall(OperationId),
     /// The single result of an admitted management read.
     Management(OperationId),
+    /// The single result of an admitted API Client request.
+    Workbench(OperationId),
 }
 
 /// A scoped, redacted view of desktop state plus its ordered updates.
@@ -419,6 +432,7 @@ pub enum Observation {
     },
     AcademyCall(AcademyCallHandle),
     Management(ManagementHandle),
+    Workbench(WorkbenchHandle),
 }
 
 /// Health of Rust-owned local storage.
@@ -577,6 +591,8 @@ pub struct ShellSnapshot {
     pub library: LibraryView,
     /// The active context's Runtime Home/Inbox observations.
     pub overview: OverviewView,
+    /// API Client projects on this Mac (C14).
+    pub workbench: WorkbenchView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -635,6 +651,11 @@ pub struct CoreConfig {
     /// How often time-based state (overview freshness, snooze ends) is
     /// re-evaluated and published when it changed.
     pub deadline_tick: std::time::Duration,
+    /// The Git program the API Client's read-only Git view runs (an
+    /// absolute path; None: the view reports Git unavailable).
+    pub git: Option<std::path::PathBuf>,
+    /// The v1 API Client profile offered for adoption (read only).
+    pub adoption_source: Option<std::path::PathBuf>,
 }
 
 /// The production Academy origin.
@@ -651,6 +672,8 @@ impl Default for CoreConfig {
             review_lifetime: change_domain::REVIEW_LIFETIME,
             case_catalog: url::Url::parse(crate::library::PUBLIC_CATALOG).expect("catalog URL"),
             deadline_tick: std::time::Duration::from_secs(15),
+            git: crate::workbench::git::locate(),
+            adoption_source: None,
         }
     }
 }
@@ -736,6 +759,16 @@ pub trait FileSaver: Send + Sync + 'static {
     ) -> futures_util::future::BoxFuture<'static, Result<Option<String>, ()>>;
 }
 
+/// The native folder sheets for API Client collections (host adapter).
+pub trait FolderPicker: Send + Sync + 'static {
+    /// An existing folder the operator chose (`None`: cancelled).
+    fn choose_folder(&self)
+    -> futures_util::future::BoxFuture<'static, Option<std::path::PathBuf>>;
+    /// A new folder's location and name from the save sheet (`None`:
+    /// cancelled). Nothing exists there yet.
+    fn choose_new(&self) -> futures_util::future::BoxFuture<'static, Option<std::path::PathBuf>>;
+}
+
 /// Keychain operations the core needs beyond single records.
 pub trait CredentialStore: Vault {
     /// Deletes every record in this build's v2 credential namespace.
@@ -768,6 +801,13 @@ pub struct Adapters {
     pub case_files: Arc<dyn ImportPicker>,
     /// Where sealed case libraries live (None: the Library is unavailable).
     pub library_root: Option<std::path::PathBuf>,
+    /// The native folder sheets for API Client collections.
+    pub folders: Arc<dyn FolderPicker>,
+    /// The native file sheet for Insomnia exports (bounded reads).
+    pub workbench_files: Arc<dyn ImportPicker>,
+    /// The API Client's private folder: its sealed profile and the built-in
+    /// collection (None: the API Client is unavailable).
+    pub workbench_root: Option<std::path::PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -934,6 +974,11 @@ struct State {
     /// The overview's time-dependent state at the last deadline tick.
     overview_published: Option<(bool, observation_domain::AttentionFace, Vec<String>)>,
     deadline_tick: std::time::Duration,
+    /// API Client projects and documents (C14).
+    workbench: workbench_domain::Workbench,
+    workbench_root: Option<std::path::PathBuf>,
+    git: Option<std::path::PathBuf>,
+    adoption_source: Option<std::path::PathBuf>,
 }
 
 impl State {
@@ -997,6 +1042,7 @@ impl State {
             sessions: self.sessions_view(),
             library: self.library_view(),
             overview: self.overview_view(),
+            workbench: self.workbench_view(),
         }
     }
 
@@ -1435,6 +1481,11 @@ enum Effect {
         lease: u64,
         url: url::Url,
     },
+    /// Run an API Client request in its turn.
+    Workbench {
+        operation: OperationId,
+        request: WorkbenchRequest,
+    },
 }
 
 struct Inner {
@@ -1527,6 +1578,10 @@ impl Core {
             clock_offset: 0,
             overview_published: None,
             deadline_tick: config.deadline_tick,
+            workbench: workbench_domain::Workbench::default(),
+            workbench_root: adapters.workbench_root.clone(),
+            git: config.git.clone(),
+            adoption_source: config.adoption_source.clone(),
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -1551,6 +1606,45 @@ impl Core {
     /// Makes the signed-in generation's offline store fail its next write at
     /// `fault` (a `DirectorySync` fault persists until cleared with `None`)
     /// (fixture builds only).
+    /// Whether API Client edits exist that are not protected on this Mac
+    /// (the native close guard asks before the window closes).
+    pub fn workbench_unprotected(&self) -> bool {
+        lock(&self.inner)
+            .map(|s| s.workbench_unprotected())
+            .unwrap_or(false)
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Holds every API Client request (and reset's purge) until the guard
+    /// drops (fixture builds only).
+    pub async fn hold_workbench(&self) -> tokio::sync::OwnedMutexGuard<()> {
+        let lane = lock(&self.inner)
+            .map(|s| Arc::clone(&s.workbench.lane))
+            .expect("authority");
+        lane.lock_owned().await
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Makes the next API Client Save fail with an I/O error after `files`
+    /// file writes; its failure handling runs (fixture builds only).
+    pub fn interrupt_next_save(&self, files: usize) {
+        if let Ok(mut s) = lock(&self.inner) {
+            s.workbench.interrupt = Some(workbench_domain::Interrupt {
+                files,
+                crash: false,
+            });
+        }
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Stops the next Save after `files` project writes as if the process
+    /// ended there: no failure handling runs (fixture builds only).
+    pub fn crash_next_save(&self, files: usize) {
+        if let Ok(mut s) = lock(&self.inner) {
+            s.workbench.interrupt = Some(workbench_domain::Interrupt { files, crash: true });
+        }
+    }
+
     #[cfg(feature = "test-fixtures")]
     /// Holds every report file write (and reset's purge) until the returned
     /// guard drops (fixture builds only).
@@ -1786,6 +1880,9 @@ impl AuthorityHandle {
             ViewScope::Management(operation) => Ok(Observation::Management(
                 state.observe_management(&operation)?,
             )),
+            ViewScope::Workbench(operation) => {
+                Ok(Observation::Workbench(state.observe_workbench(&operation)?))
+            }
         }
     }
 
@@ -2228,6 +2325,15 @@ fn admit(
             let investigation = state.investigation(&context).ok_or(Refusal::InvalidInput)?;
             effects.push(Effect::ClearInvestigation(investigation));
         }
+        Intent::Workbench { request } => {
+            if state.storage == StorageHealth::Resetting {
+                return Err(Refusal::Busy);
+            }
+            let operation = state.admit_workbench()?;
+            operation_ref = Some(operation.clone());
+            effects.push(Effect::Workbench { operation, request });
+            state.changed();
+        }
         Intent::Management { context, request } => {
             let (operation, starts) = state.admit_management(
                 context,
@@ -2415,6 +2521,7 @@ fn admit(
             // Report books go with the data; pending writes find nothing.
             state.reports.clear();
             state.libraries.clear();
+            state.workbench.clear();
             state.holds.clear();
             state.overview = None;
             state.export = None;
@@ -2798,6 +2905,9 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     }
                 });
             }
+            Effect::Workbench { operation, request } => {
+                tokio::spawn(workbench_domain::run(Arc::clone(inner), operation, request));
+            }
             Effect::LoadLibrary { lease } => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
@@ -2939,6 +3049,13 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                         Some(writer) => Some(writer.lock().await),
                         None => None,
                     };
+                    // API Client work in its turn finishes first; none runs
+                    // during the purge.
+                    let lane = lock(&inner).map(|s| Arc::clone(&s.workbench.lane)).ok();
+                    let _turn = match &lane {
+                        Some(lane) => Some(lane.lock().await),
+                        None => None,
+                    };
                     let worker = Arc::clone(&inner);
                     let result = tokio::task::spawn_blocking(move || {
                         // No investigation key or snapshot is placed while the
@@ -2956,6 +3073,21 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                         // Sealed investigations go with their keys (purged
                         // above), and report files with the tenants.
                         if let Some(root) = &worker.adapters.sessions_root {
+                            match std::fs::remove_dir_all(root) {
+                                Ok(()) => {}
+                                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                                Err(_) => {
+                                    return Err(ResetFailure {
+                                        stage: ResetStage::Document,
+                                        reason: VaultError::Unavailable,
+                                    });
+                                }
+                            }
+                        }
+                        // The API Client's private folder (sealed profile and
+                        // the built-in collection) goes with its key too;
+                        // collections in the operator's folders stay.
+                        if let Some(root) = &worker.adapters.workbench_root {
                             match std::fs::remove_dir_all(root) {
                                 Ok(()) => {}
                                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}

@@ -79,6 +79,9 @@ pub fn command_for(id: &str) -> Option<MenuCommand> {
     if id == "palette" {
         return Some(MenuCommand::CommandPalette);
     }
+    if id == "save" {
+        return Some(MenuCommand::SaveDocument);
+    }
     if id == "settings" {
         return Some(MenuCommand::Navigate {
             feature: FeatureId::Settings,
@@ -109,7 +112,21 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .hide_others()
         .show_all()
         .separator()
-        .quit()
+        // Not the predefined item: AppKit's terminate: would end the app
+        // without the API Client close guard.
+        .item(
+            &MenuItemBuilder::with_id("quit", "Quit Prisma AIRS Desktop v2")
+                .accelerator("CmdOrCtrl+Q")
+                .build(app)?,
+        )
+        .build()?;
+    // WKWebView receives Command shortcuts only through menu items.
+    let file = SubmenuBuilder::new(app, "File")
+        .item(
+            &MenuItemBuilder::with_id("save", "Save")
+                .accelerator("CmdOrCtrl+S")
+                .build(app)?,
+        )
         .build()?;
     let edit = SubmenuBuilder::new(app, "Edit")
         .undo()
@@ -165,7 +182,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .close_window()
         .build()?;
     let go = go.build()?;
-    let menu = MenuBuilder::new(app).items(&[&app_menu, &edit, &view, &go, &window]);
+    let menu = MenuBuilder::new(app).items(&[&app_menu, &file, &edit, &view, &go, &window]);
     // The fixture identity alone gets a capture menu for native acceptance.
     #[cfg(all(feature = "test-fixtures", target_os = "macos"))]
     let menu = menu.item(
@@ -206,6 +223,10 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
                 store.unlock_for_fixture(crate::adapters::FIXTURE_KEYCHAIN_PASSWORD);
             }
         }
+        return;
+    }
+    if id == "quit" {
+        crate::request_quit(app);
         return;
     }
     let step = match id {

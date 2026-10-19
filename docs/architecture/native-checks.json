@@ -644,6 +644,60 @@
         "id": "C13-N08",
         "check": "Without a management client the page asks for one and nothing is read; no secret or private service marker appears in any saved Accessibility snapshot, and v1 data is unchanged."
       }
+    ],
+    "C14": [
+      {
+        "id": "C14-N01",
+        "check": "The API Client destination opens a v1 collection through the folder sheet (fixture: the staged folder) and lists its requests by method and path, its folders and its problems (an invalid request file is reported, not shown); opening a request shows its method, URL, params, headers, body and auth/variables under accessible names."
+      },
+      {
+        "id": "C14-N02",
+        "check": "Typing a new URL and pressing Cmd+S at once (inside the protection debounce) writes exactly the typed snapshot to the request file, keeping its comment, trailing comment and extension key; the status says Saved."
+      },
+      {
+        "id": "C14-N03",
+        "check": "An invalid header row is refused with 'Fix to save' naming Headers and the row; the request file is unchanged and the editor keeps what was typed."
+      },
+      {
+        "id": "C14-N04",
+        "check": "An edit protected by a typing pause survives quitting and relaunching: reopening the collection from Recent restores the request as a recovered draft with the typed text; Discard draft returns to the saved version."
+      },
+      {
+        "id": "C14-N05",
+        "check": "Close guard: quitting right after typing (before protection) shows the native sheet 'Quit with unprotected API Client edits?'; Cancel keeps the app and the text; once protected, Cmd+Q quits without the sheet."
+      },
+      {
+        "id": "C14-N06",
+        "check": "A request changed on disk after it was opened is not overwritten: Save reports Changed on disk; Keep mine rebases the edits and the next Save writes them; Use disk on another conflict shows the disk version."
+      },
+      {
+        "id": "C14-N07",
+        "check": "A workbench secret value is entered in a secure field and stored in the Keychain: the Secrets list says 'value stored', the preview masks it, and the value appears in no accessibility snapshot or private/project file; tenant.* references are shown as tenant-managed with no field."
+      },
+      {
+        "id": "C14-N08",
+        "check": "A pasted cURL command with credentials becomes an unsaved draft with secret references and a conversion report (no file until Save); a staged Insomnia v5 export previews its resources, refuses a scripted request, creates the selected ones as drafts and leaves the export file unchanged."
+      },
+      {
+        "id": "C14-N09",
+        "check": "Open Strata Cloud Manager writes the built-in collection privately and opens its 193 generic request specifications; an OAuth request's preview names tenant-managed references and nothing is sent."
+      },
+      {
+        "id": "C14-N10",
+        "check": "Offline and no replay (T23): no request reaches any network endpoint during API Client work, and after relaunch no save is repeated (project files are byte-identical to before the relaunch)."
+      },
+      {
+        "id": "C14-N11",
+        "check": "Keyboard and accessibility: the tools tab list, navigator, open-request tabs (method, name and unsaved/conflict marks in their names) and editor fields are reachable by Tab; Save stays reachable and clear of the bottom fade at 200% zoom and at the minimum window size."
+      },
+      {
+        "id": "C14-N12",
+        "check": "The Git view reads the collection's repository read-only (branch and changed files) and runs no repository-configured program (a core.fsmonitor script leaves no marker)."
+      },
+      {
+        "id": "C14-N13",
+        "check": "Profile adoption previews the staged v1 API Client profile, imports the selected collection into Recent with its private environment, never changes the source files and transfers no secret value."
+      }
     ]
   }
 }

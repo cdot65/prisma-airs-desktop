@@ -1316,6 +1316,35 @@ the decisions.
   workflow exists; Home tiles and observation history for these products
   belong to C16-C18.
 
+### C14 implementation: API Client projects and documents
+
+Implemented in `crates/desktop-core` (`workbench::{project, document,
+environments, profile, schema, curl, insomnia, git, scm, adoption}` and
+`authority/workbench_domain`: `Intent::Workbench { request }`, results
+observed once through `ViewScope::Workbench`, `ShellSnapshot.workbench`,
+adapters `folders`, `workbench_files`, `workbench_root`, `CoreConfig.git`
+and `.adoption_source`), `apps/desktop/src-tauri` (native folder and export
+sheets, File > Save, the app's Quit item and the close guard) and the API
+Client destination (`features/workbench`). D040 records the decisions.
+
+- **Ownership.** React owns the editor text; Rust owns each document's
+  baseline, revision, faithfulness check, conflicts, journal and sealed
+  drafts. An opened document's fields come from the metadata its baseline
+  hashes, never from the (abbreviated) inventory. Every request runs in admission order on the workbench lane
+  (reset takes it too) with file work off the authority lock.
+
+  | Request | Effect |
+  |---|---|
+  | `save { id, revision, fields, edit }` | stale revision refused; the submitted snapshot sealed as the draft before any project write; `check` (Fix to save with field/row); inventory complete, identity unmoved and not duplicated; a body named by any other request file (duplicates and invalid ones included) refused; files equal the baseline (else conflict); journal, body, metadata, journal cleared; new revision |
+  | `protect { id, revision, fields, edit }` | the snapshot (valid or not) sealed as the document's draft |
+  | `editing { id, edit }` / close | the close guard's unprotected mark keeps the newest edit generation reported; a Protect or Save clears it only when its snapshot covers that generation. Closing a tab or the collection with a mark is refused (`unprotected`) unless the operator discards; the editor protects its latest text first and asks when that fails |
+  | `resolve { choice }` | both versions archived; Use disk reopens; Keep mine rebases |
+  | `preview { id, fields }` | v1's variable layers, secrets masked, unresolved and missing listed |
+  | imports, environments, secrets, schemas, Git, adoption, built-in | see D040 |
+
+- **Not done here.** No request is sent and no tenant credential is read
+  (C15 owns execution and managed-request admission).
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

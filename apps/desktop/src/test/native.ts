@@ -30,6 +30,8 @@ export function withTenant(snapshot: ShellSnapshot, view: TenantView, context = 
 type Respond = (intent: Intent) => unknown
 /** Answers one management observation (the native `management` scope). */
 type ObserveManagement = (operation: string) => unknown | Promise<unknown>
+/** Answers one API Client observation (the native `workbench` scope). */
+type ObserveWorkbench = (operation: string) => unknown | Promise<unknown>
 
 export interface Native {
     transport: DesktopTransport
@@ -40,6 +42,7 @@ export interface Native {
     delivered: string[]
     respond: Respond
     observeManagement: ObserveManagement
+    observeWorkbench: ObserveWorkbench
     push(snapshot: ShellSnapshot): Promise<void>
     current: ShellSnapshot
 }
@@ -56,6 +59,7 @@ export function scriptedNative(initial: ShellSnapshot): Native {
         current: initial,
         respond: () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } }),
         observeManagement: () => ({ kind: 'refusal', refusal: 'invalidInput' }),
+        observeWorkbench: () => ({ kind: 'refusal', refusal: 'invalidInput' }),
         push: (next) =>
             act(async () => {
                 // Native revisions only increase; the client ignores others.
@@ -78,6 +82,11 @@ export function scriptedNative(initial: ShellSnapshot): Native {
                 if (body.scope.kind === 'closeShell') return { kind: 'closed' }
                 if (body.scope.kind === 'management') {
                     const response = await native.observeManagement(body.scope.operation ?? '')
+                    native.delivered.push(JSON.stringify(response))
+                    return response
+                }
+                if (body.scope.kind === 'workbench') {
+                    const response = await native.observeWorkbench(body.scope.operation ?? '')
                     native.delivered.push(JSON.stringify(response))
                     return response
                 }

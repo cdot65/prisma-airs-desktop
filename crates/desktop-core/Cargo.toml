@@ -41,6 +41,10 @@ rustls-webpki = { version = "=0.103.15", default-features = false, features = ["
 image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 # Offline Academy work is sealed with XChaCha20-Poly1305 (v1's cipher crate).
 chacha20poly1305 = { version = "=0.10.1", default-features = false, features = ["alloc"] }
+# API Client projects (C14): v1's TOML project files edited in place with
+# their comments and layout kept, and Insomnia v5 exports (YAML or JSON).
+toml_edit = { version = "=0.25.17", default-features = false, features = ["parse", "display"] }
+serde_yaml_ng = "=0.10.0"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
@@ -104,6 +108,11 @@ required-features = ["test-fixtures"]
 [[test]]
 name = "library_observation"
 path = "tests/library_observation/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "workbench_documents"
+path = "tests/workbench_documents/main.rs"
 required-features = ["test-fixtures"]
 
 [[test]]

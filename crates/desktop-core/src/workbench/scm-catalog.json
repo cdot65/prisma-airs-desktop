@@ -1,0 +1,3470 @@
+{
+ "format": "prisma-airs-desktop/scm-catalog",
+ "version": 2,
+ "source": "Strata Cloud Manager Insomnia collection (sanitized by scripts/gen-scm-catalog.mjs)",
+ "variables": {
+  "scm_base": "https://api.sase.paloaltonetworks.com",
+  "aisec_base": "https://api.sase.paloaltonetworks.com/aisec",
+  "airt_mgmt_base": "https://api.sase.paloaltonetworks.com/ai-red-teaming/mgmt-plane",
+  "airt_data_base": "https://api.sase.paloaltonetworks.com/ai-red-teaming/data-plane",
+  "airt_nb_base": "https://api.sase.paloaltonetworks.com/ai-red-teaming/data-plane/network-broker",
+  "aims_mgmt_base": "https://api.sase.paloaltonetworks.com/aims/mgmt",
+  "aims_data_base": "https://api.sase.paloaltonetworks.com/aims/data",
+  "airs_scan_base": "https://service.api.aisecurity.paloaltonetworks.com",
+  "auth_host": "https://auth.apps.paloaltonetworks.com",
+  "token_url": "https://auth.apps.paloaltonetworks.com/auth/v1/oauth2/access_token"
+ },
+ "requests": [
+  {
+   "id": "scm-915a93bdb1c09533",
+   "folder": "Management/IAM/AccessPolicies",
+   "name": "List all access policies",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/access_policies",
+   "headers": [],
+   "query": [
+    {
+     "name": "role",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "principal",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-81f0665b063e70c1",
+   "folder": "Management/IAM/AccessPolicies",
+   "name": "Assign an access policy",
+   "method": "POST",
+   "url": "{{scm_base}}/iam/v1/access_policies",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"principal\": \"user@paloaltonetworks.com\",\n  \"resource\": \"prn:123::::\",\n  \"role\": \"superuser\"\n}\n"
+  },
+  {
+   "id": "scm-ee38ff2db8d32a62",
+   "folder": "Management/IAM/AccessPolicies",
+   "name": "Get an access policy",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/access_policies/{{id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-5424314d5f3b199a",
+   "folder": "Management/IAM/AccessPolicies",
+   "name": "Delete an access policy",
+   "method": "DELETE",
+   "url": "{{scm_base}}/iam/v1/access_policies/{{id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-8652bb52eb9734e2",
+   "folder": "Management/IAM/CustomRoles",
+   "name": "Create a custom role",
+   "method": "POST",
+   "url": "{{scm_base}}/iam/v1/custom_roles",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"description\": \"Access to Log Viewer endpoints\",\n  \"label\": \"Log Viewer\",\n  \"name\": \"log_viewer\",\n  \"permission_sets\": [\n    {\n      \"access_types\": [\n        \"read\"\n      ],\n      \"id\": \"prisma_access.config\"\n    }\n  ],\n  \"permissions\": [\n    \"iam.service_account.create\",\n    \"iam.access_policy.create\"\n  ]\n}\n"
+  },
+  {
+   "id": "scm-d6a1acba29998fb1",
+   "folder": "Management/IAM/CustomRoles",
+   "name": "Delete a custom role",
+   "method": "DELETE",
+   "url": "{{scm_base}}/iam/v1/custom_roles/{{name}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-501de33d4ae3f955",
+   "folder": "Management/IAM/CustomRoles",
+   "name": "List custom roles",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/custom_roles",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-86a22c9045f9e45e",
+   "folder": "Management/IAM/CustomRoles",
+   "name": "Get a Custom Role",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/custom_roles/{{name}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-1236d4bd0c49ab14",
+   "folder": "Management/IAM/CustomRoles",
+   "name": "Update a Custom Role",
+   "method": "PUT",
+   "url": "{{scm_base}}/iam/v1/custom_roles/{{name}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"description\": \"Access to Log Viewer endpoints\",\n  \"label\": \"Log Viewer\",\n  \"permission_sets\": [\n    {\n      \"access_types\": [\n        \"read\"\n      ],\n      \"id\": \"prisma_access.config\"\n    }\n  ],\n  \"permissions\": [\n    \"iam.service_account.create\",\n    \"iam.access_policy.create\"\n  ]\n}\n"
+  },
+  {
+   "id": "scm-8adfc828c8599025",
+   "folder": "Management/IAM/PermissionSets",
+   "name": "List permission sets",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/permission_sets",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-447a50ed603547b8",
+   "folder": "Management/IAM/PermissionSets",
+   "name": "Get a permission set",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/permission_sets/{{name}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-870ff738561e6702",
+   "folder": "Management/IAM/Permissions",
+   "name": "Get a permission",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/permissions/{{name}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-aa4ae5a4542e9026",
+   "folder": "Management/IAM/Permissions",
+   "name": "List all access permissions",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/permissions",
+   "headers": [],
+   "query": [
+    {
+     "name": "service",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "resource",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "action",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-8998584ea476b1bf",
+   "folder": "Management/IAM/Roles",
+   "name": "List all roles",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/roles",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-6cd5378c9e33a48f",
+   "folder": "Management/IAM/Roles",
+   "name": "Get a role",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/roles/{{name}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-73370ac2af8c359e",
+   "folder": "Management/IAM/ServiceAccounts",
+   "name": "List all service accounts",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/service_accounts",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-f3cad25a830bc7ee",
+   "folder": "Management/IAM/ServiceAccounts",
+   "name": "Get a service account",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/service_accounts/{{id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-1edb99dfaf30861e",
+   "folder": "Management/IAM/ServiceAccounts",
+   "name": "Delete a service account",
+   "method": "DELETE",
+   "url": "{{scm_base}}/iam/v1/service_accounts/{{id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-2d47431a28af59bc",
+   "folder": "Management/IAM/ServiceAccounts",
+   "name": "Create a service account",
+   "method": "POST",
+   "url": "{{scm_base}}/iam/v1/service_accounts",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"contact_email\": \"example@{{tsg_id}}.iam.panserviceaccount.com\",\n  \"description\": \"Example service account\",\n  \"name\": \"example-service-account\"\n}\n"
+  },
+  {
+   "id": "scm-19bacfab678e9ba1",
+   "folder": "Management/IAM/ServiceAccounts",
+   "name": "Reset a service account",
+   "method": "POST",
+   "url": "{{scm_base}}/iam/v1/service_accounts/{{id}}/operations/reset",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-54565b838f4195c7",
+   "folder": "Management/IAM/ServiceAccounts",
+   "name": "Update a service account",
+   "method": "PUT",
+   "url": "{{scm_base}}/iam/v1/service_accounts/{{id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"contact_email\": \"user@example.com\",\n  \"description\": \"A client for our dashboard\"\n}\n"
+  },
+  {
+   "id": "scm-abf8149566a9b98f",
+   "folder": "Management/IAM/UserAccounts",
+   "name": "Create an SSO account",
+   "method": "POST",
+   "url": "{{scm_base}}/iam/v1/sso_users",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"email\": \"someemail33@somedomain.com\",\n  \"firstname\": \"John\",\n  \"lastname\": \"Smith\"\n}\n"
+  },
+  {
+   "id": "scm-77ec8e7fd1b8bdc7",
+   "folder": "Management/IAM/UserAccounts",
+   "name": "Verify a user account",
+   "method": "GET",
+   "url": "{{scm_base}}/iam/v1/sso_users",
+   "headers": [],
+   "query": [
+    {
+     "name": "email",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-7fc6416cd8caf0f3",
+   "folder": "Management/AuthService",
+   "name": "Retrieve OAuth 2.0 claims",
+   "method": "POST",
+   "url": "{{auth_host}}/auth/v1/oauth2/userinfo",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "form",
+   "body": ""
+  },
+  {
+   "id": "scm-ef6b165e0a3a2ee6",
+   "folder": "Management/AuthService",
+   "name": "Retrieve OAuth 2.0 claims (GET)",
+   "method": "GET",
+   "url": "{{auth_host}}/auth/v1/oauth2/userinfo",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-49821bb5bd5466c1",
+   "folder": "Management/Config/CIE - Directory Sync Service",
+   "name": "Fetch domains from the CIE Directory Sync Service",
+   "method": "GET",
+   "url": "{{scm_base}}/cie/directory-sync/v1/domains",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-b45e00d8ebdfa0b5",
+   "folder": "Management/Config/CIE - Directory Sync Service",
+   "name": "Update directory connection client secret",
+   "method": "POST",
+   "url": "{{scm_base}}/cie/directory-sync/v1/connection/update-secret",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"directoryId\": \"00000000-0000-0000-0000-000000000000\",\n  \"provider\": \"aad\",\n  \"client_secret\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-e0821e8af0aeed01",
+   "folder": "Management/Config/CIE - Directory Sync Service",
+   "name": "Fetch user information from the CIE Directory Sync Service across multiple scenarios.",
+   "method": "POST",
+   "url": "{{scm_base}}/cie/directory-sync/v1/cache-users",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"domain\": \"example.com\",\n  \"attrs\": [\n    \"Common-Name\",\n    \"Unique Identifier\",\n    \"Name\",\n    \"Distinguished Name\",\n    \"SAM Account Name\",\n    \"Department\",\n    \"Last Login\",\n    \"LastLogonTime\",\n    \"Location\",\n    \"Mail\",\n    \"Manager\",\n    \"Title\",\n    \"User Principal Name\",\n    \"UserAccountControl\",\n    \"WhenChanged\"\n  ],\n  \"useNormalizedAttrs\": \"True\"\n}\n"
+  },
+  {
+   "id": "scm-4b57252a802cd7e5",
+   "folder": "Management/Config/CIE - Directory Sync Service",
+   "name": "Fetch group information from the CIE Directory Sync Service across multiple scenarios.",
+   "method": "POST",
+   "url": "{{scm_base}}/cie/directory-sync/v1/cache-groups",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"domain\": \"example.com\",\n  \"pageNum\": 1,\n  \"pageSz\": 80,\n  \"attrs\": [\n    \"Common-Name\",\n    \"Unique Identifier\",\n    \"Name\",\n    \"Distinguished Name\",\n    \"SAM Account Name\"\n  ],\n  \"useNormalizedAttrs\": \"False\"\n}\n"
+  },
+  {
+   "id": "scm-ad5cfd3425696612",
+   "folder": "Management/TenantServiceGroup",
+   "name": "List all tenant service groups",
+   "method": "GET",
+   "url": "{{scm_base}}/tenancy/v1/tenant_service_groups",
+   "headers": [],
+   "query": [
+    {
+     "name": "hierarchy",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-8140055ed0cc6d16",
+   "folder": "Management/TenantServiceGroup",
+   "name": "Create a tenant service group",
+   "method": "POST",
+   "url": "{{scm_base}}/tenancy/v1/tenant_service_groups",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"display_name\": \"Example TSG\",\n  \"parent_id\": {},\n  \"support_contact\": \"user@example.com\",\n  \"vertical\": \"High Tech\"\n}\n"
+  },
+  {
+   "id": "scm-80237c6dd12ede89",
+   "folder": "Management/TenantServiceGroup",
+   "name": "Delete a tenant service group",
+   "method": "DELETE",
+   "url": "{{scm_base}}/tenancy/v1/tenant_service_groups/{{target_tsg_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-9a6a5d25bc9bb265",
+   "folder": "Management/TenantServiceGroup",
+   "name": "Update a tenant service group",
+   "method": "PUT",
+   "url": "{{scm_base}}/tenancy/v1/tenant_service_groups/{{target_tsg_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"display_name\": \"Example TSG\",\n  \"support_contact\": \"user@example.com\",\n  \"vertical\": \"High Tech\"\n}\n"
+  },
+  {
+   "id": "scm-6c505ef977456e5b",
+   "folder": "Management/TenantServiceGroup",
+   "name": "Get a tenant service group",
+   "method": "GET",
+   "url": "{{scm_base}}/tenancy/v1/tenant_service_groups/{{target_tsg_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c49404bbf48c8cd6",
+   "folder": "Management/TenantServiceGroup",
+   "name": "List tenant service group ancestors",
+   "method": "POST",
+   "url": "{{scm_base}}/tenancy/v1/tenant_service_groups/{{target_tsg_id}}/operations/list_ancestors",
+   "headers": [],
+   "query": [
+    {
+     "name": "sort",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "include_self",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "fields",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-73b15ba105a20a7a",
+   "folder": "Management/TenantServiceGroup",
+   "name": "List tenant service group children",
+   "method": "POST",
+   "url": "{{scm_base}}/tenancy/v1/tenant_service_groups/{{target_tsg_id}}/operations/list_children",
+   "headers": [],
+   "query": [
+    {
+     "name": "hierarchy",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "include_self",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-d0013e9f9554f930",
+   "folder": "Management/Subscription/Instance",
+   "name": "Create an instance",
+   "method": "POST",
+   "url": "{{scm_base}}/subscription/v1/instances",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"app_id\": \"string\",\n  \"is_eula_accepted\": true,\n  \"region\": \"americas\",\n  \"support_account_id\": \"string\",\n  \"support_account_name\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-c810fd24640ebf7b",
+   "folder": "Management/Subscription/Instance",
+   "name": "List instances",
+   "method": "GET",
+   "url": "{{scm_base}}/subscription/v1/instances",
+   "headers": [],
+   "query": [
+    {
+     "name": "with_children",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-cfafa6226c51cc1c",
+   "folder": "Management/Subscription/Licenses",
+   "name": "List license details",
+   "method": "GET",
+   "url": "{{scm_base}}/subscription/v1/licenses",
+   "headers": [],
+   "query": [
+    {
+     "name": "license_id",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-b324448cb12c743f",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/API key",
+   "name": "Delete an API Key",
+   "method": "DELETE",
+   "url": "{{aisec_base}}/v1/mgmt/apikey/delete/{{api_key_name}}",
+   "headers": [],
+   "query": [
+    {
+     "name": "updated_by",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-712891a1c5540c5f",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/API key",
+   "name": "Get All API Keys",
+   "method": "GET",
+   "url": "{{aisec_base}}/v1/mgmt/apikeys",
+   "headers": [],
+   "query": [
+    {
+     "name": "offset",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-5eaf5099db9ebf5d",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/API key",
+   "name": "Create New API Key",
+   "method": "POST",
+   "url": "{{aisec_base}}/v1/mgmt/apikey",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"dp_name\": \"string\",\n  \"auth_code\": \"string\",\n  \"cust_app\": \"string\",\n  \"cust_env\": \"dev\",\n  \"cust_cloud_provider\": \"other\",\n  \"cust_ai_agent_framework\": \"\",\n  \"revoked\": false,\n  \"created_by\": \"user@example.com\",\n  \"api_key_name\": \"string\",\n  \"rotation_time_interval\": 6,\n  \"rotation_time_unit\": \"months\"\n}\n"
+  },
+  {
+   "id": "scm-6d69e7d1f951de72",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/API key",
+   "name": "Regenerate an API Key",
+   "method": "POST",
+   "url": "{{aisec_base}}/v1/mgmt/apikey/regenerate/{{api_key_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"rotation_time_interval\": 0,\n  \"rotation_time_unit\": \"string\",\n  \"updated_by\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-464970fe68804eb8",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/DLP Profiles",
+   "name": "Get All DLP Profiles",
+   "method": "GET",
+   "url": "{{aisec_base}}/v1/mgmt/dlpprofiles",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-4fe4d43f0581ba96",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/AI Sec Profile",
+   "name": "Delete An AI Security Profile",
+   "method": "DELETE",
+   "url": "{{aisec_base}}/v1/mgmt/profile/{{profile_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-eac41fdb64f36589",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/AI Sec Profile",
+   "name": "Create A New AI Security Profile",
+   "method": "POST",
+   "url": "{{aisec_base}}/v1/mgmt/profile",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"profile_id\": \"string\",\n  \"profile_name\": \"string\",\n  \"revision\": 0,\n  \"active\": true,\n  \"policy\": {\n    \"dlp-data-profiles\": [\n      {\n        \"name\": \"string\",\n        \"uuid\": \"string\",\n        \"id\": \"string\",\n        \"version\": \"string\",\n        \"rule1\": {\n          \"action\": \"string\"\n        },\n        \"rule2\": {\n          \"action\": \"string\"\n        },\n        \"log-severity\": \"string\",\n        \"non-file-based\": \"string\",\n        \"file-based\": \"string\"\n      }\n    ],\n    \"ai-security-profiles\": [\n      {\n        \"model-type\": \"string\",\n        \"content-type\": \"string\",\n        \"model-configuration\": {\n          \"mask-data-in-storage\": true,\n          \"latency\": {\n            \"inline-timeout-action\": \"string\",\n            \"max-inline-latency\": 0\n          },\n          \"data-protection\": {\n            \"data-leak-detection\": {\n              \"member\": [\n                {\n                  \"text\": \"string\",\n                  \"id\": \"string\",\n                  \"version\": \"string\"\n                }\n              ],\n              \"action\": \"string\",\n              \"mask-data-inline\": true\n            }\n          },\n          \"app-protection\": {\n            \"alert-url-category\": {\n              \"member\": [\n                \"string\"\n              ]\n            },\n            \"block-url-category\": {\n              \"member\": [\n                \"string\"\n              ]\n            },\n            \"allow-url-category\": {\n              \"member\": [\n                \"string\"\n              ]\n            }\n          },\n          \"model-protection\": {},\n          \"agent-protection\": {}\n        }\n      }\n    ]\n  },\n  \"created_by\": \"string\",\n  \"updated_by\": \"string\",\n  \"last_modified_ts\": \"2026-09-20T10:59:52.088Z\"\n}\n"
+  },
+  {
+   "id": "scm-290d7e14d25bf28b",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/AI Sec Profile",
+   "name": "Force Delete AI Profile",
+   "method": "DELETE",
+   "url": "{{aisec_base}}/v1/mgmt/profile/{{profile_id}}/force",
+   "headers": [],
+   "query": [
+    {
+     "name": "updated_by",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-bdacc3338aad64db",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/AI Sec Profile",
+   "name": "Get All AI Profiles",
+   "method": "GET",
+   "url": "{{aisec_base}}/v1/mgmt/profiles",
+   "headers": [],
+   "query": [
+    {
+     "name": "offset",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "latest",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-413a951a3b010e82",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/AI Sec Profile",
+   "name": "Modify AI Security Profile Details",
+   "method": "PUT",
+   "url": "{{aisec_base}}/v1/mgmt/profile/uuid/{{profile_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"profile_id\": \"string\",\n  \"profile_name\": \"string\",\n  \"revision\": 0,\n  \"active\": true,\n  \"policy\": {\n    \"dlp-data-profiles\": [\n      {\n        \"name\": \"string\",\n        \"uuid\": \"string\",\n        \"id\": \"string\",\n        \"version\": \"string\",\n        \"rule1\": {\n          \"action\": \"string\"\n        },\n        \"rule2\": {\n          \"action\": \"string\"\n        },\n        \"log-severity\": \"string\",\n        \"non-file-based\": \"string\",\n        \"file-based\": \"string\"\n      }\n    ],\n    \"ai-security-profiles\": [\n      {\n        \"model-type\": \"string\",\n        \"content-type\": \"string\",\n        \"model-configuration\": {\n          \"mask-data-in-storage\": true,\n          \"latency\": {\n            \"inline-timeout-action\": \"string\",\n            \"max-inline-latency\": 0\n          },\n          \"data-protection\": {\n            \"data-leak-detection\": {\n              \"member\": [\n                {\n                  \"text\": \"string\",\n                  \"id\": \"string\",\n                  \"version\": \"string\"\n                }\n              ],\n              \"action\": \"string\",\n              \"mask-data-inline\": true\n            }\n          },\n          \"app-protection\": {\n            \"alert-url-category\": {\n              \"member\": [\n                \"string\"\n              ]\n            },\n            \"block-url-category\": {\n              \"member\": [\n                \"string\"\n              ]\n            },\n            \"allow-url-category\": {\n              \"member\": [\n                \"string\"\n              ]\n            }\n          },\n          \"model-protection\": {},\n          \"agent-protection\": {}\n        }\n      }\n    ]\n  },\n  \"created_by\": \"string\",\n  \"updated_by\": \"string\",\n  \"last_modified_ts\": \"2026-09-20T10:59:52.088Z\"\n}\n"
+  },
+  {
+   "id": "scm-36c486815d85242d",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Deployment Profiles",
+   "name": "Get All Deployment Profiles",
+   "method": "GET",
+   "url": "{{aisec_base}}/v1/mgmt/deploymentprofiles",
+   "headers": [],
+   "query": [
+    {
+     "name": "unactivated",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-6b8f9c96793eb937",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Oauth",
+   "name": "Get OAuth Token",
+   "method": "POST",
+   "url": "{{aisec_base}}/v1/mgmt/oauth/client_credential/accesstoken",
+   "headers": [],
+   "query": [
+    {
+     "name": "tokenTtlInterval",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "tokenTtlUnit",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"client_id\": \"string\",\n  \"customer_app\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-2af424abb38ae9b5",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Customer App",
+   "name": "Delete Customer App",
+   "method": "DELETE",
+   "url": "{{aisec_base}}/v1/mgmt/customerapp",
+   "headers": [],
+   "query": [
+    {
+     "name": "app_name",
+     "value": "string",
+     "enabled": true
+    },
+    {
+     "name": "updated_by",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-d5c18eb349fef9c4",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Customer App",
+   "name": "Get Customer Application Details",
+   "method": "GET",
+   "url": "{{aisec_base}}/v1/mgmt/customerapp",
+   "headers": [],
+   "query": [
+    {
+     "name": "app_name",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-d7839b8c5b6901f2",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Customer App",
+   "name": "Update Customer App",
+   "method": "PUT",
+   "url": "{{aisec_base}}/v1/mgmt/customerapp",
+   "headers": [],
+   "query": [
+    {
+     "name": "customer_app_id",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"customer_appId\": \"string\",\n  \"tsg_id\": \"string\",\n  \"app_name\": \"string\",\n  \"model_name\": \"string\",\n  \"cloud_provider\": \"string\",\n  \"environment\": \"string\",\n  \"status\": \"string\",\n  \"created_by\": \"string\",\n  \"updated_by\": \"string\",\n  \"ai_agent_framework\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-1b9e034e9caa1fa1",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Customer App",
+   "name": "Get All Customer Apps",
+   "method": "GET",
+   "url": "{{aisec_base}}/v1/mgmt/customerapps",
+   "headers": [],
+   "query": [
+    {
+     "name": "offset",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-e50981f76155d5bb",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Custom Topic",
+   "name": "Create New Custom Topic",
+   "method": "POST",
+   "url": "{{aisec_base}}/v1/mgmt/topic",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"topic_id\": \"string\",\n  \"topic_name\": \"string\",\n  \"revision\": 0,\n  \"active\": true,\n  \"description\": \"string\",\n  \"examples\": [\n    \"string\"\n  ],\n  \"created_by\": \"string\",\n  \"updated_by\": \"string\",\n  \"last_modified_ts\": \"2026-09-20T10:59:52.088Z\",\n  \"created_ts\": \"2026-09-20T10:59:52.088Z\"\n}\n"
+  },
+  {
+   "id": "scm-d4d1419e545a68fe",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Custom Topic",
+   "name": "Delete a Custom Topic",
+   "method": "DELETE",
+   "url": "{{aisec_base}}/v1/mgmt/topic/{{topic_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-6e5969026e4d54f0",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Custom Topic",
+   "name": "Force Delete a Custom Topic",
+   "method": "DELETE",
+   "url": "{{aisec_base}}/v1/mgmt/topic/{{topic_id}}/force",
+   "headers": [],
+   "query": [
+    {
+     "name": "updated_by",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c644f99185bcf20c",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Custom Topic",
+   "name": "Get All Custom Topics",
+   "method": "GET",
+   "url": "{{aisec_base}}/v1/mgmt/topics",
+   "headers": [],
+   "query": [
+    {
+     "name": "offset",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-0112d21e4769709f",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Custom Topic",
+   "name": "Modify Custom Topic Details",
+   "method": "PUT",
+   "url": "{{aisec_base}}/v1/mgmt/topic/uuid/{{topic_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"topic_id\": \"string\",\n  \"topic_name\": \"string\",\n  \"revision\": 0,\n  \"active\": true,\n  \"description\": \"string\",\n  \"examples\": [\n    \"string\"\n  ],\n  \"created_by\": \"string\",\n  \"updated_by\": \"string\",\n  \"last_modified_ts\": \"2026-09-20T10:59:52.088Z\",\n  \"created_ts\": \"2026-09-20T10:59:52.088Z\"\n}\n"
+  },
+  {
+   "id": "scm-4566d21a68d020ad",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Dataplane/Scans",
+   "name": "Send an Asynchronous Scan Request",
+   "method": "POST",
+   "url": "{{airs_scan_base}}/v1/scan/async/request",
+   "headers": [
+    {
+     "name": "x-pan-token",
+     "value": "{{x_pan_token}}",
+     "enabled": true
+    }
+   ],
+   "query": [],
+   "auth": "api-key",
+   "body_kind": "json",
+   "body": "[\n  [\n    {\n      \"req_id\": 0,\n      \"scan_req\": {\n        \"tr_id\": \"string\",\n        \"session_id\": \"string\",\n        \"ai_profile\": {\n          \"profile_id\": \"string\",\n          \"profile_name\": \"string\"\n        },\n        \"metadata\": {\n          \"app_name\": \"string\",\n          \"app_user\": \"string\",\n          \"ai_model\": \"string\",\n          \"user_ip\": \"string\",\n          \"agent_meta\": {\n            \"agent_id\": \"string\",\n            \"agent_version\": \"string\",\n            \"agent_arn\": \"string\"\n          }\n        },\n        \"contents\": [\n          {\n            \"prompt\": \"string\",\n            \"response\": \"string\",\n            \"code_prompt\": \"string\",\n            \"code_response\": \"string\",\n            \"context\": \"string\",\n            \"tool_event\": null\n          }\n        ]\n      }\n    }\n  ]\n]\n"
+  },
+  {
+   "id": "scm-684449f3cf68168a",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Dataplane/Scans",
+   "name": "Send a Synchronous Scan Request",
+   "method": "POST",
+   "url": "{{airs_scan_base}}/v1/scan/sync/request",
+   "headers": [
+    {
+     "name": "x-pan-token",
+     "value": "{{x_pan_token}}",
+     "enabled": true
+    }
+   ],
+   "query": [],
+   "auth": "api-key",
+   "body_kind": "json",
+   "body": "{\n  \"ai_profile\": {\n    \"profile_name\": \"string\"\n  },\n  \"contents\": [\n    {\n      \"prompt\": \"Example prompt to scan\",\n      \"response\": \"Example model response\"\n    }\n  ]\n}\n"
+  },
+  {
+   "id": "scm-394977becc357333",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Dataplane/Scan Results",
+   "name": "Retrieve Scan results by ScanIDs",
+   "method": "GET",
+   "url": "{{airs_scan_base}}/v1/scan/results",
+   "headers": [
+    {
+     "name": "x-pan-token",
+     "value": "{{x_pan_token}}",
+     "enabled": true
+    }
+   ],
+   "query": [
+    {
+     "name": "scan_ids",
+     "value": "{{scan_ids}}",
+     "enabled": true
+    }
+   ],
+   "auth": "api-key",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-2e83577336938d95",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Dataplane/Scan Reports",
+   "name": "Retrieve Threat Scan Reports",
+   "method": "GET",
+   "url": "{{airs_scan_base}}/v1/scan/reports",
+   "headers": [
+    {
+     "name": "x-pan-token",
+     "value": "{{x_pan_token}}",
+     "enabled": true
+    }
+   ],
+   "query": [
+    {
+     "name": "report_ids",
+     "value": "{{report_ids}}",
+     "enabled": true
+    }
+   ],
+   "auth": "api-key",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-d9c44338d2019796",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Channels",
+   "name": "List Channels",
+   "method": "GET",
+   "url": "{{airt_nb_base}}/v1/channels",
+   "headers": [],
+   "query": [
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "include_all_if_empty",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "100",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-45c9ffe6021b83df",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Channels",
+   "name": "Create Channel",
+   "method": "POST",
+   "url": "{{airt_nb_base}}/v1/channels",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"name\": \"first\",\n  \"description\": \"First One!!\"\n}\n"
+  },
+  {
+   "id": "scm-896e682df8b1c9fe",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Channels",
+   "name": "Get Channel Stats",
+   "method": "GET",
+   "url": "{{airt_nb_base}}/v1/channels/stats",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-cef4d0a195bac010",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Channels",
+   "name": "Get Channel",
+   "method": "GET",
+   "url": "{{airt_nb_base}}/v1/channels/{{channelId}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-79a7371117a052de",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Channels",
+   "name": "Update Channel",
+   "method": "PATCH",
+   "url": "{{airt_nb_base}}/v1/channels/{{channelId}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"name\": \"updated-name\",\n  \"description\": \"Updated description\"\n}\n"
+  },
+  {
+   "id": "scm-b80e3ec0ec8328b0",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Adapters",
+   "name": "Create a new adapter",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/adapters",
+   "headers": [],
+   "query": [
+    {
+     "name": "validate",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"script_b64\": \"string\",\n  \"network_broker_channel_uuid\": \"string\",\n  \"variables\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\",\n      \"type\": \"string\"\n    }\n  ],\n  \"prompt\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-230dafecd2cf73f6",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Adapters",
+   "name": "Get adapter by UUID",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/adapters/{{adapter_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-1f474bdcf424b228",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Adapters",
+   "name": "Update an adapter",
+   "method": "PUT",
+   "url": "{{airt_mgmt_base}}/v1/adapters/{{adapter_uuid}}",
+   "headers": [],
+   "query": [
+    {
+     "name": "validate",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"script_b64\": \"string\",\n  \"network_broker_channel_uuid\": \"string\",\n  \"variables\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\",\n      \"type\": \"string\"\n    }\n  ],\n  \"prompt\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-90388b0207e7ddad",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Adapters",
+   "name": "List all adapters",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/adapters",
+   "headers": [],
+   "query": [
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "include_target_count",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-654de4959f3693b8",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Adapters",
+   "name": "Get adapter config defaults",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/adapters/config",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-daa819891ce52e50",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Adapters",
+   "name": "Validate adapter script",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/adapters/validate",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"script_b64\": \"string\",\n  \"network_broker_channel_uuid\": \"string\",\n  \"prompt\": \"string\",\n  \"variables\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\",\n      \"type\": \"string\"\n    }\n  ],\n  \"adapter_uuid\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-692f765f2d393568",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Adapters",
+   "name": "Delete an adapter",
+   "method": "DELETE",
+   "url": "{{airt_mgmt_base}}/v1/adapters/{{adapter_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-b482e5a8f552b052",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Create a new custom prompt set",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"property_names\": [\n    \"string\"\n  ],\n  \"language\": \"en\"\n}\n"
+  },
+  {
+   "id": "scm-82c58b534195ccbe",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "List custom prompt sets",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/list-custom-prompt-sets",
+   "headers": [],
+   "query": [
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "active",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "archive",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "language",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-239a46fd8638efad",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Update prompt set",
+   "method": "PUT",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"archive\": true,\n  \"property_names\": [\n    \"string\"\n  ]\n}\n"
+  },
+  {
+   "id": "scm-7c86029c050fbdc5",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Get prompt set details",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-26e402e0d2911659",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Archive or unarchive a prompt set",
+   "method": "PUT",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}/archive",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"archive\": true\n}\n"
+  },
+  {
+   "id": "scm-a83a1750756df7ee",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "List prompts in a prompt set",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}/list-custom-prompts",
+   "headers": [],
+   "query": [
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "active",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c9a2f83ad30eef6e",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Create prompt in a prompt set",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/custom-prompt",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"prompt\": \"string\",\n  \"goal\": \"string\",\n  \"properties\": {},\n  \"prompt_set_id\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-73061a0278f95c66",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Get prompt details",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}/custom-prompt/{{prompt_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-df68b75c6df22bc3",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Update prompt",
+   "method": "PUT",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}/custom-prompt/{{prompt_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"prompt\": \"string\",\n  \"goal\": \"string\",\n  \"properties\": {}\n}\n"
+  },
+  {
+   "id": "scm-51cfecbd84bc40d4",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Get property name",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/property-values/{{property_name}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-4fe22eacc7789109",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Create property name",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/property-names",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"name\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-8e88d1e82d380321",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Delete prompt",
+   "method": "DELETE",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}/custom-prompt/{{prompt_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-e2643e19b4517431",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Get property names",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/property-names",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-16dee6a8e2727c5b",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "List active custom prompt sets",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/active-custom-prompt-sets",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-fa1739da23701a6c",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Download template for a prompt set",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/download-template/{{prompt_set_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-384964329342a2bc",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Get values for multiple property names",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/property-values",
+   "headers": [],
+   "query": [
+    {
+     "name": "property_names",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-2cfd57bbf426353b",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Create property value",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/property-values",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"property_name\": \"string\",\n  \"property_value\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-3786c067c817a8bc",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Upload custom prompts",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/upload-custom-prompts-csv",
+   "headers": [],
+   "query": [
+    {
+     "name": "prompt_set_uuid",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "multipart",
+   "body": "[[parts]]\nname = \"file\"\nfile = \"custom-prompts.csv\"\nmime = \"text/csv\"\n"
+  },
+  {
+   "id": "scm-7a30e932ed452209",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Get prompt set version information",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}/version-info",
+   "headers": [],
+   "query": [
+    {
+     "name": "version",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-1f6fd47330bf06fb",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/CustomAttack",
+   "name": "Resolve prompt set reference",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/custom-attack/custom-prompt-set/{{prompt_set_uuid}}/reference",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-5d95ab09e41731a0",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Languages",
+   "name": "Get available languages",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/languages",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-01f9bc086d0972a5",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Get target details",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/target/{{target_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-8c054d01daf12c6f",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Create target",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/target",
+   "headers": [],
+   "query": [
+    {
+     "name": "validate",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"connection_params\": {\n    \"target_connection_config\": {\n      \"api_key\": \"string\",\n      \"model_name\": \"string\"\n    },\n    \"multi_turn_config\": {\n      \"type\": \"stateful\",\n      \"response_id_field\": \"string\",\n      \"request_id_field\": \"string\"\n    },\n    \"multi_turn_supported\": true\n  },\n  \"auth_config\": {\n    \"auth_header\": {}\n  },\n  \"network_broker_channel_uuid\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"target_type\": \"string\",\n  \"connection_type\": \"string\",\n  \"api_endpoint_type\": \"string\",\n  \"response_mode\": \"string\",\n  \"auth_type\": \"string\",\n  \"session_supported\": true,\n  \"extra_info\": {},\n  \"adapter_uuid\": \"string\",\n  \"target_metadata\": {\n    \"multi_turn\": true,\n    \"multi_turn_error_message\": \"string\",\n    \"supports_multimodal_files\": true,\n    \"supports_multimodal_files_error_message\": \"string\",\n    \"rate_limit\": 0,\n    \"rate_limit_enabled\": true,\n    \"rate_limit_error_code\": 0,\n    \"rate_limit_error_json\": {},\n    \"rate_limit_error_message\": \"string\",\n    \"content_filter_enabled\": true,\n    \"content_filter_error_code\": 0,\n    \"content_filter_error_json\": {},\n    \"content_filter_error_message\": \"string\",\n    \"probe_message\": \"Hello, this is a test message from the red team validation system.\",\n    \"request_timeout\": 110\n  },\n  \"target_background\": {\n    \"industry\": \"string\",\n    \"use_case\": \"string\",\n    \"competitors\": [\n      \"string\"\n    ],\n    \"agentic_profiling_enabled\": true\n  },\n  \"additional_context\": {\n    \"base_model\": \"string\",\n    \"core_architecture\": \"string\",\n    \"system_prompt\": \"string\",\n    \"languages_supported\": [\n      \"string\"\n    ],\n    \"banned_keywords\": [\n      \"string\"\n    ],\n    \"tools_accessible\": [\n      \"string\"\n    ]\n  },\n  \"canonical_id\": \"string\",\n  \"adapter_variable_overrides\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\",\n      \"type\": \"string\"\n    }\n  ]\n}\n"
+  },
+  {
+   "id": "scm-f24feee987eb7339",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "List targets",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/target",
+   "headers": [],
+   "query": [
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "target_type",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "adapter_uuid",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-639fdcd8439f183f",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Delete target",
+   "method": "DELETE",
+   "url": "{{airt_mgmt_base}}/v1/target/{{target_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-e5c77bd7c8c9e3dc",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Update target",
+   "method": "PUT",
+   "url": "{{airt_mgmt_base}}/v1/target/{{target_uuid}}",
+   "headers": [],
+   "query": [
+    {
+     "name": "validate",
+     "value": "true",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"connection_params\": {\n    \"target_connection_config\": {\n      \"api_key\": \"string\",\n      \"model_name\": \"string\"\n    },\n    \"multi_turn_config\": {\n      \"type\": \"stateful\",\n      \"response_id_field\": \"string\",\n      \"request_id_field\": \"string\"\n    },\n    \"multi_turn_supported\": true\n  },\n  \"auth_config\": {\n    \"auth_header\": {}\n  },\n  \"network_broker_channel_uuid\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"target_type\": \"string\",\n  \"connection_type\": \"string\",\n  \"api_endpoint_type\": \"string\",\n  \"response_mode\": \"string\",\n  \"auth_type\": \"string\",\n  \"session_supported\": true,\n  \"extra_info\": {},\n  \"adapter_uuid\": \"string\",\n  \"target_metadata\": {\n    \"multi_turn\": true,\n    \"multi_turn_error_message\": \"string\",\n    \"supports_multimodal_files\": true,\n    \"supports_multimodal_files_error_message\": \"string\",\n    \"rate_limit\": 0,\n    \"rate_limit_enabled\": true,\n    \"rate_limit_error_code\": 0,\n    \"rate_limit_error_json\": {},\n    \"rate_limit_error_message\": \"string\",\n    \"content_filter_enabled\": true,\n    \"content_filter_error_code\": 0,\n    \"content_filter_error_json\": {},\n    \"content_filter_error_message\": \"string\",\n    \"probe_message\": \"Hello, this is a test message from the red team validation system.\",\n    \"request_timeout\": 110\n  },\n  \"target_background\": {\n    \"industry\": \"string\",\n    \"use_case\": \"string\",\n    \"competitors\": [\n      \"string\"\n    ],\n    \"agentic_profiling_enabled\": true\n  },\n  \"additional_context\": {\n    \"base_model\": \"string\",\n    \"core_architecture\": \"string\",\n    \"system_prompt\": \"string\",\n    \"languages_supported\": [\n      \"string\"\n    ],\n    \"banned_keywords\": [\n      \"string\"\n    ],\n    \"tools_accessible\": [\n      \"string\"\n    ]\n  },\n  \"canonical_id\": \"string\",\n  \"adapter_variable_overrides\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\",\n      \"type\": \"string\"\n    }\n  ]\n}\n"
+  },
+  {
+   "id": "scm-d7572ee15fb1a677",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Start target profiling",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/target/{{target_uuid}}/profile",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-a4fe5a85b6980ccf",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Run profiling probes on target",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/target/probe",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"connection_params\": {\n    \"target_connection_config\": {\n      \"api_key\": \"string\",\n      \"model_name\": \"string\"\n    },\n    \"multi_turn_config\": {\n      \"type\": \"stateful\",\n      \"response_id_field\": \"string\",\n      \"request_id_field\": \"string\"\n    },\n    \"multi_turn_supported\": true\n  },\n  \"auth_config\": {\n    \"auth_header\": {}\n  },\n  \"network_broker_channel_uuid\": \"string\",\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"target_type\": \"string\",\n  \"connection_type\": \"string\",\n  \"api_endpoint_type\": \"string\",\n  \"response_mode\": \"string\",\n  \"auth_type\": \"string\",\n  \"session_supported\": true,\n  \"extra_info\": {},\n  \"adapter_uuid\": \"string\",\n  \"target_metadata\": {\n    \"multi_turn\": true,\n    \"multi_turn_error_message\": \"string\",\n    \"supports_multimodal_files\": true,\n    \"supports_multimodal_files_error_message\": \"string\",\n    \"rate_limit\": 0,\n    \"rate_limit_enabled\": true,\n    \"rate_limit_error_code\": 0,\n    \"rate_limit_error_json\": {},\n    \"rate_limit_error_message\": \"string\",\n    \"content_filter_enabled\": true,\n    \"content_filter_error_code\": 0,\n    \"content_filter_error_json\": {},\n    \"content_filter_error_message\": \"string\",\n    \"probe_message\": \"Hello, this is a test message from the red team validation system.\",\n    \"request_timeout\": 110\n  },\n  \"target_background\": {\n    \"industry\": \"string\",\n    \"use_case\": \"string\",\n    \"competitors\": [\n      \"string\"\n    ],\n    \"agentic_profiling_enabled\": true\n  },\n  \"additional_context\": {\n    \"base_model\": \"string\",\n    \"core_architecture\": \"string\",\n    \"system_prompt\": \"string\",\n    \"languages_supported\": [\n      \"string\"\n    ],\n    \"banned_keywords\": [\n      \"string\"\n    ],\n    \"tools_accessible\": [\n      \"string\"\n    ]\n  },\n  \"canonical_id\": \"string\",\n  \"adapter_variable_overrides\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\",\n      \"type\": \"string\"\n    }\n  ],\n  \"uuid\": \"string\",\n  \"probe_fields\": [\n    \"string\"\n  ]\n}\n"
+  },
+  {
+   "id": "scm-1d6bf1d14339251e",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Update target profile",
+   "method": "PUT",
+   "url": "{{airt_mgmt_base}}/v1/target/{{target_uuid}}/profile",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"target_background\": {\n    \"industry\": \"string\",\n    \"use_case\": \"string\",\n    \"competitors\": [\n      \"string\"\n    ],\n    \"agentic_profiling_enabled\": true\n  },\n  \"additional_context\": {\n    \"base_model\": \"string\",\n    \"core_architecture\": \"string\",\n    \"system_prompt\": \"string\",\n    \"languages_supported\": [\n      \"string\"\n    ],\n    \"banned_keywords\": [\n      \"string\"\n    ],\n    \"tools_accessible\": [\n      \"string\"\n    ]\n  }\n}\n"
+  },
+  {
+   "id": "scm-3e8e360e5ec7543f",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Get profiling results",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/target/{{target_uuid}}/profile",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-fd08e70dd88973a0",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Validate authentication configuration",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/target/validate-auth",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"auth_type\": \"string\",\n  \"auth_config\": {\n    \"auth_header\": {}\n  },\n  \"target_id\": \"string\",\n  \"network_broker_channel_uuid\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-ffbba503144ea39a",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Generate Copilot Studio auth URL",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/target/ms-copilot-studio/auth-url",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"client_id\": \"string\",\n  \"client_secret\": \"string\",\n  \"tenant_id\": \"string\",\n  \"target_uuid\": \"string\",\n  \"token_json_uuid\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-1b00b59c8ce30ab6",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Exchange Copilot Studio auth code",
+   "method": "POST",
+   "url": "{{airt_mgmt_base}}/v1/target/ms-copilot-studio/token",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"auth_response\": {},\n  \"token_json_uuid\": \"string\",\n  \"client_id\": \"string\",\n  \"client_secret\": \"string\",\n  \"tenant_id\": \"string\",\n  \"target_uuid\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-291ec931771304c6",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Target",
+   "name": "Delete MS Copilot Studio token records",
+   "method": "DELETE",
+   "url": "{{airt_mgmt_base}}/v1/target/ms-copilot-studio/token/{{token_json_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-a1645027eb33cec8",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Management/Dashboard",
+   "name": "Get dashboard overview",
+   "method": "GET",
+   "url": "{{airt_mgmt_base}}/v1/dashboard/overview",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-4a95e59b2dc4575c",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Categories",
+   "name": "Get all categories with subcategories",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/categories",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c8d673f3df6bfd4f",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/ErrorLogs",
+   "name": "List error logs for a scan",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/error-log/job/{{job_id}}",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "5",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-052090bd34cd4eb2",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/ErrorLogs",
+   "name": "List profiling errors for a target",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/error-log/target-profile/{{target_id}}",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "5",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-59c04f6472155601",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/CustomAttack",
+   "name": "Get prompt sets",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/custom-attacks/report/{{job_id}}/prompt-sets",
+   "headers": [],
+   "query": [
+    {
+     "name": "property_filters",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "is_threat",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "20",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-868533d4bc5bf8c1",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/CustomAttack",
+   "name": "Get custom attack Report",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/custom-attacks/report/{{job_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-25f5b144b421259e",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/CustomAttack",
+   "name": "Get prompts by set",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/custom-attacks/report/{{job_id}}/prompt-set/{{prompt_set_id}}/prompts",
+   "headers": [],
+   "query": [
+    {
+     "name": "is_threat",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "20",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-b41e4e7bf1e166bd",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/CustomAttack",
+   "name": "Get prompt detail",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/custom-attacks/report/{{job_id}}/prompt/{{prompt_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-d9997a4bbb0eb79f",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/CustomAttack",
+   "name": "Get property stats",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/custom-attacks/job/{{job_id}}/property-stats",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-d82e9329f5f7dab3",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/CustomAttack",
+   "name": "List custom attacks",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/custom-attacks/job/{{job_id}}/list-custom-attacks",
+   "headers": [],
+   "query": [
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "100",
+     "enabled": false
+    },
+    {
+     "name": "threat",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "prompt_set_id",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "property_value",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-27244bf7dd03d8ae",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/CustomAttack",
+   "name": "Get attack outputs",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/custom-attacks/job/{{job_id}}/attack/{{attack_id}}/list-outputs",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-2f31bad356ff4ace",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Languages",
+   "name": "Get available languages for scan",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/languages",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-84cd3ffb55e28636",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Dashboard",
+   "name": "Get scan statistics and risk profile",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/dashboard/scan-statistics",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-37282f070abe8df0",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Dashboard",
+   "name": "Get score trend for a target",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/dashboard/score-trend",
+   "headers": [],
+   "query": [
+    {
+     "name": "target_id",
+     "value": "string",
+     "enabled": true
+    },
+    {
+     "name": "date_range",
+     "value": "LAST_7_DAYS",
+     "enabled": false
+    },
+    {
+     "name": "start_date",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "end_date",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-5c25f0512fdc4cce",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Quota",
+   "name": "Get quota summary",
+   "method": "POST",
+   "url": "{{airt_data_base}}/v1/metering/quota",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-d2209bc9153388d4",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Get attack library report",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/static/{{job_id}}/report",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-4d7255bb32b00848",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "List attacks for a scan",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/static/{{job_id}}/list-attacks",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "50",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "attack_status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "attack_type",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "category",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "sub_category",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "compliance",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "threat",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "severity",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "attack_modality",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-7632b86fbdcdacb1",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Get attack details",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/static/{{job_id}}/attack/{{attack_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-caa55cd8fc6edf41",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Get attack library runtime security profile",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/static/{{job_id}}/runtime-policy-config",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c84c9846d1f8cb98",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Get agent scan report",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/dynamic/{{job_id}}/report",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-68ecb1037e7e5798",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Get attack library scan remediation",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/static/{{job_id}}/remediation",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-08b54f9b99f3342d",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Get agent scan runtime security profile",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/dynamic/{{job_id}}/runtime-policy-config",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-b1c2fe43158c284e",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "List agent scan goals",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/dynamic/{{job_id}}/list-goals",
+   "headers": [],
+   "query": [
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "20",
+     "enabled": false
+    },
+    {
+     "name": "count",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "goal_type",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "goal_category",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-bf9642aef0a131fb",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Get agent scan remediation",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/dynamic/{{job_id}}/remediation",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-85f5441699e32846",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "List agent scan stream details",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/dynamic/stream/{{stream_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-72714897aaa208df",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Download report",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/{{job_id}}/download",
+   "headers": [],
+   "query": [
+    {
+     "name": "file_format",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c8686d128dc8284c",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Generate partial scan report",
+   "method": "POST",
+   "url": "{{airt_data_base}}/v1/report/{{job_id}}/generate-partial-report",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-cc4ad4c2d7f732c6",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "List agent scan goal details",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/dynamic/{{job_id}}/goal/{{goal_id}}/list-streams",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-b15cbfdd9c1a8adc",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Report",
+   "name": "Get multi-turn attack details",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/report/static/{{job_id}}/attack-multi-turn/{{attack_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-df809ba415e2b8de",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Templates",
+   "name": "Get scan target metadata",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/scan/scan-metadata",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-92f763e730be635f",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Scan",
+   "name": "Create scan",
+   "method": "POST",
+   "url": "{{airt_data_base}}/v1/scan",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"name\": \"string\",\n  \"target\": {\n    \"uuid\": \"string\",\n    \"version\": 0\n  },\n  \"job_type\": \"string\",\n  \"job_metadata\": {\n    \"rate_limit_enabled\": true,\n    \"rate_limit\": 0,\n    \"rate_limit_error_code\": 0,\n    \"rate_limit_error_message\": \"string\",\n    \"rate_limit_error_json\": {},\n    \"content_filter_enabled\": true,\n    \"content_filter_error_code\": 0,\n    \"content_filter_error_message\": \"string\",\n    \"content_filter_error_json\": {},\n    \"language\": {\n      \"code\": \"string\",\n      \"name\": \"string\"\n    },\n    \"categories\": {\n      \"COMPLIANCE\": [\n        \"OWASP\",\n        \"NIST\"\n      ],\n      \"SAFETY\": [\n        \"BIAS\"\n      ],\n      \"SECURITY\": [\n        \"ADVERSARIAL_SUFFIX\",\n        \"JAILBREAK\"\n      ]\n    },\n    \"include_file_attacks\": true\n  },\n  \"version\": 0,\n  \"extra_info\": {}\n}\n"
+  },
+  {
+   "id": "scm-dce413d9ebbcc8d7",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Scan",
+   "name": "List scans",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/scan",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "50",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "status",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "job_type",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "target_id",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c65e7294636f81a6",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Scan",
+   "name": "Get scan details",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/scan/{{job_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-44c8a8d33217b09e",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Scan",
+   "name": "Abort scan",
+   "method": "POST",
+   "url": "{{airt_data_base}}/v1/scan/{{job_id}}/abort",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-8507578b25d5dafe",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Scan/Sentiment",
+   "name": "Update sentiment scan report",
+   "method": "POST",
+   "url": "{{airt_data_base}}/v1/sentiment",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"job_id\": \"string\",\n  \"up_vote\": true,\n  \"down_vote\": true\n}\n"
+  },
+  {
+   "id": "scm-7ae3aa3996206e46",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/Scan/Sentiment",
+   "name": "Get sentiment for a scan",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/sentiment/{{job_id}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-8e9c11c1998df6de",
+   "folder": "Products/Prisma AIRS/AI Red Teaming/Dataplane/GoalCategories",
+   "name": "Get goal categories by target type",
+   "method": "GET",
+   "url": "{{airt_data_base}}/v1/goal-categories/{{target_type}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-bf45757c5cd8a97c",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "Create Custom Rule",
+   "method": "POST",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{}\n"
+  },
+  {
+   "id": "scm-06e4eb0aaae55df8",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "List Custom Rules",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "sort_field",
+     "value": "created_at",
+     "enabled": false
+    },
+    {
+     "name": "sort_dir",
+     "value": "desc",
+     "enabled": false
+    },
+    {
+     "name": "is_archived",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "search_query",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "source_types",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "generation",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-0bcd250dd74b4c58",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "Get Custom Rule",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules/{{custom_rule_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-171afe444f685669",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "Update Custom Rule",
+   "method": "PUT",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules/{{custom_rule_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{}\n"
+  },
+  {
+   "id": "scm-09a8918f7257183d",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "List Custom Rules Versions",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules/versions",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "100",
+     "enabled": false
+    },
+    {
+     "name": "next_token",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-99053e3c3b07a7fe",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "Archive Custom Rule",
+   "method": "POST",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules/{{custom_rule_uuid}}/archive",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-de4429dd8d2bd9f1",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "Batch Assign Custom Rule",
+   "method": "POST",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules/{{custom_rule_uuid}}/security-groups",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"assignments\": [\n    {\n      \"security_group_uuid\": \"string\",\n      \"state\": \"string\"\n    }\n  ]\n}\n"
+  },
+  {
+   "id": "scm-f27d1342a38bc524",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "Unarchive Custom Rule",
+   "method": "POST",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules/{{custom_rule_uuid}}/unarchive",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c8ee020c43519a00",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "List Custom Rule Security Groups",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules/{{custom_rule_uuid}}/security-groups",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-5f598aa31aa59b63",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Custom Rules",
+   "name": "Remove Custom Rule Assignment",
+   "method": "DELETE",
+   "url": "{{aims_mgmt_base}}/v1/custom-rules/{{custom_rule_uuid}}/security-groups/{{sg_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-af59145d2d313d02",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "Create Security Group",
+   "method": "POST",
+   "url": "{{aims_mgmt_base}}/v1/security-groups",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"description\": \"string\",\n  \"name\": \"string\",\n  \"rule_configurations\": {},\n  \"source_type\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-db16cb2472ffe5c1",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "List Security Groups",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-groups",
+   "headers": [],
+   "query": [
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "50",
+     "enabled": false
+    },
+    {
+     "name": "sort_field",
+     "value": "created_at",
+     "enabled": false
+    },
+    {
+     "name": "sort_dir",
+     "value": "desc",
+     "enabled": false
+    },
+    {
+     "name": "source_types",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "search_query",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "enabled_rules",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-5f4df006bbb3ae63",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "List Rule Instances",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{security_group_uuid}}/rule-instances",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "security_rule_uuid",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "state",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "is_custom",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "generation",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-106b63d27a2b14be",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "List Rule Instances Versions",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{security_group_uuid}}/rule-instances/versions",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "100",
+     "enabled": false
+    },
+    {
+     "name": "next_token",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-1f1d3418f9f8a979",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "Delete Security Group",
+   "method": "DELETE",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-07b3e79a3b146986",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "Get Rule Instance",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{security_group_uuid}}/rule-instances/{{rule_instance_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-7feb9bde051abe7d",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "Update Rule Instance",
+   "method": "PUT",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{security_group_uuid}}/rule-instances/{{rule_instance_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"field_values\": {},\n  \"security_group_uuid\": \"string\",\n  \"state\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-9b2cdf2f3141e1db",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "Get Security Group",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-e8597f9942f7b059",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Groups",
+   "name": "Update Security Group",
+   "method": "PUT",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"description\": \"string\",\n  \"name\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-d9e68d6319f070b2",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Rules",
+   "name": "List Security Rules",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-rules",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "source_type",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "search_query",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "generation",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-3ca1ac829ffdae11",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Rules",
+   "name": "List Security Rules Versions",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-rules/versions",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "100",
+     "enabled": false
+    },
+    {
+     "name": "next_token",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-62f762faf970b504",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Rules",
+   "name": "Get Security Rule",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-rules/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-9cdc2470bd9001e1",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Rule Instances",
+   "name": "List Rule Instances Versions",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{security_group_uuid}}/rule-instances/versions",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "100",
+     "enabled": false
+    },
+    {
+     "name": "next_token",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-618126cbef227c8f",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Rule Instances",
+   "name": "List Rule Instances",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{security_group_uuid}}/rule-instances",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "security_rule_uuid",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "state",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "is_custom",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "generation",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-c028edee652c333c",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Rule Instances",
+   "name": "Get Rule Instance",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{security_group_uuid}}/rule-instances/{{rule_instance_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-247be18ace9359ba",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/Model Security Rule Instances",
+   "name": "Update Rule Instance",
+   "method": "PUT",
+   "url": "{{aims_mgmt_base}}/v1/security-groups/{{security_group_uuid}}/rule-instances/{{rule_instance_uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"field_values\": {},\n  \"security_group_uuid\": \"string\",\n  \"state\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-e7d172213d64d322",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Management/PyPI Authentication",
+   "name": "Get Pypi Url",
+   "method": "GET",
+   "url": "{{aims_mgmt_base}}/v1/pypi/authenticate",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-a6203fa423d14211",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Model Versions",
+   "name": "Get Model Version",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/model-versions/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-8686d60a463eefe7",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Model Versions",
+   "name": "List Model Version Files",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/model-versions/{{uuid}}/files",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-4ad61f824b5ebb6a",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Models",
+   "name": "Get Model",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/models/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-1923c1c303e50a10",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Models",
+   "name": "List Models",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/models",
+   "headers": [],
+   "query": [
+    {
+     "name": "search_query",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "sort_field",
+     "value": "updated_at",
+     "enabled": false
+    },
+    {
+     "name": "sort_order",
+     "value": "desc",
+     "enabled": false
+    },
+    {
+     "name": "latest_version_outcomes",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "latest_version_formats",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "latest_version_source_types",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "latest_version_scan_time_before",
+     "value": "2026-09-20T11:31:12.909Z",
+     "enabled": false
+    },
+    {
+     "name": "start_time",
+     "value": "2026-09-20T11:31:12.909Z",
+     "enabled": false
+    },
+    {
+     "name": "end_time",
+     "value": "2026-09-20T11:31:12.909Z",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-8016c5cc145e5ead",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Models",
+   "name": "List Model Versions",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/models/{{uuid}}/model-versions",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "sort_order",
+     "value": "desc",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-5336c8abead8b8a3",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Evaluations",
+   "name": "Get Evaluation",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/evaluations/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-e0593e4175084a58",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scan Labels",
+   "name": "List Scan Label Keys",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/scans/label-keys",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-213cebc0246f64a8",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scan Labels",
+   "name": "List Scan Label Key Values",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/scans/label-keys/{{key}}/values",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "search",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-2e7a3d32d5f9d1cf",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scan Labels",
+   "name": "Delete Scan Labels",
+   "method": "DELETE",
+   "url": "{{aims_data_base}}/v1/scans/{{scan_uuid}}/labels",
+   "headers": [],
+   "query": [
+    {
+     "name": "keys",
+     "value": "string",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-cfb34ced37d28b62",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scan Labels",
+   "name": "Add Scan Labels",
+   "method": "POST",
+   "url": "{{aims_data_base}}/v1/scans/{{scan_uuid}}/labels",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"labels\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\"\n    }\n  ]\n}\n"
+  },
+  {
+   "id": "scm-96b2f6852b2fdc06",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scan Labels",
+   "name": "Set Scan Labels",
+   "method": "PUT",
+   "url": "{{aims_data_base}}/v1/scans/{{scan_uuid}}/labels",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"labels\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\"\n    }\n  ]\n}\n"
+  },
+  {
+   "id": "scm-a550d795e6f42b1f",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scans",
+   "name": "List Scans",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/scans",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "sort_order",
+     "value": "desc",
+     "enabled": false
+    },
+    {
+     "name": "search_query",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "security_group_uuid",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "model_version_uuid",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "source_types",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "eval_outcomes",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "start_time",
+     "value": "2026-09-20T11:31:12.909Z",
+     "enabled": false
+    },
+    {
+     "name": "end_time",
+     "value": "2026-09-20T11:31:12.909Z",
+     "enabled": false
+    },
+    {
+     "name": "labels_query",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-82d42d5d6c3c06e7",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scans",
+   "name": "Create Scan",
+   "method": "POST",
+   "url": "{{aims_data_base}}/v1/scans",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "json",
+   "body": "{\n  \"allow_patterns\": [\n    \"string\"\n  ],\n  \"ignore_patterns\": [\n    \"string\"\n  ],\n  \"labels\": [\n    {\n      \"key\": \"string\",\n      \"value\": \"string\"\n    }\n  ],\n  \"model_author\": \"string\",\n  \"model_name\": \"string\",\n  \"model_uri\": \"string\",\n  \"model_version\": \"string\",\n  \"scan_details\": {\n    \"error_code\": \"string\",\n    \"error_message\": \"string\",\n    \"files\": [\n      {\n        \"blob_id\": \"string\",\n        \"error_message\": \"string\",\n        \"file_path\": \"string\",\n        \"formats\": [\n          \"string\"\n        ],\n        \"issues_detected\": [\n          {\n            \"description\": \"string\",\n            \"module\": \"string\",\n            \"operator\": \"string\",\n            \"source\": \"string\",\n            \"threat\": \"string\"\n          }\n        ],\n        \"modelscan_status\": \"string\",\n        \"sha256\": \"string\",\n        \"size_bytes\": 0\n      }\n    ],\n    \"model_formats\": [\n      \"string\"\n    ],\n    \"model_size_bytes\": 0,\n    \"scan_duration_ms\": 0,\n    \"scanner_version\": \"string\",\n    \"time_started\": \"2026-09-20T11:31:12.909Z\",\n    \"total_files_scanned\": 0,\n    \"total_files_skipped\": 0\n  },\n  \"scan_origin\": \"string\",\n  \"security_group_uuid\": \"string\"\n}\n"
+  },
+  {
+   "id": "scm-2bb1ca7b54499349",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scans",
+   "name": "Get Scan Evaluations",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/scans/{{scan_uuid}}/evaluations",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "sort_field",
+     "value": "created_at",
+     "enabled": false
+    },
+    {
+     "name": "sort_order",
+     "value": "desc",
+     "enabled": false
+    },
+    {
+     "name": "result",
+     "value": "string",
+     "enabled": false
+    },
+    {
+     "name": "rule_instance_uuid",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-11a89c324e5b9cdc",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scans",
+   "name": "Get Files",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/scans/{{scan_uuid}}/files",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    },
+    {
+     "name": "sort_field",
+     "value": "path",
+     "enabled": false
+    },
+    {
+     "name": "sort_dir",
+     "value": "asc",
+     "enabled": false
+    },
+    {
+     "name": "query_path",
+     "value": "/",
+     "enabled": false
+    },
+    {
+     "name": "recursive",
+     "value": "true",
+     "enabled": false
+    },
+    {
+     "name": "type",
+     "value": "string",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-de941123bfac2d16",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scans",
+   "name": "Get Scan Violations",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/scans/{{scan_uuid}}/rule-violations",
+   "headers": [],
+   "query": [
+    {
+     "name": "limit",
+     "value": "10",
+     "enabled": false
+    },
+    {
+     "name": "skip",
+     "value": "0",
+     "enabled": false
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-07b353dc450737ad",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Scans",
+   "name": "Get Scan",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/scans/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-f1f20676d2d6608f",
+   "folder": "Products/Prisma AIRS/AI Artifact Analysis/Model Security/Dataplane/Violations",
+   "name": "Get Violation",
+   "method": "GET",
+   "url": "{{aims_data_base}}/v1/violations/{{uuid}}",
+   "headers": [],
+   "query": [],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  },
+  {
+   "id": "scm-83676f7b58c63758",
+   "folder": "Products/Prisma AIRS/AI Runtime Security/Management/Reports",
+   "name": "Get scan content",
+   "method": "GET",
+   "url": "{{aisec_base}}/v1/mgmt/reports/scancontent",
+   "headers": [
+    {
+     "name": "x-tsg-id",
+     "value": "{{tsg_id}}",
+     "enabled": true
+    }
+   ],
+   "query": [
+    {
+     "name": "scan_id",
+     "value": "{{scan_id}}",
+     "enabled": true
+    },
+    {
+     "name": "scan_sub_req_id",
+     "value": "0",
+     "enabled": true
+    }
+   ],
+   "auth": "oauth2",
+   "body_kind": "text",
+   "body": ""
+  }
+ ]
+}

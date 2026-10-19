@@ -12,6 +12,7 @@ import { followAppearance } from './shell/appearance'
 import type { DispatchOutcome } from './features/tenants/dispatch'
 import { DesktopShell } from './shell/desktop-shell'
 import { forgetAcademyPresentation } from './features/academy/presentation-storage'
+import { SAVE_DOCUMENT_EVENT } from './features/workbench/document-editor'
 
 export function App({ client }: { client: DesktopClient }) {
     const [snapshot, setSnapshot] = useState<ShellSnapshot | null>(null)
@@ -66,6 +67,8 @@ export function App({ client }: { client: DesktopClient }) {
             setActive(command.feature)
         }
         else if (command.kind === 'commandPalette') setPaletteOpen(true)
+        // The open API Client request saves (its editor listens).
+        else if (command.kind === 'saveDocument') window.dispatchEvent(new Event(SAVE_DOCUMENT_EVENT))
         else void setAppearance(command.theme)
     }
 
