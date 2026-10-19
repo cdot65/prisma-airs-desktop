@@ -1,0 +1,60 @@
+{
+  "request_id": "rq-C11-20261019T111127Z-e9e882be",
+  "attempt_id": "attempt-03",
+  "subject": "C11",
+  "fingerprints": {
+    "source": "ae28b57ea4285c37d76c1f6f525fe3573cda534938806c8ba59072549bff83cd",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "60ffc9ff7373b3a3638aeb6c3992a3d27c03a71c1ce1d1b43a9072be481932d9",
+    "evidence": "5ce77f4e5698d38e3b11dd4ab5866d92252ff3dc6ae25168b4246828c52a111b"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [],
+  "limitations": [
+    "Attempt-02 E2 is resolved by C11-N11. The driver reveals A's synthetic content, switches through Settings to tenant B, opens Sessions and reports, and records no A content, rows or report under B. The retained B snapshots corroborate the unconfigured-client message and empty report list; switching back records A's report available again. This native case covers B without a management client; delayed credential retirement is covered separately by the production-interface tests.",
+    "Only tools/native-acceptance/acceptance_c11.py and docs/architecture/native-checks.json differ from attempt-02's source inventory. Application code is unchanged. The previous inspection of R1-R4 remains applicable: persistence is coordinated with retirement/cleanup, report writes are tenant-bound, pagination respects continuation, and local reports work without management credentials. Real NSSavePanel evidence continues to cover save, confirmed owner-only replacement, cancellation and focus.",
+    "Independently recomputed all four supplied fingerprints twice: 427 source entries and 214 packet references matched, including retained logs, before/after run inputs and prepared artifacts. Verified the supplied C10 receipt and request/verdict/raw-output hashes; its five scores are all 9.",
+    "Independently reran the in-memory React/JSDOM probe against the actual SessionsView and sessions model, with presentation leaves and dispatch stubbed. An existing report remained accessible without a management credential, OpenReports was dispatched, and no remote read was attempted. Full Rust, frontend and native suites were assessed from retained execution evidence rather than independently rerun.",
+    "Retained check logs report 303 frontend tests and 87 core unit tests passing. Scoped logs report 22 sessions_reports, 112 overlapping frontend, 5 overlapping sessions-unit, 13 management-read and 44 controller tests passing. Mutation evidence reports all 28 guards rejecting their mutations and four baselines passing. Current C11 native evidence reports 11 passing checks against executable SHA-256 339a61046565d5c339c020d8aa6980863007571f342b730a640f018c3f57a813; prepared bundle/executable hashes match. Historical native records were not counted as current-bundle regression evidence.",
+    "Recomputed the current retained workload statistics: next-page p95 26.124542 ms from 20 samples, detector-search p95 57.379083 ms from 10 samples, and maximum process-tree RSS 363.5 MiB from 20 samples. These satisfy the unchanged 1500 ms, 15000 ms and 450 MiB budgets and bind to the current executable. The registration remains the one previously verified at commit b83fa08bb4d1f5236eec73015469c83f0a728db4. Measurements were not independently rerun.",
+    "Dependency inputs are unchanged from attempt-02, where SDK archive SHA-256 6d555d955c3734dd5ee78f7173569bdecd4426095b2ffedc4b77d8f0f2c2e8d9 and all 131 packaged files were independently verified against consumed registry source. No application files were changed, product endpoints run or credentials accessed; only the designated verdict was written.",
+    "This pass covers C11 and its frozen inputs, not P03 or neighboring chunks. I did not independently launch the application; spoken VoiceOver output remains unrecorded. Synthetic dashboard fixtures do not establish live compatibility; live qualification and package/signing gates remain C25/C26. Retained hashes bind evidence bytes and do not independently authenticate authorship."
+  ],
+  "inspected_files": [
+    "docs/planning/chunks/C11.md",
+    "docs/planning/review-protocol.md",
+    "docs/architecture/native-checks.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/planning/reviews/C11/attempt-03/request.json",
+    "docs/planning/reviews/C11/attempt-03/source-inventory.json",
+    "docs/planning/reviews/C11/attempt-02/source-inventory.json",
+    "docs/planning/reviews/C11/attempt-02/verdict.json",
+    "docs/planning/reviews/C11/follow-ups.md",
+    "docs/planning/reviews/C10/attempt-03/receipt.json",
+    "docs/planning/reviews/C10/attempt-03/verdict.json",
+    "apps/desktop/src/features/sessions/sessions-view.tsx",
+    "apps/desktop/src/features/sessions/sessions-model.ts",
+    "tools/native-acceptance/acceptance_c11.py",
+    "docs/planning/evidence/C11/native-acceptance.json",
+    "docs/planning/evidence/C11/native/observations.json",
+    "docs/planning/evidence/C11/native/tree-tenant-b-sessions.json",
+    "docs/planning/evidence/C11/native/tree-tenant-b-reports.json",
+    "docs/planning/evidence/C11/workload-budget-registration.json",
+    "docs/planning/evidence/C11/workload-budget.md",
+    "docs/planning/evidence/C11/workload-perf.json",
+    "docs/planning/evidence/C11/mutation-probes/results.json",
+    "docs/planning/evidence/C11/runs/check-20261019T110627Z-643066/run.json",
+    "docs/planning/evidence/C11/runs/test-20261019T110813Z-cf1718/run.json",
+    "docs/planning/evidence/C11/runs/native-prepare-20261019T110916Z-412c63/run.json"
+  ],
+  "recommendation": "pass"
+}

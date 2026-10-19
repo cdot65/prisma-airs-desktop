@@ -312,6 +312,39 @@ def run():
     obs["min_next"] = c8.reach(app, 1, "Next page")
     fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {app.pid}) to set size of window 1 to {{1280, 820}}'])
 
+    # ---- N11: another tenant sees none of A's content or reports ----
+    press(app, "Sessions")
+    c8.text(app, "Sessions 1–25 of 60", 15)
+    open_session(app, "ses-00000")
+    app.ax("press", "AXButton", f"Show content of scan {SCAN}")
+    tree, a_shown = c8.text(app, PROMPT, 12)
+    app.open_settings()
+    app.create_custom_tenant("Tenant B", endpoint.origin)
+    tree, b_active = app.make_active("Tenant B")
+    app.ax("press", "AXButton", "Sessions &")
+    tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Investigate sessions") is not None, 10)
+    time.sleep(1)
+    tree = app.tree()
+    b_sessions = {"needs_client": app.has_text(tree, "has no ready management client"),
+                  "no_content": not app.has_text(tree, PROMPT) and not app.has_text(tree, RESPONSE),
+                  "no_rows": not app.has_text(tree, "ses-00000")}
+    obs["tree_tenant_b_sessions"] = save_tree("tenant-b-sessions", tree)
+    press(app, "FP/FN reports")
+    tree, _ = app.wait_for(lambda t: app.has_text(t, "No reports yet"), 8)
+    b_reports = {"empty": app.has_text(tree, "No reports yet"),
+                 "no_a_report": not app.has_text(tree, "Order numbers look like card numbers") and not app.has_text(tree, SCAN)}
+    obs["tree_tenant_b_reports"] = save_tree("tenant-b-reports", tree)
+    app.open_settings()
+    app.make_active("Tenant A")
+    app.ax("press", "AXButton", "Sessions &")
+    app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Investigate sessions") is not None, 10)
+    tree, back = app.wait_for(lambda t: fx.App.node(t, "AXRadioButton", "FP/FN reports (1)") is not None
+                              or fx.App.node(t, "AXButton", "FP/FN reports (1)") is not None, 10)
+    press(app, "FP/FN reports (1)")
+    tree, a_report = c8.text(app, "Order numbers look like card numbers", 8)
+    obs["tenant_switch"] = {"a_content_shown": a_shown, "b_active": b_active, **b_sessions, **b_reports,
+                            "a_report_back": back and a_report, "a_content_not_restored": not app.has_text(tree, PROMPT)}
+
     # ---- N05 (end): removing the management client removes the seal ----
     app.open_settings()
     app.ax("press", "AXButton", "Remove management client")
@@ -377,6 +410,9 @@ def evaluate(prepared, o):
     add("C11-N10", pe["panel_shown"] and pe["saved"] and pe["mode"] == "0o600" and pe["replaced"] and pe["replaced_mode"] == "0o600"
         and pe["cancelled"] and pe["focus_in_window"],
         f"production save panel: {pe}", [o["tree_panel_export"]])
+    ts = o["tenant_switch"]
+    add("C11-N11", all(ts.values()), f"switch to tenant B and back: {ts}",
+        [o["tree_tenant_b_sessions"], o["tree_tenant_b_reports"]])
     zoom_ok = all(r["clear"] for r in (o["zoom_refresh"], o["zoom_next"], o["min_refresh"], o["min_next"]))
     add("C11-N09", zoom_ok,
         f"200% zoom: {o['zoom_refresh']['found']} / {o['zoom_next']['found']}; minimum size: {o['min_refresh']['found']} / {o['min_next']['found']}; "

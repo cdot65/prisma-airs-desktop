@@ -9,17 +9,20 @@ a capped session ID walk claims absence 101 True
 a scan ID search returns content 101 True
 a session credential's investigation is sealed on disk 101 True
 the snapshot is written in plaintext 101 True
-a removed credential leaves its sealed investigation 0 False
+a removed credential's cleanup races an investigation write 101 True
 reset leaves sealed investigations and reports 101 True
-an edit resets the report time 0 False
+an edit resets the report time 101 True
 any category is accepted 101 True
 a report is built from another scan of the session 101 True
 a deleted tenant's reports stay on disk 101 True
 undo overwrites a newer report 101 True
 CSV cells lose v1's formula guard 101 True
 the metadata export carries revealed content 101 True
+a short page that reports more ends the walk 101 True
+a pending report write is matched by generation alone 101 True
+an investigation key failure falls back to plaintext 101 True
+reports need a management client 1 True
 Hide keeps the content shown 1 True
-reports open without a management client 1 True
 a capped session ID search claims absence 1 True
 a cancelled export may carry a file name 1 True
 a report of an unknown kind is accepted 1 True

@@ -220,9 +220,9 @@
     "guard_failed": true
   },
   {
-    "mutation": "a removed credential leaves its sealed investigation",
+    "mutation": "a removed credential's cleanup races an investigation write",
     "files": [
-      "crates/desktop-core/src/authority.rs"
+      "crates/desktop-core/src/sessions.rs"
     ],
     "command": [
       "cargo",
@@ -235,9 +235,9 @@
       "--test",
       "sessions_reports"
     ],
-    "guard": "removing_the_credential_removes_its_sealed_investigation_and_key",
-    "exit_code": 0,
-    "guard_failed": false
+    "guard": "a_write_held_across_credential_removal_leaves_no_investigation_behind",
+    "exit_code": 101,
+    "guard_failed": true
   },
   {
     "mutation": "reset leaves sealed investigations and reports",
@@ -270,14 +270,12 @@
       "--locked",
       "-p",
       "desktop-core",
-      "--features",
-      "test-fixtures",
-      "--test",
-      "sessions_reports"
+      "--lib",
+      "sessions"
     ],
-    "guard": "reports_are_built_from_scan_metadata_and_kept_edited_removed_and_undone",
-    "exit_code": 0,
-    "guard_failed": false
+    "guard": "reports_upsert_remove_and_undo_without_overwriting_newer",
+    "exit_code": 101,
+    "guard_failed": true
   },
   {
     "mutation": "any category is accepted",
@@ -398,6 +396,86 @@
     "guard_failed": true
   },
   {
+    "mutation": "a short page that reports more ends the walk",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "short_and_empty_pages_that_report_more_are_walked_not_taken_as_the_end",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a pending report write is matched by generation alone",
+    "files": [
+      "crates/desktop-core/src/authority/sessions_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "held_report_writes_keep_each_tenants_own_latest_changes",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an investigation key failure falls back to plaintext",
+    "files": [
+      "crates/desktop-core/src/sessions.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sessions_reports"
+    ],
+    "guard": "a_locked_keychain_keeps_the_investigation_in_memory_never_in_plaintext",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reports need a management client",
+    "files": [
+      "apps/desktop/src/features/sessions/sessions-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/sessions/sessions-view.test.tsx"
+    ],
+    "guard": "keeps existing reports usable without a management client",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
     "mutation": "Hide keeps the content shown",
     "files": [
       "apps/desktop/src/features/sessions/sessions-view.tsx"
@@ -414,26 +492,6 @@
       "src/features/sessions/sessions-view.test.tsx"
     ],
     "guard": "shows content only after an explicit reveal and forgets it on Hide and on leaving",
-    "exit_code": 1,
-    "guard_failed": true
-  },
-  {
-    "mutation": "reports open without a management client",
-    "files": [
-      "apps/desktop/src/features/sessions/sessions-view.tsx"
-    ],
-    "command": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/features/sessions/sessions-view.test.tsx"
-    ],
-    "guard": "asks for a management client before reading sessions",
     "exit_code": 1,
     "guard_failed": true
   },
