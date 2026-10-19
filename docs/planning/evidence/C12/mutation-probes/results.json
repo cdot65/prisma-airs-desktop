@@ -1,5 +1,127 @@
 [
   {
+    "inputs": {
+      "apps/desktop/src/features/library/library-view.tsx": "32b6ca6990fa46dec38977b971656eb209eb7226d260d88497c5e077bd0d3a50",
+      "apps/desktop/src/features/runtime/overview-inbox.tsx": "14b1bdd988890e4a45e48362bf8936dfe7716a1766cd0b972539c972090ff655",
+      "crates/desktop-core/src/authority.rs": "985861608978a0b8209fa4b3921de10492542b196d422e533a74546acb75620e",
+      "crates/desktop-core/src/authority/library_domain.rs": "2f1bb568010d312e6015b8f7cb5d9cc5b065b49b2df855adcff94f885f83f4a1",
+      "crates/desktop-core/src/authority/observation_domain.rs": "347d7722f1b5e4fa0a5377ffe3d790bd00c686ba12a1bf43fc4f970afd0b0c57",
+      "crates/desktop-core/src/library.rs": "92098cff4842f48fad8f3e5c75856873cb6c171c70835d8c4d5255404925c6c3",
+      "crates/desktop-core/src/observation.rs": "9903b8773f5adc1b41b6c501f69eef3b5dab058717b4cf98ef30f0844513410e",
+      "packages/desktop-contracts/src/client.ts": "c4136d400bc5a04a12715bd3c6cbfcd6401d6b2255dc5ef2ba0731f2e9c7bfde"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "library"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "observation"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/library/library-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/overview-inbox.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
     "mutation": "a specification keeps a profile",
     "files": [
       "crates/desktop-core/src/library.rs"
@@ -196,26 +318,6 @@
     "guard_failed": true
   },
   {
-    "mutation": "a deleted tenant's library stays",
-    "files": [
-      "crates/desktop-core/src/authority.rs"
-    ],
-    "command": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--features",
-      "test-fixtures",
-      "--test",
-      "library_observation"
-    ],
-    "guard": "a_deleted_tenant_or_reset_takes_its_sealed_library_and_key",
-    "exit_code": 101,
-    "guard_failed": true
-  },
-  {
     "mutation": "reset leaves case libraries",
     "files": [
       "crates/desktop-core/src/authority.rs"
@@ -366,6 +468,26 @@
     "guard_failed": true
   },
   {
+    "mutation": "an earlier write's success replaces a later refusal",
+    "files": [
+      "crates/desktop-core/src/authority/library_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "catalogs_import_examples_once_and_report_unusable_catalogs",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
     "mutation": "a failed refresh replaces the last read",
     "files": [
       "crates/desktop-core/src/authority/observation_domain.rs"
@@ -382,6 +504,102 @@
       "library_observation"
     ],
     "guard": "a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Runtime case may carry a payload",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "library"
+    ],
+    "guard": "exports_and_imports_keep_v1s_file_and_refuse_foreign_or_malformed_files",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "inconsistent totals get a share",
+    "files": [
+      "crates/desktop-core/src/observation.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "observation"
+    ],
+    "guard": "activity_needs_known_totals",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a deleted tenant's library key is not ledgered",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "a_failed_library_cleanup_stays_ledgered_and_finishes_later",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "deadlines are never published",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "freshness_and_snooze_deadlines_are_published_without_any_event",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed write reports success",
+    "files": [
+      "crates/desktop-core/src/authority/library_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "the_library_works_offline_survives_restart_and_retries_a_failed_save",
     "exit_code": 101,
     "guard_failed": true
   },
@@ -484,91 +702,5 @@
     "guard": "rejects a Runtime case with a payload",
     "exit_code": 1,
     "guard_failed": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--features",
-      "test-fixtures",
-      "--test",
-      "library_observation"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--lib",
-      "library"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "cargo",
-      "test",
-      "--locked",
-      "-p",
-      "desktop-core",
-      "--lib",
-      "observation"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/features/library/library-view.test.tsx"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/features/runtime/overview-inbox.test.tsx"
-    ],
-    "exit_code": 0,
-    "passes": true
-  },
-  {
-    "baseline": [
-      "pnpm",
-      "--filter",
-      "@prisma-airs/desktop",
-      "exec",
-      "vitest",
-      "run",
-      "--config",
-      "vitest.config.ts",
-      "src/contracts/snapshot-validation.test.ts"
-    ],
-    "exit_code": 0,
-    "passes": true
   }
 ]

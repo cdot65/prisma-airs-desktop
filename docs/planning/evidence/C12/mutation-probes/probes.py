@@ -9,10 +9,13 @@ Run in a disposable copy of the repository (never the reviewed checkout):
     python3 -I -B probes.py <copy-root> <results.json> [name filter]
 Each probe applies one mutation that violates a guarded invariant, runs the
 guarding target, requires it to fail on the named test, and restores the
-files. Unmutated baselines of every target must pass.
+files. Unmutated baselines of every target must pass three runs, with their
+output kept.
 """
+import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -100,6 +103,9 @@ PROBES = [
     ("an acknowledgement hides a worsened item",
      [(ODOMAIN, "                        HoldKind::Acknowledge => level(item) <= h.level,", "                        HoldKind::Acknowledge => true,")],
      LO_T, "a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence"),
+    ("an earlier write's success replaces a later refusal",
+     [(LDOMAIN, "                Ok(_) if library.status != stamp => {}\n", "")],
+     LO_T, "catalogs_import_examples_once_and_report_unusable_catalogs"),
     ("a failed refresh replaces the last read",
      [(ODOMAIN, "                if record.read.is_none() {\n                    record.read = Some(overview);\n                }", "                record.read = Some(overview);")],
      LO_T, "a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence"),
@@ -116,7 +122,7 @@ PROBES = [
      [(AUTHORITY, "                    if state.overview_published != now {", "                    if false {")],
      LO_T, "freshness_and_snooze_deadlines_are_published_without_any_event"),
     ("a failed write reports success",
-     [(LDOMAIN, "                Err(_) => Err(CaseProblem::NotSaved),", "                Err(_) => Ok(notice),")],
+     [(LDOMAIN, "                Err(_) => Err(CaseProblem::NotSaved),", "                Err(_) => Ok(o.notice),")],
      LO_T, "the_library_works_offline_survives_restart_and_retries_a_failed_save"),
     ("a specification offers Load",
      [(LVIEW, "                                    {c.product === 'runtime-security' ? (", "                                    {true ? (")],
@@ -144,6 +150,16 @@ def run(cmd):
     return p.returncode, p.stdout + p.stderr
 
 
+def failed_on(test, out):
+    """True only when the named test itself reports a failure (a Rust
+    `test ... FAILED` line or a Vitest failure line naming it), so a build
+    error or another test's failure never counts as the guard catching
+    the mutation."""
+    name = re.escape(test)
+    return bool(re.search(rf"^test (\S+::)?{name} \.\.\. FAILED$", out, re.M)
+                or re.search(rf"^.*(×|FAIL).*(> |× ){name}(\s+\d+ms)?\s*$", out, re.M))
+
+
 def apply(edits):
     """Checks every anchor first, then writes; a bad anchor changes nothing."""
     texts = {}
@@ -165,11 +181,39 @@ def restore(saved):
     for full, text in saved.items():
         with open(full, "w") as f:
             f.write(text)
+        assert digest(full) == INPUTS[os.path.relpath(full, REPO)], full
 
 
-results = []
+def digest(full):
+    with open(full, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+# The files the probes mutate, as found in the copy: their hashes bind the
+# run to the reviewed sources, and their modification times are renewed so
+# no build made from an earlier mutation is reused (a copy made with rsync
+# -a restores older times).
+TARGETS = sorted({path for _, edits, _, _ in PROBES for path, _, _ in edits})
+INPUTS = {path: digest(os.path.join(REPO, path)) for path in TARGETS}
+for path in TARGETS:
+    os.utime(os.path.join(REPO, path), None)
+results = [{"inputs": INPUTS}]
+# Unmodified baselines run first and three times each; their output is kept
+# beside the results so any failure can be identified.
+LOGS = os.path.join(os.path.dirname(os.path.abspath(sys.argv[2])), "baselines")
 # An optional third argument runs only the probes whose name contains it.
 ONLY = sys.argv[3] if len(sys.argv) > 3 else None
+if not ONLY:
+    os.makedirs(LOGS, exist_ok=True)
+for index, cmd in enumerate(() if ONLY else BASELINES):
+    codes = []
+    for attempt in range(1, 4):
+        code, out = run(cmd)
+        codes.append(code)
+        with open(os.path.join(LOGS, f"{index}-{cmd[-1].rsplit('/', 1)[-1]}-{attempt}.log"), "w") as f:
+            f.write(out)
+    results.append({"baseline": cmd, "exit_codes": codes, "passes": codes == [0, 0, 0]})
+    print("baseline", cmd[-1], codes, flush=True)
 for name, edits, cmd, test in PROBES:
     if ONLY and ONLY not in name:
         continue
@@ -179,11 +223,7 @@ for name, edits, cmd, test in PROBES:
     finally:
         restore(saved)
     results.append({"mutation": name, "files": sorted({e[0] for e in edits}), "command": cmd, "guard": test,
-                    "exit_code": code, "guard_failed": code != 0 and test in out})
+                    "exit_code": code, "guard_failed": code != 0 and failed_on(test, out)})
     print(name, code, results[-1]["guard_failed"], flush=True)
-for cmd in (() if ONLY else BASELINES):
-    code, _ = run(cmd)
-    results.append({"baseline": cmd, "exit_code": code, "passes": code == 0})
-    print("baseline", cmd[-1], code, flush=True)
 with open(sys.argv[2], "w") as f:
     json.dump(results, f, indent=2)

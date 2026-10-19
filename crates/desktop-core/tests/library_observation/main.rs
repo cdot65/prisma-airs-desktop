@@ -296,9 +296,15 @@ impl Desk {
         self.snap().overview
     }
 
+    /// The library files, not a write's temporary file.
     fn library_files(&self) -> Vec<std::path::PathBuf> {
         std::fs::read_dir(&self.adapters.library_root)
-            .map(|d| d.filter_map(|e| e.ok().map(|e| e.path())).collect())
+            .map(|d| {
+                d.filter_map(|e| e.ok())
+                    .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
+                    .map(|e| e.path())
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -338,6 +344,13 @@ async fn cases_are_authored_sealed_and_survive_a_restart() {
     desk.save(spec("model-security", "Provenance", "{\"artifact\":\"m\"}"))
         .await
         .expect("spec");
+    assert!(
+        eventually(|| desk.snap().library.notice
+            == Some(LibraryNotice::Saved {
+                name: "Provenance".into()
+            }))
+        .await
+    );
     let cases = desk.snap().library.cases;
     assert_eq!(cases.len(), 2);
     assert_eq!(cases[1].profile, "", "specifications carry no profile");
@@ -494,6 +507,11 @@ async fn catalogs_import_examples_once_and_report_unusable_catalogs() {
         Err(Refusal::InvalidInput)
     );
     assert_eq!(desk.snap().library.problem, Some(CaseProblem::AllPresent));
+    assert!(eventually(|| desk.library_files().len() == 1).await);
+    let file = desk.library_files()[0].clone();
+    let before = std::fs::read(&file).expect("sealed");
+    // The public import's write waits until after a later refusal.
+    let held = desk.core.hold_report_writes().await;
     // The public catalog (a local snapshot server here).
     desk.script().catalog = Some(
         json!({"version": 1, "kind": "prisma-airs-test-case-examples",
@@ -515,6 +533,13 @@ async fn catalogs_import_examples_once_and_report_unusable_catalogs() {
         .expect("public");
     assert!(eventually(|| desk.snap().library.problem == Some(CaseProblem::Catalog)).await);
     assert_eq!(desk.snap().library.cases.len(), 12);
+    // The earlier import's write lands; its success never replaces the
+    // later refusal.
+    drop(held);
+    assert!(eventually(|| std::fs::read(&file).is_ok_and(|b| b != before)).await);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(desk.snap().library.problem, Some(CaseProblem::Catalog));
+    assert_eq!(desk.snap().library.notice, None);
     // An unreachable catalog is reported, not retried.
     desk.script().down = true;
     desk.send(json!({"kind": "importExamples", "context": context, "source": "public"}))

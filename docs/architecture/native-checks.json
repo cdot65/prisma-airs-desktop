@@ -605,6 +605,10 @@
       {
         "id": "C12-N10",
         "check": "The production panels for the Library: Export library… saves an owner-only file through NSSavePanel, Import cases… restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window."
+      },
+      {
+        "id": "C12-N11",
+        "check": "The Library offline: with the scan and management services stopped, the app launches and lists the saved cases, a case authored and saved offline survives a relaunch still offline, and after reconnecting no scan, catalog read or remote write is made on its own."
       }
     ]
   }

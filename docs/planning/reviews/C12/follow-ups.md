@@ -37,3 +37,42 @@ for the P03 push (re-reviewed as C12 there):
 - E2: offline Library use across restart, delayed import completion bound to
   its tenant across a switch, failed protected writes with explicit retry,
   and cleanup recovery (cases above).
+
+## Attempt-02 (D034 raise) remediation
+
+- E3: the failing `library_observation` baseline was two real test races,
+  reproduced in the mutation copy and the checkout (exit 101, about one run
+  in two). (1) A held write's success notice replaced a later refusal: an
+  import queued "examples added", a malformed catalog then set
+  `CaseProblem::Catalog`, and the delayed write's success cleared it. Every
+  library operation now advances a per-library status stamp; an outcome
+  carries its originator's stamp and a success is shown only if nothing was
+  done there since (a failure to save is always shown). Test:
+  `catalogs_import_examples_once_and_report_unusable_catalogs` holds the
+  earlier write past the refusal; probe "an earlier write's success replaces
+  a later refusal". (2) The test listed a write's temporary file as the
+  library; the listing now skips temporary files and waits for the last
+  save to settle. Six consecutive runs pass. The probe harness (C08-C12)
+  runs each unmodified baseline three times first and keeps their output
+  under `mutation-probes/baselines/`, and credits a mutation only when the
+  named test itself reports a failure (a Rust `test ... FAILED` line or a
+  Vitest failure line naming it), never a build error or another test.
+- E2: C12-N11 runs the Library offline natively: with the scan and
+  management services stopped the app lists the saved cases, a case authored
+  offline survives a relaunch still offline, and after reconnecting no scan,
+  catalog read or remote write is made on its own.
+
+## Attempt-03 (D034 raise) remediation
+
+- E3: the attempt-03 baseline failures were stale builds in the disposable
+  copy, not the reviewed sources. Two filtered probe runs ("a 33rd case is
+  accepted", "a Runtime case may carry a payload") built mutated
+  `library.rs`; the restore wrote the original text and the next `rsync -a`
+  gave the file the checkout's older modification time, so cargo reused the
+  mutated test binaries (the logged warning shows the mutated payload
+  condition). The harness (C08-C12) now records the SHA-256 of every file it
+  mutates (`inputs`, the first entry of `results.json`, comparable with the
+  review's source inventory), renews their modification times before any
+  build, and checks each restore against those hashes. The probe "a failed
+  write reports success" now names the outcome's field, so it compiles and is
+  credited only by its named test.

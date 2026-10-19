@@ -308,8 +308,42 @@ def run():
     time.sleep(6)
     obs["offline_auto"] = len(mgmt.requests()) - before
 
-    # ---- N09: zoom and minimum size ----
-    press(app, "Playground")
+    # ---- N11: the Library offline, then reconnecting ----
+    app.quit()
+    endpoint.stop()
+    mgmt.stop()
+    scans_before, mgmt_before = len(endpoint.requests()), len(mgmt.requests())
+    app.launch()
+    tree, _ = open_library(app)
+    tree, listed = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Load Benign question") is not None, 12)
+    offline = {"saved_listed": listed}
+    app.ax("press", "AXButton", "Create a case")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Save case") is not None)
+    app.type_into("AXTextField", "Name", "Offline case")
+    app.type_into("AXTextField", "Security profile", c8.PROFILE)
+    app.type_into("AXTextField", "Application", "Desktop examples")
+    app.type_into("AXTextArea", "Input or test specification", "Authored without a network")
+    app.ax("press", "AXButton", "Save case")
+    tree, offline["authored"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Load Offline case") is not None, 10)
+    app.quit()
+    app.launch()
+    tree, _ = open_library(app)
+    tree, offline["after_relaunch"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Load Offline case") is not None
+                                                    and fx.App.node(t, "AXButton", "Load Benign question") is not None, 12)
+    obs["tree_offline"] = save_tree("offline-library", tree)
+    # Reconnected: nothing done offline is replayed.
+    endpoint.start()
+    mgmt.start()
+    time.sleep(8)
+    later = mgmt.requests()[mgmt_before:]
+    offline["scans_after_reconnect"] = len(endpoint.requests()) - scans_before
+    offline["catalog_reads"] = sum(1 for r in later if CATALOG_PATH in r["path"])
+    offline["remote_writes"] = [{k: r.get(k) for k in ("method", "path")} for r in later
+                                if r["method"] != "GET" and r["path"] != "/oauth2/access_token"]
+    offline["management_requests"] = len(later)
+    obs["offline"] = offline
+
+    # ---- N09: zoom and minimum size (after N11's relaunch, on the Library) ----
     open_library(app)
     for _ in range(10):
         app.keys("=", "command down")
@@ -389,6 +423,10 @@ def evaluate(prepared, o):
     add("C12-N10", pl["panel_shown"] and pl["saved"] and pl["mode"] == "0o600" and pl["imported"] and pl["cancelled"]
         and pl["too_large_refused"] and pl["focus_in_window"],
         f"production panels: {pl}", [o["tree_panel_library"]])
+    off = o["offline"]
+    add("C12-N11", off["saved_listed"] and off["authored"] and off["after_relaunch"] and off["scans_after_reconnect"] == 0
+        and off["catalog_reads"] == 0 and not off["remote_writes"],
+        f"offline Library: {off}", [o["tree_offline"]])
     zoom_ok = all(r["clear"] for r in (o["zoom_create"], o["min_create"], o["zoom_refresh"], o["min_refresh"]))
     add("C12-N09", zoom_ok,
         f"200% zoom: {o['zoom_create']['found']} / {o['zoom_refresh']['found']}; minimum size: {o['min_create']['found']} / {o['min_refresh']['found']}; all clear: {zoom_ok}", [])
