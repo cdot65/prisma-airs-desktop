@@ -1,0 +1,130 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C12",
+  "recorded_utc": "2026-10-19T17:21:56Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c12.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "d635bda20b6a0dd27b01eb7ba407567bc25e53be4bc21ea9180ddea843497cf6",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C12-N01",
+      "description": "Create a case authors a Runtime Security case and a Model Security specification from the fields read at Save; both are listed, the tenant's library is sealed on disk (no prompt in plaintext, owner-only) and both are listed again after relaunch.",
+      "result": "pass",
+      "observation": "authored {'spec_form_without_profile': True, 'spec_saved': True, 'rows': ['Inspect Provenance checklist', 'Load Benign question', 'Load Sensitive data in a reply'], 'sealed': 1, 'plaintext': False, 'mode': '0o600'}; listed after relaunch: True",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-library.json"
+      ]
+    },
+    {
+      "id": "C12-N02",
+      "description": "Load fills the Runtime scan form with a Runtime case (profile, prompt, application) and says nothing was scanned (no scan request); a specification offers Inspect, not Load, and its details say execution belongs to that product.",
+      "result": "pass",
+      "observation": "Runtime case loaded {'prompt': True, 'profile': True, 'app': True, 'nothing_scanned': True}; specification without Load: True; inspected: True",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-case-loaded.json"
+      ]
+    },
+    {
+      "id": "C12-N03",
+      "description": "Import bundled examples adds v1's eleven examples, a second import reports they are already present; Import public examples reads the fixture catalog snapshot without any credential and adds its example; a malformed catalog is reported and changes nothing.",
+      "result": "pass",
+      "observation": "catalogs {'bundled': True, 'already': True, 'public': True, 'malformed': True, 'catalog_reads': 2, 'credentialless': True}",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-catalogs.json"
+      ]
+    },
+    {
+      "id": "C12-N04",
+      "description": "Export library\u2026 saves an owner-only version 2 file; after a case is removed, Import cases\u2026 restores it from that file; another tenant's file is refused with v1's message.",
+      "result": "pass",
+      "observation": "export {'saved': True, 'version': 2, 'cases': 15, 'mode': '0o600'}; import {'restored': True, 'foreign_refused': True}",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-import.json"
+      ]
+    },
+    {
+      "id": "C12-N05",
+      "description": "An empty library offers v1's three starters; Try in Playground fills the scan form without scanning; Save this case adds it to the tenant's library.",
+      "result": "pass",
+      "observation": "three starters offered: True; loaded without scanning: True; saved as a case: True",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-starter-loaded.json"
+      ]
+    },
+    {
+      "id": "C12-N06",
+      "description": "Overview & Inbox reads the sessions chart and API keys: totals and detection events are shown, an API key expiring within 30 days is an Inbox item and needs attention; Acknowledge sets it aside and Restore reopens it; the activity item's action opens Sessions.",
+      "result": "pass",
+      "observation": "overview {'summary': True, 'key_item': True, 'attention': True}; acknowledged: True; restored: True; opened Sessions: True",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-overview.json"
+      ]
+    },
+    {
+      "id": "C12-N07",
+      "description": "A failed chart read is stated as Runtime activity unavailable and Can\u2019t confirm all clear (never zeros); with the endpoint stopped a refresh failure is reported while the last read stays visible, and nothing is sent within 6 s after the endpoint returns.",
+      "result": "pass",
+      "observation": "chart failure stated without zeros: True; refresh failure with the last read kept: True; requests within 6 s: 0",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-chart-failed.json",
+        "docs/planning/evidence/C13/native-C12/tree-refresh-failed.json"
+      ]
+    },
+    {
+      "id": "C12-N08",
+      "description": "Deleting the tenant removes its sealed library; over the run the management endpoint receives only reads and token grants, and no secret appears in any AX snapshot.",
+      "result": "pass",
+      "observation": "sealed library removed with the tenant: True; non-read requests: []; secrets in AX snapshots: []",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json"
+      ]
+    },
+    {
+      "id": "C12-N10",
+      "description": "The production panels for the Library: Export library\u2026 saves an owner-only file through NSSavePanel, Import cases\u2026 restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window.",
+      "result": "pass",
+      "observation": "production panels: {'panel_shown': True, 'saved': True, 'mode': '0o600', 'imported': True, 'cancelled': True, 'too_large_refused': True, 'focus_in_window': True}",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-panel-library.json"
+      ]
+    },
+    {
+      "id": "C12-N11",
+      "description": "The Library offline: with the scan and management services stopped, the app launches and lists the saved cases, a case authored and saved offline survives a relaunch still offline, and after reconnecting no scan, catalog read or remote write is made on its own.",
+      "result": "pass",
+      "observation": "offline Library: {'saved_listed': True, 'authored': True, 'after_relaunch': True, 'scans_after_reconnect': 0, 'catalog_reads': 0, 'remote_writes': [], 'management_requests': 0}",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json",
+        "docs/planning/evidence/C13/native-C12/tree-offline-library.json"
+      ]
+    },
+    {
+      "id": "C12-N09",
+      "description": "At 200% zoom and at the minimum window size, Tab reaches Create a case and Refresh Runtime insights inside the window and clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Create a case', 'pos': [607, 559], 'size': [239, 88]} / {'label': 'Refresh Runtime insights', 'pos': [851, 349], 'size': [394, 88]}; minimum size: {'label': 'Create a case', 'pos': [363, 141], 'size': [120, 44]} / {'label': 'Refresh Runtime insights', 'pos': [485, 292], 'size': [197, 44]}; all clear: True",
+      "evidence": [
+        "docs/planning/evidence/C13/native-C12/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "N04 answers the case-file sheet with a staged file and saves exports into the fixture data root without a sheet; N10 drives the production rfd NSOpenPanel/NSSavePanel (the fixture switch fixture-native-sheets) with driver-owned temporary files. No Accessibility tree is saved while a panel lists folders.",
+    "The public example catalog is a local snapshot served at the fixture catalog URL; the production URL is raw.githubusercontent.com.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

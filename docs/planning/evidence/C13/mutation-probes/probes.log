@@ -1,0 +1,32 @@
+baseline redteam_model_reads [0, 0, 0]
+baseline red_team [0, 0, 0]
+baseline src/features/red-team/red-team-view.test.tsx [0, 0, 0]
+baseline src/contracts/snapshot-validation.test.ts [0, 0, 0]
+a missing total is zero despite a busy breakdown 101 True
+an unreported breakdown is empty 101 True
+unknown labels pass through 101 True
+absent statistics are zero without confirmation 101 True
+a list without a total is always complete 101 True
+a capped count is complete 101 True
+a scan row keeps its name 101 True
+a model row keeps its URI 101 True
+a skill is shown by name 101 True
+the pseudonym salt is fixed 101 True
+an attack row keeps its prompt 101 True
+an unrated attack counts as succeeded 101 True
+attack pages skip the wrong rows 101 True
+an eleventh attack page is admitted 101 True
+any window is admitted 101 True
+a read with no answering source succeeds 101 True
+Model Security sends the tenant header 0 False
+model scans are read as a background refresh 101 True
+an unreported status breakdown sums to zero 1 True
+a partial sample is shown as exact 1 True
+a superseded window's reply is applied 1 True
+a failed refresh clears the last read 1 True
+attack results are read past the cap 1 True
+attack results are read past a covered total 1 True
+every attack read is rendered at once 1 True
+unfinished scans offer attack results 1 True
+a source may carry data and a failure 1 True
+a skill row may carry a name 1 True

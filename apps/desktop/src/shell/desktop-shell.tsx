@@ -5,6 +5,7 @@ import { AcademyView } from '../features/academy/academy-view'
 import { AdministrationView } from '../features/administration/administration-view'
 import { SessionsView } from '../features/sessions/sessions-view'
 import { type CasePrefill, LibraryView } from '../features/library/library-view'
+import { RedTeamView } from '../features/red-team/red-team-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { CommandPalette } from './command-palette'
@@ -202,6 +203,15 @@ export function DesktopShell(props: DesktopShellProps) {
                     onLoad={(fields) => {
                         if (context) setLoaded((p) => ({ ...fields, context, nonce: (p?.nonce ?? 0) + 1 }))
                     }}
+                />
+            ) : feature.id === 'redTeam' && feature.availability.state === 'available' ? (
+                <RedTeamView
+                    key={context ?? 'none'}
+                    ref={heading}
+                    snapshot={snapshot}
+                    dispatch={props.dispatch}
+                    observe={observeManagement}
+                    onNavigate={props.onNavigate}
                 />
             ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
                 <AcademyView ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />

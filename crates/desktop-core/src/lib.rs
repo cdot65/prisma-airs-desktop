@@ -22,6 +22,7 @@ pub mod management;
 pub mod observation;
 mod observe;
 pub mod offline;
+pub mod red_team;
 pub mod runtime;
 pub mod scan;
 pub mod scanning;

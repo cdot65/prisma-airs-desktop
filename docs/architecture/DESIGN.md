@@ -1285,6 +1285,37 @@ D038 records the decisions.
 - **Not done here.** No real endpoint is called before C25; Gateway data is
   added to the same observation presentation in C18.
 
+### C13 implementation: Red Team and Model/skill observation
+
+Implemented in `crates/desktop-core` (`red_team`: v1's statistics, list,
+attack, skill-statistics rules, completeness and skill pseudonyms;
+`management`: `ManagementEndpoints` product planes, the Red Team, Model
+Security and AgentGuard SDK clients in `ManagementBinding`,
+`ManagementRequest::{RedTeam, SupplyChain, Attacks}` and their results)
+and the Red Team & Models destination (`features/red-team`). D039 records
+the decisions.
+
+- **Reads.**
+
+  | Request | Service reads | Result |
+  |---|---|---|
+  | `RedTeam { window }` (7, 15, 30) | Red Teaming data plane `GET /v1/dashboard/scan-statistics?date_range=LAST_N_DAYS`; on 404, `GET /v1/scan?skip=0&limit=1` to confirm no scans; `GET /v1/scan?skip=0&limit=100` | statistics (totals, status, risk and target-type bars) and the first 100 scans (id, status, job type, target id and type, time), each with its own failure |
+  | `SupplyChain` | Model Security `GET /v1/scans?skip=0&limit=100&isBackgroundRefresh=false`; AgentGuard `GET /v1/stats/scans?time_period=30_DAYS` and `GET /v1/scans?skip=0&limit=100&isBackgroundRefresh=false` (with `x-tsg-id`) | model scans (id, outcome, time), skill statistics (unique skills, vulnerabilities), skill scans (pseudonym, status, outcome, vulnerability count, time) |
+  | `Attacks { scanId, page }` (UUID, 0-9) | Red Teaming `GET /v1/report/static/{scan}/list-attacks?skip=100·page&limit=100` | numbered rows (succeeded/defended/not rated, severity, type, sub-category, turns), total, completeness |
+
+- **Presentation.** Two tabs, each read when first shown with nothing held,
+  on Refresh and (Red Teaming) a window change; tiles, ranked lists, source
+  coverage (complete, partial sample with lower bounds, unavailable), the
+  scan table with a local status filter, attack results read page by page
+  on opening until the total is covered, a read fails or the ten-page cap
+  is reached (v1 read two pages and offered Load more), and a disclosure of
+  the workflows that are not available. The view is keyed by context; a failed refresh keeps the last
+  read with its time; a superseded reply is dropped.
+- **Not done here.** No real endpoint is called before C25; no scan,
+  target, adapter, channel, prompt set, ASR verification or Model Security
+  workflow exists; Home tiles and observation history for these products
+  belong to C16-C18.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

@@ -770,6 +770,106 @@ function isRuntimeOverview(value: unknown): boolean {
     )
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+const isUuid = (value: unknown): boolean => typeof value === 'string' && UUID.test(value)
+const isToken = (value: unknown): boolean => typeof value === 'string' && value.length > 0 && Array.from(value).length <= 64
+const optionalToken = (value: unknown): boolean => value === null || isToken(value)
+const optionalFailure = (value: unknown): boolean => optional((f) => oneOf(MANAGEMENT_FAILURES, f), value)
+
+/** A source has its data or its failure, never both and never neither. */
+const sourced = (data: unknown, failure: unknown, valid: (v: unknown) => boolean): boolean =>
+    optionalFailure(failure) && (data === null ? failure !== null : failure === null && valid(data))
+
+function isBars(value: unknown): boolean {
+    return (
+        value === null ||
+        (Array.isArray(value) && value.length <= 64 && value.every((b) => isRecord(b) && isToken(b.label) && isCount(b.count)))
+    )
+}
+
+/** A first page of at most 100 rows with its total and completeness. */
+function isRowPage(value: unknown, row: (r: unknown) => boolean): boolean {
+    return (
+        isRecord(value) &&
+        Array.isArray(value.rows) &&
+        value.rows.length <= 100 &&
+        value.rows.every(row) &&
+        optionalCount(value.total) &&
+        typeof value.complete === 'boolean'
+    )
+}
+
+function isRedTeamStatistics(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isCount(value.scans) &&
+        isCount(value.targets) &&
+        isBars(value.status) &&
+        isBars(value.risk) &&
+        isBars(value.targetTypes) &&
+        typeof value.noScans === 'boolean'
+    )
+}
+
+const isRedTeamScan = (r: unknown): boolean =>
+    isRecord(r) &&
+    isUuid(r.id) &&
+    optionalToken(r.status) &&
+    optionalToken(r.jobType) &&
+    optional(isUuid, r.targetId) &&
+    optionalToken(r.targetType) &&
+    optionalToken(r.createdAt)
+
+function isRedTeamObservation(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isCount(value.readAt) &&
+        [7, 15, 30].includes(value.window as number) &&
+        sourced(value.statistics, value.statisticsFailure, isRedTeamStatistics) &&
+        sourced(value.scans, value.scansFailure, (v) => isRowPage(v, isRedTeamScan)) &&
+        // A read in which no source answered is a failed read, not this.
+        (value.statistics !== null || value.scans !== null)
+    )
+}
+
+const isModelScan = (r: unknown): boolean => isRecord(r) && isUuid(r.id) && optionalToken(r.outcome) && optionalToken(r.createdAt)
+
+const isSkillScan = (r: unknown): boolean =>
+    isRecord(r) &&
+    typeof r.pseudonym === 'string' &&
+    /^[0-9a-f]{8}$/.test(r.pseudonym) &&
+    optionalToken(r.status) &&
+    optionalToken(r.outcome) &&
+    optionalCount(r.vulnerabilities) &&
+    optionalToken(r.createdAt)
+
+function isSupplyChainObservation(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isCount(value.readAt) &&
+        sourced(value.models, value.modelsFailure, (v) => isRowPage(v, isModelScan)) &&
+        sourced(
+            value.skillStatistics,
+            value.skillStatisticsFailure,
+            (v) => isRecord(v) && isCount(v.uniqueSkills) && isCount(v.vulnerabilities)
+        ) &&
+        sourced(value.skills, value.skillsFailure, (v) => isRowPage(v, isSkillScan)) &&
+        (value.models !== null || value.skillStatistics !== null || value.skills !== null)
+    )
+}
+
+function isAttackPage(value: unknown): boolean {
+    if (!isRecord(value) || !isUuid(value.scanId) || !isCount(value.page) || (value.page as number) > 9) return false
+    const first = (value.page as number) * 100 + 1
+    return (
+        isRowPage(value, (a) => isRecord(a) && isCount(a.number) && optional((t) => typeof t === 'boolean', a.threat) &&
+            optionalToken(a.severity) && optionalToken(a.attackType) && optionalToken(a.subCategory) &&
+            optional((t) => typeof t === 'boolean', a.multiTurn)) &&
+        // Rows are numbered in report order from this page's first position.
+        (value.rows as Record<string, unknown>[]).every((a, i) => a.number === first + i)
+    )
+}
+
 function isOverviewView(value: unknown): boolean {
     return (
         isRecord(value) &&
@@ -825,6 +925,11 @@ export function parseManagementResult(value: unknown): ManagementResult {
         }
         if (value.kind === 'search' && isSessionSearch(value.search)) return value as unknown as ManagementResult
         if (value.kind === 'overview' && isRuntimeOverview(value.overview)) return value as unknown as ManagementResult
+        if (value.kind === 'redTeam' && isRedTeamObservation(value.observation)) return value as unknown as ManagementResult
+        if (value.kind === 'supplyChain' && isSupplyChainObservation(value.observation)) {
+            return value as unknown as ManagementResult
+        }
+        if (value.kind === 'attacks' && isAttackPage(value.attacks)) return value as unknown as ManagementResult
         if (value.kind === 'failed' && oneOf(MANAGEMENT_FAILURES, value.failure) && oneOf(OUTCOMES, value.outcome)) {
             return value as unknown as ManagementResult
         }

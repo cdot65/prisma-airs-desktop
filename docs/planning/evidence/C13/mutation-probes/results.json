@@ -1,0 +1,628 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/red-team/red-team-view.tsx": "a0e063390f68a3b8798b84152414c48fb0081e78f40bb984bfab1f285168f018",
+      "crates/desktop-core/src/management.rs": "a1d55744ea9da9bba2280c49ca0197dcb9c204b2d82cc3f1c8600e6cc3356fd9",
+      "crates/desktop-core/src/red_team.rs": "03b955a83f2a9f49809217334d837183e67b247a530230952582eb6a0def7db6",
+      "packages/desktop-contracts/src/client.ts": "8f943b8f413d8595827234b947333f850d94aae52d74af9ad98fb995bc33c73f"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "a missing total is zero despite a busy breakdown",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "statistics_follow_v1s_tallies_and_bars",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unreported breakdown is empty",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "statistics_follow_v1s_tallies_and_bars",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "unknown labels pass through",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "statistics_follow_v1s_tallies_and_bars",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "absent statistics are zero without confirmation",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "absent_statistics_mean_no_scans_only_when_an_empty_list_proves_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a list without a total is always complete",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "lists_are_complete_only_when_the_service_says_so",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a capped count is complete",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "lists_are_complete_only_when_the_service_says_so",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a scan row keeps its name",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "red_teaming_reads_statistics_and_scans_for_a_window",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a model row keeps its URI",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "rows_keep_no_names_uris_or_findings",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a skill is shown by name",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "rows_keep_no_names_uris_or_findings",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the pseudonym salt is fixed",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "models_and_skills_read_three_sources_with_per_read_pseudonyms",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an attack row keeps its prompt",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "attack_results_are_read_100_per_page_up_to_ten_pages_without_prompts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unrated attack counts as succeeded",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "attack_outcomes_are_read_not_inferred",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "attack pages skip the wrong rows",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "attack_results_are_read_100_per_page_up_to_ten_pages_without_prompts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an eleventh attack page is admitted",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "attack_results_are_read_100_per_page_up_to_ten_pages_without_prompts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "any window is admitted",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "red_teaming_reads_statistics_and_scans_for_a_window",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a read with no answering source succeeds",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "each_source_keeps_its_own_state_and_a_read_with_none_fails",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Model Security sends the tenant header",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "models_and_skills_read_three_sources_with_per_read_pseudonyms",
+    "exit_code": 0,
+    "guard_failed": false
+  },
+  {
+    "mutation": "model scans are read as a background refresh",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "models_and_skills_read_three_sources_with_per_read_pseudonyms",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unreported status breakdown sums to zero",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "treats an empty tenant as no scans and an unreported breakdown as zero there",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a partial sample is shown as exact",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "reads models and skills with partial samples as lower bounds and skills by pseudonym",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a superseded window's reply is applied",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "drops a superseded window\u2019s late reply",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed refresh clears the last read",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "states failed and unreported sources instead of zeros and keeps the last read",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "attack results are read past the cap",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "reads attack results to ten pages on opening and counts only reported successes",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "attack results are read past a covered total",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "stops reading attack results once the total is covered or a read fails",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "every attack read is rendered at once",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "reads attack results to ten pages on opening and counts only reported successes",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "unfinished scans offer attack results",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "reads Red Teaming on opening and shows v1\u2019s tiles, lists and coverage",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a source may carry data and a failure",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a source with both data and a failure, or with neither",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a skill row may carry a name",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects windows, identifiers, pages and pseudonyms outside v1\u2019s reads",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

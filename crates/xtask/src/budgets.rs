@@ -285,9 +285,11 @@ pub struct Workload {
 }
 
 /// The Academy hosted content and learner sync workload (registered in C04,
-/// measured in C05) and the large management collections workload
-/// (registered by C11 before it implemented Sessions, measured in C11); each
-/// also in the phases containing its measuring chunk.
+/// measured in C05), the large management collections workload (registered
+/// by C11 before it implemented Sessions, measured in C11) and the large
+/// red-team/model collections workload (registered by C13 before it
+/// implemented Red Team observation, measured in C13); each also in the
+/// phases containing its measuring chunk.
 pub const WORKLOADS: &[Workload] = &[
     Workload {
         registered_by: "C04",
@@ -299,6 +301,12 @@ pub const WORKLOADS: &[Workload] = &[
         registered_by: "C11",
         registration: "docs/planning/evidence/C11/workload-budget-registration.json",
         measured_by: "C11",
+        evidence: "workload-perf.json",
+    },
+    Workload {
+        registered_by: "C13",
+        registration: "docs/planning/evidence/C13/workload-budget-registration.json",
+        measured_by: "C13",
         evidence: "workload-perf.json",
     },
 ];

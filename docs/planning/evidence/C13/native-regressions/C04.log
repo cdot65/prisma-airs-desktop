@@ -1,0 +1,12 @@
+PASS C04-N01 'Academy account' group with the tenant-independence text and 'Not signed in to Academy.': True; Tab reached 'Sign in to Academy': True
+PASS C04-N02 code shown: True; accessible name 'Sign-in code W D J B …': True; issuer page shown: True; pages handed to the browser: ['https://localhost:64062/activate?user_code=WDJB-MJHT']
+PASS C04-N03 'Signed in to Academy as Ada Lovelace': True; public-client device flow (device fields ['client_id', 'scope'], 5 polls, no secret or Authorization on identity requests, desktop.me with Authorization):
+PASS C04-N04 after quit and relaunch 'Signed in to Academy as Ada Lovelace': True
+PASS C04-N05 Tenant B active: True; Academy still signed in as Ada Lovelace: True
+PASS C04-N06 'Not signed in to Academy.': True; learner namespace items []; refresh-token revocations 1
+PASS C04-N07 'Sign-in was declined in the browser.' with 'Sign in again': True; learner namespace items []
+PASS C04-N08 'Academy could not be reached' with the endpoint stopped: True; learner namespace items []
+PASS C04-N09 cancelled to 'Not signed in to Academy.': True; still signed out 3 s after a grant became available: True; learner namespace items []
+PASS C04-N10 Tab reached 'Sign in to Academy' and Space started sign-in: True; Tab reached 'Open sign-in page' and 'Cancel sign-in': True; live status regions in the group: 1
+PASS C04-N11 200% zoom: {'label': 'Sign in again', 'pos': [649, 617], 'size': [225, 88]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Sign in again', 'pos': [384, 490], '
+PASS C04-N12 signed in before reset with 1 learner item(s); after reset 'Not signed in to Academy.': True; learner namespace items []

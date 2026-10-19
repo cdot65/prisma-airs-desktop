@@ -334,4 +334,56 @@ describe('management result validation', () => {
     ])('rejects %s', (_, value) => {
         expect(() => parseManagementResult(value)).toThrow(ContractViolation)
     })
+
+    describe('Red Team and Model/skill observation', () => {
+        const SCAN = '11111111-2222-4333-8444-555555555555'
+        const redTeam = {
+            readAt: 1,
+            window: 30,
+            statistics: { scans: 2, targets: 1, status: [{ label: 'COMPLETED', count: 2 }], risk: null, targetTypes: null, noScans: false },
+            statisticsFailure: null,
+            scans: { rows: [{ id: SCAN, status: 'COMPLETED', jobType: null, targetId: null, targetType: null, createdAt: null }], total: 1, complete: true },
+            scansFailure: null,
+        }
+        const supply = {
+            readAt: 1,
+            models: null,
+            modelsFailure: 'denied',
+            skillStatistics: { uniqueSkills: 1, vulnerabilities: 0 },
+            skillStatisticsFailure: null,
+            skills: { rows: [{ pseudonym: 'a1b2c3d4', status: null, outcome: null, vulnerabilities: null, createdAt: null }], total: null, complete: true },
+            skillsFailure: null,
+        }
+        const attacks = {
+            scanId: SCAN,
+            page: 1,
+            rows: [{ number: 101, threat: true, severity: null, attackType: null, subCategory: 'Jailbreak', multiTurn: null }],
+            total: 101,
+            complete: true,
+        }
+        const bad = (value: unknown) => expect(() => parseManagementResult(value)).toThrow(ContractViolation)
+
+        it('accepts v1-shaped reads', () => {
+            expect(parseManagementResult({ kind: 'redTeam', observation: redTeam })).toBeTruthy()
+            expect(parseManagementResult({ kind: 'supplyChain', observation: supply })).toBeTruthy()
+            expect(parseManagementResult({ kind: 'attacks', attacks })).toBeTruthy()
+        })
+
+        it('rejects a source with both data and a failure, or with neither', () => {
+            bad({ kind: 'redTeam', observation: { ...redTeam, statisticsFailure: 'denied' } })
+            bad({ kind: 'redTeam', observation: { ...redTeam, scans: null } })
+            bad({ kind: 'redTeam', observation: { ...redTeam, statistics: null, statisticsFailure: 'denied', scans: null, scansFailure: 'denied' } })
+            bad({ kind: 'supplyChain', observation: { ...supply, models: null, modelsFailure: null } })
+        })
+
+        it('rejects windows, identifiers, pages and pseudonyms outside v1’s reads', () => {
+            bad({ kind: 'redTeam', observation: { ...redTeam, window: 14 } })
+            bad({ kind: 'redTeam', observation: { ...redTeam, scans: { ...redTeam.scans, rows: [{ ...redTeam.scans.rows[0], id: '../scan' }] } } })
+            bad({ kind: 'redTeam', observation: { ...redTeam, scans: { ...redTeam.scans, rows: Array(101).fill(redTeam.scans.rows[0]) } } })
+            bad({ kind: 'supplyChain', observation: { ...supply, skills: { ...supply.skills, rows: [{ ...supply.skills.rows[0], pseudonym: 'private-skill-name' }] } } })
+            bad({ kind: 'attacks', attacks: { ...attacks, page: 10 } })
+            bad({ kind: 'attacks', attacks: { ...attacks, rows: [{ ...attacks.rows[0], number: 1 }] } })
+            bad({ kind: 'attacks', attacks: { ...attacks, rows: [{ ...attacks.rows[0], threat: 'yes' }] } })
+        })
+    })
 })

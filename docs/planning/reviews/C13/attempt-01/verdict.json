@@ -1,0 +1,82 @@
+{
+  "request_id": "rq-C13-20261019T173132Z-c40926b9",
+  "attempt_id": "attempt-01",
+  "subject": "C13",
+  "fingerprints": {
+    "source": "eede6e908bf3f167236c86ade0f527f7b250fdd30cb841a3ae2bf6f520ee1aa0",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "11ef6aad3f1a945bb6df53bc31591f57c5959b844a66d542815ae4f8c7751f38",
+    "evidence": "d79087b40a7ac1d48fdc7572a798054af64eb9461e58cadb7dfe78db6c141ca5"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "required_fixes": [
+    "R1 (high): crates/desktop-core/src/red_team.rs:222-291 and :432-446 can turn invalid or contradictory statistics into successful zeros. statistics() accepts {} and {\"error\":\"synthetic failure\"}; its quiet test ignores positive top-level totals and uses already-truncated bars. Thus total_scans=1 with targets_scanned absent becomes targets=0, and a positive 65th distinct bar can disappear before the missing-total decision. skill_statistics() similarly substitutes zero for a missing unique-skills count despite a positive vulnerability count. The pinned v1 reference rejects these cases. Validate recognized/error-free envelopes and all relevant counts before presentation limits; infer zero only from a validated, entirely quiet source. Acceptance: raw-response fixtures for these cases produce an unavailable/invalid statistics source, never successful zero tiles, while independent sources remain usable; retain valid quiet-source behavior.",
+    "R2 (high): crates/desktop-core/src/red_team.rs:310-327,450-452 and apps/desktop/src/features/red-team/red-team-view.tsx:448-498 claim attack completeness from requested offsets rather than actual accumulated coverage. Repeated empty pages with total_items=150 become complete at page 2 because before=200; the real client/view probe displayed '0 of 0 succeeded ... all attacks read' and 'This scan reports no attacks.' Short earlier pages can similarly leave holes. Stop or classify inconsistent pagination as partial/invalid, and require actual coverage before claiming completion or absence. Acceptance: empty/short pages with a positive remaining total, later failures and capped reads never claim all attacks read or no attacks; genuine complete-empty results and normal 100/100/50 pagination still work.",
+    "R3 (medium): crates/desktop-core/src/red_team.rs:320-327 drops count_capped after deriving complete=false, and apps/desktop/src/features/red-team/red-team-view.tsx:550-554 treats every non-null total as exact. A capped total of 100 therefore renders the Model/skill summary as '100' rather than a lower bound, contrary to D039's partial-count semantics. Preserve enough total-exactness information through the projection and validator to distinguish a capped total from an exact total with sampled rows. Acceptance: raw count_capped=true fixtures render a lower bound or explicitly unknown total in the actual summary/coverage; an uncapped exact total remains exact even when only its first 100 rows are loaded."
+  ],
+  "blockers": [],
+  "evidence_gaps": [
+    "E1 (mandatory T20): docs/planning/evidence/C13/workload-budget.md:20 registers 100 Model Security scans and 100 skills. tools/perf/measure_c13.py:14-17,54,124 instead uses 12 skills, supplied by tools/native-acceptance/mgmt_server.py:311-315. Consequently model-summary-open and the subsequent process-tree RSS samples do not establish the registered workload. The recorded RSS maximum is 434.2 MiB against 450 MiB, so the lighter dataset cannot be assumed equivalent. Rerun the registered workload with 100 skill rows, assert the dataset/counts, and submit source/build-bound raw timing and RSS samples while retaining these records. Keep the preregistered limits; any dataset change requires the documented versioned rationale and reviewer acknowledgement."
+  ],
+  "optional_suggestions": [
+    "Extend label-normalization coverage with an ordinary unknown ASCII value such as FUTURE_STATUS. red_team.rs:206 currently displays FUTURE STATUS, while D039 and the pinned v1 reference map unknown labels to OTHER."
+  ],
+  "limitations": [
+    "Independently recomputed all four fingerprints, verified 446 source-inventory entries and 254 packet references, checked run inputs/log/artifact hashes, and verified accepted C12 attempt-04 and P03 attempt-02 predecessor receipts. The scm-sdk 0.1.0 archive checksum and all 131 extracted files matched.",
+    "Recorded validation passes include 317 frontend tests, 92 core unit tests and the scoped read/controller suites. All 154 submitted native checks, including eight C13 checks, report pass against executable d635bda20b6a0dd27b01eb7ba407567bc25e53be4bc21ea9180ddea843497cf6. These are inspected implementer records, not a new native run by this reviewer; spoken VoiceOver output was not recorded.",
+    "Executed independent in-memory probes through the actual DesktopClient validator and RedTeamView; they reproduced the zero, capped-total and attack-completeness presentations described above. Rust producer behavior was traced in source, not newly executed. Also executed the v1 observations/protocol functions for comparison and verified those files are unchanged from 74754c02. No application files were changed, endpoints called or credentials accessed.",
+    "The mutation records show 27 of 28 probes caught and all 12 baseline executions passing. The surviving Model Security tenant-header mutation is neutralized by the SDK constructor, which forces that header off; it is not counted as a demonstrated authority defect.",
+    "Recorded Red Team timing samples meet their registered numeric limits. Model/skill timing and RSS acceptance remain unresolved because of E1. Live service qualification and signed-package validation remain scheduled for C25/C26; this review does not establish either."
+  ],
+  "inspected_files": [
+    "AGENTS.md",
+    "GLOSSARY.md",
+    "docs/planning/chunks/C13.md",
+    "docs/planning/IMPLEMENTATION-PLAN.md",
+    "docs/planning/review-protocol.md",
+    "docs/planning/test-catalogue.md",
+    "docs/planning/dependencies.md",
+    "docs/planning/parity-matrix.md",
+    "docs/planning/DECISIONS.md",
+    "docs/architecture/DESIGN.md",
+    "docs/architecture/qualification.md",
+    "docs/architecture/inputs.lock.json",
+    "docs/architecture/checks.json",
+    "docs/architecture/native-checks.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/planning/reviews/C13/attempt-01/request.json",
+    "docs/planning/reviews/C13/attempt-01/source-inventory.json",
+    "docs/planning/reviews/C13/attempt-01/diff.patch",
+    "docs/planning/reviews/C12/attempt-04/receipt.json",
+    "docs/planning/reviews/P03/attempt-02/receipt.json",
+    "crates/desktop-core/src/red_team.rs",
+    "crates/desktop-core/src/management.rs",
+    "crates/desktop-core/tests/redteam_model_reads/main.rs",
+    "apps/desktop/src/features/red-team/red-team-view.tsx",
+    "apps/desktop/src/features/red-team/red-team-view.test.tsx",
+    "apps/desktop/src/contracts/snapshot-validation.test.ts",
+    "packages/desktop-contracts/src/client.ts",
+    "crates/xtask/src/budgets.rs",
+    "tools/native-acceptance/acceptance_c01.py",
+    "tools/native-acceptance/acceptance_c13.py",
+    "tools/native-acceptance/mgmt_server.py",
+    "tools/perf/measure_c13.py",
+    "docs/planning/evidence/C13/workload-budget.md",
+    "docs/planning/evidence/C13/workload-budget-registration.json",
+    "docs/planning/evidence/C13/workload-perf.json",
+    "docs/planning/evidence/C13/native-acceptance.json",
+    "docs/planning/evidence/C13/mutation-probes/results.json",
+    "/Users/cdot/development/cdot65/prisma-airs-desktop/bridge/src/observations.ts",
+    "/Users/cdot/development/cdot65/prisma-airs-desktop/bridge/src/protocol.ts",
+    "/Users/cdot/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/scm-sdk-0.1.0/src/engine.rs",
+    "/Users/cdot/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/scm-sdk-0.1.0/src/airs/model_security/mod.rs",
+    "/Users/cdot/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/scm-sdk-0.1.0/src/airs/agentguard/client.rs"
+  ],
+  "recommendation": "fail"
+}

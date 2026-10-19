@@ -695,6 +695,59 @@ Decided in C12 (implementer decision, recorded for review).
   settles, failures go to the operation's originator and `SaveLibraryAgain`
   retries; a deadline ticker publishes freshness and snooze transitions.
 
+## D039 — Red Team and Model/skill observation scope and reads
+
+Decided in C13 (implementer decision, recorded for review).
+
+- Only v1's live reads are reproduced (74754c02, `bridge/src/observability.ts`
+  and the Red Teaming/Supply Chain Overview pages): AI Red Teaming scan
+  statistics for a 7, 15 or 30-day window (`date_range=LAST_N_DAYS`, default
+  30), the first 100 scans (`skip=0&limit=100`), a scan's attack results 100
+  per page up to ten pages (1,000), Model Security scans
+  (`skip=0&limit=100&isBackgroundRefresh=false`), AgentGuard 30-day skill
+  statistics (`time_period=30_DAYS`) and skill scans. Every other v1 Red
+  Teaming and Supply Chain tab was a preview or stub that sent nothing; v2
+  shows no control for them and states that scans, ASR verification,
+  targets, adapters, channels, prompt sets, model scans, security groups and
+  model sources are not available. ASR is never computed: attack results
+  count only rows the service rated as succeeded (`threat`).
+- The reads go through the pinned SDK's Red Team, Model Security and
+  AgentGuard clients (features `red-team`, `model-security`, `agentguard`)
+  built from the tenant's management OAuth client, with the same token, origin
+  policy, limits and no retries, and the tenant header only where the SDK's
+  family sends it (AgentGuard). They use the SDK's raw read on those clients
+  at the typed operations' paths so v1's tolerance applies: the typed models
+  reject a missing total (statistics, AgentGuard lists) that v1 read as zero
+  when nothing contradicted it. Endpoints default to the SDK's
+  (`api.apps.paloaltonetworks.com` `/ai-red-teaming/{data-plane,mgmt-plane}`,
+  `/aims/{data,mgmt}`, `/aiag/{data,mgmt}`); v1's bridge used its own SDK's
+  defaults, and C25 qualifies the live hosts.
+- v1's rules are kept: a missing total is zero only when no breakdown or
+  rated target is above zero (AgentGuard: when no top vulnerability is
+  reported), otherwise the reply is invalid; a 404 for statistics is "no
+  scans" only when a one-row scan list is complete, empty and totals zero;
+  a list is complete only when the count is not capped and the total is no
+  larger than the rows read, or without a total the page is short; partial
+  counts are lower bounds; breakdown labels are upper-cased with `_` read as
+  a space and unknown labels become OTHER (at most 64 bars); each source keeps
+  its own state and a read in which no source answered fails.
+- Privacy follows v1's worker seam: only identifiers, statuses, target
+  types, outcomes, counts and times leave the core. Scan, target, model and
+  skill names, model URIs, security groups, findings (including AgentGuard's
+  top vulnerability), attack prompts, replies and unknown fields never do. A
+  skill is shown by the first eight hex digits of SHA-256 over a per-read
+  random salt and its name.
+- Opening a scan's attack results reads its pages one after another until
+  the service's total is covered, a read fails or the ten-page cap is
+  reached (v1 read two pages and offered Load more for the rest); each page
+  is the same bounded read and closing the results stops the walk.
+- Reads happen when a tab is first shown with nothing held, on Refresh and
+  on a window change; the view is keyed by context (a tenant or credential
+  change starts with nothing held), keeps the last read dated when a refresh
+  fails and drops a superseded reply. v1's idle polling, encrypted metric
+  history, cached snapshots across sessions and Home tiles for these
+  products are not reproduced here (C16-C18 own Home/observation history).
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

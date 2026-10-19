@@ -16,9 +16,12 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 
+use scm_sdk::airs::agentguard::AgentGuardClient;
 use scm_sdk::airs::management::{
     DeploymentProfileListOptions, ManagementClient, PaginationOptions, TopicListOptions,
 };
+use scm_sdk::airs::model_security::ModelSecurityClient;
+use scm_sdk::airs::red_team::RedTeamClient;
 use scm_sdk::auth::AuthContext;
 use scm_sdk::dlp::{
     DataFilteringProfileListParams, DictionaryListParams, DlpClient, SpringListParams,
@@ -44,6 +47,19 @@ pub const TOKEN_URL: &str = "https://auth.apps.paloaltonetworks.com/oauth2/acces
 pub const API_URL: &str = "https://api.apps.paloaltonetworks.com/aisec";
 /// The production DLP API base.
 pub const DLP_URL: &str = "https://api.dlp.paloaltonetworks.com";
+/// The production AI Red Teaming planes (the SDK's defaults).
+pub const RED_TEAM_DATA_URL: &str =
+    "https://api.apps.paloaltonetworks.com/ai-red-teaming/data-plane";
+pub const RED_TEAM_MGMT_URL: &str =
+    "https://api.apps.paloaltonetworks.com/ai-red-teaming/mgmt-plane";
+pub const RED_TEAM_BROKER_URL: &str =
+    "https://api.apps.paloaltonetworks.com/ai-red-teaming/data-plane/network-broker";
+/// The production Model Security planes (the SDK's defaults).
+pub const MODEL_DATA_URL: &str = "https://api.apps.paloaltonetworks.com/aims/data";
+pub const MODEL_MGMT_URL: &str = "https://api.apps.paloaltonetworks.com/aims/mgmt";
+/// The production AgentGuard (skill scanning) planes (the SDK's defaults).
+pub const AGENTGUARD_DATA_URL: &str = "https://api.apps.paloaltonetworks.com/aiag/data";
+pub const AGENTGUARD_MGMT_URL: &str = "https://api.apps.paloaltonetworks.com/aiag/mgmt";
 /// Largest page a read may ask for.
 pub const MAX_PAGE: u32 = 100;
 /// The bounded walk a detail read may make (v1: 40 pages of 25).
@@ -63,6 +79,16 @@ pub struct ManagementEndpoints {
     pub api: String,
     /// The DLP API base URL.
     pub dlp: String,
+    /// AI Red Teaming data, management and network-broker planes (C13).
+    pub red_team_data: String,
+    pub red_team_mgmt: String,
+    pub red_team_broker: String,
+    /// Model Security data and management planes (C13).
+    pub model_data: String,
+    pub model_mgmt: String,
+    /// AgentGuard skill-scanning data and management planes (C13).
+    pub agentguard_data: String,
+    pub agentguard_mgmt: String,
 }
 
 impl Default for ManagementEndpoints {
@@ -71,17 +97,32 @@ impl Default for ManagementEndpoints {
             token: TOKEN_URL.to_owned(),
             api: API_URL.to_owned(),
             dlp: DLP_URL.to_owned(),
+            red_team_data: RED_TEAM_DATA_URL.to_owned(),
+            red_team_mgmt: RED_TEAM_MGMT_URL.to_owned(),
+            red_team_broker: RED_TEAM_BROKER_URL.to_owned(),
+            model_data: MODEL_DATA_URL.to_owned(),
+            model_mgmt: MODEL_MGMT_URL.to_owned(),
+            agentguard_data: AGENTGUARD_DATA_URL.to_owned(),
+            agentguard_mgmt: AGENTGUARD_MGMT_URL.to_owned(),
         }
     }
 }
 
 impl ManagementEndpoints {
-    /// All three endpoints at one origin (fixture builds).
+    /// Every endpoint at one origin, under the production paths (fixture
+    /// builds).
     pub fn at_origin(origin: &str) -> Self {
         Self {
             token: format!("{origin}/oauth2/access_token"),
             api: format!("{origin}/aisec"),
             dlp: format!("{origin}/dlp"),
+            red_team_data: format!("{origin}/ai-red-teaming/data-plane"),
+            red_team_mgmt: format!("{origin}/ai-red-teaming/mgmt-plane"),
+            red_team_broker: format!("{origin}/ai-red-teaming/data-plane/network-broker"),
+            model_data: format!("{origin}/aims/data"),
+            model_mgmt: format!("{origin}/aims/mgmt"),
+            agentguard_data: format!("{origin}/aiag/data"),
+            agentguard_mgmt: format!("{origin}/aiag/mgmt"),
         }
     }
 
@@ -193,6 +234,15 @@ pub enum ManagementRequest {
     /// The Runtime Home/Inbox sources: the last day's sessions chart and
     /// the API key inventory's first page (C12).
     Overview,
+    /// AI Red Teaming scan statistics over the last `window` days (7, 15 or
+    /// 30) and the first 100 scans (C13).
+    RedTeam { window: u8 },
+    /// Model Security scans, AgentGuard 30-day skill statistics and skill
+    /// scans (C13).
+    SupplyChain,
+    /// One page (0-9, 100 each) of a Red Teaming scan's attack results.
+    #[serde(rename_all = "camelCase")]
+    Attacks { scan_id: String, page: u8 },
 }
 
 impl ManagementRequest {
@@ -224,7 +274,11 @@ impl ManagementRequest {
             } => plain(session_id) && plain(app_id) && plain(app_name) && plain(scan_id),
             Self::Content { scan_id, .. } => plain(scan_id),
             Self::Search { query } => crate::sessions::classify(query).is_some(),
-            Self::Overview => true,
+            Self::Overview | Self::SupplyChain => true,
+            Self::RedTeam { window } => crate::red_team::WINDOWS.contains(window),
+            Self::Attacks { scan_id, page } => {
+                crate::red_team::is_uuid(scan_id) && *page < crate::red_team::ATTACK_PAGES
+            }
         }
     }
 }
@@ -401,6 +455,15 @@ pub enum ManagementResult {
     Overview {
         overview: crate::observation::RuntimeOverview,
     },
+    RedTeam {
+        observation: crate::red_team::RedTeamObservation,
+    },
+    SupplyChain {
+        observation: crate::red_team::SupplyChainObservation,
+    },
+    Attacks {
+        attacks: crate::red_team::AttackPage,
+    },
     Failed {
         failure: ManagementFailure,
         outcome: Outcome,
@@ -450,15 +513,20 @@ fn limits() -> Limits {
     limits
 }
 
-/// Management and DLP clients bound to one credential generation.
+/// Management, DLP, Red Team, Model Security and AgentGuard clients bound
+/// to one credential generation.
 pub struct ManagementBinding {
     management: ManagementClient,
     dlp: DlpClient,
+    red_team: RedTeamClient,
+    model_security: ModelSecurityClient,
+    agentguard: AgentGuardClient,
 }
 
 impl ManagementBinding {
     /// Builds the binding: the client secret goes only to the token origin,
-    /// reads only to the API and DLP origins.
+    /// reads only to the API, DLP and product (Red Team, Model Security,
+    /// AgentGuard) origins.
     pub fn new(
         endpoints: &ManagementEndpoints,
         client_id: &str,
@@ -471,10 +539,32 @@ impl ManagementBinding {
         let token = parse(&endpoints.token)?;
         let api = parse(&endpoints.api)?;
         let dlp = parse(&endpoints.dlp)?;
-        if ![&token, &api, &dlp]
-            .iter()
-            .all(|e| e.origin().starts_with("https://"))
-        {
+        let products = [
+            &endpoints.red_team_data,
+            &endpoints.red_team_mgmt,
+            &endpoints.red_team_broker,
+            &endpoints.model_data,
+            &endpoints.model_mgmt,
+            &endpoints.agentguard_data,
+            &endpoints.agentguard_mgmt,
+        ]
+        .map(|url| parse(url));
+        let [
+            rt_data,
+            rt_mgmt,
+            rt_broker,
+            ms_data,
+            ms_mgmt,
+            ag_data,
+            ag_mgmt,
+        ] = products;
+        let (rt_data, rt_mgmt, rt_broker) = (rt_data?, rt_mgmt?, rt_broker?);
+        let (ms_data, ms_mgmt, ag_data, ag_mgmt) = (ms_data?, ms_mgmt?, ag_data?, ag_mgmt?);
+        let all = [
+            &token, &api, &dlp, &rt_data, &rt_mgmt, &rt_broker, &ms_data, &ms_mgmt, &ag_data,
+            &ag_mgmt,
+        ];
+        if !all.iter().all(|e| e.origin().starts_with("https://")) {
             return Err(ManagementFailure::Destination);
         }
         let context = AuthContext::new(token.clone(), client_id, 1, tsg)
@@ -484,17 +574,36 @@ impl ManagementBinding {
         let client = Client::builder(api.clone())
             .oauth_credentials(context, secret, false)
             .transport(transport)
-            .destination_policy(Arc::new(OriginPolicy::new([api, token, dlp.clone()])))
+            .destination_policy(Arc::new(OriginPolicy::new(all.map(Endpoint::clone))))
             .limits(limits())
             .session(session)
             .build()
             .map_err(|_| ManagementFailure::Configuration)?;
         let management =
             ManagementClient::new(client).map_err(|_| ManagementFailure::Configuration)?;
-        let dlp = management
-            .dlp(dlp)
-            .map_err(|_| ManagementFailure::Configuration)?;
-        Ok(Self { management, dlp })
+        let configured = |_| ManagementFailure::Configuration;
+        let red_team = RedTeamClient::new(
+            management
+                .client()
+                .with_endpoint(rt_data)
+                .map_err(configured)?,
+            rt_mgmt,
+            rt_broker,
+        )
+        .map_err(configured)?;
+        let model_security =
+            ModelSecurityClient::new(management.client().clone(), ms_data, ms_mgmt)
+                .map_err(configured)?;
+        let agentguard = AgentGuardClient::new(management.client().clone(), ag_data, ag_mgmt)
+            .map_err(configured)?;
+        let dlp = management.dlp(dlp).map_err(configured)?;
+        Ok(Self {
+            management,
+            dlp,
+            red_team,
+            model_security,
+            agentguard,
+        })
     }
 
     fn options(deadline: Instant) -> Option<RequestOptions> {
@@ -1466,6 +1575,177 @@ async fn runtime_overview(
     }
 }
 
+/// The product data plane a C13 read goes to.
+#[derive(Clone, Copy)]
+enum Product {
+    RedTeam,
+    ModelSecurity,
+    AgentGuard,
+}
+
+impl ManagementBinding {
+    /// One read-only GET to a product's data plane through its SDK client
+    /// (OAuth, origin policy, limits and the tenant header as that family
+    /// requires), returning the reply as JSON for v1's tolerant rules.
+    async fn product_read(
+        &self,
+        product: Product,
+        path: &str,
+        query: Vec<(String, String)>,
+        deadline: Instant,
+    ) -> Result<Value, PageError> {
+        let client = match product {
+            Product::RedTeam => self.red_team.client(),
+            Product::ModelSecurity => self.model_security.data_client(),
+            Product::AgentGuard => self.agentguard.data_client(),
+        };
+        let reply: scm_sdk::data::JsonValue = client
+            .send_json(
+                scm_sdk::RawRequest::read(path).query(query),
+                Self::options(deadline).as_ref(),
+            )
+            .await?;
+        Ok(Value::from(reply))
+    }
+}
+
+fn now_secs() -> u32 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| u32::try_from(d.as_secs()).unwrap_or(u32::MAX))
+}
+
+fn list_query(extra: &[(&str, &str)]) -> Vec<(String, String)> {
+    let mut query = vec![
+        ("skip".to_owned(), "0".to_owned()),
+        ("limit".to_owned(), crate::red_team::LIST_LIMIT.to_string()),
+    ];
+    query.extend(
+        extra
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
+    );
+    query
+}
+
+/// A source's data or its sanitized failure.
+fn sourced<T>(read: Result<T, PageError>) -> (Option<T>, Option<ManagementFailure>) {
+    match read {
+        Ok(data) => (Some(data), None),
+        Err(error) => (None, Some(failure_of(error))),
+    }
+}
+
+/// One Red Teaming read: statistics for the window (absent statistics are
+/// "no scans" only when a one-row scan list proves it) and the first 100
+/// scans. A read in which no source answered fails.
+async fn red_team_read(
+    binding: &ManagementBinding,
+    window: u8,
+    deadline: Instant,
+) -> Result<crate::red_team::RedTeamObservation, PageError> {
+    use crate::red_team as rt;
+    let range = format!("LAST_{window}_DAYS");
+    let statistics = match binding
+        .product_read(
+            Product::RedTeam,
+            "/v1/dashboard/scan-statistics",
+            vec![("date_range".to_owned(), range)],
+            deadline,
+        )
+        .await
+    {
+        Ok(reply) => rt::statistics(&reply).ok_or(PageError::Invalid),
+        Err(PageError::Sdk(error))
+            if ManagementFailure::from_sdk(&error) == ManagementFailure::NotFound =>
+        {
+            let mut query = list_query(&[]);
+            query[1].1 = "1".to_owned();
+            match binding
+                .product_read(Product::RedTeam, "/v1/scan", query, deadline)
+                .await
+            {
+                Ok(reply) if rt::proves_no_scans(&reply) => Ok(rt::no_scans()),
+                _ => Err(PageError::Sdk(error)),
+            }
+        }
+        Err(error) => Err(error),
+    };
+    let scans = binding
+        .product_read(Product::RedTeam, "/v1/scan", list_query(&[]), deadline)
+        .await
+        .and_then(|reply| rt::red_team_scans(&reply).ok_or(PageError::Invalid));
+    let (statistics, scans) = match (statistics, scans) {
+        (Err(error), Err(_)) => return Err(error),
+        both => both,
+    };
+    let (statistics, statistics_failure) = sourced(statistics);
+    let (scans, scans_failure) = sourced(scans);
+    Ok(rt::RedTeamObservation {
+        read_at: now_secs(),
+        window,
+        statistics,
+        statistics_failure,
+        scans,
+        scans_failure,
+    })
+}
+
+/// One Model and skill read: Model Security scans, AgentGuard's 30-day
+/// skill statistics and skill scans, each independent. A read in which no
+/// source answered fails.
+async fn supply_chain_read(
+    binding: &ManagementBinding,
+    deadline: Instant,
+) -> Result<crate::red_team::SupplyChainObservation, PageError> {
+    use crate::red_team as rt;
+    let background = [("isBackgroundRefresh", "false")];
+    let models = binding
+        .product_read(
+            Product::ModelSecurity,
+            "/v1/scans",
+            list_query(&background),
+            deadline,
+        )
+        .await
+        .and_then(|reply| rt::model_scans(&reply).ok_or(PageError::Invalid));
+    let statistics = binding
+        .product_read(
+            Product::AgentGuard,
+            "/v1/stats/scans",
+            vec![("time_period".to_owned(), "30_DAYS".to_owned())],
+            deadline,
+        )
+        .await
+        .and_then(|reply| rt::skill_statistics(&reply).ok_or(PageError::Invalid));
+    let salt = rt::salt().ok_or(PageError::Invalid)?;
+    let skills = binding
+        .product_read(
+            Product::AgentGuard,
+            "/v1/scans",
+            list_query(&background),
+            deadline,
+        )
+        .await
+        .and_then(|reply| rt::skill_scans(&reply, &salt).ok_or(PageError::Invalid));
+    let (models, statistics, skills) = match (models, statistics, skills) {
+        (Err(error), Err(_), Err(_)) => return Err(error),
+        all => all,
+    };
+    let (models, models_failure) = sourced(models);
+    let (skill_statistics, skill_statistics_failure) = sourced(statistics);
+    let (skills, skills_failure) = sourced(skills);
+    Ok(rt::SupplyChainObservation {
+        read_at: now_secs(),
+        models,
+        models_failure,
+        skill_statistics,
+        skill_statistics_failure,
+        skills,
+        skills_failure,
+    })
+}
+
 /// Cache identities: a session by (session, app, name); a transaction and
 /// its content by (scan, sub-request).
 fn session_key(session_id: &str, app_id: &str, app_name: &str) -> String {
@@ -1721,6 +2001,30 @@ impl ManagementJob {
                 ManagementRequest::Overview => Ok(ManagementResult::Overview {
                     overview: runtime_overview(binding, deadline).await,
                 }),
+                ManagementRequest::RedTeam { window } => red_team_read(binding, *window, deadline)
+                    .await
+                    .map(|observation| ManagementResult::RedTeam { observation }),
+                ManagementRequest::SupplyChain => supply_chain_read(binding, deadline)
+                    .await
+                    .map(|observation| ManagementResult::SupplyChain { observation }),
+                ManagementRequest::Attacks { scan_id, page } => binding
+                    .product_read(
+                        Product::RedTeam,
+                        &format!("/v1/report/static/{scan_id}/list-attacks"),
+                        vec![
+                            (
+                                "skip".to_owned(),
+                                (u32::from(*page) * crate::red_team::LIST_LIMIT).to_string(),
+                            ),
+                            ("limit".to_owned(), crate::red_team::LIST_LIMIT.to_string()),
+                        ],
+                        deadline,
+                    )
+                    .await
+                    .and_then(|reply| {
+                        crate::red_team::attacks(&reply, scan_id, *page).ok_or(PageError::Invalid)
+                    })
+                    .map(|attacks| ManagementResult::Attacks { attacks }),
                 request => self.investigate(binding, request, deadline).await,
             }
         };

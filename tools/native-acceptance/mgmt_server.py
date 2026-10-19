@@ -119,6 +119,7 @@ class Handler(BaseHTTPRequestHandler):
             "query": query,
             "auth": self.authorization(),
             "tsgHeader": self.headers.get("x-pan-tsg-id") or self.headers.get("tsg_id"),
+            "xTsgId": self.headers.get("x-tsg-id"),
             "scanToken": self.headers.get("x-pan-token") is not None,
         }
         if url.path == "/oauth2/access_token":
@@ -229,6 +230,9 @@ class Handler(BaseHTTPRequestHandler):
                 return 404, {"error": "not found"}
             return 200, {"scan_id": query.get("scan_id"), "report_id": "R-C11", "category": "malicious",
                          "scan_contents": {"prompt": CONTENT_PROMPT, "response": CONTENT_RESPONSE}}
+        red_team = self.red_team(path, query, mode)
+        if red_team is not None:
+            return red_team
         if path == "/aisec/v1/mgmt/deploymentprofiles":
             return 200, {"deployment_profiles": [{"dp_name": f"dp-{n}", "auth_code": srv.auth_code if n == 0 else f"SYNTHETIC-C08-DP-CODE-{n}",
                                                   "status": "active"} for n in range(3)], "status": "success"}
@@ -254,6 +258,62 @@ class Handler(BaseHTTPRequestHandler):
                                  "totalElements": len(store), "number": page}
                 return 200, {"content": [dict(i) for i in store], "last": True, "totalElements": len(store)}
         return 404, {"error": "not found"}
+
+    def red_team(self, path, query, mode):
+        """C13: AI Red Teaming, Model Security and AgentGuard reads. Names,
+        URIs, findings and prompts are private markers the desktop must never
+        show. Modes: rtStatsStatus, rtScans (count), rtScanTotal, attackTotal,
+        modelsStatus, skillStatsStatus, skillsStatus (HTTP statuses)."""
+        failed = lambda key: int(mode.get(key, 200)) != 200
+        if path == "/ai-red-teaming/data-plane/v1/dashboard/scan-statistics":
+            if failed("rtStatsStatus"):
+                return int(mode["rtStatsStatus"]), {"error": "SERVER-TEXT-NEVER-SHOWN"}
+            return 200, {"total_scans": 100, "targets_scanned": 7,
+                         "scan_status": [{"name": "COMPLETED", "count": 90}, {"name": "RUNNING", "count": 6},
+                                         {"name": "QUEUED", "count": 2}, {"name": "FAILED", "count": 2}],
+                         "risk_profile": [{"risk_rating": "HIGH", "total": 2}, {"risk_rating": "LOW", "total": 5}],
+                         "targets_scanned_by_type": [{"name": "APPLICATION", "count": 5}, {"name": "MODEL", "count": 2}],
+                         "date_range": query.get("date_range")}
+        if path == "/ai-red-teaming/data-plane/v1/scan":
+            count = min(int(query.get("limit", 100)), int(mode.get("rtScans", 100)))
+            statuses = ["COMPLETED", "RUNNING", "FAILED", "QUEUED"]
+            rows = [{"uuid": f"{n:08x}-2222-4333-8444-555555555555", "tsg_id": self.server.tsg,
+                     "name": f"RT-PRIVATE-NAME-{n}", "target": {"name": "RT-PRIVATE-TARGET"},
+                     "target_id": "66666666-7777-4888-8999-aaaaaaaaaaaa", "target_type": "APPLICATION",
+                     "job_type": "STATIC", "status": statuses[0] if n < 90 else statuses[n % 4],
+                     "created_at": "2026-10-18T10:00:00Z"} for n in range(count)]
+            return 200, {"data": rows, "pagination": {"total_items": int(mode.get("rtScanTotal", mode.get("rtScans", 100)))}}
+        if path.startswith("/ai-red-teaming/data-plane/v1/report/static/") and path.endswith("/list-attacks"):
+            total = int(mode.get("attackTotal", 250))
+            skip = int(query.get("skip", 0))
+            count = max(0, min(int(query.get("limit", 100)), total - skip))
+            rows = [{"uuid": f"{skip + i:08x}-aaaa-4bbb-8ccc-dddddddddddd", "prompt": "RT-PRIVATE-PROMPT",
+                     "threat": (skip + i) % 4 == 0, "severity": "HIGH", "attack_type": "NORMAL",
+                     "category": "security", "sub_category": "JAILBREAK", "sub_category_display_name": "Jailbreak",
+                     "multi_turn": False, "extra_info": {"response": "RT-PRIVATE-REPLY"}} for i in range(count)]
+            return 200, {"data": rows, "pagination": {"total_items": total}}
+        if path == "/aims/data/v1/scans":
+            if failed("modelsStatus"):
+                return int(mode["modelsStatus"]), {"error": "SERVER-TEXT-NEVER-SHOWN"}
+            rows = [{"uuid": f"{n:08x}-3333-4333-8444-555555555555", "model_uri": "s3://MS-PRIVATE-URI/model",
+                     "security_group_name": "MS-PRIVATE-GROUP", "eval_outcome": "BLOCKED" if n % 5 == 0 else "ALLOWED",
+                     "created_at": "2026-10-18T10:00:00Z"} for n in range(100)]
+            return 200, {"scans": rows, "pagination": {"total_items": 140}}
+        if path == "/aiag/data/v1/stats/scans":
+            if failed("skillStatsStatus"):
+                return int(mode["skillStatsStatus"]), {"error": "SERVER-TEXT-NEVER-SHOWN"}
+            return 200, {"unique_skills_scanned": {"count": 4, "percent_change": None},
+                         "total_vulnerabilities_found": {"count": 6, "percent_change": 10},
+                         "top_vulnerability": {"vulnerability_type": "AG-PRIVATE-FINDING", "finding_count": 3}}
+        if path == "/aiag/data/v1/scans":
+            if failed("skillsStatus"):
+                return int(mode["skillsStatus"]), {"error": "SERVER-TEXT-NEVER-SHOWN"}
+            rows = [{"uuid": f"{n:08x}-4444-4333-8444-555555555555", "name": f"AG-PRIVATE-SKILL-{n}",
+                     "status": "COMPLETED", "eval_outcome": "ALLOWED", "artifact_type": "skill",
+                     "summary": {"vulnerability_count": n % 3, "attack_chain_count": 0},
+                     "created_at": "2026-10-18T10:00:00Z"} for n in range(12)]
+            return 200, {"scans": rows, "pagination": {"total_items": 12}}
+        return None
 
     def dlp_write(self, method, path, record, mode):
         """DLP writes (C10): JSON bodies, or a dictionary's multipart upload."""

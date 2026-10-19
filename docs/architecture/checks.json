@@ -1162,6 +1162,52 @@
         "--test",
         "redteam_model_reads"
       ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/features/red-team/red-team-view.test.tsx",
+          "src/shell/desktop-shell.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "red_team"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "management_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
       "native_prepare": [
         "cargo",
         "run",

@@ -1,0 +1,419 @@
+{
+ "schema": "airs-v2-workload-perf/1",
+ "label": "calibration",
+ "registration_sha256": "4b9ea01c720eeba51360a494db92e065eb9384d48ab649b37ea9629719e3bdc8",
+ "started_utc": "2026-10-19T15:06:45Z",
+ "finished_utc": "2026-10-19T15:09:43Z",
+ "executable_sha256": "cd65dec814bb85f8696a99d852bd5eae66b40f4b6ec8d26ff121ef54b01c70f2",
+ "host": "Mac17,3",
+ "metrics": {
+  "redteam-scans-open": {
+   "unit": "ms",
+   "samples": [
+    151.705917,
+    133.781458,
+    137.785167,
+    140.905041,
+    127.647,
+    124.437333,
+    129.389959,
+    146.394125,
+    137.649917,
+    122.115209,
+    156.727708,
+    139.413791,
+    130.112084,
+    128.258,
+    115.73675,
+    136.877958,
+    130.717667,
+    127.226292,
+    130.814917,
+    129.184334
+   ]
+  },
+  "redteam-attacks-1000": {
+   "unit": "ms",
+   "samples": [
+    354.137541,
+    513.0215,
+    650.376292,
+    172.39475,
+    176.066375,
+    178.481083,
+    312.596417,
+    203.518208,
+    359.45475,
+    194.480083
+   ]
+  },
+  "model-summary-open": {
+   "unit": "ms",
+   "samples": [
+    111.345041,
+    134.454875,
+    133.702,
+    119.372125,
+    132.24425,
+    127.203125,
+    119.225125,
+    132.951958,
+    114.128791,
+    125.163875,
+    128.993917,
+    131.510167,
+    110.030333,
+    110.965542,
+    130.964917,
+    135.723,
+    162.144666,
+    122.140459,
+    113.117,
+    123.458625
+   ]
+  },
+  "redteam-model-process-tree-resident": {
+   "unit": "MiB",
+   "samples": [
+    449.5,
+    449.5,
+    449.5,
+    449.1,
+    449.0,
+    448.6,
+    448.5,
+    448.5,
+    448.5,
+    448.4,
+    448.4,
+    448.4,
+    448.4,
+    448.3,
+    448.3,
+    447.6,
+    447.6,
+    447.4,
+    447.4,
+    447.4
+   ]
+  }
+ },
+ "details": {
+  "process_tree": {
+   "app": 80684,
+   "webkit": [
+    80686,
+    80687,
+    80688
+   ]
+  },
+  "redteam_scans_open": [
+   {
+    "sample": 1,
+    "requests": 2,
+    "ms": 151.705917,
+    "polls": 4
+   },
+   {
+    "sample": 2,
+    "requests": 2,
+    "polls": 2,
+    "ms": 133.781458
+   },
+   {
+    "sample": 3,
+    "requests": 2,
+    "ms": 137.785167,
+    "polls": 2
+   },
+   {
+    "sample": 4,
+    "requests": 2,
+    "polls": 2,
+    "ms": 140.905041
+   },
+   {
+    "sample": 5,
+    "requests": 2,
+    "ms": 127.647,
+    "polls": 2
+   },
+   {
+    "sample": 6,
+    "requests": 2,
+    "ms": 124.437333,
+    "polls": 2
+   },
+   {
+    "sample": 7,
+    "requests": 2,
+    "ms": 129.389959,
+    "polls": 2
+   },
+   {
+    "sample": 8,
+    "requests": 2,
+    "polls": 2,
+    "ms": 146.394125
+   },
+   {
+    "sample": 9,
+    "requests": 2,
+    "ms": 137.649917,
+    "polls": 2
+   },
+   {
+    "sample": 10,
+    "requests": 2,
+    "polls": 2,
+    "ms": 122.115209
+   },
+   {
+    "sample": 11,
+    "requests": 2,
+    "ms": 156.727708,
+    "polls": 2
+   },
+   {
+    "sample": 12,
+    "requests": 2,
+    "ms": 139.413791,
+    "polls": 2
+   },
+   {
+    "sample": 13,
+    "requests": 2,
+    "ms": 130.112084,
+    "polls": 2
+   },
+   {
+    "sample": 14,
+    "requests": 2,
+    "polls": 2,
+    "ms": 128.258
+   },
+   {
+    "sample": 15,
+    "requests": 2,
+    "polls": 1,
+    "ms": 115.73675
+   },
+   {
+    "sample": 16,
+    "requests": 2,
+    "ms": 136.877958,
+    "polls": 2
+   },
+   {
+    "sample": 17,
+    "requests": 2,
+    "ms": 130.717667,
+    "polls": 2
+   },
+   {
+    "sample": 18,
+    "requests": 2,
+    "polls": 2,
+    "ms": 127.226292
+   },
+   {
+    "sample": 19,
+    "requests": 2,
+    "polls": 2,
+    "ms": 130.814917
+   },
+   {
+    "sample": 20,
+    "requests": 2,
+    "ms": 129.184334,
+    "polls": 2
+   }
+  ],
+  "redteam_attacks": [
+   {
+    "sample": 1,
+    "pages_read": 10,
+    "ms": 354.137541,
+    "polls": 1
+   },
+   {
+    "sample": 2,
+    "pages_read": 10,
+    "polls": 1,
+    "ms": 513.0215
+   },
+   {
+    "sample": 3,
+    "pages_read": 10,
+    "polls": 1,
+    "ms": 650.376292
+   },
+   {
+    "sample": 4,
+    "pages_read": 10,
+    "polls": 1,
+    "ms": 172.39475
+   },
+   {
+    "sample": 5,
+    "pages_read": 10,
+    "polls": 1,
+    "ms": 176.066375
+   },
+   {
+    "sample": 6,
+    "pages_read": 10,
+    "ms": 178.481083,
+    "polls": 1
+   },
+   {
+    "sample": 7,
+    "pages_read": 10,
+    "polls": 1,
+    "ms": 312.596417
+   },
+   {
+    "sample": 8,
+    "pages_read": 10,
+    "ms": 203.518208,
+    "polls": 1
+   },
+   {
+    "sample": 9,
+    "pages_read": 10,
+    "ms": 359.45475,
+    "polls": 1
+   },
+   {
+    "sample": 10,
+    "pages_read": 10,
+    "polls": 1,
+    "ms": 194.480083
+   }
+  ],
+  "model_summary_open": [
+   {
+    "sample": 1,
+    "requests": 3,
+    "polls": 2,
+    "ms": 111.345041
+   },
+   {
+    "sample": 2,
+    "requests": 3,
+    "ms": 134.454875,
+    "polls": 2
+   },
+   {
+    "sample": 3,
+    "requests": 3,
+    "ms": 133.702,
+    "polls": 2
+   },
+   {
+    "sample": 4,
+    "requests": 3,
+    "polls": 2,
+    "ms": 119.372125
+   },
+   {
+    "sample": 5,
+    "requests": 3,
+    "ms": 132.24425,
+    "polls": 2
+   },
+   {
+    "sample": 6,
+    "requests": 3,
+    "ms": 127.203125,
+    "polls": 2
+   },
+   {
+    "sample": 7,
+    "requests": 3,
+    "ms": 119.225125,
+    "polls": 2
+   },
+   {
+    "sample": 8,
+    "requests": 3,
+    "polls": 2,
+    "ms": 132.951958
+   },
+   {
+    "sample": 9,
+    "requests": 3,
+    "ms": 114.128791,
+    "polls": 2
+   },
+   {
+    "sample": 10,
+    "requests": 3,
+    "ms": 125.163875,
+    "polls": 2
+   },
+   {
+    "sample": 11,
+    "requests": 3,
+    "polls": 2,
+    "ms": 128.993917
+   },
+   {
+    "sample": 12,
+    "requests": 3,
+    "ms": 131.510167,
+    "polls": 2
+   },
+   {
+    "sample": 13,
+    "requests": 3,
+    "polls": 2,
+    "ms": 110.030333
+   },
+   {
+    "sample": 14,
+    "requests": 3,
+    "polls": 2,
+    "ms": 110.965542
+   },
+   {
+    "sample": 15,
+    "requests": 3,
+    "polls": 2,
+    "ms": 130.964917
+   },
+   {
+    "sample": 16,
+    "requests": 3,
+    "ms": 135.723,
+    "polls": 2
+   },
+   {
+    "sample": 17,
+    "requests": 3,
+    "polls": 2,
+    "ms": 162.144666
+   },
+   {
+    "sample": 18,
+    "requests": 3,
+    "polls": 2,
+    "ms": 122.140459
+   },
+   {
+    "sample": 19,
+    "requests": 3,
+    "polls": 2,
+    "ms": 113.117
+   },
+   {
+    "sample": 20,
+    "requests": 3,
+    "ms": 123.458625,
+    "polls": 2
+   }
+  ],
+  "requests": 253,
+  "non_reads": []
+ }
+}

@@ -610,6 +610,40 @@
         "id": "C12-N11",
         "check": "The Library offline: with the scan and management services stopped, the app launches and lists the saved cases, a case authored and saved offline survives a relaunch still offline, and after reconnecting no scan, catalog read or remote write is made on its own."
       }
+    ],
+    "C13": [
+      {
+        "id": "C13-N01",
+        "check": "Red Team & Models opens on Red Teaming and reads the last 30 days' scan statistics and the first 100 scans: summary tiles, scans by status, targets by type and risk profile, source coverage, attack results offered only for finished scans; no tenant header on the Red Teaming plane and no scan, target or error text from the service in the window."
+      },
+      {
+        "id": "C13-N02",
+        "check": "Choosing another statistics window reads that window (LAST_7_DAYS) and says which window is shown."
+      },
+      {
+        "id": "C13-N03",
+        "check": "A finished scan's attack results open with focus on their heading, are read 100 per page until the service's total is covered (at most ten pages), count only reported successes, and never show attack prompts or the target's replies."
+      },
+      {
+        "id": "C13-N04",
+        "check": "Models & skills reads Model Security scans (a partial sample shown as such), AgentGuard 30-day skill statistics and skill scans named by per-read pseudonyms; v1's queries, the tenant header only on AgentGuard, and no model URI, security group, skill name or finding in the window."
+      },
+      {
+        "id": "C13-N05",
+        "check": "A refused source is stated while the others are shown; a refresh where every source fails keeps the last read with its time; absent statistics while scans exist are stated as unavailable, never zero."
+      },
+      {
+        "id": "C13-N06",
+        "check": "No control starts a Red Teaming or Model Security workflow (scan, ASR verification, target, adapter, channel, prompt set, model scan, security group); both tabs disclose that these are not available, and only GET requests reach the services."
+      },
+      {
+        "id": "C13-N07",
+        "check": "Refresh and the first attack-results action are reachable by keyboard and clear of the bottom fade at 200% zoom and at the minimum window size."
+      },
+      {
+        "id": "C13-N08",
+        "check": "Without a management client the page asks for one and nothing is read; no secret or private service marker appears in any saved Accessibility snapshot, and v1 data is unchanged."
+      }
     ]
   }
 }
