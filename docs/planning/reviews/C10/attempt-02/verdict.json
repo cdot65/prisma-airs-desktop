@@ -1,0 +1,71 @@
+{
+  "request_id": "rq-C10-20261019T100804Z-d36fcb4e",
+  "attempt_id": "attempt-02",
+  "subject": "C10",
+  "fingerprints": {
+    "source": "538c5cf224cbbad26296b30c3b68574d4d80dcf462a621c5b6631b1c6797bfe3",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "5d5d4e2f2d8d7645e5eaf0101c99e7f6e7f8d32bfd9172dedb6d8de6c43d659c",
+    "evidence": "af52070209c626ef572bcf92ffd9922c26fa25c6b2ab0ff78f849c11c55a1faf"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [
+    "E1 (partially remediated) — tools/native-acceptance/acceptance_c10.py:263-301 now exercises the real NSOpenPanel, successful staging, cancellation, oversized-file refusal and focus return. However, after choosing panel-keywords.txt it immediately opens another chooser and cancels, removing that staged file; it never reviews or applies the real chooser's selection. N03's successful multipart upload still uses the StagedText fixture adapter at lines 172-194. Thus the connected production chooser → review → native confirmation → upload flow required by C10.md and attempt-01 E1 remains unobserved. Extend the real-panel case to select Use the chosen file, Review and Apply that same selection, confirm natively, and assert the received multipart file hash/filename and readback against the selected synthetic file, with the source unchanged afterwards. Retain the current cancellation/bounds/focus checks and freeze the new evidence. This is an evidence gap, not a demonstrated upload defect."
+  ],
+  "optional_suggestions": [
+    "O1 (nonrequired) — docs/planning/evidence/C10/mutation-probes/probes.log records the cancelled-file-choice mutation surviving with exit 0 and guard_failed false. Classify it as surviving/equivalent or replace it with a mutation that actually restores the wrong-source behavior. Do not count it as a rejected mutation. The original missing-confidence probe now fails its intended guard, and the independent production-component probe confirms the base input fix."
+  ],
+  "limitations": [
+    "Attempt-01 R1-R3 are resolved in the inspected code: metadata is parsed as one JSON object and serialized; cancelled/failed choices leave an explicit typed source; dictionary previews summarize file bytes instead of exposing them; file selection is refused while confirmation holds the editor, and stale context/file tokens cannot authorize an old payload. The expanded fixture covers denial/unknown outcomes for all nine DLP mutations and changed baselines for existing-item operations. Architecture, behavior and authority/security merit 9; the remaining mandatory native-flow evidence gap keeps validation and overall at 8.",
+    "Independently ran an in-memory React/JSDOM probe against the production ChangeWorkbench with simplified presentation controls and scripted dispatch. It confirmed explicit typed-source selection after cancellation/failure, faithful fresh typed input and refusal of the malformed metadata fragment without dispatch. It did not exercise Tauri, the real chooser or an upload. Build/test/native suites were assessed from retained execution evidence rather than rerun with filesystem writes.",
+    "Independently recomputed all four supplied fingerprints twice: 427 source entries and 196 packet references matched, including retained command logs, before/after run inputs and native artifacts. The source inventory is identical to the just-reviewed C09 attempt-03 tree. Verified the supplied C09 receipt and request/verdict/raw-output hashes: it is a passing predecessor with all five scores at 9.",
+    "Retained check logs report 303 frontend tests and 87 core unit tests passing. Scoped logs report 10 DLP integration, 110 overlapping frontend, 8 overlapping changes-unit, 15 Runtime-change integration and 44 controller tests passing. Mutation evidence reports 18 of 19 mutations rejected and four baselines passing; the survivor is explicitly noted in O1.",
+    "The current C10 native record reports 10 passing checks against executable SHA-256 339a61046565d5c339c020d8aa6980863007571f342b730a640f018c3f57a813. These establish the individual recorded stages but not the missing connected flow in E1. Included C01-C09 native records use older executable ed3f8bf3117fc0a26a104bf7672d65b5e2a13af0cc4ae0ebeb327413de94b37d and were not counted as current-bundle regression evidence. I did not independently launch the application; spoken VoiceOver output remains unrecorded.",
+    "Verified SDK archive SHA-256 6d555d955c3734dd5ee78f7173569bdecd4426095b2ffedc4b77d8f0f2c2e8d9 and all 131 packaged files against consumed registry source; packaged revision is 4f65dc48686a3b701ed0585812fcca46859f7e5a. No application files were changed, product endpoints run or credentials accessed; only the designated verdict was written.",
+    "This verdict covers C10 only, not P03 or neighboring chunks. Live DLP qualification, signing and installed-package verification remain C25/C26 gates. The accepted final-baseline-read race does not provide server-side atomic conflict protection. Retained hashes bind evidence bytes, not independently authenticated authorship."
+  ],
+  "inspected_files": [
+    "AGENTS.md",
+    "docs/adr/0001-native-operation-authority.md",
+    "docs/planning/chunks/C10.md",
+    "docs/planning/review-protocol.md",
+    "docs/architecture/DESIGN.md",
+    "docs/architecture/qualification.md",
+    "docs/architecture/native-checks.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/planning/reviews/C10/attempt-02/request.json",
+    "docs/planning/reviews/C10/attempt-02/source-inventory.json",
+    "docs/planning/reviews/C10/attempt-01/source-inventory.json",
+    "docs/planning/reviews/C10/attempt-01/verdict.json",
+    "docs/planning/reviews/C10/follow-ups.md",
+    "docs/planning/reviews/C09/attempt-03/receipt.json",
+    "docs/planning/reviews/C09/attempt-03/verdict.json",
+    "crates/desktop-core/src/changes.rs",
+    "crates/desktop-core/src/authority/change_domain.rs",
+    "crates/desktop-core/src/management.rs",
+    "crates/desktop-core/tests/dlp_subset/main.rs",
+    "crates/desktop-core/tests/runtime_changes/main.rs",
+    "apps/desktop/src-tauri/src/adapters.rs",
+    "apps/desktop/src/features/administration/runtime-changes.tsx",
+    "apps/desktop/src/features/administration/dlp-authoring.test.tsx",
+    "tools/native-acceptance/acceptance_c10.py",
+    "tools/native-acceptance/native_sheets.py",
+    "docs/planning/evidence/C10/native-acceptance.json",
+    "docs/planning/evidence/C10/native/observations.json",
+    "docs/planning/evidence/C10/mutation-probes/probes.py",
+    "docs/planning/evidence/C10/mutation-probes/probes.log",
+    "docs/planning/evidence/C10/mutation-probes/results.json",
+    "docs/planning/evidence/C10/runs/check-20261019T100257Z-21eefb/run.json",
+    "docs/planning/evidence/C10/runs/test-20261019T100442Z-20fd29/run.json",
+    "docs/planning/evidence/C10/runs/native-prepare-20261019T100550Z-5072d4/run.json"
+  ],
+  "recommendation": "fail"
+}

@@ -88,11 +88,11 @@
     "label": "Choose keyword file\u2026",
     "pos": [
      649,
-     616
+     617
     ],
     "size": [
      346,
-     89
+     88
     ]
    },
    "clear": true
@@ -113,11 +113,11 @@
     "label": "Review change",
     "pos": [
      649,
-     616
+     617
     ],
     "size": [
      257,
-     89
+     88
     ]
    },
    "clear": true
@@ -179,6 +179,40 @@
   "offline": true,
   "offline_auto": 0,
   "tree_offline": "docs/planning/evidence/C10/native/tree-offline.json",
+  "tree_panel_choose": "docs/planning/evidence/C10/native/tree-panel-chosen.json",
+  "panel_choose": {
+   "panel_shown": true,
+   "chosen": true,
+   "focus_in_window": true,
+   "applied": true,
+   "uploaded_exact_bytes": true,
+   "source_unchanged": true
+  },
+  "panel_upload": [
+   {
+    "contentType": "multipart/form-data",
+    "parts": [
+     {
+      "name": "json",
+      "filename": "metadata.json",
+      "contentType": "application/json",
+      "sha256": "5a2b8550923f088d566593f5c8f47819e826013ff93c9c491c034fd74125d643",
+      "bytes": 133
+     },
+     {
+      "name": "file",
+      "filename": "keywords.txt",
+      "contentType": "text/plain",
+      "sha256": "c3f9c8c283a2b1f2f1896f27a01cbe3cddc0c9d93f752e4639035a0f5b36f6e8",
+      "bytes": 8
+     }
+    ]
+   }
+  ],
+  "tree_panel_applied": "docs/planning/evidence/C10/native/tree-panel-applied.json",
+  "panel_cancel": true,
+  "panel_too_large": true,
+  "tree_panel_refused": "docs/planning/evidence/C10/native/tree-panel-refused.json",
   "path_in_trees": [],
   "v1_unchanged": true,
   "dlp_writes": [
@@ -201,102 +235,113 @@
     "method": "POST",
     "path": "/dlp/v2/api/dictionaries",
     "status": 403
+   },
+   {
+    "method": "POST",
+    "path": "/dlp/v2/api/dictionaries",
+    "status": 200
    }
   ]
  },
  "log": [
   {
-   "t": "20:44:51",
+   "t": "05:18:18",
    "step": "typed",
    "field": "TSG ID (optional)",
    "attempts": 1
   },
   {
-   "t": "20:44:53",
+   "t": "05:18:19",
    "step": "typed",
    "field": "Label",
    "attempts": 1
   },
   {
-   "t": "20:44:55",
+   "t": "05:18:21",
    "step": "typed",
    "field": "Endpoint origin",
    "attempts": 1
   },
   {
-   "t": "20:44:57",
+   "t": "05:18:24",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "20:45:00",
+   "t": "05:18:26",
    "step": "typed",
    "field": "Client ID",
    "attempts": 1
   },
   {
-   "t": "20:45:02",
+   "t": "05:18:28",
    "step": "typed",
    "field": "Client secret",
    "attempts": 1
   },
   {
-   "t": "20:45:08",
+   "t": "05:18:34",
    "step": "typed",
    "field": "data pattern draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "20:45:10",
+   "t": "05:18:36",
    "step": "typed",
    "field": "Type Card numbers to confirm",
    "attempts": 1
   },
   {
-   "t": "20:45:17",
+   "t": "05:18:43",
    "step": "typed",
    "field": "Dictionary keywords, one per line",
    "attempts": 2
   },
   {
-   "t": "20:45:19",
+   "t": "05:18:45",
    "step": "typed",
    "field": "Type CREATE to confirm",
    "attempts": 1
   },
   {
-   "t": "20:45:26",
+   "t": "05:18:51",
    "step": "typed",
    "field": "Type CREATE to confirm",
    "attempts": 1
   },
   {
-   "t": "20:46:41",
+   "t": "05:20:02",
    "step": "typed",
    "field": "Type CREATE to confirm",
    "attempts": 1
   },
   {
-   "t": "20:46:48",
+   "t": "05:20:09",
    "step": "typed",
    "field": "data pattern draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "20:46:50",
+   "t": "05:20:11",
    "step": "typed",
    "field": "Type Card numbers v2 to confirm",
    "attempts": 1
   },
   {
-   "t": "20:46:58",
+   "t": "05:20:18",
    "step": "typed",
    "field": "data pattern draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "20:46:59",
+   "t": "05:20:20",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "05:20:37",
    "step": "typed",
    "field": "Type CREATE to confirm",
    "attempts": 1

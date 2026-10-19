@@ -94,8 +94,8 @@
       "changes"
     ],
     "guard": "data_profiles_follow_v1s_structure_rules",
-    "exit_code": 0,
-    "guard_failed": false
+    "exit_code": 101,
+    "guard_failed": true
   },
   {
     "mutation": "dictionary files are unbounded",
@@ -294,6 +294,86 @@
       "src/contracts/snapshot-validation.test.ts"
     ],
     "guard": "rejects a staged file whose token is a path",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a dictionary preview carries the file text",
+    "files": [
+      "crates/desktop-core/src/changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "a_staged_files_content_never_reaches_a_projection_and_the_pending_hold_keeps_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a file can be chosen while a confirmation holds the editor",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "dlp_subset"
+    ],
+    "guard": "a_staged_files_content_never_reaches_a_projection_and_the_pending_hold_keeps_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a cancelled file choice leaves the file option in use",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/dlp-authoring.test.tsx"
+    ],
+    "guard": "keeps typed keywords in use when a file choice is cancelled or fails",
+    "exit_code": 0,
+    "guard_failed": false
+  },
+  {
+    "mutation": "raw metadata is spliced into the dictionary body",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/administration/dlp-authoring.test.tsx"
+    ],
+    "guard": "refuses metadata that is not exactly one JSON object without dispatching",
     "exit_code": 1,
     "guard_failed": true
   },

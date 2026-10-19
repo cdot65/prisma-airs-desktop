@@ -282,10 +282,34 @@ def run():
     chose = ns.open_file(app, native_file)
     tree, staged = c8.text(app, "Chosen: panel-keywords.txt", 10)
     focus = fx.App.focused(tree)
-    obs["panel_choose"] = {"panel_shown": panel, "chosen": chose and staged,
-                           "focus_in_window": bool(focus) and focus.get("role") not in ("AXSheet", None),
-                           "source_unchanged": (os.stat(native_file).st_mtime_ns, sha(open(native_file, "rb").read())) == before_native}
+    focus_ok = bool(focus) and focus.get("role") not in ("AXSheet", None)
     obs["tree_panel_choose"] = save_tree("panel-chosen", tree)
+    # The real chooser's selection goes through review, the native
+    # confirmation and the multipart upload.
+    app.ax("press", "AXRadioButton", "Use the chosen file (panel-keywords.txt")
+    before_posts = len(dlp_writes(mgmt, "POST", "/dlp/v2/api/dictionaries"))
+    c9.review(app, "Applies only to this tenant")
+    app.type_into("AXTextField", "Type CREATE to confirm", "CREATE")
+    app.ax("press", "AXButton", "Apply…")
+    c9.wait_sheet(app)
+    app.keycode(36)
+    tree, panel_applied = c8.text(app, "Applied. The item was read back.", 15)
+    app.wait_for(lambda t: len(dlp_writes(mgmt, "POST", "/dlp/v2/api/dictionaries")) > before_posts, 10)
+    panel_posts = dlp_writes(mgmt, "POST", "/dlp/v2/api/dictionaries")[before_posts:]
+    panel_upload = [{k: p.get(k) for k in ("contentType", "parts")} for p in panel_posts]
+    obs["panel_choose"] = {"panel_shown": panel, "chosen": chose and staged, "focus_in_window": focus_ok,
+                           "applied": panel_applied,
+                           "uploaded_exact_bytes": upload_ok(panel_upload, sha("one\ntwo\n"), "keywords.txt"),
+                           "source_unchanged": (os.stat(native_file).st_mtime_ns, sha(open(native_file, "rb").read())) == before_native}
+    obs["panel_upload"] = panel_upload
+    obs["tree_panel_applied"] = save_tree("panel-applied", tree)
+    # A fresh dictionary for the cancellation and bounds checks.
+    c9.close_workbench(app)
+    app.ax("press", "AXButton", "New dictionary")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Choose keyword file…") is not None)
+    app.ax("press", "AXButton", "Choose keyword file…")
+    ns.open_file(app, native_file)
+    c8.text(app, "Chosen: panel-keywords.txt", 10)
     app.ax("press", "AXButton", "Choose keyword file…")
     cancelled = ns.cancel(app)
     tree, _ = app.wait_for(lambda t: not app.has_text(t, "Chosen: panel-keywords.txt"), 8)
@@ -355,8 +379,8 @@ def evaluate(prepared, o):
         [o["tree_offline"]])
     panel = o["panel_choose"]
     add("C10-N10", all(panel.values()) and o["panel_cancel"] and o["panel_too_large"],
-        f"production open panel: {panel}; cancelled panel staged nothing: {o['panel_cancel']}; a 300 KiB file refused: {o['panel_too_large']}",
-        [o["tree_panel_choose"], o["tree_panel_refused"]])
+        f"production open panel: {panel}; upload {o['panel_upload']}; cancelled panel staged nothing: {o['panel_cancel']}; a 300 KiB file refused: {o['panel_too_large']}",
+        [o["tree_panel_choose"], o["tree_panel_applied"], o["tree_panel_refused"]])
     zoom_ok = all(r["clear"] for r in (o["zoom_choose"], o["zoom_review"], o["min_choose"], o["min_review"]))
     add("C10-N09", zoom_ok,
         f"200% zoom: {o['zoom_choose']['found']} / {o['zoom_review']['found']}; minimum size: {o['min_choose']['found']} / {o['min_review']['found']}; "

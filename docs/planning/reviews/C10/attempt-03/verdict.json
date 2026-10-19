@@ -1,0 +1,62 @@
+{
+  "request_id": "rq-C10-20261019T102832Z-10e8beff",
+  "attempt_id": "attempt-03",
+  "subject": "C10",
+  "fingerprints": {
+    "source": "ea62b4b54dec7a6239699b146dd5e62e34fbe36c8f9ae8c43b2a54a09cb174cb",
+    "dependencies": "3c2d2720470d8a6888a9ce15e2c4ee02944e715117616a9480bff736f881d09e",
+    "build_flags": "028f578d1a2af4da70ec72427cca9de00c639896c81edcf5aa46f006c286cf72",
+    "evidence": "46ab95f6fa91c799d26461881ade4d78cc54bdd385d916f708063e7fb57cd4b2"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [
+    "O1 (nonrequired) — docs/planning/evidence/C10/mutation-probes/probes.log records the cancelled-file-choice mutation surviving with exit 0 and guard_failed false. Classify it as surviving/equivalent or replace it with a mutation that actually restores the wrong-source behavior. Do not count it as a rejected mutation. The original missing-confidence probe now fails its intended guard, and the independent production-component probe confirms the base input fix."
+  ],
+  "limitations": [
+    "Attempt-02 E1 is resolved. C10-N10 now carries the production NSOpenPanel selection through Use the chosen file, Review, native confirmation and upload before starting separate cancellation/bounds checks. Independently verified the recorded file part's eight bytes and SHA-256 c3f9c8c283a2b1f2f1896f27a01cbe3cddc0c9d93f752e4639035a0f5b36f6e8 against the driver's synthetic one/two file. The multipart filename keywords.txt matches the operator's original_file_name metadata; the source basename remains panel-keywords.txt. The newest result in the retained AX tree reports readback, and the record includes source preservation and focus return.",
+    "Only tools/native-acceptance/acceptance_c10.py and docs/architecture/native-checks.json differ from attempt-02's source inventory. Application code is unchanged, so the earlier review of R1-R3, supported DLP operations, outcome handling and staged-file isolation remains applicable. The current regression logs retain the expanded operation matrix and file-projection/confirmation-hold cases.",
+    "Independently recomputed all four supplied fingerprints twice: 427 source entries and 197 packet references matched, including retained command logs, before/after run inputs and native artifacts. Verified the supplied C09 receipt and request/verdict/raw-output hashes: it is a passing predecessor with all five scores at 9.",
+    "Independently reran the in-memory React/JSDOM probe against the production ChangeWorkbench with simplified presentation controls and scripted dispatch. Cancellation/failure preserved an explicit typed source, fresh typed input was captured faithfully, and malformed metadata was refused without dispatch. This probe does not exercise Tauri or an upload. Build/test/native suites were assessed from retained evidence rather than independently rerun.",
+    "Retained check logs report 303 frontend tests and 87 core unit tests passing. Scoped logs report 10 DLP integration, 110 overlapping frontend, 8 overlapping changes-unit, 15 Runtime-change integration and 44 controller tests passing. Mutation evidence reports 18 of 19 mutations rejected and four baselines passing; the unchanged survivor remains the nonrequired suggestion O1.",
+    "Current C10 native evidence reports 10 passing checks against executable SHA-256 339a61046565d5c339c020d8aa6980863007571f342b730a640f018c3f57a813. The bundle/executable hashes match the prepared artifacts. Included C01-C09 native records use an older executable and were not counted as current-bundle regression evidence. I did not independently launch the application; spoken VoiceOver output remains unrecorded.",
+    "The dependency fingerprint is unchanged from attempt-02, where SDK archive SHA-256 6d555d955c3734dd5ee78f7173569bdecd4426095b2ffedc4b77d8f0f2c2e8d9 and all 131 packaged files were independently verified against consumed registry source. No application files were changed, product endpoints run or credentials accessed; only the designated verdict was written.",
+    "This pass covers C10 and its reviewed frozen inputs, not P03 or neighboring chunks. Live DLP qualification, signing and installed-package verification remain C25/C26 gates. The accepted final-baseline-read race does not provide server-side atomic conflict protection. Retained hashes bind evidence bytes, not independently authenticated authorship."
+  ],
+  "inspected_files": [
+    "docs/planning/chunks/C10.md",
+    "docs/planning/review-protocol.md",
+    "docs/architecture/DESIGN.md",
+    "docs/architecture/native-checks.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/planning/reviews/C10/attempt-03/request.json",
+    "docs/planning/reviews/C10/attempt-03/source-inventory.json",
+    "docs/planning/reviews/C10/attempt-02/source-inventory.json",
+    "docs/planning/reviews/C10/attempt-02/verdict.json",
+    "docs/planning/reviews/C10/follow-ups.md",
+    "docs/planning/reviews/C09/attempt-03/receipt.json",
+    "docs/planning/reviews/C09/attempt-03/verdict.json",
+    "apps/desktop/src/features/administration/runtime-changes.tsx",
+    "tools/native-acceptance/acceptance_c10.py",
+    "docs/planning/evidence/C10/native-acceptance.json",
+    "docs/planning/evidence/C10/native/observations.json",
+    "docs/planning/evidence/C10/native/tree-panel-chosen.json",
+    "docs/planning/evidence/C10/native/tree-panel-applied.json",
+    "docs/planning/evidence/C10/native/tree-panel-refused.json",
+    "docs/planning/evidence/C10/mutation-probes/probes.py",
+    "docs/planning/evidence/C10/mutation-probes/probes.log",
+    "docs/planning/evidence/C10/mutation-probes/results.json",
+    "docs/planning/evidence/C10/runs/check-20261019T102321Z-0c4113/run.json",
+    "docs/planning/evidence/C10/runs/test-20261019T102511Z-f54dc0/run.json",
+    "docs/planning/evidence/C10/runs/native-prepare-20261019T102619Z-44b15d/run.json"
+  ],
+  "recommendation": "pass"
+}

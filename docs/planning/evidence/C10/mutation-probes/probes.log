@@ -2,7 +2,7 @@ filtering profiles can be deleted 101 True
 data profiles can be deleted 101 True
 the legacy rendering is sent back with a data profile 101 True
 data profiles skip v1's structure rules 101 True
-a pattern leaf may omit its confidence level 0 False
+a pattern leaf may omit its confidence level 101 True
 dictionary files are unbounded 101 True
 a dictionary file name may hold a path 101 True
 any staged token resolves 101 True
@@ -13,6 +13,10 @@ a dictionary replace without a body is an invalid reply 101 True
 the presentation sends the token as file content 1 True
 data profiles offer a delete 1 True
 the presentation accepts a path as a staged token 1 True
+a dictionary preview carries the file text 101 True
+a file can be chosen while a confirmation holds the editor 101 True
+a cancelled file choice leaves the file option in use 0 False
+raw metadata is spliced into the dictionary body 1 True
 baseline dlp_subset 0
 baseline changes 0
 baseline src/features/administration/dlp-authoring.test.tsx 0
