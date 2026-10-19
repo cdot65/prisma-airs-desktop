@@ -34,6 +34,8 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
     const [tab, setTab] = useState<'scan' | 'overview'>('scan')
     const [caseName, setCaseName] = useState('')
     const [caseMessage, setCaseMessage] = useState<string | null>(null)
+    // A save is reported when its outcome is established, not on admission.
+    const [savingCase, setSavingCase] = useState<{ name: string; after: bigint } | null>(null)
     const form = useRef<HTMLFormElement>(null)
     const [busy, setBusy] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
@@ -77,11 +79,28 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
                 payload: '',
             },
         })
-        if (outcome.kind === 'admitted') setCaseMessage('Saved to this tenant’s case Library.')
-        else if (outcome.kind === 'refused' && outcome.refusal === 'invalidInput' && snapshot.library.problem) {
-            setCaseMessage(CASE_PROBLEM_TEXT[snapshot.library.problem])
+        if (outcome.kind === 'admitted') {
+            // Only snapshots published after this admission can report it.
+            setSavingCase({ name: caseName, after: BigInt(snapshot.revision) })
+            setCaseMessage('Saving to this tenant’s case Library…')
+        } else if (outcome.kind === 'refused' && outcome.refusal === 'invalidInput') {
+            setCaseMessage('Check the case: it needs a name, a profile and an application within the limits.')
         } else setCaseMessage(outcomeMessage(outcome))
     }
+
+    const notice = snapshot.library.notice
+    const problem = snapshot.library.problem
+    useEffect(() => {
+        if (savingCase === null || BigInt(snapshot.revision) <= savingCase.after) return
+        if (notice?.kind === 'saved' && notice.name === savingCase.name) {
+            setCaseMessage('Saved to this tenant’s case Library.')
+            setSavingCase(null)
+        } else if (problem) {
+            // The form keeps its fields so the save can be tried again.
+            setCaseMessage(CASE_PROBLEM_TEXT[problem])
+            setSavingCase(null)
+        }
+    }, [notice, problem, savingCase, snapshot.revision])
 
     const shown: ScanRecordView | undefined =
         snapshot.scans.find((s) => s.operation === selected) ?? snapshot.scans[0]

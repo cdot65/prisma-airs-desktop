@@ -20,6 +20,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fixture_app as fx  # noqa: E402
 import acceptance_c08 as c8  # noqa: E402
+import native_sheets as ns  # noqa: E402
 
 ROOT = os.getcwd()
 SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C12")
@@ -230,6 +231,41 @@ def run():
     obs["import"] = {"restored": restored, "foreign_refused": refused}
     obs["tree_import"] = save_tree("import", tree)
 
+    # ---- N10: the production panels ----
+    # No AX tree is saved while a panel lists folders.
+    out = os.path.join(work, "panel-library")
+    os.makedirs(out)
+    big = os.path.join(out, "too-big.json")
+    with open(big, "w") as f:
+        f.write(" " * (300 * 1024))
+    ns.enable()
+    app.ax("press", "AXButton", "Export library…")
+    panel = ns.wait_sheet(app)
+    saved_panel = ns.save_as(app, out, name="library-panel")
+    tree, said = c8.text(app, "Saved library-panel.json.", 10)
+    exported_file = os.path.join(out, "library-panel.json")
+    mode = oct(stat.S_IMODE(os.stat(exported_file).st_mode)) if os.path.exists(exported_file) else None
+    app.ax("press", "AXButton", "Remove case Benign question")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Load Benign question") is None, 8)
+    app.ax("press", "AXButton", "Import cases…")
+    opened = ns.open_file(app, exported_file)
+    tree, restored_panel = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Load Benign question") is not None, 10)
+    focus = fx.App.focused(tree)
+    count = len(rows(tree))
+    app.ax("press", "AXButton", "Import cases…")
+    cancelled = ns.cancel(app)
+    time.sleep(1)
+    unchanged = len(rows(app.tree())) == count
+    app.ax("press", "AXButton", "Import cases…")
+    ns.open_file(app, big)
+    tree, refused = c8.text(app, "That file could not be read. Nothing was changed.", 10)
+    obs["panel_library"] = {"panel_shown": panel, "saved": saved_panel and said, "mode": mode,
+                            "imported": opened and restored_panel, "cancelled": cancelled and unchanged,
+                            "too_large_refused": refused,
+                            "focus_in_window": bool(focus) and focus.get("role") not in ("AXSheet", None)}
+    obs["tree_panel_library"] = save_tree("panel-library", tree)
+    ns.disable()
+
     # ---- N06: Overview & Inbox ----
     app.open_runtime()
     app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Scan a prompt or response") is not None)
@@ -349,6 +385,10 @@ def evaluate(prepared, o):
         [o["tree_chart_failed"], o["tree_refresh_failed"]])
     add("C12-N08", o["library_removed"] and not o["writes"] and not o["secret_in_trees"],
         f"sealed library removed with the tenant: {o['library_removed']}; non-read requests: {o['writes']}; secrets in AX snapshots: {o['secret_in_trees']}", [])
+    pl = o["panel_library"]
+    add("C12-N10", pl["panel_shown"] and pl["saved"] and pl["mode"] == "0o600" and pl["imported"] and pl["cancelled"]
+        and pl["too_large_refused"] and pl["focus_in_window"],
+        f"production panels: {pl}", [o["tree_panel_library"]])
     zoom_ok = all(r["clear"] for r in (o["zoom_create"], o["min_create"], o["zoom_refresh"], o["min_refresh"]))
     add("C12-N09", zoom_ok,
         f"200% zoom: {o['zoom_create']['found']} / {o['zoom_refresh']['found']}; minimum size: {o['min_create']['found']} / {o['min_refresh']['found']}; all clear: {zoom_ok}", [])
@@ -365,7 +405,7 @@ def evaluate(prepared, o):
         "app": {"bundle": prepared["bundle"], "identifier": prepared["identifier"], "executable_sha256": prepared["executable_sha256"], "fixture": True},
         "checks": checks,
         "limitations": [
-            "The fixture build answers the case-file sheet with the file the driver staged and saves exports into its data root without the save sheet (production opens rfd sheets).",
+            "N04 answers the case-file sheet with a staged file and saves exports into the fixture data root without a sheet; N10 drives the production rfd NSOpenPanel/NSSavePanel (the fixture switch fixture-native-sheets) with driver-owned temporary files. No Accessibility tree is saved while a panel lists folders.",
             "The public example catalog is a local snapshot served at the fixture catalog URL; the production URL is raw.githubusercontent.com.",
             "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected.",
         ],

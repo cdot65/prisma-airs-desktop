@@ -25,5 +25,7 @@ P03 push):
 - E2 (core part): a draft captured while a confirmation is pending ends that
   confirmation and its late completion applies nothing
   (`a_draft_captured_while_confirming_ends_the_pending_confirmation`). The
-  native part (retiring an open confirmation or secret sheet) remains for
-  the P03 push.
+  native part is C09-N11 (P03 push): switching the tenant through
+  Accessibility while the confirmation or the one-time key sheet is open
+  dismisses it; a late Return writes nothing, the clipboard is untouched and
+  the key is not offered again.

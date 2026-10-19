@@ -420,6 +420,68 @@ def run():
     obs["in_flight_posts"] = in_flight
     obs["relaunch_posts"] = len(writes(mgmt, "POST", "/aisec/v1/mgmt/topic"))
     obs["tree_relaunch"] = save_tree("relaunch", tree)
+
+    # ---- N11: retiring the context ends an open confirmation and secret sheet ----
+    app.open_settings()
+    app.create_custom_tenant("Tenant B", endpoint.origin)
+    app.make_active("Tenant A")
+    c8.open_admin(app)
+    c8.text(app, "Items 1–25 of 25+")
+    open_change(app, "Custom topics", "Details for Finance", "Edit…")
+    app.type_into("AXTextArea", "custom topic draft (JSON)",
+                  '{"topic_name":"Finance","description":"Retired mid-confirmation","examples":[],"revision":1}')
+    review(app, "Applies only to this tenant")
+    app.type_into("AXTextField", "Type Finance to confirm", "Finance")
+    puts_before = len(writes(mgmt, "PUT"))
+    app.ax("press", "AXButton", "Apply…")
+    _, confirm_shown = wait_sheet(app)
+    # The sheet is window-modal; the switch is made through Accessibility.
+    app.ax("press", "AXButton", "Settings")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Make Tenant B active") is not None, 8)
+    app.ax("press", "AXButton", "Make Tenant B active")
+    _, confirm_gone = wait_no_sheet(app, 10)
+    app.keycode(36)  # a late Return applies nothing
+    time.sleep(2)
+    tree = app.tree()
+    obs["retire_confirmation"] = {"shown": confirm_shown, "ended": confirm_gone,
+                                  "no_write": len(writes(mgmt, "PUT")) == puts_before,
+                                  "tenant_b_active": app.has_text(tree, "Active tenant: Tenant B") or app.has_text(tree, "Tenant B (active)")}
+    obs["tree_retired_confirmation"] = save_tree("retired-confirmation", tree)
+    app.make_active("Tenant A")
+    c8.open_admin(app)
+    app.ax("press", "AXButton", "API keys")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Create API key") is not None)
+    app.ax("press", "AXButton", "Create API key")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Review change") is not None)
+    app.type_into("AXTextArea", "API key draft (JSON)",
+                  '{"api_key_name":"Retired sheet key","cust_app":"Native app","cust_env":"production","cust_cloud_provider":"aws",'
+                  '"dp_name":"dp-0","revoked":false,"rotation_time_interval":30,"rotation_time_unit":"days"}')
+    review(app, "Applies only to this tenant")
+    app.type_into("AXTextField", "Type CREATE to confirm", "CREATE")
+    app.ax("press", "AXButton", "Apply…")
+    wait_sheet(app)
+    app.keycode(36)
+    c8.text(app, "held in memory only", 15)
+    marker = "c09-retire-clipboard-marker"
+    set_clipboard(marker)
+    app.ax("press", "AXButton", "Show new key…")
+    tree, secret_shown = wait_sheet(app)
+    secret = secret_in(sheet(app, tree))
+    if secret:
+        SEEN_SECRETS.append(secret)
+    app.ax("press", "AXButton", "Settings")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Make Tenant B active") is not None, 8)
+    app.ax("press", "AXButton", "Make Tenant B active")
+    _, secret_gone = wait_no_sheet(app, 10)
+    time.sleep(1)
+    app.make_active("Tenant A")
+    tree = c8.open_admin(app)
+    time.sleep(1)
+    tree = app.tree()
+    obs["retire_secret"] = {"shown": secret_shown and bool(secret), "ended": secret_gone,
+                            "clipboard_untouched": clipboard() == marker,
+                            "not_offered_again": fx.App.node(tree, "AXButton", "Show new key…") is None}
+    obs["tree_retired_secret"] = save_tree("retired-secret", tree)
     app.quit()
 
     trees = [os.path.join(NATIVE, n) for n in os.listdir(NATIVE) if n.startswith("tree-")]
@@ -451,6 +513,8 @@ def run():
 
 
 def evaluate(prepared, o):
+    o.setdefault("retire_confirmation", {"missing": False})
+    o.setdefault("retire_secret", {"missing": False})
     inventory = {c["id"]: c["check"] for c in json.load(open(os.path.join(ROOT, "docs/architecture/native-checks.json")))["chunks"]["C09"]}
     obs_path = rel(os.path.join(NATIVE, "observations.json"))
     checks = []
@@ -497,6 +561,10 @@ def evaluate(prepared, o):
         f"200% zoom: {o['zoom']['found']} in window {o['zoom']['window']}, clear: {o['zoom']['clear']}; minimum size: {o['min_size']['found']} in window "
         f"{o['min_size']['window']}, clear: {o['min_size']['clear']}", [])
 
+    rc, rs = o["retire_confirmation"], o["retire_secret"]
+    add("C09-N11", all(rc.values()) and all(rs.values()),
+        f"confirmation sheet retired by a tenant switch: {rc}; secret sheet retired: {rs}",
+        [o.get("tree_retired_confirmation"), o.get("tree_retired_secret")])
     hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
     os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"
     record = {

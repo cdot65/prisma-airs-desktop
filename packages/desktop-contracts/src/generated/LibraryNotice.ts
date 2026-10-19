@@ -3,4 +3,4 @@
 /**
  * What the last explicit library operation did.
  */
-export type LibraryNotice = { "kind": "imported", added: number, } | { "kind": "examplesAdded", added: number, } | { "kind": "copied", tenant: string, } | { "kind": "catalogUnavailable" } | { "kind": "fileUnreadable" };
+export type LibraryNotice = { "kind": "saved", name: string, } | { "kind": "imported", added: number, } | { "kind": "examplesAdded", added: number, } | { "kind": "copied", tenant: string, } | { "kind": "catalogUnavailable" } | { "kind": "fileUnreadable" };

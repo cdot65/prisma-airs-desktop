@@ -100,6 +100,9 @@ pub enum CaseProblem {
     AllPresent,
     /// No such case.
     Missing,
+    /// The change was accepted but could not be saved on this Mac (or its
+    /// library could not be opened); retry once storage is available.
+    NotSaved,
 }
 
 /// A v4 UUID in its text form.
@@ -134,7 +137,12 @@ impl TestCase {
         if self.tenant != tenant {
             return Err(CaseProblem::ForeignTenant);
         }
-        if !self.payload.is_null() && !self.payload.is_object() {
+        // A payload is a specification's object; a Runtime case never has
+        // one (v1 authoring forced it to null). An imported or catalog
+        // Runtime case with a payload is refused, never stored.
+        if (!self.payload.is_null() && !self.payload.is_object())
+            || (self.product.can_scan() && !self.payload.is_null())
+        {
             return Err(CaseProblem::Payload);
         }
         let runtime = self.product.can_scan();
@@ -462,9 +470,14 @@ pub fn key_record(tenant: &str) -> RecordId {
     RecordId::parse(&format!("cr-{}", &digest[..16])).expect("16 hex digits")
 }
 
-/// Where a tenant's sealed library lives.
+/// Where a tenant's sealed library lives: named after its key record, so
+/// the credential cleanup ledger that deletes the key also finds the file.
 pub fn library_path(root: &Path, tenant: &str) -> PathBuf {
-    let digest = crate::offline::digest(&format!("case-library:{tenant}"));
+    record_path(root, &key_record(tenant))
+}
+
+fn record_path(root: &Path, record: &RecordId) -> PathBuf {
+    let digest = crate::offline::digest(&format!("case-library:{}", record.as_str()));
     root.join(format!("{}.sealed", &digest[..32]))
 }
 
@@ -565,21 +578,22 @@ pub fn store(
         .map_err(|_| LibraryFailure::Unavailable)
 }
 
-/// Removes a deleted tenant's library and key; true when both are gone.
-pub fn forget(root: Option<&Path>, keychain: &dyn Vault, tenant: &str) -> bool {
-    let file = root.is_none_or(|root| {
-        let path = library_path(root, tenant);
-        let _ = std::fs::remove_file(path.with_extension("unreadable"));
-        match std::fs::remove_file(path) {
+/// Removes the library files (sealed and set aside) named by a key record
+/// in the cleanup ledger; true when none remains. Absent for every record
+/// that is not a library key. Runs under the placement lock, which library
+/// writes also take, so no write lands after it.
+pub fn forget_record(root: Option<&Path>, record: &RecordId) -> bool {
+    let Some(root) = root else {
+        return true;
+    };
+    let _placement = crate::sessions::placement();
+    let path = record_path(root, record);
+    [path.with_extension("unreadable"), path]
+        .iter()
+        .all(|p| match std::fs::remove_file(p) {
             Ok(()) => true,
             Err(e) => e.kind() == std::io::ErrorKind::NotFound,
-        }
-    });
-    let key = matches!(
-        keychain.delete(&key_record(tenant)),
-        Ok(()) | Err(VaultError::NotFound)
-    );
-    file && key
+        })
 }
 
 #[cfg(test)]
@@ -717,6 +731,18 @@ mod tests {
         assert_eq!(
             parse_import(&vec![b' '; LIBRARY_BYTES + 1], T),
             Err(CaseProblem::TooLarge)
+        );
+        // A Runtime case with a payload is refused (never stored or shown).
+        let mut payload = serde_json::to_value(&case).expect("json");
+        payload["payload"] = json!({"k": 1});
+        let file = json!({"version": 2, "tenant": T, "cases": [payload]}).to_string();
+        assert_eq!(parse_import(file.as_bytes(), T), Err(CaseProblem::Payload));
+        let catalog = json!({"version": 1, "kind": "prisma-airs-test-case-examples", "examples": [
+            {"product": "runtime-security", "name": "R", "profile": "p", "app_name": "a", "prompt": "x",
+             "expected": "goal", "payload": {"k": 1}}]});
+        assert_eq!(
+            parse_catalog(catalog.to_string().as_bytes(), T),
+            Err(CaseProblem::Catalog)
         );
     }
 

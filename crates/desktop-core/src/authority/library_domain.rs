@@ -41,6 +41,10 @@ pub enum CatalogSource {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum LibraryNotice {
+    /// A case was saved (its write on this Mac succeeded).
+    Saved {
+        name: String,
+    },
     Imported {
         added: u32,
     },
@@ -85,8 +89,10 @@ pub(super) struct Library {
     unsaved: Option<LibraryFailure>,
     problem: Option<CaseProblem>,
     notice: Option<LibraryNotice>,
-    /// Copies made into this tenant before its library opened.
-    pending: Vec<TestCase>,
+    /// Additions made before this library opened (saves and copies).
+    pending: Vec<Pending>,
+    /// What to tell whom once the write of a generation succeeds.
+    outcomes: Vec<(u64, TenantId, LibraryNotice)>,
     choosing: Option<u64>,
     fetching: Option<u64>,
 }
@@ -104,10 +110,18 @@ impl Library {
             problem: None,
             notice: None,
             pending: Vec::new(),
+            outcomes: Vec::new(),
             choosing: None,
             fetching: None,
         }
     }
+}
+
+/// An addition waiting for its library to open, and whom to tell.
+pub(super) struct Pending {
+    case: TestCase,
+    origin: TenantId,
+    notice: LibraryNotice,
 }
 
 /// A copy's follow-up: the destination's write and, if it was not open,
@@ -122,6 +136,22 @@ pub(super) struct LibraryWrite {
 }
 
 impl State {
+    /// Tells the library of `origin` how its operation ended.
+    fn deliver(&mut self, origin: &TenantId, outcome: Result<LibraryNotice, CaseProblem>) {
+        if let Some(library) = self.libraries.iter_mut().find(|l| &l.tenant == origin) {
+            match outcome {
+                Ok(notice) => {
+                    library.notice = Some(notice);
+                    library.problem = None;
+                }
+                Err(problem) => {
+                    library.problem = Some(problem);
+                    library.notice = None;
+                }
+            }
+        }
+    }
+
     fn library_mut(&mut self, tenant: &TenantId) -> Result<&mut Library, Refusal> {
         let library = self
             .libraries
@@ -173,7 +203,8 @@ impl State {
         ))
     }
 
-    /// Settles a load; copies made meanwhile are merged and need a write.
+    /// Settles a load. Additions made meanwhile are merged (all or none)
+    /// and need a write; their originators hear how they ended.
     pub(super) fn settle_library(
         &mut self,
         lease: u64,
@@ -183,31 +214,41 @@ impl State {
             .libraries
             .iter_mut()
             .find(|l| l.lease == lease && l.state == LibraryState::Loading)?;
-        match loaded {
+        let pending = std::mem::take(&mut library.pending);
+        let (write, failed) = match loaded {
             Ok(cases) => {
                 library.library = cases;
                 library.state = LibraryState::Ready;
-                let pending = std::mem::take(&mut library.pending);
                 if pending.is_empty() {
                     return None;
                 }
-                match library.library.merge(pending) {
+                let cases = pending.iter().map(|p| p.case.clone()).collect();
+                match library.library.merge(cases) {
                     Ok(_) => {
                         library.generation += 1;
-                        Some((library.tenant.clone(), library.generation))
+                        let generation = library.generation;
+                        for p in &pending {
+                            library
+                                .outcomes
+                                .push((generation, p.origin.clone(), p.notice.clone()));
+                        }
+                        (Some((library.tenant.clone(), generation)), None)
                     }
-                    Err(problem) => {
-                        library.problem = Some(problem);
-                        None
-                    }
+                    Err(problem) => (None, Some(problem)),
                 }
             }
             Err(failure) => {
                 library.state = LibraryState::Failed;
                 library.failure = Some(failure);
-                None
+                (None, Some(CaseProblem::NotSaved))
+            }
+        };
+        if let Some(problem) = failed {
+            for p in pending {
+                self.deliver(&p.origin, Err(problem));
             }
         }
+        write
     }
 
     fn changed_library(library: &mut Library) -> (TenantId, u64) {
@@ -227,6 +268,7 @@ impl State {
         self.library_root
             .as_ref()
             .ok_or(Refusal::CapabilityMissing)?;
+        let name = draft.name.clone();
         let case = draft.into_case(tenant.as_str());
         let open = self
             .libraries
@@ -243,18 +285,42 @@ impl State {
             if library.pending.len() >= crate::library::CASE_LIMIT {
                 return Err(Refusal::Busy);
             }
-            library.pending.push(case);
+            library.pending.push(Pending {
+                case,
+                origin: tenant,
+                notice: LibraryNotice::Saved { name },
+            });
             return Ok((None, load));
         }
         let library = self.library_mut(&tenant)?;
         library.notice = None;
         match case.and_then(|case| library.library.add(case, tenant.as_str())) {
-            Ok(()) => Ok((Some(Self::changed_library(library)), None)),
+            Ok(()) => {
+                let write = Self::changed_library(library);
+                library
+                    .outcomes
+                    .push((write.1, tenant, LibraryNotice::Saved { name }));
+                Ok((Some(write), None))
+            }
             Err(problem) => {
                 library.problem = Some(problem);
                 Err(Refusal::InvalidInput)
             }
         }
+    }
+
+    /// Writes the library again (an explicit retry after a failed save).
+    pub(super) fn retry_library(
+        &mut self,
+        context: &ContextRef,
+    ) -> Result<(TenantId, u64), Refusal> {
+        let tenant = self.check_context(context)?;
+        let library = self.library_mut(&tenant)?;
+        if library.unsaved.is_none() {
+            return Err(Refusal::InvalidInput);
+        }
+        library.generation += 1;
+        Ok((tenant, library.generation))
     }
 
     pub(super) fn delete_case(
@@ -293,10 +359,16 @@ impl State {
         }
         match library.library.merge(examples) {
             Ok(added) => {
-                library.notice = Some(LibraryNotice::ExamplesAdded {
-                    added: u32::try_from(added).unwrap_or(u32::MAX),
-                });
-                Ok(Self::changed_library(library))
+                library.notice = None;
+                let write = Self::changed_library(library);
+                library.outcomes.push((
+                    write.1,
+                    tenant.clone(),
+                    LibraryNotice::ExamplesAdded {
+                        added: u32::try_from(added).unwrap_or(u32::MAX),
+                    },
+                ));
+                Ok(write)
             }
             Err(problem) => {
                 library.problem = Some(problem);
@@ -390,10 +462,15 @@ impl State {
             .and_then(|cases| library.library.merge(cases));
         match merged {
             Ok(added) => {
-                library.notice = Some(LibraryNotice::Imported {
-                    added: u32::try_from(added).unwrap_or(u32::MAX),
-                });
-                Some(Self::changed_library(library))
+                let write = Self::changed_library(library);
+                library.outcomes.push((
+                    write.1,
+                    write.0.clone(),
+                    LibraryNotice::Imported {
+                        added: u32::try_from(added).unwrap_or(u32::MAX),
+                    },
+                ));
+                Some(write)
             }
             Err(problem) => {
                 library.problem = Some(problem);
@@ -431,9 +508,14 @@ impl State {
             .iter_mut()
             .find(|l| &l.tenant == to)
             .ok_or(Refusal::Busy)?;
+        let notice = LibraryNotice::Copied { tenant: label };
         let write = if destination.state == LibraryState::Ready {
             match destination.library.add(copy, to.as_str()) {
-                Ok(()) => Some(Self::changed_library(destination)),
+                Ok(()) => {
+                    let write = Self::changed_library(destination);
+                    destination.outcomes.push((write.1, tenant.clone(), notice));
+                    Some(write)
+                }
                 Err(problem) => {
                     if let Some(source) = self.libraries.iter_mut().find(|l| l.tenant == tenant) {
                         source.problem = Some(problem);
@@ -445,12 +527,17 @@ impl State {
             if destination.pending.len() >= crate::library::CASE_LIMIT {
                 return Err(Refusal::Busy);
             }
-            destination.pending.push(copy);
+            destination.pending.push(Pending {
+                case: copy,
+                origin: tenant.clone(),
+                notice,
+            });
             None
         };
+        // The source hears that the copy is done once its write succeeds.
         if let Some(source) = self.libraries.iter_mut().find(|l| l.tenant == tenant) {
             source.problem = None;
-            source.notice = Some(LibraryNotice::Copied { tenant: label });
+            source.notice = None;
         }
         Ok((write, load))
     }
@@ -494,12 +581,25 @@ impl State {
         generation: u64,
         stored: Result<(), LibraryFailure>,
     ) {
-        if let Some(library) = self
+        let Some(library) = self
             .libraries
             .iter_mut()
             .find(|l| &l.tenant == tenant && l.generation == generation)
-        {
-            library.unsaved = stored.err();
+        else {
+            return;
+        };
+        library.unsaved = stored.err();
+        // Everything this write covered now ends: saved, or not saved.
+        let (done, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut library.outcomes)
+            .into_iter()
+            .partition(|(g, _, _)| *g <= generation);
+        library.outcomes = rest;
+        for (_, origin, notice) in done {
+            let outcome = match stored {
+                Ok(()) => Ok(notice),
+                Err(_) => Err(CaseProblem::NotSaved),
+            };
+            self.deliver(&origin, outcome);
         }
     }
 

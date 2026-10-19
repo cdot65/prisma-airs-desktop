@@ -182,6 +182,7 @@ async fn start(
     let config = CoreConfig {
         management: ManagementEndpoints::at_origin(&origin),
         case_catalog: url::Url::parse(&format!("{origin}{CATALOG_PATH}")).expect("url"),
+        deadline_tick: Duration::from_millis(100),
         ..CoreConfig::default()
     };
     let core = Core::new(config, adapters);
@@ -448,9 +449,9 @@ async fn exports_and_imports_are_explicit_bounded_and_tenant_bound() {
         assert!(eventually(|| !desk.snap().library.choosing).await);
     }
     assert_eq!(desk.snap().library.cases.len(), 1);
-    assert_eq!(
-        desk.snap().library.notice,
-        Some(LibraryNotice::Imported { added: 0 })
+    assert!(
+        eventually(|| desk.snap().library.notice == Some(LibraryNotice::Imported { added: 0 }))
+            .await
     );
     // Another tenant's export is refused.
     let mut foreign = file.clone();
@@ -481,9 +482,11 @@ async fn catalogs_import_examples_once_and_report_unusable_catalogs() {
         .await
         .expect("bundled");
     assert_eq!(desk.snap().library.cases.len(), 11);
-    assert_eq!(
-        desk.snap().library.notice,
-        Some(LibraryNotice::ExamplesAdded { added: 11 })
+    assert!(
+        eventually(
+            || desk.snap().library.notice == Some(LibraryNotice::ExamplesAdded { added: 11 })
+        )
+        .await
     );
     assert_eq!(
         desk.send(json!({"kind": "importExamples", "context": context, "source": "bundled"}))
@@ -559,10 +562,13 @@ async fn a_case_copied_to_another_tenant_is_a_new_case_there() {
     desk.send(json!({"kind": "copyCase", "context": context, "id": id, "tenant": b}))
         .await
         .expect("copied");
-    assert!(matches!(
-        desk.snap().library.notice,
-        Some(LibraryNotice::Copied { .. })
-    ));
+    assert!(
+        eventually(|| matches!(
+            desk.snap().library.notice,
+            Some(LibraryNotice::Copied { .. })
+        ))
+        .await
+    );
     // Copying into the same tenant is refused.
     assert_eq!(
         desk.send(json!({"kind": "copyCase", "context": context, "id": id, "tenant": a}))
@@ -770,5 +776,294 @@ async fn a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence() {
         desk.send(json!({"kind": "holdInsight", "context": context, "id": "runtime-key:nope", "hold": "snooze"}))
             .await,
         Err(Refusal::InvalidInput)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn imported_runtime_cases_with_a_payload_and_inconsistent_charts_stay_in_contract() {
+    let mut desk = desk().await;
+    desk.open_library().await;
+    let context = desk.context();
+    let tenant = desk.snap().tenants[0].id.clone();
+    let file = json!({"version": 2, "tenant": tenant, "cases": [
+        {"id": "11111111-2222-4333-8444-555555555555", "tenant": tenant, "product": "runtime-security",
+         "name": "R", "profile": "p", "prompt": "x", "response": "", "app_name": "a", "payload": {"k": 1}}]});
+    desk.adapters.case_files.reply(Some(Ok((
+        "cases.json".into(),
+        serde_json::to_vec(&file).expect("json"),
+    ))));
+    desk.send(json!({"kind": "importCases", "context": context}))
+        .await
+        .expect("import");
+    assert!(eventually(|| desk.snap().library.problem == Some(CaseProblem::Payload)).await);
+    assert!(desk.snap().library.cases.is_empty(), "nothing stored");
+    // An inconsistent chart: its share is unknown and a gap says why.
+    desk.management_key().await;
+    desk.script().chart = Some(chart(json!([{"time": "2026-10-19T00:00:00Z", "total": 1,
+        "violating": 2, "detection_type_violation_breakdown": [
+            {"detection_type": "pi", "violation_breakdown": {"total": 2}}]}])));
+    let read = desk.refresh().await.read.expect("read");
+    assert_eq!(read.summary.benign, None);
+    assert!(
+        read.items
+            .iter()
+            .all(|i| i.per_mille.is_none_or(|n| n <= 1000))
+    );
+    assert!(read.gaps.iter().any(|g| g.contains("inconsistent totals")));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failed_library_cleanup_stays_ledgered_and_finishes_later() {
+    let mut desk = desk().await;
+    desk.open_library().await;
+    desk.save(runtime("Keep me out")).await.expect("saved");
+    assert!(eventually(|| desk.library_files().len() == 1).await);
+    let file = desk.library_files()[0].clone();
+    // Neither the key nor the file can be removed: the Keychain denies and
+    // a directory stands where the sealed file was.
+    desk.adapters
+        .vault
+        .fail_with(Some(desktop_core::vault::VaultError::Denied));
+    std::fs::remove_file(&file).expect("remove");
+    std::fs::create_dir_all(file.join("blocker")).expect("blocker");
+    let tenant = desk.snap().tenants[0].id.clone();
+    desk.send(json!({"kind": "deleteTenant", "tenant": tenant}))
+        .await
+        .expect("deleted");
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let key = desktop_core::library::key_record(tenant.as_str());
+    let ledgered = |desk: &Desk| {
+        desk.adapters
+            .store
+            .saved()
+            .expect("saved")
+            .pending_cleanup
+            .contains(&key)
+    };
+    assert!(ledgered(&desk));
+    assert!(
+        desk.snap().tenants.is_empty(),
+        "the tenant does not come back"
+    );
+    // Storage access returns but the file still cannot go: still ledgered.
+    desk.adapters.vault.fail_with(None);
+    let desk = desk.restart().await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(file.exists(), "kept while it cannot be removed");
+    assert!(ledgered(&desk));
+    std::fs::remove_dir_all(&file).expect("unblock");
+    std::fs::write(&file, b"sealed bytes").expect("file back");
+    let desk = desk.restart().await;
+    assert!(eventually(|| !file.exists()).await);
+    assert!(eventually(|| desk.adapters.vault.records().is_empty()).await);
+    assert!(
+        eventually(|| !desk
+            .adapters
+            .store
+            .saved()
+            .is_some_and(|s| s.pending_cleanup.contains(&key)))
+        .await
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn freshness_and_snooze_deadlines_are_published_without_any_event() {
+    let mut desk = desk().await;
+    desk.management_key().await;
+    desk.script().chart = Some(chart(json!([])));
+    let expiring = desktop_core::sessions::rfc3339(now() + 3 * 86_400 + 60);
+    desk.script().keys =
+        vec![json!({"api_key_id": "k1", "api_key_name": "Runtime", "expiration": expiring})];
+    let view = desk.refresh().await;
+    assert!(view.fresh);
+    let context = desk.context();
+    desk.send(json!({"kind": "holdInsight", "context": context, "id": "runtime-key:k1", "hold": "snooze"}))
+        .await
+        .expect("snoozed");
+    assert_eq!(desk.snap().overview.face, AttentionFace::AllClear);
+    let Ok(Observation::Shell { mut updates, .. }) = desk.handle.observe(ViewScope::Shell) else {
+        panic!("shell");
+    };
+    // Ten minutes pass with no event: the stale state is published.
+    desk.core.advance_clock(601);
+    let stale = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let Some(desktop_core::Update::Shell(snapshot)) = updates.next().await
+                && !snapshot.overview.fresh
+            {
+                return snapshot;
+            }
+        }
+    })
+    .await
+    .expect("published");
+    assert_eq!(stale.overview.face, AttentionFace::Gap);
+    // A day later the snooze ends and the item is back, published too.
+    desk.core.advance_clock(86_400);
+    let back = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let Some(desktop_core::Update::Shell(snapshot)) = updates.next().await
+                && !snapshot.overview.attention.is_empty()
+            {
+                return snapshot;
+            }
+        }
+    })
+    .await
+    .expect("published");
+    assert_eq!(back.overview.attention[0].id, "runtime-key:k1");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn queued_saves_and_copies_report_their_real_outcome() {
+    let mut desk = desk().await;
+    // A save from the scan form before the library opened: held at the
+    // Keychain read, so the library is still opening when it is admitted.
+    desk.adapters.vault.hold_reads();
+    desk.save(runtime("From the form")).await.expect("admitted");
+    assert_eq!(desk.snap().library.notice, None, "not saved yet");
+    desk.adapters.vault.release();
+    assert!(
+        eventually(|| desk.snap().library.notice
+            == Some(LibraryNotice::Saved {
+                name: "From the form".into()
+            }))
+        .await
+    );
+    // A copy into a full, unopened destination: the source hears it failed.
+    let origin = format!("https://localhost:{}", desk.server.port);
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": TSG,
+        "destination": {"kind": "custom", "origin": origin}}}),
+    )
+    .await
+    .expect("tenant b");
+    let a = desk.snap().active.expect("a").tenant;
+    let b = desk
+        .snap()
+        .tenants
+        .iter()
+        .find(|t| t.label == "Tenant B")
+        .expect("b")
+        .id
+        .clone();
+    desk.send(json!({"kind": "selectTenant", "tenant": b}))
+        .await
+        .expect("select b");
+    desk.open_library().await;
+    for n in 0..32 {
+        desk.save(runtime(&format!("B {n}"))).await.expect("saved");
+    }
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let mut desk = desk.restart().await;
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("select a");
+    desk.open_library().await;
+    let id = desk.snap().library.cases[0].id.clone();
+    let context = desk.context();
+    desk.send(json!({"kind": "copyCase", "context": context, "id": id, "tenant": b}))
+        .await
+        .expect("admitted");
+    assert!(eventually(|| desk.snap().library.problem == Some(CaseProblem::Full)).await);
+    assert!(!matches!(
+        desk.snap().library.notice,
+        Some(LibraryNotice::Copied { .. })
+    ));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_library_works_offline_survives_restart_and_retries_a_failed_save() {
+    let mut desk = desk().await;
+    desk.script().down = true;
+    desk.open_library().await;
+    desk.save(runtime("Offline case")).await.expect("saved");
+    assert!(eventually(|| desk.library_files().len() == 1).await);
+    // A protected write fails (a directory stands where the sealed file
+    // goes): shown, then retried explicitly.
+    let file = desk.library_files()[0].clone();
+    std::fs::remove_file(&file).expect("remove");
+    std::fs::create_dir_all(file.join("blocker")).expect("blocker");
+    desk.save(runtime("Second")).await.expect("admitted");
+    assert!(eventually(|| desk.snap().library.unsaved.is_some()).await);
+    assert_eq!(desk.snap().library.problem, Some(CaseProblem::NotSaved));
+    std::fs::remove_dir_all(&file).expect("unblock");
+    let context = desk.context();
+    desk.send(json!({"kind": "saveLibraryAgain", "context": context}))
+        .await
+        .expect("retried");
+    assert!(eventually(|| desk.snap().library.unsaved.is_none()).await);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let mut desk = desk.restart().await;
+    desk.open_library().await;
+    let names: Vec<String> = desk
+        .snap()
+        .library
+        .cases
+        .iter()
+        .map(|c| c.name.clone())
+        .collect();
+    assert_eq!(names, ["Offline case", "Second"]);
+    assert!(
+        desk.server.seen().is_empty(),
+        "the Library never contacts the tenant"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn delayed_library_completions_stay_with_their_tenant() {
+    let mut desk = desk().await;
+    desk.open_library().await;
+    let context = desk.context();
+    let a = desk.snap().active.expect("a").tenant;
+    // An import whose sheet answers after the tenant switched.
+    let file = json!({"version": 2, "tenant": a, "cases": [
+        {"id": "11111111-2222-4333-8444-555555555555", "tenant": a, "product": "ai-gateway",
+         "name": "From A's sheet", "prompt": "spec", "response": ""}]});
+    desk.adapters.case_files.reply(Some(Ok((
+        "a.json".into(),
+        serde_json::to_vec(&file).expect("json"),
+    ))));
+    desk.adapters.case_files.hold();
+    desk.send(json!({"kind": "importCases", "context": context}))
+        .await
+        .expect("import");
+    let origin = format!("https://localhost:{}", desk.server.port);
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": TSG,
+        "destination": {"kind": "custom", "origin": origin}}}),
+    )
+    .await
+    .expect("tenant b");
+    let b = desk
+        .snap()
+        .tenants
+        .iter()
+        .find(|t| t.label == "Tenant B")
+        .expect("b")
+        .id
+        .clone();
+    desk.send(json!({"kind": "selectTenant", "tenant": b}))
+        .await
+        .expect("select b");
+    desk.open_library().await;
+    desk.adapters.case_files.release();
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(
+        desk.snap().library.cases.is_empty(),
+        "B's library is untouched"
+    );
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("select a");
+    desk.open_library().await;
+    assert!(
+        eventually(|| desk
+            .snap()
+            .library
+            .cases
+            .iter()
+            .any(|c| c.name == "From A's sheet"))
+        .await
     );
 }

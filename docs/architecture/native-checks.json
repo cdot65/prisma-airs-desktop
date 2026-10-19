@@ -467,6 +467,10 @@
       {
         "id": "C09-N10",
         "check": "At 200% zoom and at the minimum window size, Tab reaches the workbench's Review change inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C09-N11",
+        "check": "Retiring the context ends open sheets: with the confirmation sheet open, switching the active tenant (through Accessibility) dismisses it, a late Return applies nothing and nothing is written; with the one-time key sheet open, the switch dismisses it, the clipboard is untouched and the key is not offered again."
       }
     ],
     "C10": [
@@ -505,6 +509,10 @@
       {
         "id": "C10-N09",
         "check": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file… and Review change inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C10-N10",
+        "check": "The production NSOpenPanel (rfd) opens from Choose keyword file…: choosing a text file through it stages it by name and line count without changing the file and returns focus to the window; Cancel stages nothing; a file over the 256 KiB read bound is refused as too large."
       }
     ],
     "C11": [
@@ -543,6 +551,10 @@
       {
         "id": "C11-N09",
         "check": "At 200% zoom and at the minimum window size, Tab reaches the Sessions Refresh and Next page buttons inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C11-N10",
+        "check": "The production NSSavePanel (rfd) opens from Export CSV…: saving writes an owner-only file; a second export into the same folder is confirmed with Replace and the file is replaced owner-only; Cancel saves nothing and says so; focus returns to the window."
       }
     ],
     "C12": [
@@ -581,6 +593,10 @@
       {
         "id": "C12-N09",
         "check": "At 200% zoom and at the minimum window size, Tab reaches Create a case and Refresh Runtime insights inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C12-N10",
+        "check": "The production panels for the Library: Export library… saves an owner-only file through NSSavePanel, Import cases… restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window."
       }
     ]
   }

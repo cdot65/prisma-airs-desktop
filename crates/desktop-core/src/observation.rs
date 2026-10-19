@@ -403,7 +403,8 @@ pub fn activity_item(summary: &RuntimeSummary) -> Option<InboxItem> {
                 value: fact(summary.benign),
             },
         ],
-        per_mille: (sessions > 0)
+        // Only a consistent pair has a share; inconsistent totals are a gap.
+        per_mille: (sessions > 0 && violating <= sessions)
             .then(|| u32::try_from(u64::from(violating) * 1000 / u64::from(sessions)).ok())
             .flatten(),
     })
@@ -577,6 +578,15 @@ mod tests {
             (quiet.title.as_str(), quiet.action, quiet.per_mille),
             ("Runtime activity available", false, None)
         );
+        // Inconsistent totals have no share (the summary reports the gap).
+        let inconsistent = activity_item(&RuntimeSummary {
+            sessions: Some(1),
+            violating: Some(2),
+            benign: None,
+            detection_events: None,
+        })
+        .expect("item");
+        assert_eq!(inconsistent.per_mille, None);
     }
 
     #[test]

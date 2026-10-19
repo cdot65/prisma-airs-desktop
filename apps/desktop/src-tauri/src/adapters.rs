@@ -51,13 +51,104 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         images: images(app, root.as_deref()),
         confirmer: confirmer(app),
         secrets: secrets(app),
-        text_files: text_files(app, root.as_deref()),
+        text_files: sheet_picker(
+            root.as_deref(),
+            text_files(app, root.as_deref()),
+            Arc::new(NativeTextPicker { app: app.clone() }),
+        ),
         offline_root: root.as_ref().map(|r| r.join("academy-offline")),
-        saver: saver(app, root.as_deref()),
+        saver: sheet_saver(
+            root.as_deref(),
+            saver(app, root.as_deref()),
+            Arc::new(NativeSaver { app: app.clone() }),
+        ),
         sessions_root: root.as_ref().map(|r| r.join("sessions")),
-        case_files: case_files(app, root.as_deref()),
+        case_files: sheet_picker(
+            root.as_deref(),
+            case_files(app, root.as_deref()),
+            Arc::new(NativeCasePicker { app: app.clone() }),
+        ),
         library_root: root.as_ref().map(|r| r.join("library")),
     }
+}
+
+/// When this file exists in the fixture data root, the fixture build uses
+/// the production rfd sheets (NSOpenPanel / NSSavePanel) instead of staged
+/// files, so native acceptance can drive the real panels.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_NATIVE_SHEETS: &str = "fixture-native-sheets";
+
+/// Production builds always use the native sheet.
+#[cfg(not(feature = "test-fixtures"))]
+fn sheet_picker(
+    _root: Option<&Path>,
+    configured: Arc<dyn ImportPicker>,
+    _native: Arc<dyn ImportPicker>,
+) -> Arc<dyn ImportPicker> {
+    configured
+}
+
+#[cfg(feature = "test-fixtures")]
+fn sheet_picker(
+    root: Option<&Path>,
+    staged: Arc<dyn ImportPicker>,
+    native: Arc<dyn ImportPicker>,
+) -> Arc<dyn ImportPicker> {
+    struct Switch(
+        Option<PathBuf>,
+        Arc<dyn ImportPicker>,
+        Arc<dyn ImportPicker>,
+    );
+    impl ImportPicker for Switch {
+        fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+            if self.0.as_ref().is_some_and(|flag| flag.exists()) {
+                self.2.choose()
+            } else {
+                self.1.choose()
+            }
+        }
+    }
+    Arc::new(Switch(
+        root.map(|r| r.join(FIXTURE_NATIVE_SHEETS)),
+        staged,
+        native,
+    ))
+}
+
+#[cfg(not(feature = "test-fixtures"))]
+fn sheet_saver(
+    _root: Option<&Path>,
+    configured: Arc<dyn FileSaver>,
+    _native: Arc<dyn FileSaver>,
+) -> Arc<dyn FileSaver> {
+    configured
+}
+
+#[cfg(feature = "test-fixtures")]
+fn sheet_saver(
+    root: Option<&Path>,
+    staged: Arc<dyn FileSaver>,
+    native: Arc<dyn FileSaver>,
+) -> Arc<dyn FileSaver> {
+    struct Switch(Option<PathBuf>, Arc<dyn FileSaver>, Arc<dyn FileSaver>);
+    impl FileSaver for Switch {
+        fn save(
+            &self,
+            suggested: String,
+            bytes: Vec<u8>,
+        ) -> BoxFuture<'static, Result<Option<String>, ()>> {
+            if self.0.as_ref().is_some_and(|flag| flag.exists()) {
+                self.2.save(suggested, bytes)
+            } else {
+                self.1.save(suggested, bytes)
+            }
+        }
+    }
+    Arc::new(Switch(
+        root.map(|r| r.join(FIXTURE_NATIVE_SHEETS)),
+        staged,
+        native,
+    ))
 }
 
 /// Case exports are bounded like v1 (256 KiB).

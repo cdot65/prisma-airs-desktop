@@ -40,5 +40,6 @@ P03 push):
   unreachable service (failure, no replay, explicit retry reads again).
 - O1: the survivor probes were reworked: cleanup without the placement lock
   is now the removal probe, and the report-time probe uses the unit guard.
-- E1 (open, with C10 E1): native evidence through the production save sheet
-  (NSSavePanel) remains for the P03 push.
+- E1 (P03 push): C11-N10 drives the production NSSavePanel (fixture switch
+  `fixture-native-sheets`): owner-only save, a confirmed Replace, Cancel
+  saving nothing, focus returning to the window.

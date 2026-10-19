@@ -1,14 +1,14 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C11",
-  "recorded_utc": "2026-10-19T07:04:37Z",
+  "recorded_utc": "2026-10-19T07:55:46Z",
   "method": "cua",
   "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c11.py",
   "host": "Mac17,3; macOS 27.0.1 (26A434)",
   "app": {
     "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
     "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
-    "executable_sha256": "fad3d2cb0ae8a062d89636858661feec690019ad8121fd8e160556397b2bc8d1",
+    "executable_sha256": "8d9d4537aec52c33ec4ec2c73dc333623c476547468527e988d683eb30ed9788",
     "fixture": true
   },
   "checks": [
@@ -49,7 +49,7 @@
       "id": "C11-N04",
       "description": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV\u2026 saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response.",
       "result": "pass",
-      "observation": "listed with metadata: True; remove/undo: True; CSV {'saved': True, 'file': 'fpfn-reports-tenant-a-20261019-0702.csv', 'mode': '0o600', 'header': 'tenant,tsg_id,kind,scan_id,scan_sub_req_id,session_id,application,application_id,verdict,action,detectors,profile,reason_category,reason,reported_at,exported_at', 'rows': 1, 'crlf': True, 'content': False}",
+      "observation": "listed with metadata: True; remove/undo: True; CSV {'saved': True, 'file': 'fpfn-reports-tenant-a-20261019-0753.csv', 'mode': '0o600', 'header': 'tenant,tsg_id,kind,scan_id,scan_sub_req_id,session_id,application,application_id,verdict,action,detectors,profile,reason_category,reason,reported_at,exported_at', 'rows': 1, 'crlf': True, 'content': False}",
       "evidence": [
         "docs/planning/evidence/C12/native-C11/observations.json",
         "docs/planning/evidence/C12/native-C11/tree-reports.json",
@@ -70,7 +70,7 @@
       "id": "C11-N06",
       "description": "Export metadata\u2026 saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again.",
       "result": "pass",
-      "observation": "metadata export {'saved': True, 'file': 'investigation-tenant-a-20261019-0702.json', 'sessions': True, 'content': False, 'mode': '0o600'}; cleared with the seal removed: True; read again after clearing: True (resealed: True)",
+      "observation": "metadata export {'saved': True, 'file': 'investigation-tenant-a-20261019-0754.json', 'sessions': True, 'content': False, 'mode': '0o600'}; cleared with the seal removed: True; read again after clearing: True (resealed: True)",
       "evidence": [
         "docs/planning/evidence/C12/native-C11/observations.json",
         "docs/planning/evidence/C12/native-C11/tree-cleared.json"
@@ -96,6 +96,16 @@
       ]
     },
     {
+      "id": "C11-N10",
+      "description": "The production NSSavePanel (rfd) opens from Export CSV\u2026: saving writes an owner-only file; a second export into the same folder is confirmed with Replace and the file is replaced owner-only; Cancel saves nothing and says so; focus returns to the window.",
+      "result": "fail",
+      "observation": "production save panel: {'panel_shown': True, 'saved': True, 'mode': '0o600', 'replaced': True, 'replaced_mode': '0o600', 'cancelled': True, 'focus_in_window': False}",
+      "evidence": [
+        "docs/planning/evidence/C12/native-C11/observations.json",
+        "docs/planning/evidence/C12/native-C11/tree-panel-export-cancelled.json"
+      ]
+    },
+    {
       "id": "C11-N09",
       "description": "At 200% zoom and at the minimum window size, Tab reaches the Sessions Refresh and Next page buttons inside the window and clear of the bottom fade.",
       "result": "pass",
@@ -106,7 +116,7 @@
     }
   ],
   "limitations": [
-    "The fixture build saves exports into its data root without the save sheet (the production build opens the rfd/NSSavePanel sheet); the file is written owner-only and never replaces one.",
+    "N04/N06 save exports into the fixture data root without a sheet (never replacing a file); N10 drives the production rfd/NSSavePanel sheet (the fixture switch fixture-native-sheets) into a driver-owned temporary folder, including a confirmed Replace and Cancel. No Accessibility tree is saved while a panel lists folders.",
     "The dashboard endpoint is a local synthetic fixture; live sessions reads are qualified in C25.",
     "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
   ]

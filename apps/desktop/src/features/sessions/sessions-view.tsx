@@ -752,7 +752,7 @@ function CachePanel({ context, sessions, dispatch }: { context: ContextRef; sess
                 {cache.sessions} sessions, {cache.transactions} transactions and {cache.contents} revealed scans. {STORAGE_TEXT[cache.storage]}
             </p>
             <div className='flex flex-wrap gap-2'>
-                <Button type='button' tier='secondary' onClick={() => void send('exportInvestigation')} disabled={exporting?.state === 'saving'}>
+                <Button type='button' tier='secondary' onClick={() => void send('exportInvestigation')} aria-disabled={exporting?.state === 'saving'}>
                     Export metadata…
                 </Button>
                 <Button type='button' tier='secondary' onClick={() => void send('clearInvestigation')}>
@@ -868,7 +868,7 @@ function Reports({ context, sessions, dispatch }: { context: ContextRef; session
                         </tbody>
                     </table>
                     <div className='flex flex-wrap gap-2'>
-                        <Button type='button' tier='secondary' disabled={exporting?.state === 'saving'} onClick={() => void send({ kind: 'exportReports', context })}>
+                        <Button type='button' tier='secondary' aria-disabled={exporting?.state === 'saving'} onClick={() => void send({ kind: 'exportReports', context })}>
                             Export CSV…
                         </Button>
                     </div>

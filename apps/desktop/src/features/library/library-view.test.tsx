@@ -164,6 +164,30 @@ describe('Case Library', () => {
         expect(screen.getByText(/Saved prisma-airs-test-cases\.json\. Cases exported as plaintext JSON with private file permissions/)).toBeInTheDocument()
     })
 
+    it('reports a scan-form save only once its outcome is established', async () => {
+        const native = scriptedNative(snap(library({ state: 'idle' })))
+        const user = await openLibrary(native)
+        await user.click(within(screen.getByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Runtime Security/ }))
+        await user.type(screen.getByRole('textbox', { name: 'Case name' }), 'Form case')
+        await user.click(screen.getByRole('button', { name: 'Save this case' }))
+        expect(screen.getByText('Saving to this tenant’s case Library…')).toBeInTheDocument()
+        expect(screen.queryByText('Saved to this tenant’s case Library.')).toBeNull()
+        // The library's write failed: the form says so and keeps its fields.
+        await native.push(snap(library({ problem: 'notSaved', unsaved: 'unavailable' })))
+        expect(screen.getByText(/could not be saved on this Mac\. Use Save again/)).toBeInTheDocument()
+        expect(screen.getByRole('textbox', { name: 'Case name' })).toHaveValue('Form case')
+        await user.click(screen.getByRole('button', { name: 'Save this case' }))
+        await native.push(snap(library({ notice: { kind: 'saved', name: 'Form case' } })))
+        expect(screen.getByText('Saved to this tenant’s case Library.')).toBeInTheDocument()
+    })
+
+    it('offers an explicit retry after a failed save', async () => {
+        const native = scriptedNative(snap(library({ cases: [RUNTIME], unsaved: 'unavailable', problem: 'notSaved' })))
+        const user = await openLibrary(native)
+        await user.click(screen.getByRole('button', { name: 'Save again' }))
+        expect(sent(native, 'saveLibraryAgain')).toEqual([{ kind: 'saveLibraryAgain', context: CONTEXT }])
+    })
+
     it('reports a library that does not open and retries only when asked', async () => {
         const native = scriptedNative(snap(library({ state: 'failed', failure: 'locked' })))
         const user = await openLibrary(native)

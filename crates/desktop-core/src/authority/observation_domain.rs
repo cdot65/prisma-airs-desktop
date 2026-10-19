@@ -79,13 +79,29 @@ pub(super) struct OverviewRecord {
     failed_at: Option<u32>,
 }
 
-fn now() -> u32 {
+fn wall() -> u32 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| u32::try_from(d.as_secs()).unwrap_or(u32::MAX))
 }
 
 impl State {
+    /// Seconds since the epoch (fixture builds may move it forward).
+    pub(super) fn clock(&self) -> u32 {
+        wall().saturating_add(self.clock_offset)
+    }
+
+    /// What the overview's time-dependent state looks like now: when it
+    /// differs from the last publication, the deadline ticker publishes.
+    pub(super) fn overview_signature(&self) -> (bool, AttentionFace, Vec<String>) {
+        let view = self.overview_view();
+        (
+            view.fresh,
+            view.face,
+            view.attention.iter().map(|i| i.id.clone()).collect(),
+        )
+    }
+
     fn overview_record(&mut self, context: &ContextRef) -> &mut OverviewRecord {
         if self.overview.as_ref().is_none_or(|o| &o.context != context) {
             self.overview = Some(OverviewRecord {
@@ -110,6 +126,7 @@ impl State {
             return;
         }
         let tenant = self.data.active.clone();
+        let clock = self.clock();
         let record = self.overview_record(context);
         record.refreshing = false;
         match result {
@@ -119,7 +136,7 @@ impl State {
                 if overview.chart.is_none() && overview.keys_failure.is_some() =>
             {
                 record.failure = overview.chart_failure.or(overview.keys_failure);
-                record.failed_at = Some(now());
+                record.failed_at = Some(clock);
                 if record.read.is_none() {
                     record.read = Some(overview);
                 }
@@ -143,11 +160,11 @@ impl State {
             }
             ManagementResult::Failed { failure, .. } => {
                 record.failure = Some(failure);
-                record.failed_at = Some(now());
+                record.failed_at = Some(clock);
             }
             _ => {
                 record.failure = Some(ManagementFailure::InvalidResponse);
-                record.failed_at = Some(now());
+                record.failed_at = Some(clock);
             }
         }
     }
@@ -174,6 +191,7 @@ impl State {
             .into_iter()
             .find(|i| i.id == id)
             .ok_or(Refusal::InvalidInput)?;
+        let clock = self.clock();
         let entry = match self.holds.iter().position(|(t, _)| t == &tenant) {
             Some(i) => &mut self.holds[i].1,
             None => {
@@ -189,7 +207,7 @@ impl State {
             id: id.to_owned(),
             kind,
             level: level(&item),
-            until: now().saturating_add(SNOOZE_SECS),
+            until: clock.saturating_add(SNOOZE_SECS),
         });
         Ok(())
     }
@@ -217,7 +235,7 @@ impl State {
     }
 
     pub(super) fn overview_view(&self) -> OverviewView {
-        let now = now();
+        let now = self.clock();
         let record = self
             .overview
             .as_ref()

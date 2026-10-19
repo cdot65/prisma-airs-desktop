@@ -1,14 +1,14 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C12",
-  "recorded_utc": "2026-10-19T06:19:02Z",
+  "recorded_utc": "2026-10-19T07:58:34Z",
   "method": "cua",
   "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c12.py",
   "host": "Mac17,3; macOS 27.0.1 (26A434)",
   "app": {
     "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
     "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
-    "executable_sha256": "fad3d2cb0ae8a062d89636858661feec690019ad8121fd8e160556397b2bc8d1",
+    "executable_sha256": "8d9d4537aec52c33ec4ec2c73dc333623c476547468527e988d683eb30ed9788",
     "fixture": true
   },
   "checks": [
@@ -93,17 +93,27 @@
       ]
     },
     {
+      "id": "C12-N10",
+      "description": "The production panels for the Library: Export library\u2026 saves an owner-only file through NSSavePanel, Import cases\u2026 restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window.",
+      "result": "fail",
+      "observation": "production panels: {'panel_shown': True, 'saved': True, 'mode': '0o600', 'imported': True, 'cancelled': True, 'too_large_refused': True, 'focus_in_window': False}",
+      "evidence": [
+        "docs/planning/evidence/C12/native/observations.json",
+        "docs/planning/evidence/C12/native/tree-panel-library.json"
+      ]
+    },
+    {
       "id": "C12-N09",
       "description": "At 200% zoom and at the minimum window size, Tab reaches Create a case and Refresh Runtime insights inside the window and clear of the bottom fade.",
       "result": "pass",
-      "observation": "200% zoom: {'label': 'Create a case', 'pos': [607, 617], 'size': [239, 88]} / {'label': 'Refresh Runtime insights', 'pos': [607, 412], 'size': [393, 88]}; minimum size: {'label': 'Create a case', 'pos': [363, 140], 'size': [120, 45]} / {'label': 'Refresh Runtime insights', 'pos': [592, 292], 'size': [197, 44]}; all clear: True",
+      "observation": "200% zoom: {'label': 'Create a case', 'pos': [607, 617], 'size': [239, 88]} / {'label': 'Refresh Runtime insights', 'pos': [607, 412], 'size': [393, 88]}; minimum size: {'label': 'Create a case', 'pos': [363, 140], 'size': [120, 45]} / {'label': 'Refresh Runtime insights', 'pos': [598, 292], 'size': [197, 44]}; all clear: True",
       "evidence": [
         "docs/planning/evidence/C12/native/observations.json"
       ]
     }
   ],
   "limitations": [
-    "The fixture build answers the case-file sheet with the file the driver staged and saves exports into its data root without the save sheet (production opens rfd sheets).",
+    "N04 answers the case-file sheet with a staged file and saves exports into the fixture data root without a sheet; N10 drives the production rfd NSOpenPanel/NSSavePanel (the fixture switch fixture-native-sheets) with driver-owned temporary files. No Accessibility tree is saved while a panel lists folders.",
     "The public example catalog is a local snapshot served at the fixture catalog URL; the production URL is raw.githubusercontent.com.",
     "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
   ]

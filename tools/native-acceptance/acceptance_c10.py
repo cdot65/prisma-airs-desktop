@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fixture_app as fx  # noqa: E402
 import acceptance_c08 as c8  # noqa: E402
 import acceptance_c09 as c9  # noqa: E402
+import native_sheets as ns  # noqa: E402
 
 ROOT = os.getcwd()
 SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C10")
@@ -258,6 +259,43 @@ def run():
     time.sleep(6)
     obs["offline_auto"] = len(mgmt.requests()) - before
     obs["tree_offline"] = save_tree("offline", tree)
+
+    # ---- N10: the production NSOpenPanel ----
+    # No AX tree is saved while a panel lists folders.
+    c9.close_workbench(app)
+    app.ax("press", "AXButton", "Dictionaries")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "New dictionary") is not None)
+    app.ax("press", "AXButton", "New dictionary")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Choose keyword file…") is not None)
+    sheets_dir = os.path.join(work, "panel-files")
+    os.makedirs(sheets_dir)
+    native_file = os.path.join(sheets_dir, "panel-keywords.txt")
+    with open(native_file, "w") as f:
+        f.write("one\ntwo\n")
+    big_file = os.path.join(sheets_dir, "too-big.txt")
+    with open(big_file, "w") as f:
+        f.write("x" * (300 * 1024))
+    before_native = (os.stat(native_file).st_mtime_ns, sha(open(native_file, "rb").read()))
+    ns.enable()
+    app.ax("press", "AXButton", "Choose keyword file…")
+    panel = ns.wait_sheet(app)
+    chose = ns.open_file(app, native_file)
+    tree, staged = c8.text(app, "Chosen: panel-keywords.txt", 10)
+    focus = fx.App.focused(tree)
+    obs["panel_choose"] = {"panel_shown": panel, "chosen": chose and staged,
+                           "focus_in_window": bool(focus) and focus.get("role") not in ("AXSheet", None),
+                           "source_unchanged": (os.stat(native_file).st_mtime_ns, sha(open(native_file, "rb").read())) == before_native}
+    obs["tree_panel_choose"] = save_tree("panel-chosen", tree)
+    app.ax("press", "AXButton", "Choose keyword file…")
+    cancelled = ns.cancel(app)
+    tree, _ = app.wait_for(lambda t: not app.has_text(t, "Chosen: panel-keywords.txt"), 8)
+    obs["panel_cancel"] = cancelled and not app.has_text(tree, "Chosen:")
+    app.ax("press", "AXButton", "Choose keyword file…")
+    ns.open_file(app, big_file)
+    tree, refused = c8.text(app, "That file is larger than 65,536 characters.", 10)
+    obs["panel_too_large"] = refused and not app.has_text(tree, "Chosen:")
+    obs["tree_panel_refused"] = save_tree("panel-refused", tree)
+    ns.disable()
     app.quit()
 
     trees = [os.path.join(NATIVE, n) for n in os.listdir(NATIVE) if n.startswith("tree-")]
@@ -315,6 +353,10 @@ def evaluate(prepared, o):
     add("C10-N08", o["offline"] and o["offline_auto"] == 0,
         f"offline create reported unreachable with an unknown outcome: {o['offline']}; requests within 6 s of return: {o['offline_auto']}",
         [o["tree_offline"]])
+    panel = o["panel_choose"]
+    add("C10-N10", all(panel.values()) and o["panel_cancel"] and o["panel_too_large"],
+        f"production open panel: {panel}; cancelled panel staged nothing: {o['panel_cancel']}; a 300 KiB file refused: {o['panel_too_large']}",
+        [o["tree_panel_choose"], o["tree_panel_refused"]])
     zoom_ok = all(r["clear"] for r in (o["zoom_choose"], o["zoom_review"], o["min_choose"], o["min_review"]))
     add("C10-N09", zoom_ok,
         f"200% zoom: {o['zoom_choose']['found']} / {o['zoom_review']['found']}; minimum size: {o['min_choose']['found']} / {o['min_review']['found']}; "
@@ -332,7 +374,7 @@ def evaluate(prepared, o):
         "app": {"bundle": prepared["bundle"], "identifier": prepared["identifier"], "executable_sha256": prepared["executable_sha256"], "fixture": True},
         "checks": checks,
         "limitations": [
-            "The fixture build answers the keyword-file sheet with the file the driver staged in its data root (the production build opens the rfd/NSOpenPanel sheet); the file is only read.",
+            "N03/N04 answer the keyword-file sheet with a file the driver staged in the fixture data root; N10 drives the production rfd/NSOpenPanel sheet (the fixture switch fixture-native-sheets) with driver-owned temporary files. No Accessibility tree is saved while a panel lists folders; files are only read.",
             "The DLP endpoint is a local synthetic fixture; live DLP writes are qualified in C25.",
             "Spoken VoiceOver output was not recorded; AX roles, names, the sheet subtree and focus are inspected.",
         ],

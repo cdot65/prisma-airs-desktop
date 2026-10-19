@@ -4,4 +4,4 @@
  * Why a case, import or catalog was refused (v1's messages are the
  * presentation's).
  */
-export type CaseProblem = "fields" | "payload" | "foreignTenant" | "full" | "tooLarge" | "duplicate" | "format" | "catalog" | "allPresent" | "missing";
+export type CaseProblem = "fields" | "payload" | "foreignTenant" | "full" | "tooLarge" | "duplicate" | "format" | "catalog" | "allPresent" | "missing" | "notSaved";

@@ -225,6 +225,10 @@ pub enum Intent {
     ExportCases {
         context: ContextRef,
     },
+    /// Write the active tenant's case Library again after a failed save.
+    SaveLibraryAgain {
+        context: ContextRef,
+    },
     /// Acknowledge or snooze a Runtime attention item (C12).
     HoldInsight {
         context: ContextRef,
@@ -628,6 +632,9 @@ pub struct CoreConfig {
     /// The public example catalog (fixture builds may point it at a local
     /// snapshot server).
     pub case_catalog: url::Url,
+    /// How often time-based state (overview freshness, snooze ends) is
+    /// re-evaluated and published when it changed.
+    pub deadline_tick: std::time::Duration,
 }
 
 /// The production Academy origin.
@@ -643,6 +650,7 @@ impl Default for CoreConfig {
             management: ManagementEndpoints::default(),
             review_lifetime: change_domain::REVIEW_LIFETIME,
             case_catalog: url::Url::parse(crate::library::PUBLIC_CATALOG).expect("catalog URL"),
+            deadline_tick: std::time::Duration::from_secs(15),
         }
     }
 }
@@ -921,6 +929,11 @@ struct State {
     overview: Option<observation_domain::OverviewRecord>,
     /// Attention holds per tenant (memory only, like v1).
     holds: Vec<(TenantId, Vec<observation_domain::Hold>)>,
+    /// Seconds added to the wall clock (fixture builds only move it).
+    clock_offset: u32,
+    /// The overview's time-dependent state at the last deadline tick.
+    overview_published: Option<(bool, observation_domain::AttentionFace, Vec<String>)>,
+    deadline_tick: std::time::Duration,
 }
 
 impl State {
@@ -1415,8 +1428,6 @@ enum Effect {
         tenant: TenantId,
         generation: u64,
     },
-    /// Remove a deleted tenant's sealed library and its key.
-    ForgetLibrary(TenantId),
     ChooseCaseFile {
         lease: u64,
     },
@@ -1513,6 +1524,9 @@ impl Core {
             case_catalog: config.case_catalog.clone(),
             overview: None,
             holds: Vec::new(),
+            clock_offset: 0,
+            overview_published: None,
+            deadline_tick: config.deadline_tick,
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -1577,6 +1591,38 @@ impl Core {
         let mut effects = vec![Effect::Cleanup];
         effects.extend(offline.map(Effect::OpenOffline));
         run_effects(&self.inner, effects);
+        // Deadlines pass without any event (a read going stale, a snooze
+        // ending, sleep and wake): re-evaluate them and publish a change.
+        let weak = Arc::downgrade(&self.inner);
+        tokio::spawn(async move {
+            loop {
+                let Some(tick) = weak
+                    .upgrade()
+                    .and_then(|inner| lock(&inner).ok().map(|s| s.deadline_tick))
+                else {
+                    return;
+                };
+                tokio::time::sleep(tick).await;
+                let Some(inner) = weak.upgrade() else {
+                    return;
+                };
+                if let Ok(mut state) = lock(&inner) {
+                    let now = Some(state.overview_signature());
+                    if state.overview_published != now {
+                        state.overview_published = now;
+                        state.changed();
+                    }
+                };
+            }
+        });
+    }
+
+    /// Moves this core's clock forward (fixture builds only).
+    #[cfg(feature = "test-fixtures")]
+    pub fn advance_clock(&self, secs: u32) {
+        if let Ok(mut state) = lock(&self.inner) {
+            state.clock_offset = state.clock_offset.saturating_add(secs);
+        }
     }
 
     /// The operator handle, created by the host for its packaged main window.
@@ -1912,6 +1958,12 @@ fn admit(
             if was_active {
                 state.data.active = None;
             }
+            // The tenant's case Library key (and with it its sealed file)
+            // goes through the durable cleanup ledger, retried until done.
+            let library_key = crate::library::key_record(tenant.as_str());
+            if !state.data.pending_cleanup.contains(&library_key) {
+                state.data.pending_cleanup.push(library_key);
+            }
             state.save_with(&before)?;
             // Only an accepted deletion drops the tenant's scan records; a
             // refused one keeps them observable and cancellable.
@@ -1921,7 +1973,6 @@ fn admit(
             }
             state.forget_library(&tenant);
             state.forget_holds(&tenant);
-            effects.push(Effect::ForgetLibrary(tenant.clone()));
             for record in [retired_session, retired_management].into_iter().flatten() {
                 let _ = session.delete(&record);
             }
@@ -2157,6 +2208,11 @@ fn admit(
                 suggested,
                 bytes,
             });
+            state.changed();
+        }
+        Intent::SaveLibraryAgain { context } => {
+            let (tenant, generation) = state.retry_library(&context)?;
+            effects.push(Effect::StoreLibrary { tenant, generation });
             state.changed();
         }
         Intent::HoldInsight { context, id, hold } => {
@@ -2774,48 +2830,31 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                         return;
                     };
                     let _write = writer.lock().await;
-                    // Only the newest library is written; a deleted tenant's
-                    // or reset data's write finds nothing.
-                    let Some(write) = lock(&inner)
-                        .ok()
-                        .and_then(|s| s.library_write(&tenant, generation))
-                    else {
-                        return;
-                    };
                     let worker = Arc::clone(&inner);
+                    let check = tenant.clone();
                     let stored = tokio::task::spawn_blocking(move || {
-                        crate::library::store(
+                        // Checked and written under the placement lock that
+                        // the cleanup ledger takes to remove a deleted
+                        // tenant's library: a write either lands before the
+                        // removal or finds the tenant gone. Only the newest
+                        // generation is written.
+                        let _placement = crate::sessions::placement();
+                        let write = lock(&worker)
+                            .ok()
+                            .and_then(|s| s.library_write(&check, generation))?;
+                        Some(crate::library::store(
                             &write.root,
                             worker.adapters.keychain.as_ref(),
                             &write.tenant,
                             &write.library,
-                        )
+                        ))
                     })
                     .await
-                    .unwrap_or(Err(crate::library::LibraryFailure::Unavailable));
-                    if let Ok(mut state) = lock(&inner) {
+                    .unwrap_or(Some(Err(crate::library::LibraryFailure::Unavailable)));
+                    if let (Some(stored), Ok(mut state)) = (stored, lock(&inner)) {
                         state.settle_library_write(&tenant, generation, stored);
                         state.changed();
                     }
-                });
-            }
-            Effect::ForgetLibrary(tenant) => {
-                let inner = Arc::clone(inner);
-                tokio::spawn(async move {
-                    let Some(writer) = lock(&inner).ok().map(|s| Arc::clone(&s.report_writer))
-                    else {
-                        return;
-                    };
-                    let _write = writer.lock().await;
-                    let worker = Arc::clone(&inner);
-                    let _ = tokio::task::spawn_blocking(move || {
-                        crate::library::forget(
-                            worker.adapters.library_root.as_deref(),
-                            worker.adapters.keychain.as_ref(),
-                            tenant.as_str(),
-                        )
-                    })
-                    .await;
                 });
             }
             Effect::ChooseCaseFile { lease } => {
@@ -3242,7 +3281,10 @@ fn drain_cleanup(inner: &Arc<Inner>) {
                         worker.adapters.keychain.as_ref(),
                         r,
                     );
+                    let library =
+                        crate::library::forget_record(worker.adapters.library_root.as_deref(), r);
                     investigation
+                        && library
                         && matches!(
                             worker.adapters.keychain.delete(r),
                             Ok(()) | Err(VaultError::NotFound)

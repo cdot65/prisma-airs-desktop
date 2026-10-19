@@ -687,6 +687,13 @@ Decided in C12 (implementer decision, recorded for review).
   opening when nothing fresh is held and not within ten minutes of a failed
   read; v1's idle polling, the encrypted metric history and baselines, and
   every Gateway, Red Teaming and Supply Chain source belong to C16-C18.
+- P03 push amendments: a Runtime case never carries a payload (refused on
+  import, catalog and load; v1's validator allowed one, but v1 authoring
+  never produced one); the library file is named after its key record so the
+  durable credential cleanup ledger removes a deleted tenant's key and file
+  together; library operations report success only when their write
+  settles, failures go to the operation's originator and `SaveLibraryAgain`
+  retries; a deadline ticker publishes freshness and snooze transitions.
 
 ## Directions explicitly requested before round 1
 

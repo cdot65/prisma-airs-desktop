@@ -56,6 +56,7 @@ export const CASE_PROBLEM_TEXT: Record<CaseProblem, string> = {
     catalog: 'Choose a version 1 example catalog containing 1–32 examples with distinct product/name pairs.',
     allPresent: "These examples are already in this tenant's library.",
     missing: 'That case is no longer in the library.',
+    notSaved: 'The change could not be saved on this Mac. Use Save again once storage is available.',
 }
 
 const FAILURE_TEXT: Record<LibraryFailure, string> = {
@@ -67,6 +68,8 @@ const FAILURE_TEXT: Record<LibraryFailure, string> = {
 
 function noticeText(notice: LibraryNotice): string {
     switch (notice.kind) {
+        case 'saved':
+            return `Saved ${notice.name} to this tenant’s case Library.`
         case 'imported':
             return notice.added === 0 ? 'Every case in that file is already in the library.' : `Imported ${notice.added} case${notice.added === 1 ? '' : 's'}.`
         case 'examplesAdded':
@@ -183,6 +186,9 @@ export const LibraryView = forwardRef<HTMLHeadingElement, Props>(function Librar
                 <Callout tone='danger' icon={AlertTriangle} role='alert'>
                     The last change could not be saved on this Mac ({FAILURE_TEXT[library.unsaved]}). It is shown here but will be lost
                     when the app quits.
+                    <Button type='button' tier='secondary' className='mt-3' onClick={() => void send({ kind: 'saveLibraryAgain', context })}>
+                        Save again
+                    </Button>
                 </Callout>
             ) : null}
             {library.problem ? (
@@ -354,7 +360,7 @@ export const LibraryView = forwardRef<HTMLHeadingElement, Props>(function Librar
                     <Button type='button' tier='secondary' disabled={!ready || library.cases.length === 0} onClick={() => void send({ kind: 'exportCases', context })}>
                         Export library…
                     </Button>
-                    <Button type='button' tier='secondary' disabled={!ready || library.choosing} onClick={() => void send({ kind: 'importCases', context })}>
+                    <Button type='button' tier='secondary' disabled={!ready} aria-disabled={library.choosing} onClick={() => void send({ kind: 'importCases', context })}>
                         Import cases…
                     </Button>
                     {others.length > 0 ? (

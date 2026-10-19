@@ -647,6 +647,7 @@ export const CASE_PROBLEMS: readonly string[] = [
     'catalog',
     'allPresent',
     'missing',
+    'notSaved',
 ]
 const LIBRARY_STATES: readonly string[] = ['idle', 'loading', 'ready', 'failed']
 const LIBRARY_FAILURES: readonly string[] = ['locked', 'denied', 'unavailable', 'unreadable']
@@ -684,6 +685,7 @@ function isCaseView(value: unknown): boolean {
 
 function isLibraryNotice(value: unknown): boolean {
     if (!isRecord(value)) return false
+    if (value.kind === 'saved') return isString(value.name)
     if (value.kind === 'imported' || value.kind === 'examplesAdded') return isCount(value.added)
     if (value.kind === 'copied') return isString(value.tenant)
     return value.kind === 'catalogUnavailable' || value.kind === 'fileUnreadable'

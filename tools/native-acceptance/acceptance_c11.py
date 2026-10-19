@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fixture_app as fx  # noqa: E402
 import acceptance_c08 as c8  # noqa: E402
 import mgmt_server  # noqa: E402
+import native_sheets as ns  # noqa: E402
 
 ROOT = os.getcwd()
 SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C11")
@@ -221,6 +222,37 @@ def run():
     }
     obs["tree_export"] = save_tree("reports-exported", tree)
 
+    # ---- N10: the production NSSavePanel ----
+    # No AX tree is saved while a panel lists folders.
+    out = os.path.join(work, "panel-exports")
+    os.makedirs(out)
+    ns.enable()
+    app.ax("press", "AXButton", "Export CSV…")
+    panel = ns.wait_sheet(app)
+    first = ns.save_as(app, out, name="reports-panel")
+    tree, said = c8.text(app, "Saved reports-panel.csv.", 10)
+    target = os.path.join(out, "reports-panel.csv")
+    first_mode = oct(stat.S_IMODE(os.stat(target).st_mode)) if os.path.exists(target) else None
+    with open(target, "ab") as f:
+        f.write(b"stale tail")
+    app.ax("press", "AXButton", "Export CSV…")
+    replaced = ns.save_as(app, out, name="reports-panel", replace=True)
+    tree, said_again = c8.text(app, "Saved reports-panel.csv.", 10)
+    data = open(target, "rb").read() if os.path.exists(target) else b""
+    app.ax("press", "AXButton", "Export CSV…")
+    cancelled = ns.cancel(app)
+    tree, cancel_said = c8.text(app, "Export cancelled. Nothing was saved.", 10)
+    focus = fx.App.focused(tree)
+    obs["panel_export"] = {
+        "panel_shown": panel, "saved": first and said, "mode": first_mode,
+        "replaced": replaced and said_again and not data.endswith(b"stale tail") and data.startswith(CSV_HEADER.encode()),
+        "replaced_mode": oct(stat.S_IMODE(os.stat(target).st_mode)) if data else None,
+        "cancelled": cancelled and cancel_said and sorted(os.listdir(out)) == ["reports-panel.csv"],
+        "focus_in_window": bool(focus) and focus.get("role") not in ("AXSheet", None),
+    }
+    obs["tree_panel_export"] = save_tree("panel-export-cancelled", tree)
+    ns.disable()
+
     # ---- N06: export metadata, then clear ----
     press(app, "Sessions")
     tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Export metadata…") is not None, 10)
@@ -341,6 +373,10 @@ def evaluate(prepared, o):
     add("C11-N07", not o["writes"] and not o["secret_in_trees"],
         f"{o['requests']} requests; non-read requests: {o['writes']}; secrets in AX snapshots: {o['secret_in_trees']}", [])
     add("C11-N08", o["exceptions"], f"synthetic label shown and no request sent: {o['exceptions']}", [o["tree_exceptions"]])
+    pe = o["panel_export"]
+    add("C11-N10", pe["panel_shown"] and pe["saved"] and pe["mode"] == "0o600" and pe["replaced"] and pe["replaced_mode"] == "0o600"
+        and pe["cancelled"] and pe["focus_in_window"],
+        f"production save panel: {pe}", [o["tree_panel_export"]])
     zoom_ok = all(r["clear"] for r in (o["zoom_refresh"], o["zoom_next"], o["min_refresh"], o["min_next"]))
     add("C11-N09", zoom_ok,
         f"200% zoom: {o['zoom_refresh']['found']} / {o['zoom_next']['found']}; minimum size: {o['min_refresh']['found']} / {o['min_next']['found']}; "
@@ -358,7 +394,7 @@ def evaluate(prepared, o):
         "app": {"bundle": prepared["bundle"], "identifier": prepared["identifier"], "executable_sha256": prepared["executable_sha256"], "fixture": True},
         "checks": checks,
         "limitations": [
-            "The fixture build saves exports into its data root without the save sheet (the production build opens the rfd/NSSavePanel sheet); the file is written owner-only and never replaces one.",
+            "N04/N06 save exports into the fixture data root without a sheet (never replacing a file); N10 drives the production rfd/NSSavePanel sheet (the fixture switch fixture-native-sheets) into a driver-owned temporary folder, including a confirmed Replace and Cancel. No Accessibility tree is saved while a panel lists folders.",
             "The dashboard endpoint is a local synthetic fixture; live sessions reads are qualified in C25.",
             "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected.",
         ],

@@ -25,5 +25,6 @@ P03 push):
   nine supported DLP mutations, with no retry.
 - Probe gap: a pattern leaf missing its confidence level (or match type,
   occurrence operator, version, id) is now a unit case.
-- E1 (open): native evidence through the production NSOpenPanel chooser
-  (not the fixture's staged file) remains for the P03 push.
+- E1 (P03 push): C10-N10 drives the production NSOpenPanel (fixture switch
+  `fixture-native-sheets`): choose, cancel, a file over the read bound
+  refused, the source unchanged, focus returning to the window.
