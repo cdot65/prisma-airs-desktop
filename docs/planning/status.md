@@ -3,7 +3,7 @@
 G00 and G01 passed (historical Claude reviews). C01–C04 and the P01 cumulative review completed on
 2026-10-17; C05–C07 and the P02 cumulative review completed on 2026-10-18;
 C08–C12 and the P03 cumulative review completed on 2026-10-19 and C13 the same
-day; implementation is at **C14** (P04). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+day and C14 the same day; implementation is at **C15** (P04). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no
 blockers; each phase review still needs 9/10, after every chunk accepted below
@@ -29,7 +29,8 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C12 | **Complete** (generation 2): completed at 8/10 under D034 (1911da6), then raised; Codex attempt-04 passed with 9 in all five dimensions; committed as 962747b and verified | Attempts 02–03 remediated: status stamps for library outcomes, hardened mutation harness, C12-N11 offline Library (`reviews/C12/follow-ups.md`) |
 | P03 | **Complete**: Codex phase attempt-02 scored 9 in all five dimensions; committed as bbbad43 and verified against the reviewed source fingerprint | Attempt-01 R1 (context-bound Playground handoff) remediated (`reviews/P03/follow-ups.md`); integrated native checks for C08–C12, the C11 workload and 129/129 mutation probes on the P03 bundle |
 | C13 | **Complete** (generation 1): completed at 8/10 under D034; Codex attempt-01 scored 9/8/9/8/8 with no blockers; committed as 0d105e0 and verified against the reviewed source fingerprint | Follow-ups R1–R3/E1 open for the P04 push (`reviews/C13/follow-ups.md`) |
-| C14–C26 | Planned | Ordered predecessors required |
+| C14 | **Complete** (generation 1): completed at 8/10 under D034; Codex attempt-02 scored 9/8/9/9/8 with no blockers; committed as 8d219b0 and verified against the reviewed source fingerprint | Attempt-01 (9/7/9/8/7) remediated (`reviews/C14/remediation-attempt-01.md`); remaining R5 and the probe items open for the P04 push (`reviews/C14/follow-ups.md`) |
+| C15–C26 | Planned | Ordered predecessors required |
 
 ## C01 evidence (docs/planning/evidence/C01)
 
