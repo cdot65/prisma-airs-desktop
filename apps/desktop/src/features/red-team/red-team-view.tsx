@@ -65,12 +65,19 @@ function failureText(failure: ManagementFailure) {
     return MANAGEMENT_FAILURE_TEXT[failure]
 }
 
+type Listed = { rows: unknown[]; total: number | null; capped: boolean; complete: boolean }
+
+/** A reported total: a capped one is a lower bound. */
+const reported = (total: number, capped: boolean) => `${capped ? '≥ ' : ''}${total.toLocaleString()}`
+
 /** A list source's coverage: complete, a partial sample, or failed. */
-function coverage(list: { rows: unknown[]; total: number | null; complete: boolean } | null, failure: ManagementFailure | null) {
+function coverage(list: Listed | null, failure: ManagementFailure | null) {
     if (failure) return `Unavailable: ${failureText(failure)}`
     if (!list) return 'Not read'
     if (list.complete) return `${list.rows.length.toLocaleString()} read · complete`
-    return list.total !== null ? `Partial sample · ${list.rows.length} of ${list.total}` : `Partial sample · ${list.rows.length} observed`
+    return list.total !== null
+        ? `Partial sample · ${list.rows.length} of ${reported(list.total, list.capped)}`
+        : `Partial sample · ${list.rows.length} observed`
 }
 
 /** A count shown as a lower bound when its source is a partial sample. */
@@ -442,22 +449,25 @@ function AttackResults({
     const [shown, setShown] = useState(0)
     const heading = useRef<HTMLHeadingElement>(null)
 
-    // The pages are read one after another until the service's total is
-    // covered, a read fails or the ten-page cap is reached; closing the
-    // results stops the walk.
+    // The pages are read one after another, each carrying the rows received
+    // so far, until the service's total is covered, a page comes back short
+    // (anything it left out stays unread), a read fails or the ten-page cap
+    // is reached; closing the results stops the walk.
     useEffect(() => {
         heading.current?.focus()
         let open = true
         void (async () => {
+            let received = 0
             for (let page = 0; page < ATTACK_PAGES && open; page++) {
-                const result = await read({ kind: 'attacks', scanId, page })
+                const result = await read({ kind: 'attacks', scanId, page, received })
                 if (!open) return
                 if (typeof result === 'string' || result.kind !== 'attacks') {
                     setFailure(typeof result === 'string' ? result : resultFailure(result))
                     break
                 }
                 setPages((p) => [...p, result.attacks])
-                if (result.attacks.complete) break
+                received += result.attacks.rows.length
+                if (result.attacks.complete || result.attacks.rows.length < 100) break
             }
             if (open) setLoading(false)
         })()
@@ -470,6 +480,7 @@ function AttackResults({
     const last = pages.at(-1)
     const succeeded = rows.filter((a) => a.threat === true).length
     const capped = !last?.complete && pages.length >= ATTACK_PAGES
+    const shortPage = !last?.complete && last !== undefined && last.rows.length < 100
     return (
         <section aria-labelledby={`${ids}-attacks`} className='border-academy-rule rounded-academy-md flex flex-col gap-2 border p-4' data-slot='red-team-attacks'>
             <div className='flex flex-wrap items-center gap-3'>
@@ -491,11 +502,20 @@ function AttackResults({
                     ? `Reading attack results · ${rows.length.toLocaleString()} read…`
                     : last
                       ? `${succeeded} of ${rows.length} succeeded · read 100 per page${
-                            last.complete ? ' · all attacks read' : last.total !== null ? ` · showing ${rows.length} of ${last.total}` : ' · more may exist'
-                        }${capped ? ' · the 1,000-attack cap is reached' : ''}`
+                            last.complete
+                                ? ' · all attacks read'
+                                : last.total !== null
+                                  ? ` · showing ${rows.length} of ${reported(last.total, last.capped)}`
+                                  : ' · more may exist'
+                        }${shortPage ? ' · the service returned fewer than it reports' : ''}${capped ? ' · the 1,000-attack cap is reached' : ''}`
                       : ''}
             </p>
-            {!loading && last && rows.length === 0 ? <p className='text-[13px]'>This scan reports no attacks. Static scans list their attacks once they finish.</p> : null}
+            {!loading && last?.complete && rows.length === 0 ? (
+                <p className='text-[13px]'>This scan reports no attacks. Static scans list their attacks once they finish.</p>
+            ) : null}
+            {!loading && last && !last.complete && rows.length === 0 ? (
+                <p className='text-[13px]'>No attack results came back, so none are shown; the results could not be read in full.</p>
+            ) : null}
             {rows.length > 100 ? (
                 <div role='group' aria-label='Attack results shown' className='flex flex-wrap items-center gap-2 text-[13px]'>
                     <Button type='button' size='sm' tier='tertiary' aria-disabled={shown === 0} onClick={() => shown > 0 && setShown(shown - 1)}>
@@ -547,8 +567,8 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>; 
     const models = observation?.models ?? null
     const stats = observation?.skillStatistics ?? null
     const skills = observation?.skills ?? null
-    const listed = (list: { rows: unknown[]; total: number | null; complete: boolean } | null) =>
-        list === null ? 'Unavailable' : bound(list.total ?? list.rows.length, list.complete || list.total !== null)
+    const listed = (list: Listed | null) =>
+        list === null ? 'Unavailable' : bound(list.total ?? list.rows.length, (list.complete || list.total !== null) && !list.capped)
     const tiles: [string, string][] = [
         [models?.total !== null && models ? 'Model scans (reported)' : 'Model scans (observed)', listed(models)],
         [skills?.total !== null && skills ? 'Skill scans (reported)' : 'Skill scans (observed)', listed(skills)],

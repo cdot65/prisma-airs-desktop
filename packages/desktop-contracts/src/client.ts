@@ -788,7 +788,10 @@ function isBars(value: unknown): boolean {
     )
 }
 
-/** A first page of at most 100 rows with its total and completeness. */
+/**
+ * A first page of at most 100 rows with its total, whether that total is a
+ * capped lower bound, and completeness (never complete when capped).
+ */
 function isRowPage(value: unknown, row: (r: unknown) => boolean): boolean {
     return (
         isRecord(value) &&
@@ -796,7 +799,9 @@ function isRowPage(value: unknown, row: (r: unknown) => boolean): boolean {
         value.rows.length <= 100 &&
         value.rows.every(row) &&
         optionalCount(value.total) &&
-        typeof value.complete === 'boolean'
+        typeof value.capped === 'boolean' &&
+        typeof value.complete === 'boolean' &&
+        !(value.capped && value.complete)
     )
 }
 

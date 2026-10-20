@@ -240,9 +240,15 @@ pub enum ManagementRequest {
     /// Model Security scans, AgentGuard 30-day skill statistics and skill
     /// scans (C13).
     SupplyChain,
-    /// One page (0-9, 100 each) of a Red Teaming scan's attack results.
+    /// One page (0-9, 100 each) of a Red Teaming scan's attack results,
+    /// with the rows `received` on the pages before it (at most 100 per
+    /// page), from which the page's completeness is judged.
     #[serde(rename_all = "camelCase")]
-    Attacks { scan_id: String, page: u8 },
+    Attacks {
+        scan_id: String,
+        page: u8,
+        received: u32,
+    },
 }
 
 impl ManagementRequest {
@@ -276,8 +282,14 @@ impl ManagementRequest {
             Self::Search { query } => crate::sessions::classify(query).is_some(),
             Self::Overview | Self::SupplyChain => true,
             Self::RedTeam { window } => crate::red_team::WINDOWS.contains(window),
-            Self::Attacks { scan_id, page } => {
-                crate::red_team::is_uuid(scan_id) && *page < crate::red_team::ATTACK_PAGES
+            Self::Attacks {
+                scan_id,
+                page,
+                received,
+            } => {
+                crate::red_team::is_uuid(scan_id)
+                    && *page < crate::red_team::ATTACK_PAGES
+                    && *received <= u32::from(*page) * crate::red_team::LIST_LIMIT
             }
         }
     }
@@ -2007,7 +2019,11 @@ impl ManagementJob {
                 ManagementRequest::SupplyChain => supply_chain_read(binding, deadline)
                     .await
                     .map(|observation| ManagementResult::SupplyChain { observation }),
-                ManagementRequest::Attacks { scan_id, page } => binding
+                ManagementRequest::Attacks {
+                    scan_id,
+                    page,
+                    received,
+                } => binding
                     .product_read(
                         Product::RedTeam,
                         &format!("/v1/report/static/{scan_id}/list-attacks"),
@@ -2022,7 +2038,8 @@ impl ManagementJob {
                     )
                     .await
                     .and_then(|reply| {
-                        crate::red_team::attacks(&reply, scan_id, *page).ok_or(PageError::Invalid)
+                        crate::red_team::attacks(&reply, scan_id, *page, *received)
+                            .ok_or(PageError::Invalid)
                     })
                     .map(|attacks| ManagementResult::Attacks { attacks }),
                 request => self.investigate(binding, request, deadline).await,

@@ -21,7 +21,11 @@
 //!   credential, or none, is still a known operation (mutations reviewed)
 //!   or denied, and generic redirects never enter them.
 //! - Managed and registered-origin requests carry no URL user-info and no
-//!   Host or forwarding override.
+//!   Host or forwarding override in any header they would send, the editor's
+//!   or the one their authentication generates. At a registered origin a
+//!   request also carries no method override and at most one credential
+//!   (one Authorization, Proxy-Authorization, Cookie or x-pan-token header,
+//!   or an API key in the query).
 
 use std::collections::BTreeSet;
 use std::net::IpAddr;
@@ -44,10 +48,25 @@ pub const CATALOGUE_TOKEN_PATH: &str = "/auth/v1/oauth2/access_token";
 /// Headers whose presence makes a managed request's credential or method
 /// ambiguous.
 const AMBIGUOUS: [&str; 7] = [
+    CREDENTIAL_HEADERS[0],
+    CREDENTIAL_HEADERS[1],
+    CREDENTIAL_HEADERS[2],
+    CREDENTIAL_HEADERS[3],
+    METHOD_OVERRIDES[0],
+    METHOD_OVERRIDES[1],
+    METHOD_OVERRIDES[2],
+];
+
+/// Headers that carry a credential.
+const CREDENTIAL_HEADERS: [&str; 4] = [
     "authorization",
     "proxy-authorization",
     "cookie",
     "x-pan-token",
+];
+
+/// Headers that ask a server to treat the request as another method.
+const METHOD_OVERRIDES: [&str; 3] = [
     "x-http-method-override",
     "x-http-method",
     "x-method-override",
@@ -388,15 +407,51 @@ fn origin(url: &url::Url) -> String {
     url.origin().ascii_serialization()
 }
 
-/// URL user-info or a Host/forwarding header: another credential or
-/// another virtual host than the admitted authority.
+/// The names (lower-cased) of every header the request would send: the
+/// editor's and the one its authentication generates.
+fn effective_headers(plan: &Plan) -> Vec<String> {
+    let mut names: Vec<String> = plan
+        .headers
+        .iter()
+        .map(|(n, _)| n.to_ascii_lowercase())
+        .collect();
+    match &plan.auth {
+        Auth::Basic { .. } | Auth::Bearer { .. } | Auth::OAuth2 { .. } => {
+            names.push("authorization".to_owned());
+        }
+        Auth::ApiKey {
+            name, query: false, ..
+        } => names.push(name.to_ascii_lowercase()),
+        Auth::ApiKey { query: true, .. } | Auth::None => {}
+    }
+    names
+}
+
+/// URL user-info or a Host/forwarding header, the editor's or a generated
+/// one: another credential or another virtual host than the admitted
+/// authority.
 fn ambiguous_authority(plan: &Plan, url: &url::Url) -> bool {
     !url.username().is_empty()
         || url.password().is_some()
-        || plan
-            .headers
+        || effective_headers(plan)
             .iter()
-            .any(|(n, _)| HOST_OVERRIDES.contains(&n.to_ascii_lowercase().as_str()))
+            .any(|n| HOST_OVERRIDES.contains(&n.as_str()))
+}
+
+/// At a registered origin: an ambiguous authority, a method override, or
+/// more than one credential (headers, the editor's or generated, and an API
+/// key in the query), so the method and account the review names are the
+/// ones the service sees.
+fn ambiguous_at_registered(plan: &Plan, url: &url::Url) -> bool {
+    let names = effective_headers(plan);
+    let credentials = names
+        .iter()
+        .filter(|n| CREDENTIAL_HEADERS.contains(&n.as_str()))
+        .count()
+        + usize::from(matches!(plan.auth, Auth::ApiKey { query: true, .. }));
+    ambiguous_authority(plan, url)
+        || names.iter().any(|n| METHOD_OVERRIDES.contains(&n.as_str()))
+        || credentials > 1
 }
 
 /// The catalogue operation `plan` is at a registered origin serving
@@ -518,7 +573,7 @@ pub fn admit(
         // (a literal header, a collection secret or none).
         let operation = match destinations.registered.classes(&url) {
             Some(classes) => {
-                if ambiguous_authority(plan, &url) {
+                if ambiguous_at_registered(plan, &url) {
                     return Err(SendRefusal::AmbiguousCredential);
                 }
                 Some(registered_operation(plan, &url, classes)?)
@@ -987,6 +1042,78 @@ mod tests {
         }
         // Unregistered generic HTTP keeps its user-info and headers.
         assert!(admitted("GET", "http://u:p@127.0.0.1:8080/x", "Host: other", "").is_ok());
+    }
+
+    #[test]
+    fn generated_headers_overrides_and_extra_credentials_are_refused_at_registered_origins() {
+        let read = "{{scm_base}}/iam/v1/access_policies";
+        let key = |name: &str| {
+            format!("[auth]\nkind = \"api-key\"\nname = \"{name}\"\nsecret = \"dev-token\"\n")
+        };
+        let basic = "[auth]\nkind = \"basic\"\nusername = \"u\"\nsecret = \"dev-token\"\n";
+        let query_key = "[auth]\nkind = \"api-key\"\nname = \"key\"\nlocation = \"query\"\nsecret = \"dev-token\"\n";
+        for (headers, settings) in [
+            // A generated Host or forwarding header.
+            ("", key("Host")),
+            ("", key("X-Forwarded-Host")),
+            // Method overrides, literal or generated.
+            ("X-HTTP-Method-Override: DELETE", String::new()),
+            ("x-method-override: DELETE", String::new()),
+            ("", key("X-HTTP-Method")),
+            // Two credentials, whatever their source.
+            (
+                "Authorization: Bearer one\nAuthorization: Bearer two",
+                String::new(),
+            ),
+            ("Authorization: Bearer manual", basic.to_owned()),
+            ("Cookie: sid=1", key("Authorization")),
+            ("X-Pan-Token: literal", query_key.to_owned()),
+            (
+                "Authorization: Bearer manual\nProxy-Authorization: Basic x",
+                String::new(),
+            ),
+        ] {
+            assert_eq!(
+                admitted("GET", read, headers, &settings),
+                Err(SendRefusal::AmbiguousCredential),
+                "{headers} {settings}"
+            );
+        }
+        // A generated Host header is refused for a managed request too.
+        assert_eq!(
+            admitted(
+                "GET",
+                read,
+                "",
+                &key("Host").replace("dev-token", "tenant.api_key")
+            ),
+            Err(SendRefusal::ManagedPlacement),
+            "a tenant key only as x-pan-token"
+        );
+        // One credential from any single source is kept.
+        for (headers, settings) in [
+            ("Authorization: Bearer manual", String::new()),
+            ("", basic.to_owned()),
+            ("", key("X-Api-Key")),
+            ("", query_key.to_owned()),
+            ("X-Pan-Token: literal", String::new()),
+        ] {
+            assert!(
+                admitted("GET", read, headers, &settings).is_ok(),
+                "{headers} {settings}"
+            );
+        }
+        // Unregistered HTTP is the operator's own.
+        assert!(
+            admitted(
+                "GET",
+                "http://127.0.0.1:8080/x",
+                "X-HTTP-Method-Override: DELETE\nAuthorization: Bearer a",
+                basic
+            )
+            .is_ok()
+        );
+        assert!(admitted("GET", "http://127.0.0.1:8080/x", "", &key("Host")).is_ok());
     }
 
     #[test]

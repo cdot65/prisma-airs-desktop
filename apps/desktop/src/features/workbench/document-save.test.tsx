@@ -341,7 +341,7 @@ describe('API Client document Save', () => {
         expect(of(requests, 'protect')).toHaveLength(protects)
     })
 
-    it('protects pending edits when leaving the document', async () => {
+    it('protects pending edits when leaving the document, before the pause would', async () => {
         const second = doc({ id: 'create', relative: 'items/create.request.toml', fields: fields({ method: 'POST' }), saved: fields({ method: 'POST' }) })
         const native = scriptedNative(opened({ tabs: [tab(), tab({ id: 'create', relative: 'items/create.request.toml', method: 'POST' })] }))
         const requests = workbench(native, (request) =>
@@ -353,7 +353,8 @@ describe('API Client document Save', () => {
         await user.type(url(), '/left')
         await user.click(screen.getByRole('tab', { name: 'POST create' }))
         await native.push(opened({ tabs: [tab(), tab({ id: 'create', relative: 'items/create.request.toml', method: 'POST' })], selected: 'create' }))
-        await waitFor(() => expect(of(requests, 'protect')).toHaveLength(1))
+        // Sent as the editor leaves, well before the typing pause's timer.
+        await waitFor(() => expect(of(requests, 'protect')).toHaveLength(1), { timeout: PROTECT_DELAY_MS / 4 })
         expect(of(requests, 'protect')[0]).toMatchObject({ id: 'list', fields: { url: 'https://a.example/items/left' } })
         expect(of(requests, 'selectTab')).toEqual([{ kind: 'selectTab', id: 'create' }])
     })

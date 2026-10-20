@@ -1301,14 +1301,32 @@ the decisions.
   |---|---|---|
   | `RedTeam { window }` (7, 15, 30) | Red Teaming data plane `GET /v1/dashboard/scan-statistics?date_range=LAST_N_DAYS`; on 404, `GET /v1/scan?skip=0&limit=1` to confirm no scans; `GET /v1/scan?skip=0&limit=100` | statistics (totals, status, risk and target-type bars) and the first 100 scans (id, status, job type, target id and type, time), each with its own failure |
   | `SupplyChain` | Model Security `GET /v1/scans?skip=0&limit=100&isBackgroundRefresh=false`; AgentGuard `GET /v1/stats/scans?time_period=30_DAYS` and `GET /v1/scans?skip=0&limit=100&isBackgroundRefresh=false` (with `x-tsg-id`) | model scans (id, outcome, time), skill statistics (unique skills, vulnerabilities), skill scans (pseudonym, status, outcome, vulnerability count, time) |
-  | `Attacks { scanId, page }` (UUID, 0-9) | Red Teaming `GET /v1/report/static/{scan}/list-attacks?skip=100·page&limit=100` | numbered rows (succeeded/defended/not rated, severity, type, sub-category, turns), total, completeness |
+  | `Attacks { scanId, page, received }` (UUID, 0-9, rows received before it, at most 100·page) | Red Teaming `GET /v1/report/static/{scan}/list-attacks?skip=100·page&limit=100` | numbered rows (succeeded/defended/not rated, severity, type, sub-category, turns), total, capped, completeness |
+
+- **Validity and coverage.** A reply reporting a failure (`success: false`,
+  an `error` or `errors` field) is invalid. Statistics must also carry one
+  of their known fields; a breakdown has at most 64 entries and labels
+  outside v1's list for it are OTHER. A missing total is zero only when
+  every reported count (totals, every breakdown entry, every rated target;
+  AgentGuard: both counts and no top vulnerability) is zero; every rated
+  target group is validated first (an array of at most 64 objects, each
+  with a whole, non-negative count). A list needs its pagination object
+  (the total may be omitted); a total below its page's rows, or a present
+  non-boolean `count_capped` (null included), is invalid, and such a page
+  never proves "no scans"; every
+  list carries `capped` (the total is then a lower bound, shown as "≥ N")
+  and is complete only when uncapped and its total is no larger than the
+  rows actually received (attack pages: `received` plus the page), or,
+  without a total, the page is short.
 
 - **Presentation.** Two tabs, each read when first shown with nothing held,
   on Refresh and (Red Teaming) a window change; tiles, ranked lists, source
   coverage (complete, partial sample with lower bounds, unavailable), the
   scan table with a local status filter, attack results read page by page
-  on opening until the total is covered, a read fails or the ten-page cap
-  is reached (v1 read two pages and offered Load more), and a disclosure of
+  on opening, each page carrying the rows received so far, until the total
+  is covered, a page comes back short, a read fails or the ten-page cap is
+  reached (v1 read two pages and offered Load more); "no attacks" only for
+  a complete read, and a disclosure of
   the workflows that are not available. The view is keyed by context; a failed refresh keeps the last
   read with its time; a superseded reply is dropped.
 - **Not done here.** No real endpoint is called before C25; no scan,
@@ -1335,7 +1353,7 @@ Client destination (`features/workbench`). D040 records the decisions.
 
   | Request | Effect |
   |---|---|
-  | `save { id, revision, fields, edit }` | stale revision refused; the submitted snapshot sealed as the draft before any project write; `check` (Fix to save with field/row); inventory complete, identity unmoved and not duplicated; a body named by any other request file (duplicates and invalid ones included) refused; files equal the baseline (else conflict); journal, body, metadata, journal cleared; new revision |
+  | `save { id, revision, fields, edit }` | stale revision refused; the submitted snapshot sealed as the draft before any project write; `check` (Fix to save with field/row); inventory complete, identity unmoved and not duplicated; a body that reaches a file something else owns refused (`sharedBody`): another request file's body (duplicates and invalid ones included) or a project file (any request file, `collection.toml`, an environment, a schema), compared by the file reached (case-folded name, or the same device and inode) rather than its spelling; files equal the baseline (else conflict); journal, body, metadata, journal cleared; new revision |
   | `protect { id, revision, fields, edit }` | the snapshot (valid or not) sealed as the document's draft |
   | `editing { id, edit }` / close | the close guard's unprotected mark keeps the newest edit generation reported; a Protect or Save clears it only when its snapshot covers that generation. Closing a tab or the collection with a mark is refused (`unprotected`) unless the operator discards; the editor protects its latest text first and asks when that fails |
   | `resolve { choice }` | both versions archived; Use disk reopens; Keep mine rebases |
@@ -1369,13 +1387,26 @@ and History views. D041 records the decisions; ADR 0004 the policy.
   without an active tenant. A request there is classified whatever its
   credential (manual header, collection secret or none): known mutations
   are reviewed, unknown operations denied; URL user-info and Host or
-  forwarding headers are refused there and for every managed request; a
-  generic redirect never enters one.
+  forwarding headers, the editor's or one its authentication generates
+  (an API-key header named Host), are refused there and for every managed
+  request; there a method override or a second credential (Authorization,
+  Proxy-Authorization, Cookie or x-pan-token, or an API key in the query)
+  is refused too, while one manual Authorization still goes; a generic
+  redirect never enters one.
 - **Context binding.** A context change (switch, credential replacement,
   reset) retires the pending review for good; Apply checks the active
   context; a managed or reviewed request re-checks its context and the
   tenant's credential records before its secrets are read, before a token
-  is minted and before each send, ending `retired` with nothing sent.
+  is minted and before the request is sent (a redirect's later hops follow
+  a request already sent), ending `retired` with nothing sent.
+- **Credential binding.** A review's digest also binds the authentication
+  in full (Basic username, Basic/Bearer/API-key secret references), each
+  workbench secret's generation this session (Set secret starts a new one
+  before the Keychain record changes) and the hash of the Cookie header the
+  collection's jar gives the URL. Apply, after the native confirmation,
+  must reproduce it; a reviewed request also re-checks these before it is
+  sent and carries the admitted Cookie header on its first hop instead of
+  reading the jar again.
 - **Redaction.** Response headers and redirect targets are redacted of the
   secrets used and of the credentials derived from them on the wire (the
   minted bearer, Basic encodings).

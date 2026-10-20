@@ -68,7 +68,7 @@ func walk(_ pid: pid_t) -> [Node] {
     AXUIElementSetAttributeValue(app, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
     var out: [Node] = []
     func visit(_ el: AXUIElement, _ depth: Int) {
-        if out.count > 4000 || depth > 60 { return }
+        if out.count > 20000 || depth > 60 { return }
         out.append(Node(el: el, depth: depth))
         for child in children(el) { visit(child, depth + 1) }
     }

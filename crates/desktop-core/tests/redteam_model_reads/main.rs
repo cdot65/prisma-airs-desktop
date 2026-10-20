@@ -283,9 +283,9 @@ impl Desk {
         }
     }
 
-    async fn attacks(&mut self, page: u8) -> AttackPage {
+    async fn attacks(&mut self, page: u8, received: u32) -> AttackPage {
         match self
-            .read(json!({"kind": "attacks", "scanId": SCAN, "page": page}))
+            .read(json!({"kind": "attacks", "scanId": SCAN, "page": page, "received": received}))
             .await
             .expect("admitted")
         {
@@ -399,6 +399,29 @@ async fn absent_statistics_mean_no_scans_only_when_an_empty_list_proves_it() {
     assert_eq!(read.statistics, None);
     assert_eq!(read.statistics_failure, Some(ManagementFailure::NotFound));
     assert_eq!(read.scans.expect("scans").rows.len(), 2);
+    // A malformed confirmation proves nothing: with the list itself invalid
+    // too, the read fails with the absence, never as "no scans".
+    for confirmation in [
+        json!({"data": [], "pagination": "invalid"}),
+        json!({"data": []}),
+        json!({"data": [], "count_capped": null, "pagination": {"total_items": 0}}),
+    ] {
+        desk.script().scans = (200, confirmation.clone());
+        let r = desk
+            .read(json!({"kind": "redTeam", "window": 30}))
+            .await
+            .expect("admitted");
+        assert!(
+            matches!(
+                r,
+                ManagementResult::Failed {
+                    failure: ManagementFailure::NotFound,
+                    ..
+                }
+            ),
+            "{confirmation}: {r:?}"
+        );
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -509,7 +532,7 @@ async fn models_and_skills_read_three_sources_with_per_read_pseudonyms() {
 #[tokio::test(flavor = "multi_thread")]
 async fn attack_results_are_read_100_per_page_up_to_ten_pages_without_prompts() {
     let mut desk = desk().await;
-    let first = desk.attacks(0).await;
+    let first = desk.attacks(0, 0).await;
     assert_eq!(first.rows.len(), 100);
     assert_eq!(first.total, Some(250));
     assert!(!first.complete);
@@ -518,31 +541,31 @@ async fn attack_results_are_read_100_per_page_up_to_ten_pages_without_prompts() 
     assert_eq!(first.rows[0].sub_category.as_deref(), Some("Jailbreak"));
     assert!(leaks(&first).is_empty(), "{:?}", leaks(&first));
     desk.script().attacks = (200, attacks(50, 250));
-    let third = desk.attacks(2).await;
+    let third = desk.attacks(2, 200).await;
     assert_eq!(third.rows[0].number, 201);
-    assert!(third.complete, "200 before and 50 more cover 250");
+    assert!(third.complete, "200 received and 50 more cover 250");
     let seen = desk.requests(&format!("{RT}/v1/report/static/{SCAN}/list-attacks"));
     assert!(
         seen[1].request_line.contains("skip=200") && seen[1].request_line.contains("limit=100")
     );
     // The tenth page is the last; identifiers must be job UUIDs.
-    assert_eq!(desk.attacks(9).await.page, 9);
-    assert_eq!(
-        desk.read(json!({"kind": "attacks", "scanId": SCAN, "page": 10}))
-            .await
-            .err(),
-        Some(Refusal::InvalidInput)
-    );
-    assert_eq!(
-        desk.read(json!({"kind": "attacks", "scanId": "../../v1/scan", "page": 0}))
-            .await
-            .err(),
-        Some(Refusal::InvalidInput)
-    );
+    assert_eq!(desk.attacks(9, 900).await.page, 9);
+    for request in [
+        json!({"kind": "attacks", "scanId": SCAN, "page": 10, "received": 0}),
+        json!({"kind": "attacks", "scanId": "../../v1/scan", "page": 0, "received": 0}),
+        // No more than 100 rows can have been received per earlier page.
+        json!({"kind": "attacks", "scanId": SCAN, "page": 1, "received": 101}),
+    ] {
+        assert_eq!(
+            desk.read(request.clone()).await.err(),
+            Some(Refusal::InvalidInput),
+            "{request}"
+        );
+    }
     // An outcome that is not a boolean makes the page invalid.
     desk.script().attacks = (200, json!({"data": [{"threat": "yes"}]}));
     let invalid = desk
-        .read(json!({"kind": "attacks", "scanId": SCAN, "page": 0}))
+        .read(json!({"kind": "attacks", "scanId": SCAN, "page": 0, "received": 0}))
         .await
         .expect("admitted");
     assert!(matches!(
@@ -604,4 +627,115 @@ async fn reads_need_a_management_client() {
         Some(Refusal::CapabilityMissing)
     );
     assert!(server.seen().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn attack_coverage_counts_rows_received_and_capped_totals_are_bounds() {
+    let mut desk = desk().await;
+    // Empty pages against a total of 150 never claim every attack, however
+    // far the pages advance.
+    desk.script().attacks = (200, attacks(0, 150));
+    for page in 0..3 {
+        let read = desk.attacks(page, 0).await;
+        assert!(read.rows.is_empty() && !read.complete, "page {page}");
+        assert_eq!(read.total, Some(150));
+    }
+    // An empty report is complete.
+    desk.script().attacks = (200, attacks(0, 0));
+    assert!(desk.attacks(0, 0).await.complete);
+    // A capped count is carried as a lower bound, never complete.
+    let mut capped = attacks(10, 10);
+    capped["count_capped"] = json!(true);
+    desk.script().attacks = (200, capped);
+    let read = desk.attacks(0, 0).await;
+    assert!(read.capped && !read.complete);
+    let mut scans = red_team_scans(3, Some(1000));
+    scans["count_capped"] = json!(true);
+    desk.script().scans = (200, scans);
+    let listed = desk.red_team(30).await.scans.expect("scans");
+    assert!(listed.capped && !listed.complete);
+    assert_eq!(listed.total, Some(1000));
+    desk.script().models = (
+        200,
+        json!({"scans": [], "count_capped": true, "pagination": {"total_items": 500}}),
+    );
+    let models = desk.supply_chain().await.models.expect("models");
+    assert!(models.capped && !models.complete);
+    // Malformed pagination never establishes coverage.
+    for page in [
+        json!({"data": [], "pagination": "invalid"}),
+        json!({"data": [], "count_capped": null, "pagination": {"total_items": 0}}),
+    ] {
+        desk.script().attacks = (200, page.clone());
+        let r = desk
+            .read(json!({"kind": "attacks", "scanId": SCAN, "page": 0, "received": 0}))
+            .await
+            .expect("admitted");
+        assert!(
+            matches!(
+                r,
+                ManagementResult::Failed {
+                    failure: ManagementFailure::InvalidResponse,
+                    ..
+                }
+            ),
+            "{page}: {r:?}"
+        );
+    }
+    desk.script().models = (200, json!({"scans": [], "pagination": "invalid"}));
+    let read = desk.supply_chain().await;
+    assert_eq!(
+        read.models_failure,
+        Some(ManagementFailure::InvalidResponse)
+    );
+    assert!(read.skills.is_some() && read.skill_statistics.is_some());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn invalid_statistics_fail_alone_and_the_other_sources_stay_usable() {
+    let mut desk = desk().await;
+    let mut late = vec![];
+    for i in 0..64 {
+        late.push(json!({"name": format!("S{i}"), "count": 0}));
+    }
+    late.push(json!({"name": "LATE", "count": 4}));
+    for body in [
+        json!({}),
+        json!({"message": "Internal error"}),
+        json!({"error": "denied", "total_scans": 0, "targets_scanned": 0}),
+        json!({"targets_scanned": 5}),
+        json!({"total_scans": 0, "targets_scanned": 0, "scan_status": late}),
+        json!({"targets_scanned": 0, "scan_status": [{"name": "FUTURE_STATUS", "count": 4}]}),
+        json!({"success": false, "total_scans": 0, "targets_scanned": 0}),
+        // Nested rated targets are validated before the source is quiet.
+        json!({"risk_profile": [{"risk_rating": "LOW", "total": 0,
+            "targets_by_type": [{"name": "MODEL", "count": -1}]}]}),
+        json!({"risk_profile": [{"risk_rating": "LOW", "total": 0, "targets_by_type": "MODEL"}]}),
+    ] {
+        desk.script().statistics = (200, body.clone());
+        let read = desk.red_team(7).await;
+        assert_eq!(
+            read.statistics_failure,
+            Some(ManagementFailure::InvalidResponse),
+            "{body}"
+        );
+        assert!(read.statistics.is_none());
+        assert_eq!(read.scans.expect("scans usable").rows.len(), 3, "{body}");
+    }
+    for body in [
+        json!({}),
+        json!({"message": "Internal error"}),
+        json!({"errors": [{"code": "E"}], "unique_skills_scanned": {"count": 0}}),
+        json!({"total_vulnerabilities_found": {"count": 2}, "top_vulnerability": null}),
+        json!({"unique_skills_scanned": 4, "total_vulnerabilities_found": {"count": 0}}),
+    ] {
+        desk.script().skill_statistics = (200, body.clone());
+        let read = desk.supply_chain().await;
+        assert_eq!(
+            read.skill_statistics_failure,
+            Some(ManagementFailure::InvalidResponse),
+            "{body}"
+        );
+        assert!(read.models.is_some() && read.skills.is_some(), "{body}");
+    }
 }

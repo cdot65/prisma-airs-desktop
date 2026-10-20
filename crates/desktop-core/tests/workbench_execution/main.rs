@@ -811,12 +811,29 @@ async fn tenant_with(token_delay: u64) -> Tenant {
                     body: b"{}".to_vec(),
                 };
             }
+            if let Some(rest) = line.strip_prefix("GET /iam/v1/access_policies?login=") {
+                // A known read that signs in with a session cookie.
+                let sid = rest.split(' ').next().unwrap_or_default();
+                return Reply::Raw {
+                    head: format!(
+                        "HTTP/1.1 200 Fixture\r\nset-cookie: sid={sid}; Path=/; Max-Age=3600\r\ncontent-length: 2\r\nconnection: close"
+                    ),
+                    body: b"{}".to_vec(),
+                };
+            }
             if line.starts_with("GET /iam/v1/roles") {
                 return ok(401, "{}");
             }
-            if line.starts_with("GET /iam/v1/permissions") {
+            if let Some(rest) = line.strip_prefix("GET /iam/v1/permissions") {
+                // Redirects to `?to=` (an unregistered origin), or within
+                // the tenant's own.
+                let to = rest
+                    .split(' ')
+                    .next()
+                    .and_then(|q| q.strip_prefix("?to="))
+                    .unwrap_or("/iam/v1/access_policies");
                 return Reply::Raw {
-                    head: "HTTP/1.1 302 Found\r\nlocation: /iam/v1/access_policies\r\ncontent-length: 0\r\nconnection: close".into(),
+                    head: format!("HTTP/1.1 302 Found\r\nlocation: {to}\r\ncontent-length: 0\r\nconnection: close"),
                     body: Vec::new(),
                 };
             }
@@ -962,13 +979,16 @@ async fn tenant_credentials_are_admitted_before_any_secret_is_read() {
         origin,
         ..
     } = tenant().await;
+    // An unregistered loopback service a managed redirect could point to.
+    let elsewhere = Http::start(Arc::new(|_| Answer::status(200, &[], "{}"))).await;
+    let away = format!("/iam/v1/permissions?to={}/stolen", elsewhere.origin());
     let root = managed_collection(
         &origin,
         &[
             ("read", "GET", "/iam/v1/access_policies"),
             ("unknown", "GET", "/iam/v1/not-in-the-catalogue"),
             ("roles", "GET", "/iam/v1/roles"),
-            ("perm", "GET", "/iam/v1/permissions"),
+            ("perm", "GET", &away),
         ],
     );
     desk.open(&root).await;
@@ -1061,6 +1081,10 @@ async fn tenant_credentials_are_admitted_before_any_secret_is_read() {
         server.seen().len(),
         3,
         "the token was reused; the redirect not followed"
+    );
+    assert!(
+        elsewhere.seen().is_empty(),
+        "nothing followed the redirect to an unregistered origin"
     );
     // A 401 drops the token and nothing is resent.
     let r = desk.send_doc("roles.request.toml").await;
@@ -1633,5 +1657,250 @@ async fn offline_then_reconnected_sends_nothing_by_itself() {
             "DELETE /iam/v1/access_policies/abc HTTP/1.1",
             "GET /iam/v1/access_policies HTTP/1.1"
         ]
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn generated_overrides_and_extra_credentials_never_reach_a_registered_origin() {
+    let Tenant {
+        mut desk,
+        server,
+        origin,
+        ..
+    } = tenant().await;
+    let ordinary = Http::start(Arc::new(|_| Answer::status(200, &[], "{}"))).await;
+    let key = |name: &str| {
+        format!("[auth]\nkind = \"api-key\"\nname = \"{name}\"\nsecret = \"dev-token\"\n")
+    };
+    let read = "{{scm_base}}/iam/v1/access_policies";
+    let root = collection(
+        &format!(
+            "scm_base = \"{origin}\"\nelsewhere = \"{}\"\nmine = {{ secret = \"dev-token\" }}\n",
+            ordinary.origin()
+        ),
+        &[
+            (
+                "host.request.toml",
+                &request("host", "GET", read, &key("Host")),
+            ),
+            (
+                "method.request.toml",
+                &request("method", "GET", read, &key("X-HTTP-Method-Override")),
+            ),
+            (
+                "override.request.toml",
+                &request(
+                    "override",
+                    "GET",
+                    read,
+                    "[[headers]]\nname = \"X-HTTP-Method-Override\"\nvalue = \"DELETE\"\n",
+                ),
+            ),
+            (
+                "double.request.toml",
+                &request(
+                    "double",
+                    "GET",
+                    read,
+                    "[[headers]]\nname = \"Authorization\"\nvalue = \"Bearer manual\"\n\n[auth]\nkind = \"bearer\"\nsecret = \"dev-token\"\n",
+                ),
+            ),
+            (
+                "single.request.toml",
+                &request(
+                    "single",
+                    "GET",
+                    read,
+                    "[[headers]]\nname = \"Authorization\"\nvalue = \"Bearer manual\"\n",
+                ),
+            ),
+            (
+                "generic.request.toml",
+                &request(
+                    "generic",
+                    "GET",
+                    "{{elsewhere}}/x",
+                    "[[headers]]\nname = \"X-HTTP-Method-Override\"\nvalue = \"DELETE\"\n\n[auth]\nkind = \"api-key\"\nname = \"Host\"\nsecret = \"dev-token\"\n",
+                ),
+            ),
+        ],
+    );
+    desk.open(&root).await;
+    desk.secret("dev-token", TOKEN).await;
+    let reads = desk.secret_reads();
+    for id in ["host", "method", "override", "double"] {
+        let r = desk.send_doc(&format!("{id}.request.toml")).await;
+        assert_eq!(
+            r,
+            json!({"kind": "sendRefused", "refusal": {"kind": "ambiguousCredential"}}),
+            "{id}"
+        );
+    }
+    assert_eq!(
+        desk.secret_reads(),
+        reads,
+        "refused before any secret is read"
+    );
+    assert!(server.seen().is_empty(), "nothing reached the tenant");
+    // One manual Authorization still goes, as written.
+    let r = desk.send_doc("single.request.toml").await;
+    assert_eq!(r["run"]["record"]["state"], "completed", "{r}");
+    assert_eq!(server.seen().len(), 1);
+    assert_eq!(
+        server.seen()[0].header("authorization"),
+        Some("Bearer manual")
+    );
+    // Ordinary HTTP elsewhere is the operator's own.
+    let r = desk.send_doc("generic.request.toml").await;
+    assert_eq!(r["run"]["record"]["status"], 200, "{r}");
+    assert_eq!(ordinary.seen().len(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn reviews_are_bound_to_the_credentials_and_cookies_actually_sent() {
+    let Tenant {
+        mut desk,
+        server,
+        origin,
+        ..
+    } = tenant().await;
+    let target = "{{scm_base}}/iam/v1/access_policies/abc";
+    let basic = |user: &str| {
+        format!("[auth]\nkind = \"basic\"\nusername = \"{user}\"\nsecret = \"dev-token\"\n")
+    };
+    let bearer = |secret: &str| format!("[auth]\nkind = \"bearer\"\nsecret = \"{secret}\"\n");
+    let root = collection(
+        &format!("scm_base = \"{origin}\"\n"),
+        &[
+            (
+                "basic.request.toml",
+                &request("basic", "DELETE", target, &basic("alice")),
+            ),
+            (
+                "bearer.request.toml",
+                &request("bearer", "DELETE", target, &bearer("dev-token")),
+            ),
+            ("bare.request.toml", &request("bare", "DELETE", target, "")),
+            (
+                "one.request.toml",
+                &request(
+                    "one",
+                    "GET",
+                    "{{scm_base}}/iam/v1/access_policies?login=one",
+                    "",
+                ),
+            ),
+            (
+                "two.request.toml",
+                &request(
+                    "two",
+                    "GET",
+                    "{{scm_base}}/iam/v1/access_policies?login=two",
+                    "",
+                ),
+            ),
+        ],
+    );
+    desk.open(&root).await;
+    desk.secret("dev-token", "first-value").await;
+    desk.secret("other-token", "other-value").await;
+    let deletes = |server: &TlsServer| {
+        server
+            .seen()
+            .iter()
+            .filter(|s| s.request_line.starts_with("DELETE"))
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    let stale = json!({"kind": "sendRefused", "refusal": {"kind": "reviewStale"}});
+    desk.adapters.confirmer.auto(Some(true));
+    // Reviewed, then Applied with another username or secret reference.
+    for (id, changed) in [("basic", basic("bob")), ("bearer", bearer("other-token"))] {
+        let doc = desk.doc(&format!("{id}.request.toml")).await;
+        let review = desk.send_doc(&format!("{id}.request.toml")).await;
+        assert_eq!(review["kind"], "reviewRequired", "{review}");
+        let r = desk
+            .wb(
+                json!({"kind": "apply", "review": review["review"]["review"], "id": id,
+                       "revision": doc["revision"], "fields": with(&doc, "settings", &changed),
+                       "context": desk.context()}),
+            )
+            .await;
+        assert_eq!(r, stale, "{id}");
+    }
+    // The referenced secret replaced after review, or while the native
+    // confirmation is held.
+    let doc = desk.doc("bearer.request.toml").await;
+    let apply = |review: &Value, context: Option<String>| {
+        json!({"kind": "apply", "review": review["review"]["review"], "id": "bearer",
+               "revision": doc["revision"], "fields": doc["fields"], "context": context})
+    };
+    let review = desk.send_doc("bearer.request.toml").await;
+    desk.secret("dev-token", "second-value").await;
+    let r = desk.wb(apply(&review, desk.context())).await;
+    assert_eq!(r, stale, "replaced after review");
+    let review = desk.send_doc("bearer.request.toml").await;
+    desk.adapters.confirmer.auto(None);
+    let op = desk.start_wb(apply(&review, desk.context())).await;
+    assert!(support::eventually(|| desk.adapters.confirmer.held() == 1).await);
+    desk.secret("dev-token", "third-value").await;
+    assert!(desk.adapters.confirmer.complete(true));
+    assert_eq!(desk.wait(op).await, stale, "replaced while confirming");
+    desk.adapters.confirmer.auto(Some(true));
+    // Cookies: a new session cookie or a cleared jar after review.
+    assert_eq!(
+        desk.send_doc("one.request.toml").await["run"]["record"]["status"],
+        200
+    );
+    let bare = desk.doc("bare.request.toml").await;
+    let apply_bare = |review: &Value, context: Option<String>| {
+        json!({"kind": "apply", "review": review["review"]["review"], "id": "bare",
+               "revision": bare["revision"], "fields": bare["fields"], "context": context})
+    };
+    let review = desk.send_doc("bare.request.toml").await;
+    assert_eq!(
+        desk.send_doc("two.request.toml").await["run"]["record"]["status"],
+        200
+    );
+    assert_eq!(
+        desk.wb(apply_bare(&review, desk.context())).await,
+        stale,
+        "new cookie"
+    );
+    let review = desk.send_doc("bare.request.toml").await;
+    assert_eq!(
+        desk.wb(json!({"kind": "clearCookies"})).await["kind"],
+        "done"
+    );
+    assert_eq!(
+        desk.wb(apply_bare(&review, desk.context())).await,
+        stale,
+        "cleared"
+    );
+    assert!(
+        deletes(&server).is_empty(),
+        "nothing went under an old approval"
+    );
+    // Unchanged, each goes once with exactly what was reviewed.
+    assert_eq!(
+        desk.send_doc("one.request.toml").await["run"]["record"]["status"],
+        200
+    );
+    let review = desk.send_doc("bare.request.toml").await;
+    let r = desk.wb(apply_bare(&review, desk.context())).await;
+    assert_eq!(r["kind"], "ran", "{r}");
+    let review = desk.send_doc("basic.request.toml").await;
+    let doc = desk.doc("basic.request.toml").await;
+    let r = desk
+        .wb(json!({"kind": "apply", "review": review["review"]["review"], "id": "basic",
+                   "revision": doc["revision"], "fields": doc["fields"], "context": desk.context()}))
+        .await;
+    assert_eq!(r["kind"], "ran", "{r}");
+    let sent = deletes(&server);
+    assert_eq!(sent.len(), 2);
+    assert_eq!(sent[0].header("cookie"), Some("sid=one"));
+    assert_eq!(
+        sent[1].header("authorization"),
+        Some(format!("Basic {}", b64("alice:third-value")).as_str())
     );
 }

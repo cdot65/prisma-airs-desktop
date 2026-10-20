@@ -365,6 +365,24 @@ pub struct WorkloadPerf {
     pub metrics: BTreeMap<String, Metric>,
 }
 
+/// Where a subject's measurement of `workload` is recorded: the measuring
+/// chunk's `workload-perf.json`, or in a phase (which may measure several)
+/// `workload-perf-<measuring chunk>.json`, falling back to the one name
+/// phases with a single workload used.
+fn workload_evidence(dir: &std::path::Path, subject: Subject, workload: &Workload) -> String {
+    match subject {
+        Subject::Chunk(_) => workload.evidence.to_owned(),
+        Subject::Phase(_) => {
+            let named = format!("workload-perf-{}.json", workload.measured_by);
+            if dir.join(&named).exists() {
+                named
+            } else {
+                workload.evidence.to_owned()
+            }
+        }
+    }
+}
+
 fn evaluate_workload(repo: &Repo, subject: Subject, workload: &Workload) -> Result<Vec<String>> {
     let record: Registration = read_json(&repo.join(workload.registration))?;
     let table_path = repo.join(&record.budgets);
@@ -380,34 +398,30 @@ fn evaluate_workload(repo: &Repo, subject: Subject, workload: &Workload) -> Resu
     let dir = repo.evidence_dir(subject);
     let mut failures = Vec::new();
     let prepared: Option<Prepared> = read_json(&dir.join("native-prepare.json")).ok();
-    let perf: WorkloadPerf = match read_json(&dir.join(workload.evidence)) {
+    let evidence = workload_evidence(&dir, subject, workload);
+    let perf: WorkloadPerf = match read_json(&dir.join(&evidence)) {
         Ok(perf) => perf,
         Err(e) => return Ok(vec![format!("blocked: {e}")]),
     };
     if perf.schema != "airs-v2-workload-perf/1" || perf.label != "acceptance" {
-        failures.push(format!(
-            "{} is not an acceptance measurement",
-            workload.evidence
-        ));
+        failures.push(format!("{evidence} is not an acceptance measurement"));
     }
     if perf.registration_sha256 != table_sha {
         failures.push(format!(
-            "{} names budgets {} not the registered {table_sha}",
-            workload.evidence, perf.registration_sha256
+            "{evidence} names budgets {} not the registered {table_sha}",
+            perf.registration_sha256
         ));
     }
     if perf.started_utc < record.registered_utc {
         failures.push(format!(
-            "{} started before the budgets were registered",
-            workload.evidence
+            "{evidence} started before the budgets were registered"
         ));
     }
     if prepared.as_ref().map(|p| p.executable_sha256.as_str())
         != Some(perf.executable_sha256.as_str())
     {
         failures.push(format!(
-            "{} was not measured on the prepared fixture executable",
-            workload.evidence
+            "{evidence} was not measured on the prepared fixture executable"
         ));
     }
     for budget in &budgets {

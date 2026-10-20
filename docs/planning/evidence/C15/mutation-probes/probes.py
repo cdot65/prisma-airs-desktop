@@ -67,6 +67,10 @@ RETIRE = "a_tenant_change_retires_reviews_and_unsent_requests"
 WIRE = "wire_credentials_are_redacted_wherever_runs_are_kept"
 OFFLINE = "offline_then_reconnected_sends_nothing_by_itself"
 AUTHORITY = "crates/desktop-core/src/authority.rs"
+DOMAIN = "crates/desktop-core/src/authority/workbench_domain.rs"
+OVERRIDES = "generated_overrides_and_extra_credentials_never_reach_a_registered_origin"
+OVERRIDES_U = "generated_headers_overrides_and_extra_credentials_are_refused_at_registered_origins"
+BOUND = "reviews_are_bound_to_the_credentials_and_cookies_actually_sent"
 
 PROBES = [
     # ---- attempt-01 remediation (R1-R4, T23) ----
@@ -86,16 +90,16 @@ PROBES = [
      [(EXECUTE, "                !transfer.registered.contains(next)", "                true")],
      EX_T, REGISTERED),
     ("Host overrides reach the tenant",
-     [(ADMISSION, ".any(|(n, _)| HOST_OVERRIDES.contains(&n.to_ascii_lowercase().as_str()))", ".any(|_| false)")],
+     [(ADMISSION, ".any(|n| HOST_OVERRIDES.contains(&n.as_str()))", ".any(|_| false)")],
      UNIT_T, AUTHORITY_U),
     ("URL user-info rides with tenant credentials",
-     [(ADMISSION, "    !url.username().is_empty()\n        || url.password().is_some()\n        || plan", "    plan")],
+     [(ADMISSION, "    !url.username().is_empty()\n        || url.password().is_some()\n        || effective_headers(plan)", "    effective_headers(plan)")],
      EX_T, TENANT),
     ("a context change leaves the review usable",
      [(AUTHORITY, "        self.workbench.sending.retire(self.active_ref.as_ref());\n", "")],
      EX_T, RETIRE),
     ("unsent requests go after a context change",
-     [(SEND, "    if !planned.context_bound() {\n        return true;\n    }", "    if true {\n        return true;\n    }")],
+     [(SEND, "    !planned.context_bound()\n        || state\n            .send_destinations", "    true\n        || state\n            .send_destinations")],
      EX_T, RETIRE),
     ("minted bearer tokens are shown",
      [(EXECUTE, "        redactions.push(token.clone());\n", "")],
@@ -198,6 +202,35 @@ PROBES = [
     ("more than four running requests pass the contract",
      [(CLIENT, "        value.running.length <= 4 &&\n", "")],
      FE_SNAPSHOT, CONTRACT),
+    # P04 push: the C15 review's R2 (the effective header set at registered
+    # origins) and R5 (reviews bound to the credentials and cookies sent).
+    ("generated auth headers are not admitted",
+     [(ADMISSION, "        } => names.push(name.to_ascii_lowercase()),", "        } => names.push(name[..0].to_owned()),")],
+     EX_T, OVERRIDES),
+    ("method overrides reach a registered origin",
+     [(ADMISSION, "        || names.iter().any(|n| METHOD_OVERRIDES.contains(&n.as_str()))\n", "")],
+     EX_T, OVERRIDES),
+    ("a second credential reaches a registered origin",
+     [(ADMISSION, "        || credentials > 1\n", "")],
+     EX_T, OVERRIDES),
+    ("an API key in the query is not a credential",
+     [(ADMISSION, "        + usize::from(matches!(plan.auth, Auth::ApiKey { query: true, .. }));", ";")],
+     UNIT_T, OVERRIDES_U),
+    ("Basic usernames are not reviewed",
+     [(SEND, 'serde_json::json!(["basic", username.bound(), secret])', 'serde_json::json!(["basic", secret, username.0.len() * 0])')],
+     EX_T, BOUND),
+    # A secret reference is bound twice, in the auth entry and as a key of
+    # the secret-generation map, so dropping it from one is not observable;
+    # the generation probe below removes the map.
+    ("secret generations are not reviewed",
+     [(SEND, '        "secrets": p.credentials.secrets,\n', '')],
+     EX_T, BOUND),
+    ("cookies are not reviewed",
+     [(SEND, '        "cookie": cookie,\n', '        "cookie": cookie.map(|_| 0),\n')],
+     EX_T, BOUND),
+    ("a replaced secret keeps its generation",
+     [(DOMAIN, "            .secret_changed(&collection, &reference);", "            .review();")],
+     EX_T, BOUND),
 ]
 
 

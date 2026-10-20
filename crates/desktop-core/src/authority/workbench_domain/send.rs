@@ -4,7 +4,12 @@
 //! actual request itself. Known tenant-credential changes stop at an exact
 //! review: Apply re-renders the same snapshot against the current files,
 //! must reproduce the reviewed digest, takes the operator's native
-//! confirmation, consumes the review and sends once. Transfers run off the
+//! confirmation, consumes the review and sends once. A review is bound to
+//! the credentials actually sent too: the authentication (username and
+//! secret references), each workbench secret's generation (replacing one
+//! starts a new generation) and the Cookie header the jar gives the
+//! request; any change needs a fresh review, and the request carries that
+//! admitted Cookie header rather than reading the jar again. Transfers run off the
 //! workbench lane (at most four at a time, each cancellable); their results
 //! go to history and nothing is ever sent again by itself.
 
@@ -118,6 +123,10 @@ pub(in crate::authority) struct Sending {
     jars: BTreeMap<String, Arc<Mutex<Jar>>>,
     /// Each collection's history once read this session.
     histories: BTreeMap<String, Vec<RunRecord>>,
+    /// Workbench secrets replaced this session (by collection and
+    /// reference) and the generation each was replaced in.
+    secret_generations: BTreeMap<(String, String), u64>,
+    generation: u64,
 }
 
 impl Sending {
@@ -152,6 +161,50 @@ impl Sending {
 
     pub(super) fn review(&self) -> Option<SendReviewView> {
         self.review.as_ref().map(|p| p.view.clone())
+    }
+
+    /// A workbench secret is about to be replaced or removed: what was
+    /// planned or reviewed with it no longer goes.
+    pub(super) fn secret_changed(&mut self, collection: &str, reference: &str) {
+        self.generation += 1;
+        self.secret_generations.insert(
+            (collection.to_owned(), reference.to_owned()),
+            self.generation,
+        );
+    }
+
+    /// The credentials `plan` would send now: its workbench secrets'
+    /// generations and, without a tenant credential, the Cookie header the
+    /// collection's jar gives its URL.
+    fn credentials(
+        &self,
+        collection: &str,
+        scope: &str,
+        plan: &Plan,
+        admitted: &Admitted,
+    ) -> Credentials {
+        let secrets = plan
+            .references()
+            .into_iter()
+            .filter(|r| !r.starts_with(crate::workbench::scm::MANAGED_PREFIX))
+            .map(|r| {
+                let generation = self
+                    .secret_generations
+                    .get(&(collection.to_owned(), r.clone()))
+                    .copied()
+                    .unwrap_or(0);
+                (r, generation)
+            })
+            .collect();
+        let cookie = (admitted.class != CredentialClass::Managed)
+            .then(|| self.jars.get(scope))
+            .flatten()
+            .and_then(|jar| {
+                jar.lock()
+                    .ok()?
+                    .header(&admitted.url, history::now() as i64)
+            });
+        Credentials { secrets, cookie }
     }
 
     /// The active context changed (tenant switch, credential replacement,
@@ -307,6 +360,16 @@ impl State {
     }
 }
 
+/// The credentials a planned request sends besides its tenant ones.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct Credentials {
+    /// Each workbench secret reference it uses and that secret's
+    /// generation this session (0: not replaced since the session began).
+    secrets: BTreeMap<String, u64>,
+    /// The Cookie header admitted with it (sent on its first hop).
+    cookie: Option<String>,
+}
+
 /// A rendered, admitted request and where it comes from.
 #[derive(Clone)]
 struct Planned {
@@ -321,12 +384,14 @@ struct Planned {
     context: Option<ContextRef>,
     /// Body files' content as reviewed (empty unless applied).
     pins: BTreeMap<String, String>,
+    credentials: Credentials,
 }
 
 /// Renders and admits the snapshot `fields` of document `id` at
 /// `revision` (nothing secret is read).
 async fn plan(
     inner: &Arc<Inner>,
+    root: &Path,
     id: &str,
     revision: &str,
     fields: Fields,
@@ -398,6 +463,15 @@ async fn plan(
     }
     let admitted =
         admission::admit(&plan, network, &destinations).map_err(|r| Box::new(refusal(r)))?;
+    if admitted.class != CredentialClass::Managed {
+        // Loaded now so the Cookie header it would send is known.
+        jar(inner, root, &scope).await;
+    }
+    let credentials = lock(inner)
+        .map_err(|_| Box::new(refused(WorkbenchProblem::Unavailable)))?
+        .workbench
+        .sending
+        .credentials(&collection, &scope, &plan, &admitted);
     Ok(Planned {
         relative: doc.relative.clone(),
         request: doc.id,
@@ -409,6 +483,7 @@ async fn plan(
         managed,
         context,
         pins: BTreeMap::new(),
+        credentials,
     })
 }
 
@@ -449,9 +524,11 @@ fn bound_body(
     })
 }
 
-/// What a review is bound to: the tenant credential and destination, and
-/// the exact expanded request (secrets by reference, files by content).
-/// The files' hashes come back as the pins a send must keep to.
+/// What a review is bound to: the tenant credential and destination, the
+/// exact expanded request (secrets by reference, files by content) and the
+/// other credentials it sends (authentication in full, each workbench
+/// secret's generation, the admitted Cookie header by its hash). The
+/// files' hashes come back as the pins a send must keep to.
 fn digest(p: &Planned) -> Result<(String, BTreeMap<String, String>), SendRefusal> {
     let mut files = BTreeMap::new();
     let plan = &p.plan;
@@ -474,8 +551,17 @@ fn digest(p: &Planned) -> Result<(String, BTreeMap<String, String>), SendRefusal
             query,
             secret,
         } => serde_json::json!(["api-key", name, query, secret]),
-        other => serde_json::json!([other.kind()]),
+        render::Auth::Basic { username, secret } => {
+            serde_json::json!(["basic", username.bound(), secret])
+        }
+        render::Auth::Bearer { secret } => serde_json::json!(["bearer", secret]),
+        render::Auth::None => serde_json::json!(["none"]),
     };
+    let cookie = p
+        .credentials
+        .cookie
+        .as_ref()
+        .map(|c| hex::encode(Sha256::digest(c.as_bytes())));
     let bound = serde_json::json!({
         "tenant": managed.map(|m| m.tenant.clone()),
         "client": managed.and_then(|m| m.client_id.clone()),
@@ -488,6 +574,8 @@ fn digest(p: &Planned) -> Result<(String, BTreeMap<String, String>), SendRefusal
         "query": plan.query.iter().map(|(n, v)| [n.bound(), v.bound()]).collect::<Vec<_>>(),
         "headers": plan.headers.iter().map(|(n, v)| [n.clone(), v.bound()]).collect::<Vec<_>>(),
         "auth": auth,
+        "secrets": p.credentials.secrets,
+        "cookie": cookie,
         "body": bound_body(&plan.body, &p.folder, &mut files)?,
         "variables": plan.used,
         "request": p.request,
@@ -594,7 +682,16 @@ pub(super) async fn begin(inner: &Arc<Inner>, request: WorkbenchRequest) -> Step
     if let Err(problem) = ensure_profile(inner, &root).await {
         return Step::Done(Box::new(refused(problem)));
     }
-    let planned = match plan(inner, &id, &revision, fields.clone(), context.clone()).await {
+    let planned = match plan(
+        inner,
+        &root,
+        &id,
+        &revision,
+        fields.clone(),
+        context.clone(),
+    )
+    .await
+    {
         Ok(p) => p,
         Err(result) => return Step::Done(result),
     };
@@ -701,17 +798,30 @@ impl Planned {
 }
 
 /// Whether `planned` may still go: its context is the active one and the
-/// tenant's credentials are those it was planned with.
+/// tenant's credentials are those it was planned with, and a reviewed
+/// request's other credentials are still those it was reviewed with.
 fn still_admitted(inner: &Inner, planned: &Planned) -> bool {
-    if !planned.context_bound() {
+    let reviewed = planned.admitted.needs_review();
+    if !planned.context_bound() && !reviewed {
         return true;
     }
     let Ok(state) = lock(inner) else {
         return false;
     };
-    state
-        .send_destinations(planned.context.as_ref())
-        .is_ok_and(|(_, managed)| managed == planned.managed)
+    if reviewed
+        && state.workbench.sending.credentials(
+            &planned.collection,
+            &planned.scope,
+            &planned.plan,
+            &planned.admitted,
+        ) != planned.credentials
+    {
+        return false;
+    }
+    !planned.context_bound()
+        || state
+            .send_destinations(planned.context.as_ref())
+            .is_ok_and(|(_, managed)| managed == planned.managed)
 }
 
 /// The operator confirms natively; the same snapshot is re-planned against
@@ -747,7 +857,7 @@ async fn apply(
     {
         return refusal(SendRefusal::Declined);
     }
-    let planned = match plan(&inner, &id, &revision, fields, context).await {
+    let planned = match plan(&inner, &root, &id, &revision, fields, context).await {
         Ok(p) => p,
         Err(result) => return *result,
     };
@@ -1076,6 +1186,7 @@ async fn transfer(
                     client,
                     network,
                     cookies: cookies.clone(),
+                    cookie: planned.credentials.cookie.clone(),
                     tokens,
                     cancel,
                     progress,

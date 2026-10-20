@@ -666,6 +666,9 @@ pub struct Transfer {
     pub network: Network,
     /// The collection's jar (requests without tenant credentials).
     pub cookies: Option<Arc<std::sync::Mutex<Jar>>>,
+    /// The Cookie header admitted with the request (the jar's when it was
+    /// planned), sent on its first hop; a redirect's hops ask the jar.
+    pub cookie: Option<String>,
     pub tokens: Arc<Tokens>,
     pub cancel: CancellationToken,
     /// Bytes sent and received so far.
@@ -673,7 +676,9 @@ pub struct Transfer {
     /// Registered Prisma origins: a generic redirect never enters one.
     pub registered: Registered,
     /// Whether the request may still go (its tenant context is still the
-    /// active one), asked before a token is minted and before each send.
+    /// active one and a reviewed request's credentials are unchanged),
+    /// asked before a token is minted and before the request itself is
+    /// sent; a redirect's later hops follow a request already sent.
     pub still: Arc<dyn Fn() -> bool + Send + Sync>,
 }
 
@@ -779,13 +784,19 @@ pub async fn send(prepared: &Prepared, transfer: Transfer, sink: BodyWriter) -> 
             value.set_sensitive(true);
             request = request.header(http::header::AUTHORIZATION, value);
         }
-        if let Some(jar) = &transfer.cookies
-            && let Some(cookie) = jar
-                .lock()
-                .ok()
-                .and_then(|j| j.header(&url, history::now() as i64))
-            && let Ok(value) = http::HeaderValue::from_str(&cookie)
+        let cookie = if hop == 0 {
+            transfer.cookie.clone()
+        } else {
+            transfer.cookies.as_ref().and_then(|jar| {
+                jar.lock()
+                    .ok()
+                    .and_then(|j| j.header(&url, history::now() as i64))
+            })
+        };
+        if let Some(cookie) = cookie
+            && let Ok(mut value) = http::HeaderValue::from_str(&cookie)
         {
+            value.set_sensitive(true);
             request = request.header(http::header::COOKIE, value);
         }
         if with_body && let Some(payload) = &prepared.payload {
@@ -793,7 +804,7 @@ pub async fn send(prepared: &Prepared, transfer: Transfer, sink: BodyWriter) -> 
                 .header(http::header::CONTENT_LENGTH, payload.len)
                 .body(payload.body(Arc::clone(&transfer.progress)));
         }
-        if !(transfer.still)() {
+        if hop == 0 && !(transfer.still)() {
             return retired(sink, ended);
         }
         let sent = tokio::select! {

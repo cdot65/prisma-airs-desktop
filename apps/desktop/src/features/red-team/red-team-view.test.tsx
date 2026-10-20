@@ -59,6 +59,7 @@ const redTeam = (overrides: Partial<RedTeamObservation> = {}): RedTeamObservatio
             { id: TARGET, status: 'RUNNING', jobType: 'DYNAMIC', targetId: null, targetType: null, createdAt: null },
         ],
         total: 2,
+        capped: false,
         complete: true,
     },
     scansFailure: null,
@@ -67,16 +68,16 @@ const redTeam = (overrides: Partial<RedTeamObservation> = {}): RedTeamObservatio
 
 const models = (overrides: Partial<SupplyChainObservation> = {}): SupplyChainObservation => ({
     readAt: now(),
-    models: { rows: [{ id: SCAN, outcome: 'BLOCKED', createdAt: null }], total: 140, complete: false },
+    models: { rows: [{ id: SCAN, outcome: 'BLOCKED', createdAt: null }], total: 140, capped: false, complete: false },
     modelsFailure: null,
     skillStatistics: { uniqueSkills: 4, vulnerabilities: 6 },
     skillStatisticsFailure: null,
-    skills: { rows: [{ pseudonym: 'a1b2c3d4', status: 'COMPLETED', outcome: 'ALLOWED', vulnerabilities: 2, createdAt: null }], total: null, complete: false },
+    skills: { rows: [{ pseudonym: 'a1b2c3d4', status: 'COMPLETED', outcome: 'ALLOWED', vulnerabilities: 2, createdAt: null }], total: null, capped: false, complete: false },
     skillsFailure: null,
     ...overrides,
 })
 
-const attackPage = (page: number, n: number, total: number | null, complete: boolean): AttackPage => ({
+const attackPage = (page: number, n: number, total: number | null, complete: boolean, capped = false): AttackPage => ({
     scanId: SCAN,
     page,
     rows: Array.from({ length: n }, (_, i) => ({
@@ -88,6 +89,7 @@ const attackPage = (page: number, n: number, total: number | null, complete: boo
         multiTurn: false,
     })),
     total,
+    capped,
     complete,
 })
 
@@ -242,7 +244,8 @@ describe('Red Team & Models', () => {
         await user.click(await screen.findByRole('button', { name: 'Open attack results for scan 11111111' }))
         const region = await screen.findByRole('region', { name: 'Attack results · scan 11111111' })
         await waitFor(() => expect(within(region).getByText(/· all attacks read$/)).toBeInTheDocument())
-        expect(reads.filter((r) => r.kind === 'attacks')).toHaveLength(3)
+        // Each page carries the rows received before it.
+        expect(reads.filter((r) => r.kind === 'attacks').map((r) => (r as { received: number }).received)).toEqual([0, 100, 200])
         await user.click(within(region).getByRole('button', { name: 'Close attack results' }))
         fail = true
         await user.click(screen.getByRole('button', { name: 'Open attack results for scan 11111111' }))
@@ -250,6 +253,50 @@ describe('Red Team & Models', () => {
         expect(await within(again).findByRole('alert')).toHaveTextContent('Attack results could not be read: The management service is unavailable')
         expect(within(again).getByText(/^50 of 100 succeeded · read 100 per page · showing 100 of 250$/)).toBeInTheDocument()
         expect(reads.filter((r) => r.kind === 'attacks')).toHaveLength(5)
+    })
+
+    it('stops on a short page and never calls an unread remainder "no attacks"', async () => {
+        const native = scriptedNative(ready())
+        let first = 0
+        const reads = management(native, (request) =>
+            request.kind === 'attacks' ? { kind: 'attacks', attacks: attackPage(request.page, first, 150, false) } : standard(request)
+        )
+        const user = await open(native)
+        await user.click(await screen.findByRole('button', { name: 'Open attack results for scan 11111111' }))
+        const region = await screen.findByRole('region', { name: 'Attack results · scan 11111111' })
+        await waitFor(() => expect(within(region).getByText(/showing 0 of 150 · the service returned fewer than it reports$/)).toBeInTheDocument())
+        expect(within(region).getByText(/the results could not be read in full/)).toBeInTheDocument()
+        expect(within(region).queryByText(/reports no attacks/)).toBeNull()
+        expect(within(region).queryByText(/all attacks read/)).toBeNull()
+        expect(reads.filter((r) => r.kind === 'attacks')).toHaveLength(1)
+        // A short page with rows stops the walk too.
+        await user.click(within(region).getByRole('button', { name: 'Close attack results' }))
+        first = 40
+        await user.click(screen.getByRole('button', { name: 'Open attack results for scan 11111111' }))
+        const again = await screen.findByRole('region', { name: 'Attack results · scan 11111111' })
+        await waitFor(() => expect(within(again).getByText(/showing 40 of 150 · the service returned fewer than it reports$/)).toBeInTheDocument())
+        expect(reads.filter((r) => r.kind === 'attacks')).toHaveLength(2)
+    })
+
+    it('shows a capped total as a lower bound', async () => {
+        const native = scriptedNative(ready())
+        management(native, (request) =>
+            request.kind === 'attacks'
+                ? { kind: 'attacks', attacks: attackPage(request.page, 20, 20, false, true) }
+                : request.kind === 'supplyChain'
+                  ? {
+                        kind: 'supplyChain',
+                        observation: models({ models: { rows: [{ id: SCAN, outcome: 'BLOCKED', createdAt: null }], total: 500, capped: true, complete: false } }),
+                    }
+                  : standard(request)
+        )
+        const user = await open(native)
+        await user.click(await screen.findByRole('button', { name: 'Open attack results for scan 11111111' }))
+        const region = await screen.findByRole('region', { name: 'Attack results · scan 11111111' })
+        await waitFor(() => expect(within(region).getByText(/showing 20 of ≥ 20/)).toBeInTheDocument())
+        await user.click(screen.getByRole('tab', { name: 'Models & skills' }))
+        await waitFor(() => expect(value('Model scans (reported)')).toBe('≥ 500'))
+        expect(screen.getByText('Model scans · Partial sample · 1 of ≥ 500')).toBeInTheDocument()
     })
 
     it('reads models and skills with partial samples as lower bounds and skills by pseudonym', async () => {

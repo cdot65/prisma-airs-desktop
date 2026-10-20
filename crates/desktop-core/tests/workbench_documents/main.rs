@@ -947,6 +947,94 @@ async fn a_duplicate_identity_pair_still_owns_its_body() {
     assert_eq!(before, after, "no project file changed");
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn a_body_is_owned_by_the_file_it_reaches_not_its_spelling() {
+    let root = collection();
+    // macOS volumes fold case by default; the rule holds either way.
+    let folds = {
+        std::fs::write(root.join("items/probe-case"), "").expect("fixture");
+        root.join("items/PROBE-CASE").exists()
+    };
+    std::fs::remove_file(root.join("items/probe-case")).expect("fixture");
+    let request = |name: &str, body: &str| {
+        std::fs::write(
+            root.join(format!("items/{name}.request.toml")),
+            format!("format_version = 1\nid = \"{name}\"\nmethod = \"POST\"\nurl = \"https://{name}.example/\"\nbody = \"{body}\"\n"),
+        )
+        .expect("fixture");
+    };
+    request("lower", "items/shared.body.txt");
+    request("upper", "items/SHARED.body.txt");
+    request("meta", "items/lower.request.toml");
+    request("config", "collection.toml");
+    request("own", "items/own.body.txt");
+    std::fs::write(root.join("items/shared.body.txt"), "shared").expect("fixture");
+    if !folds {
+        std::fs::write(root.join("items/SHARED.body.txt"), "shared").expect("fixture");
+    }
+    std::fs::write(root.join("items/own.body.txt"), "own").expect("fixture");
+    // APFS also ignores Unicode normalization: a decomposed spelling reaches
+    // the composed file, and only the file's identity shows it.
+    std::fs::write(root.join("items/caf\u{e9}.body.txt"), "nfc").expect("fixture");
+    let normalizes = root.join("items/cafe\u{301}.body.txt").exists();
+    if normalizes {
+        request("composed", "items/caf\u{e9}.body.txt");
+        request("decomposed", "items/cafe\u{301}.body.txt");
+    }
+    let snapshot = || -> Vec<(String, Vec<u8>)> {
+        let mut files: Vec<(String, Vec<u8>)> = std::fs::read_dir(root.join("items"))
+            .expect("fixture")
+            .map(|e| e.expect("fixture").path())
+            .map(|p| (p.display().to_string(), std::fs::read(&p).expect("fixture")))
+            .collect();
+        files.push((
+            "collection.toml".into(),
+            std::fs::read(root.join("collection.toml")).expect("fixture"),
+        ));
+        files.sort();
+        files
+    };
+    let before = snapshot();
+    let mut desk = desk().await;
+    let opened = desk.open(&root).await;
+    assert_eq!(opened["kind"], "opened", "{opened}");
+    // Another spelling of another request's body, another request's file and
+    // the collection file are all owned elsewhere.
+    let aliases: &[&str] = if normalizes {
+        &["upper", "meta", "config", "decomposed"]
+    } else {
+        &["upper", "meta", "config"]
+    };
+    for id in aliases {
+        let doc = desk.request(&format!("items/{id}.request.toml")).await;
+        let r = desk
+            .wb(
+                json!({"kind": "save", "edit": 1, "id": id, "revision": doc["revision"],
+                       "fields": with(&doc, "body", "overwritten")}),
+            )
+            .await;
+        assert_eq!(
+            r,
+            json!({"kind": "saveRefused", "refusal": {"kind": "sharedBody"}}),
+            "{id}"
+        );
+        assert_eq!(before, snapshot(), "no project byte changed ({id})");
+    }
+    // An independent body still saves.
+    let doc = desk.request("items/own.request.toml").await;
+    let saved = desk
+        .wb(
+            json!({"kind": "save", "edit": 1, "id": "own", "revision": doc["revision"],
+                   "fields": with(&doc, "body", "changed")}),
+        )
+        .await;
+    assert_eq!(saved["kind"], "saved", "{saved}");
+    assert_eq!(
+        std::fs::read_to_string(root.join("items/own.body.txt")).expect("fixture"),
+        "changed"
+    );
+}
+
 async fn support_eventually(mut condition: impl FnMut() -> bool) -> bool {
     for _ in 0..300 {
         if condition() {

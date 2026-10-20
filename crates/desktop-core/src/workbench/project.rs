@@ -578,6 +578,11 @@ mod tests {
             assert!(relative_path(bad, true).is_none(), "{bad}");
         }
         assert!(relative_path(".hidden/x", false).is_some());
+        // Reading allows hidden names, so `..` and `.` must be refused on
+        // their own there.
+        for bad in ["../a", "a/../b", "a/..", "./a", "a/./b"] {
+            assert!(relative_path(bad, false).is_none(), "{bad}");
+        }
         assert!(relative_path(&"a".repeat(MAX_PATH + 1), false).is_none());
     }
 

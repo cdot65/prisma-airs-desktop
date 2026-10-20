@@ -1,13 +1,19 @@
 
-running 5 tests
-test red_team::tests::skill_statistics_are_zero_only_when_quiet ... ok
+running 11 tests
 test red_team::tests::attack_outcomes_are_read_not_inferred ... ok
+test red_team::tests::list_pages_follow_v1s_shape_rules ... ok
+test red_team::tests::skill_statistics_are_zero_only_when_quiet ... ok
+test red_team::tests::known_labels_are_shown_in_words_and_any_other_is_other ... ok
 test red_team::tests::statistics_follow_v1s_tallies_and_bars ... ok
+test red_team::tests::statistics_need_a_recognised_error_free_reply ... ok
+test red_team::tests::rated_targets_are_validated_before_a_source_counts_as_quiet ... ok
+test red_team::tests::attack_coverage_counts_rows_received ... ok
 test red_team::tests::lists_are_complete_only_when_the_service_says_so ... ok
+test red_team::tests::missing_totals_are_zero_only_when_every_count_is_zero ... ok
 test red_team::tests::rows_keep_no_names_uris_or_findings ... ok
 
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 87 filtered out; finished in 0.01s
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.01s
 
    Compiling desktop-core v0.1.0 (/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/mut/repo/crates/desktop-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.84s
-     Running unittests src/lib.rs (target/debug/deps/desktop_core-bb73df76a7870d59)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.33s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-b8f821464252cdef)

@@ -722,15 +722,25 @@ Decided in C13 (implementer decision, recorded for review).
   (`api.apps.paloaltonetworks.com` `/ai-red-teaming/{data-plane,mgmt-plane}`,
   `/aims/{data,mgmt}`, `/aiag/{data,mgmt}`); v1's bridge used its own SDK's
   defaults, and C25 qualifies the live hosts.
-- v1's rules are kept: a missing total is zero only when no breakdown or
-  rated target is above zero (AgentGuard: when no top vulnerability is
-  reported), otherwise the reply is invalid; a 404 for statistics is "no
-  scans" only when a one-row scan list is complete, empty and totals zero;
-  a list is complete only when the count is not capped and the total is no
-  larger than the rows read, or without a total the page is short; partial
-  counts are lower bounds; breakdown labels are upper-cased with `_` read as
-  a space and unknown labels become OTHER (at most 64 bars); each source keeps
-  its own state and a read in which no source answered fails.
+- v1's rules are kept: a reply reporting a failure (`success: false`, an
+  `error` or `errors` field) is invalid, and statistics must carry one of
+  their known fields; a missing total is zero only when every reported
+  count, totals and every breakdown entry or rated target, is zero
+  (AgentGuard: both counts zero and no top vulnerability), otherwise the
+  reply is invalid; a 404 for statistics is "no scans" only when a one-row
+  scan list is complete, empty and totals zero; a list is complete only
+  when the count is not capped and the total is no larger than the rows
+  actually received, or without a total the page is short, and a total
+  below a page's rows is invalid; partial and capped counts are lower
+  bounds, and a capped total says so ("≥ N"); rated-target groups are
+  validated (arrays of at most 64 objects with whole, non-negative counts)
+  before a source counts as quiet, and a list needs its pagination object
+  and a boolean `count_capped` when present, so a malformed page never
+  proves "no scans"; breakdown labels from v1's
+  list for each breakdown are upper-cased with `_` read as a space and any
+  other label becomes OTHER (more than 64 entries make the reply invalid);
+  each source keeps its own state and a read in which no source answered
+  fails. (P04 push: these were tightened after the C13 review.)
 - Privacy follows v1's worker seam: only identifiers, statuses, target
   types, outcomes, counts and times leave the core. Scan, target, model and
   skill names, model URIs, security groups, findings (including AgentGuard's
@@ -738,9 +748,11 @@ Decided in C13 (implementer decision, recorded for review).
   skill is shown by the first eight hex digits of SHA-256 over a per-read
   random salt and its name.
 - Opening a scan's attack results reads its pages one after another until
-  the service's total is covered, a read fails or the ten-page cap is
-  reached (v1 read two pages and offered Load more for the rest); each page
-  is the same bounded read and closing the results stops the walk.
+  the service's total is covered, a page comes back short, a read fails or
+  the ten-page cap is reached (v1 read two pages and offered Load more for
+  the rest); each page is the same bounded read carrying the rows received
+  before it, from which the core judges coverage, and closing the results
+  stops the walk. "No attacks" is shown only for a complete read.
 - Reads happen when a tab is first shown with nothing held, on Refresh and
   on a window change; the view is keyed by context (a tenant or credential
   change starts with nothing held), keeps the last read dated when a refresh
@@ -772,7 +784,13 @@ Decided in C14 (implementer decision, recorded for review).
   was edited from; a different revision is refused (`stale`, the editor
   reloads), a snapshot that cannot be written faithfully is refused with the
   field and row ("Fix to save") and nothing is written, and files that
-  changed since the baseline are a conflict, never overwritten. The editor
+  changed since the baseline are a conflict, never overwritten. A body is
+  written only when no one else owns the file it reaches: not another
+  request's body and not a project file (request files, `collection.toml`,
+  environments, schemas), compared by the file itself (the same device and
+  inode) or, for a file not yet written, its case-folded name, so case or
+  Unicode-normalization aliases on the Mac's volumes are refused
+  (`sharedBody`; P04 push, attempt-02 R5). The editor
   captures the fields it holds at the click (not a debounced copy) and keeps
   text typed while a save was in flight, protecting it against the new
   revision.
@@ -877,12 +895,28 @@ Decided in C15 (implementer decision, recorded for review).
   any unknown operation is denied. Generic redirects never enter a
   registered origin (the 3xx is the result). URL user-info and Host,
   Forwarded, X-Forwarded-Host, X-Original-URL and X-Rewrite-URL headers are
-  refused for managed and registered-origin requests before any secret.
+  refused for managed and registered-origin requests before any secret,
+  whether the editor wrote them or the authentication generates them (an
+  API-key header's name). At a registered origin a method override
+  (X-HTTP-Method-Override, X-HTTP-Method, X-Method-Override) and more than
+  one credential (Authorization, Proxy-Authorization, Cookie, x-pan-token
+  or an API key in the query, from any source) are refused as well; one
+  manual Authorization still goes (P04 push, attempt-02 R2).
 - **Context binding** (attempt-01 R3). Every context change retires the
   pending review permanently; Apply also checks that its context is the
   active one; managed or reviewed requests re-check their context and the
   tenant's credential records before secrets are read, before a token is
-  minted and before each send, and end `retired` (nothing sent) otherwise.
+  minted and before the request is sent, and end `retired` (nothing sent)
+  otherwise; a redirect's later hops follow a request already sent.
+- **Credential binding** (P04 push, attempt-02 R5). A review is also bound
+  to the credentials it sends: the authentication in full (Basic username
+  and secret reference, Bearer and API-key references), each workbench
+  secret's generation this session (replacing or removing a secret starts
+  a new generation before its Keychain record changes) and the hash of the
+  Cookie header the collection's jar gives the request. Any change, also
+  while the native confirmation is held, makes Apply stale and sends
+  nothing; a reviewed request re-checks them before it is sent and carries
+  the admitted Cookie header on its first hop, never a later jar.
 - **Reviews.** A known change returns a masked review bound to the tenant,
   client and capability records, context, catalogue operation, the exact
   expanded method, URL, query, headers, auth and body (secrets by

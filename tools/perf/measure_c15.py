@@ -7,7 +7,8 @@ docs/planning/evidence/C15/workload-budget-registration.json).
   measure_c15.py --label calibration|acceptance
 
 Run from the repository root on the prepared C15 fixture bundle. Only an
-acceptance run writes docs/planning/evidence/<subject>/workload-perf.json,
+acceptance run writes docs/planning/evidence/<subject>/workload-perf.json
+(in a phase, workload-perf-C15.json),
 and it refuses to start unless the budget table matches its registration.
 Raw samples are recorded; `xtask native` recomputes every statistic.
 
@@ -275,7 +276,9 @@ def main():
         "metrics": metrics,
         "details": details,
     }
-    name = "workload-perf.json" if label == "acceptance" else f"workload-perf-calibration-{started.replace(':', '')}.json"
+    # A phase may measure several workloads: each keeps its own record.
+    own = "workload-perf.json" if SUBJECT == "C15" else "workload-perf-C15.json"
+    name = own if label == "acceptance" else f"workload-perf-calibration-{started.replace(':', '')}.json"
     path = os.path.join(EVIDENCE, name)
     with open(path, "w") as f:
         json.dump(record, f, indent=1)

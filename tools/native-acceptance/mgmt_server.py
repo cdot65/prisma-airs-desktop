@@ -311,8 +311,8 @@ class Handler(BaseHTTPRequestHandler):
             rows = [{"uuid": f"{n:08x}-4444-4333-8444-555555555555", "name": f"AG-PRIVATE-SKILL-{n}",
                      "status": "COMPLETED", "eval_outcome": "ALLOWED", "artifact_type": "skill",
                      "summary": {"vulnerability_count": n % 3, "attack_chain_count": 0},
-                     "created_at": "2026-10-18T10:00:00Z"} for n in range(12)]
-            return 200, {"scans": rows, "pagination": {"total_items": 12}}
+                     "created_at": "2026-10-18T10:00:00Z"} for n in range(100)]
+            return 200, {"scans": rows, "pagination": {"total_items": 100}}
         return None
 
     def dlp_write(self, method, path, record, mode):

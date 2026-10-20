@@ -177,7 +177,7 @@ def run():
     product = [r for r in mgmt.requests() if r["path"].startswith(("/aims/", "/aiag/"))]
     obs["models"] = {
         "read": models,
-        "skills": app.has_text(tree, "Skill scans · 12 read · complete"),
+        "skills": app.has_text(tree, "Skill scans · 100 read · complete"),
         "statistics": app.has_text(tree, "Skill statistics · Read · last 30 days"),
         "pseudonyms": len({t for t in fx.App.texts(tree) if t.endswith("(pseudonym for this read)")}),
         "background": sorted({r["query"].get("isBackgroundRefresh") for r in product if r["path"].endswith("/v1/scans")}),
@@ -196,7 +196,7 @@ def run():
     mgmt.mode(modelsStatus=403)
     app.ax("press", "AXButton", "Refresh model observation")
     tree, denied = c8.text(app, "Model scans · Unavailable:", 12)
-    one = {"denied": denied, "others": app.has_text(tree, "Skill scans · 12 read · complete"),
+    one = {"denied": denied, "others": app.has_text(tree, "Skill scans · 100 read · complete"),
            "tile": app.has_text(tree, "Unavailable")}
     mgmt.mode(modelsStatus=503, skillStatsStatus=503, skillsStatus=503)
     app.ax("press", "AXButton", "Refresh model observation")
@@ -261,7 +261,7 @@ def evaluate(prepared, o):
         and at["skips"] == ["0", "100", "200"] and at["prompts_kept_out"] and not at["leaks"],
         f"attack results {at}", [o["tree_attacks"]])
     m = o["models"]
-    add("C13-N04", m["read"] and m["skills"] and m["statistics"] and m["pseudonyms"] == 12 and m["background"] == ["false"]
+    add("C13-N04", m["read"] and m["skills"] and m["statistics"] and m["pseudonyms"] == 100 and m["background"] == ["false"]
         and m["period"] == ["30_DAYS"] and m["agentguard_tsg"] == [c8.TSG] and m["model_tsg"] == ["None"] and not m["leaks"],
         f"models and skills {m}", [o["tree_models"]])
     fl = o["failures"]

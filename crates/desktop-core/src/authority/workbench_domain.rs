@@ -2337,6 +2337,17 @@ async fn set_secret(
     {
         return refused(WorkbenchProblem::Invalid);
     }
+    // Before the record changes: anything planned or reviewed with the old
+    // value no longer goes.
+    if let Ok(mut state) = lock(inner) {
+        state
+            .workbench
+            .sending
+            .secret_changed(&collection, &reference);
+        state.changed();
+    } else {
+        return refused(WorkbenchProblem::Unavailable);
+    }
     let record = profile::secret_record(&collection, &reference);
     let keychain = Arc::clone(&inner.adapters.keychain);
     let storing = value.is_some();

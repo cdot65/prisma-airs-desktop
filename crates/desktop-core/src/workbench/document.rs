@@ -718,7 +718,7 @@ pub fn plan(
                 problem: FieldProblem::at(FieldName::Body, None),
             });
         };
-        if shared(catalog, &document.relative, reference) {
+        if shared(root, catalog, &document.relative, reference) {
             return Err(SaveRefusal::SharedBody);
         }
         let bytes = fields.body.clone().into_bytes();
@@ -747,13 +747,45 @@ pub fn plan(
     Ok(changes)
 }
 
-/// Whether any other request file in the collection (a duplicate or
-/// invalid one included) references `body`.
-fn shared(catalog: &project::Catalog, relative: &str, body: &str) -> bool {
-    catalog
+/// Whether writing `body` for the request at `relative` could change a file
+/// something else owns: a body any other request file names (a duplicate
+/// or invalid one included), or a project file itself (any request file,
+/// this one included, `collection.toml`, an environment or a schema).
+/// Names are compared by the file they reach, not their spelling: equal
+/// ignoring case (a volume may fold case, and a file not yet written has no
+/// identity), or the same existing file (device and inode), so no alias of
+/// another owner's file is written.
+fn shared(root: &Path, catalog: &project::Catalog, relative: &str, body: &str) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    let identity = |reference: &str| {
+        let path = project::relative_path(reference, false)?;
+        let full = project::destination(root, &path).ok()?;
+        std::fs::symlink_metadata(full)
+            .ok()
+            .map(|m| (m.dev(), m.ino()))
+    };
+    let mine = (body.to_lowercase(), identity(body));
+    let same = |other: &str| {
+        other.to_lowercase() == mine.0 || mine.1.is_some() && identity(other) == mine.1
+    };
+    let bodies = catalog
         .bodies
-        .get(body)
-        .is_some_and(|owners| owners.iter().any(|r| r != relative))
+        .iter()
+        .filter(|(_, owners)| owners.iter().any(|r| r != relative))
+        .map(|(other, _)| other.clone());
+    let environments = catalog
+        .environments
+        .iter()
+        .map(|name| format!("environments/{name}.toml"));
+    let project_files = catalog
+        .requests
+        .iter()
+        .map(|r| r.relative.clone())
+        .chain(catalog.issues.iter().map(|i| i.relative.clone()))
+        .chain(catalog.schemas.iter().cloned())
+        .chain(environments)
+        .chain(["collection.toml".to_owned(), relative.to_owned()]);
+    bodies.chain(project_files).any(|other| same(&other))
 }
 
 /// The document after its planned changes were written.
@@ -775,6 +807,31 @@ pub fn committed(document: &Document, fields: &Fields, changes: &[Change]) -> Do
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_body_not_yet_written_is_owned_by_its_case_folded_name() {
+        let dir = crate::workbench::testdir::Dir::new();
+        let root = dir.path().join("c");
+        std::fs::create_dir_all(root.join("items")).expect("fixture");
+        std::fs::write(
+            root.join("collection.toml"),
+            "format_version = 1\nid = \"coll\"\nname = \"Coll\"\n",
+        )
+        .expect("fixture");
+        // An invalid request (its body is missing) still reserves the name.
+        std::fs::write(
+            root.join("items/ghost.request.toml"),
+            "format_version = 1\nid = \"ghost\"\nmethod = \"GET\"\nurl = \"https://g.example/\"\nbody = \"items/ghost.body.txt\"\n",
+        )
+        .expect("fixture");
+        let catalog = project::discover(&root).expect("fixture");
+        let me = "items/new.request.toml";
+        assert!(shared(&root, &catalog, me, "items/ghost.body.txt"));
+        assert!(shared(&root, &catalog, me, "items/GHOST.body.txt"));
+        assert!(shared(&root, &catalog, me, "Collection.TOML"));
+        assert!(shared(&root, &catalog, me, "items/New.Request.toml"));
+        assert!(!shared(&root, &catalog, me, "items/free.body.txt"));
+    }
 
     #[test]
     fn rows_round_trip_and_report_their_line() {

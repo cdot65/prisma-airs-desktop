@@ -7,14 +7,15 @@ docs/planning/evidence/C13/workload-budget-registration.json).
   measure_c13.py --label calibration|acceptance
 
 Run from the repository root on the prepared C13 fixture bundle. Only an
-acceptance run writes docs/planning/evidence/<subject>/workload-perf.json,
+acceptance run writes docs/planning/evidence/<subject>/workload-perf.json
+(in a phase, workload-perf-C13.json),
 and it refuses to start unless the budget table matches its registration.
 Raw samples are recorded; `xtask native` recomputes every statistic.
 
 Workloads, on one launch with a Keychain management client against the
 synthetic product endpoints (mgmt_server.py: 100 Red Teaming scans with
 30-day statistics, 100 Model Security scans, AgentGuard 30-day statistics
-and 12 skill scans, a 1,000-attack report), which answer immediately:
+and 100 skill scans, a 1,000-attack report), which answer immediately:
 
 - redteam-scans-open: from AXPress on the Red Team & Models destination
   (after leaving it, so the view starts with nothing held) to its heading
@@ -51,7 +52,7 @@ REGISTRATION = os.path.join(ROOT, "docs/planning/evidence/C13/workload-budget-re
 HEADING = "Red Teaming and model observation"
 DESTINATION = "Red Team & Models"
 SCANS_READ = "Scans · 100 read · complete"
-SKILLS_READ = "Skill scans · 12 read · complete"
+SKILLS_READ = "Skill scans · 100 read · complete"
 ATTACKS_READ = "250 of 1000 succeeded · read 100 per page · all attacks read"
 
 
@@ -217,7 +218,9 @@ def main():
         "metrics": metrics,
         "details": details,
     }
-    name = "workload-perf.json" if label == "acceptance" else f"workload-perf-calibration-{started.replace(':', '')}.json"
+    # A phase may measure several workloads: each keeps its own record.
+    own = "workload-perf.json" if SUBJECT == "C13" else "workload-perf-C13.json"
+    name = own if label == "acceptance" else f"workload-perf-calibration-{started.replace(':', '')}.json"
     path = os.path.join(EVIDENCE, name)
     with open(path, "w") as f:
         json.dump(record, f, indent=1)

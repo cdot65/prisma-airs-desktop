@@ -1,10 +1,10 @@
 [
   {
     "inputs": {
-      "apps/desktop/src/features/red-team/red-team-view.tsx": "a0e063390f68a3b8798b84152414c48fb0081e78f40bb984bfab1f285168f018",
-      "crates/desktop-core/src/management.rs": "a1d55744ea9da9bba2280c49ca0197dcb9c204b2d82cc3f1c8600e6cc3356fd9",
-      "crates/desktop-core/src/red_team.rs": "03b955a83f2a9f49809217334d837183e67b247a530230952582eb6a0def7db6",
-      "packages/desktop-contracts/src/client.ts": "8f943b8f413d8595827234b947333f850d94aae52d74af9ad98fb995bc33c73f"
+      "apps/desktop/src/features/red-team/red-team-view.tsx": "57c57eeb6cd3428adf3cceec64f8c7cf4341439bb0b2dc586adef7c3ece02d2a",
+      "crates/desktop-core/src/management.rs": "be9e92777620bae5cb2b45fdb228af860392065f3a6bf733bae6aaca377ec92d",
+      "crates/desktop-core/src/red_team.rs": "8145058d090f5838cd8a5014ad3a5fe5507d7d981df647a3a5b5f9292fec3432",
+      "packages/desktop-contracts/src/client.ts": "fba7cd574032a55b7895bd7debfc667532bc1fbdcbe7ff8dc2604247ff2cabd3"
     }
   },
   {
@@ -131,7 +131,7 @@
       "--lib",
       "red_team"
     ],
-    "guard": "statistics_follow_v1s_tallies_and_bars",
+    "guard": "known_labels_are_shown_in_words_and_any_other_is_other",
     "exit_code": 101,
     "guard_failed": true
   },
@@ -386,7 +386,7 @@
     "guard_failed": true
   },
   {
-    "mutation": "Model Security sends the tenant header",
+    "mutation": "Model Security scans are read from the AgentGuard plane",
     "files": [
       "crates/desktop-core/src/management.rs"
     ],
@@ -402,8 +402,8 @@
       "redteam_model_reads"
     ],
     "guard": "models_and_skills_read_three_sources_with_per_read_pseudonyms",
-    "exit_code": 0,
-    "guard_failed": false
+    "exit_code": 101,
+    "guard_failed": true
   },
   {
     "mutation": "model scans are read as a background refresh",
@@ -603,6 +603,408 @@
     ],
     "guard": "rejects a source with both data and a failure, or with neither",
     "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "statistics accept a failure envelope",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "statistics_need_a_recognised_error_free_reply",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "statistics need no known field",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "statistics_need_a_recognised_error_free_reply",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a skill group may be a bare number",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "statistics_need_a_recognised_error_free_reply",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a positive reported total leaves its partner zero",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "missing_totals_are_zero_only_when_every_count_is_zero",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a positive skill count leaves its partner zero",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "missing_totals_are_zero_only_when_every_count_is_zero",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a breakdown may exceed 64 entries",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "missing_totals_are_zero_only_when_every_count_is_zero",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "invalid statistics fail through the suite",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "invalid_statistics_fail_alone_and_the_other_sources_stay_usable",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a total below the page's rows is accepted",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "list_pages_follow_v1s_shape_rules",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a capped count is dropped",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "attack_coverage_counts_rows_received_and_capped_totals_are_bounds",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "attack coverage counts offsets",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "attack_coverage_counts_rows_received_and_capped_totals_are_bounds",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "more rows than the earlier pages hold are admitted",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "attack_results_are_read_100_per_page_up_to_ten_pages_without_prompts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the attack walk continues past a short page",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "stops on a short page and never calls an unread remainder \"no attacks\"",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an incomplete empty read says no attacks",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "stops on a short page and never calls an unread remainder \"no attacks\"",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "attack pages do not carry the rows received",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "stops reading attack results once the total is covered or a read fails",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a capped total is shown as exact",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "shows a capped total as a lower bound",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a capped tile is shown as exact",
+    "files": [
+      "apps/desktop/src/features/red-team/red-team-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/red-team/red-team-view.test.tsx"
+    ],
+    "guard": "shows a capped total as a lower bound",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a capped total may be complete",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a total without its exactness, or a capped total called complete",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "rated target counts are not validated",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "rated_targets_are_validated_before_a_source_counts_as_quiet",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a malformed targets group is skipped",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "invalid_statistics_fail_alone_and_the_other_sources_stay_usable",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "malformed pagination is accepted",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "redteam_model_reads"
+    ],
+    "guard": "absent_statistics_mean_no_scans_only_when_an_empty_list_proves_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a null count_capped is read as false",
+    "files": [
+      "crates/desktop-core/src/red_team.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "red_team"
+    ],
+    "guard": "list_pages_follow_v1s_shape_rules",
+    "exit_code": 101,
     "guard_failed": true
   },
   {

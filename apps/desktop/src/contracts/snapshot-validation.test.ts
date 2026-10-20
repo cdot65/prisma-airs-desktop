@@ -348,7 +348,7 @@ describe('management result validation', () => {
             window: 30,
             statistics: { scans: 2, targets: 1, status: [{ label: 'COMPLETED', count: 2 }], risk: null, targetTypes: null, noScans: false },
             statisticsFailure: null,
-            scans: { rows: [{ id: SCAN, status: 'COMPLETED', jobType: null, targetId: null, targetType: null, createdAt: null }], total: 1, complete: true },
+            scans: { rows: [{ id: SCAN, status: 'COMPLETED', jobType: null, targetId: null, targetType: null, createdAt: null }], total: 1, capped: false, complete: true },
             scansFailure: null,
         }
         const supply = {
@@ -357,7 +357,7 @@ describe('management result validation', () => {
             modelsFailure: 'denied',
             skillStatistics: { uniqueSkills: 1, vulnerabilities: 0 },
             skillStatisticsFailure: null,
-            skills: { rows: [{ pseudonym: 'a1b2c3d4', status: null, outcome: null, vulnerabilities: null, createdAt: null }], total: null, complete: true },
+            skills: { rows: [{ pseudonym: 'a1b2c3d4', status: null, outcome: null, vulnerabilities: null, createdAt: null }], total: null, capped: false, complete: true },
             skillsFailure: null,
         }
         const attacks = {
@@ -365,6 +365,7 @@ describe('management result validation', () => {
             page: 1,
             rows: [{ number: 101, threat: true, severity: null, attackType: null, subCategory: 'Jailbreak', multiTurn: null }],
             total: 101,
+            capped: false,
             complete: true,
         }
         const bad = (value: unknown) => expect(() => parseManagementResult(value)).toThrow(ContractViolation)
@@ -373,6 +374,14 @@ describe('management result validation', () => {
             expect(parseManagementResult({ kind: 'redTeam', observation: redTeam })).toBeTruthy()
             expect(parseManagementResult({ kind: 'supplyChain', observation: supply })).toBeTruthy()
             expect(parseManagementResult({ kind: 'attacks', attacks })).toBeTruthy()
+            expect(parseManagementResult({ kind: 'attacks', attacks: { ...attacks, capped: true, complete: false } })).toBeTruthy()
+        })
+
+        it('rejects a total without its exactness, or a capped total called complete', () => {
+            bad({ kind: 'attacks', attacks: { ...attacks, capped: undefined } })
+            bad({ kind: 'attacks', attacks: { ...attacks, capped: true } })
+            bad({ kind: 'redTeam', observation: { ...redTeam, scans: { ...redTeam.scans, capped: true } } })
+            bad({ kind: 'supplyChain', observation: { ...supply, skills: { ...supply.skills, capped: 'no' } } })
         })
 
         it('rejects a source with both data and a failure, or with neither', () => {

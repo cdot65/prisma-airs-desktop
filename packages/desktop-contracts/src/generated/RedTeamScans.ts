@@ -4,4 +4,8 @@ import type { RedTeamScan } from "./RedTeamScan";
 /**
  * The first page of scans: at most 100 rows.
  */
-export type RedTeamScans = { rows: Array<RedTeamScan>, total: number | null, complete: boolean, };
+export type RedTeamScans = { rows: Array<RedTeamScan>, total: number | null, 
+/**
+ * The service capped its count: `total` is a lower bound.
+ */
+capped: boolean, complete: boolean, };

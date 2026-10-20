@@ -18,7 +18,7 @@ attack pages skip the wrong rows 101 True
 an eleventh attack page is admitted 101 True
 any window is admitted 101 True
 a read with no answering source succeeds 101 True
-Model Security sends the tenant header 0 False
+Model Security scans are read from the AgentGuard plane 101 True
 model scans are read as a background refresh 101 True
 an unreported status breakdown sums to zero 1 True
 a partial sample is shown as exact 1 True
@@ -29,4 +29,25 @@ attack results are read past a covered total 1 True
 every attack read is rendered at once 1 True
 unfinished scans offer attack results 1 True
 a source may carry data and a failure 1 True
+statistics accept a failure envelope 101 True
+statistics need no known field 101 True
+a skill group may be a bare number 101 True
+a positive reported total leaves its partner zero 101 True
+a positive skill count leaves its partner zero 101 True
+a breakdown may exceed 64 entries 101 True
+invalid statistics fail through the suite 101 True
+a total below the page's rows is accepted 101 True
+a capped count is dropped 101 True
+attack coverage counts offsets 101 True
+more rows than the earlier pages hold are admitted 101 True
+the attack walk continues past a short page 1 True
+an incomplete empty read says no attacks 1 True
+attack pages do not carry the rows received 1 True
+a capped total is shown as exact 1 True
+a capped tile is shown as exact 1 True
+a capped total may be complete 1 True
+rated target counts are not validated 101 True
+a malformed targets group is skipped 101 True
+malformed pagination is accepted 101 True
+a null count_capped is read as false 101 True
 a skill row may carry a name 1 True
