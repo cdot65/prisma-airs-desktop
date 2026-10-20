@@ -1,0 +1,23 @@
+
+running 13 tests
+test only_bounded_requests_from_a_tenant_with_a_tsg_are_admitted ... ok
+test a_redirect_is_never_followed_to_another_origin ... ok
+test protected_storage_failures_are_reported_without_any_fallback ... ok
+test dlp_details_use_their_own_read_and_a_404_means_absent ... ok
+test denial_unknown_values_secret_fields_and_catalogs_are_reported_faithfully ... ok
+test a_refused_management_grant_never_affects_scanning ... ok
+test later_pages_are_read_one_at_a_time_and_only_the_last_claims_completeness ... ok
+test the_management_credential_survives_restart_bound_to_its_token_origin ... ok
+test removal_deletion_and_reset_retire_each_capability_as_asked ... ok
+test a_scan_only_tenant_scans_and_management_never_uses_or_replaces_the_scan_key ... ok
+test a_walk_that_ends_before_the_inventory_claims_nothing ... ok
+test credentials_replaced_mid_pagination_retire_the_old_pages ... ok
+test a_result_settled_before_its_context_retired_is_never_delivered_afterwards ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.90s
+
+
+--- stderr ---
+   Compiling desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.99s
+     Running tests/management_reads/main.rs (target/debug/deps/management_reads-f144dac0bd36b8cb)

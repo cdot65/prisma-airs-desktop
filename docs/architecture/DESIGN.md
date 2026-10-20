@@ -1410,6 +1410,15 @@ and History views. D041 records the decisions; ADR 0004 the policy.
   must reproduce it; a reviewed request also re-checks these before it is
   sent and carries the admitted Cookie header on its first hop instead of
   reading the jar again.
+- **Reset fence.** Each send keeps the reset epoch it was admitted in,
+  sampled before its first await; reset advances the epoch when admitted.
+  A send retired during planning loads no jar, publishes no review and
+  registers no run. A send's private-storage steps (history and
+  cookie loads and writes, the response body file, pruning) each hold a
+  shared fence and run only in their epoch. Reset holds the fence
+  exclusively through its purge, so no retired send recreates the folder,
+  its key, history, bodies or cookies, or republishes its record (it ends
+  `noCollection`).
 - **Redaction.** Response headers and redirect targets are redacted of the
   secrets used and of the credentials derived from them on the wire (the
   minted bearer, Basic encodings).

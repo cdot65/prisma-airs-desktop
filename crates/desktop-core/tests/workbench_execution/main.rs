@@ -2034,3 +2034,221 @@ async fn a_jar_cookie_is_a_credential_at_a_registered_origin() {
     assert_eq!(last.header("authorization"), Some("Bearer manual"));
     assert_eq!(last.header("cookie"), None);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn reset_during_planning_retires_the_send_before_anything_goes() {
+    let http = Http::start(Arc::new(|_| {
+        Answer::status(
+            200,
+            &[
+                ("content-type", "application/json"),
+                ("set-cookie", "keep=1; Path=/; Max-Age=3600"),
+            ],
+            "{}",
+        )
+    }))
+    .await;
+    let root = collection(
+        &format!("base = \"{}\"\n", http.origin()),
+        &[(
+            "probe.request.toml",
+            &request("probe", "GET", "{{base}}/probe", ""),
+        )],
+    );
+    let operator = files(&root)
+        .into_iter()
+        .map(|p| (p.clone(), std::fs::read(&p).expect("fixture")))
+        .collect::<Vec<_>>();
+    let mut desk = desk().await;
+    let private = desk.adapters.workbench_root.clone();
+    let key = desktop_core::workbench::profile::key_record();
+    let storage = |desk: &Desk| serde_json::to_value(desk.snap()).expect("json")["storage"].clone();
+    desk.open(&root).await;
+    // A first run leaves a history, a persistent cookie and the profile key.
+    assert_eq!(
+        desk.send_doc("probe.request.toml").await["run"]["record"]["state"],
+        "completed"
+    );
+    assert!(private.exists() && desk.adapters.vault.records().contains(&key));
+    let sent = http.seen().len();
+    // A Send held after it captured its document, before it renders.
+    let doc = desk.doc("probe.request.toml").await;
+    let hold = desk.core.hold_send_planning().await;
+    let op = desk
+        .start_wb(json!({"kind": "send", "id": "probe", "revision": doc["revision"], "fields": doc["fields"], "context": null}))
+        .await;
+    assert!(support::eventually(|| desk.core.sends_held_in_planning() == 1).await);
+    desk.send(json!({"kind": "resetLocalData"}))
+        .await
+        .expect("reset");
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    let during = storage(&desk);
+    // Planning resumes in the epoch reset retired.
+    drop(hold);
+    assert_eq!(during, json!("resetting"), "the purge waits for the lane");
+    assert_eq!(
+        desk.wait(op).await,
+        json!({"kind": "refused", "problem": {"kind": "noCollection"}})
+    );
+    assert!(support::eventually(|| storage(&desk) == json!("ready") && !private.exists()).await);
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert_eq!(http.seen().len(), sent, "the retired Send never went");
+    let wb = desk.workbench();
+    assert_eq!(wb["review"], Value::Null, "{wb}");
+    assert_eq!(wb["running"], json!([]), "{wb}");
+    assert!(!private.exists(), "nothing recreated the private folder");
+    assert!(
+        !desk.adapters.vault.records().contains(&key),
+        "no profile key came back"
+    );
+    // After a restart: no history, no cookie, nothing replayed, and the
+    // operator's collection is byte for byte as it was.
+    let handles = desk.adapters;
+    drop(desk.core);
+    let mut again = start(Some(&handles), CoreConfig::default()).await;
+    again.open(&root).await;
+    let page = again.wb(json!({"kind": "history", "before": null})).await;
+    assert_eq!(page["runs"], json!([]), "{page}");
+    let r = again.send_doc("probe.request.toml").await;
+    assert_eq!(r["run"]["record"]["state"], "completed", "{r}");
+    let seen = http.seen();
+    assert_eq!(seen.len(), sent + 1, "nothing replayed");
+    assert_eq!(seen.last().expect("sent").header("cookie"), None);
+    for (path, bytes) in operator {
+        assert_eq!(
+            std::fs::read(&path).expect("kept"),
+            bytes,
+            "{}",
+            path.display()
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn reset_retires_running_sends_and_nothing_they_held_is_kept() {
+    let http = Http::start(Arc::new(|seen| {
+        if seen.request_line.starts_with("GET /slow") {
+            Answer::Stall {
+                headers: vec![("set-cookie".into(), "keep=1; Path=/; Max-Age=3600".into())],
+            }
+        } else {
+            Answer::ok("{}")
+        }
+    }))
+    .await;
+    let root = collection(
+        &format!("base = \"{}\"\n", http.origin()),
+        &[
+            (
+                "slow.request.toml",
+                &request("slow", "GET", "{{base}}/slow", ""),
+            ),
+            (
+                "probe.request.toml",
+                &request("probe", "GET", "{{base}}/probe", ""),
+            ),
+        ],
+    );
+    let operator = files(&root)
+        .into_iter()
+        .map(|p| (p.clone(), std::fs::read(&p).expect("fixture")))
+        .collect::<Vec<_>>();
+    let mut desk = desk().await;
+    let private = desk.adapters.workbench_root.clone();
+    let key = desktop_core::workbench::profile::key_record();
+    let storage = |desk: &Desk| serde_json::to_value(desk.snap()).expect("json")["storage"].clone();
+    let settled =
+        |desk: &Desk, private: &Path| storage(desk) == json!("ready") && !private.exists();
+    desk.open(&root).await;
+    // History and the jar are loaded by a first run, so the next one's
+    // storage steps run outside the lane.
+    assert_eq!(
+        desk.send_doc("probe.request.toml").await["run"]["record"]["state"],
+        "completed"
+    );
+    // A run held inside a storage step (its history write reads the
+    // profile key): reset waits for the step, then purges.
+    let doc = desk.doc("probe.request.toml").await;
+    desk.adapters.vault.hold_reads();
+    let op = desk
+        .start_wb(json!({"kind": "send", "id": "probe", "revision": doc["revision"], "fields": doc["fields"], "context": null}))
+        .await;
+    assert!(support::eventually(|| desk.adapters.vault.waiting() == 1).await);
+    desk.send(json!({"kind": "resetLocalData"}))
+        .await
+        .expect("reset");
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    // Observed first and released before asserting, so a failure never
+    // leaves the held step blocking the runtime's shutdown.
+    let during = (storage(&desk), private.exists());
+    desk.adapters.vault.release();
+    assert_eq!(
+        during,
+        (json!("resetting"), true),
+        "the purge waits for the step"
+    );
+    assert_eq!(
+        desk.wait(op).await,
+        json!({"kind": "refused", "problem": {"kind": "noCollection"}})
+    );
+    assert!(support::eventually(|| settled(&desk, &private)).await);
+    // Its next step (the body file) waited behind the purge and found the
+    // run retired: nothing came back.
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert!(!private.exists(), "nothing recreated the private folder");
+    assert!(
+        !desk.adapters.vault.records().contains(&key),
+        "no profile key came back"
+    );
+    // A run holding a dirty persistent cookie when reset arrives.
+    desk.open(&root).await;
+    let doc = desk.doc("slow.request.toml").await;
+    let op = desk
+        .start_wb(json!({"kind": "send", "id": "slow", "revision": doc["revision"], "fields": doc["fields"], "context": null}))
+        .await;
+    assert!(
+        support::eventually(|| desk.workbench()["running"]
+            .as_array()
+            .is_some_and(|r| r.first().is_some_and(|r| r["bytes"].as_u64() > Some(0))))
+        .await
+    );
+    desk.send(json!({"kind": "resetLocalData"}))
+        .await
+        .expect("reset");
+    assert_eq!(
+        desk.wait(op).await,
+        json!({"kind": "refused", "problem": {"kind": "noCollection"}})
+    );
+    assert!(support::eventually(|| settled(&desk, &private)).await);
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert!(!private.exists(), "nothing recreated the private folder");
+    assert!(!desk.adapters.vault.records().contains(&key));
+    // After a restart: no cookie, no history, nothing replayed, and the
+    // operator's collection is byte for byte as it was.
+    let handles = desk.adapters;
+    drop(desk.core);
+    let mut again = start(Some(&handles), CoreConfig::default()).await;
+    again.open(&root).await;
+    let page = again.wb(json!({"kind": "history", "before": null})).await;
+    assert_eq!(page["runs"], json!([]), "{page}");
+    let sent = http.seen().len();
+    let r = again.send_doc("probe.request.toml").await;
+    assert_eq!(r["run"]["record"]["state"], "completed", "{r}");
+    let seen = http.seen();
+    assert_eq!(seen.len(), sent + 1, "nothing replayed");
+    assert_eq!(seen.last().expect("sent").header("cookie"), None);
+    assert_eq!(
+        seen.iter()
+            .filter(|s| s.request_line.starts_with("GET /slow"))
+            .count(),
+        1
+    );
+    for (path, bytes) in operator {
+        assert_eq!(
+            std::fs::read(&path).expect("kept"),
+            bytes,
+            "{}",
+            path.display()
+        );
+    }
+}

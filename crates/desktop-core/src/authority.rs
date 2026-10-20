@@ -1649,6 +1649,30 @@ impl Core {
     }
 
     #[cfg(feature = "test-fixtures")]
+    /// Holds every API Client Send after it captures its document and
+    /// before it renders, until the guard drops (fixture builds only).
+    pub async fn hold_send_planning(&self) -> tokio::sync::OwnedMutexGuard<()> {
+        let (hold, _) = lock(&self.inner)
+            .map(|s| s.workbench.sending.planning())
+            .expect("authority");
+        hold.lock_owned().await
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Sends waiting at the planning hold (fixture builds only).
+    pub fn sends_held_in_planning(&self) -> u64 {
+        lock(&self.inner)
+            .map(|s| {
+                s.workbench
+                    .sending
+                    .planning()
+                    .1
+                    .load(std::sync::atomic::Ordering::SeqCst)
+            })
+            .unwrap_or(0)
+    }
+
+    #[cfg(feature = "test-fixtures")]
     /// Makes the next API Client Save fail with an I/O error after `files`
     /// file writes; its failure handling runs (fixture builds only).
     pub fn interrupt_next_save(&self, files: usize) {
@@ -3078,6 +3102,15 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     let lane = lock(&inner).map(|s| Arc::clone(&s.workbench.lane)).ok();
                     let _turn = match &lane {
                         Some(lane) => Some(lane.lock().await),
+                        None => None,
+                    };
+                    // Sends run outside the lane. Their epoch was advanced
+                    // when reset was admitted; a storage step already past
+                    // its check finishes before the purge, and none runs
+                    // during or after it.
+                    let fence = lock(&inner).map(|s| s.workbench.sending.fence()).ok();
+                    let _fenced = match &fence {
+                        Some(fence) => Some(fence.write().await),
                         None => None,
                     };
                     let worker = Arc::clone(&inner);

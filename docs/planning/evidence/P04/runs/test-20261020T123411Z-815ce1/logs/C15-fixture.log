@@ -1,0 +1,27 @@
+
+running 18 tests
+test canary_secrets_never_reach_records_or_private_files ... ok
+test known_tenant_changes_need_an_exact_confirmed_review_and_are_sent_once ... ok
+test redirects_follow_origin_rules_and_credentials_never_cross ... ok
+test lost_responses_cancels_and_the_bound_never_resend ... ok
+test generated_overrides_and_extra_credentials_never_reach_a_registered_origin ... ok
+test history_survives_restarts_and_interrupted_runs_are_never_replayed ... ok
+test registered_prisma_origins_are_classified_whatever_the_credential ... ok
+test a_jar_cookie_is_a_credential_at_a_registered_origin ... ok
+test trust_and_proxies_follow_the_native_transport_policy ... ok
+test sends_the_fresh_snapshot_with_v1_auth_bodies_and_cookies ... ok
+test tenant_credentials_are_admitted_before_any_secret_is_read ... ok
+test wire_credentials_are_redacted_wherever_runs_are_kept ... ok
+test reviews_are_bound_to_the_credentials_and_cookies_actually_sent ... ok
+test reset_during_planning_retires_the_send_before_anything_goes ... ok
+test reset_retires_running_sends_and_nothing_they_held_is_kept ... ok
+test offline_then_reconnected_sends_nothing_by_itself ... ok
+test a_tenant_change_retires_reviews_and_unsent_requests ... ok
+test large_responses_stream_to_sealed_storage_and_save_exactly ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.59s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/workbench_execution/main.rs (target/debug/deps/workbench_execution-e11724a6dfab1db8)

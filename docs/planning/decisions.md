@@ -972,7 +972,19 @@ Decided in C15 (implementer decision, recorded for review).
   parser was already locked.
 - **Concurrency.** At most four requests run at once, off the workbench
   lane (editing continues), each cancellable; reset cancels them and forgets
-  tokens, cookies, reviews and histories.
+  tokens, cookies, reviews and histories. Reset also retires them for good
+  (P04 phase attempt-01 R1). Each send is planned in a reset epoch that
+  reset advances when it is admitted. Every private-storage step of a send
+  holds a shared fence and runs only while its epoch is current: history
+  and cookie loads and writes, the response body file, and body pruning.
+  Reset holds the fence exclusively from before its purge to its end, so
+  a step either finishes before the purge or never runs. A retired send
+  neither recreates the private folder, its key, history, bodies or
+  cookies, nor republishes its record; it ends `noCollection`. A send's
+  epoch is the one it was admitted in, sampled before its first await and
+  kept through planning (P04 attempt-02 R1), so a reset during planning
+  retires it too: its jar is not loaded, and no review is published and
+  no run registered for it.
 - **Workload.** The large HTTP bodies and downloads budgets were registered
   before implementation (`evidence/C15/workload-budget.md`, 290a069).
 - **Not done here.** The catalogue's 193 requests are specifications;

@@ -25,6 +25,9 @@ pub enum Answer {
     Close,
     /// Never answer.
     Hang,
+    /// Answer 200 with `headers` and the first bytes of a longer body,
+    /// then send nothing more (a transfer held mid-response).
+    Stall { headers: Vec<(String, String)> },
 }
 
 impl Answer {
@@ -162,6 +165,22 @@ impl Http {
                         }
                         Answer::Close => {
                             let _ = tcp.shutdown().await;
+                        }
+                        Answer::Stall { headers } => {
+                            let mut head = "HTTP/1.1 200 Fixture\r\n".to_owned();
+                            for (n, v) in headers {
+                                head.push_str(&format!("{n}: {v}\r\n"));
+                            }
+                            head.push_str("content-length: 1048576\r\nconnection: close\r\n\r\n");
+                            let _ = tcp.write_all(head.as_bytes()).await;
+                            let _ = tcp.write_all(&[b'x'; 64]).await;
+                            let mut sink = [0u8; 64];
+                            loop {
+                                match tcp.read(&mut sink).await {
+                                    Ok(0) | Err(_) => break,
+                                    Ok(_) => {}
+                                }
+                            }
                         }
                         Answer::Hang => {
                             let mut sink = [0u8; 64];

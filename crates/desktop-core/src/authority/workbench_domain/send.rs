@@ -127,12 +127,23 @@ pub(in crate::authority) struct Sending {
     /// reference) and the generation each was replaced in.
     secret_generations: BTreeMap<(String, String), u64>,
     generation: u64,
+    /// Advanced by every reset: work planned in an earlier epoch was
+    /// retired and neither stores nor publishes anything.
+    epoch: u64,
+    /// Held shared by each private-storage step of a send and exclusively
+    /// by reset from before its purge to its end.
+    fence: Arc<tokio::sync::RwLock<()>>,
+    /// Holds each Send between its document capture and its rendering
+    /// while a test holds it, and counts those waiting (fixture builds).
+    #[cfg(feature = "test-fixtures")]
+    planning: (Arc<tokio::sync::Mutex<()>>, Arc<AtomicU64>),
 }
 
 impl Sending {
     /// Reset: running requests are cancelled; tokens, cookies, reviews and
     /// histories are forgotten (their files go with the private folder).
     pub(super) fn clear(&mut self) {
+        self.epoch += 1;
         for active in self.runs.values() {
             active.cancel.cancel();
         }
@@ -140,6 +151,16 @@ impl Sending {
         self.tokens.clear();
         self.jars.clear();
         self.histories.clear();
+    }
+
+    /// The fence reset holds exclusively while it purges.
+    pub(in crate::authority) fn fence(&self) -> Arc<tokio::sync::RwLock<()>> {
+        Arc::clone(&self.fence)
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    pub(in crate::authority) fn planning(&self) -> (Arc<tokio::sync::Mutex<()>>, Arc<AtomicU64>) {
+        (Arc::clone(&self.planning.0), Arc::clone(&self.planning.1))
     }
 
     /// A collection was closed or another opened.
@@ -385,10 +406,15 @@ struct Planned {
     /// Body files' content as reviewed (empty unless applied).
     pins: BTreeMap<String, String>,
     credentials: Credentials,
+    /// The reset epoch it was planned in.
+    epoch: u64,
 }
 
 /// Renders and admits the snapshot `fields` of document `id` at
-/// `revision` (nothing secret is read).
+/// `revision` (nothing secret is read), for a Send admitted in reset epoch
+/// `epoch`. The plan keeps that epoch whatever happens during its awaits,
+/// so a reset meanwhile retires it: its jar is not loaded, and no review is
+/// published or run registered for it.
 async fn plan(
     inner: &Arc<Inner>,
     root: &Path,
@@ -396,6 +422,7 @@ async fn plan(
     revision: &str,
     fields: Fields,
     context: Option<ContextRef>,
+    epoch: u64,
 ) -> Result<Planned, Box<WorkbenchResult>> {
     let found = with_open(inner, |o| {
         let doc = current(o, id, revision)?;
@@ -411,6 +438,17 @@ async fn plan(
         ))
     })
     .map_err(|p| Box::new(refused(p)))?;
+    #[cfg(feature = "test-fixtures")]
+    {
+        let (hold, waiting) = lock(inner)
+            .map_err(|_| Box::new(refused(WorkbenchProblem::Unavailable)))?
+            .workbench
+            .sending
+            .planning();
+        waiting.fetch_add(1, Ordering::SeqCst);
+        drop(hold.lock().await);
+        waiting.fetch_sub(1, Ordering::SeqCst);
+    }
     let (doc, folder, collection, scope, env, local, defaults) = found;
     let reference = doc.body_reference();
     let stored_body = if fields.body_kind == "file" {
@@ -465,7 +503,9 @@ async fn plan(
         admission::admit(&plan, network, &destinations).map_err(|r| Box::new(refusal(r)))?;
     if admitted.class != CredentialClass::Managed {
         // Loaded now so the Cookie header it would send is known.
-        jar(inner, root, &scope).await;
+        if jar(inner, root, &scope, epoch).await.is_none() {
+            return Err(Box::new(retired()));
+        }
     }
     let credentials = lock(inner)
         .map_err(|_| Box::new(refused(WorkbenchProblem::Unavailable)))?
@@ -493,6 +533,7 @@ async fn plan(
         context,
         pins: BTreeMap::new(),
         credentials,
+        epoch,
     })
 }
 
@@ -685,6 +726,8 @@ pub(super) async fn begin(inner: &Arc<Inner>, request: WorkbenchRequest) -> Step
         } => (id, revision, fields, context, Some(review)),
         _ => return Step::Done(Box::new(refused(WorkbenchProblem::Invalid))),
     };
+    // The reset epoch it was admitted in, kept across every await.
+    let admitted_in = epoch(inner);
     let Some(root) = inner.adapters.workbench_root.clone() else {
         return Step::Done(Box::new(refused(WorkbenchProblem::Unavailable)));
     };
@@ -698,6 +741,7 @@ pub(super) async fn begin(inner: &Arc<Inner>, request: WorkbenchRequest) -> Step
         &revision,
         fields.clone(),
         context.clone(),
+        admitted_in,
     )
     .await
     {
@@ -726,6 +770,9 @@ pub(super) async fn begin(inner: &Arc<Inner>, request: WorkbenchRequest) -> Step
     let Ok(mut state) = lock(inner) else {
         return Step::Done(Box::new(refused(WorkbenchProblem::Unavailable)));
     };
+    if state.workbench.sending.epoch != planned.epoch {
+        return Step::Done(Box::new(retired()));
+    }
     let lifetime = state.review_lifetime;
     let Some(review) = review else {
         let Some(id) = ReviewId::issue() else {
@@ -758,7 +805,17 @@ pub(super) async fn begin(inner: &Arc<Inner>, request: WorkbenchRequest) -> Step
     };
     let inner = Arc::clone(inner);
     Step::Later(Box::pin(async move {
-        apply(inner, root, view, id, revision, fields, context).await
+        apply(
+            inner,
+            root,
+            view,
+            id,
+            revision,
+            fields,
+            context,
+            admitted_in,
+        )
+        .await
     }))
 }
 
@@ -836,6 +893,7 @@ fn still_admitted(inner: &Inner, planned: &Planned) -> bool {
 /// The operator confirms natively; the same snapshot is re-planned against
 /// the current files and must still match; the review is consumed and the
 /// change is sent once.
+#[allow(clippy::too_many_arguments)]
 async fn apply(
     inner: Arc<Inner>,
     root: PathBuf,
@@ -844,6 +902,7 @@ async fn apply(
     revision: String,
     fields: Fields,
     context: Option<ContextRef>,
+    epoch: u64,
 ) -> WorkbenchResult {
     let mut nonce = [0u8; 8];
     if getrandom::fill(&mut nonce).is_err() {
@@ -866,7 +925,7 @@ async fn apply(
     {
         return refusal(SendRefusal::Declined);
     }
-    let planned = match plan(&inner, &root, &id, &revision, fields, context).await {
+    let planned = match plan(&inner, &root, &id, &revision, fields, context, epoch).await {
         Ok(p) => p,
         Err(result) => return *result,
     };
@@ -884,6 +943,9 @@ async fn apply(
         let Ok(mut state) = lock(&inner) else {
             return refused(WorkbenchProblem::Unavailable);
         };
+        if state.workbench.sending.epoch != planned.epoch {
+            return retired();
+        }
         let lifetime = state.review_lifetime;
         if let Err(r) = check_review(&mut state, &view.review, &planned, &digest, lifetime) {
             state.changed();
@@ -952,6 +1014,35 @@ fn read_secrets(
 }
 
 /// The collection's history, read (and recovered) once per session.
+/// The current reset epoch.
+fn epoch(inner: &Inner) -> u64 {
+    lock(inner).map_or(u64::MAX, |s| s.workbench.sending.epoch)
+}
+
+/// The result of work a reset retired: the collection it belonged to is
+/// closed, and nothing of it was kept.
+fn retired() -> WorkbenchResult {
+    refused(WorkbenchProblem::NoCollection)
+}
+
+/// Runs `f`, a private-storage step of work planned in `epoch`, only while
+/// no reset has retired that epoch. Reset advances the epoch and then holds
+/// the fence exclusively through its purge, so a step either finishes
+/// before the purge starts or never runs (no key, file or folder is
+/// recreated after it).
+async fn fenced<T: Send + 'static>(
+    inner: &Arc<Inner>,
+    epoch: u64,
+    f: impl FnOnce() -> T + Send + 'static,
+) -> Option<T> {
+    let fence = lock(inner).ok()?.workbench.sending.fence();
+    let _step = fence.read().await;
+    if self::epoch(inner) != epoch {
+        return None;
+    }
+    tokio::task::spawn_blocking(f).await.ok()
+}
+
 fn history_of<'a>(
     sending: &'a mut Sending,
     scope: &str,
@@ -963,17 +1054,24 @@ fn history_of<'a>(
         .or_insert_with(loaded)
 }
 
-async fn load_history(inner: &Arc<Inner>, root: &Path, scope: &str) -> Result<(), SendRefusal> {
+/// Loads `scope`'s history for work of reset epoch `epoch`; `None` when
+/// a reset retired it.
+async fn load_history(
+    inner: &Arc<Inner>,
+    root: &Path,
+    scope: &str,
+    epoch: u64,
+) -> Option<Result<(), SendRefusal>> {
     let loaded = lock(inner)
         .map(|s| s.workbench.sending.histories.contains_key(scope))
         .unwrap_or(false);
     if loaded {
-        return Ok(());
+        return Some(Ok(()));
     }
     let keychain = Arc::clone(&inner.adapters.keychain);
     let private = root.to_path_buf();
     let scope_name = scope.to_owned();
-    let runs = blocking(Err(SendRefusal::Private), move || {
+    let runs = fenced(inner, epoch, move || {
         let mut runs = profile::load_history(&private, keychain.as_ref(), &scope_name)
             .map_err(|_| SendRefusal::Private)?;
         if history::recover(&private, &scope_name, &mut runs) {
@@ -983,42 +1081,63 @@ async fn load_history(inner: &Arc<Inner>, root: &Path, scope: &str) -> Result<()
         Ok(runs)
     })
     .await?;
-    if let Ok(mut state) = lock(inner) {
-        history_of(&mut state.workbench.sending, scope, || runs);
+    let runs = match runs {
+        Ok(runs) => runs,
+        Err(r) => return Some(Err(r)),
+    };
+    let mut state = lock(inner).ok()?;
+    if state.workbench.sending.epoch != epoch {
+        return None;
     }
-    Ok(())
+    history_of(&mut state.workbench.sending, scope, || runs);
+    Some(Ok(()))
 }
 
-async fn store_history(inner: &Arc<Inner>, root: &Path, scope: &str) -> Result<(), SendRefusal> {
-    let runs = lock(inner)
-        .ok()
-        .and_then(|s| s.workbench.sending.histories.get(scope).cloned())
-        .unwrap_or_default();
+/// Stores `scope`'s history for work of reset epoch `epoch`; `None` when
+/// a reset retired it (nothing is written).
+async fn store_history(
+    inner: &Arc<Inner>,
+    root: &Path,
+    scope: &str,
+    epoch: u64,
+) -> Option<Result<(), SendRefusal>> {
     let keychain = Arc::clone(&inner.adapters.keychain);
     let private = root.to_path_buf();
     let scope = scope.to_owned();
-    blocking(Err(SendRefusal::Private), move || {
+    let worker = Arc::clone(inner);
+    fenced(inner, epoch, move || {
+        // Taken inside the fence, so it is this epoch's history.
+        let runs = lock(&worker)
+            .ok()
+            .and_then(|s| s.workbench.sending.histories.get(&scope).cloned())
+            .unwrap_or_default();
         profile::store_history(&private, keychain.as_ref(), &scope, &runs)
             .map_err(|_| SendRefusal::Private)
     })
     .await
 }
 
-async fn jar(inner: &Arc<Inner>, root: &Path, scope: &str) -> Option<Arc<Mutex<Jar>>> {
-    if let Some(jar) = lock(inner)
-        .ok()
-        .and_then(|s| s.workbench.sending.jars.get(scope).cloned())
-    {
+/// `scope`'s cookie jar for work of reset epoch `epoch`; `None` when a
+/// reset retired it.
+async fn jar(inner: &Arc<Inner>, root: &Path, scope: &str, epoch: u64) -> Option<Arc<Mutex<Jar>>> {
+    if let Some(jar) = lock(inner).ok().and_then(|s| {
+        (s.workbench.sending.epoch == epoch)
+            .then(|| s.workbench.sending.jars.get(scope).cloned())
+            .flatten()
+    }) {
         return Some(jar);
     }
     let keychain = Arc::clone(&inner.adapters.keychain);
     let private = root.to_path_buf();
     let name = scope.to_owned();
-    let stored = blocking(Vec::new(), move || {
+    let stored = fenced(inner, epoch, move || {
         profile::load_cookies(&private, keychain.as_ref(), &name).unwrap_or_default()
     })
-    .await;
+    .await?;
     let mut state = lock(inner).ok()?;
+    if state.workbench.sending.epoch != epoch {
+        return None;
+    }
     Some(Arc::clone(
         state
             .workbench
@@ -1062,6 +1181,11 @@ async fn dispatch(inner: Arc<Inner>, root: PathBuf, planned: Planned) -> Workben
         let Ok(mut state) = lock(&inner) else {
             return refused(WorkbenchProblem::Unavailable);
         };
+        // Registered only in the epoch it was admitted in, so a reset
+        // since then retired it rather than missing its cancellation.
+        if state.workbench.sending.epoch != planned.epoch {
+            return retired();
+        }
         if state.workbench.sending.runs.len() >= MAX_ACTIVE {
             return refusal(SendRefusal::Busy);
         }
@@ -1094,6 +1218,9 @@ async fn transfer(
 ) -> WorkbenchResult {
     // Secrets are read only now, after admission, and only while the
     // context it was planned for is still the active one.
+    if epoch(inner) != planned.epoch {
+        return retired();
+    }
     if !still_admitted(inner, planned) {
         return refusal(SendRefusal::NoTenant);
     }
@@ -1132,8 +1259,10 @@ async fn transfer(
     else {
         return refusal(SendRefusal::Network);
     };
-    if let Err(r) = load_history(inner, root, &planned.scope).await {
-        return refusal(r);
+    match load_history(inner, root, &planned.scope, planned.epoch).await {
+        None => return retired(),
+        Some(Err(r)) => return refusal(r),
+        Some(Ok(())) => {}
     }
     let record = RunRecord {
         id: run.to_owned(),
@@ -1159,30 +1288,47 @@ async fn transfer(
         stored: false,
     };
     // Recorded as running first: a stop now is found as interrupted.
-    if let Ok(mut state) = lock(inner) {
+    {
+        let Ok(mut state) = lock(inner) else {
+            return refused(WorkbenchProblem::Unavailable);
+        };
+        if state.workbench.sending.epoch != planned.epoch {
+            return retired();
+        }
         let runs = history_of(&mut state.workbench.sending, &planned.scope, Vec::new);
         runs.insert(0, record.clone());
     }
-    if let Err(r) = store_history(inner, root, &planned.scope).await {
-        if let Ok(mut state) = lock(inner)
-            && let Some(runs) = state.workbench.sending.histories.get_mut(&planned.scope)
-        {
-            runs.retain(|r| r.id != run);
+    match store_history(inner, root, &planned.scope, planned.epoch).await {
+        None => return retired(),
+        Some(Err(r)) => {
+            if let Ok(mut state) = lock(inner)
+                && state.workbench.sending.epoch == planned.epoch
+                && let Some(runs) = state.workbench.sending.histories.get_mut(&planned.scope)
+            {
+                runs.retain(|r| r.id != run);
+            }
+            return refusal(r);
         }
-        return refusal(r);
+        Some(Ok(())) => {}
     }
     let keychain = Arc::clone(&inner.adapters.keychain);
     let private = root.to_path_buf();
     let scope = planned.scope.clone();
     let id = run.to_owned();
-    let sink = blocking(None, move || {
+    let Some(sink) = fenced(inner, planned.epoch, move || {
         BodyWriter::create(&private, keychain.as_ref(), &scope, &id).ok()
     })
-    .await;
+    .await
+    else {
+        return retired();
+    };
     let cookies = if admitted.class == CredentialClass::Managed {
         None
     } else {
-        jar(inner, root, &planned.scope).await
+        let Some(jar) = jar(inner, root, &planned.scope, planned.epoch).await else {
+            return retired();
+        };
+        Some(jar)
     };
     let tokens = lock(inner)
         .map(|s| Arc::clone(&s.workbench.sending.tokens))
@@ -1238,16 +1384,26 @@ async fn transfer(
         let Ok(mut state) = lock(inner) else {
             return refused(WorkbenchProblem::Unavailable);
         };
+        // Retired by a reset while it ran: its record, body and cookies
+        // went with the private folder and are not brought back.
+        if state.workbench.sending.epoch != planned.epoch {
+            return retired();
+        }
         let runs = history_of(&mut state.workbench.sending, &planned.scope, Vec::new);
         if let Some(slot) = runs.iter_mut().find(|r| r.id == run) {
             *slot = finished.clone();
         }
         history::prune(runs, Some(run), history::now())
     };
-    for id in &dropped {
-        history::remove_body(root, &planned.scope, id);
-    }
-    let _ = store_history(inner, root, &planned.scope).await;
+    let private = root.to_path_buf();
+    let scope = planned.scope.clone();
+    let _ = fenced(inner, planned.epoch, move || {
+        for id in &dropped {
+            history::remove_body(&private, &scope, id);
+        }
+    })
+    .await;
+    let _ = store_history(inner, root, &planned.scope, planned.epoch).await;
     if let Some(jar) = cookies {
         let persistent = jar.lock().ok().and_then(|mut j| {
             let dirty = std::mem::take(&mut j.dirty);
@@ -1257,7 +1413,7 @@ async fn transfer(
             let keychain = Arc::clone(&inner.adapters.keychain);
             let private = root.to_path_buf();
             let scope = planned.scope.clone();
-            blocking((), move || {
+            let _ = fenced(inner, planned.epoch, move || {
                 let _ = profile::store_cookies(&private, keychain.as_ref(), &scope, &cookies);
             })
             .await;
@@ -1304,8 +1460,10 @@ pub(super) async fn history_page(
         Ok(s) => s,
         Err(r) => return *r,
     };
-    if let Err(r) = load_history(inner, root, &scope).await {
-        return refusal(r);
+    match load_history(inner, root, &scope, epoch(inner)).await {
+        None => return retired(),
+        Some(Err(r)) => return refusal(r),
+        Some(Ok(())) => {}
     }
     let Ok(state) = lock(inner) else {
         return refused(WorkbenchProblem::Unavailable);
@@ -1352,8 +1510,10 @@ pub(super) async fn show(inner: &Arc<Inner>, root: &Path, run: String) -> Workbe
         Ok(s) => s,
         Err(r) => return *r,
     };
-    if let Err(r) = load_history(inner, root, &scope).await {
-        return refusal(r);
+    match load_history(inner, root, &scope, epoch(inner)).await {
+        None => return retired(),
+        Some(Err(r)) => return refusal(r),
+        Some(Ok(())) => {}
     }
     let Some(record) = find_run(inner, &scope, &run) else {
         return refused(WorkbenchProblem::Missing);
@@ -1386,8 +1546,10 @@ pub(super) async fn save_response(inner: &Arc<Inner>, root: &Path, run: String) 
         Ok(s) => s,
         Err(r) => return *r,
     };
-    if let Err(r) = load_history(inner, root, &scope).await {
-        return refusal(r);
+    match load_history(inner, root, &scope, epoch(inner)).await {
+        None => return retired(),
+        Some(Err(r)) => return refusal(r),
+        Some(Ok(())) => {}
     }
     let Some(record) = find_run(inner, &scope, &run) else {
         return refused(WorkbenchProblem::Missing);
@@ -1434,7 +1596,7 @@ pub(super) async fn clear(inner: &Arc<Inner>, root: &Path, cookies: bool) -> Wor
         Err(r) => return *r,
     };
     if cookies {
-        if let Some(jar) = jar(inner, root, &scope).await
+        if let Some(jar) = jar(inner, root, &scope, epoch(inner)).await
             && let Ok(mut j) = jar.lock()
         {
             j.clear();
@@ -1451,8 +1613,10 @@ pub(super) async fn clear(inner: &Arc<Inner>, root: &Path, cookies: bool) -> Wor
             refusal(SendRefusal::Private)
         };
     }
-    if let Err(r) = load_history(inner, root, &scope).await {
-        return refusal(r);
+    match load_history(inner, root, &scope, epoch(inner)).await {
+        None => return retired(),
+        Some(Err(r)) => return refusal(r),
+        Some(Ok(())) => {}
     }
     let removed = {
         let Ok(mut state) = lock(inner) else {
@@ -1467,9 +1631,10 @@ pub(super) async fn clear(inner: &Arc<Inner>, root: &Path, cookies: bool) -> Wor
     for r in &removed {
         history::remove_body(root, &scope, &r.id);
     }
-    match store_history(inner, root, &scope).await {
-        Ok(()) => WorkbenchResult::Done,
-        Err(r) => refusal(r),
+    match store_history(inner, root, &scope, epoch(inner)).await {
+        None => retired(),
+        Some(Ok(())) => WorkbenchResult::Done,
+        Some(Err(r)) => refusal(r),
     }
 }
 

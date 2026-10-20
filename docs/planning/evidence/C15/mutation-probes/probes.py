@@ -43,6 +43,7 @@ EXECUTE = "crates/desktop-core/src/workbench/execute.rs"
 HISTORY = "crates/desktop-core/src/workbench/history.rs"
 COOKIES = "crates/desktop-core/src/workbench/cookies.rs"
 SEND = "crates/desktop-core/src/authority/workbench_domain/send.rs"
+CORE = "crates/desktop-core/src/authority.rs"
 EDITOR = "apps/desktop/src/features/workbench/document-editor.tsx"
 VIEW = "apps/desktop/src/features/workbench/workbench-view.tsx"
 PANELS = "apps/desktop/src/features/workbench/request-send.tsx"
@@ -58,6 +59,8 @@ LOST = "lost_responses_cancels_and_the_bound_never_resend"
 LARGE = "large_responses_stream_to_sealed_storage_and_save_exactly"
 HISTORY_T = "history_survives_restarts_and_interrupted_runs_are_never_replayed"
 CANARY = "canary_secrets_never_reach_records_or_private_files"
+RESET = "reset_retires_running_sends_and_nothing_they_held_is_kept"
+PLANNING = "reset_during_planning_retires_the_send_before_anything_goes"
 FRESH = "sends_the_fresh_snapshot_with_v1_auth_bodies_and_cookies"
 CONTRACT = "rejects runs, reviews and refusals Rust never issues"
 REGISTERED_U = "registered_origins_are_classified_whatever_the_credential"
@@ -241,6 +244,26 @@ PROBES = [
     ("the jar cookie counts only beside nothing",
      [(ADMISSION, "    credential_sources(plan) > 0\n}", "    credential_sources(plan) > 1\n}")],
      EX_T, "a_jar_cookie_is_a_credential_at_a_registered_origin"),
+    # P04 phase attempt-01 R1: reset fences running sends.
+    ("reset purges while a storage step runs",
+     [(CORE, "                        Some(fence) => Some(fence.write().await),", "                        Some(fence) => fence.try_write().ok(),")],
+     EX_T, RESET),
+    ("a fenced step ignores the reset epoch",
+     [(SEND, "    if self::epoch(inner) != epoch {\n        return None;\n    }\n    tokio::task::spawn_blocking(f)", "    tokio::task::spawn_blocking(f)")],
+     EX_T, RESET),
+    ("a retired run republishes its record",
+     [(SEND, "        if state.workbench.sending.epoch != planned.epoch {\n            return retired();\n        }\n        let runs = history_of(&mut state.workbench.sending, &planned.scope, Vec::new);\n        if let Some(slot)", "        let runs = history_of(&mut state.workbench.sending, &planned.scope, Vec::new);\n        if let Some(slot)")],
+     EX_T, RESET),
+    ("reset leaves the send epoch",
+     [(SEND, "    pub(super) fn clear(&mut self) {\n        self.epoch += 1;\n", "    pub(super) fn clear(&mut self) {\n")],
+     EX_T, RESET),
+    # P04 phase attempt-02 R1: a Send keeps the epoch it was admitted in.
+    ("planning samples the epoch after its awaits",
+     [(SEND, "    let (destinations, managed, network) = {\n", "    let epoch = self::epoch(inner);\n    let (destinations, managed, network) = {\n")],
+     EX_T, PLANNING),
+    ("a Send is admitted in the epoch it plans in",
+     [(SEND, "    let admitted_in = epoch(inner);\n", "    let admitted_in = u64::MAX;\n")],
+     EX_T, "sends_the_fresh_snapshot_with_v1_auth_bodies_and_cookies"),
 ]
 
 

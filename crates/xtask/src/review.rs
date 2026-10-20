@@ -26,14 +26,27 @@ pub enum TransportChoice {
 }
 
 /// The commit the current subject's diff is measured from.
-fn base_commit(repo: &Repo) -> Result<String> {
+fn base_commit(repo: &Repo, subject: Subject) -> Result<String> {
     let entries = read_ledger(&repo.completion_ledger())?;
+    Ok(base_from(&entries, subject))
+}
+
+/// A chunk's diff starts at the latest verified completion; a phase's at
+/// the previous phase's, so its packet carries the whole cumulative change.
+fn base_from(entries: &[Entry], subject: Subject) -> String {
+    let current = subject.to_string();
     let last = entries.iter().rev().find_map(|e| match e {
-        Entry::Commit { commit, .. } => Some(commit.clone()),
+        Entry::Commit {
+            subject: done,
+            commit,
+            ..
+        } if !subject.is_phase() || (done.starts_with('P') && *done != current) => {
+            Some(commit.clone())
+        }
         _ => None,
     });
     // Before any completion, the reviewed planning baseline.
-    Ok(last.unwrap_or_else(|| "931916bf7469fba71aa15ee2a9cb6d2d194abf83".to_owned()))
+    last.unwrap_or_else(|| "931916bf7469fba71aa15ee2a9cb6d2d194abf83".to_owned())
 }
 
 /// Diff from base including untracked files, via a throwaway index so the
@@ -331,7 +344,7 @@ pub fn review(
             &inventory_path,
             &serde_json::to_vec_pretty(&inventory).unwrap_or_default(),
         )?;
-        let base = base_commit(repo)?;
+        let base = base_commit(repo, subject)?;
         let diff = write_diff(repo, &base, &attempt_dir.join("diff.patch"))?;
         let (message_template, review_instructions, instruction_files) =
             instructions(repo, manifest, subject)?;
@@ -531,5 +544,40 @@ pub fn review(
             passed: failures.is_empty(),
             failures,
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn commit(subject: &str, commit: &str) -> Entry {
+        Entry::Commit {
+            subject: subject.to_owned(),
+            generation: 1,
+            receipt_id: String::new(),
+            commit: commit.to_owned(),
+            tree: String::new(),
+            source: String::new(),
+            verified_utc: String::new(),
+        }
+    }
+
+    #[test]
+    fn a_phase_diff_starts_at_the_previous_phase() {
+        let entries = [
+            commit("P03", "p03"),
+            commit("C13", "c13"),
+            commit("C15", "c15"),
+        ];
+        assert_eq!(base_from(&entries, Subject::Phase(4)), "p03");
+        assert_eq!(base_from(&entries, Subject::Chunk(16)), "c15");
+        // A re-review of a completed phase still starts before it.
+        let again = [commit("P03", "p03"), commit("P04", "p04")];
+        assert_eq!(base_from(&again, Subject::Phase(4)), "p03");
+        assert_eq!(
+            base_from(&[commit("C01", "c01")], Subject::Phase(1)),
+            "931916bf7469fba71aa15ee2a9cb6d2d194abf83"
+        );
     }
 }

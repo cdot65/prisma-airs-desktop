@@ -1,0 +1,18 @@
+
+running 8 tests
+test reads_need_a_management_client ... ok
+test red_teaming_reads_statistics_and_scans_for_a_window ... ok
+test attack_results_are_read_100_per_page_up_to_ten_pages_without_prompts ... ok
+test each_source_keeps_its_own_state_and_a_read_with_none_fails ... ok
+test absent_statistics_mean_no_scans_only_when_an_empty_list_proves_it ... ok
+test attack_coverage_counts_rows_received_and_capped_totals_are_bounds ... ok
+test models_and_skills_read_three_sources_with_per_read_pseudonyms ... ok
+test invalid_statistics_fail_alone_and_the_other_sources_stay_usable ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+
+--- stderr ---
+   Compiling desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.88s
+     Running tests/redteam_model_reads/main.rs (target/debug/deps/redteam_model_reads-07254498b7625df0)

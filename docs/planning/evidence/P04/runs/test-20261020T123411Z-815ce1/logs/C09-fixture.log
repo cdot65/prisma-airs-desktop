@@ -1,0 +1,25 @@
+
+running 15 tests
+test invalid_drafts_fail_review_without_any_request ... ok
+test fresh_input_and_the_typed_confirmation_must_match_the_review ... ok
+test key_creation_checks_names_injects_the_deployment_code_and_holds_the_secret ... ok
+test a_reviewed_update_applies_once_after_the_native_confirmation ... ok
+test a_resource_changed_since_review_is_a_conflict_and_is_not_written ... ok
+test lost_and_refused_writes_keep_their_outcome_and_are_never_retried ... ok
+test preview_only_profile_options_are_refused_before_any_request ... ok
+test rotation_deletion_and_their_readback ... ok
+test every_supported_operation_sends_exactly_v1s_request_and_reads_back ... ok
+test a_draft_captured_while_confirming_ends_the_pending_confirmation ... ok
+test a_denied_or_stale_confirmation_sends_nothing ... ok
+test nothing_about_a_change_or_its_secret_is_persisted_or_replayed_after_restart ... ok
+test offline_reviews_and_applies_fail_without_queueing_and_retry_only_when_asked ... ok
+test a_confirmation_that_outlives_its_review_applies_nothing ... ok
+test a_change_that_cannot_be_started_is_not_consumed_silently ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.18s
+
+
+--- stderr ---
+   Compiling desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.02s
+     Running tests/runtime_changes/main.rs (target/debug/deps/runtime_changes-77074d25c2a1bebf)

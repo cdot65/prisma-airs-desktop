@@ -1,0 +1,32 @@
+
+running 22 tests
+test a_denied_session_read_reports_denial_and_caches_nothing ... ok
+test a_failed_read_reports_its_failure_and_caches_nothing ... ok
+test a_session_credentials_investigation_stays_in_memory ... ok
+test a_small_window_proves_absence_and_a_cached_session_answers_its_search ... ok
+test a_locked_keychain_keeps_the_investigation_in_memory_never_in_plaintext ... ok
+test a_keychain_credentials_investigation_is_sealed_and_survives_a_restart ... ok
+test held_report_writes_keep_each_tenants_own_latest_changes ... ok
+test content_is_read_only_on_reveal_and_never_kept_with_metadata ... ok
+test removing_the_credential_removes_its_sealed_investigation_and_key ... ok
+test reports_are_built_from_scan_metadata_and_kept_edited_removed_and_undone ... ok
+test reports_need_the_active_context_and_an_unreadable_file_is_kept ... ok
+test reports_export_as_v1_csv_through_the_save_sheet ... ok
+test reset_removes_sealed_investigations_and_reports ... ok
+test the_inventory_is_the_last_day_in_bounded_pages_with_secret_fields_removed ... ok
+test clearing_empties_the_cache_and_exports_carry_metadata_only ... ok
+test saved_reports_stay_usable_offline_without_a_management_client ... ok
+test short_and_empty_pages_that_report_more_are_walked_not_taken_as_the_end ... ok
+test searches_are_bounded_like_v1_and_say_what_they_covered ... ok
+test a_write_held_across_credential_removal_leaves_no_investigation_behind ... ok
+test a_write_held_across_reset_leaves_no_investigation_or_report_behind ... ok
+test an_unreachable_service_fails_the_read_and_only_an_explicit_retry_reads_again ... ok
+test a_reveal_outliving_its_credential_is_withdrawn_and_kept_nowhere ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.16s
+
+
+--- stderr ---
+   Compiling desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.02s
+     Running tests/sessions_reports/main.rs (target/debug/deps/sessions_reports-191de4ca00df6fdd)

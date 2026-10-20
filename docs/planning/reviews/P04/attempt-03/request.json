@@ -1,0 +1,213 @@
+{
+  "schema": "airs-v2/review-request/1",
+  "request_id": "rq-P04-20261020T125332Z-7bcd61b3",
+  "attempt_id": "attempt-03",
+  "subject": "P04",
+  "kind": "phase",
+  "created_utc": "2026-10-20T12:53:36Z",
+  "repository": "/Users/cdot/development/redtail/prisma-airs-desktop-v2",
+  "base_commit": "bbbad4390ccb39aa906d88fa2b9440848b437675",
+  "scope": "cumulative phase review of P04 and the earlier features it affects",
+  "instructions": [
+    "docs/planning/chunks/C13.md",
+    "docs/planning/chunks/C14.md",
+    "docs/planning/chunks/C15.md"
+  ],
+  "predecessors": [
+    {
+      "subject": "C13",
+      "receipt": {
+        "path": "docs/planning/reviews/C13/attempt-03/receipt.json",
+        "sha256": "a62829e3ba153140d6943850cd30503ed36e8cf65f463c94b7d7238e6c07282c"
+      }
+    },
+    {
+      "subject": "C14",
+      "receipt": {
+        "path": "docs/planning/reviews/C14/attempt-06/receipt.json",
+        "sha256": "414f4a83c1463b948f775b0e5582acee34fad220910b7f202891a89e73004759"
+      }
+    },
+    {
+      "subject": "C15",
+      "receipt": {
+        "path": "docs/planning/reviews/C15/attempt-04/receipt.json",
+        "sha256": "4d0d2207dacff1ffc3e52396d6d97260c6d42fa86d3c6c9351594e3a3d42c7c1"
+      }
+    }
+  ],
+  "fingerprints": {
+    "source": "fecd3ca5d00c265db381520caa9d576ea13d444dbaa8ee32fe2a0728d547cc54",
+    "dependencies": "7152403bd50e4d0995506a13820bd7f260711c8ce6e2d00d78774a9c01f1f503",
+    "build_flags": "02ad3c7c6753f52f82bdf197253da8a4bf2b7a5ec54a4055f08aa7b8272e2b21",
+    "evidence": "434640eb7303bdb389cc2fa516b88aa70c49a2f18fa0161b1f8ec59d39c31fd0"
+  },
+  "source_inventory": {
+    "path": "docs/planning/reviews/P04/attempt-03/source-inventory.json",
+    "sha256": "0a38f5cc4303de46fe7ba7ce0c0dab4878de052092163e6e0bc1553627a516bf"
+  },
+  "runs": [
+    {
+      "kind": "check",
+      "run_id": "check-20261020T123035Z-8c4623",
+      "path": "docs/planning/evidence/P04/runs/check-20261020T123035Z-8c4623/run.json",
+      "sha256": "4bcfae77ab716967b2c6e6e5a6eb1609160488e910441e08e7cece46b80f7955"
+    },
+    {
+      "kind": "test",
+      "run_id": "test-20261020T123411Z-815ce1",
+      "path": "docs/planning/evidence/P04/runs/test-20261020T123411Z-815ce1/run.json",
+      "sha256": "96cdef99709e153b77efd973ec34040b8e31e93c21da1f7b79d3ebc8de2a361c"
+    },
+    {
+      "kind": "native-prepare",
+      "run_id": "native-prepare-20261020T125119Z-de27d0",
+      "path": "docs/planning/evidence/P04/runs/native-prepare-20261020T125119Z-de27d0/run.json",
+      "sha256": "76f988458d7cc58648fca1f72548a15d18d5c0f4e50a58392fa27005910bce7b"
+    }
+  ],
+  "evidence_files": [
+    {
+      "path": "docs/planning/evidence/P04/native-C13/observations.json",
+      "sha256": "696302a2161e7c2f3e508ed860e92e3292f7f54e9f5283ae14832900d7a929f3"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C13/tree-attacks.json",
+      "sha256": "1ace91713775646c4a9a8fc4b86474517b50ceba91bdfd62dfbf36819870f2a4"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C13/tree-models-failed.json",
+      "sha256": "bd6a2ed0e9c6d76172747aa782cf9b14e96a3970a25f09e922d4f1e281c927d4"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C13/tree-models.json",
+      "sha256": "8feb7aa3744613ad61967e7ef9d622f507fcb5839eb91e1447f3dc7cb5e401fe"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C13/tree-red-team.json",
+      "sha256": "583628bd8ee7dc60dafba6b96de48ec8736c92d30fb855cc4182d96d452c3c84"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/observations.json",
+      "sha256": "e10df020c697b889123196ff52d9e4b81512dc00b8baeb819fe4d3095fe1c7ae"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-adoption.json",
+      "sha256": "a58e835b7c3bebdcc994aa4c4e5daa28157945e042f336f957c46138ebf76e15"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-conflict.json",
+      "sha256": "61040be983debffa9b19fb1157cb0c25f44516a2c758bc52088dc26cd69df592"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-import.json",
+      "sha256": "e31bb445cd7afe57da6725109131c46a5bd08b606ff5a6656f96beba2143eddf"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-open.json",
+      "sha256": "8277166cd74b6835fd07923ac05594df4494d548018e5075f954572ffe1ba509"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-preview.json",
+      "sha256": "f50c249558ebcf457040edda6cb04ce20d2210cee208a9eba9b743190548d25f"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-recovered.json",
+      "sha256": "00bb567d8b68d49b9644511e147a5757ecbb503cc07020fc907788033c487f43"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-scm.json",
+      "sha256": "c4cf7983c74b455c930ed22d7905c6c527d00dcec53db26c637297ee33e6bb62"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-secrets.json",
+      "sha256": "1ebbd6921feadc35d9b0e03649828bfd53867993b2e2e0f1bdc90aabc8b158d9"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C14/tree-use-disk.json",
+      "sha256": "a1682759ce92e62edf408314a6e6397ee7773473ea84b2fa7a3c4fb35930fc35"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C15/observations.json",
+      "sha256": "e3a903c8808cb74d07aeb89a3ffc4bb5496035b74b629fd553e331cd6ad70f79"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C15/tree-big.json",
+      "sha256": "88de83810de90c2f6bff8efe4deb6932be8688b984a89a51b3fbc22671a595ec"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C15/tree-fresh.json",
+      "sha256": "24d93641896b89263ddaecd01ef20dd26d1bb18d87c48553ab86398f2ace14b5"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C15/tree-history.json",
+      "sha256": "33c87e51785488bcb10c1bd1ff940b5445c0e7fc7970e62125a34376ce235d87"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C15/tree-managed.json",
+      "sha256": "27723cf15061e409eb5638b569941c6392841b0efdcbc496efb7f7d3bec7a769"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C15/tree-review.json",
+      "sha256": "4c871c68a86bbe7b30ada89353150a8f6f29a872893aeba34fe2848423c1494a"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-C15/tree-sheet.json",
+      "sha256": "99463c23c636bd781a13527a9514587f0d2beed855f9eeb9e2747753f48ec4d9"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-acceptance-C13.json",
+      "sha256": "02807bc4202eb3c2792c23cd703c963fb289a8d348b044eb9ce42d51ec15f4e4"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-acceptance-C14.json",
+      "sha256": "8d7774a531832537ac1732c468d660a634526faeb72e67bc42ab2541297c747d"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-acceptance-C15.json",
+      "sha256": "28f04c6603e269e725ff6e7df90c559c9994181a9954843a2a3d614a43295fc1"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-acceptance.json",
+      "sha256": "249151ca3b7f36265f872f77ca182b3142a417c671f2a5199d56f0a79558bf4b"
+    },
+    {
+      "path": "docs/planning/evidence/P04/native-prepare.json",
+      "sha256": "f42af0a851e0e38ae7a7cfbeba532df5eb2d9d67d8944d0efdf01a4d1e98bf8e"
+    },
+    {
+      "path": "docs/planning/evidence/P04/workload-perf-C13.json",
+      "sha256": "4e27708ee00cb367fc3355623d61b297bda0b92897a8e5570af43236f53f3d7f"
+    },
+    {
+      "path": "docs/planning/evidence/P04/workload-perf-C15.json",
+      "sha256": "a83610d348bcc03f5ad8fe51a460ccba0166d94043203d1308490297d96a0c9b"
+    }
+  ],
+  "native_acceptance": {
+    "path": "docs/planning/evidence/P04/native-acceptance.json",
+    "sha256": "249151ca3b7f36265f872f77ca182b3142a417c671f2a5199d56f0a79558bf4b"
+  },
+  "native_executable_sha256": "c36c10c706a226cbbfcb884ee8f26730676d6572f1ac2267f525b772f3c06732",
+  "diff": {
+    "path": "docs/planning/reviews/P04/attempt-03/diff.patch",
+    "sha256": "636fc845b8e770cd073bc6f4ccf6195457a89117d1e699871ae370604d544333"
+  },
+  "limitations": [
+    "P04 integrated native evidence: the C13, C14 and C15 drivers ran against the single P04-prepared fixture bundle with AIRS_NATIVE_SUBJECT=P04 (native-<chunk>/, native-acceptance-<chunk>.json), merged by tools/native-acceptance/merge_phase.py into native-acceptance.json. Both registered workloads were re-measured on that bundle: the C13 Red Teaming and model-security reads and the C15 large HTTP bodies and downloads. A phase holding two workloads records each under its own name (workload-perf-C13.json, workload-perf-C15.json); xtask's workload_evidence() reads the per-chunk record in a phase and the single workload-perf.json in a chunk.",
+    "D034: every P04 chunk first completed on an 8/10 review under the owner rule and was then raised to a passing 9/10 review on the integrated tree before this phase review (raised commits: C13 bdd57c2, C14 0c6a604, C15 e9df1db). Each chunk's follow-ups file (docs/planning/reviews/<chunk>/follow-ups.md) lists the findings and their remediation.",
+    "Mutation probes: the C13, C14 and C15 probe sets were re-run with the hardened harness on this phase tree after the P04 attempt-02 remediation (results.json 'inputs' bind each run to the SHA-256 of every mutated source); each mutation is credited only when its named test fails. Counts are in each chunk's mutation-probes/probes.log.",
+    "The Accessibility tree reader's node cap (tools/native-acceptance/ax.swift) was raised from 4,000 to 20,000 during the C13 raise, matching probe.swift's activation reader: the C13 regression's 1,000-row attack table exceeded the old cap. Drivers never save an Accessibility tree while an NSOpenPanel/NSSavePanel is shown.",
+    "No real product endpoint is called before C25. Management (Red Teaming, model security, AgentGuard), scan and the API Client's targets are synthetic local services (tools/native-acceptance/mgmt_server.py, the scan endpoint, the workbench execution fixtures). Fixture builds only; signed packages are C26.",
+    "The C07 offline storage manifest, written when the C07 driver runs as a regression under a later subject, is kept with C07's native records (native-C07/storage-manifest.json) rather than at the subject's top level.",
+    "Deferred with reasons: D039, v1's idle polling, encrypted metric history, cross-session snapshots and Home tiles for Red Teaming and model/skill security (C16-C18 own Home and observation history); D040, the Git view's hosting links and saved diff, the standalone Rusty profile migration and structured row/auth editors (edited as v1's text forms); D041, live qualification of the 193 catalogue specifications (C25).",
+    "P04 attempt-01's R1 is remediated (docs/planning/reviews/P04/follow-ups.md): reset fences API Client transfers by a reset epoch and an exclusive fence held through the purge; reset_retires_running_sends_and_nothing_they_held_is_kept holds a run inside a storage step and another with a dirty persistent cookie, resets, releases them, and verifies nothing is recreated or replayed after a restart. Its optional suggestion is taken: this packet's diff is measured from the P03 completion commit (bbbad43).",
+    "P04 attempt-02's remaining R1 is remediated (docs/planning/reviews/P04/follow-ups.md): a Send keeps the reset epoch it was admitted in, sampled before its first await, so a reset during planning retires it; reviews are published, consumed and runs registered only in that epoch. reset_during_planning_retires_the_send_before_anything_goes holds a context-null Send after document capture (fixture-only Core::hold_send_planning), admits reset, resumes planning and verifies the Send is refused, nothing reaches the target, no review or run appears, and nothing is recreated or replayed after a restart."
+  ],
+  "verdict_schema": {
+    "path": "docs/architecture/review-verdict.schema.json",
+    "sha256": "446db12c809cbe91ea6af7ac622c3e029dbe5792828e1361d2b1f2af830375b4"
+  },
+  "verdict_path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/docs/planning/reviews/P04/attempt-03/verdict.json",
+  "review_instructions": "Independently review phase P04 (chunks C13, C14, C15) of Prisma AIRS Desktop\nv2 as an integrated whole. Read AGENTS.md, GLOSSARY.md, decisions, ADRs, the\nimplementation plan, each phase chunk instruction, review-protocol.md, and the\npacket's receipts and evidence. Assess how the phase's features compose with\neach other and with earlier phases they affect: authority boundaries across\nfeatures, shared state, regressions, outcome truthfulness, and whether the\nintegrated tests and native evidence exercise the combined behavior.\n\nHistorical chunk scores are evidence to assess, not a substitute for this\nreview. A defect visible only across chunks is a required fix even if every\nchunk passed alone. Do not edit application files, call endpoints, read\nsecrets, or implement fixes.\n\nScore architecture, behavior, authority_security, validation and overall 1-10.\nReturn the same verdict schema as chunk reviews with the phase as subject. A\npass requires every score >=9 and empty required_fixes/blockers/evidence_gaps.\nDo not inflate scores to meet the target."
+}
