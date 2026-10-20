@@ -3,4 +3,4 @@
 /**
  * The action of a change (v1's allowed matrix).
  */
-export type ChangeAction = "create" | "update" | "delete" | "version" | "rotate";
+export type ChangeAction = "create" | "update" | "delete" | "version" | "rotate" | "models";

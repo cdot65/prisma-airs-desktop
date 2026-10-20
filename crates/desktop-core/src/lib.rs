@@ -16,6 +16,8 @@ pub mod features;
 #[cfg(any(test, feature = "test-fixtures"))]
 pub mod fixtures;
 pub mod gateway;
+pub mod gateway_changes;
+pub mod gateway_local;
 pub mod import;
 pub mod learner;
 pub mod library;

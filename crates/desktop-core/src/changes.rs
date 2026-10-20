@@ -1,7 +1,9 @@
 //! Reviewed Runtime changes (C09): the exact v1 write subset for security
 //! profiles, custom topics, applications and API keys, its validation and
 //! normalization, the review baseline digest, the before/after preview and
-//! the handling of one-time secrets in write responses.
+//! the handling of one-time secrets in write responses. Gateway changes
+//! (C17) share the kinds, drafts and review flow; their rules live in
+//! [`crate::gateway_changes`].
 //!
 //! Working v1 (74754c02, read-only): `bridge/src/protocol.ts`
 //! `validateMutation` (allowed actions, target and body rules, SDK schema
@@ -16,6 +18,8 @@ use sha2::{Digest, Sha256};
 use ts_rs::TS;
 use zeroize::Zeroizing;
 
+use crate::context::WorkspaceRef;
+use crate::gateway::GatewayResource;
 use crate::management::{ManagementResource, redact};
 
 /// Largest draft body accepted (bytes of JSON text).
@@ -42,12 +46,23 @@ pub enum ChangeKind {
     DataProfiles,
     FilteringProfiles,
     Dictionaries,
+    /// Gateway (C17): workspaces (provisioned, updated, archived).
+    GatewayWorkspaces,
+    /// Within the chosen workspace.
+    GatewayProviders,
+    GatewayRoutes,
+    GatewayGuardrails,
+    GatewayServiceKeys,
+    GatewayUserKeys,
+    /// Tenant-wide (admin plane).
+    GatewayIntegrations,
 }
 
 impl ChangeKind {
-    /// The inventory a change's baseline is read from.
-    pub fn resource(self) -> ManagementResource {
-        match self {
+    /// The Runtime or DLP inventory a change's baseline is read from (none
+    /// for a Gateway change).
+    pub fn resource(self) -> Option<ManagementResource> {
+        Some(match self {
             Self::Profiles => ManagementResource::Profiles,
             Self::Topics => ManagementResource::Topics,
             Self::Applications => ManagementResource::Applications,
@@ -56,7 +71,22 @@ impl ChangeKind {
             Self::DataProfiles => ManagementResource::DataProfiles,
             Self::FilteringProfiles => ManagementResource::FilteringProfiles,
             Self::Dictionaries => ManagementResource::Dictionaries,
-        }
+            _ => return None,
+        })
+    }
+
+    /// The Gateway inventory a Gateway change applies to.
+    pub fn gateway(self) -> Option<GatewayResource> {
+        Some(match self {
+            Self::GatewayWorkspaces => GatewayResource::Workspaces,
+            Self::GatewayProviders => GatewayResource::Providers,
+            Self::GatewayRoutes => GatewayResource::Routes,
+            Self::GatewayGuardrails => GatewayResource::Guardrails,
+            Self::GatewayServiceKeys => GatewayResource::ServiceKeys,
+            Self::GatewayUserKeys => GatewayResource::UserKeys,
+            Self::GatewayIntegrations => GatewayResource::Integrations,
+            _ => return None,
+        })
     }
 
     /// DLP items are read and written by their own identifier (`id`).
@@ -77,7 +107,14 @@ impl ChangeKind {
             Self::DataPatterns
             | Self::DataProfiles
             | Self::FilteringProfiles
-            | Self::Dictionaries => "name",
+            | Self::Dictionaries
+            | Self::GatewayWorkspaces
+            | Self::GatewayProviders
+            | Self::GatewayRoutes
+            | Self::GatewayGuardrails
+            | Self::GatewayServiceKeys
+            | Self::GatewayUserKeys
+            | Self::GatewayIntegrations => "name",
         }
     }
 }
@@ -93,6 +130,8 @@ pub enum ChangeAction {
     Version,
     /// Regenerate an API key.
     Rotate,
+    /// Replace a Gateway integration's model list (C17).
+    Models,
 }
 
 /// The operator's captured draft, exactly as entered.
@@ -105,6 +144,12 @@ pub struct ChangeDraft {
     pub target: String,
     /// The body as JSON text (an object).
     pub body: String,
+    /// A Gateway change inside the chosen workspace: the selection's native
+    /// reference (C17). The workspace it names is the core's, never the
+    /// draft's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub workspace: Option<WorkspaceRef>,
 }
 
 /// Why a draft or its review could not proceed (sanitized; no server text).
@@ -148,6 +193,23 @@ pub enum ChangeProblem {
     /// A profile draft holds a v1 preview-only option (directional settings
     /// or a customized prompt-injection mode): never sent (C09).
     PreviewOnly,
+    /// A Gateway draft carries credentials or credential-bearing
+    /// configuration (entered only through protected input, never a draft).
+    CredentialPolicy,
+    /// The item's current configuration carries credentials this draft
+    /// would replace or lose; it is changed only where it is protected.
+    ProtectedConfiguration,
+    /// The draft names a workspace other than the chosen one.
+    WorkspaceMismatch,
+    /// The configuration fails its provider family's or the guardrail
+    /// catalog's rules.
+    Configuration,
+    /// The IAM scope to create already exists (choose to reuse it).
+    ScopeExists,
+    /// The IAM scope to reuse does not exist.
+    ScopeMissing,
+    /// Other configuration still references the item (the review lists it).
+    Referenced,
 }
 
 /// Field names of v1's profile previews (`profiles/configuration.rs`:
@@ -226,6 +288,8 @@ fn schema(kind: ChangeKind, action: ChangeAction) -> Option<&'static str> {
         (ChangeKind::FilteringProfiles, _) => Some("DataFilteringProfileRequestSchema"),
         // A dictionary's metadata is checked on its own; the file is text.
         (ChangeKind::Dictionaries, _) => None,
+        // Gateway changes are normalized by `gateway_changes`.
+        _ => None,
     }
 }
 
@@ -346,6 +410,9 @@ pub fn normalize(draft: &ChangeDraft, client_id: &str) -> Result<Mutation, Chang
                 body = reduced;
             }
         }
+        // Gateway kinds are refused above (`allowed`): `gateway_changes`
+        // normalizes them.
+        _ => return Err(ChangeProblem::Unsupported),
     }
     let mut mutation = Mutation {
         kind,
@@ -695,6 +762,9 @@ pub fn item_name(kind: ChangeKind, item: &Value) -> Option<String> {
 /// The confirmation the operator types: "CREATE" for a create or key
 /// version, otherwise the item's name (v1).
 pub fn confirmation(mutation: &Mutation, before: Option<&Value>) -> Option<String> {
+    if mutation.kind.gateway().is_some() {
+        return crate::gateway_changes::confirmation(mutation, before);
+    }
     match mutation.action {
         ChangeAction::Create | ChangeAction::Version => Some("CREATE".into()),
         _ => before.and_then(|b| item_name(mutation.kind, b)),
@@ -703,6 +773,9 @@ pub fn confirmation(mutation: &Mutation, before: Option<&Value>) -> Option<Strin
 
 /// The impact statement (v1's text, verbatim).
 pub fn impact(mutation: &Mutation) -> &'static str {
+    if mutation.kind.gateway().is_some() {
+        return crate::gateway_changes::impact(mutation);
+    }
     match (mutation.kind, mutation.action) {
         (ChangeKind::Applications, ChangeAction::Delete) => {
             "Deletes this application and ALL associated API keys. The before snapshot includes the complete matching key inventory."
@@ -725,6 +798,9 @@ pub fn impact(mutation: &Mutation) -> &'static str {
 /// The expected result shown in review (v1 preview `after`), secrets
 /// removed: server-determined fields are labelled, a delete has none.
 pub fn preview_after(mutation: &Mutation, before: Option<&Value>) -> Option<Value> {
+    if mutation.kind.gateway().is_some() {
+        return crate::gateway_changes::preview_after(mutation, before);
+    }
     let merged = |labelled: &[&str], label: &str| -> Option<Value> {
         let mut after = before?.as_object()?.clone();
         for (key, value) in mutation.body.as_object()? {
@@ -811,6 +887,7 @@ mod tests {
             action,
             target: target.into(),
             body: body.to_string(),
+            workspace: None,
         }
     }
 

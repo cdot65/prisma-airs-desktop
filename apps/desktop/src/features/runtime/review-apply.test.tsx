@@ -52,6 +52,8 @@ function review(overrides: Partial<ChangeReviewView> = {}): ChangeReviewView {
         sourceKey: null,
         impact: 'Applies only to this tenant. Existing unknown policy fields are preserved when included in the draft.',
         confirmation: 'Finance',
+        workspace: null,
+        references: [],
         ...overrides,
     }
 }
@@ -208,6 +210,8 @@ describe('review and apply', () => {
             readback: 'found',
             current: null,
             secret: 'held',
+            workspace: null,
+            provisioning: null,
         }
         await native.push(ready({ staged: null, review: null, results: [result] }))
         expect(screen.getByText(/held in memory only/)).toBeInTheDocument()
@@ -238,6 +242,8 @@ describe('review and apply', () => {
                         readback: null,
                         current: null,
                         secret: 'none',
+                        workspace: null,
+                        provisioning: null,
                     },
                 ],
             })

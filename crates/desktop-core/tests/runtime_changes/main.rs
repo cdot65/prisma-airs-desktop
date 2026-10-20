@@ -43,6 +43,10 @@ struct Service {
     serial: u32,
     /// (method, path prefix) → reply, used once each.
     overrides: Vec<(String, String, Reply)>,
+    /// Once a write is answered, reads are held this long (a readback the
+    /// operator may stop).
+    hold_reads_after_write: Option<u64>,
+    wrote: bool,
 }
 
 impl Service {
@@ -68,6 +72,8 @@ impl Service {
             ],
             serial: 0,
             overrides: Vec::new(),
+            hold_reads_after_write: None,
+            wrote: false,
         }
     }
 
@@ -279,7 +285,19 @@ async fn desk_with(configure: impl FnOnce(&mut CoreConfig)) -> Desk {
     let server = TlsServer::start(
         ca.leaf(&["localhost"]),
         Reply::Route(Arc::new(move |seen| {
-            routed.lock().expect("service").route(seen)
+            let mut service = routed.lock().expect("service");
+            let reply = service.route(seen);
+            let read = seen.request_line.starts_with("GET ");
+            match service.hold_reads_after_write {
+                Some(millis) if read && service.wrote => Reply::Delayed {
+                    millis,
+                    then: Box::new(reply),
+                },
+                _ => {
+                    service.wrote |= !read && !seen.request_line.contains("/oauth2/");
+                    reply
+                }
+            }
         })),
     )
     .await;
@@ -1282,4 +1300,50 @@ async fn preview_only_profile_options_are_refused_before_any_request() {
         .review(&json!({"kind": "profiles", "action": "create", "target": "", "body": legit.to_string()}))
         .await;
     assert_eq!(review.failure, None);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn stopping_during_the_readback_keeps_the_completed_write_and_its_key() {
+    let mut desk = desk().await;
+    desk.adapters.confirmer.auto(Some(true));
+    let draft = key_create("New app", "New key");
+    let review = desk.review(&draft).await;
+    desk.service.lock().expect("service").hold_reads_after_write = Some(5_000);
+    desk.request(&review, &draft, "CREATE")
+        .await
+        .expect("requested");
+    // The create is answered; its readback is held.
+    assert!(
+        eventually(|| {
+            let seen = desk.server.seen();
+            let wrote = seen
+                .iter()
+                .position(|s| s.request_line.starts_with("POST /aisec/v1/mgmt/apikey"));
+            wrote.is_some_and(|i| {
+                seen[i + 1..]
+                    .iter()
+                    .any(|s| s.request_line.starts_with("GET "))
+            })
+        })
+        .await,
+        "reading back"
+    );
+    let operation = desk.snap().changes.results[0].operation.clone();
+    desk.send(json!({"kind": "cancelChange", "operation": operation}))
+        .await
+        .expect("stopped");
+    let result = desk.settled().await;
+    assert_eq!(result.outcome, Some(Outcome::Completed), "{result:?}");
+    assert_eq!(result.failure, None);
+    assert_eq!(result.readback, Some(Readback::Stopped));
+    assert_eq!(result.secret, SecretState::Held);
+    let snapshot = serde_json::to_string(&desk.snap()).expect("json");
+    assert!(!snapshot.contains(ONE_TIME));
+    desk.send(json!({"kind": "revealSecret", "operation": result.operation}))
+        .await
+        .expect("revealed once");
+    let shown = desk.adapters.secrets.shown();
+    assert_eq!(shown.len(), 1);
+    assert!(shown[0].1.starts_with(ONE_TIME));
+    assert_eq!(desk.writes().len(), 1, "sent once");
 }

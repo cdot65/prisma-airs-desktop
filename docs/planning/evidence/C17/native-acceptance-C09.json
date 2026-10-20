@@ -1,0 +1,141 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C09",
+  "recorded_utc": "2026-10-20T22:03:31Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window, its AppKit sheets and the general pasteboard through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes, pbcopy/pbpaste) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c09.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "530d0cc33e9cc98f8d2ac71f019a7f294cd68844d0086023ef0e30c9b33e306d",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C09-N01",
+      "description": "Editing a custom topic in Administration: Edit\u2026 opens the item as a JSON draft; Review change reads the current item and shows its current and expected JSON with v1's impact text and the typed confirmation (the topic name); nothing is written by reviewing.",
+      "result": "pass",
+      "observation": "editor prefilled with the item: True; review shows current and expected JSON with the impact and 'Type Finance to confirm': True; writes while reviewing: 0",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json",
+        "docs/planning/evidence/C17/native-C09/tree-review.json"
+      ]
+    },
+    {
+      "id": "C09-N02",
+      "description": "Apply\u2026 opens a native AppKit sheet on the main window (not a WebView dialog) titled with Rust's stored summary (action, kind and name) and the tenant; while it is open the main window takes no input; Escape cancels it and nothing is written; a second Apply\u2026 and Return (the default for a non-destructive change) apply it: exactly one PUT with the management client as author, and the window says it was applied and read back.",
+      "result": "pass",
+      "observation": "AppKit sheet shown: True (title from Rust's summary: True, tenant named: True, no web area inside: True); Escape cancelled with no write: True; Return applied and read back: True; writes [{'path': '/aisec/v1/mgmt/topic/uuid/11111111-1111-4111-8111-111111111111', 'author': 'c08-native@1234567890.iam.panserviceaccount.com', 'description': 'Money and payments', 'fields': ['description', 'examples', 'revision', 'topic_name', 'updated_by']}]",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json",
+        "docs/planning/evidence/C17/native-C09/tree-sheet.json",
+        "docs/planning/evidence/C17/native-C09/tree-applied.json"
+      ]
+    },
+    {
+      "id": "C09-N03",
+      "description": "A topic changed by another writer between Review and Apply is reported as changed since review after the operator confirms, and nothing is written; text edited in the draft after Review is refused at Apply without opening the sheet.",
+      "result": "pass",
+      "observation": "changed elsewhere \u2192 'changed since it was reviewed' and no second PUT: True; draft edited after Review refused without a sheet: True",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json",
+        "docs/planning/evidence/C17/native-C09/tree-conflict.json",
+        "docs/planning/evidence/C17/native-C09/tree-edited-after-review.json"
+      ]
+    },
+    {
+      "id": "C09-N04",
+      "description": "Deleting a topic: the sheet is destructive and Return chooses Cancel (nothing deleted); choosing Delete sends exactly one DELETE and the window says the item is no longer in the inventory.",
+      "result": "pass",
+      "observation": "destructive delete sheet: True; Return chose Cancel (no DELETE): True; Delete pressed: True; one DELETE and 'no longer in the inventory': True",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json",
+        "docs/planning/evidence/C17/native-C09/tree-deleted.json"
+      ]
+    },
+    {
+      "id": "C09-N05",
+      "description": "Creating an API key: the deployment profile's auth code is added by the desktop (the POST carries the profile's code and the client as author; the code is never shown); the window says a new key is held in memory only, and no AX snapshot or data-root file holds the one-time key.",
+      "result": "pass",
+      "observation": "'held in memory only': True; POST [{'author': 'c08-native@1234567890.iam.panserviceaccount.com', 'authCodeMatches': True, 'fields': ['api_key_name', 'auth_code', 'created_by', 'cust_app', 'cust_cloud_provider', 'cust_env', 'dp_name', 'revoked', 'rotation_time_interval', 'rotation_time_unit']}]; auth code shown in the window: False; AX snapshots with a key or the code: []; data-root files with one: []",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json",
+        "docs/planning/evidence/C17/native-C09/tree-key-held.json"
+      ]
+    },
+    {
+      "id": "C09-N06",
+      "description": "Show new key\u2026 opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; the key is then shown once and no longer offered (the desktop keeps no copy); another key's sheet left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied.",
+      "result": "pass",
+      "observation": "sheet showed the issued key (hash): True; Copy and Close put it on the clipboard: True; then shown once and no longer offered: True; another key's sheet left open ended after 60 s: True; the copied key cleared from the clipboard after 60 s: True",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json"
+      ]
+    },
+    {
+      "id": "C09-N07",
+      "description": "Rotating a key: the rotation sheet is destructive (Return cancels; Rotate key applies); Clear key forgets a held key and the window says so; after copying another key, text copied by the operator in the meantime is left on the clipboard after 60 s.",
+      "result": "pass",
+      "observation": "Return cancelled the destructive rotation: True; one regenerate with the reduced body: True; operator's later clipboard text kept after 60 s: True; Clear key forgot the held key: True",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json"
+      ]
+    },
+    {
+      "id": "C09-N08",
+      "description": "T23: with the management endpoint stopped, a confirmed create (it needs no baseline read) reports that the service could not be reached and that the change may or may not have been applied (a transport failure's outcome is unknown, as for scans), to refresh before retrying, and nothing is queued; after the endpoint returns nothing is sent by itself within 6 s; an explicit Review prepares the change again without sending it.",
+      "result": "pass",
+      "observation": "offline apply reported unreachable and not applied: True (['The service reports no custom topics in this tenant.', 'The management service could not be reached. The change may or may not have been applied. Refresh the inventory before trying again.', 'The service reports no custom topics in this tenant.', 'The management service could not be reached. The change may or may not have been applied. Refresh the inventory before trying again.']); requests within 6 s of return: 0; explicit Review prepared it again with nothing sent: True",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json",
+        "docs/planning/evidence/C17/native-C09/tree-offline-apply.json",
+        "docs/planning/evidence/C17/native-C09/tree-offline-retry.json"
+      ]
+    },
+    {
+      "id": "C09-N09",
+      "description": "Quitting while a confirmed create is in flight and relaunching: no change review or result is shown and nothing is sent again within 6 s of launch (exactly the one in-flight POST).",
+      "result": "pass",
+      "observation": "after relaunch no review or result: True; topic POSTs in flight before quitting: 1; after relaunch + 6 s: 1",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json",
+        "docs/planning/evidence/C17/native-C09/tree-relaunch.json"
+      ]
+    },
+    {
+      "id": "C09-N10",
+      "description": "At 200% zoom and at the minimum window size, Tab reaches the workbench's Review change inside the window and clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Review again', 'pos': [649, 617], 'size': [232, 88]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Review again', 'pos': [384, 516], 'size': [116, 45]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json"
+      ]
+    },
+    {
+      "id": "C09-N12",
+      "description": "Sheet ownership: a key revealed and closed, then a second key revealed 40 s later, the second sheet stays shown past the first reveal's 60 s expiry until the operator closes it.",
+      "result": "pass",
+      "observation": "a second key revealed 40 s after the first was closed stays shown past the first reveal's 60 s expiry: {'second_shown': True, 'survives_older_expiry': True, 'closed_by_operator': True}",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json"
+      ]
+    },
+    {
+      "id": "C09-N11",
+      "description": "Retiring the context ends open sheets: with the confirmation sheet open, switching the active tenant (through Accessibility) dismisses it, a late Return applies nothing and nothing is written; with the one-time key sheet open, the switch dismisses it, the clipboard is untouched and the key is not offered again.",
+      "result": "pass",
+      "observation": "confirmation sheet retired by a tenant switch: {'shown': True, 'ended': True, 'no_write': True, 'tenant_b_active': True}; secret sheet retired: {'shown': True, 'ended': True, 'clipboard_untouched': True, 'not_offered_again': True}",
+      "evidence": [
+        "docs/planning/evidence/C17/native-C09/observations.json",
+        "docs/planning/evidence/C17/native-C09/tree-retired-confirmation.json",
+        "docs/planning/evidence/C17/native-C09/tree-retired-secret.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The management endpoint is a local synthetic fixture; live writes and one-time keys are qualified in C25.",
+    "The clipboard checks use the general pasteboard (the operator's text is saved and restored, never logged); concealment hints are written but their effect on clipboard managers is not observed.",
+    "Spoken VoiceOver output was not recorded; AX roles, names, the sheet subtree and focus are inspected."
+  ]
+}

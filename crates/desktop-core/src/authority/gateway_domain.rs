@@ -44,6 +44,9 @@ pub struct GatewayView {
     pub remembered: Option<String>,
     /// A complete listing did not list the remembered workspace.
     pub remembered_missing: bool,
+    /// The tenant's Gateway drafts and uncertain changes on this Mac
+    /// (readable offline; C17).
+    pub local: super::gateway_local_domain::GatewayLocalView,
 }
 
 struct Listing {
@@ -112,6 +115,7 @@ impl State {
             selected,
             remembered,
             remembered_missing,
+            local: self.gateway_local_view(),
         }
     }
 
@@ -120,11 +124,13 @@ impl State {
         WorkspaceRef::issue(&self.salt, self.gateway.epoch)
     }
 
-    /// Retires every Gateway workspace read but `keep`'s.
+    /// Retires every Gateway workspace read but `keep`'s, and every
+    /// change applying under another reference that has not sent its write.
     fn retire_workspace_reads(
         &mut self,
         keep: Option<&WorkspaceRef>,
     ) -> Vec<crate::runtime::Start> {
+        self.retire_scoped_applies(keep);
         self.operations.retire_contexts(
             WorkspaceRef::PREFIX,
             keep.map(WorkspaceRef::as_str),
@@ -286,6 +292,73 @@ impl State {
                 .as_ref()
                 .is_some_and(|s| &s.reference == w)
         })
+    }
+}
+
+/// Where a reviewed Gateway change applies (C17): the selection reference
+/// it is bound to, the workspace the core reads and writes, and the listed
+/// workspace the operator is shown.
+#[derive(Clone, Debug)]
+pub(super) struct ChangeScope {
+    pub reference: Option<WorkspaceRef>,
+    pub scope: Option<WorkspaceScope>,
+    pub shown: Option<ListedWorkspace>,
+}
+
+impl State {
+    /// The scope a Gateway change of `kind`/`action` on `target` applies
+    /// to. A change inside a workspace needs the current reference for this
+    /// context (the workspace is the core's, never the draft's); a
+    /// workspace's own update or archive needs a workspace this context
+    /// listed; a provisioning and an integration change apply to the tenant
+    /// (an integration create may also name the chosen workspace).
+    pub(super) fn gateway_change_scope(
+        &self,
+        context: &ContextRef,
+        resource: GatewayResource,
+        action: crate::changes::ChangeAction,
+        target: &str,
+        reference: Option<&WorkspaceRef>,
+    ) -> Result<ChangeScope, Refusal> {
+        let selection = || {
+            self.gateway
+                .selection
+                .as_ref()
+                .filter(|s| &s.context == context && Some(&s.reference) == reference)
+        };
+        let none = ChangeScope {
+            reference: None,
+            scope: None,
+            shown: None,
+        };
+        match resource {
+            GatewayResource::Workspaces if action == crate::changes::ChangeAction::Create => {
+                Ok(none)
+            }
+            GatewayResource::Workspaces => {
+                let listed = self
+                    .gateway
+                    .listing
+                    .as_ref()
+                    .filter(|l| &l.context == context)
+                    .and_then(|l| l.workspaces.iter().find(|w| w.id == target))
+                    .ok_or(Refusal::InvalidInput)?;
+                Ok(ChangeScope {
+                    reference: None,
+                    scope: Some(WorkspaceScope::from(listed)),
+                    shown: Some(listed.clone()),
+                })
+            }
+            GatewayResource::Integrations if reference.is_none() => Ok(none),
+            _ => {
+                let selection = selection().ok_or(Refusal::StaleContext)?;
+                Ok(ChangeScope {
+                    reference: Some(selection.reference.clone()),
+                    scope: Some(WorkspaceScope::from(&selection.workspace)),
+                    shown: Some(selection.workspace.clone()),
+                })
+            }
+        }
     }
 }
 

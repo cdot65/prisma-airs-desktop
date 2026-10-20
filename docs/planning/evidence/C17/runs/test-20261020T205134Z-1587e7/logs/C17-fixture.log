@@ -1,0 +1,28 @@
+
+running 19 tests
+test a_review_is_bound_to_its_workspace_and_a_draft_cannot_choose_another ... ok
+test a_reviewed_change_inside_the_chosen_workspace_applies_once_after_confirmation ... ok
+test a_change_made_since_review_is_a_conflict_but_traffic_counters_are_not ... ok
+test a_failed_cleanup_is_reported_and_never_called_undone ... ok
+test cancelling_an_apply_never_claims_a_rollback ... ok
+test a_models_readback_checks_the_all_models_setting ... ok
+test an_uncertain_or_failed_step_keeps_its_outcome_and_nothing_is_retried_or_undone ... ok
+test credentials_never_travel_in_a_draft_and_stored_ones_are_protected ... ok
+test a_reused_scope_never_attributes_another_workspace_to_the_attempt ... ok
+test guardrail_checks_are_validated_against_the_catalog ... ok
+test one_time_keys_are_held_in_memory_and_shown_once ... ok
+test stopping_during_the_readback_keeps_the_answered_write_and_its_key ... ok
+test deletes_are_blocked_while_anything_references_the_item ... ok
+test provisioning_reports_every_step_and_reconciles_what_exists ... ok
+test readbacks_say_when_the_service_did_not_take_the_reviewed_change ... ok
+test a_credential_replacement_ends_the_review_and_nothing_is_replayed_after_restart ... ok
+test drafts_and_uncertain_outcomes_survive_an_offline_restart_and_nothing_is_replayed ... ok
+test every_advertised_operation_sends_its_literal_request_once_and_settles_by_outcome ... ok
+test choosing_another_workspace_before_the_write_sends_nothing ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.19s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/gateway_changes/main.rs (target/debug/deps/gateway_changes-54f2191c5de19839)

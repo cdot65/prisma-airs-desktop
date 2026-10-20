@@ -1,0 +1,19 @@
+
+running 10 tests
+test dictionary_files_and_names_are_bounded_before_any_request ... ok
+test a_staged_files_content_never_reaches_a_projection_and_the_pending_hold_keeps_it ... ok
+test filtering_profiles_are_replaced_only ... ok
+test data_profiles_follow_v1s_structure_rules_and_have_no_delete ... ok
+test a_typed_dictionary_is_uploaded_as_literal_multipart ... ok
+test denial_conflict_and_lost_settlement_keep_faithful_outcomes ... ok
+test data_patterns_are_created_replaced_and_deleted_exactly ... ok
+test a_file_chosen_in_the_native_sheet_is_staged_validated_and_uploaded ... ok
+test a_sheet_answering_during_a_confirmation_ends_it_and_late_or_retired_choices_stage_nothing ... ok
+test every_supported_dlp_mutation_reports_denial_unknown_and_conflict_truthfully ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running tests/dlp_subset/main.rs (target/debug/deps/dlp_subset-738bc3492dedefe7)

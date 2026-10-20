@@ -197,8 +197,15 @@ const CHANGE_KINDS: readonly string[] = [
     'dataProfiles',
     'filteringProfiles',
     'dictionaries',
+    'gatewayWorkspaces',
+    'gatewayProviders',
+    'gatewayRoutes',
+    'gatewayGuardrails',
+    'gatewayServiceKeys',
+    'gatewayUserKeys',
+    'gatewayIntegrations',
 ]
-const CHANGE_ACTIONS: readonly string[] = ['create', 'update', 'delete', 'version', 'rotate']
+const CHANGE_ACTIONS: readonly string[] = ['create', 'update', 'delete', 'version', 'rotate', 'models']
 const CHANGE_PROBLEMS: readonly string[] = [
     'unsupported',
     'target',
@@ -218,12 +225,24 @@ const CHANGE_PROBLEMS: readonly string[] = [
     'fileName',
     'stagedFile',
     'previewOnly',
+    'credentialPolicy',
+    'protectedConfiguration',
+    'workspaceMismatch',
+    'configuration',
+    'scopeExists',
+    'scopeMissing',
+    'referenced',
 ]
 const STAGED_STATES: readonly string[] = ['choosing', 'ready', 'failed']
 const STAGED_FAILURES: readonly string[] = ['tooLarge', 'notText', 'empty', 'unreadable']
 const STAGED_TOKEN = /^sf-[0-9a-f]{16}$/
 const REVIEW_STATES: readonly string[] = ['preparing', 'ready', 'confirming', 'expired', 'failed']
-const READBACKS: readonly string[] = ['found', 'absent', 'incomplete', 'failed']
+const READBACKS: readonly string[] = ['found', 'absent', 'incomplete', 'failed', 'differs', 'stopped']
+const STEP_STATES: readonly string[] = ['notStarted', 'notSent', 'rejected', 'unknown', 'completed', 'existing', 'deleted']
+const RECONCILED: readonly string[] = ['found', 'absent', 'incomplete', 'failed', 'ambiguous']
+const SCOPE_CLEANUPS: readonly string[] = ['notNeeded', 'retained', 'deleted', 'failed', 'unknown']
+export const GATEWAY_DRAFT_PROBLEMS: readonly string[] = ['unsupported', 'tooLarge', 'credential', 'incomplete']
+const GATEWAY_LOCAL_ID = /^g[dr]-[0-9a-f]{24}$/
 const SECRET_STATES: readonly string[] = ['none', 'held', 'forgotten', 'shown']
 /** Largest page the native side reads (`management::MAX_PAGE`). */
 const MANAGEMENT_MAX_PAGE = 100
@@ -615,7 +634,49 @@ function isGatewayView(value: unknown): boolean {
         ) &&
         optional(isGatewayId, value.remembered) &&
         typeof value.rememberedMissing === 'boolean' &&
-        (!value.rememberedMissing || value.remembered !== null)
+        (!value.rememberedMissing || value.remembered !== null) &&
+        isGatewayLocal(value.local)
+    )
+}
+
+/** The change a kept Gateway draft or record describes (C17). */
+function isGatewayChange(value: Record<string, unknown>): boolean {
+    return (
+        typeof value.id === 'string' &&
+        GATEWAY_LOCAL_ID.test(value.id) &&
+        optional(isListedWorkspace, value.workspace) &&
+        oneOf(CHANGE_KINDS, value.kind) &&
+        typeof value.kind === 'string' &&
+        value.kind.startsWith('gateway') &&
+        oneOf(CHANGE_ACTIONS, value.action) &&
+        isString(value.target) &&
+        isString(value.body)
+    )
+}
+
+/** The tenant's Gateway drafts and uncertain changes on this Mac (C17). */
+function isGatewayLocal(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(REPORTS_STATES, value.state) &&
+        // A failure is reported exactly when the file could not be opened.
+        (value.state === 'failed' ? oneOf(REPORT_STORE_FAILURES, value.failure) : value.failure === null) &&
+        Array.isArray(value.drafts) &&
+        value.drafts.every((d) => isRecord(d) && isGatewayChange(d) && isString(d.savedAt)) &&
+        Array.isArray(value.records) &&
+        value.records.every(
+            (r) =>
+                isRecord(r) &&
+                isGatewayChange(r) &&
+                optional(isString, r.name) &&
+                oneOf(OUTCOMES, r.outcome) &&
+                optional((b) => oneOf(READBACKS, b), r.readback) &&
+                (r.provisioning === null ||
+                    (r.kind === 'gatewayWorkspaces' && r.action === 'create' && isProvisioning(r.provisioning))) &&
+                isString(r.settledAt)
+        ) &&
+        optional((p) => oneOf(GATEWAY_DRAFT_PROBLEMS, p), value.problem) &&
+        typeof value.unsaved === 'boolean'
     )
 }
 
@@ -630,7 +691,7 @@ function isJsonObjectText(value: unknown): boolean {
 
 function isChangeFailure(value: unknown): boolean {
     if (!isRecord(value)) return false
-    if (value.kind === 'conflict' || value.kind === 'expired' || value.kind === 'capacity') return true
+    if (['conflict', 'expired', 'capacity', 'workspaceChanged'].includes(value.kind as string)) return true
     if (value.kind === 'problem') return oneOf(CHANGE_PROBLEMS, value.problem)
     return value.kind === 'service' && oneOf(MANAGEMENT_FAILURES, value.failure)
 }
@@ -651,7 +712,29 @@ function isChangeReview(value: unknown): boolean {
         optional(isJsonObjectText, value.after) &&
         optional(isJsonObjectText, value.sourceKey) &&
         isString(value.impact) &&
-        optional(isString, value.confirmation)
+        optional(isString, value.confirmation) &&
+        optional(isListedWorkspace, value.workspace) &&
+        Array.isArray(value.references) &&
+        value.references.every(isString) &&
+        // Only a Gateway delete lists references, and only once it is ready.
+        (value.references.length === 0 || (value.action === 'delete' && value.state !== 'failed'))
+    )
+}
+
+/** A workspace provisioning's steps and their reconciliation (C17). */
+function isProvisioning(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isString(value.scopeName) &&
+        oneOf(STEP_STATES, value.scope) &&
+        oneOf(STEP_STATES, value.workspace) &&
+        oneOf(STEP_STATES, value.binding) &&
+        oneOf(SCOPE_CLEANUPS, value.cleanup) &&
+        optional(isString, value.workspaceId) &&
+        optional(isString, value.workspaceSlug) &&
+        oneOf(RECONCILED, value.scopeRead) &&
+        optional((b) => typeof b === 'boolean', value.boundRead) &&
+        oneOf(RECONCILED, value.workspaceRead)
     )
 }
 
@@ -670,7 +753,11 @@ function isChangeResult(value: unknown): boolean {
         optional(isJsonObjectText, value.response) &&
         optional((r) => oneOf(READBACKS, r), value.readback) &&
         optional(isJsonObjectText, value.current) &&
-        oneOf(SECRET_STATES, value.secret)
+        oneOf(SECRET_STATES, value.secret) &&
+        optional(isListedWorkspace, value.workspace) &&
+        // Steps belong only to a workspace provisioning.
+        (value.provisioning === null ||
+            (value.kind === 'gatewayWorkspaces' && value.action === 'create' && isProvisioning(value.provisioning)))
     )
 }
 

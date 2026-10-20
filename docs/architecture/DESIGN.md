@@ -1467,6 +1467,69 @@ the workspace listing, the native choice, restore and admission;
   created, changed, provisioned or sent for inference; limits policies,
   telemetry, cost and MCP are later chunks.
 
+### C17 implementation: reviewed Gateway changes and provisioning
+
+Implemented in `crates/desktop-core` (`gateway_changes`: v1's Gateway write
+subset, its validation, baselines, references, writes, readbacks and the
+provisioning report; `changes`: the Gateway kinds, the `models` action and
+the draft's `workspace` reference; `authority/change_domain`: the Gateway
+branch of review, apply, cancellation and their views;
+`authority/gateway_domain::gateway_change_scope`; intent `CancelChange`;
+`gateway_local` and `authority/gateway_local_domain`: drafts and uncertain
+results kept on this Mac, intents `OpenGatewayLocal`, `SaveGatewayDraft`,
+`DiscardGatewayLocal`) and the AI Gateway destination (`features/gateway`, sharing the
+Administration change workbench and results). D043 records the decisions.
+
+- **Review.** `ReviewChange { context, draft }` with a Gateway kind
+  resolves its scope natively (the current `WorkspaceRef` for a change
+  inside a workspace, a listed workspace for its own update or archive),
+  normalizes the draft for the credential's tenant and that workspace, and
+  reads the baseline: the item (proven to be in the workspace), what still
+  references it for a delete, the IAM scope for a provisioning, the
+  guardrail catalog or provider family for checks and configuration. The
+  view shows the item's allow-listed projection, the expected result, the
+  exact workspace and IAM scope, the impact and any references.
+- **Apply.** RequestApply also requires the reviewed reference to be
+  current and no references; the native confirmation names the workspace
+  and IAM scope. The job re-reads the baseline and references (any change:
+  conflict, nothing sent), writes once (a one-time key taken first) and
+  reads back; provisioning runs the SDK's three steps and reconciles this
+  attempt's workspace by its identity (never another sharing a reused
+  scope). The job shares its progress with its record: choosing another
+  workspace retires a change that has not dispatched its write (it settles
+  not sent, `workspaceChanged`), and an answered write survives a stopped
+  readback with its key.
+- **Results.** Each keeps its outcome, readback (`differs` when the
+  service did not take the reviewed change, `stopped` when the desktop
+  stopped waiting after the write was answered), the workspace it applied
+  to and, for provisioning, every step, the SDK's scope cleanup and what
+  was read back; only a fully read-back provisioning is called verified.
+  Stop waiting (`CancelChange`) reports not sent, applied or unknown;
+  nothing is rolled back.
+- **Kept on this Mac (T23).** Edited text is kept as a draft once typing
+  pauses and reads as a complete document (labelled natively with the
+  workspace a review would apply to; credentials refused; incomplete text
+  stays in the editor only); a change that settles uncertain is recorded
+  with its reviewed text and steps, under its own tenant even when the
+  tenant or credential changed while it was in flight (never for a deleted
+  tenant; a reset fences every earlier read and write). One owner-only file per tenant under the
+  sessions root; neither carries a review, reply, key or authority. The
+  AI Gateway page lists them even when the service cannot be reached; a
+  draft opens for editing but is reviewed only under its own workspace
+  chosen from a fresh listing; reconnecting sends nothing.
+- **Presentation.** Each inventory offers New…; an item's details offer
+  Edit…, Delete… (Rotate… for keys, Models… for an integration); the
+  workspace list offers Provision workspace…; the Workspace tab reads the
+  chosen workspace's settings, defaults and embedded limits and offers
+  Edit and Archive. The workbench takes focus on its heading and Close
+  returns it; choosing another workspace closes a change prepared in the
+  first. A detail panel is keyed by its item: another integration never
+  shows its models, loading state or failure, and a late models reply for
+  another is dropped (C16 follow-up R1; the Workspace tab is R2).
+- **Not done here.** No real endpoint is called before C25; credential
+  entry, integration bindings, limit policies (C18) and MCP (C22) are not
+  provided.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

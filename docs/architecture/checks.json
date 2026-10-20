@@ -1442,7 +1442,86 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only"
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/features/gateway/gateway-view.test.tsx",
+          "src/features/runtime/review-apply.test.tsx",
+          "src/features/administration/administration-view.test.tsx",
+          "src/features/administration/dlp-authoring.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "gateway_local"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "runtime_changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "dlp_subset"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "gateway_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ]
+      ]
     },
     "C18": {
       "rust_target": "gateway_inference",

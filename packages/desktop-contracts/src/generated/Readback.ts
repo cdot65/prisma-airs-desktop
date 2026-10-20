@@ -3,4 +3,4 @@
 /**
  * What the readback after a write found.
  */
-export type Readback = "found" | "absent" | "incomplete" | "failed";
+export type Readback = "found" | "absent" | "incomplete" | "failed" | "differs" | "stopped";

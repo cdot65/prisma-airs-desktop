@@ -100,8 +100,8 @@ pub fn is_id(id: &str) -> bool {
 
 /// The selected workspace a scoped read is bound to (resolved natively from
 /// the listed workspaces; never supplied by the presentation).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, serde::Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ListedWorkspace {
     pub id: String,
     pub name: String,

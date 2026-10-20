@@ -3,4 +3,4 @@
 /**
  * What a change applies to.
  */
-export type ChangeKind = "profiles" | "topics" | "applications" | "apiKeys" | "dataPatterns" | "dataProfiles" | "filteringProfiles" | "dictionaries";
+export type ChangeKind = "profiles" | "topics" | "applications" | "apiKeys" | "dataPatterns" | "dataProfiles" | "filteringProfiles" | "dictionaries" | "gatewayWorkspaces" | "gatewayProviders" | "gatewayRoutes" | "gatewayGuardrails" | "gatewayServiceKeys" | "gatewayUserKeys" | "gatewayIntegrations";

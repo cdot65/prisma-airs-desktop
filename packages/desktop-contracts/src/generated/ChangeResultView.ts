@@ -2,8 +2,10 @@
 import type { ChangeAction } from "./ChangeAction";
 import type { ChangeFailure } from "./ChangeFailure";
 import type { ChangeKind } from "./ChangeKind";
+import type { ListedWorkspace } from "./ListedWorkspace";
 import type { OperationId } from "./OperationId";
 import type { Outcome } from "./Outcome";
+import type { Provisioning } from "./Provisioning";
 import type { Readback } from "./Readback";
 import type { SecretState } from "./SecretState";
 
@@ -18,4 +20,12 @@ response: string | null, readback: Readback | null,
 /**
  * The item as read back (JSON, secret fields removed).
  */
-current: string | null, secret: SecretState, };
+current: string | null, secret: SecretState, 
+/**
+ * The Gateway workspace the change applied to (C17).
+ */
+workspace: ListedWorkspace | null, 
+/**
+ * A workspace provisioning's steps and their reconciliation (C17).
+ */
+provisioning: Provisioning | null, };

@@ -1056,6 +1056,126 @@ Decided in C16 (implementer decision, recorded for review).
   with `completions.write`. The management client is never offered for
   inference, and identity administration is not provided.
 
+## D043 — Reviewed Gateway changes and provisioning outcomes
+
+Decided in C17 (implementer decision, recorded for review).
+
+- **One change path.** Gateway changes reuse C09's reviewed-change flow
+  (ReviewChange, RequestApply, the native confirmation, single-use apply,
+  one-time secrets) with seven Gateway kinds and a `models` action; their
+  rules are `gateway_changes`. No second review mechanism exists.
+- **Matrix (v1 → SDK `=0.1.0`, each the SDK's typed call, retries off).**
+
+  | Kind | Create | Update | Delete | Other |
+  |---|---|---|---|---|
+  | Workspaces (admin) | provisioning: IAM scope, workspace, binding | `workspaces().update` | archive (`delete`, soft) | — |
+  | Providers, routes, guardrails (data) | `create` in the chosen workspace | `update` | `delete` | — |
+  | Service and user keys (data) | `create_service`/`create_user` | `update_*` | `delete_*` | `rotate_*` |
+  | Integrations (admin, tenant-wide) | `create` (no credentials) | `update` | `delete(id, tsg)` | `set_models` |
+
+  Deferred: integration credential entry (`key`, `secret_mappings`) to a
+  protected native input, integration workspace bindings, v1's protected
+  routing-credential merge, rate/usage-limit policies (C18), MCP (C22).
+- **Scope is the core's.** A change inside a workspace carries the
+  selection's `WorkspaceRef`; the core admits it only with the current
+  reference and places a create there (`workspace_id`), refusing a draft
+  that names another (`workspaceMismatch`). An item must belong to the
+  chosen workspace (its `workspace_id`, or its complete inventory). A
+  workspace's own update or archive needs a listed workspace; provisioning
+  and integration changes are tenant-wide. The review is bound to the
+  reference: choosing another workspace ends it and its native sheet. The
+  review and the confirmation name the workspace, its slug and IAM scope,
+  or the IAM scope a provisioning creates or reuses.
+- **Organisation.** Key, guardrail and integration creates belong to the
+  management credential's tenant (`organisation_id`), filled by the core;
+  another is a contract problem.
+- **Credentials never travel in a draft.** Integration keys and secret
+  mappings, and any credential-bearing field (v1's secret-name rule) are
+  refused before any request (`credentialPolicy`). A change that would
+  replace or lose stored credentials (a route document, guardrail checks
+  or integration configuration that holds some) is refused after the read
+  (`protectedConfiguration`).
+- **Validation.** The SDK request schemas (strict); provisioning names its
+  IAM scope explicitly (a generated name would differ between review and
+  apply) and the review checks it is absent, or present when reused;
+  guardrail checks must name a catalog evaluator and meet its parameter
+  schema (v1 `validateParameters`; references, combinators, conditionals
+  and patterns fail closed), and a Prisma AIRS check needs one usable AIRS
+  connector; an integration's configuration meets its provider family's
+  concrete schema.
+- **Baseline and conflict.** The review reads the item (unprojected, kept
+  in the core) and binds tenant, client, kind, action, target, body,
+  workspace, references and the item without traffic counters and server
+  timestamps (v1 `stableConfiguration`). Apply re-reads all of it; any
+  difference is a conflict, nothing sent.
+- **References block deletes (v1 `deletionImpact`).** Providers and
+  guardrails: routes naming them; routes: other routes, keys and the
+  workspace defaults; integrations: providers in every listed workspace
+  and the workspaces it is granted to; workspaces (archive): any route,
+  provider, guardrail or key. The review lists them and Apply is refused
+  while any remain; an inventory that cannot be read completely refuses
+  the review.
+- **Write and readback.** Exactly one write. A one-time key (`key`) is
+  taken into a zeroizing buffer before anything else, then the reply is
+  stripped of credential-bearing fields. Readback by identifier (the
+  reply's for a create) as the allow-listed projection; absent from a
+  complete inventory after a delete or archive. A routing document must
+  read back as reviewed under a new version, and model enablement (and the
+  all-models setting, when the draft sets it) as set; otherwise the
+  readback `differs` (never claimed applied as reviewed).
+- **Provisioning keeps every step.** The SDK's bounded `provision`: scope
+  create (unless reused), workspace create, binding; never retried. Each
+  step reports not started, not sent, rejected, unknown, done, existing
+  or deleted (a scope created for a workspace that was definitely refused
+  is deleted by the SDK; an uncertain create keeps it). That cleanup is
+  reported (not needed, kept, deleted, refused, unknown); a reused scope is
+  never this attempt's to remove. The outcome is unknown when any step is,
+  completed (partially) when something it created remains, otherwise the
+  failure's. Afterwards the tenant is read back: this attempt's workspace in
+  the admin inventory, by the identity the service returned or else the one
+  workspace with the requested name and scope that did not use a reused
+  scope before (read just before the write); another workspace sharing the
+  scope is never attributed to the attempt, and when none can be told apart
+  the result says so (`ambiguous`). Then the IAM scope, and whether it lists
+  that workspace. Only a provisioning whose every step completed and whose
+  workspace, scope and binding all read back is summarized as verified.
+- **A workspace switch retires waiting applies.** Each apply shares its
+  progress with its record. Choosing another workspace (or losing the
+  selection or the tenant context) marks every change bound to another
+  reference that has not dispatched its write as retired, under the lock
+  the write's dispatch takes: it settles not sent (`workspaceChanged`)
+  without writing, even if the operator chooses the first workspace again
+  (a new reference). A write already dispatched keeps its own outcome.
+- **Stopping is not rollback.** `CancelChange` stops an applying change of
+  the active context: before its write it is not sent; after an answered
+  write it keeps that outcome and any one-time key, with its readback
+  `stopped`; with the write unanswered, unknown, and a provisioning is read
+  back as above. Nothing sent is undone. (C09 changes share this.)
+- **T23: work kept on this Mac.** Each tenant's Gateway drafts and uncertain
+  results are kept in one owner-only file under the sessions root (removed
+  with the tenant and by a reset). The workbench keeps edited text once
+  typing pauses, labelled by the core with the workspace a review would
+  apply to. Only text that reads as a complete document is kept, and its
+  credential fields are refused as in review (at any depth, escaped or
+  not): text still being typed stays in the editor, and the last complete
+  text is what is kept. A change that sent
+  something drops its draft; one that settled unknown, partially, or
+  without a confirming readback is recorded with the reviewed text, its
+  outcome, readback and steps. Neither carries a review, confirmation,
+  reply or key: reviews, confirmations, results and keys remain memory
+  only. After a restart (offline too) both are read and drafts edited
+  locally; records say the service has not been read since. Reconnecting
+  sends nothing; a retry is a fresh review of the text under the workspace
+  chosen from a fresh listing, and a record goes only when dismissed. A
+  change whose tenant is left or whose credential is replaced while its
+  write may be in flight leaves the screen with its context (its review,
+  reply and key withdrawn, never replayed) but is still recorded under its
+  own tenant and workspace when it settles. Nothing is kept for a tenant
+  that was deleted. A reset drops every book, queued settlement, pending
+  read and write; reads take their turn with writes, and every book change
+  takes a new generation from the authority's counter, so work admitted
+  before a reset finds nothing to read or write after it.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

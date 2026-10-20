@@ -5,4 +5,4 @@ import type { ManagementFailure } from "./ManagementFailure";
 /**
  * Why a change did not apply (sanitized; no server text).
  */
-export type ChangeFailure = { "kind": "problem", problem: ChangeProblem, } | { "kind": "conflict" } | { "kind": "service", failure: ManagementFailure, } | { "kind": "expired" } | { "kind": "capacity" };
+export type ChangeFailure = { "kind": "problem", problem: ChangeProblem, } | { "kind": "conflict" } | { "kind": "service", failure: ManagementFailure, } | { "kind": "expired" } | { "kind": "capacity" } | { "kind": "workspaceChanged" };

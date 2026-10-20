@@ -4,20 +4,30 @@
  * scoped reads carrying the current selection reference, coverage that is
  * never "none" from a partial inventory, details whose heading takes focus
  * and whose Close returns it, a reply for a workspace chosen before dropped,
- * prerequisites stated per plane, and the remembered choice's notes.
+ * prerequisites stated per plane, and the remembered choice's notes. C17:
+ * the chosen workspace's own detail, integration models bound to the
+ * integration shown, reviewed changes carrying the selection reference with
+ * their exact scope and blocking references, and provisioning steps whose
+ * summary claims only what reconciliation established. Drafts and uncertain
+ * results kept on this Mac are read and edited offline and reviewed again
+ * only when asked.
  */
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import {
+    type ChangeResultView,
+    type ChangeReviewView,
     DesktopClient,
     type GatewayList,
+    type GatewayLocalView,
     type GatewayPrerequisites,
     type GatewayView,
     type Intent,
     type ListedWorkspace,
     type ManagementRequest,
     type ManagementResult,
+    type Provisioning,
     type ShellSnapshot,
 } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
@@ -37,6 +47,7 @@ const view = (overrides: Partial<GatewayView> = {}): GatewayView => ({
     selected: null,
     remembered: null,
     rememberedMissing: false,
+    local: { state: 'ready', failure: null, drafts: [], records: [], problem: null, unsaved: false },
     ...overrides,
 })
 
@@ -164,10 +175,9 @@ describe('AI Gateway', () => {
         )
         expect(await screen.findByText('1 providers · complete')).toBeInTheDocument()
         expect(screen.getByRole('radio', { name: /Team A/ })).toBeChecked()
-        // Nothing here creates, changes or provisions.
-        for (const name of [/create/i, /new /i, /delete/i, /rotate/i, /provision/i, /send/i]) {
-            expect(screen.queryByRole('button', { name })).toBeNull()
-        }
+        // Reading changes nothing: no change is prepared until asked.
+        expect(screen.getByRole('button', { name: 'New provider…' })).toBeInTheDocument()
+        expect(native.dispatched.some((i) => i.kind === 'reviewChange' || i.kind === 'requestApply')).toBe(false)
     })
 
     it('never reads "none" from a partial inventory and says a complete one is empty', async () => {
@@ -245,5 +255,406 @@ describe('AI Gateway', () => {
         await open(native)
         expect(await screen.findByRole('alert')).toHaveTextContent('The workspaces could not be read: This management client is not allowed')
         expect(reads.every((r) => r.kind === 'gateway' && r.workspace === null)).toBe(true)
+    })
+
+    it('shows the chosen workspace’s own settings and limits, and its failures', async () => {
+        const native = scriptedNative(ready(listed(A)))
+        let deny = false
+        const reads = gateway(native, (request) => {
+            if (request.kind === 'gateway' && request.read.kind === 'detail' && request.read.resource === 'workspaces') {
+                if (deny) return { kind: 'failed', failure: 'denied', outcome: 'rejected' }
+                return ok({
+                    kind: 'detail',
+                    detail: {
+                        resource: 'workspaces',
+                        id: request.read.id,
+                        found: 'found',
+                        item: JSON.stringify({
+                            id: request.read.id,
+                            name: 'Team A',
+                            defaults: { config_id: 'r1', allow_config_override: true },
+                            usage_limits: [{ credit_limit: 100, type: 'cost' }],
+                            rate_limits: [{ type: 'requests', unit: 'rpm', value: 60 }],
+                        }),
+                    },
+                })
+            }
+            return standard(request)
+        })
+        const user = await open(native)
+        await user.click(await screen.findByRole('tab', { name: 'Workspace' }))
+        // An unscoped read of the workspace the native choice names.
+        await waitFor(() => expect(reads).toContainEqual({ kind: 'gateway', workspace: null, read: { kind: 'detail', resource: 'workspaces', id: WS_A } }))
+        const fields = await screen.findByText('rate_limits', { selector: 'dt' })
+        expect(fields.nextElementSibling).toHaveTextContent('rpm')
+        expect(screen.getByText('defaults', { selector: 'dt' }).nextElementSibling).toHaveTextContent('allow_config_override')
+        deny = true
+        await user.click(screen.getByRole('button', { name: /Refresh workspace$/ }))
+        expect(await screen.findByRole('alert')).toHaveTextContent('The workspace could not be read: This management client is not allowed')
+        // Another workspace starts with nothing held.
+        await chosen(native, B)
+        await waitFor(() => expect(reads.filter((r) => r.kind === 'gateway' && r.read.kind === 'detail' && r.read.id === WS_B)).toHaveLength(1))
+    })
+
+    it('never shows one integration’s models under another', async () => {
+        const native = scriptedNative(ready(listed(A)))
+        const two = [
+            { id: 'int-a', name: 'Integration A' },
+            { id: 'int-b', name: 'Integration B' },
+        ]
+        let releaseA: (r: ManagementResult) => void = () => {}
+        let holdA = false
+        gateway(native, (request) => {
+            if (request.kind !== 'gateway') return standard(request)
+            const read = request.read
+            if (read.kind === 'inventory' && read.resource === 'integrations') return ok({ kind: 'list', list: list('integrations', two) })
+            if (read.kind === 'detail' && read.resource === 'integrations') {
+                return ok({ kind: 'detail', detail: { resource: 'integrations', id: read.id, found: 'found', item: JSON.stringify({ id: read.id, name: read.id === 'int-a' ? 'Integration A' : 'Integration B' }) } })
+            }
+            if (read.kind === 'integrationModels') {
+                const models = { integration: read.id, models: JSON.stringify([{ slug: `model-of-${read.id}`, enabled: true }]), count: 1, total: 1, complete: true, allowAll: false }
+                if (read.id === 'int-a' && holdA) return new Promise<ManagementResult>((resolve) => (releaseA = resolve)).then(() => ok({ kind: 'models', models }))
+                return ok({ kind: 'models', models })
+            }
+            return standard(request)
+        })
+        const user = await open(native)
+        await user.click(await screen.findByRole('tab', { name: 'Integrations' }))
+        // Models read for A, then B opened without closing A.
+        await user.click(await screen.findByRole('button', { name: 'Details for Integration A' }))
+        await user.click(await screen.findByRole('button', { name: 'Read models' }))
+        expect(await screen.findByText('model-of-int-a · enabled')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Details for Integration B' }))
+        await screen.findByRole('heading', { level: 2, name: 'Integration B' })
+        expect(screen.queryByText('model-of-int-a · enabled')).toBeNull()
+        expect(screen.queryByText('Reading models…')).toBeNull()
+        // A's read pending when B is opened: its late reply is discarded.
+        await user.click(screen.getByRole('button', { name: 'Details for Integration A' }))
+        await screen.findByRole('heading', { level: 2, name: 'Integration A' })
+        holdA = true
+        await user.click(await screen.findByRole('button', { name: 'Read models' }))
+        await screen.findByText('Reading models…')
+        await user.click(screen.getByRole('button', { name: 'Details for Integration B' }))
+        await screen.findByRole('heading', { level: 2, name: 'Integration B' })
+        releaseA({ kind: 'failed', failure: 'invalidResponse', outcome: 'completed' })
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(screen.queryByText('model-of-int-a · enabled')).toBeNull()
+        expect(screen.queryByText('Reading models…')).toBeNull()
+        // Reading B shows only B's.
+        await user.click(screen.getByRole('button', { name: 'Read models' }))
+        expect(await screen.findByText('model-of-int-b · enabled')).toBeInTheDocument()
+        expect(screen.queryByText('model-of-int-a · enabled')).toBeNull()
+    })
+
+    it('reviews a change with the selection reference and shows its scope and what blocks it', async () => {
+        const native = scriptedNative(ready(listed(A)))
+        gateway(native, standard)
+        const user = await open(native)
+        await user.click(await screen.findByRole('button', { name: 'Details for openai-prod' }))
+        const remove = await screen.findByRole('button', { name: 'Delete openai-prod' })
+        await user.click(remove)
+        // The workbench takes focus; Review sends the native reference.
+        await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Delete provider openai-prod' })).toHaveFocus())
+        await user.click(screen.getByRole('button', { name: 'Review change' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({
+                kind: 'reviewChange',
+                context: CONTEXT,
+                draft: { kind: 'gatewayProviders', action: 'delete', target: 'p1', body: '{}', workspace: REF_A },
+            })
+        )
+        const review: ChangeReviewView = {
+            review: 'rv-0011223344556677',
+            kind: 'gatewayProviders',
+            action: 'delete',
+            target: 'p1',
+            state: 'ready',
+            failure: null,
+            before: JSON.stringify({ id: 'p1', name: 'openai-prod' }),
+            after: null,
+            sourceKey: null,
+            impact: 'Deletes this item from the workspace.',
+            confirmation: 'openai-prod',
+            workspace: A,
+            references: ['Route: default-route'],
+        }
+        await native.push({ ...native.current, changes: { review, staged: null, results: [] } })
+        expect(await screen.findByText(/Applies to workspace/)).toHaveTextContent('Applies to workspace Team A (team-a), IAM scope scope-team-a.')
+        expect(screen.getByText('Route: default-route')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Apply…' })).toBeDisabled()
+        // Without references it can be applied, with the same reference.
+        await native.push({ ...native.current, changes: { review: { ...review, references: [] }, staged: null, results: [] } })
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Apply…' })).toBeEnabled())
+        await user.type(screen.getByLabelText('Type openai-prod to confirm'), 'openai-prod')
+        await user.click(screen.getByRole('button', { name: 'Apply…' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({
+                kind: 'requestApply',
+                review: review.review,
+                draft: { kind: 'gatewayProviders', action: 'delete', target: 'p1', body: '{}', workspace: REF_A },
+                confirmation: 'openai-prod',
+            })
+        )
+        await user.click(screen.getByRole('button', { name: 'Close' }))
+        expect(remove).toHaveFocus()
+    })
+
+    it('reports provisioning step by step and offers to stop waiting without claiming a rollback', async () => {
+        const native = scriptedNative(ready(listed(A)))
+        gateway(native, standard)
+        const user = await open(native)
+        await user.click(screen.getByRole('button', { name: 'Provision workspace…' }))
+        expect(screen.getByRole('heading', { level: 2, name: 'Provision a workspace' })).toHaveFocus()
+        const pending: ChangeResultView = {
+            operation: 'op-7',
+            kind: 'gatewayWorkspaces',
+            action: 'create',
+            target: '',
+            name: 'Team C',
+            settled: false,
+            outcome: null,
+            failure: null,
+            response: null,
+            readback: null,
+            current: null,
+            secret: 'none',
+            workspace: null,
+            provisioning: null,
+        }
+        await native.push({ ...native.current, changes: { review: null, staged: null, results: [pending] } })
+        await user.click(await screen.findByRole('button', { name: 'Stop waiting' }))
+        expect(native.dispatched).toContainEqual({ kind: 'cancelChange', operation: 'op-7' })
+        expect(screen.getByText(/Stopping does not undo anything already sent/)).toBeInTheDocument()
+        await native.push({
+            ...native.current,
+            changes: {
+                review: null,
+                staged: null,
+                results: [
+                    {
+                        ...pending,
+                        settled: true,
+                        outcome: 'unknown',
+                        failure: { kind: 'service', failure: 'cancelled' },
+                        readback: 'found',
+                        provisioning: {
+                            scopeName: 'scope-team-c',
+                            scope: 'completed',
+                            workspace: 'unknown',
+                            binding: 'notStarted',
+                            workspaceId: 'ws-c',
+                            workspaceSlug: 'team-c',
+                            cleanup: 'unknown',
+                            scopeRead: 'found',
+                            boundRead: false,
+                            workspaceRead: 'found',
+                        },
+                    },
+                ],
+            },
+        })
+        const steps = await screen.findByText('IAM scope scope-team-c')
+        expect(steps.nextElementSibling).toHaveTextContent('done')
+        expect(screen.getByText('Workspace', { selector: 'dt' }).nextElementSibling).toHaveTextContent('outcome unknown')
+        expect(screen.getAllByText(/Whether the IAM scope this attempt created was deleted is not known/).length).toBeGreaterThan(0)
+        expect(screen.queryByText(/Nothing was undone/)).toBeNull()
+        expect(screen.getByText(/workspace found \(team-c\); the scope does not list it/)).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Stop waiting' })).toBeNull()
+    })
+
+    it('calls a provisioning verified only when reading the tenant back established it', async () => {
+        const base: Provisioning = {
+            scopeName: 'scope-team-c',
+            scope: 'completed',
+            workspace: 'completed',
+            binding: 'completed',
+            cleanup: 'notNeeded',
+            workspaceId: 'ws-c',
+            workspaceSlug: 'team-c',
+            scopeRead: 'found',
+            boundRead: true,
+            workspaceRead: 'found',
+        }
+        const cases: [Partial<Provisioning>, RegExp][] = [
+            [{}, /^Provisioned\. The workspace, its IAM scope and the scope’s binding to it were read back\.$/],
+            [{ workspaceRead: 'failed', boundRead: null }, /did not confirm the workspace\./],
+            [{ scopeRead: 'failed', boundRead: null }, /did not confirm the IAM scope\./],
+            [{ boundRead: false }, /did not confirm the scope’s binding to the workspace\./],
+            [{ workspaceRead: 'ambiguous', workspaceId: null, workspaceSlug: null, boundRead: null }, /did not confirm which workspace is this attempt’s/],
+            [{ workspaceRead: 'incomplete', boundRead: null }, /did not confirm the workspace\./],
+            [{ scope: 'deleted', workspace: 'rejected', binding: 'notStarted', cleanup: 'deleted' }, /^Not provisioned\. The IAM scope this attempt created was deleted again\.$/],
+            [{ scope: 'completed', workspace: 'rejected', binding: 'notStarted', cleanup: 'failed' }, /^Not provisioned\. Deleting the IAM scope this attempt created was refused, so it remains\.$/],
+            [{ scope: 'unknown', workspace: 'rejected', binding: 'notStarted', cleanup: 'unknown' }, /^Not every step’s outcome is known\. Whether the IAM scope this attempt created was deleted is not known\./],
+            [{ binding: 'rejected', cleanup: 'retained', boundRead: false }, /^Partially completed: the workspace exists but a later step failed\. The IAM scope was kept/],
+        ]
+        const native = scriptedNative(ready(listed(A)))
+        gateway(native, standard)
+        await open(native)
+        for (const [i, [overrides, expected]] of cases.entries()) {
+            const result: ChangeResultView = {
+                operation: `op-${80 + i}`,
+                kind: 'gatewayWorkspaces',
+                action: 'create',
+                target: '',
+                name: 'Team C',
+                settled: true,
+                outcome: 'completed',
+                failure: null,
+                response: null,
+                readback: 'found',
+                current: null,
+                secret: 'none',
+                workspace: null,
+                provisioning: { ...base, ...overrides },
+            }
+            await native.push({ ...native.current, changes: { review: null, staged: null, results: [result] } })
+            const changes = (await screen.findByRole('heading', { level: 2, name: 'Gateway changes' })).closest('section') as HTMLElement
+            const status = within(changes).getAllByRole('status')[0] as HTMLElement
+            expect(status.textContent).toMatch(expected)
+            if (overrides.workspaceRead || overrides.scopeRead || overrides.boundRead === false)
+                expect(status.textContent).not.toMatch(/were read back/)
+        }
+    })
+
+    it('keeps drafts and uncertain results on this Mac, readable offline and reviewed again only when asked', async () => {
+        const local: GatewayLocalView = {
+            state: 'ready',
+            failure: null,
+            drafts: [
+                {
+                    id: `gd-${'1'.repeat(24)}`,
+                    workspace: A,
+                    kind: 'gatewayProviders',
+                    action: 'update',
+                    target: 'p1',
+                    body: '{"note": "kept"}',
+                    savedAt: '2026-10-20T10:00:00Z',
+                },
+            ],
+            records: [
+                {
+                    id: `gr-${'2'.repeat(24)}`,
+                    workspace: null,
+                    kind: 'gatewayWorkspaces',
+                    action: 'create',
+                    target: '',
+                    name: null,
+                    body: '{"name": "Team C", "scope_name": "scope-team-c"}',
+                    outcome: 'unknown',
+                    readback: 'found',
+                    provisioning: {
+                        scopeName: 'scope-team-c',
+                        scope: 'completed',
+                        workspace: 'unknown',
+                        binding: 'notStarted',
+                        cleanup: 'retained',
+                        workspaceId: null,
+                        workspaceSlug: null,
+                        scopeRead: 'found',
+                        boundRead: null,
+                        workspaceRead: 'failed',
+                    },
+                    settledAt: '2026-10-20T09:00:00Z',
+                },
+            ],
+            problem: null,
+            unsaved: false,
+        }
+        // Offline: the workspaces cannot be read.
+        const native = scriptedNative(ready(view({ local: { ...local, state: 'idle', drafts: [], records: [] } })))
+        gateway(native, () => ({ kind: 'failed', failure: 'network', outcome: 'notSent' }))
+        const user = await open(native)
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'openGatewayLocal', context: CONTEXT }))
+        await native.push({ ...native.current, gateway: view({ local }) })
+        const kept = await screen.findByRole('region', { name: 'Kept on this Mac' })
+        expect(within(kept).getByText(/Its outcome was not known when it settled/)).toBeInTheDocument()
+        expect(within(kept).getByText(/The service has not been read since/)).toBeInTheDocument()
+        expect(within(kept).getByText('IAM scope scope-team-c').nextElementSibling).toHaveTextContent('The IAM scope was kept')
+        // The draft opens for editing; it cannot be reviewed until its
+        // workspace is chosen from a fresh listing.
+        const openDraft = within(kept).getByRole('button', { name: 'Open draft: Update provider p1 in Team A' })
+        await user.click(openDraft)
+        expect(screen.getByRole('heading', { level: 2, name: 'Edit provider p1' })).toHaveFocus()
+        const editor = screen.getByRole('textbox', { name: 'provider draft (JSON)' })
+        expect(editor).toHaveValue('{"note": "kept"}')
+        expect(screen.getByText('This draft is for workspace Team A. Choose that workspace above to review it.')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Review change' })).toBeDisabled()
+        // Edits are kept on this Mac against the same draft (offline too).
+        await user.clear(editor)
+        await user.type(editor, '{{"note": "edited"}')
+        await waitFor(
+            () =>
+                expect(native.dispatched).toContainEqual({
+                    kind: 'saveGatewayDraft',
+                    context: CONTEXT,
+                    draft: { id: `gd-${'1'.repeat(24)}`, kind: 'gatewayProviders', action: 'update', target: 'p1', body: '{"note": "edited"}' },
+                }),
+            { timeout: 3000 }
+        )
+        expect(native.dispatched.some((i) => i.kind === 'reviewChange' || i.kind === 'requestApply')).toBe(false)
+        // Text that is not complete yet is not kept, and the note says so.
+        await native.push({ ...native.current, gateway: view({ local: { ...local, problem: 'incomplete' } }) })
+        expect(await screen.findByText(/Only complete JSON is kept on this Mac, so these edits are not kept yet/)).toBeInTheDocument()
+        expect(screen.getByRole('textbox', { name: 'provider draft (JSON)' })).toHaveValue('{"note": "edited"}')
+        // Back online with Team A chosen: the review carries the reference
+        // chosen now.
+        await native.push({ ...native.current, gateway: { ...listed(A), local } })
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Review change' })).toBeEnabled())
+        await user.click(screen.getByRole('button', { name: 'Review change' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({
+                kind: 'reviewChange',
+                context: CONTEXT,
+                draft: { kind: 'gatewayProviders', action: 'update', target: 'p1', body: '{"note": "edited"}', workspace: REF_A },
+            })
+        )
+        await user.click(screen.getByRole('button', { name: 'Close' }))
+        expect(screen.getByRole('button', { name: 'Open draft: Update provider p1 in Team A' })).toHaveFocus()
+        // An uncertain provisioning is reviewed again from its text, as a new change.
+        await user.click(screen.getByRole('button', { name: 'Open to retry: Provision workspace' }))
+        expect(screen.getByRole('textbox', { name: 'workspace draft (JSON)' })).toHaveValue('{"name": "Team C", "scope_name": "scope-team-c"}')
+        await user.click(screen.getByRole('button', { name: 'Close' }))
+        await user.click(screen.getByRole('button', { name: 'Dismiss record: Provision workspace' }))
+        expect(native.dispatched).toContainEqual({ kind: 'discardGatewayLocal', context: CONTEXT, id: `gr-${'2'.repeat(24)}` })
+        await user.click(screen.getByRole('button', { name: 'Discard draft: Update provider p1 in Team A' }))
+        expect(native.dispatched).toContainEqual({ kind: 'discardGatewayLocal', context: CONTEXT, id: `gd-${'1'.repeat(24)}` })
+    })
+
+    it('says a change stopped before its write or by a workspace switch sent nothing, and one stopped while reading back was applied', async () => {
+        const native = scriptedNative(ready(listed(A)))
+        gateway(native, standard)
+        await open(native)
+        const result = (operation: string, extra: Partial<ChangeResultView>): ChangeResultView => ({
+            operation,
+            kind: 'gatewayServiceKeys',
+            action: 'create',
+            target: '',
+            name: 'deploy-key',
+            settled: true,
+            outcome: 'completed',
+            failure: null,
+            response: null,
+            readback: 'found',
+            current: null,
+            secret: 'none',
+            workspace: A,
+            provisioning: null,
+            ...extra,
+        })
+        await native.push({
+            ...native.current,
+            changes: {
+                review: null,
+                staged: null,
+                results: [
+                    result('op-91', { readback: 'stopped', secret: 'held' }),
+                    result('op-92', { outcome: 'notSent', failure: { kind: 'workspaceChanged' }, readback: null }),
+                ],
+            },
+        })
+        const region = (await screen.findByRole('heading', { level: 2, name: 'Gateway changes' })).closest('section') as HTMLElement
+        expect(within(region).getByText(/Applied: the service accepted the change\. The desktop stopped waiting before reading it back/)).toBeInTheDocument()
+        expect(within(region).getByRole('button', { name: 'Show new key…' })).toBeInTheDocument()
+        expect(within(region).getByText(/Another workspace was chosen before this change was sent, so nothing was sent\..*Nothing was changed\./)).toBeInTheDocument()
     })
 })

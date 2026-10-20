@@ -774,6 +774,56 @@
         "id": "C16-N09",
         "check": "Every Gateway request is a GET (only the token grant is a POST); no secret or synthetic private marker appears in any Accessibility snapshot; v1 data is unchanged."
       }
+    ],
+    "C17": [
+      {
+        "id": "C17-N01",
+        "check": "Editing a provider from its details opens the change with focus on its heading; Review shows the exact workspace (name, slug and IAM scope) with no credential; nothing is written until the native confirmation, which names the workspace and its IAM scope; confirming sends exactly one PUT of the reviewed fields with the tenant header, and the result reads the item back."
+      },
+      {
+        "id": "C17-N02",
+        "check": "Choosing another workspace while a change is prepared in the first closes it (no Review again or Apply… remains) and nothing is written."
+      },
+      {
+        "id": "C17-N03",
+        "check": "A provider a route still references lists that route in its review and Apply… is disabled; an unreferenced provider's delete names the workspace in a destructive sheet whose Return cancels, and Delete sends exactly one DELETE, read back as absent."
+      },
+      {
+        "id": "C17-N04",
+        "check": "A new service key is created in the chosen workspace and tenant; its one-time value is held in memory, appears in no Accessibility snapshot, is shown once in the native secret sheet (matching the issued key) and is no longer held afterwards; closing the change returns focus to New service key…."
+      },
+      {
+        "id": "C17-N05",
+        "check": "Provisioning a workspace opens with focus on its heading, names the IAM scope in its review and native confirmation, sends the scope create, the workspace create and the scope binding once each, reports every step done and read back, and the workspace listing then lists the new workspace."
+      },
+      {
+        "id": "C17-N06",
+        "check": "When the workspace create's reply is lost the result says not every step's outcome is known and nothing was undone, reports the workspace step as unknown and what the readback found, and nothing is retried or deleted."
+      },
+      {
+        "id": "C17-N07",
+        "check": "An applying provisioning offers Stop waiting, saying stopping undoes nothing already sent; stopping it reports the stop, that nothing was undone and what reading the tenant back found, and sends no cleanup."
+      },
+      {
+        "id": "C17-N08",
+        "check": "The Workspace tab reads the chosen workspace and shows its defaults and embedded usage and rate limits, with its Edit and Archive actions; no credential or private marker is shown."
+      },
+      {
+        "id": "C17-N09",
+        "check": "At 200% zoom and at the minimum window size Provision workspace… and Edit workspace… are reached by keyboard inside the window."
+      },
+      {
+        "id": "C17-N10",
+        "check": "The only Gateway and IAM writes are the reviewed and confirmed ones, in order; no secret, one-time key or synthetic private marker appears in any saved Accessibility snapshot; v1 data is unchanged."
+      },
+      {
+        "id": "C17-N11",
+        "check": "Gateway work kept on this Mac (T23): a provider draft edited in the window and the two uncertain provisionings are listed after a relaunch with the management service unreachable (the workspaces cannot be read, which the window says); each record says the service has not been read since; the draft opens with focus on its heading and its kept text, cannot be reviewed until its workspace is chosen from a fresh listing, keeps its offline edit, and Close returns focus to it; nothing reaches the service."
+      },
+      {
+        "id": "C17-N12",
+        "check": "Reconnecting replays nothing (T23): after a relaunch with the service reachable no Gateway or IAM write is sent, the draft (with its offline edit) and both records are still listed, a record goes only when dismissed, and the kept draft's action is reachable by keyboard inside the window."
+      }
     ]
   }
 }

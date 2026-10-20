@@ -3,6 +3,7 @@ import type { ChangeAction } from "./ChangeAction";
 import type { ChangeFailure } from "./ChangeFailure";
 import type { ChangeKind } from "./ChangeKind";
 import type { ChangeReviewState } from "./ChangeReviewState";
+import type { ListedWorkspace } from "./ListedWorkspace";
 import type { ReviewId } from "./ReviewId";
 
 /**
@@ -24,4 +25,13 @@ sourceKey: string | null, impact: string,
 /**
  * What the operator types to confirm ("CREATE" or the item's name).
  */
-confirmation: string | null, };
+confirmation: string | null, 
+/**
+ * The Gateway workspace the change applies to (C17).
+ */
+workspace: ListedWorkspace | null, 
+/**
+ * Configuration that still references the item; while any is listed
+ * the change cannot be applied (C17).
+ */
+references: Array<string>, };

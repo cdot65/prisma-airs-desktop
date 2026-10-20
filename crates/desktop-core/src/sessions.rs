@@ -771,7 +771,7 @@ impl Persistence {
 }
 
 /// Reads a file of at most `limit` bytes; `None` when it does not exist.
-fn read_bounded(path: &Path, limit: u64) -> std::io::Result<Option<Vec<u8>>> {
+pub(crate) fn read_bounded(path: &Path, limit: u64) -> std::io::Result<Option<Vec<u8>>> {
     use std::io::Read;
     let file = match std::fs::File::open(path) {
         Ok(file) => file,

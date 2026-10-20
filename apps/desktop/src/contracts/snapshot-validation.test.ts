@@ -111,6 +111,8 @@ const changeReview = {
     sourceKey: null,
     impact: 'Applies only to this tenant.',
     confirmation: 'Finance',
+    workspace: null,
+    references: [],
 }
 const changeResult = {
     operation: 'op-3',
@@ -125,6 +127,8 @@ const changeResult = {
     readback: 'found',
     current: null,
     secret: 'held',
+    workspace: null,
+    provisioning: null,
 }
 
 describe('shell snapshot validation', () => {
@@ -436,7 +440,7 @@ describe('management result validation', () => {
 
         it('validates the workspace choice in the snapshot', () => {
             const workspace = { id: WS, name: 'Team A', slug: 'team-a', scopeName: 'scope-a' }
-            const view = { workspaces: [workspace], complete: true, selected: { reference: 'gw-aaaaaaaaaaaaaaaaaaaaaaaa', workspace, restored: true }, remembered: null, rememberedMissing: false }
+            const view = { workspaces: [workspace], complete: true, selected: { reference: 'gw-aaaaaaaaaaaaaaaaaaaaaaaa', workspace, restored: true }, remembered: null, rememberedMissing: false, local: { state: 'ready', failure: null, drafts: [], records: [], problem: null, unsaved: false } }
             expect(parseShellSnapshot({ ...valid, gateway: view })).toBeTruthy()
             for (const broken of [
                 { ...view, selected: { ...view.selected, reference: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' } },
@@ -446,6 +450,102 @@ describe('management result validation', () => {
             ]) {
                 expect(() => parseShellSnapshot({ ...valid, gateway: broken })).toThrow(ContractViolation)
             }
+        })
+    })
+
+    describe('Gateway changes (C17)', () => {
+        const workspace = { id: '16f7e90d-382a-4e78-b577-1b01eb5f8297', name: 'Team A', slug: 'team-a', scopeName: 'scope-a' }
+        const gatewayReview = {
+            ...changeReview,
+            kind: 'gatewayProviders',
+            action: 'delete',
+            target: 'p1',
+            after: null,
+            workspace,
+            references: ['Route: default-route'],
+        }
+        const provisioning = {
+            scopeName: 'scope-c', scope: 'completed', workspace: 'unknown', binding: 'notStarted', workspaceId: null,
+            workspaceSlug: null, cleanup: 'retained', scopeRead: 'found', boundRead: null, workspaceRead: 'incomplete',
+        }
+        const provisioned = { ...changeResult, kind: 'gatewayWorkspaces', action: 'create', target: '', secret: 'none', readback: 'differs', provisioning }
+        const changes = (review: unknown, results: unknown[] = []) => ({ ...valid, changes: { staged: null, review, results } })
+
+        it('accepts what Rust issues', () => {
+            expect(parseShellSnapshot(changes(gatewayReview))).toBeTruthy()
+            expect(parseShellSnapshot(changes(null, [provisioned, { ...changeResult, kind: 'gatewayIntegrations', action: 'models', workspace }]))).toBeTruthy()
+        })
+
+        it('rejects references, steps and states Rust never issues', () => {
+            for (const broken of [
+                changes({ ...gatewayReview, action: 'update' }),
+                changes({ ...gatewayReview, state: 'failed', failure: { kind: 'problem', problem: 'referenced' } }),
+                changes({ ...gatewayReview, references: [7] }),
+                changes({ ...gatewayReview, kind: 'gatewaySecrets' }),
+                changes({ ...gatewayReview, workspace: { ...workspace, id: 'a b' } }),
+                changes(null, [{ ...provisioned, kind: 'gatewayProviders' }]),
+                changes(null, [{ ...provisioned, provisioning: { ...provisioning, scope: 'rolledBack' } }]),
+                changes(null, [{ ...provisioned, provisioning: { ...provisioning, workspaceRead: 'differs' } }]),
+                changes(null, [{ ...changeResult, readback: 'probably' }]),
+                changes(null, [{ ...provisioned, provisioning: { ...provisioning, cleanup: 'undone' } }]),
+                changes(null, [{ ...provisioned, provisioning: { ...provisioning, cleanup: undefined } }]),
+                changes(null, [{ ...changeResult, failure: { kind: 'workspaceMoved' } }]),
+            ]) {
+                expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
+            }
+        })
+
+        it('accepts a stopped readback, a workspace switch, an unidentified workspace and each cleanup', () => {
+            const results = [
+                { ...changeResult, readback: 'stopped' },
+                { ...changeResult, outcome: 'notSent', readback: null, failure: { kind: 'workspaceChanged' } },
+                ...['notNeeded', 'retained', 'deleted', 'failed', 'unknown'].map((cleanup) => ({
+                    ...provisioned,
+                    provisioning: { ...provisioning, cleanup, workspaceRead: 'ambiguous' },
+                })),
+            ]
+            expect(parseShellSnapshot(changes(null, results))).toBeTruthy()
+        })
+
+        describe('work kept on this Mac', () => {
+            const draft = {
+                id: `gd-${'a'.repeat(24)}`, workspace, kind: 'gatewayProviders', action: 'update', target: 'p1',
+                body: '{"note": "n"}', savedAt: '2026-10-20T00:00:00Z',
+            }
+            const record = {
+                id: `gr-${'b'.repeat(24)}`, workspace: null, kind: 'gatewayWorkspaces', action: 'create', target: '',
+                name: null, body: '{}', outcome: 'unknown', readback: 'incomplete', provisioning, settledAt: '2026-10-20T00:00:00Z',
+            }
+            const local = { state: 'ready', failure: null, drafts: [draft], records: [record], problem: null, unsaved: false }
+            const gateway = (l: unknown) => ({
+                ...valid,
+                gateway: { workspaces: null, complete: false, selected: null, remembered: null, rememberedMissing: false, local: l },
+            })
+
+            it('accepts what Rust issues', () => {
+                expect(parseShellSnapshot(gateway(local))).toBeTruthy()
+                expect(parseShellSnapshot(gateway({ ...local, state: 'failed', failure: 'unreadable', drafts: [], records: [] }))).toBeTruthy()
+                expect(parseShellSnapshot(gateway({ ...local, problem: 'credential' }))).toBeTruthy()
+                expect(parseShellSnapshot(gateway({ ...local, problem: 'incomplete' }))).toBeTruthy()
+            })
+
+            it('rejects kept work Rust never issues', () => {
+                for (const broken of [
+                    { ...local, drafts: [{ ...draft, id: 'rv-1' }] },
+                    { ...local, drafts: [{ ...draft, kind: 'profiles' }] },
+                    { ...local, drafts: [{ ...draft, body: 7 }] },
+                    { ...local, drafts: [{ ...draft, workspace: { ...workspace, id: 'a b' } }] },
+                    { ...local, records: [{ ...record, kind: 'gatewayProviders' }] },
+                    { ...local, records: [{ ...record, outcome: 'rolledBack' }] },
+                    { ...local, state: 'failed', failure: null },
+                    { ...local, failure: 'unreadable' },
+                    { ...local, problem: 'secret' },
+                    { ...local, unsaved: undefined },
+                    undefined,
+                ]) {
+                    expect(() => parseShellSnapshot(gateway(broken))).toThrow(ContractViolation)
+                }
+            })
         })
     })
 })

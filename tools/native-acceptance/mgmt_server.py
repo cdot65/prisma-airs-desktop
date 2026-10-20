@@ -30,6 +30,13 @@ Writes (C09) change an in-memory inventory: topics create/update/delete,
 API key create/regenerate/delete (a one-time api_key in the reply). The log
 records each write's body field names, its authorship and auth-code match,
 and only a SHA-256 of any issued one-time key.
+
+Gateway writes (C17) change an overlay the Gateway reads consult: provider
+renames and deletes, created service keys (a one-time key in the reply,
+logged only as a SHA-256), created IAM scopes and their bindings, and
+provisioned workspaces. Modes gwLose ("METHOD path": apply, then close
+without a reply) and gwHang ("METHOD path": never reply) make a step's
+outcome unknown.
 """
 
 import argparse
@@ -146,9 +153,16 @@ class Handler(BaseHTTPRequestHandler):
                 record["authCodeMatches"] = sent.get("auth_code") == srv.auth_code if "auth_code" in sent else None
                 record["description"] = sent.get("description")
         status, payload = self.write(method, url.path, query, record, mode) if method != "GET" and url.path != "/oauth2/access_token" else self.reply(url.path, query, record, mode)
+        if status == "logged":
+            self.close_connection = True
+            return
         record["status"] = status
         with srv.lock, open(srv.log, "a") as f:
             f.write(json.dumps(record) + "\n")
+        if status == "lost":
+            # The step took effect; its reply is lost with the connection.
+            self.close_connection = True
+            return
         self.respond(status, json.dumps(payload).encode() if payload is not None else b"")
 
     def reply(self, path, query, record, mode):
@@ -369,10 +383,18 @@ class Handler(BaseHTTPRequestHandler):
                        "description": None, "workspace_id": None, "ai_provider_id": "openai",
                        "object": "integration", "masked_key": "GW-PRIVATE-MASKED"}
         admin, iam = int(mode.get("gwAdminStatus", 200)), int(mode.get("gwIamStatus", 200))
+        gw = self.server.gw
+        with self.server.lock:
+            created_ws = [dict(w) for w in gw["workspaces"] if w["id"] not in gw["archived"]]
+            created = {k: [dict(i) for i in v if i["id"] not in gw["deleted"]] for k, v in gw["created"].items()}
+            renamed, deleted, scopes = dict(gw["renamed"]), set(gw["deleted"]), {k: dict(v) for k, v in gw["scopes"].items()}
         if path.startswith("/ai_gw/admin/v2/"):
             if admin != 200:
                 return admin, {"error": "SERVER-TEXT-NEVER-SHOWN"}
             rest = path[len("/ai_gw/admin/v2"):]
+            if rest == "/workspaces":
+                # The admin inventory (C17 reconciliation reads it).
+                return 200, listing([workspace(w) for w in listed] + created_ws)
             if rest == "/integrations":
                 return 200, listing([integration])
             if rest == f"/integrations/{GW_INTEGRATION}":
@@ -386,6 +408,11 @@ class Handler(BaseHTTPRequestHandler):
             if iam != 200:
                 return iam, {"error": "SERVER-TEXT-NEVER-SHOWN"}
             name = path[len("/iam/v1/scopes/"):]
+            if name in scopes:
+                return 200, {"name": name, "description": "", "tsg_id": self.server.tsg, "id": f"id-{name}",
+                             "resources": scopes[name]["resources"]}
+            if name not in ("scope-team-a", "scope-team-b"):
+                return 404, {"error": "not found"}
             # Team A's scope binds it; Team B's binds someone else.
             bound = "team-a" if name == "scope-team-a" else "someone-else"
             return 200, {"name": name, "description": "", "tsg_id": self.server.tsg, "id": f"id-{name}",
@@ -393,25 +420,43 @@ class Handler(BaseHTTPRequestHandler):
         rest = path[len("/ai_gw/v2"):]
         ws = query.get("workspace_id")
         if rest == "/workspaces":
-            return 200, listing([workspace(w) for w in listed])
+            return 200, listing([workspace(w) for w in listed] + created_ws)
+        if rest.startswith("/workspaces/"):
+            wid = rest[len("/workspaces/"):]
+            base = workspace(wid) if wid in spaces else next((w for w in created_ws if w["id"] == wid), None)
+            if base is None:
+                return 404, {"error": "not found"}
+            return 200, {**base, "defaults": {"config_id": route(GW_A)["id"], "allow_config_override": True},
+                         "usage_limits": [{"credit_limit": 500, "type": "cost", "current_usage": 12}],
+                         "rate_limits": [{"type": "requests", "unit": "rpm", "value": 60}]}
         if ws is not None and ws not in spaces:
             return 200, listing([])
+
+        def shown(p):
+            return {**p, "name": renamed.get(p["id"], p["name"])}
         if rest == "/providers":
             # Team B's providers are a partial page: 1 of 5, more follow.
-            return 200, listing([provider(ws, 1), provider(ws, 2)]) if ws == GW_A else listing([provider(ws, 1)], 5, True)
+            if ws == GW_A:
+                return 200, listing([shown(p) for p in (provider(ws, 1), provider(ws, 2)) if p["id"] not in deleted])
+            return 200, listing([provider(ws, 1)], 5, True)
         if rest == "/configs":
             return 200, listing([route(ws)])
         if rest == "/guardrails":
             return 200, listing([guardrail(ws)])
         if rest == "/api-keys/service":
-            return 200, listing([key(ws, 1, ["completions.write"]), key(ws, 2, ["models.read"])])
+            return 200, listing([key(ws, 1, ["completions.write"]), key(ws, 2, ["models.read"])]
+                                + [k for k in created["api-keys/service"] if k["workspace_id"] == ws])
+        for k in created["api-keys/service"]:
+            if rest == f"/api-keys/service/{k['id']}":
+                return 200, k
         if rest == "/api-keys/user":
             return 200, listing([key(ws, 3, ["completions.write"])])
         for w in spaces:
             r = route(w)
             if rest == f"/configs/{r['id']}":
                 return 200, {**r, "config": json.dumps({"strategy": {"mode": "fallback"}, "targets": [
-                    {"provider": "@primary", "api_key": "GW-PRIVATE-ROUTE-KEY", "forward_headers": ["x-trace"]},
+                    {"provider": f"@{spaces[w][1]}-provider-1", "api_key": "GW-PRIVATE-ROUTE-KEY",
+                     "forward_headers": ["x-trace"]},
                     {"provider": "@backup", "weight": 1}]}), "format": "json", "type": "ROUTING", "version_id": "v-1"}
             g = guardrail(w)
             if rest == f"/guardrails/{g['id']}":
@@ -421,9 +466,12 @@ class Handler(BaseHTTPRequestHandler):
             for n in (1, 2):
                 p = provider(w, n)
                 if rest == f"/providers/{p['id']}":
+                    if p["id"] in deleted:
+                        return 404, {"error": "not found"}
                     return 200, {"id": p["id"], "ai_provider_name": "openai",
                                  "model_config": {"api_key": "GW-PRIVATE-MODEL-CONFIG"}, "key": "GW-PRIVATE-PROVIDER-KEY",
-                                 "masked_api_key": "GW-PRIVATE-MASKED", "slug": p["slug"], "name": p["name"],
+                                 "masked_api_key": "GW-PRIVATE-MASKED", "slug": p["slug"],
+                                 "name": renamed.get(p["id"], p["name"]),
                                  "usage_limits": None, "status": "active", "note": None,
                                  "created_at": "2026-10-01T00:00:00Z", "expires_at": None, "last_reset_at": None,
                                  "rate_limits": [], "integration_id": GW_INTEGRATION, "object": "provider"}
@@ -478,6 +526,8 @@ class Handler(BaseHTTPRequestHandler):
             return 401, {"error": "unauthorized"}
         if path.startswith("/dlp/v2/api/"):
             return self.dlp_write(method, path, record, mode)
+        if path.startswith(("/ai_gw/", "/iam/v1/")):
+            return self.gateway_write(method, path, record, mode)
         try:
             body = json.loads(self.sent_body or b"{}")
         except ValueError:
@@ -529,6 +579,76 @@ class Handler(BaseHTTPRequestHandler):
                 srv.keys = [k for k in srv.keys if k["api_key_name"] != name]
                 return 200, {"message": "deleted"}
         return 404, {"error": "not found"}
+
+    def gateway_write(self, method, path, record, mode):
+        """C17: Gateway and IAM writes against the overlay the reads consult.
+        A lost step is applied, then its connection closed without a reply;
+        a hung step never replies."""
+        srv = self.server
+        step = f"{method} {path}"
+        if mode.get("gwHang") == step:
+            # Logged now: the step never replies.
+            record["hung"] = True
+            record["status"] = "hung"
+            with srv.lock, open(srv.log, "a") as f:
+                f.write(json.dumps(record) + "\n")
+            time.sleep(120)
+            return "logged", None
+        try:
+            body = json.loads(self.sent_body or b"{}")
+        except ValueError:
+            body = {}
+        record["gatewayBody"] = {k: v for k, v in body.items() if k not in ("key", "secret_mappings")} if isinstance(body, dict) else None
+        gw = srv.gw
+        status, payload = 404, {"error": "not found"}
+        with srv.lock:
+            if method == "PUT" and path.startswith("/ai_gw/v2/providers/"):
+                pid = path.rsplit("/", 1)[1]
+                if "name" in body:
+                    gw["renamed"][pid] = body["name"]
+                status, payload = 200, {"success": True, "id": pid}
+            elif method == "DELETE" and path.startswith("/ai_gw/v2/providers/"):
+                gw["deleted"].add(path.rsplit("/", 1)[1])
+                status, payload = 204, None
+            elif method == "POST" and path == "/ai_gw/v2/api-keys/service":
+                srv.serial += 1
+                kid = f"7e3a0000-0000-4000-8000-{srv.serial:012d}"
+                secret = f"GW-ONE-TIME-{srv.serial:04d}-{base64.b32encode(hashlib.sha256(str(srv.serial).encode()).digest()[:10]).decode()}"
+                gw["created"]["api-keys/service"].append({"id": kid, "name": body.get("name"), "object": "api-key",
+                                                          "status": "active", "key": "GW-PRIVATE-KEY-VALUE",
+                                                          "scopes": body.get("scopes", []), "workspace_id": body.get("workspace_id")})
+                record["issuedSha256"] = hashlib.sha256(secret.encode()).hexdigest()
+                status, payload = 200, {"id": kid, "success": True, "key": secret, "object": "api-key"}
+            elif method == "POST" and path == "/iam/v1/scopes":
+                name = body.get("name", "")
+                gw["scopes"][name] = {"resources": []}
+                status, payload = 200, {"name": name, "description": body.get("description", ""), "tsg_id": srv.tsg,
+                                        "id": f"id-{name}", "resources": []}
+            elif method == "PUT" and path.startswith("/iam/v1/scopes/"):
+                name = path.rsplit("/", 1)[1]
+                if name in gw["scopes"]:
+                    gw["scopes"][name]["resources"] = body.get("resources", [])
+                    status, payload = 200, {"name": name, "description": body.get("description", ""), "tsg_id": srv.tsg,
+                                            "id": f"id-{name}", "resources": gw["scopes"][name]["resources"]}
+            elif method == "DELETE" and path.startswith("/iam/v1/scopes/"):
+                gw["scopes"].pop(path.rsplit("/", 1)[1], None)
+                status, payload = 204, None
+            elif method == "POST" and path == "/ai_gw/admin/v2/workspaces":
+                srv.serial += 1
+                wid = f"16f7e90d-382a-4e78-b577-{srv.serial:012d}"
+                name = body.get("name", "Workspace")
+                slug = name.lower().replace(" ", "-")
+                gw["workspaces"].append({"id": wid, "slug": slug, "name": name, "icon": None, "description": None,
+                                         "created_at": "2026-10-20T00:00:00Z", "last_updated_at": "2026-10-20T00:00:00Z",
+                                         "is_default": 0, "status": "active", "scope_name": body.get("scope_name"),
+                                         "object": "workspace"})
+                status, payload = 200, {"id": wid, "name": name, "slug": slug, "description": None,
+                                        "created_at": "2026-10-20T00:00:00Z", "last_updated_at": "2026-10-20T00:00:00Z",
+                                        "scope_name": body.get("scope_name"), "object": "workspace"}
+        if mode.get("gwLose") == step:
+            record["lost"] = True
+            return "lost", None
+        return status, payload
 
     def respond(self, status, payload):
         if status == 204:
@@ -597,6 +717,8 @@ class Server(ThreadingHTTPServer):
                               "category": "Confidential", "region_name": "United States"}],
         }
         self.auth_code = "SYNTHETIC-C08-DP-CODE"
+        self.gw = {"renamed": {}, "deleted": set(), "created": {"api-keys/service": []}, "scopes": {},
+                   "workspaces": [], "archived": set()}
         self.topics = [{"topic_id": "11111111-1111-4111-8111-111111111111", "topic_name": "Finance",
                         "revision": 1, "description": "Money talk"}]
         self.apps = [{"customer_appId": "app-1", "tsg_id": tsg, "app_name": "Support bot",

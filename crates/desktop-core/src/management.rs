@@ -665,6 +665,11 @@ impl ManagementBinding {
         })
     }
 
+    /// The Gateway client over this binding's management credential (C16).
+    pub(crate) fn gateway(&self) -> &AIGatewayClient {
+        &self.gateway
+    }
+
     pub(crate) fn options(deadline: Instant) -> Option<RequestOptions> {
         let remaining = deadline.saturating_duration_since(Instant::now());
         RequestOptions::with_timeout(remaining.max(Duration::from_millis(1)))

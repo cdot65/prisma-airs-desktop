@@ -70,7 +70,7 @@ impl<'de> serde::Deserialize<'de> for OperationId {
 }
 
 /// What is known about the remote effect of an operation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, serde::Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum Outcome {
     /// Nothing reached the remote service.

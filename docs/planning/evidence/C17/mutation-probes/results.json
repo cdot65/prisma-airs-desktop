@@ -1,0 +1,1116 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/administration/runtime-changes.tsx": "1ae52c6af415b739672a03f953efcd62d01261cc4a935ec7b6fd4f4d19017f5f",
+      "apps/desktop/src/features/gateway/gateway-view.tsx": "34078f6b289027d680d238112a74bbeeb4c347d912bc7d7f4ed09afe559f9cd0",
+      "crates/desktop-core/src/authority.rs": "93bd65773cd578ee88ecc24f18a969460fc4661adea79b0145da144831f5f0c6",
+      "crates/desktop-core/src/authority/change_domain.rs": "b71d2661432b3ddad7d55372b6616b9332c5f2158697dcfd63db76b855df2080",
+      "crates/desktop-core/src/authority/gateway_domain.rs": "e1ef0c81ee2466fbaedd10770b887522c50ceaededd98de4a572eb04ec49aaf6",
+      "crates/desktop-core/src/authority/gateway_local_domain.rs": "e4a5d59b71502bdfaea3b527c277799339618a72b93c3ade95437fbb61186772",
+      "crates/desktop-core/src/gateway_changes.rs": "8b917e47a82a6d0a6eb8179192b6482e4b84aab06482ab31b8d16d23746200a5",
+      "crates/desktop-core/src/gateway_local.rs": "4c768994b2a0ce5b038ba6ec6f01814725e6f32fcda820f42b0feb27673cf0cf",
+      "packages/desktop-contracts/src/client.ts": "c28317a2d535371e57e23f7a04f1b3830ebaec56bee333c7a705445a4d3b4c36"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_changes"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "a draft may name another workspace",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_changes"
+    ],
+    "guard": "scoped_creates_are_placed_in_the_chosen_workspace_only",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a create is not placed in the chosen workspace",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_changes"
+    ],
+    "guard": "scoped_creates_are_placed_in_the_chosen_workspace_only",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a create does not belong to the credential's tenant",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_changes"
+    ],
+    "guard": "scoped_creates_are_placed_in_the_chosen_workspace_only",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "credential-bearing drafts are accepted",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_changes"
+    ],
+    "guard": "drafts_never_carry_credentials",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "provisioning may leave its scope to be generated",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_changes"
+    ],
+    "guard": "provisioning_names_its_exact_scope",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "catalog patterns are accepted unchecked",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_changes"
+    ],
+    "guard": "catalog_parameters_are_checked_and_fail_closed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the one-time key stays in an unstripped reply",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_changes"
+    ],
+    "guard": "a_one_time_key_is_taken_before_anything_is_shown",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an item of another workspace is changed",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_review_is_bound_to_its_workspace_and_a_draft_cannot_choose_another",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a stored routing credential may be replaced",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "credentials_never_travel_in_a_draft_and_stored_ones_are_protected",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "stored guardrail credentials may be lost",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "credentials_never_travel_in_a_draft_and_stored_ones_are_protected",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "guardrail checks skip the catalog",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "guardrail_checks_are_validated_against_the_catalog",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an existing scope is provisioned as new",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "provisioning_reports_every_step_and_reconciles_what_exists",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "traffic counters make a review conflict",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_change_made_since_review_is_a_conflict_but_traffic_counters_are_not",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "referencing routes are not listed",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "deletes_are_blocked_while_anything_references_the_item",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a non-empty workspace can be archived",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "deletes_are_blocked_while_anything_references_the_item",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "workspaces granted the integration are ignored",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "deletes_are_blocked_while_anything_references_the_item",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "model readback claims what was not taken",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "readbacks_say_when_the_service_did_not_take_the_reviewed_change",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a routing readback is never checked",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "readbacks_say_when_the_service_did_not_take_the_reviewed_change",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "provisioning is not reconciled",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "provisioning_reports_every_step_and_reconciles_what_exists",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "RequestApply ignores references",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "deletes_are_blocked_while_anything_references_the_item",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Gateway change ignores a change since review",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_change_made_since_review_is_a_conflict_but_traffic_counters_are_not",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a review survives another workspace choice",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_review_is_bound_to_its_workspace_and_a_draft_cannot_choose_another",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a review survives a context change",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "a_denied_or_stale_confirmation_sends_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an uncertain step is reported known",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "an_uncertain_or_failed_step_keeps_its_outcome_and_nothing_is_retried_or_undone",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a cleaned-up scope counts as partial completion",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "an_uncertain_or_failed_step_keeps_its_outcome_and_nothing_is_retried_or_undone",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a stop before the write is reported unknown",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "cancelling_an_apply_never_claims_a_rollback",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Gateway write is not marked sent",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "cancelling_an_apply_never_claims_a_rollback",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a retired workspace's apply still writes",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "choosing_another_workspace_before_the_write_sends_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "choosing another workspace leaves its applies waiting",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "choosing_another_workspace_before_the_write_sends_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a stopped readback drops the answered write and its key",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "stopping_during_the_readback_keeps_the_answered_write_and_its_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Runtime write is forgotten when its readback is stopped",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "runtime_changes"
+    ],
+    "guard": "stopping_during_the_readback_keeps_the_completed_write_and_its_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the all-models setting is not read back",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_models_readback_checks_the_all_models_setting",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reconciliation ignores which workspace is the attempt's",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_reused_scope_never_attributes_another_workspace_to_the_attempt",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the scope cleanup is not reported",
+    "files": [
+      "crates/desktop-core/src/gateway_changes.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_failed_cleanup_is_reported_and_never_called_undone",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an uncertain change is not kept on this Mac",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "drafts_and_uncertain_outcomes_survive_an_offline_restart_and_nothing_is_replayed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a kept draft may hold a credential",
+    "files": [
+      "crates/desktop-core/src/gateway_local.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "drafts_and_uncertain_outcomes_survive_an_offline_restart_and_nothing_is_replayed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "text still being typed is kept as a draft",
+    "files": [
+      "crates/desktop-core/src/gateway_local.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "credential_text_never_reaches_this_mac_even_while_it_is_being_typed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a reset leaves Gateway local work to be read and written",
+    "files": [
+      "crates/desktop-core/src/authority.rs",
+      "crates/desktop-core/src/authority/gateway_local_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "local_work_held_across_a_reset_never_reappears",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a change in flight is dropped with its context",
+    "files": [
+      "crates/desktop-core/src/authority/change_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_write_in_flight_when_the_context_changes_is_kept_under_its_own_tenant",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a deleted tenant's change is still kept",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_local_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_changes"
+    ],
+    "guard": "a_write_in_flight_when_the_context_changes_is_kept_under_its_own_tenant",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a provisioning is called verified without its readback",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "calls a provisioning verified only when reading the tenant back established it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a kept draft can be reviewed outside its workspace",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "keeps drafts and uncertain results on this Mac, readable offline and reviewed again only when asked",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "work kept on this Mac is never opened",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "keeps drafts and uncertain results on this Mac, readable offline and reviewed again only when asked",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "kept work of other kinds is accepted",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects kept work Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a detail keeps another integration's models",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "never shows one integration\u2019s models under another",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the workspace detail is read as a scoped read",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "shows the chosen workspace\u2019s own settings and limits, and its failures",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a draft omits the selection reference",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "reviews a change with the selection reference and shows its scope and what blocks it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Apply is offered while references remain",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "reviews a change with the selection reference and shows its scope and what blocks it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "provisioning steps are not shown",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "reports provisioning step by step and offers to stop waiting without claiming a rollback",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Stop waiting sends nothing",
+    "files": [
+      "apps/desktop/src/features/administration/runtime-changes.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "reports provisioning step by step and offers to stop waiting without claiming a rollback",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "references are accepted on any review",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects references, steps and states Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "steps are accepted on any result",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects references, steps and states Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

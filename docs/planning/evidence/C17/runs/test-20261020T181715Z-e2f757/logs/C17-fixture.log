@@ -1,0 +1,21 @@
+
+running 12 tests
+test a_review_is_bound_to_its_workspace_and_a_draft_cannot_choose_another ... ok
+test a_reviewed_change_inside_the_chosen_workspace_applies_once_after_confirmation ... ok
+test a_change_made_since_review_is_a_conflict_but_traffic_counters_are_not ... ok
+test credentials_never_travel_in_a_draft_and_stored_ones_are_protected ... ok
+test one_time_keys_are_held_in_memory_and_shown_once ... ok
+test guardrail_checks_are_validated_against_the_catalog ... ok
+test cancelling_an_apply_never_claims_a_rollback ... ok
+test deletes_are_blocked_while_anything_references_the_item ... ok
+test an_uncertain_or_failed_step_keeps_its_outcome_and_nothing_is_retried_or_undone ... ok
+test provisioning_reports_every_step_and_reconciles_what_exists ... ok
+test readbacks_say_when_the_service_did_not_take_the_reviewed_change ... ok
+test a_credential_replacement_ends_the_review_and_nothing_is_replayed_after_restart ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/gateway_changes/main.rs (target/debug/deps/gateway_changes-54f2191c5de19839)

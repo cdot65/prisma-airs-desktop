@@ -19,6 +19,7 @@ use zeroize::Zeroizing;
 
 mod change_domain;
 mod gateway_domain;
+mod gateway_local_domain;
 mod learner_domain;
 mod library_domain;
 mod management_domain;
@@ -174,6 +175,26 @@ pub enum Intent {
     /// Clear an applied change's one-time API key from memory.
     ForgetSecret {
         operation: OperationId,
+    },
+    /// Stop waiting for an applying change (C17). Nothing sent is undone:
+    /// a change cancelled before its write is reported not sent, one
+    /// cancelled after as unknown (a provisioning is read back).
+    CancelChange {
+        operation: OperationId,
+    },
+    /// Open the active tenant's Gateway work kept on this Mac (C17).
+    OpenGatewayLocal {
+        context: ContextRef,
+    },
+    /// Keep a Gateway change draft on this Mac (no review or authority).
+    SaveGatewayDraft {
+        context: ContextRef,
+        draft: gateway_local_domain::GatewayDraftInput,
+    },
+    /// Remove a kept Gateway draft or uncertain-change record.
+    DiscardGatewayLocal {
+        context: ContextRef,
+        id: String,
     },
     /// Open the active tenant's FP/FN reports (C11).
     OpenReports {
@@ -960,6 +981,11 @@ struct State {
     /// The open Runtime change review (one at a time).
     change_review: Option<change_domain::ChangeReview>,
     change_results: Vec<change_domain::ChangeRecord>,
+    /// Gateway changes whose context was retired while their write may be
+    /// in flight, held only to keep how they settle on this Mac under
+    /// their own tenant (never shown, never applied again; a reply or key
+    /// is dropped unread).
+    detached_changes: Vec<change_domain::ChangeRecord>,
     /// The dictionary keyword file being chosen or staged.
     staging: Option<change_domain::Staging>,
     confirmer: Arc<dyn OperatorConfirmation>,
@@ -987,6 +1013,10 @@ struct State {
     /// Every opened tenant's FP/FN reports (C11), each with its own pending
     /// writes.
     reports: Vec<sessions_domain::Reports>,
+    /// Every opened tenant's Gateway drafts and uncertain changes (C17).
+    gateway_local: Vec<gateway_local_domain::LocalWork>,
+    /// Gateway work writes collected by settlements, started by the caller.
+    gateway_local_writes: Vec<(TenantId, u64)>,
     /// The last report or investigation export.
     export: Option<sessions_domain::Export>,
     /// Report and case Library file writes, one at a time (tenant deletion
@@ -1514,8 +1544,15 @@ enum Effect {
         tenant: TenantId,
         generation: u64,
     },
-    /// Remove a deleted tenant's report file.
+    /// Remove a deleted tenant's report (or Gateway work) file.
     ForgetReports(std::path::PathBuf),
+    LoadGatewayLocal {
+        lease: u64,
+    },
+    StoreGatewayLocal {
+        tenant: TenantId,
+        generation: u64,
+    },
     SaveFile {
         lease: u64,
         suggested: String,
@@ -1605,6 +1642,7 @@ impl Core {
             management_calls: Vec::new(),
             change_review: None,
             change_results: Vec::new(),
+            detached_changes: Vec::new(),
             staging: None,
             confirmer: Arc::clone(&adapters.confirmer),
             secrets: Arc::clone(&adapters.secrets),
@@ -1623,6 +1661,8 @@ impl Core {
             offline: None,
             sessions_root: adapters.sessions_root.clone(),
             reports: Vec::new(),
+            gateway_local: Vec::new(),
+            gateway_local_writes: Vec::new(),
             export: None,
             report_writer: Arc::default(),
             library_root: adapters.library_root.clone(),
@@ -1936,6 +1976,9 @@ impl AuthorityHandle {
                     if result.is_err() {
                         effects.clear();
                     }
+                    // Settlements published by this intent are kept on
+                    // this Mac whether or not the intent itself succeeded.
+                    effects.extend(gateway_local_effects(&mut state));
                     // Learner records wait in the ledger for a confirmed
                     // save; once one has happened, let cleanup resume.
                     if !state.durability_unconfirmed && !state.data.learner_cleanup.is_empty() {
@@ -2156,6 +2199,9 @@ fn admit(
             if let Some(path) = state.forget_reports(&tenant) {
                 effects.push(Effect::ForgetReports(path));
             }
+            if let Some(path) = state.forget_gateway_local(&tenant) {
+                effects.push(Effect::ForgetReports(path));
+            }
             state.forget_library(&tenant);
             state.forget_holds(&tenant);
             for record in [retired_session, retired_management].into_iter().flatten() {
@@ -2279,6 +2325,29 @@ fn admit(
         }
         Intent::ForgetSecret { operation } => {
             state.forget_secret(&operation)?;
+            state.changed();
+        }
+        Intent::CancelChange { operation } => {
+            let starts = state.cancel_change(&operation)?;
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::OpenGatewayLocal { context } => {
+            if let Some(lease) = state.open_gateway_local(&context)? {
+                effects.push(Effect::LoadGatewayLocal { lease });
+            }
+            state.changed();
+        }
+        Intent::SaveGatewayDraft { context, draft } => {
+            let saved = state.save_gateway_draft(&context, draft);
+            // A refused draft still publishes its problem.
+            state.changed();
+            let (tenant, generation) = saved?;
+            effects.push(Effect::StoreGatewayLocal { tenant, generation });
+        }
+        Intent::DiscardGatewayLocal { context, id } => {
+            let (tenant, generation) = state.discard_gateway_local(&context, &id)?;
+            effects.push(Effect::StoreGatewayLocal { tenant, generation });
             state.changed();
         }
         Intent::OpenReports { context } => {
@@ -2617,6 +2686,7 @@ fn admit(
             state.reports.clear();
             state.libraries.clear();
             state.workbench.clear();
+            state.forget_all_gateway_local();
             state.holds.clear();
             state.overview = None;
             state.export = None;
@@ -2975,6 +3045,65 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     }
                 });
             }
+            Effect::LoadGatewayLocal { lease } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    // Reads take their turn with the writes (and with
+                    // tenant deletion and reset): a read admitted before a
+                    // reset finds its lease gone once its turn comes.
+                    let Some(writer) = lock(&inner).ok().map(|s| Arc::clone(&s.report_writer))
+                    else {
+                        return;
+                    };
+                    let _turn = writer.lock().await;
+                    let Some(path) = lock(&inner)
+                        .ok()
+                        .and_then(|s| s.gateway_local_target(lease))
+                    else {
+                        return;
+                    };
+                    let loaded =
+                        tokio::task::spawn_blocking(move || crate::gateway_local::load(&path))
+                            .await
+                            .unwrap_or(Err(crate::sessions::ReportStoreFailure::Unavailable));
+                    let effects = match lock(&inner) {
+                        Ok(mut state) => {
+                            state.settle_gateway_local(lease, loaded);
+                            state.changed();
+                            gateway_local_effects(&mut state)
+                        }
+                        Err(_) => return,
+                    };
+                    run_effects(&inner, effects);
+                });
+            }
+            Effect::StoreGatewayLocal { tenant, generation } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let Some(writer) = lock(&inner).ok().map(|s| Arc::clone(&s.report_writer))
+                    else {
+                        return;
+                    };
+                    let _write = writer.lock().await;
+                    // Only the newest book is written (under the writer
+                    // lock tenant deletion and reset take too).
+                    let Some((path, book)) = lock(&inner)
+                        .ok()
+                        .and_then(|s| s.gateway_local_write(&tenant, generation))
+                    else {
+                        return;
+                    };
+                    let stored = tokio::task::spawn_blocking(move || {
+                        crate::gateway_local::store(&path, &book).is_ok()
+                    })
+                    .await
+                    .unwrap_or(false);
+                    if let Ok(mut state) = lock(&inner) {
+                        state.settle_gateway_local_write(&tenant, generation, stored);
+                        state.changed();
+                    }
+                });
+            }
             Effect::ForgetReports(path) => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
@@ -3250,7 +3379,7 @@ fn complete_operation(
     outcome: Outcome,
     stop: Option<StopReason>,
 ) {
-    let starts = match lock(inner) {
+    let effects = match lock(inner) {
         Ok(mut state) => {
             let now = Instant::now();
             if let Some(stop) = stop {
@@ -3259,11 +3388,28 @@ fn complete_operation(
             let starts = state.operations.complete(id, outcome, now);
             state.sync_scans();
             state.changed();
-            starts
+            let mut effects = vec![Effect::Start(starts)];
+            effects.extend(gateway_local_effects(&mut state));
+            effects
         }
         Err(_) => return,
     };
-    run_effects(inner, vec![Effect::Start(starts)]);
+    run_effects(inner, effects);
+}
+
+/// Gateway work to keep on this Mac after settlements: the newest writes,
+/// and reads of books that settlements wait for.
+fn gateway_local_effects(state: &mut State) -> Vec<Effect> {
+    let (writes, reads) = state.take_gateway_local();
+    writes
+        .into_iter()
+        .map(|(tenant, generation)| Effect::StoreGatewayLocal { tenant, generation })
+        .chain(
+            reads
+                .into_iter()
+                .map(|lease| Effect::LoadGatewayLocal { lease }),
+        )
+        .collect()
 }
 
 /// Stores a new credential of `class` for the active tenant, replacing any
@@ -3603,6 +3749,7 @@ fn settle_reset(inner: &Arc<Inner>, result: Result<bool, ResetFailure>) {
                 state.durability_unconfirmed = unconfirmed;
                 state.consumed_reviews.clear();
                 state.scans.clear();
+                state.forget_all_gateway_local();
                 let starts = state.reissue_context();
                 state.changed();
                 (starts, false)

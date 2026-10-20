@@ -10,7 +10,7 @@ import type {
     ShellSnapshot,
 } from '@prisma-airs/desktop-contracts'
 import { PageHeading } from '../../shell/feature-view'
-import { type ChangeTarget, ChangeResults, ChangeWorkbench, TEMPLATES, pretty } from './runtime-changes'
+import { type ChangeTarget, ChangeResults, ChangeWorkbench, TEMPLATES, isGatewayKind, pretty } from './runtime-changes'
 import type { Dispatch } from '../tenants/dispatch'
 import {
     MANAGEMENT_FAILURE_TEXT,
@@ -353,7 +353,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                     onClose={() => setChange(null)}
                 />
             ) : null}
-            <ChangeResults results={snapshot.changes.results} dispatch={dispatch} />
+            <ChangeResults results={snapshot.changes.results.filter((r) => !isGatewayKind(r.kind))} dispatch={dispatch} />
         </section>
     )
 })
@@ -425,6 +425,7 @@ const ACTION_LABEL: Record<ChangeTarget['action'], string> = {
     delete: 'Delete…',
     version: 'Add key version…',
     rotate: 'Rotate…',
+    models: 'Models…',
 }
 
 function DetailPanel({
