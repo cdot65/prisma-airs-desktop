@@ -1,51 +1,55 @@
 
-running 44 tests
+running 48 tests
 test authority::workbench_domain::send::tests::previews_are_text_unless_binary ... ok
 test authority::workbench_domain::send::tests::display_urls_mask_secrets ... ok
 test workbench::curl::tests::ansi_quotes_and_continuations_lex_literally ... ok
 test workbench::cookies::tests::cookies_are_host_only_secure_and_path_scoped ... ok
 test workbench::curl::tests::converts_a_literal_command_and_removes_credentials ... ok
-test workbench::document::tests::checks_name_the_field_that_cannot_be_written ... ok
 test workbench::curl::tests::refuses_what_it_cannot_import_faithfully ... ok
-test workbench::document::tests::rows_round_trip_and_report_their_line ... ok
+test workbench::admission::tests::ordinary_requests_keep_their_class_and_the_network_mode ... ok
+test workbench::document::tests::checks_name_the_field_that_cannot_be_written ... ok
+test workbench::document::tests::a_body_not_yet_written_is_owned_by_its_case_folded_name ... ok
+test workbench::adoption::tests::reads_recent_collections_and_private_environments_only ... ok
+test workbench::document::tests::a_json_body_is_its_requests_and_a_schema_is_owned_by_its_role ... ok
+test workbench::admission::tests::host_overrides_and_url_user_info_are_refused ... ok
 test workbench::document::tests::edits_keep_comments_extensions_and_line_endings ... ok
+test workbench::document::tests::rows_round_trip_and_report_their_line ... ok
+test workbench::admission::tests::tenant_credentials_go_only_to_their_destinations ... ok
 test workbench::environments::tests::environment_texts_hold_variables_only ... ok
 test workbench::document::tests::settings_hold_references_never_credentials ... ok
 test workbench::execute::tests::base64_matches_rfc4648 ... ok
 test workbench::execute::tests::secrets_follow_v1_rules ... ok
-test workbench::admission::tests::ordinary_requests_keep_their_class_and_the_network_mode ... ok
-test workbench::git::tests::porcelain_v2_records_are_parsed ... ok
 test workbench::environments::tests::layers_apply_in_order_and_secrets_stay_masked ... ok
-test workbench::history::tests::interrupted_runs_are_marked_and_never_resent ... ok
-test workbench::admission::tests::host_overrides_and_url_user_info_are_refused ... ok
+test workbench::git::tests::porcelain_v2_records_are_parsed ... ok
 test workbench::history::tests::retention_keeps_running_and_viewed_runs ... ok
 test workbench::insomnia::tests::converts_supported_requests_and_refuses_scripts ... ok
+test workbench::history::tests::interrupted_runs_are_marked_and_never_resent ... ok
+test workbench::admission::tests::known_reads_pass_known_mutations_need_review_and_others_are_denied ... ok
 test workbench::insomnia::tests::templates_other_than_simple_variables_are_refused ... ok
 test workbench::profile::tests::recent_collections_are_bounded_and_newest_first ... ok
-test workbench::adoption::tests::reads_recent_collections_and_private_environments_only ... ok
-test workbench::admission::tests::tenant_credentials_go_only_to_their_destinations ... ok
+test workbench::admission::tests::generated_headers_overrides_and_extra_credentials_are_refused_at_registered_origins ... ok
 test workbench::profile::tests::workbench_secrets_never_share_a_tenant_record ... ok
-test workbench::admission::tests::known_reads_pass_known_mutations_need_review_and_others_are_denied ... ok
-test workbench::project::tests::paths_stay_inside_and_visible ... ok
 test workbench::admission::tests::registered_origins_are_classified_whatever_the_credential ... ok
+test workbench::project::tests::paths_stay_inside_and_visible ... ok
+test workbench::profile::tests::sealed_files_open_only_under_their_key_and_name ... ok
+test workbench::cookies::tests::the_jar_is_bounded ... ok
 test workbench::render::tests::auth_kinds_follow_v1 ... ok
 test workbench::render::tests::bodies_by_kind ... ok
 test workbench::render::tests::secrets_stay_slots_and_names_never_hold_them ... ok
 test workbench::render::tests::unresolved_unclosed_and_nested_names_are_refused ... ok
-test workbench::profile::tests::sealed_files_open_only_under_their_key_and_name ... ok
-test workbench::cookies::tests::the_jar_is_bounded ... ok
 test workbench::project::tests::collections_are_created_inside_repositories_only ... ok
 test workbench::execute::tests::a_pinned_file_that_changed_never_sends_its_last_piece ... ok
-test workbench::schema::tests::schemas_save_only_over_the_revision_they_were_read_at ... ok
 test workbench::project::tests::discovery_reports_duplicates_links_and_invalid_files ... ok
 test workbench::project::tests::writes_refuse_links_git_and_nested_collections ... ok
+test workbench::schema::tests::schemas_save_only_over_the_revision_they_were_read_at ... ok
 test workbench::insomnia::tests::refuses_other_formats_and_oversized_structures ... ok
 test workbench::git::tests::repository_hooks_and_fsmonitor_never_run ... ok
 test workbench::history::tests::bodies_are_sealed_frames_that_cannot_be_cut_or_moved ... ok
 test workbench::scm::tests::the_catalog_is_v1s_and_every_entry_is_a_valid_request ... ok
 test workbench::scm::tests::refresh_keeps_edits_and_respects_deletions ... ok
+test workbench::project::tests::a_directory_past_the_entry_budget_makes_the_catalog_incomplete ... ok
 
-test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 4.15s
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 98 filtered out; finished in 4.40s
 
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
      Running unittests src/lib.rs (target/debug/deps/desktop_core-b8f821464252cdef)

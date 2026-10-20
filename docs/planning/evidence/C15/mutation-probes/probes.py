@@ -211,10 +211,13 @@ PROBES = [
      [(ADMISSION, "        || names.iter().any(|n| METHOD_OVERRIDES.contains(&n.as_str()))\n", "")],
      EX_T, OVERRIDES),
     ("a second credential reaches a registered origin",
-     [(ADMISSION, "        || credentials > 1\n", "")],
+     [(ADMISSION, "        || credential_sources(plan) > 1\n", "")],
      EX_T, OVERRIDES),
     ("an API key in the query is not a credential",
-     [(ADMISSION, "        + usize::from(matches!(plan.auth, Auth::ApiKey { query: true, .. }));", ";")],
+     [(ADMISSION, "        + usize::from(!matches!(plan.auth, Auth::None))\n", "        + usize::from(!matches!(plan.auth, Auth::None | Auth::ApiKey { query: true, .. }))\n")],
+     UNIT_T, OVERRIDES_U),
+    ("an API key under its own header name is not a credential",
+     [(ADMISSION, "        + usize::from(!matches!(plan.auth, Auth::None))\n", "        + usize::from(!matches!(plan.auth, Auth::None | Auth::ApiKey { query: false, .. }))\n")],
      UNIT_T, OVERRIDES_U),
     ("Basic usernames are not reviewed",
      [(SEND, 'serde_json::json!(["basic", username.bound(), secret])', 'serde_json::json!(["basic", secret, username.0.len() * 0])')],
@@ -231,6 +234,13 @@ PROBES = [
     ("a replaced secret keeps its generation",
      [(DOMAIN, "            .secret_changed(&collection, &reference);", "            .review();")],
      EX_T, BOUND),
+    # P04 push, attempt-03 R2 (remaining): the jar's Cookie is a credential.
+    ("the jar cookie is not a credential at a registered origin",
+     [(SEND, "        && admission::jar_cookie_is_ambiguous(&plan)\n", "        && false\n")],
+     EX_T, "a_jar_cookie_is_a_credential_at_a_registered_origin"),
+    ("the jar cookie counts only beside nothing",
+     [(ADMISSION, "    credential_sources(plan) > 0\n}", "    credential_sources(plan) > 1\n}")],
+     EX_T, "a_jar_cookie_is_a_credential_at_a_registered_origin"),
 ]
 
 

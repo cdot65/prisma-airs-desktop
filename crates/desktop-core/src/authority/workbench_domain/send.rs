@@ -472,6 +472,15 @@ async fn plan(
         .workbench
         .sending
         .credentials(&collection, &scope, &plan, &admitted);
+    // At a registered origin the jar's Cookie counts toward the one
+    // credential, decided here, before any secret is read or anything sent.
+    if admitted.class != CredentialClass::Managed
+        && admitted.operation.is_some()
+        && credentials.cookie.is_some()
+        && admission::jar_cookie_is_ambiguous(&plan)
+    {
+        return Err(Box::new(refusal(SendRefusal::AmbiguousCredential)));
+    }
     Ok(Planned {
         relative: doc.relative.clone(),
         request: doc.id,

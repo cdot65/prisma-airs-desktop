@@ -907,9 +907,14 @@ Decided in C15 (implementer decision, recorded for review).
   whether the editor wrote them or the authentication generates them (an
   API-key header's name). At a registered origin a method override
   (X-HTTP-Method-Override, X-HTTP-Method, X-Method-Override) and more than
-  one credential (Authorization, Proxy-Authorization, Cookie, x-pan-token
-  or an API key in the query, from any source) are refused as well; one
-  manual Authorization still goes (P04 push, attempt-02 R2).
+  one credential are refused as well. Credentials are the editor's
+  Authorization, Proxy-Authorization, Cookie or x-pan-token headers, the
+  request's authentication (whatever header it generates, or an API key in
+  the query) and the collection jar's Cookie header for the URL. The jar is
+  read when the request is planned, before any secret, and the Cookie it
+  gives is the one the first hop sends. One credential still goes: a
+  manual Authorization, or the session cookie alone (P04 push, attempt-02
+  R2 and attempt-03).
 - **Context binding** (attempt-01 R3). Every context change retires the
   pending review permanently; Apply also checks that its context is the
   active one; managed or reviewed requests re-check their context and the

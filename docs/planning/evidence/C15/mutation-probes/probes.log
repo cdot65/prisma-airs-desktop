@@ -21,7 +21,7 @@ operator auth headers ride with tenant credentials 101 True
 workbench secrets mix with tenant credentials 101 True
 ambiguous path spellings are classified 101 True
 loopback-only builds reach named hosts 101 True
-tenant redirects are followed 0 False
+tenant redirects are followed 101 True
 workbench secrets follow cross-origin redirects 101 True
 a 401 keeps the token 101 True
 a lost change looks certain 101 True
@@ -42,3 +42,14 @@ the active context is not sent 1 True
 uncertain outcomes are not shown 1 True
 forged review IDs pass the contract 1 True
 more than four running requests pass the contract 1 True
+generated auth headers are not admitted 101 True
+method overrides reach a registered origin 101 True
+a second credential reaches a registered origin 101 True
+an API key in the query is not a credential 101 True
+an API key under its own header name is not a credential 101 True
+Basic usernames are not reviewed 101 True
+secret generations are not reviewed 101 True
+cookies are not reviewed 101 True
+a replaced secret keeps its generation 101 True
+the jar cookie is not a credential at a registered origin 101 True
+the jar cookie counts only beside nothing 101 True

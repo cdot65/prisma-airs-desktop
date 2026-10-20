@@ -5,12 +5,13 @@
       "apps/desktop/src/features/workbench/request-send.tsx": "4595a0ebc73a887230b9b88d6bd346560a19f3488ed128ca6e74e8a035a99aea",
       "apps/desktop/src/features/workbench/workbench-view.tsx": "1d51c864a27d8b9a95403dd3911acce7dd9dc1306e9bb69f3e6f604a5637a6cb",
       "crates/desktop-core/src/authority.rs": "d9ba04e9d2c378722f4a856d11fc4714b7ee2c89674a1e0ff89490d4e1dc2e8d",
-      "crates/desktop-core/src/authority/workbench_domain/send.rs": "a2b41aaeebe974dc050668e9d5ff2ae4a4bc282729b328b5b000fbd0008c352d",
-      "crates/desktop-core/src/workbench/admission.rs": "0a3b5dd1dbc3d62d89899007bcd084f7c8b64a78d094489bb2e7dd4ff06eb15c",
+      "crates/desktop-core/src/authority/workbench_domain.rs": "addf4a11e74614fae1bb87067dc47e2d8d3fdee47496161e41b503cb4d34bcae",
+      "crates/desktop-core/src/authority/workbench_domain/send.rs": "3279a6a30d35223fabc26c20b43a1b360f5eea5393da023279bd593fa5f0857d",
+      "crates/desktop-core/src/workbench/admission.rs": "8e64652a4da7e26b517b159b45c8fef475480c05fa2a2e8e1d5a2103f3589830",
       "crates/desktop-core/src/workbench/cookies.rs": "cd5b571a9e5db2bd8a7521f26cdf7fc2e8a5b68771ef52bfbeea205b6085ba51",
-      "crates/desktop-core/src/workbench/execute.rs": "aee2be84212048fe5e701bafe2057401b04e7f399fa20b6b4871feb63142c228",
+      "crates/desktop-core/src/workbench/execute.rs": "9d8d9200dabe20594e2114b40903c2627809638f6d2d07b2162d01db5cad79ff",
       "crates/desktop-core/src/workbench/history.rs": "0e408100c2edb9f4f9d65b91cb667f93376699f8e15fc0d5cf5a49d206d82b57",
-      "packages/desktop-contracts/src/client.ts": "a7636609e8427e99c992bc29bb8f3ae6f3bd2b3d1a791e0f730e166ed3eeb924"
+      "packages/desktop-contracts/src/client.ts": "fba7cd574032a55b7895bd7debfc667532bc1fbdcbe7ff8dc2604247ff2cabd3"
     }
   },
   {
@@ -464,8 +465,8 @@
       "workbench_execution"
     ],
     "guard": "tenant_credentials_are_admitted_before_any_secret_is_read",
-    "exit_code": 0,
-    "guard_failed": false
+    "exit_code": 101,
+    "guard_failed": true
   },
   {
     "mutation": "workbench secrets follow cross-origin redirects",
@@ -857,6 +858,222 @@
     ],
     "guard": "rejects runs, reviews and refusals Rust never issues",
     "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "generated auth headers are not admitted",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "generated_overrides_and_extra_credentials_never_reach_a_registered_origin",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "method overrides reach a registered origin",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "generated_overrides_and_extra_credentials_never_reach_a_registered_origin",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a second credential reaches a registered origin",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "generated_overrides_and_extra_credentials_never_reach_a_registered_origin",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an API key in the query is not a credential",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "generated_headers_overrides_and_extra_credentials_are_refused_at_registered_origins",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an API key under its own header name is not a credential",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "generated_headers_overrides_and_extra_credentials_are_refused_at_registered_origins",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Basic usernames are not reviewed",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "reviews_are_bound_to_the_credentials_and_cookies_actually_sent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "secret generations are not reviewed",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "reviews_are_bound_to_the_credentials_and_cookies_actually_sent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "cookies are not reviewed",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "reviews_are_bound_to_the_credentials_and_cookies_actually_sent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a replaced secret keeps its generation",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "reviews_are_bound_to_the_credentials_and_cookies_actually_sent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the jar cookie is not a credential at a registered origin",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "a_jar_cookie_is_a_credential_at_a_registered_origin",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the jar cookie counts only beside nothing",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "a_jar_cookie_is_a_credential_at_a_registered_origin",
+    "exit_code": 101,
     "guard_failed": true
   }
 ]

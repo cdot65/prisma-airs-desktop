@@ -1889,6 +1889,11 @@ async fn reviews_are_bound_to_the_credentials_and_cookies_actually_sent() {
     let review = desk.send_doc("bare.request.toml").await;
     let r = desk.wb(apply_bare(&review, desk.context())).await;
     assert_eq!(r["kind"], "ran", "{r}");
+    // Basic alone: with the session cookie it would be a second credential.
+    assert_eq!(
+        desk.wb(json!({"kind": "clearCookies"})).await["kind"],
+        "done"
+    );
     let review = desk.send_doc("basic.request.toml").await;
     let doc = desk.doc("basic.request.toml").await;
     let r = desk
@@ -1903,4 +1908,129 @@ async fn reviews_are_bound_to_the_credentials_and_cookies_actually_sent() {
         sent[1].header("authorization"),
         Some(format!("Basic {}", b64("alice:third-value")).as_str())
     );
+    assert_eq!(sent[1].header("cookie"), None);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_jar_cookie_is_a_credential_at_a_registered_origin() {
+    let Tenant {
+        mut desk,
+        server,
+        origin,
+        ..
+    } = tenant().await;
+    let ordinary = Http::start(Arc::new(|_| {
+        Answer::status(200, &[("set-cookie", "own=1; Path=/; Max-Age=3600")], "{}")
+    }))
+    .await;
+    let read = "{{scm_base}}/iam/v1/access_policies";
+    let root = collection(
+        &format!(
+            "scm_base = \"{origin}\"\nelsewhere = \"{}\"\n",
+            ordinary.origin()
+        ),
+        &[
+            (
+                "login.request.toml",
+                &request(
+                    "login",
+                    "GET",
+                    "{{scm_base}}/iam/v1/access_policies?login=one",
+                    "",
+                ),
+            ),
+            (
+                "basic.request.toml",
+                &request(
+                    "basic",
+                    "GET",
+                    read,
+                    "[auth]\nkind = \"basic\"\nusername = \"alice\"\nsecret = \"dev-token\"\n",
+                ),
+            ),
+            (
+                "literal.request.toml",
+                &request(
+                    "literal",
+                    "GET",
+                    read,
+                    "[[headers]]\nname = \"Authorization\"\nvalue = \"Bearer manual\"\n",
+                ),
+            ),
+            (
+                "cookie.request.toml",
+                &request(
+                    "cookie",
+                    "GET",
+                    read,
+                    "[[headers]]\nname = \"Cookie\"\nvalue = \"sid=mine\"\n",
+                ),
+            ),
+            ("bare.request.toml", &request("bare", "GET", read, "")),
+            (
+                "generic.request.toml",
+                &request(
+                    "generic",
+                    "GET",
+                    "{{elsewhere}}/x",
+                    "[[headers]]\nname = \"Authorization\"\nvalue = \"Bearer manual\"\n",
+                ),
+            ),
+        ],
+    );
+    desk.open(&root).await;
+    desk.secret("dev-token", TOKEN).await;
+    assert_eq!(
+        desk.send_doc("login.request.toml").await["run"]["record"]["status"],
+        200
+    );
+    let reads = desk.secret_reads();
+    // The session cookie beside a generated or literal Authorization, or
+    // beside an explicit Cookie, is two credentials.
+    for id in ["basic", "literal", "cookie"] {
+        let r = desk.send_doc(&format!("{id}.request.toml")).await;
+        assert_eq!(
+            r,
+            json!({"kind": "sendRefused", "refusal": {"kind": "ambiguousCredential"}}),
+            "{id}"
+        );
+    }
+    assert_eq!(
+        desk.secret_reads(),
+        reads,
+        "refused before any secret is read"
+    );
+    assert_eq!(
+        server.seen().len(),
+        1,
+        "only the sign-in reached the tenant"
+    );
+    // The cookie alone is one credential.
+    let r = desk.send_doc("bare.request.toml").await;
+    assert_eq!(r["run"]["record"]["state"], "completed", "{r}");
+    assert_eq!(server.seen()[1].header("cookie"), Some("sid=one"));
+    // Ordinary HTTP elsewhere keeps its own cookie and Authorization.
+    for _ in 0..2 {
+        let r = desk.send_doc("generic.request.toml").await;
+        assert_eq!(r["run"]["record"]["status"], 200, "{r}");
+    }
+    let seen = ordinary.seen();
+    // (Cookies ignore ports: both fixtures are 127.0.0.1, so the jar's
+    // non-Secure session cookie goes too, as it would without this rule.)
+    assert!(
+        seen[1]
+            .header("cookie")
+            .is_some_and(|c| c.contains("own=1"))
+    );
+    assert_eq!(seen[1].header("authorization"), Some("Bearer manual"));
+    // With the jar cleared, one Authorization goes as written.
+    assert_eq!(
+        desk.wb(json!({"kind": "clearCookies"})).await["kind"],
+        "done"
+    );
+    let r = desk.send_doc("literal.request.toml").await;
+    assert_eq!(r["run"]["record"]["state"], "completed", "{r}");
+    let last = server.seen().pop().expect("sent");
+    assert_eq!(last.header("authorization"), Some("Bearer manual"));
+    assert_eq!(last.header("cookie"), None);
 }

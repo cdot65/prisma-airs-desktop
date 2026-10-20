@@ -1391,9 +1391,11 @@ and History views. D041 records the decisions; ADR 0004 the policy.
   forwarding headers, the editor's or one its authentication generates
   (an API-key header named Host), are refused there and for every managed
   request; there a method override or a second credential (Authorization,
-  Proxy-Authorization, Cookie or x-pan-token, or an API key in the query)
-  is refused too, while one manual Authorization still goes; a generic
-  redirect never enters one.
+  Proxy-Authorization, Cookie or x-pan-token, the request's own
+  authentication whatever header it generates, an API key in the query, or
+  the collection jar's Cookie for the URL, read at planning) is refused
+  too, while one manual Authorization or the session cookie alone still
+  goes; a generic redirect never enters one.
 - **Context binding.** A context change (switch, credential replacement,
   reset) retires the pending review for good; Apply checks the active
   context; a managed or reviewed request re-checks its context and the

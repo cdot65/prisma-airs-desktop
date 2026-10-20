@@ -55,3 +55,36 @@ record the rules.
   that service is never reached, so the probe isolates the managed
   no-follow rule from the registered-origin guard. Nine new probes cover R2
   and R5, and the three whose anchors moved are retargeted.
+
+## Attempt-03 (P04 push re-review; 9/8/8/8/8)
+
+- R2 (remaining), the jar's Cookie is a credential:
+  - Planning reads the collection jar before admission completes and
+    captures the Cookie header the first hop will send. A registered-origin
+    request that also sends a credential of its own is refused as
+    `ambiguousCredential`, before any secret is read and with nothing
+    sent. The request's own credentials are an Authorization (literal or
+    generated), an explicit Cookie, any authentication's generated header,
+    or an API key in the query.
+  - Counting one credential for any authentication, whatever header name it
+    generates, also closes the case of an API key under its own name (such
+    as `X-Api-Key`) beside an Authorization.
+  - A tenant-credential request never uses the jar.
+  - The cookie alone, a single Authorization with the jar empty, and
+    ordinary unregistered HTTP (cookie plus Authorization) still go.
+  - Tests:
+    - the production-interface
+      `a_jar_cookie_is_a_credential_at_a_registered_origin`: after a
+      sign-in sets `sid`, Basic, a literal Authorization and an explicit
+      Cookie are each refused with no secret read and nothing reaching the
+      tenant. Then the cookie-only request goes with `sid`, ordinary HTTP
+      keeps its own cookie and Authorization, and once the jar is cleared a
+      single Authorization goes without a cookie.
+    - The Basic positive control in
+      `reviews_are_bound_to_the_credentials_and_cookies_actually_sent` now
+      clears the jar first and asserts no Cookie was sent.
+    - The unit test
+      `generated_headers_overrides_and_extra_credentials_are_refused_at_registered_origins`
+      adds `X-Api-Key` beside an Authorization and `jar_cookie_is_ambiguous`
+      cases.
+- Four new probes; two re-anchored.

@@ -444,14 +444,29 @@ fn ambiguous_authority(plan: &Plan, url: &url::Url) -> bool {
 /// ones the service sees.
 fn ambiguous_at_registered(plan: &Plan, url: &url::Url) -> bool {
     let names = effective_headers(plan);
-    let credentials = names
-        .iter()
-        .filter(|n| CREDENTIAL_HEADERS.contains(&n.as_str()))
-        .count()
-        + usize::from(matches!(plan.auth, Auth::ApiKey { query: true, .. }));
     ambiguous_authority(plan, url)
         || names.iter().any(|n| METHOD_OVERRIDES.contains(&n.as_str()))
-        || credentials > 1
+        || credential_sources(plan) > 1
+}
+
+/// The credentials `plan` itself sends: the editor's credential headers,
+/// and its authentication (whatever header it generates, or an API key in
+/// the query).
+fn credential_sources(plan: &Plan) -> usize {
+    plan.headers
+        .iter()
+        .filter(|(n, _)| CREDENTIAL_HEADERS.contains(&n.to_ascii_lowercase().as_str()))
+        .count()
+        + usize::from(!matches!(plan.auth, Auth::None))
+}
+
+/// Whether the collection jar's Cookie header would be a second credential
+/// beside one `plan` sends itself (its Authorization, an explicit Cookie,
+/// an API key). At a registered origin that is refused like any other
+/// second credential; the jar is consulted only once admission has shown
+/// the request is not a tenant-credential one.
+pub fn jar_cookie_is_ambiguous(plan: &Plan) -> bool {
+    credential_sources(plan) > 0
 }
 
 /// The catalogue operation `plan` is at a registered origin serving
@@ -1068,6 +1083,7 @@ mod tests {
             ("Authorization: Bearer manual", basic.to_owned()),
             ("Cookie: sid=1", key("Authorization")),
             ("X-Pan-Token: literal", query_key.to_owned()),
+            ("Authorization: Bearer manual", key("X-Api-Key")),
             (
                 "Authorization: Bearer manual\nProxy-Authorization: Basic x",
                 String::new(),
@@ -1114,6 +1130,31 @@ mod tests {
             .is_ok()
         );
         assert!(admitted("GET", "http://127.0.0.1:8080/x", "", &key("Host")).is_ok());
+        // The jar's Cookie is a second credential beside any the request
+        // sends itself, and the only one beside none.
+        let plan = |headers: &str, settings: &str| {
+            let fields = Fields {
+                method: "GET".into(),
+                url: read.into(),
+                headers: headers.into(),
+                settings: settings.into(),
+                ..Fields::default()
+            };
+            render(&fields, &layers(), None).expect("plan")
+        };
+        for (headers, settings) in [
+            ("Authorization: Bearer manual", String::new()),
+            ("Cookie: sid=mine", String::new()),
+            ("", basic.to_owned()),
+            ("", key("X-Api-Key")),
+            ("", query_key.to_owned()),
+        ] {
+            assert!(
+                jar_cookie_is_ambiguous(&plan(headers, &settings)),
+                "{headers} {settings}"
+            );
+        }
+        assert!(!jar_cookie_is_ambiguous(&plan("Accept: */*", "")));
     }
 
     #[test]
