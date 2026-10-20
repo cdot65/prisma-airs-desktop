@@ -1,0 +1,182 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C06",
+  "recorded_utc": "2026-10-20T03:07:35Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic Academy endpoint tools/native-acceptance/academy_server.py serving tools/native-acceptance/academy_catalog.py and academy_program.py; tools/native-acceptance/acceptance_c06.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "2451d2aba4c2e48c2f9a86dc51e341f90352e3126b3deb077de3e62b862abf4b",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C06-N01",
+      "description": "Signed out, Academy's navigation offers Learn only; signed in it offers Academy's Home, Learn and Program and the web shell's Notifications and Settings. Home shows Academy's own briefing (level and XP from Academy) with no failure toast, and Program shows Academy's hub with its five sections.",
+      "result": "pass",
+      "observation": "guest Academy navigation ['Learn']; signed in: True; account navigation ['Home', 'Learn', 'Program', 'Downloads', 'Notifications', 'Settings']; Home shows Academy's level and XP: True, failure toast: False; Program hub: True with cards ['CAPSTONE Exams The proctored assessments that close out each certification.', 'CREDENTIALS Certificates Credentials you have earned, with public verification links.', 'RECORD Dossier Your operative record: rank, commendations, and activity.', 'SUPPLY Requisitions Spend earned credits on gear and cosmetics.', 'STANDINGS Weekly Board Where you stand on this week\u2019s leaderboard.']",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-guest-learn.json",
+        "docs/planning/evidence/C15/native-C06/tree-home.json",
+        "docs/planning/evidence/C15/native-C06/tree-program.json"
+      ]
+    },
+    {
+      "id": "C06-N02",
+      "description": "The final assessment shows Academy's eligibility facts, starts with the learner's consent and shows Academy's question with Academy's countdown ('Time remaining', counted down to Academy's deadline) and the proctored pill in view; a submission the server fails after receiving shows that submission could not be confirmed, keeps the answer, hides the server's text and is sent exactly once; 'Check submission status' reads Academy's submission state and shows Academy's pending review. No answer key or truth canary appears in any captured AX tree.",
+      "result": "pass",
+      "observation": "intro with Academy's eligibility facts: True; runner with Academy's question: True; Academy's countdown in view: 59:59 (Time remaining, Proctored: True); a submission the server failed after receiving shows 'We could not confirm submission': True, answer kept: True, server text hidden: True; submissions (procedure, status, Authorization) [['exam.submit', 503, True]]; 'Check submission status' reads Academy's state and shows its pending review ('Grading your written answers'): True; answer keys or canaries in AX snapshots: []",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-exam-intro.json",
+        "docs/planning/evidence/C15/native-C06/tree-exam-runner.json",
+        "docs/planning/evidence/C15/native-C06/tree-exam-unknown-outcome.json",
+        "docs/planning/evidence/C15/native-C06/tree-exam-pending-review.json"
+      ]
+    },
+    {
+      "id": "C06-N03",
+      "description": "Keyboard only: Tab reaches the first answer option, Space selects it, Tab reaches 'See results', Return submits once and the unknown outcome is announced, Tab reaches 'Check submission status' and Return shows Academy's pending review.",
+      "result": "pass",
+      "observation": "Tab reached the first option: True; Space selected it: True; Tab reached 'See results': True; Return submitted once (1 submission) and the unknown outcome was shown: True, inside an alert region: True; Tab reached 'Check submission status': True; Return showed Academy's pending review: True",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-exam-keyboard.json"
+      ]
+    },
+    {
+      "id": "C06-N04",
+      "description": "The certificate's public verify URL (shared to LinkedIn) is on Academy web's origin, not the app's; 'Download PDF' opens exactly one native print sheet (recorded by the fixture build), stays on the certificate, and makes no learner call beyond the certificate and account reads; when the sheet cannot open, the page says so in an alert region, no sheet is opened and nothing is sent.",
+      "result": "pass",
+      "observation": "certificate shown: True; public verify URL https://localhost:62023/verify/cert-certification (Academy web origin https://localhost:62023/verify/cert-certification); print sheets opened: 0 -> 1; a sheet that cannot open says 'The print sheet could not open' in an alert region: True, sheets opened after it: 1; still on the certificate: True; learner calls (no mutation) [['certificate.mine', 200]]",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-certificate.json",
+        "docs/planning/evidence/C15/native-C06/tree-certificate-print-failed.json"
+      ]
+    },
+    {
+      "id": "C06-N05",
+      "description": "A guided lab runs through Academy's desktop attempt contract: one start with the lab id and a request id, draft saves naming the base version with a client mutation id, one grading request naming a confirmed draft version with a submission id, and Academy's pass shown; no web lab runtime call is made. A lab Academy refuses to start for lack of a desktop adapter is previewed with no sandbox started.",
+      "result": "pass",
+      "observation": "lab intro: True; attempt started once with labId and requestId: [{'labId': 'm-rt-1-lab-def', 'requestId': '544f4e32-acca-482d-b876-966388f99105'}]; draft saves with baseVersion and clientMutationId: 1; grading request [{'attemptId': '00000000-0000-4000-8000-0000000000a1', 'draftVersion': 1, 'submissionId': '7f104780-c2d2-4776-b6d5-4922071ac745'}]; 'Lab passed. Academy recorded it on your account.': True; web lab run calls: []; a lab without a desktop adapter is previewed: True (calls [['units.get', 200], ['labs.get', 200], ['desktop.attempt.start', 412]])",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-lab-intro.json",
+        "docs/planning/evidence/C15/native-C06/tree-lab-passed.json",
+        "docs/planning/evidence/C15/native-C06/tree-lab-unsupported.json"
+      ]
+    },
+    {
+      "id": "C06-N06",
+      "description": "In Shift, the unstamped alert is served and the learner's answer is sent and answered (Academy's explanation shown) before a slow optional briefing replies; the answer carries only the learner's choice, and the SLA countdown comes from Academy's stamp.",
+      "result": "pass",
+      "observation": "Shift alert shown: True; serve replied at [0.05] s and the answer at [0.64] s while the optional briefing replied at 6.05 s; Academy's explanation shown after 0.7 s: True; answer request {'shiftId': '00000000-0000-4000-8000-0000000000d1', 'order': 2, 'values': ['0']}; Academy's SLA countdown present: True",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-shift-answered.json"
+      ]
+    },
+    {
+      "id": "C06-N07",
+      "description": "Removing an enrollment shows Academy's confirmation naming the affected certification and every course it covers and stating that earned certificates stay valid; Cancel sends nothing and confirming sends exactly one enrollment.removeByCourse for the course.",
+      "result": "pass",
+      "observation": "confirmation dialog: True; names the certification: True and its courses: True; earned certificates stay valid: True; removals after Cancel: []; removals after confirming: [{'courseId': 'runtime-security'}]",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-removal-dialog.json"
+      ]
+    },
+    {
+      "id": "C06-N08",
+      "description": "Academy's Settings entry opens the learner account page, which offers 'Change photo' on the desktop and says the app sets theme and accent (no theme choice); its Sign out ends the Academy session through the desktop: the destination returns to guest navigation, Settings shows 'Not signed in to Academy.', the refresh token is revoked and the learner keychain namespace is empty.",
+      "result": "pass",
+      "observation": "account page from Academy's Settings entry: True; photo changed here ('Change photo'): True; appearance follows the app: True, no theme choice: True; Academy's Sign out returned the destination to guest navigation ['Learn'] and Settings shows 'Not signed in to Academy.': True; learner keychain items ['cr-43404ccbc1338bbf', 'cr-58ba6fd014506ab8'] -> ['cr-58ba6fd014506ab8']; revoked: True",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-account.json",
+        "docs/planning/evidence/C15/native-C06/tree-after-sign-out.json"
+      ]
+    },
+    {
+      "id": "C06-N09",
+      "description": "Across the run every learner request is on the account allowlist or a public query; no assessor, grading, override, award or admin procedure is requested; no exam, Shift, lab or enrollment input carries a hosted decision (deadline, score, pass, award, verdict or clock); public-only queries carry no Authorization header.",
+      "result": "pass",
+      "observation": "100 learner requests; outside the allowlist and public queries: []; assessor, grading, award or admin procedures: []; hosted-decision fields in learner inputs: []; public-only queries sent with Authorization: []",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json"
+      ]
+    },
+    {
+      "id": "C06-N10",
+      "description": "Leaving Academy for Runtime Security and Harness shows none of Academy's learner surfaces (Program, assessment, lab, Shift, removal, level) and makes no learner calls.",
+      "result": "pass",
+      "observation": "learner markers in Runtime Security: []; in Harness: []; learner calls while away from Academy: []",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-away-runtime.json",
+        "docs/planning/evidence/C15/native-C06/tree-away-harness.json"
+      ]
+    },
+    {
+      "id": "C06-N11",
+      "description": "On the assessment at 200% zoom and at the minimum window size, Tab reaches 'See results' inside the window and above the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'See results', 'pos': [1010, 608], 'size': [278, 97]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'See results', 'pos': [800, 513], 'size': [140, 49]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json"
+      ]
+    },
+    {
+      "id": "C06-N12",
+      "description": "Signed in again (a fresh learner cache) with Academy's deadline seconds away, the resumed assessment's countdown shows it and, at the deadline, the runner submits exactly once and reports the server's unknown outcome; nothing is resent and the countdown stays at 00:00.",
+      "result": "pass",
+      "observation": "with Academy's deadline 8 s away the countdown read 00:07; at the deadline the runner submitted once (1 submission, 8.02 s after the attempt was read) and reported the unknown outcome: True; nothing was resent in the next 3 s; the countdown then reads 00:00",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-exam-deadline.json"
+      ]
+    },
+    {
+      "id": "C06-N13",
+      "description": "'Change photo' takes a photo chosen natively (here larger than Academy's 2 MiB cap), prepares it in the core as a 512-pixel JPEG within the cap, presigns with the account credential (the prepared type and size), stores the bytes at the presigned destination with no credential, confirms with Academy, and reads the photo back from Academy's public avatar address (no credential) so the page shows it without a load warning; an extreme 1x8192 portrait is prepared from its centre and uploaded; a later photo the store keeps under the same address but whose reply is lost is reported as possibly changed (never unchanged), is not confirmed or resent, and the photo at the unchanged address is read again; a file with an image signature that does not decode, and a photo within 8192 pixels a side whose decoded pixels exceed the decoder memory budget, send nothing and says the photo is unchanged; a cancelled pick sends nothing and shows no error; 'Remove photo' removes it with one learner call.",
+      "result": "pass",
+      "observation": "'Change photo' prepared the staged 5883258 byte PNG (above Academy's 2 MiB cap) as a 232604 byte JPEG: presign (input, Authorization) [[{'contentType': 'image/jpeg', 'size': 232604}, True]]; store PUT (type, bytes, Authorization, status) [['image/jpeg', 232604, False, 200]]; a stored photo whose reply was lost said 'Your photo may have changed, but Academy did not confirm it': True (PUT statuses [0], confirmations 0) and read the photo at the same address again: ['/api/avatars/user_2fixturelearner.jpg']; a 1x8192 portrait was prepared from its centre and uploaded (PUT [['image/jpeg', 7797, 200]], confirmed 1, load warning False); a 7000x7000 photo beyond the decoder memory budget said the photo is unchanged: True and sent []; a file with a PNG signature that does not decode said 'Upload failed. Your photo is unchanged' in an alert region: True and sent []; confirm [[{'ext': 'jpg'}, True]]; read back (path, Authorization, status) [['/api/avatars/user_2fixturelearner.jpg', False, 200]]; 'Remove photo' offered: True; image load warning: False; a cancelled pick sent [] and showed an error: False; 'Remove photo' removed it: True (1 removal)",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-avatar-uploaded.json",
+        "docs/planning/evidence/C15/native-C06/tree-avatar-lost-reply.json"
+      ]
+    },
+    {
+      "id": "C06-N14",
+      "description": "'Reset course progress' asks 'Reset your progress?' with Academy's counts and that earned certificates stay valid; Cancel sends nothing and confirming sends exactly one progress.resetCourse for the course.",
+      "result": "pass",
+      "observation": "'Reset course progress' asks 'Reset your progress?': True with Academy's counts '3 units, 1 quizzes, 0 labs': True and earned certificates kept: True; resets after Cancel: []; after confirming: [{'courseId': 'runtime-security'}]",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-reset-dialog.json"
+      ]
+    },
+    {
+      "id": "C06-N15",
+      "description": "A completed lesson asks 'How was this module?' (an unfinished one does not); rating it and submitting thanks the learner and sends exactly one admin.feedback.submit with the module, lesson and rating.",
+      "result": "pass",
+      "observation": "an unfinished lesson asks for no rating: True; the completed lesson asks 'How was this module?': True; 'Rate 4 stars' then 'Submit feedback' thanked the learner: True and sent [{'moduleId': 'm-rt-1', 'rating': 4, 'lessonId': 'm-rt-1-lesson-03'}]",
+      "evidence": [
+        "docs/planning/evidence/C15/native-C06/observations.json",
+        "docs/planning/evidence/C15/native-C06/tree-lesson-feedback.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "Academy is a local synthetic endpoint answering Academy's learner procedures with synthetic coursework shaped after Academy's routers at the pinned commit; hosted Academy (timing, grading, awards) is qualified in C25 (L13).",
+    "The fixture build records print sheets and browser pages instead of opening them; the native print sheet itself is not driven.",
+    "The identity practical is reached from identity-course pages the synthetic catalog does not carry; its assessor gating is covered by the route sweep and Academy's own tests, not natively.",
+    "The fixture build answers the avatar picker with an image the driver stages in its data root, and records instead of opening the print sheet; the native NSOpenPanel and print sheet are not driven.",
+    "Spoken VoiceOver output was not recorded; AX roles, names, focus and live regions are inspected."
+  ]
+}

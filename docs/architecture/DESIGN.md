@@ -1342,8 +1342,46 @@ Client destination (`features/workbench`). D040 records the decisions.
   | `preview { id, fields }` | v1's variable layers, secrets masked, unresolved and missing listed |
   | imports, environments, secrets, schemas, Git, adoption, built-in | see D040 |
 
-- **Not done here.** No request is sent and no tenant credential is read
-  (C15 owns execution and managed-request admission).
+- **Execution (C15).** See below.
+
+### API Client execution (C15)
+
+Implemented in `crates/desktop-core` (`workbench::{render, admission,
+execute, history, cookies}` and `authority/workbench_domain/send`), the
+host's save-response sheet and the destination's Send, review, response
+and History views. D041 records the decisions; ADR 0004 the policy.
+
+- **Pipeline.** `send { id, revision, fields, context }` takes its turn on
+  the workbench lane: the document's revision is checked, the snapshot is
+  rendered (secrets stay slots naming their references), the tenant's TSG
+  is filled in and `admission::admit` classifies the request and its
+  destinations for the build's network mode, before any secret is read.
+  Ordinary and known-read requests then leave the lane: secrets are read,
+  `execute::prepare` builds the request and `execute::send` streams the
+  response into sealed history; the single result is the run.
+- **Reviews.** A known tenant change returns `reviewRequired` with a masked
+  view and a digest of everything bound; `apply { review, … }` re-plans the
+  same snapshot after the native confirmation, compares the digest,
+  consumes the review and sends once.
+- **Registered origins.** `Destinations.registered` holds every configured
+  management, token and workbench API origin, the four AIRS scan regions
+  and each tenant's scan destination (by host and port), built with or
+  without an active tenant. A request there is classified whatever its
+  credential (manual header, collection secret or none): known mutations
+  are reviewed, unknown operations denied; URL user-info and Host or
+  forwarding headers are refused there and for every managed request; a
+  generic redirect never enters one.
+- **Context binding.** A context change (switch, credential replacement,
+  reset) retires the pending review for good; Apply checks the active
+  context; a managed or reviewed request re-checks its context and the
+  tenant's credential records before its secrets are read, before a token
+  is minted and before each send, ending `retired` with nothing sent.
+- **Redaction.** Response headers and redirect targets are redacted of the
+  secrets used and of the credentials derived from them on the wire (the
+  minted bearer, Basic encodings).
+- **Views.** `WorkbenchView.running` (four at most, with bytes moved),
+  `.review` and `.network`; results `ran`, `reviewRequired`,
+  `sendRefused`, `history`, `responseSaved`, `saveResponseFailed`.
 
 ## 3. Native Harness, identity and protected storage
 

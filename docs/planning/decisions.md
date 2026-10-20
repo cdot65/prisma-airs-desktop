@@ -834,6 +834,103 @@ Decided in C14 (implementer decision, recorded for review).
 - **Not done here.** Nothing is sent: execution, history, cookies,
   downloads, OAuth tokens and admission of managed requests arrive in C15.
 
+## D041 — API Client execution and managed-request admission (ADR 0004)
+
+Decided in C15 (implementer decision, recorded for review).
+
+- **Fresh input, Rust-built requests.** Send and Apply carry the editor's
+  full snapshot and the revision it was edited from (a different revision is
+  refused, as Save). Rust renders it against the current environment layers
+  (v1's precedence, one-level `{{name}}`, `{{{` escape; unresolved, unclosed
+  and nested names refused), builds the actual request itself and sends it;
+  the presentation never supplies a prepared or approved request. Bodies are
+  v1's text, JSON (application/json unless set), form, multipart (64 MiB per
+  file, 128 MiB in all, an explicit Content-Type refused) and stored files
+  (64 MiB), streamed from the collection.
+- **Credential classes.** Decided from the secret references the rendered
+  request would use, never from a collection or request identity:
+  anonymous, workbench (Keychain secrets of the collection) or managed (a
+  native tenant credential). Managed references are `tenant.client_id`,
+  `tenant.client_secret`, `tenant.api_key` and `tenant.tsg_id` (filled in as
+  text); any other `tenant.*` reference is refused, and workbench secrets
+  never ride with tenant credentials. The built-in collection now names
+  these instead of v1's per-tenant `tenant.select` environments.
+- **Admission before any secret is read.** The OAuth client pair goes only
+  into an `oauth2` grant whose token URL is exactly the management
+  capability's token URL (or the catalogue's `/auth/v1/oauth2/access_token`
+  at the same, stored token origin); the scan key only as the `x-pan-token`
+  header to the tenant's stored scan origin. Requests with tenant
+  credentials use HTTPS, an admitted API origin (the configured management
+  endpoints plus `api.sase.paloaltonetworks.com`, the catalogue's host) and
+  no Authorization, Cookie, x-pan-token or method-override headers of the
+  operator's. Their method and path must be one of the 193 built-in
+  catalogue operations (variables are single path segments; encoded
+  separators or dots, empty, dot and parameter segments are refused before
+  normalization). Known reads are sent; known mutations (81) need a review;
+  any other method or path is denied, whatever it is presented as.
+- **Registered Prisma origins** (attempt-01 R1, R2). The configured
+  management, token and workbench API origins, the AIRS scan regions and
+  every tenant's scan destination are registered by host and port with or
+  without an active tenant or ready credential. Requests there are
+  classified whatever their credential: a manual Authorization header, a
+  collection secret or none still needs a review for a known mutation, and
+  any unknown operation is denied. Generic redirects never enter a
+  registered origin (the 3xx is the result). URL user-info and Host,
+  Forwarded, X-Forwarded-Host, X-Original-URL and X-Rewrite-URL headers are
+  refused for managed and registered-origin requests before any secret.
+- **Context binding** (attempt-01 R3). Every context change retires the
+  pending review permanently; Apply also checks that its context is the
+  active one; managed or reviewed requests re-check their context and the
+  tenant's credential records before secrets are read, before a token is
+  minted and before each send, and end `retired` (nothing sent) otherwise.
+- **Reviews.** A known change returns a masked review bound to the tenant,
+  client and capability records, context, catalogue operation, the exact
+  expanded method, URL, query, headers, auth and body (secrets by
+  reference, files by content), the variables used and the request
+  identity. Apply re-renders the same snapshot against the current files
+  and environment, must reproduce the digest, takes the native AppKit
+  confirmation (destructive for DELETE), is consumed with admission and
+  sends once (each body file pinned to the content it was matched with: a
+  file that changes while streaming never sends its last piece); a changed snapshot, file, environment or context, a forged,
+  expired or consumed review, or a declined sheet sends nothing.
+- **Transport.** The native transport policy's proxy and reviewed roots;
+  no redirects or retries inside the client, no automatic decompression,
+  HTTP allowed for ordinary requests; a 10 s connect and 120 s idle limit.
+  Fixture builds send to loopback only (literal loopback addresses, or
+  `localhost` pinned to 127.0.0.1) without any proxy; production sends
+  anywhere. Redirects: never followed with tenant credentials (the 3xx is
+  the result), within the origin with workbench secrets, up to 10 hops
+  otherwise; credentials and cookies never cross origins.
+- **Wire credentials are redacted** (attempt-01 R4): response headers and
+  redirect targets lose the secrets used and their wire forms (minted
+  bearer tokens, Basic encodings) before display or history; response
+  bodies stay intact in sealed storage, as downloads need.
+- **No replay.** OAuth tokens are minted after admission (Basic client
+  auth, RFC 6749 2.3.1 encoding, no redirects, 30 s, 64 KiB), cached in
+  memory, dropped after a 401; nothing is ever resent by itself: not after a
+  401, a lost response, a timeout, a cancel, a restart or from history.
+  A mutation without a response is shown as possibly delivered.
+- **Storage.** Responses stream into sealed frames (1 MiB,
+  XChaCha20-Poly1305 under the profile key, bound to the run, position and
+  last frame) in the private folder, 512 MiB at most; 256 KiB is kept for
+  display. History is a sealed index per collection (200 runs, 30 days,
+  1 GiB of bodies) recorded as running before sending, so a stop is found
+  as interrupted. Save response writes through the native save sheet beside
+  the destination and renames, never into the private folder, `.git` or a
+  non-file. Cookies: one jar per collection for requests without tenant
+  credentials; host-only (no public-suffix list is needed: a Domain other
+  than the responding host is refused, so no cookie reaches a sibling or
+  parent host, narrower than v1), Secure over HTTPS only, 1,000 cookies,
+  4 KiB per Set-Cookie, persistent ones sealed (8 MiB). The `cookie` 0.18.2
+  parser was already locked.
+- **Concurrency.** At most four requests run at once, off the workbench
+  lane (editing continues), each cancellable; reset cancels them and forgets
+  tokens, cookies, reviews and histories.
+- **Workload.** The large HTTP bodies and downloads budgets were registered
+  before implementation (`evidence/C15/workload-budget.md`, 290a069).
+- **Not done here.** The catalogue's 193 requests are specifications;
+  live qualification of any operation is C25.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

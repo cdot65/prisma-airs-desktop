@@ -1,6 +1,11 @@
 import type {
+    ExportFailure,
     FieldProblem,
+    RenderProblem,
+    RunFailure,
+    RunRecord,
     SaveRefusal,
+    SendRefusal,
     WorkbenchProblem,
     WorkbenchRequest,
     WorkbenchResult,
@@ -116,6 +121,129 @@ export function problemText(problem: WorkbenchProblem): string {
     return PROBLEM_TEXT[problem.kind] ?? 'That could not be done.'
 }
 
+const RENDER_TEXT: Record<Exclude<RenderProblem['kind'], 'field' | 'unresolved' | 'nested'>, string> = {
+    unclosed: 'A {{ is not closed.',
+    secretInName: 'Secrets go into values only, never into names.',
+    name: 'A header or part name is not valid after variables are filled in.',
+    url: 'The URL is not an absolute http(s) URL after variables are filled in.',
+    auth: 'The auth settings are incomplete (check kind, secret, username, name, location, token_url and client_id).',
+    multipartContentType: 'A multipart body sets its own Content-Type; remove that header.',
+}
+
+export function renderProblemText(problem: RenderProblem): string {
+    switch (problem.kind) {
+        case 'field':
+            return `Fix to send. ${fieldText(problem.problem)}.`
+        case 'unresolved':
+            return `{{${problem.name}}} names no variable in the selected environment.`
+        case 'nested':
+            return `The variable ${problem.name} itself holds {{ … }}; variables are filled in one level deep.`
+        default:
+            return RENDER_TEXT[problem.kind]
+    }
+}
+
+const SEND_TEXT: Record<Exclude<SendRefusal['kind'], 'render' | 'unknownManagedReference' | 'secret' | 'body'>, string> = {
+    url: 'Use an absolute http(s) URL whose host is written out, not a secret.',
+    network: 'This build does not send to that address.',
+    mixedCredentials: 'A request with tenant credentials cannot also use API Client secrets.',
+    managedPlacement: 'Tenant credentials go only into their OAuth grant or the x-pan-token header.',
+    ambiguousCredential: 'Remove Authorization, Cookie, x-pan-token or method-override headers from tenant requests.',
+    noTenant: 'Select a tenant with this credential in Settings, then send again.',
+    tokenDestination: "The token URL is not the tenant credential's token address.",
+    requestDestination: "The URL is not where the tenant's credential may go.",
+    notHttps: 'Tenant credentials are sent over HTTPS only.',
+    unknownEndpoint: 'Tenant credentials are used only for the known Strata Cloud Manager and AIRS operations.',
+    busy: 'Four requests are already running. Wait for one or cancel it.',
+    stale: 'This request changed since it was loaded. Check it and send again.',
+    reviewMissing: 'That review is no longer open. Send again to review the change.',
+    reviewStale: 'The request, its files or environment changed since the review. Send again to review it.',
+    reviewExpired: 'The review expired. Send again to review the change.',
+    reviewConsumed: 'That review was already applied; the change was sent once.',
+    declined: 'Not sent.',
+    private: 'Private API Client storage is unavailable; nothing was sent.',
+}
+
+const SECRET_TEXT: Record<string, string> = {
+    missing: 'has no value on this Mac',
+    locked: 'is locked in the Keychain',
+    denied: 'was denied by the Keychain',
+    invalid: 'is empty, has surrounding spaces or a line break',
+}
+
+export function sendRefusalText(refusal: SendRefusal): string {
+    switch (refusal.kind) {
+        case 'render':
+            return renderProblemText(refusal.problem)
+        case 'unknownManagedReference':
+            return `${refusal.reference} is not a tenant credential.`
+        case 'secret':
+            return `The secret ${refusal.reference} ${SECRET_TEXT[refusal.failure] ?? 'is unavailable'}. Nothing was sent.`
+        case 'body':
+            return refusal.problem === 'tooLarge'
+                ? 'A body file is over 64 MiB (128 MiB per multipart body). Nothing was sent.'
+                : refusal.problem === 'unsaved'
+                  ? 'Save the body file first; file bodies are sent as stored.'
+                  : 'A body file is missing or outside the collection. Nothing was sent.'
+        default:
+            return SEND_TEXT[refusal.kind]
+    }
+}
+
+const FAILURE_TEXT: Record<RunFailure, string> = {
+    timeout: 'No response within 120 seconds.',
+    connect: 'Could not connect. Nothing was sent.',
+    tls: 'The secure connection failed (certificate or TLS). Nothing was sent.',
+    request: 'The connection failed after the request may have been sent.',
+    token: 'The OAuth token could not be obtained. Nothing else was sent.',
+    tooLarge: 'The response is over 512 MiB; the rest was not read.',
+    storage: 'The response could not be stored on this Mac.',
+    redirect: 'A redirect pointed somewhere this build does not send to.',
+    retired: 'The tenant changed before it was sent. Nothing was sent.',
+}
+
+export function runFailureText(failure: RunFailure): string {
+    return FAILURE_TEXT[failure]
+}
+
+export function exportFailureText(failure: ExportFailure): string {
+    return failure === 'destination'
+        ? 'Choose a place outside the app’s private folder and any .git folder.'
+        : failure === 'body'
+          ? 'This response body is not stored.'
+          : 'The file could not be written.'
+}
+
+const SIZE = ['B', 'KB', 'MB', 'GB']
+export function sizeText(bytes: number): string {
+    let value = bytes
+    let unit = 0
+    while (value >= 1000 && unit < SIZE.length - 1) {
+        value /= 1000
+        unit += 1
+    }
+    return unit === 0 ? `${value} B` : `${value.toFixed(1)} ${SIZE[unit]}`
+}
+
+export function elapsedText(ms: number): string {
+    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`
+}
+
+/** One line for a recorded run. */
+export function runSummary(record: RunRecord): string {
+    const state =
+        record.state === 'completed' && record.status !== null
+            ? `HTTP ${record.status}`
+            : record.state === 'interrupted'
+              ? 'Interrupted (not sent again)'
+              : record.state === 'cancelled'
+                ? 'Cancelled'
+                : record.state === 'running'
+                  ? 'Running'
+                  : 'Failed'
+    return `${state} · ${sizeText(record.bytes)} · ${elapsedText(record.elapsedMs)}`
+}
+
 /** Operator text for a result that did not do what was asked (else null). */
 export function resultText(result: Awaited<ReturnType<WorkbenchCall>>): string | null {
     switch (result.kind) {
@@ -125,6 +253,10 @@ export function resultText(result: Awaited<ReturnType<WorkbenchCall>>): string |
             return problemText(result.problem)
         case 'saveRefused':
             return saveRefusalText(result.refusal)
+        case 'sendRefused':
+            return sendRefusalText(result.refusal)
+        case 'saveResponseFailed':
+            return exportFailureText(result.failure)
         default:
             return null
     }

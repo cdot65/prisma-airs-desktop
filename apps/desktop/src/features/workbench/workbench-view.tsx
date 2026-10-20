@@ -12,6 +12,7 @@ import type {
 import { PageHeading } from '../../shell/feature-view'
 import type { Dispatch } from '../tenants/dispatch'
 import { DocumentEditor, type EditorHandle, SELECT, TEXTAREA, requestName } from './document-editor'
+import { History } from './request-send'
 import { type ObserveWorkbench, type WorkbenchCall, resultText, workbenchCall } from './workbench-call'
 
 interface Props {
@@ -20,9 +21,10 @@ interface Props {
     observe: ObserveWorkbench
 }
 
-type Tool = 'requests' | 'environments' | 'secrets' | 'schemas' | 'import' | 'git'
+type Tool = 'requests' | 'history' | 'environments' | 'secrets' | 'schemas' | 'import' | 'git'
 const TOOLS: [Tool, string][] = [
     ['requests', 'Requests'],
+    ['history', 'History'],
     ['environments', 'Environments'],
     ['secrets', 'Secrets'],
     ['schemas', 'Schemas'],
@@ -142,9 +144,14 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
         <section aria-labelledby='workbench-heading' data-slot='workbench' className='flex flex-col gap-5'>
             {heading}
             <p className='text-academy-ink-soft -mt-4 text-[13px]'>
-                Collections live in your folders (Git-friendly TOML). Drafts, private environments and secret values stay on this Mac. Requests are
-                authored and previewed here; sending arrives in a later release.
+                Collections live in your folders (Git-friendly TOML). Drafts, private environments, secret values, history and cookies stay on this
+                Mac. Requests with tenant credentials go only to known operations, and changes need your review.
             </p>
+            {state.network !== 'live' ? (
+                <p className='text-academy-ink-faint -mt-3 text-[12px]' data-slot='workbench-network'>
+                    {state.network === 'loopbackOnly' ? 'This build sends API Client requests to loopback addresses only.' : 'This build does not send API Client requests.'}
+                </p>
+            ) : null}
             {state.failure ? (
                 <Callout tone='danger' icon={AlertTriangle} role='alert'>
                     Private API Client data is unavailable ({state.failure}). Drafts cannot be protected until it opens.
@@ -225,6 +232,9 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
                                         schemas={collection.schemas}
                                         onClosed={() => setDoc(null)}
                                         register={(handle) => editors.current.set(doc.id, handle)}
+                                        context={snapshot.active?.context ?? null}
+                                        running={state.running.filter((r) => r.request === doc.id)}
+                                        review={state.review?.request === doc.id ? state.review : null}
                                     />
                                 ) : collection.tabs.length === 0 ? (
                                     <p className='text-academy-ink-soft text-[13px]'>
@@ -235,6 +245,8 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
                                 ) : null}
                             </div>
                         </div>
+                    ) : tool === 'history' ? (
+                        <History call={call} revision={`${collection.id}:${state.running.length}`} />
                     ) : tool === 'environments' ? (
                         <Environments collection={collection} run={run} ids={ids} />
                     ) : tool === 'secrets' ? (

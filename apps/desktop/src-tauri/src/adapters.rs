@@ -136,6 +136,9 @@ pub const FIXTURE_OPEN_FOLDER: &str = "fixture-open-folder";
 /// answers.
 #[cfg(feature = "test-fixtures")]
 pub const FIXTURE_NEW_FOLDER: &str = "fixture-new-folder";
+/// Where the fixture driver names the file the save-response sheet answers.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_SAVE_RESPONSE: &str = "fixture-save-response";
 
 /// The fixture build answers the folder sheets with the paths the driver
 /// staged (none: cancelled), unless the native-sheet flag asks for the real
@@ -175,6 +178,13 @@ fn staged_folders<R: Runtime>(
                 self.staged(FIXTURE_NEW_FOLDER)
             }
         }
+        fn choose_save(&self, suggested: String) -> BoxFuture<'static, Option<PathBuf>> {
+            if self.native() {
+                self.1.choose_save(suggested)
+            } else {
+                self.staged(FIXTURE_SAVE_RESPONSE)
+            }
+        }
     }
     Arc::new(Staged(root.map(Path::to_path_buf), native))
 }
@@ -183,21 +193,33 @@ pub struct NativeFolders<R: Runtime> {
     app: AppHandle<R>,
 }
 
+/// Which native sheet to show.
+enum Sheet {
+    Open,
+    New,
+    /// Save a response body under a suggested name (the panel confirms
+    /// replacing an existing file).
+    Save(String),
+}
+
 impl<R: Runtime> NativeFolders<R> {
-    fn sheet(&self, new: bool) -> BoxFuture<'static, Option<PathBuf>> {
+    fn sheet(&self, sheet: Sheet) -> BoxFuture<'static, Option<PathBuf>> {
         let app = self.app.clone();
         Box::pin(async move {
             let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
             let window = app.get_webview_window(MAIN_WINDOW)?;
             app.run_on_main_thread(move || {
                 let dialog = rfd::FileDialog::new().set_parent(&window);
-                let chosen = if new {
-                    dialog
+                let chosen = match sheet {
+                    Sheet::New => dialog
                         .set_title("New collection")
                         .set_file_name("New collection")
-                        .save_file()
-                } else {
-                    dialog.set_title("Open collection").pick_folder()
+                        .save_file(),
+                    Sheet::Open => dialog.set_title("Open collection").pick_folder(),
+                    Sheet::Save(name) => dialog
+                        .set_title("Save response")
+                        .set_file_name(name)
+                        .save_file(),
                 };
                 let _ = tx.send(chosen);
             })
@@ -209,10 +231,13 @@ impl<R: Runtime> NativeFolders<R> {
 
 impl<R: Runtime> FolderPicker for NativeFolders<R> {
     fn choose_folder(&self) -> BoxFuture<'static, Option<PathBuf>> {
-        self.sheet(false)
+        self.sheet(Sheet::Open)
     }
     fn choose_new(&self) -> BoxFuture<'static, Option<PathBuf>> {
-        self.sheet(true)
+        self.sheet(Sheet::New)
+    }
+    fn choose_save(&self, suggested: String) -> BoxFuture<'static, Option<PathBuf>> {
+        self.sheet(Sheet::Save(suggested))
     }
 }
 

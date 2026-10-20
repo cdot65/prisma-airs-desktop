@@ -385,6 +385,12 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             #[allow(unused_mut)]
             let mut config = CoreConfig {
                 adoption_source: adapters::adoption_source(app.handle()),
+                // Fixture builds send API Client requests to loopback only.
+                workbench_network: if cfg!(feature = "test-fixtures") {
+                    desktop_core::workbench::admission::Network::LoopbackOnly
+                } else {
+                    desktop_core::workbench::admission::Network::Live
+                },
                 ..CoreConfig::default()
             };
             #[cfg(feature = "test-fixtures")]

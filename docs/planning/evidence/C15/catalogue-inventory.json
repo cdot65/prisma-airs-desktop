@@ -1,0 +1,42 @@
+{
+  "schema": "airs-v2/catalogue-inventory/1",
+  "source": "crates/desktop-core/src/workbench/scm-catalog.json (v1 74754c02 src/api_client/scm/catalog.json)",
+  "sha256": "914a9ee76723f3fa5bc566806aedbd7c0f7de2f457339c117ac6df3864037a8c",
+  "requests": 193,
+  "methods": {
+    "DELETE": 17,
+    "GET": 112,
+    "PATCH": 1,
+    "POST": 46,
+    "PUT": 17
+  },
+  "mutations": 81,
+  "auth": {
+    "api-key": 4,
+    "oauth2": 189
+  },
+  "body_kinds": {
+    "form": 1,
+    "json": 53,
+    "multipart": 1,
+    "text": 138
+  },
+  "bases": {
+    "aims_data_base": 18,
+    "aims_mgmt_base": 27,
+    "airs_scan_base": 4,
+    "airt_data_base": 36,
+    "airt_mgmt_base": 42,
+    "airt_nb_base": 5,
+    "aisec_base": 22,
+    "auth_host": 2,
+    "scm_base": 37
+  },
+  "admission": {
+    "known_reads": "GET operations are sent with the active tenant's credential after destination admission",
+    "known_mutations": "POST, PUT, PATCH and DELETE operations need an exact review and the native confirmation (D041)",
+    "unknown": "any other method or path with a tenant credential is refused (ADR 0004)",
+    "matcher": "crates/desktop-core/src/workbench/admission.rs known_operations() == 193 (unit test known_reads_pass_known_mutations_need_review_and_others_are_denied)"
+  },
+  "live_qualification": "none: the requests are specifications; C25 owns live qualification"
+}

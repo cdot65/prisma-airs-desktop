@@ -656,7 +656,17 @@ pub struct CoreConfig {
     pub git: Option<std::path::PathBuf>,
     /// The v1 API Client profile offered for adoption (read only).
     pub adoption_source: Option<std::path::PathBuf>,
+    /// Where API Client requests may go (C15). Fails closed: production
+    /// hosts set `Live`; fixture builds keep loopback only.
+    pub workbench_network: crate::workbench::admission::Network,
+    /// API origins tenant management tokens may also reach from the API
+    /// Client beside the configured management endpoints (the built-in
+    /// catalogue's Strata Cloud Manager host).
+    pub workbench_api_origins: Vec<String>,
 }
+
+/// The built-in catalogue's API host (C15).
+pub const SCM_API_ORIGIN: &str = "https://api.sase.paloaltonetworks.com";
 
 /// The production Academy origin.
 pub const ACADEMY_ORIGIN: &str = "https://academy.cdot.io";
@@ -674,6 +684,8 @@ impl Default for CoreConfig {
             deadline_tick: std::time::Duration::from_secs(15),
             git: crate::workbench::git::locate(),
             adoption_source: None,
+            workbench_network: crate::workbench::admission::Network::LoopbackOnly,
+            workbench_api_origins: vec![SCM_API_ORIGIN.to_owned()],
         }
     }
 }
@@ -767,6 +779,12 @@ pub trait FolderPicker: Send + Sync + 'static {
     /// A new folder's location and name from the save sheet (`None`:
     /// cancelled). Nothing exists there yet.
     fn choose_new(&self) -> futures_util::future::BoxFuture<'static, Option<std::path::PathBuf>>;
+    /// Where to save a response body, from the save sheet with `suggested`
+    /// as its name (`None`: cancelled). The sheet confirms replacing.
+    fn choose_save(
+        &self,
+        suggested: String,
+    ) -> futures_util::future::BoxFuture<'static, Option<std::path::PathBuf>>;
 }
 
 /// Keychain operations the core needs beyond single records.
@@ -979,6 +997,8 @@ struct State {
     workbench_root: Option<std::path::PathBuf>,
     git: Option<std::path::PathBuf>,
     adoption_source: Option<std::path::PathBuf>,
+    workbench_network: crate::workbench::admission::Network,
+    workbench_api_origins: Vec<String>,
 }
 
 impl State {
@@ -1133,6 +1153,7 @@ impl State {
         let starts =
             self.operations
                 .retire_contexts(ContextRef::PREFIX, keep.as_deref(), Instant::now());
+        self.workbench.sending.retire(self.active_ref.as_ref());
         self.retire_scan_sessions();
         self.retire_management_bindings();
         self.sync_scans();
@@ -1346,6 +1367,7 @@ impl State {
         self.active_ref = None;
         self.endpoint_review = None;
         let starts = self.operations.retire_contexts("", None, Instant::now());
+        self.workbench.sending.retire(None);
         self.retire_scan_sessions();
         self.retire_management_bindings();
         self.sync_scans();
@@ -1582,6 +1604,8 @@ impl Core {
             workbench_root: adapters.workbench_root.clone(),
             git: config.git.clone(),
             adoption_source: config.adoption_source.clone(),
+            workbench_network: config.workbench_network,
+            workbench_api_origins: config.workbench_api_origins.clone(),
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {

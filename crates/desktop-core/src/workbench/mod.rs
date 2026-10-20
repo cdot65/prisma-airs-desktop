@@ -4,14 +4,19 @@
 //! adoption and the built-in Strata Cloud Manager collection. Nothing in
 //! this module sends a request; execution and its admission arrive in C15.
 
+pub mod admission;
 pub mod adoption;
+pub mod cookies;
 pub mod curl;
 pub mod document;
 pub mod environments;
+pub mod execute;
 pub mod git;
+pub mod history;
 pub mod insomnia;
 pub mod profile;
 pub mod project;
+pub mod render;
 pub mod schema;
 pub mod scm;
 

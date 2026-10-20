@@ -698,6 +698,44 @@
         "id": "C14-N13",
         "check": "Profile adoption previews the staged v1 API Client profile, imports the selected collection into Recent with its private environment, never changes the source files and transfers no secret value."
       }
+    ],
+    "C15": [
+      {
+        "id": "C15-N01",
+        "check": "Typing into a request's URL and sending at once from the keyboard (the Send button focused and activated with Space) sends exactly the typed, unsaved input to the loopback endpoint and shows the response status, size, time and body in a region named Response; the request file is unchanged and the window says the fixture build sends to loopback addresses only."
+      },
+      {
+        "id": "C15-N02",
+        "check": "A cookie set by one response is sent with the collection's next request to the same host."
+      },
+      {
+        "id": "C15-N03",
+        "check": "A 64 MiB response streams to private storage with only its first 256 KiB held for display (shown as not text), is saved through the save sheet (fixture: the staged path) byte-for-byte, and is never stored in the clear in the private folder."
+      },
+      {
+        "id": "C15-N04",
+        "check": "A running request shows its progress and a Cancel request control; cancelling ends it as Cancelled and nothing is sent again."
+      },
+      {
+        "id": "C15-N05",
+        "check": "A POST whose response is lost is reported as possibly having reached the server, is sent exactly once and offers no resend control."
+      },
+      {
+        "id": "C15-N06",
+        "check": "With the tenant's management credential: an unknown operation and an edited token URL are refused before anything is sent; a known read mints the token from the tenant credential (Basic client auth, the tenant's TSG scope, the secret never in the body) and sends the read with that bearer token."
+      },
+      {
+        "id": "C15-N07",
+        "check": "A known tenant change shows its masked review (role alert); Send to tenant opens the native AppKit confirmation sheet titled with the method; Escape sends nothing; Return sends it exactly once and the review is gone."
+      },
+      {
+        "id": "C15-N08",
+        "check": "After quitting while a request runs and relaunching, the collection's history lists earlier runs and the in-flight one as Interrupted (not sent again); nothing is replayed."
+      },
+      {
+        "id": "C15-N09",
+        "check": "No Node, Bun or Deno process runs beside the app while requests are sent, and v1 data is unchanged."
+      }
     ]
   }
 }

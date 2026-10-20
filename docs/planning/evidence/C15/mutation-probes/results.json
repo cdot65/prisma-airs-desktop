@@ -1,0 +1,862 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/workbench/document-editor.tsx": "490643915cde3757f2443d0a9ed499e7d7f2869a622febdf70cf540403da4dd4",
+      "apps/desktop/src/features/workbench/request-send.tsx": "4595a0ebc73a887230b9b88d6bd346560a19f3488ed128ca6e74e8a035a99aea",
+      "apps/desktop/src/features/workbench/workbench-view.tsx": "1d51c864a27d8b9a95403dd3911acce7dd9dc1306e9bb69f3e6f604a5637a6cb",
+      "crates/desktop-core/src/authority.rs": "d9ba04e9d2c378722f4a856d11fc4714b7ee2c89674a1e0ff89490d4e1dc2e8d",
+      "crates/desktop-core/src/authority/workbench_domain/send.rs": "a2b41aaeebe974dc050668e9d5ff2ae4a4bc282729b328b5b000fbd0008c352d",
+      "crates/desktop-core/src/workbench/admission.rs": "0a3b5dd1dbc3d62d89899007bcd084f7c8b64a78d094489bb2e7dd4ff06eb15c",
+      "crates/desktop-core/src/workbench/cookies.rs": "cd5b571a9e5db2bd8a7521f26cdf7fc2e8a5b68771ef52bfbeea205b6085ba51",
+      "crates/desktop-core/src/workbench/execute.rs": "aee2be84212048fe5e701bafe2057401b04e7f399fa20b6b4871feb63142c228",
+      "crates/desktop-core/src/workbench/history.rs": "0e408100c2edb9f4f9d65b91cb667f93376699f8e15fc0d5cf5a49d206d82b57",
+      "packages/desktop-contracts/src/client.ts": "a7636609e8427e99c992bc29bb8f3ae6f3bd2b3d1a791e0f730e166ed3eeb924"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/request-send.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "registered origins are classified only for tenant credentials",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "registered_prisma_origins_are_classified_whatever_the_credential",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "registered origins are known only with a tenant",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "registered_prisma_origins_are_classified_whatever_the_credential",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "ambiguous spellings at registered origins are classified",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "registered_origins_are_classified_whatever_the_credential",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "generic redirects enter registered origins",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "registered_prisma_origins_are_classified_whatever_the_credential",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Host overrides reach the tenant",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "host_overrides_and_url_user_info_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "URL user-info rides with tenant credentials",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "tenant_credentials_are_admitted_before_any_secret_is_read",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a context change leaves the review usable",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "a_tenant_change_retires_reviews_and_unsent_requests",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "unsent requests go after a context change",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "a_tenant_change_retires_reviews_and_unsent_requests",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "minted bearer tokens are shown",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "wire_credentials_are_redacted_wherever_runs_are_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Basic credentials are shown",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "wire_credentials_are_redacted_wherever_runs_are_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "unknown managed operations are admitted",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "known_reads_pass_known_mutations_need_review_and_others_are_denied",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "token URLs are not checked",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "tenant_credentials_go_only_to_their_destinations",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "known changes need no review",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "known_tenant_changes_need_an_exact_confirmed_review_and_are_sent_once",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "tenant credentials go over HTTP",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "tenant_credentials_go_only_to_their_destinations",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "tenant credentials go anywhere in the request",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "tenant_credentials_go_only_to_their_destinations",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "operator auth headers ride with tenant credentials",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "tenant_credentials_go_only_to_their_destinations",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "workbench secrets mix with tenant credentials",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "tenant_credentials_go_only_to_their_destinations",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "ambiguous path spellings are classified",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "known_reads_pass_known_mutations_need_review_and_others_are_denied",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "loopback-only builds reach named hosts",
+    "files": [
+      "crates/desktop-core/src/workbench/admission.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "ordinary_requests_keep_their_class_and_the_network_mode",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "tenant redirects are followed",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "tenant_credentials_are_admitted_before_any_secret_is_read",
+    "exit_code": 0,
+    "guard_failed": false
+  },
+  {
+    "mutation": "workbench secrets follow cross-origin redirects",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "redirects_follow_origin_rules_and_credentials_never_cross",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a 401 keeps the token",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "tenant_credentials_are_admitted_before_any_secret_is_read",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a lost change looks certain",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "lost_responses_cancels_and_the_bound_never_resend",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the preview is unbounded",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "large_responses_stream_to_sealed_storage_and_save_exactly",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "response headers keep secrets",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "canary_secrets_never_reach_records_or_private_files",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "body files are unbounded",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "sends_the_fresh_snapshot_with_v1_auth_bodies_and_cookies",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a reviewed file that changed still sends",
+    "files": [
+      "crates/desktop-core/src/workbench/execute.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "a_pinned_file_that_changed_never_sends_its_last_piece",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a review ignores its digest",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "known_tenant_changes_need_an_exact_confirmed_review_and_are_sent_once",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a consumed review is not recognised",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "known_tenant_changes_need_an_exact_confirmed_review_and_are_sent_once",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Apply needs no confirmation",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "known_tenant_changes_need_an_exact_confirmed_review_and_are_sent_once",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "more than four requests run",
+    "files": [
+      "crates/desktop-core/src/authority/workbench_domain/send.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "lost_responses_cancels_and_the_bound_never_resend",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "interrupted runs stay running",
+    "files": [
+      "crates/desktop-core/src/workbench/history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workbench_execution"
+    ],
+    "guard": "history_survives_restarts_and_interrupted_runs_are_never_replayed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "bodies are stored in the clear",
+    "files": [
+      "crates/desktop-core/src/workbench/history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "bodies_are_sealed_frames_that_cannot_be_cut_or_moved",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "cookies reach parent domains",
+    "files": [
+      "crates/desktop-core/src/workbench/cookies.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "cookies_are_host_only_secure_and_path_scoped",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "secure cookies go over HTTP",
+    "files": [
+      "crates/desktop-core/src/workbench/cookies.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "workbench"
+    ],
+    "guard": "cookies_are_host_only_secure_and_path_scoped",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Send sends the loaded fields",
+    "files": [
+      "apps/desktop/src/features/workbench/document-editor.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/request-send.test.tsx"
+    ],
+    "guard": "sends the fields typed before the protection debounce, with the active context",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the active context is not sent",
+    "files": [
+      "apps/desktop/src/features/workbench/workbench-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/request-send.test.tsx"
+    ],
+    "guard": "sends the fields typed before the protection debounce, with the active context",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "uncertain outcomes are not shown",
+    "files": [
+      "apps/desktop/src/features/workbench/request-send.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/workbench/request-send.test.tsx"
+    ],
+    "guard": "explains refusals and uncertain outcomes, and never offers to resend",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "forged review IDs pass the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects runs, reviews and refusals Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "more than four running requests pass the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects runs, reviews and refusals Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

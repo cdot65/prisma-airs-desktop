@@ -15,15 +15,21 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Notify;
 use ts_rs::TS;
 
+mod send;
+
+pub use send::{RunView, RunningView, SendReviewView};
+
 use super::{Inner, Refusal, State, lock};
-use crate::context::EnteredSecret;
+use crate::context::{ContextRef, EnteredSecret, ReviewId};
 use crate::runtime::OperationId;
 use crate::vault::VaultError;
+use crate::workbench::admission::{Network, SendRefusal};
 use crate::workbench::adoption::{self, AdoptionProblem, CandidateView};
 use crate::workbench::curl::{self, CurlProblem, ImportNote};
 use crate::workbench::document::{self, Document, Fields, SaveRefusal};
 use crate::workbench::environments::{self, Origin, Preview};
 use crate::workbench::git::{self, GitView};
+use crate::workbench::history::{ExportFailure, RunRecord};
 use crate::workbench::insomnia::{self, ExportProblem, ResourceView};
 use crate::workbench::profile::{self, Draft, PrivateFailure, Profile, Recent, Scope};
 use crate::workbench::project::{self, Catalog, Issue, ProjectProblem, RequestEntry};
@@ -118,6 +124,42 @@ pub enum WorkbenchRequest {
     DiscardDraft {
         id: String,
     },
+    /// Send the editor's fresh snapshot (C15). `context` is the active
+    /// tenant context, needed only when the request uses tenant
+    /// credentials; Rust decides that from the request itself.
+    Send {
+        id: String,
+        revision: String,
+        fields: Fields,
+        context: Option<ContextRef>,
+    },
+    /// Send a reviewed tenant-credential change: the same snapshot must
+    /// reproduce the review, and the operator confirms natively.
+    Apply {
+        review: ReviewId,
+        id: String,
+        revision: String,
+        fields: Fields,
+        context: Option<ContextRef>,
+    },
+    DismissReview,
+    Cancel {
+        run: String,
+    },
+    /// A page of the open collection's history (newest first).
+    History {
+        before: Option<String>,
+    },
+    /// A recorded run and its stored body's preview (nothing is sent).
+    ShowRun {
+        run: String,
+    },
+    /// Save a stored response body through the native save sheet.
+    SaveResponse {
+        run: String,
+    },
+    ClearHistory,
+    ClearCookies,
     /// The request as it would be prepared, every secret masked.
     Preview {
         id: String,
@@ -314,6 +356,30 @@ pub enum WorkbenchResult {
         collections: u32,
         environments: u32,
     },
+    /// A run that ended (or one shown from history).
+    Ran {
+        run: RunView,
+    },
+    /// A known tenant-credential change: review it, then Apply.
+    ReviewRequired {
+        review: SendReviewView,
+    },
+    SendRefused {
+        refusal: SendRefusal,
+    },
+    History {
+        runs: Vec<RunRecord>,
+        more: bool,
+    },
+    ResponseSaved {
+        #[ts(type = "number")]
+        bytes: u64,
+        /// The saved file's name (not its path).
+        name: String,
+    },
+    SaveResponseFailed {
+        failure: ExportFailure,
+    },
 }
 
 fn refused(problem: WorkbenchProblem) -> WorkbenchResult {
@@ -402,6 +468,12 @@ pub struct WorkbenchView {
     pub busy: bool,
     /// Edits exist that are not protected on this Mac yet.
     pub unprotected: bool,
+    /// Requests in flight (C15).
+    pub running: Vec<RunningView>,
+    /// A tenant-credential change awaiting review.
+    pub review: Option<SendReviewView>,
+    /// Where this build sends API Client requests.
+    pub network: Network,
 }
 
 // ------------------------------------------------------------------ state
@@ -438,6 +510,8 @@ struct Call {
     cell: Arc<Cell>,
     settled: bool,
     observed: bool,
+    /// Left the lane (a transfer or confirmation in progress).
+    later: bool,
 }
 
 pub(super) struct Open {
@@ -469,6 +543,7 @@ pub(super) struct Workbench {
     git: Option<GitView>,
     /// Fixture builds: fail a Save after this many file writes.
     pub(super) interrupt: Option<Interrupt>,
+    pub(in crate::authority) sending: send::Sending,
 }
 
 impl Workbench {
@@ -481,6 +556,7 @@ impl Workbench {
         self.import = None;
         self.adoption = None;
         self.git = None;
+        self.sending.clear();
     }
 }
 
@@ -555,6 +631,7 @@ impl State {
             cell: Arc::default(),
             settled: false,
             observed: false,
+            later: false,
         });
         self.workbench.running += 1;
         Ok(operation)
@@ -734,8 +811,11 @@ impl State {
                 .map(|c| c.iter().enumerate().map(|(i, c)| c.view(i)).collect()),
             adoption_settled: w.profile.as_ref().is_some_and(|p| p.adoption_settled),
             git: w.git.clone(),
-            busy: w.running > 0,
+            busy: w.calls.iter().any(|c| !c.settled && !c.later),
             unprotected: self.workbench_unprotected(),
+            running: w.sending.running(),
+            review: w.sending.review(),
+            network: self.workbench_network,
         }
     }
 }
@@ -751,8 +831,32 @@ pub(super) async fn run(inner: Arc<Inner>, operation: OperationId, request: Work
     let Some(lane) = lock(&inner).ok().map(|s| Arc::clone(&s.workbench.lane)) else {
         return;
     };
-    let _turn = lane.lock().await;
-    let result = execute(&inner, request).await;
+    let step = {
+        let _turn = lane.lock().await;
+        match request {
+            WorkbenchRequest::Send { .. } | WorkbenchRequest::Apply { .. } => {
+                send::begin(&inner, request).await
+            }
+            other => send::Step::Done(Box::new(execute(&inner, other).await)),
+        }
+    };
+    let result = match step {
+        send::Step::Done(result) => *result,
+        send::Step::Later(work) => {
+            if let Ok(mut state) = lock(&inner) {
+                if let Some(call) = state
+                    .workbench
+                    .calls
+                    .iter_mut()
+                    .find(|c| c.operation == operation)
+                {
+                    call.later = true;
+                }
+                state.changed();
+            }
+            work.await
+        }
+    };
     if let Ok(mut state) = lock(&inner) {
         state.settle_workbench(&operation, result);
         state.changed();
@@ -798,6 +902,7 @@ async fn execute(inner: &Arc<Inner>, request: WorkbenchRequest) -> WorkbenchResu
                     return refused(WorkbenchProblem::Unprotected);
                 }
                 state.workbench.open = None;
+                state.workbench.sending.leave();
                 state.workbench.editing.clear();
                 state.workbench.import = None;
                 state.workbench.git = None;
@@ -910,6 +1015,17 @@ async fn execute(inner: &Arc<Inner>, request: WorkbenchRequest) -> WorkbenchResu
             }
         }
         WorkbenchRequest::DiscardDraft { id } => discard(inner, &root, id).await,
+        // Run off the lane by `run`.
+        WorkbenchRequest::Send { .. } | WorkbenchRequest::Apply { .. } => {
+            refused(WorkbenchProblem::Invalid)
+        }
+        WorkbenchRequest::DismissReview => send::dismiss_review(inner),
+        WorkbenchRequest::Cancel { run } => send::cancel(inner, &run),
+        WorkbenchRequest::History { before } => send::history_page(inner, &root, before).await,
+        WorkbenchRequest::ShowRun { run } => send::show(inner, &root, run).await,
+        WorkbenchRequest::SaveResponse { run } => send::save_response(inner, &root, run).await,
+        WorkbenchRequest::ClearHistory => send::clear(inner, &root, false).await,
+        WorkbenchRequest::ClearCookies => send::clear(inner, &root, true).await,
         WorkbenchRequest::Preview { id, fields } => preview(inner, &profile, id, fields).await,
         WorkbenchRequest::SelectEnvironment { name } => {
             let changed = with_open(inner, |o| {
@@ -1318,6 +1434,7 @@ async fn open_at(
             return refused(WorkbenchProblem::Unavailable);
         };
         state.workbench.editing.clear();
+        state.workbench.sending.leave();
         state.workbench.git = None;
         state.workbench.import = None;
         state.workbench.open = Some(Open {

@@ -45,6 +45,9 @@ chacha20poly1305 = { version = "=0.10.1", default-features = false, features = [
 # their comments and layout kept, and Insomnia v5 exports (YAML or JSON).
 toml_edit = { version = "=0.25.17", default-features = false, features = ["parse", "display"] }
 serde_yaml_ng = "=0.10.0"
+# API Client execution (C15): Set-Cookie parsing for the bounded,
+# host-only cookie jar (already locked through the desktop host).
+cookie = { version = "=0.18.2", default-features = false }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
@@ -113,6 +116,11 @@ required-features = ["test-fixtures"]
 [[test]]
 name = "workbench_documents"
 path = "tests/workbench_documents/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "workbench_execution"
+path = "tests/workbench_execution/main.rs"
 required-features = ["test-fixtures"]
 
 [[test]]

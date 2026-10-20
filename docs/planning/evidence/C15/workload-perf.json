@@ -1,0 +1,487 @@
+{
+ "schema": "airs-v2-workload-perf/1",
+ "label": "acceptance",
+ "registration_sha256": "93607832288681da40ef977b343b7d68de9905e7899411bb4d6a07ff0bb43117",
+ "started_utc": "2026-10-20T02:32:19Z",
+ "finished_utc": "2026-10-20T02:35:15Z",
+ "executable_sha256": "2451d2aba4c2e48c2f9a86dc51e341f90352e3126b3deb077de3e62b862abf4b",
+ "host": "Mac17,3",
+ "metrics": {
+  "api-client-response-256mib": {
+   "unit": "ms",
+   "samples": [
+    543.05775,
+    517.626291,
+    489.8285,
+    500.886708,
+    493.841667,
+    508.212166,
+    601.992916,
+    1106.826541,
+    1066.585167,
+    520.974958
+   ]
+  },
+  "api-client-save-response-256mib": {
+   "unit": "ms",
+   "samples": [
+    489.671417,
+    511.200958,
+    659.983542,
+    581.791542,
+    574.049459,
+    652.772042,
+    611.902375,
+    569.881458,
+    585.690375,
+    578.140875
+   ]
+  },
+  "api-client-upload-128mib": {
+   "unit": "ms",
+   "samples": [
+    98.031417,
+    98.333834,
+    97.661166,
+    88.486584,
+    91.474917,
+    93.463291,
+    95.450541,
+    97.394667,
+    95.250458,
+    94.242917
+   ]
+  },
+  "api-client-responsive-during-transfer": {
+   "unit": "ms",
+   "samples": [
+    36.116,
+    24.916333,
+    40.1575,
+    34.77425,
+    34.959708,
+    32.241625,
+    33.466209,
+    42.208875,
+    31.542833,
+    35.452417,
+    30.609209,
+    33.07525,
+    36.674958,
+    33.665458,
+    33.875875,
+    37.240875,
+    34.282583,
+    41.137583,
+    35.266125,
+    33.794958
+   ]
+  },
+  "api-client-process-tree-resident": {
+   "unit": "MiB",
+   "samples": [
+    251.6,
+    258.7,
+    259.4,
+    260.0,
+    262.6,
+    262.6,
+    262.6,
+    262.6,
+    262.6,
+    262.3,
+    262.2,
+    262.1,
+    262.1,
+    262.1,
+    262.0,
+    262.1,
+    262.0,
+    262.0,
+    262.0,
+    262.1
+   ]
+  }
+ },
+ "details": {
+  "process_tree": {
+   "app": 67836,
+   "webkit": [
+    67838,
+    67839,
+    67840
+   ]
+  },
+  "response_256mib": [
+   {
+    "sample": 1,
+    "streamed": [
+     268435456
+    ],
+    "polls": 59,
+    "ms": 543.05775
+   },
+   {
+    "sample": 2,
+    "streamed": [
+     268435456
+    ],
+    "polls": 59,
+    "ms": 517.626291
+   },
+   {
+    "sample": 3,
+    "streamed": [
+     268435456
+    ],
+    "polls": 57,
+    "ms": 489.8285
+   },
+   {
+    "sample": 4,
+    "streamed": [
+     268435456
+    ],
+    "ms": 500.886708,
+    "polls": 61
+   },
+   {
+    "sample": 5,
+    "streamed": [
+     268435456
+    ],
+    "polls": 61,
+    "ms": 493.841667
+   },
+   {
+    "sample": 6,
+    "streamed": [
+     268435456
+    ],
+    "ms": 508.212166,
+    "polls": 60
+   },
+   {
+    "sample": 7,
+    "streamed": [
+     268435456
+    ],
+    "ms": 601.992916,
+    "polls": 61
+   },
+   {
+    "sample": 8,
+    "streamed": [
+     268435456
+    ],
+    "polls": 60,
+    "ms": 1106.826541
+   },
+   {
+    "sample": 9,
+    "streamed": [
+     268435456
+    ],
+    "ms": 1066.585167,
+    "polls": 68
+   },
+   {
+    "sample": 10,
+    "streamed": [
+     268435456
+    ],
+    "polls": 57,
+    "ms": 520.974958
+   }
+  ],
+  "save_256mib": [
+   {
+    "sample": 1,
+    "bytes": 268435456,
+    "polls": 59,
+    "ms": 489.671417
+   },
+   {
+    "sample": 2,
+    "bytes": 268435456,
+    "polls": 60,
+    "ms": 511.200958
+   },
+   {
+    "sample": 3,
+    "bytes": 268435456,
+    "ms": 659.983542,
+    "polls": 65
+   },
+   {
+    "sample": 4,
+    "bytes": 268435456,
+    "ms": 581.791542,
+    "polls": 62
+   },
+   {
+    "sample": 5,
+    "bytes": 268435456,
+    "polls": 61,
+    "ms": 574.049459
+   },
+   {
+    "sample": 6,
+    "bytes": 268435456,
+    "ms": 652.772042,
+    "polls": 63
+   },
+   {
+    "sample": 7,
+    "bytes": 268435456,
+    "ms": 611.902375,
+    "polls": 65
+   },
+   {
+    "sample": 8,
+    "bytes": 268435456,
+    "ms": 569.881458,
+    "polls": 58
+   },
+   {
+    "sample": 9,
+    "bytes": 268435456,
+    "polls": 64,
+    "ms": 585.690375
+   },
+   {
+    "sample": 10,
+    "bytes": 268435456,
+    "ms": 578.140875,
+    "polls": 57
+   }
+  ],
+  "upload_128mib": [
+   {
+    "sample": 1,
+    "received": [
+     134218037
+    ],
+    "ms": 98.031417,
+    "polls": 9
+   },
+   {
+    "sample": 2,
+    "received": [
+     134218037
+    ],
+    "polls": 8,
+    "ms": 98.333834
+   },
+   {
+    "sample": 3,
+    "received": [
+     134218037
+    ],
+    "polls": 8,
+    "ms": 97.661166
+   },
+   {
+    "sample": 4,
+    "received": [
+     134218037
+    ],
+    "ms": 88.486584,
+    "polls": 7
+   },
+   {
+    "sample": 5,
+    "received": [
+     134218037
+    ],
+    "ms": 91.474917,
+    "polls": 8
+   },
+   {
+    "sample": 6,
+    "received": [
+     134218037
+    ],
+    "polls": 8,
+    "ms": 93.463291
+   },
+   {
+    "sample": 7,
+    "received": [
+     134218037
+    ],
+    "polls": 7,
+    "ms": 95.450541
+   },
+   {
+    "sample": 8,
+    "received": [
+     134218037
+    ],
+    "polls": 8,
+    "ms": 97.394667
+   },
+   {
+    "sample": 9,
+    "received": [
+     134218037
+    ],
+    "polls": 8,
+    "ms": 95.250458
+   },
+   {
+    "sample": 10,
+    "received": [
+     134218037
+    ],
+    "polls": 8,
+    "ms": 94.242917
+   }
+  ],
+  "responsive": [
+   {
+    "sample": 1,
+    "during_transfer": true,
+    "polls": 2,
+    "ms": 36.116
+   },
+   {
+    "sample": 2,
+    "during_transfer": true,
+    "ms": 24.916333,
+    "polls": 2
+   },
+   {
+    "sample": 3,
+    "during_transfer": true,
+    "ms": 40.1575,
+    "polls": 2
+   },
+   {
+    "sample": 4,
+    "during_transfer": true,
+    "ms": 34.77425,
+    "polls": 2
+   },
+   {
+    "sample": 5,
+    "during_transfer": true,
+    "ms": 34.959708,
+    "polls": 2
+   },
+   {
+    "sample": 6,
+    "during_transfer": true,
+    "ms": 32.241625,
+    "polls": 2
+   },
+   {
+    "sample": 7,
+    "during_transfer": true,
+    "ms": 33.466209,
+    "polls": 2
+   },
+   {
+    "sample": 8,
+    "during_transfer": true,
+    "ms": 42.208875,
+    "polls": 2
+   },
+   {
+    "sample": 9,
+    "during_transfer": true,
+    "ms": 31.542833,
+    "polls": 2
+   },
+   {
+    "sample": 10,
+    "during_transfer": true,
+    "polls": 2,
+    "ms": 35.452417
+   },
+   {
+    "sample": 11,
+    "during_transfer": true,
+    "ms": 30.609209,
+    "polls": 2
+   },
+   {
+    "sample": 12,
+    "during_transfer": true,
+    "polls": 2,
+    "ms": 33.07525
+   },
+   {
+    "sample": 13,
+    "during_transfer": true,
+    "ms": 36.674958,
+    "polls": 2
+   },
+   {
+    "sample": 14,
+    "during_transfer": true,
+    "ms": 33.665458,
+    "polls": 2
+   },
+   {
+    "sample": 15,
+    "during_transfer": true,
+    "polls": 2,
+    "ms": 33.875875
+   },
+   {
+    "sample": 16,
+    "during_transfer": true,
+    "ms": 37.240875,
+    "polls": 2
+   },
+   {
+    "sample": 17,
+    "during_transfer": true,
+    "ms": 34.282583,
+    "polls": 2
+   },
+   {
+    "sample": 18,
+    "during_transfer": true,
+    "polls": 2,
+    "ms": 41.137583
+   },
+   {
+    "sample": 19,
+    "during_transfer": true,
+    "polls": 2,
+    "ms": 35.266125
+   },
+   {
+    "sample": 20,
+    "during_transfer": true,
+    "ms": 33.794958,
+    "polls": 2
+   }
+  ],
+  "resident_steps": [
+   [
+    "response",
+    true
+   ],
+   [
+    "response",
+    true
+   ],
+   [
+    "response",
+    true
+   ],
+   [
+    "save",
+    true
+   ],
+   [
+    "upload",
+    true
+   ]
+  ],
+  "requests": 44
+ }
+}

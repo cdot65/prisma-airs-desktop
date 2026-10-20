@@ -465,4 +465,69 @@ describe('API Client validation', () => {
         bad({ kind: 'saveRefused', refusal: { kind: 'invalid', problem: { field: 'cookies', line: null } } })
         bad({ kind: 'sent' })
     })
+
+    describe('Send (C15)', () => {
+        const record = {
+            id: 'run-0123456789abcdef',
+            request: 'list',
+            relative: 'items/list.request.toml',
+            at: 1_760_000_000,
+            method: 'GET',
+            url: 'http://127.0.0.1:8080/items',
+            class: 'anonymous',
+            operation: null,
+            state: 'completed',
+            failure: null,
+            uncertain: false,
+            status: 200,
+            headers: [['content-type', 'application/json']],
+            redirect: null,
+            elapsedMs: 4,
+            bytes: 2,
+            stored: true,
+        }
+        const review = {
+            review: 'rv-00000000000000aa',
+            request: 'list',
+            operation: 'IAM/Delete',
+            method: 'DELETE',
+            url: 'https://127.0.0.1/x',
+            headers: [],
+            body: '',
+            bodyBytes: 0,
+            files: ['data/a.json'],
+            destination: 'https://127.0.0.1',
+            expires: 1,
+        }
+
+        it('accepts what Rust issues', () => {
+            for (const result of [
+                { kind: 'ran', run: { record, preview: '{}', previewBytes: 2, tokenDropped: false } },
+                { kind: 'reviewRequired', review },
+                { kind: 'sendRefused', refusal: { kind: 'render', problem: { kind: 'unresolved', name: 'host' } } },
+                { kind: 'sendRefused', refusal: { kind: 'secret', reference: 'dev', failure: 'locked' } },
+                { kind: 'sendRefused', refusal: { kind: 'unknownEndpoint' } },
+                { kind: 'history', runs: [record], more: false },
+                { kind: 'responseSaved', bytes: 2, name: 'a-response.json' },
+                { kind: 'saveResponseFailed', failure: 'destination' },
+            ]) {
+                expect(parseWorkbenchResult(result)).toEqual(result)
+            }
+            const running = [{ run: 'run-00000000000000bb', request: 'list', method: 'POST', bytes: 1 }]
+            expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, running, review, network: 'live' }))).not.toThrow()
+        })
+
+        it('rejects runs, reviews and refusals Rust never issues', () => {
+            bad({ kind: 'ran', run: { record: { ...record, id: 'run-1' }, preview: null, previewBytes: 0, tokenDropped: false } })
+            bad({ kind: 'ran', run: { record: { ...record, class: 'admin' }, preview: null, previewBytes: 0, tokenDropped: false } })
+            bad({ kind: 'ran', run: { record: { ...record, relative: '../x' }, preview: null, previewBytes: 0, tokenDropped: false } })
+            bad({ kind: 'reviewRequired', review: { ...review, review: 'approved' } })
+            bad({ kind: 'reviewRequired', review: { ...review, files: ['/etc/hosts'] } })
+            bad({ kind: 'sendRefused', refusal: { kind: 'preapproved' } })
+            bad({ kind: 'sendRefused', refusal: { kind: 'secret', reference: 'dev', failure: 'leaked' } })
+            const run = { run: 'run-00000000000000bb', request: 'list', method: 'POST', bytes: 1 }
+            expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, running: [run, run, run, run, run] }))).toThrow(ContractViolation)
+            expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, network: 'anywhere' }))).toThrow(ContractViolation)
+        })
+    })
 })

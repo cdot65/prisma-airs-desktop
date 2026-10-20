@@ -5,7 +5,8 @@
 //! entries are generic request specifications, not dedicated workflows or a
 //! claim of live qualification. Credentials are `tenant.*` references that
 //! only native tenant authority may resolve (never the workbench secret
-//! store, and nothing is sent in C14). A refresh replaces or removes a file
+//! store): C15 admits each request against the active tenant's
+//! capabilities and the catalogue before any is read. A refresh replaces or removes a file
 //! only while it is exactly as last written; edits are kept and deleted
 //! files are not recreated.
 
@@ -25,7 +26,6 @@ pub const NAME: &str = "Strata Cloud Manager";
 pub const FOLDER: &str = "scm";
 /// Reserved: references the workbench secret store never holds.
 pub const MANAGED_PREFIX: &str = "tenant.";
-const NO_TENANT: &str = "tenant.select";
 pub const CATALOG_SHA256: &str = "914a9ee76723f3fa5bc566806aedbd7c0f7de2f457339c117ac6df3864037a8c";
 
 #[derive(Debug, Deserialize)]
@@ -175,9 +175,15 @@ pub fn collection_text() -> String {
     for (name, url) in &catalog.variables {
         variables[name] = value(url);
     }
-    variables["tsg_id"] = value("");
-    for name in ["client_id", "client_secret", "x_pan_token"] {
-        variables[name] = secret(NO_TENANT);
+    // v2: the active tenant's native credentials (C15 admission), never
+    // a per-tenant environment chosen by name.
+    for (name, reference) in [
+        ("tsg_id", super::admission::TSG_ID),
+        ("client_id", super::admission::CLIENT_ID),
+        ("client_secret", super::admission::CLIENT_SECRET),
+        ("x_pan_token", super::admission::API_KEY),
+    ] {
+        variables[name] = secret(reference);
     }
     doc["variables"] = Item::Table(variables);
     format!(

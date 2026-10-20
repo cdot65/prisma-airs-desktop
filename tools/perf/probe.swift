@@ -150,6 +150,45 @@ case "activate":
     }
     emit(["ms": NSNull(), "polls": polls])
     exit(2)
+case "activate-field":
+    // From AXPress on a control to a text field labelled <field> exposing
+    // exactly <value> (the newly selected tab's editor is ready).
+    guard args.count == 8, let pid = pid_t(args[2]), let timeout = Double(args[7]) else {
+        fail("activate-field <pid> <role> <label prefix> <field label> <value> <timeout ms>")
+    }
+    let app = AXUIElementCreateApplication(pid)
+    func fields() -> [AXUIElement] {
+        var out: [AXUIElement] = []
+        var stack = (attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []
+        var seen = 0
+        while let el = stack.popLast(), seen < 20000 {
+            seen += 1
+            out.append(el)
+            stack.append(contentsOf: (attr(el, kAXChildrenAttribute) as? [AXUIElement]) ?? [])
+        }
+        return out
+    }
+    guard let target = fields().first(where: {
+        (attr($0, kAXRoleAttribute) as? String) == args[3] && label($0).hasPrefix(args[4])
+    }) else { fail("no \(args[3]) labelled \(args[4])") }
+    let start = DispatchTime.now().uptimeNanoseconds
+    guard AXUIElementPerformAction(target, kAXPressAction as CFString) == .success else { fail("press failed") }
+    var polls = 0
+    while ms(since: start) < timeout {
+        polls += 1
+        let ready = fields().contains(where: {
+            (attr($0, kAXRoleAttribute) as? String) == "AXTextField"
+                && label($0) == args[5]
+                && (attr($0, kAXValueAttribute) as? String) == args[6]
+        })
+        if ready {
+            emit(["ms": ms(since: start), "polls": polls])
+            exit(0)
+        }
+        usleep(2_000)
+    }
+    emit(["ms": NSNull(), "polls": polls])
+    exit(2)
 default:
     fail("unknown command \(args[1])")
 }

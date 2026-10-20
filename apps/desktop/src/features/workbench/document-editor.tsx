@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Button, Callout, Input, cn } from '@ai-security-academy/presentation'
-import { AlertTriangle, History, Save } from 'lucide-react'
-import type { DocumentView, Fields, Preview } from '@prisma-airs/desktop-contracts'
+import { AlertTriangle, History, Save, Send } from 'lucide-react'
+import type { DocumentView, Fields, Preview, RunView, RunningView, SendReviewView } from '@prisma-airs/desktop-contracts'
+import { ReviewPanel, RunPanel, Running } from './request-send'
 import { type WorkbenchCall, fieldText, resultText, saveRefusalText } from './workbench-call'
 
 /** File > Save (Cmd+S) arrives from the native menu as this window event. */
@@ -37,6 +38,12 @@ interface Props {
     onClosed: (id: string) => void
     /** Hands the workbench this document's close handle. */
     register?: (handle: EditorHandle) => void
+    /** The active tenant context (Rust decides whether a request needs it). */
+    context?: string | null
+    /** This document's requests in flight. */
+    running?: RunningView[]
+    /** A tenant-credential change from this document awaiting review. */
+    review?: SendReviewView | null
 }
 
 export interface EditorHandle {
@@ -56,7 +63,7 @@ export interface EditorHandle {
  * editor holds at that moment, not a debounced copy; typing pauses protect
  * the snapshot on this Mac; a reply never overwrites newer typing.
  */
-export function DocumentEditor({ initial, call, schemas, onClosed, register }: Props) {
+export function DocumentEditor({ initial, call, schemas, onClosed, register, context = null, running = [], review = null }: Props) {
     const ids = useId()
     const [doc, setDoc] = useState(initial)
     const [fields, setFields] = useState(initial.fields)
@@ -73,6 +80,8 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register }: P
     const [status, setStatus] = useState('')
     const [saving, setSaving] = useState(false)
     const [preview, setPreview] = useState<Preview | null>(null)
+    const [run, setRun] = useState<RunView | null>(null)
+    const [sending, setSending] = useState(false)
     const [conflict, setConflict] = useState<'changed' | 'deleted' | 'interrupted' | null>(
         initial.interrupted ? 'interrupted' : initial.conflict
     )
@@ -216,6 +225,32 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register }: P
         })
         if (r.kind === 'document') adopt(r.document, null)
         else setStatus(resultText(r) ?? '')
+    }
+
+    // Send: the fields the editor holds now (never a debounced or saved
+    // copy); Rust renders, admits and sends them.
+    const sendNow = async (reviewId: string | null) => {
+        const snapshot = fieldsRef.current
+        setSending(true)
+        setRun(null)
+        setStatus(reviewId ? 'Waiting for your confirmation…' : 'Sending…')
+        const r = await call(
+            reviewId
+                ? { kind: 'apply', review: reviewId, id: idRef.current, revision: revisionRef.current, fields: snapshot, context }
+                : { kind: 'send', id: idRef.current, revision: revisionRef.current, fields: snapshot, context }
+        )
+        setSending(false)
+        if (r.kind === 'ran') {
+            setRun(r.run)
+            setStatus('')
+            return
+        }
+        if (r.kind === 'reviewRequired') {
+            setStatus('This change to the tenant needs your review below.')
+            return
+        }
+        if (r.kind === 'refused' && r.problem.kind === 'stale') await reload()
+        setStatus(resultText(r) ?? '')
     }
 
     const showPreview = async () => {
@@ -390,6 +425,10 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register }: P
                     <Save aria-hidden className='size-4' />
                     Save
                 </Button>
+                <Button type='button' tier='primary' disabled={sending} onClick={() => void sendNow(null)}>
+                    <Send aria-hidden className='size-4' />
+                    Send
+                </Button>
                 <Button type='button' tier='secondary' onClick={() => void showPreview()}>
                     Preview
                 </Button>
@@ -402,6 +441,17 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register }: P
                     {status}
                 </p>
             </div>
+            {running.map((r) => (
+                <Running key={r.run} running={r} call={call} />
+            ))}
+            {review ? (
+                <ReviewPanel
+                    review={review}
+                    onApply={() => void sendNow(review.review)}
+                    onDismiss={() => void call({ kind: 'dismissReview' }).then(() => setStatus(''))}
+                />
+            ) : null}
+            {run ? <RunPanel run={run} call={call} /> : null}
             {preview ? <PreviewPanel preview={preview} /> : null}
         </form>
     )
@@ -424,7 +474,7 @@ function PreviewPanel({ preview }: { preview: Preview }) {
             {preview.missingSecrets.length ? <p role='alert'>{`Secrets without a value on this Mac: ${preview.missingSecrets.join(', ')}`}</p> : null}
             {preview.problem ? <p role='alert'>{fieldText(preview.problem)}</p> : null}
             {preview.jsonWarning ? <p>The JSON body does not parse; it is kept exactly as typed.</p> : null}
-            <p className='text-academy-ink-faint text-[12px]'>Secret values are masked. Sending requests arrives in a later release.</p>
+            <p className='text-academy-ink-faint text-[12px]'>Secret values are masked. Send prepares the request again from what you have typed.</p>
         </section>
     )
 }

@@ -1054,7 +1054,12 @@ function isWorkbenchView(value: unknown): boolean {
         typeof value.adoptionSettled === 'boolean' &&
         optional(isGitView, value.git) &&
         typeof value.busy === 'boolean' &&
-        typeof value.unprotected === 'boolean'
+        typeof value.unprotected === 'boolean' &&
+        Array.isArray(value.running) &&
+        value.running.length <= 4 &&
+        value.running.every(isRunningView) &&
+        optional(isSendReviewView, value.review) &&
+        oneOf(NETWORKS, value.network)
     )
 }
 
@@ -1118,6 +1123,113 @@ function isSaveRefusal(value: unknown): boolean {
     return oneOf(SAVE_REFUSALS, value.kind)
 }
 
+// ---- API Client execution (C15)
+
+const RUN_ID = /^run-[0-9a-f]{16}$/
+const RUN_STATES: readonly string[] = ['running', 'completed', 'failed', 'cancelled', 'interrupted']
+const RUN_FAILURES: readonly string[] = ['timeout', 'connect', 'tls', 'request', 'token', 'tooLarge', 'storage', 'redirect', 'retired']
+const CREDENTIAL_CLASSES: readonly string[] = ['anonymous', 'workbench', 'managed']
+const NETWORKS: readonly string[] = ['live', 'loopbackOnly', 'disabled']
+const SECRET_FAILURES: readonly string[] = ['missing', 'locked', 'denied', 'invalid']
+const BODY_PROBLEMS: readonly string[] = ['missing', 'tooLarge', 'unsaved']
+const EXPORT_FAILURES: readonly string[] = ['destination', 'body', 'io']
+const SEND_REFUSALS: readonly string[] = [
+    'url', 'network', 'mixedCredentials', 'managedPlacement', 'ambiguousCredential', 'noTenant', 'tokenDestination',
+    'requestDestination', 'notHttps', 'unknownEndpoint', 'busy', 'stale', 'reviewMissing', 'reviewStale', 'reviewExpired',
+    'reviewConsumed', 'declined', 'private',
+]
+const RENDER_PROBLEMS: readonly string[] = ['unclosed', 'secretInName', 'name', 'url', 'auth', 'multipartContentType']
+
+function isRenderProblem(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    if (value.kind === 'field') return isFieldProblem(value.problem)
+    if (value.kind === 'unresolved' || value.kind === 'nested') return isString(value.name)
+    return oneOf(RENDER_PROBLEMS, value.kind)
+}
+
+function isSendRefusal(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    switch (value.kind) {
+        case 'render':
+            return isRenderProblem(value.problem)
+        case 'unknownManagedReference':
+            return isString(value.reference)
+        case 'secret':
+            return isString(value.reference) && oneOf(SECRET_FAILURES, value.failure)
+        case 'body':
+            return oneOf(BODY_PROBLEMS, value.problem)
+    }
+    return oneOf(SEND_REFUSALS, value.kind)
+}
+
+function isRunRecord(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        RUN_ID.test(value.id) &&
+        typeof value.request === 'string' &&
+        DOCUMENT_ID.test(value.request) &&
+        isRelative(value.relative) &&
+        isCount(value.at) &&
+        isString(value.method) &&
+        isString(value.url) &&
+        oneOf(CREDENTIAL_CLASSES, value.class) &&
+        optional(isString, value.operation) &&
+        oneOf(RUN_STATES, value.state) &&
+        optional((f) => oneOf(RUN_FAILURES, f), value.failure) &&
+        typeof value.uncertain === 'boolean' &&
+        optional((s) => isCount(s) && (s as number) < 1000, value.status) &&
+        Array.isArray(value.headers) &&
+        value.headers.every(isPair) &&
+        optional(isString, value.redirect) &&
+        isCount(value.elapsedMs) &&
+        isCount(value.bytes) &&
+        typeof value.stored === 'boolean'
+    )
+}
+
+function isRunView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isRunRecord(value.record) &&
+        optional(isString, value.preview) &&
+        isCount(value.previewBytes) &&
+        typeof value.tokenDropped === 'boolean'
+    )
+}
+
+function isRunningView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.run === 'string' &&
+        RUN_ID.test(value.run) &&
+        typeof value.request === 'string' &&
+        DOCUMENT_ID.test(value.request) &&
+        isString(value.method) &&
+        isCount(value.bytes)
+    )
+}
+
+function isSendReviewView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.review === 'string' &&
+        REVIEW_ID.test(value.review) &&
+        typeof value.request === 'string' &&
+        DOCUMENT_ID.test(value.request) &&
+        isString(value.operation) &&
+        isString(value.method) &&
+        isString(value.url) &&
+        Array.isArray(value.headers) &&
+        value.headers.every(isPair) &&
+        isString(value.body) &&
+        isCount(value.bodyBytes) &&
+        isStrings(value.files, isRelative) &&
+        isString(value.destination) &&
+        isCount(value.expires)
+    )
+}
+
 export function parseWorkbenchResult(value: unknown): WorkbenchResult {
     if (isRecord(value)) {
         const valid = (() => {
@@ -1165,6 +1277,18 @@ export function parseWorkbenchResult(value: unknown): WorkbenchResult {
                     return Array.isArray(value.candidates) && value.candidates.every(isCandidateView)
                 case 'adopted':
                     return isCount(value.collections) && isCount(value.environments)
+                case 'ran':
+                    return isRunView(value.run)
+                case 'reviewRequired':
+                    return isSendReviewView(value.review)
+                case 'sendRefused':
+                    return isSendRefusal(value.refusal)
+                case 'history':
+                    return Array.isArray(value.runs) && value.runs.every(isRunRecord) && typeof value.more === 'boolean'
+                case 'responseSaved':
+                    return isCount(value.bytes) && isString(value.name) && !String(value.name).includes('/')
+                case 'saveResponseFailed':
+                    return oneOf(EXPORT_FAILURES, value.failure)
             }
             return false
         })()

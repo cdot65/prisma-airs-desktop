@@ -2,9 +2,12 @@
 import type { CandidateView } from "./CandidateView";
 import type { CollectionView } from "./CollectionView";
 import type { GitView } from "./GitView";
+import type { Network } from "./Network";
 import type { PrivateFailure } from "./PrivateFailure";
 import type { RecentView } from "./RecentView";
 import type { ResourceView } from "./ResourceView";
+import type { RunningView } from "./RunningView";
+import type { SendReviewView } from "./SendReviewView";
 
 export type WorkbenchView = { available: boolean, 
 /**
@@ -22,4 +25,16 @@ busy: boolean,
 /**
  * Edits exist that are not protected on this Mac yet.
  */
-unprotected: boolean, };
+unprotected: boolean, 
+/**
+ * Requests in flight (C15).
+ */
+running: Array<RunningView>, 
+/**
+ * A tenant-credential change awaiting review.
+ */
+review: SendReviewView | null, 
+/**
+ * Where this build sends API Client requests.
+ */
+network: Network, };

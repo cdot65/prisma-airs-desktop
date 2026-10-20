@@ -66,7 +66,7 @@ pub enum Layer {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum Value {
+pub(crate) enum Value {
     Plain(String),
     Secret(String),
 }
@@ -186,9 +186,8 @@ fn substitute(
     out
 }
 
-/// Previews `fields` under `layers`; `stored` says whether a secret
-/// reference has a value on this Mac.
-pub fn preview(fields: &Fields, layers: &Layers, stored: &dyn Fn(&str) -> bool) -> Preview {
+/// The effective variables for `fields` under `layers` (later layers win).
+pub(crate) fn values(fields: &Fields, layers: &Layers) -> BTreeMap<String, (Value, Layer)> {
     let mut values = BTreeMap::new();
     for (text, layer) in [
         (&layers.collection, Layer::Collection),
@@ -201,6 +200,13 @@ pub fn preview(fields: &Fields, layers: &Layers, stored: &dyn Fn(&str) -> bool) 
             layer_values(text, layer, &mut values);
         }
     }
+    values
+}
+
+/// Previews `fields` under `layers`; `stored` says whether a secret
+/// reference has a value on this Mac.
+pub fn preview(fields: &Fields, layers: &Layers, stored: &dyn Fn(&str) -> bool) -> Preview {
+    let values = values(fields, layers);
     let mut used = Vec::new();
     let mut unresolved = Vec::new();
     let problem = document::check(fields).err();

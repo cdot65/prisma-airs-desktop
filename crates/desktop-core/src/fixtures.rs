@@ -386,6 +386,8 @@ impl ImportPicker for ScriptedPicker {
 pub struct ScriptedFolders {
     folders: Mutex<VecDeque<Option<std::path::PathBuf>>>,
     created: Mutex<VecDeque<Option<std::path::PathBuf>>>,
+    saves: Mutex<VecDeque<Option<std::path::PathBuf>>>,
+    suggested: Mutex<Vec<String>>,
     opened: Mutex<usize>,
 }
 
@@ -402,6 +404,18 @@ impl ScriptedFolders {
         if let Ok(mut f) = self.created.lock() {
             f.push_back(folder);
         }
+    }
+
+    /// The next save sheet answers `file` (None: cancel).
+    pub fn reply_save(&self, file: Option<std::path::PathBuf>) {
+        if let Ok(mut f) = self.saves.lock() {
+            f.push_back(file);
+        }
+    }
+
+    /// The names the save sheet was opened with.
+    pub fn suggested(&self) -> Vec<String> {
+        self.suggested.lock().map(|s| s.clone()).unwrap_or_default()
     }
 
     pub fn opened(&self) -> usize {
@@ -427,6 +441,13 @@ impl crate::FolderPicker for ScriptedFolders {
 
     fn choose_new(&self) -> BoxFuture<'static, Option<std::path::PathBuf>> {
         self.next(&self.created)
+    }
+
+    fn choose_save(&self, suggested: String) -> BoxFuture<'static, Option<std::path::PathBuf>> {
+        if let Ok(mut s) = self.suggested.lock() {
+            s.push(suggested);
+        }
+        self.next(&self.saves)
     }
 }
 

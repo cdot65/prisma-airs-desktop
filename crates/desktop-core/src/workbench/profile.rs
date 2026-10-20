@@ -136,7 +136,8 @@ fn failure(error: VaultError) -> PrivateFailure {
     }
 }
 
-fn key(keychain: &dyn Vault, create: bool) -> Result<Option<[u8; 32]>, PrivateFailure> {
+/// The profile key (created on first use when `create`).
+pub(crate) fn key(keychain: &dyn Vault, create: bool) -> Result<Option<[u8; 32]>, PrivateFailure> {
     let record = key_record();
     let bytes = match keychain.get(&record) {
         Ok(bytes) => bytes,
@@ -160,7 +161,7 @@ fn path(root: &Path, name: &str) -> PathBuf {
     root.join(format!("{}.sealed", &digest[..32]))
 }
 
-fn aad(name: &str) -> Vec<u8> {
+pub(crate) fn aad(name: &str) -> Vec<u8> {
     format!("{SCHEMA}:{name}").into_bytes()
 }
 
@@ -235,6 +236,57 @@ pub fn store_scope(
     data: &Scope,
 ) -> Result<(), PrivateFailure> {
     store(root, keychain, &format!("scope:{scope}"), data, SCOPE_BYTES)
+}
+
+pub fn load_history(
+    root: &Path,
+    keychain: &dyn Vault,
+    scope: &str,
+) -> Result<Vec<super::history::RunRecord>, PrivateFailure> {
+    load(root, keychain, &format!("history:{scope}"), SCOPE_BYTES)
+}
+
+pub fn store_history(
+    root: &Path,
+    keychain: &dyn Vault,
+    scope: &str,
+    runs: &[super::history::RunRecord],
+) -> Result<(), PrivateFailure> {
+    store(
+        root,
+        keychain,
+        &format!("history:{scope}"),
+        &runs,
+        SCOPE_BYTES,
+    )
+}
+
+pub fn load_cookies(
+    root: &Path,
+    keychain: &dyn Vault,
+    scope: &str,
+) -> Result<Vec<super::cookies::Stored>, PrivateFailure> {
+    load(
+        root,
+        keychain,
+        &format!("cookies:{scope}"),
+        super::cookies::JAR_BYTES,
+    )
+}
+
+pub fn store_cookies(
+    root: &Path,
+    keychain: &dyn Vault,
+    scope: &str,
+    cookies: &[super::cookies::Stored],
+) -> Result<(), PrivateFailure> {
+    store(
+        root,
+        keychain,
+        &format!("cookies:{scope}"),
+        &cookies,
+        super::cookies::JAR_BYTES,
+    )
 }
 
 pub fn load_journal(

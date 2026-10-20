@@ -106,6 +106,57 @@ fn build_client(policy: &TransportPolicy) -> Result<reqwest::Client, PolicyError
     builder.build().map_err(|_| PolicyError::Client)
 }
 
+/// The API Client's client (C15) under `policy`: the same proxy and trust
+/// policy, no redirects or retries (each hop is admitted by the caller), no
+/// automatic decompression or headers of its own, HTTP allowed (generic
+/// workbench targets; tenant credentials are admitted for HTTPS only), an
+/// idle read limit and no proxy at all when only loopback is reachable.
+pub(crate) fn workbench_client(
+    policy: &TransportPolicy,
+    loopback_only: bool,
+) -> Result<reqwest::Client, PolicyError> {
+    let mut builder = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .retry(reqwest::retry::never())
+        .connect_timeout(CONNECT_TIMEOUT)
+        .read_timeout(WORKBENCH_IDLE)
+        .http1_max_headers(MAX_RESPONSE_HEADERS)
+        .http2_max_header_list_size(MAX_RESPONSE_HEADER_BYTES as u32)
+        .gzip(false)
+        .referer(false);
+    if loopback_only {
+        // `localhost` is admitted in loopback-only builds; it never
+        // reaches a resolver.
+        builder = builder.resolve("localhost", std::net::SocketAddr::from(([127, 0, 0, 1], 0)));
+    }
+    builder = match (&policy.proxy, loopback_only) {
+        (_, true) | (ProxyMode::Direct, _) => builder.no_proxy(),
+        (ProxyMode::System, false) => builder,
+        (ProxyMode::Explicit { url }, false) => {
+            let parsed = url::Url::parse(url).map_err(|_| PolicyError::Proxy)?;
+            if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none() {
+                return Err(PolicyError::Proxy);
+            }
+            builder.proxy(reqwest::Proxy::all(parsed.as_str()).map_err(|_| PolicyError::Proxy)?)
+        }
+    };
+    if !policy.extra_roots.is_empty() {
+        let mut roots = Vec::new();
+        for pem in &policy.extra_roots {
+            for der in parse_roots(pem)? {
+                roots.push(
+                    reqwest::Certificate::from_der(der.as_ref()).map_err(|_| PolicyError::Root)?,
+                );
+            }
+        }
+        builder = builder.tls_certs_merge(roots);
+    }
+    builder.build().map_err(|_| PolicyError::Client)
+}
+
+/// The API Client's idle read limit (v1: 120 s).
+pub const WORKBENCH_IDLE: Duration = Duration::from_secs(120);
+
 /// Parses one reviewed PEM input. Every block must be a certificate usable
 /// as a trust anchor and there must be at least one: an unparseable root is
 /// refused, never silently ignored (reqwest would accept it lazily).

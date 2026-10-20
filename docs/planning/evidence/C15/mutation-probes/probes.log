@@ -1,0 +1,44 @@
+baseline workbench_execution [0, 0, 0]
+baseline workbench [0, 0, 0]
+baseline src/features/workbench/request-send.test.tsx [0, 0, 0]
+baseline src/contracts/snapshot-validation.test.ts [0, 0, 0]
+registered origins are classified only for tenant credentials 101 True
+registered origins are known only with a tenant 101 True
+ambiguous spellings at registered origins are classified 101 True
+generic redirects enter registered origins 101 True
+Host overrides reach the tenant 101 True
+URL user-info rides with tenant credentials 101 True
+a context change leaves the review usable 101 True
+unsent requests go after a context change 101 True
+minted bearer tokens are shown 101 True
+Basic credentials are shown 101 True
+unknown managed operations are admitted 101 True
+token URLs are not checked 101 True
+known changes need no review 101 True
+tenant credentials go over HTTP 101 True
+tenant credentials go anywhere in the request 101 True
+operator auth headers ride with tenant credentials 101 True
+workbench secrets mix with tenant credentials 101 True
+ambiguous path spellings are classified 101 True
+loopback-only builds reach named hosts 101 True
+tenant redirects are followed 0 False
+workbench secrets follow cross-origin redirects 101 True
+a 401 keeps the token 101 True
+a lost change looks certain 101 True
+the preview is unbounded 101 True
+response headers keep secrets 101 True
+body files are unbounded 101 True
+a reviewed file that changed still sends 101 True
+a review ignores its digest 101 True
+a consumed review is not recognised 101 True
+Apply needs no confirmation 101 True
+more than four requests run 101 True
+interrupted runs stay running 101 True
+bodies are stored in the clear 101 True
+cookies reach parent domains 101 True
+secure cookies go over HTTP 101 True
+Send sends the loaded fields 1 True
+the active context is not sent 1 True
+uncertain outcomes are not shown 1 True
+forged review IDs pass the contract 1 True
+more than four running requests pass the contract 1 True
