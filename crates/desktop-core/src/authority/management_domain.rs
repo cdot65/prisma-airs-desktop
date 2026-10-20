@@ -12,7 +12,7 @@ use tokio::sync::Notify;
 use tokio::time::Instant;
 
 use super::{Refusal, ScanCapability, State};
-use crate::context::ContextRef;
+use crate::context::{ContextRef, WorkspaceRef};
 use crate::management::{
     BindingCell, BindingSource, ManagementFailure, ManagementJob, ManagementRequest,
     ManagementResult, ResultSlot,
@@ -62,6 +62,11 @@ pub(super) struct ManagementRecord {
     /// A Runtime overview read: its result also updates the shell's
     /// Home/Inbox state.
     overview: bool,
+    /// The Gateway workspace selection a scoped Gateway read was admitted
+    /// under: its result is withdrawn once another is chosen (C16).
+    workspace: Option<WorkspaceRef>,
+    /// A Gateway Workspaces listing: its result updates the choice.
+    lists_workspaces: bool,
 }
 
 /// The binding of one credential generation (context): its session and
@@ -216,17 +221,24 @@ impl State {
         if !request.is_valid() {
             return Err(Refusal::InvalidInput);
         }
+        let gateway = self.gateway_admission(&context, &request)?;
         let source = self.binding_source(&context, keychain, session_vault)?;
         let overview = request == ManagementRequest::Overview;
+        let lists_workspaces = super::gateway_domain::lists_workspaces(&request);
+        let (domain, workspace, scope) = match gateway {
+            Some(g) => (g.domain, g.workspace, g.scope),
+            None => (context.as_str().to_owned(), None, None),
+        };
         let slot: ResultSlot = Arc::default();
         let job = ManagementJob {
             source,
             request,
             slot: Arc::clone(&slot),
+            workspace: scope,
         };
         let (operation, starts) =
             self.operations
-                .admit(context.as_str(), 0, job.into_work(), Instant::now())?;
+                .admit(&domain, 0, job.into_work(), Instant::now())?;
         self.management_calls.push(ManagementRecord {
             operation: operation.clone(),
             context,
@@ -235,6 +247,8 @@ impl State {
             settled: false,
             observed: false,
             overview,
+            workspace,
+            lists_workspaces,
         });
         if overview {
             let context = self.management_calls.last().map(|r| r.context.clone());
@@ -249,6 +263,8 @@ impl State {
     pub(super) fn sync_management_calls(&mut self) {
         let current = self.active_ref.clone();
         let mut overviews = Vec::new();
+        let mut listings = Vec::new();
+        let selected = self.gateway_selection();
         for record in self.management_calls.iter_mut().filter(|r| !r.settled) {
             let settlement = match self.operations.state(&record.operation) {
                 Some(OperationState::Settled(s)) => s,
@@ -260,7 +276,11 @@ impl State {
             };
             record.settled = true;
             let reply = record.slot.lock().ok().and_then(|mut s| s.take());
-            let retired = current.as_ref() != Some(&record.context);
+            let retired = current.as_ref() != Some(&record.context)
+                || record
+                    .workspace
+                    .as_ref()
+                    .is_some_and(|w| selected.as_ref() != Some(w));
             let result = match (reply, retired, settlement.stop) {
                 // A reply for a retired context is never shown.
                 (_, true, _) | (_, _, Some(_)) | (None, _, _) => ManagementResult::Failed {
@@ -272,6 +292,13 @@ impl State {
             if record.overview {
                 overviews.push((record.context.clone(), result.clone()));
             }
+            if record.lists_workspaces
+                && let ManagementResult::Gateway {
+                    gateway: crate::gateway::GatewayResult::List { list },
+                } = &result
+            {
+                listings.push((record.context.clone(), list.clone()));
+            }
             if let Ok(mut slot) = record.cell.result.lock() {
                 *slot = Some(result);
             }
@@ -279,6 +306,9 @@ impl State {
         }
         for (context, result) in overviews {
             self.overview_settled(&context, result);
+        }
+        for (context, list) in listings {
+            self.gateway_listed(&context, &list);
         }
         let mut settled = 0;
         let mut keep = vec![true; self.management_calls.len()];
@@ -300,16 +330,25 @@ impl State {
         &mut self,
         operation: &OperationId,
     ) -> Result<ManagementHandle, Refusal> {
+        let (context, workspace) = self
+            .management_calls
+            .iter()
+            .find(|r| &r.operation == operation && !r.observed)
+            .map(|r| (r.context.clone(), r.workspace.clone()))
+            .ok_or(Refusal::InvalidInput)?;
+        // A result whose context (or Gateway workspace choice) retired
+        // before it was observed is withdrawn (it may have settled while it
+        // was current).
+        let current = self.active_ref.as_ref() == Some(&context)
+            && self.workspace_current(workspace.as_ref());
         let record = self
             .management_calls
             .iter_mut()
-            .find(|r| &r.operation == operation && !r.observed)
+            .find(|r| &r.operation == operation)
             .ok_or(Refusal::InvalidInput)?;
         record.observed = true;
-        // A result whose context retired before it was observed is withdrawn
-        // (it may have settled while the context was current).
         if record.settled
-            && self.active_ref.as_ref() != Some(&record.context)
+            && !current
             && let Ok(mut slot) = record.cell.result.lock()
             && let Some(result) = slot.take()
         {

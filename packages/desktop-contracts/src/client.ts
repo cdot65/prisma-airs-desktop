@@ -502,6 +502,123 @@ function isManagementDetail(value: unknown): boolean {
     }
 }
 
+const WORKSPACE_REF = /^gw-[A-Za-z0-9-]{1,61}$/
+const GATEWAY_ID = /^[A-Za-z0-9_-]{1,128}$/
+const GATEWAY_RESOURCES: readonly string[] = [
+    'workspaces',
+    'providers',
+    'integrations',
+    'routes',
+    'guardrails',
+    'serviceKeys',
+    'userKeys',
+]
+const SCOPE_BINDINGS: readonly string[] = ['bound', 'unbound', 'absent', 'denied', 'failed']
+const PLANE_ACCESS: readonly string[] = ['granted', 'denied', 'failed']
+const GATEWAY_MAX_ROWS = 200
+
+const isGatewayId = (value: unknown): boolean => typeof value === 'string' && GATEWAY_ID.test(value)
+
+function isListedWorkspace(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isGatewayId(value.id) &&
+        typeof value.name === 'string' &&
+        typeof value.slug === 'string' &&
+        typeof value.scopeName === 'string'
+    )
+}
+
+/** A Gateway inventory: at most 200 projected rows, its count and total. */
+function isGatewayList(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(GATEWAY_RESOURCES, value.resource) &&
+        optional(isGatewayId, value.workspace) &&
+        // Scoped inventories name their workspace; tenant-wide ones none.
+        (value.workspace === null) === (value.resource === 'workspaces' || value.resource === 'integrations') &&
+        isCount(value.count) &&
+        (value.count as number) <= GATEWAY_MAX_ROWS &&
+        isItemArray(value.rows) &&
+        (JSON.parse(value.rows as string) as unknown[]).length === value.count &&
+        optional(isCount, value.total) &&
+        (value.total === null || (value.total as number) >= (value.count as number)) &&
+        typeof value.complete === 'boolean'
+    )
+}
+
+function isGatewayDetail(value: unknown): boolean {
+    if (!isRecord(value) || !oneOf(GATEWAY_RESOURCES, value.resource) || !isGatewayId(value.id) || !oneOf(DETAIL_FOUND, value.found)) {
+        return false
+    }
+    if (value.found !== 'found') return value.item === null
+    return isJsonObjectText(value.item)
+}
+
+function isGatewayModels(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isGatewayId(value.integration) &&
+        isCount(value.count) &&
+        isItemArray(value.models) &&
+        (JSON.parse(value.models as string) as unknown[]).length === value.count &&
+        optional(isCount, value.total) &&
+        typeof value.complete === 'boolean' &&
+        typeof value.allowAll === 'boolean'
+    )
+}
+
+function isGatewayPrerequisites(value: unknown): boolean {
+    if (!isRecord(value) || !isGatewayId(value.workspace) || typeof value.scopeName !== 'string') return false
+    // Each source holds its data or its failure, never both.
+    const sources = ['routes', 'providers', 'integrations', 'serviceKeys'].every(
+        (k) => optional(isGatewayList, value[k]) && optionalFailure(value[`${k}Failure`]) && (value[k] === null) !== (value[`${k}Failure`] === null)
+    )
+    return (
+        sources &&
+        isCount(value.inferenceKeys) &&
+        oneOf(SCOPE_BINDINGS, value.scope) &&
+        oneOf(PLANE_ACCESS, value.dataPlane) &&
+        oneOf(PLANE_ACCESS, value.adminPlane) &&
+        oneOf(PLANE_ACCESS, value.iamPlane)
+    )
+}
+
+function isGatewayResult(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    switch (value.kind) {
+        case 'list':
+            return isGatewayList(value.list)
+        case 'detail':
+            return isGatewayDetail(value.detail)
+        case 'models':
+            return isGatewayModels(value.models)
+        case 'prerequisites':
+            return isGatewayPrerequisites(value.prerequisites)
+    }
+    return false
+}
+
+function isGatewayView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        optional((w) => Array.isArray(w) && w.every(isListedWorkspace), value.workspaces) &&
+        typeof value.complete === 'boolean' &&
+        optional(
+            (s) =>
+                isRecord(s) &&
+                typeof s.reference === 'string' &&
+                WORKSPACE_REF.test(s.reference) &&
+                isListedWorkspace(s.workspace) &&
+                typeof s.restored === 'boolean',
+            value.selected
+        ) &&
+        optional(isGatewayId, value.remembered) &&
+        typeof value.rememberedMissing === 'boolean' &&
+        (!value.rememberedMissing || value.remembered !== null)
+    )
+}
+
 function isJsonObjectText(value: unknown): boolean {
     if (typeof value !== 'string') return false
     try {
@@ -1332,6 +1449,7 @@ export function parseManagementResult(value: unknown): ManagementResult {
             return value as unknown as ManagementResult
         }
         if (value.kind === 'attacks' && isAttackPage(value.attacks)) return value as unknown as ManagementResult
+        if (value.kind === 'gateway' && isGatewayResult(value.gateway)) return value as unknown as ManagementResult
         if (value.kind === 'failed' && oneOf(MANAGEMENT_FAILURES, value.failure) && oneOf(OUTCOMES, value.outcome)) {
             return value as unknown as ManagementResult
         }
@@ -1436,6 +1554,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isLibraryView(value.library) ||
         !isOverviewView(value.overview) ||
         !isWorkbenchView(value.workbench) ||
+        !isGatewayView(value.gateway) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')

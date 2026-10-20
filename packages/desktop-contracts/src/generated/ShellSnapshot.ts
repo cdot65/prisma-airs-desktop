@@ -4,6 +4,7 @@ import type { ActiveContext } from "./ActiveContext";
 import type { ChangesView } from "./ChangesView";
 import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
+import type { GatewayView } from "./GatewayView";
 import type { ImportView } from "./ImportView";
 import type { LearnerRef } from "./LearnerRef";
 import type { LibraryView } from "./LibraryView";
@@ -81,4 +82,8 @@ overview: OverviewView,
 /**
  * API Client projects on this Mac (C14).
  */
-workbench: WorkbenchView, };
+workbench: WorkbenchView, 
+/**
+ * The active context's Gateway workspaces and choice (C16).
+ */
+gateway: GatewayView, };

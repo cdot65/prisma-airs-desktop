@@ -6,6 +6,7 @@ import { AdministrationView } from '../features/administration/administration-vi
 import { SessionsView } from '../features/sessions/sessions-view'
 import { type CasePrefill, LibraryView } from '../features/library/library-view'
 import { RedTeamView } from '../features/red-team/red-team-view'
+import { GatewayView } from '../features/gateway/gateway-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
 import { WorkbenchView } from '../features/workbench/workbench-view'
 import type { Dispatch } from '../features/tenants/dispatch'
@@ -208,6 +209,15 @@ export function DesktopShell(props: DesktopShellProps) {
                 />
             ) : feature.id === 'redTeam' && feature.availability.state === 'available' ? (
                 <RedTeamView
+                    key={context ?? 'none'}
+                    ref={heading}
+                    snapshot={snapshot}
+                    dispatch={props.dispatch}
+                    observe={observeManagement}
+                    onNavigate={props.onNavigate}
+                />
+            ) : feature.id === 'gateway' && feature.availability.state === 'available' ? (
+                <GatewayView
                     key={context ?? 'none'}
                     ref={heading}
                     snapshot={snapshot}

@@ -1,0 +1,147 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C14",
+  "recorded_utc": "2026-10-20T16:01:12Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes); tools/native-acceptance/acceptance_c14.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "81334825320a30bba43d055e4649dd74cd869fc72fc11bad684e0c7062df16e9",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C14-N01",
+      "description": "The API Client destination opens a v1 collection through the folder sheet (fixture: the staged folder) and lists its requests by method and path, its folders and its problems (an invalid request file is reported, not shown); opening a request shows its method, URL, params, headers, body and auth/variables under accessible names.",
+      "result": "pass",
+      "observation": "open {'opened': True, 'listed': True, 'problem': True, 'bad_hidden': True, 'fields': {'Method': True, 'URL': True, 'Params': True, 'Headers': True, 'Body': True, 'Auth and variables (TOML)': True}, 'url': 'https://api.example.com/items', 'complete_after_fix': True}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json",
+        "docs/planning/evidence/C16/native-C14/tree-open.json"
+      ]
+    },
+    {
+      "id": "C14-N02",
+      "description": "Typing a new URL and pressing Cmd+S at once (inside the protection debounce) writes exactly the typed snapshot to the request file, keeping its comment, trailing comment and extension key; the status says Saved.",
+      "result": "pass",
+      "observation": "Cmd+S {'saved': True, 'written': True, 'kept': True}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json"
+      ]
+    },
+    {
+      "id": "C14-N03",
+      "description": "An invalid header row is refused with 'Fix to save' naming Headers and the row; the request file is unchanged and the editor keeps what was typed.",
+      "result": "pass",
+      "observation": "invalid {'refused': True, 'unchanged': True, 'kept': True}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json"
+      ]
+    },
+    {
+      "id": "C14-N04",
+      "description": "An edit protected by a typing pause survives quitting and relaunching: reopening the collection from Recent restores the request as a recovered draft with the typed text; Discard draft returns to the saved version.",
+      "result": "pass",
+      "observation": "draft {'quit_cleanly': True, 'recovered': True, 'draft_url': 'https://api.example.com/v2/draft', 'discarded': True}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json",
+        "docs/planning/evidence/C16/native-C14/tree-recovered.json"
+      ]
+    },
+    {
+      "id": "C14-N05",
+      "description": "Close guard: quitting right after typing (before protection) shows the native sheet 'Quit with unprotected API Client edits?'; Cancel keeps the app and the text; once protected, Cmd+Q quits without the sheet.",
+      "result": "pass",
+      "observation": "close guard {'sheet': True, 'asked': True, 'cancel_kept_app': True, 'text_kept': True, 'protected_quit': True}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json"
+      ]
+    },
+    {
+      "id": "C14-N06",
+      "description": "A request changed on disk after it was opened is not overwritten: Save reports Changed on disk; Keep mine rebases the edits and the next Save writes them; Use disk on another conflict shows the disk version.",
+      "result": "pass",
+      "observation": "keep mine {'reported': True, 'untouched': True, 'rebased': True, 'written': True}; use disk {'reported': True, 'used': True, 'disk_shown': True, 'file_unchanged': True, 'kept_privately': True, 'archives': [1, 2]}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json",
+        "docs/planning/evidence/C16/native-C14/tree-conflict.json",
+        "docs/planning/evidence/C16/native-C14/tree-use-disk.json"
+      ]
+    },
+    {
+      "id": "C14-N07",
+      "description": "A workbench secret value is entered in a secure field and stored in the Keychain: the Secrets list says 'value stored', the preview masks it, and the value appears in no accessibility snapshot or private/project file; tenant.* references are shown as tenant-managed with no field.",
+      "result": "pass",
+      "observation": "secrets {'listed': True, 'stored': True, 'managed': True, 'masked': True, 'missing_line': False}; value in AX snapshots: []; in files: []",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json",
+        "docs/planning/evidence/C16/native-C14/tree-secrets.json",
+        "docs/planning/evidence/C16/native-C14/tree-preview.json"
+      ]
+    },
+    {
+      "id": "C14-N08",
+      "description": "A pasted cURL command with credentials becomes an unsaved draft with secret references and a conversion report (no file until Save); a staged Insomnia v5 export previews its resources, refuses a scripted request, creates the selected ones as drafts and leaves the export file unchanged.",
+      "result": "pass",
+      "observation": "cURL {'report': True, 'no_file': True, 'no_secret': True}; Insomnia {'previewed': True, 'refused_script': True, 'created': True, 'source_unchanged': True}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json",
+        "docs/planning/evidence/C16/native-C14/tree-import.json"
+      ]
+    },
+    {
+      "id": "C14-N09",
+      "description": "Open Strata Cloud Manager writes the built-in collection privately and opens its 193 generic request specifications; an OAuth request's preview names tenant-managed references and nothing is sent.",
+      "result": "pass",
+      "observation": "built-in {'opened': True, 'request': 'Open GET Management/AuthService/Retrieve OAuth 2.0 claims (GET).request.toml', 'oauth': True, 'nothing_missing': True, 'private': True}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json",
+        "docs/planning/evidence/C16/native-C14/tree-scm.json"
+      ]
+    },
+    {
+      "id": "C14-N10",
+      "description": "Offline and no replay (T23): no request reaches any network endpoint during API Client work, and after relaunch no save is repeated (project files are byte-identical to before the relaunch).",
+      "result": "pass",
+      "observation": "network requests 0; files changed by relaunch: False",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json"
+      ]
+    },
+    {
+      "id": "C14-N11",
+      "description": "Keyboard and accessibility: the tools tab list, navigator, open-request tabs (method, name and unsaved/conflict marks in their names) and editor fields are reachable by Tab; Save stays reachable and clear of the bottom fade at 200% zoom and at the minimum window size.",
+      "result": "pass",
+      "observation": "Tab reached {'tools': True, 'find': True, 'tab': True, 'url': True, 'save': True}; 200% zoom: {'label': 'Save', 'pos': [607, 617], 'size': [174, 88]}; minimum size: {'label': 'Save', 'pos': [363, 516], 'size': [87, 45]}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json"
+      ]
+    },
+    {
+      "id": "C14-N12",
+      "description": "The Git view reads the collection's repository read-only (branch and changed files) and runs no repository-configured program (a core.fsmonitor script leaves no marker).",
+      "result": "pass",
+      "observation": "git {'branch': True, 'change': True, 'no_program_ran': True}",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json"
+      ]
+    },
+    {
+      "id": "C14-N13",
+      "description": "Profile adoption previews the staged v1 API Client profile, imports the selected collection into Recent with its private environment, never changes the source files and transfers no secret value.",
+      "result": "pass",
+      "observation": "adoption {'listed': True, 'candidate': 'Items API (api) \u00b7 1 private environments', 'recent': True, 'source_unchanged': True}; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C14/observations.json",
+        "docs/planning/evidence/C16/native-C14/tree-adoption.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The fixture build answers the collection folder sheets and the Insomnia file sheet with staged paths; the production rfd sheets are the same adapters' native branch (flag fixture-native-sheets) and are not driven here.",
+    "Interrupted saves are exercised by the workbench_documents suite (a fixture fault between file writes and a restart); the window is not killed mid-write here.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

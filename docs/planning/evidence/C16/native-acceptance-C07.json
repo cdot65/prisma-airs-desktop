@@ -1,0 +1,125 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C07",
+  "recorded_utc": "2026-10-20T15:37:51Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic Academy endpoint tools/native-acceptance/academy_server.py serving tools/native-acceptance/academy_catalog.py, academy_program.py and academy_offline.py; tools/native-acceptance/acceptance_c07.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "81334825320a30bba43d055e4649dd74cd869fc72fc11bad684e0c7062df16e9",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C07-N01",
+      "description": "Signed in, Academy's navigation offers the desktop's Downloads; the page says what still needs Academy (videos, walkthroughs, live labs); a course is downloaded by keyboard (Tab to 'Download <course>', Return) and listed ready offline with its unit count after exactly one desktop.access and one desktop.bundle, both with the account credential; one offline key item is added to the fixture learner keychain.",
+      "result": "pass",
+      "observation": "signed in: True; Academy navigation ['Home', 'Learn', 'Program', 'Downloads', 'Notifications', 'Settings']; Downloads page: True with the disclosure that videos, walkthroughs and live labs need Academy: True; Tab reached 'Download Runtime Security Foundations': True and Return kept it ('Runtime Security Foundations is ready offline.'): True, listed 'Ready offline \u00b7 28 units': True; requests (procedure, status, Authorization) [['desktop.access', 200, True], ['desktop.bundle', 200, True]]; learner keychain items added ['cr-58ba6fd014506ab8']",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json",
+        "docs/planning/evidence/C16/native-C07/tree-downloads-empty.json",
+        "docs/planning/evidence/C16/native-C07/tree-downloaded.json"
+      ]
+    },
+    {
+      "id": "C07-N02",
+      "description": "Every file under the offline root is a sealed record in a 0700 directory with mode 0600; no lesson text, course id or title, account id or display name appears in any file's bytes or path.",
+      "result": "pass",
+      "observation": "3 files under the offline root (1 sealed records), directory modes ['0o700'], file modes ['0o600']; lesson text, course id, course title, account id or display name in any file's bytes or path: []",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json"
+      ]
+    },
+    {
+      "id": "C07-N03",
+      "description": "With Academy unreachable, quit and relaunched: still signed in, Academy says it cannot be reached, Downloads lists the course ready offline and offers no download, 'Open' shows the first lesson with its text from the download, and its contents open the second.",
+      "result": "pass",
+      "observation": "endpoint stopped, relaunched: 'Academy can't be reached' shown: True; Downloads lists the course ready offline: True and offers no download ('Connect to Academy to download more courses.'): True; 'Open' showed 'Scanning at runtime: part 1' with its text: True; the contents opened 'Scanning at runtime: part 2': True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json",
+        "docs/planning/evidence/C16/native-C07/tree-offline-downloads.json",
+        "docs/planning/evidence/C16/native-C07/tree-offline-lesson.json"
+      ]
+    },
+    {
+      "id": "C07-N04",
+      "description": "Offline, the lab opens from the attempt read while online and an edit says it is saved on this device only; quit and relaunched offline, Downloads names one lab draft saved on this Mac only and the lab reopens with the edit and that status; no request reaches Academy meanwhile.",
+      "result": "pass",
+      "observation": "lab attempt read online: True; offline the lab opened from that copy: True and an edit said 'Saved on this device only': True; relaunched offline, Downloads says 'One lab draft is saved on this Mac only': True, the lab reopened: True with the status: True and the edit: True; requests reaching Academy while offline: 0",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json",
+        "docs/planning/evidence/C16/native-C07/tree-offline-lab.json",
+        "docs/planning/evidence/C16/native-C07/tree-restored-lab.json"
+      ]
+    },
+    {
+      "id": "C07-N05",
+      "description": "With Academy back, nothing is sent by itself; 'Save now' sends exactly one draft save on the attempt's base version with a client mutation id and the edit, Academy's confirmation clears the local copy, reconnecting re-checks the download (access and manifest) and shows that a newer version is on Academy, and 'Update' downloads it again.",
+      "result": "pass",
+      "observation": "with Academy back, sent by itself in 8 s: []; 'Save now' sent 1 draft save [{'attemptId': '00000000-0000-4000-8000-0000000000a1', 'baseVersion': 0, 'clientMutationId': '6eb9608e-fa5f-490f-8a77-9a8c216205ba', 'draft': {'classifications': {'f1': 'true-positive'}, 'commands': [], 'debrief': '', 'steps': {}}}] and showed 'All changes saved to your Academy account.': True; the local copy cleared from Downloads: True; reconnecting re-checked the download (['desktop.access', 'desktop.manifest']) and showed 'A newer version is on Academy': True; 'Update' sent ['desktop.access', 'desktop.bundle'] and kept it again: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json",
+        "docs/planning/evidence/C16/native-C07/tree-reconnected.json"
+      ]
+    },
+    {
+      "id": "C07-N06",
+      "description": "Signing out removes Downloads (guest navigation offers Learn only); another account sees no downloads and the first account's sealed files are unchanged; the first account signed in again sees its download.",
+      "result": "pass",
+      "observation": "signed out, Academy navigation ['Learn'] (no Downloads); another account signed in: True and sees 'No courses are downloaded yet.': True, the first account's course: False; the first account's sealed files unchanged: True; the first account signed in again: True and its download is listed: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json",
+        "docs/planning/evidence/C16/native-C07/tree-other-account.json"
+      ]
+    },
+    {
+      "id": "C07-N07",
+      "description": "Size and retention limits: a course past Academy's bundle cap (413) is assembled from its manifest and unit bundles each within Academy's 7 MiB cap, and fetching stops as soon as it cannot fit the desktop's 16 MiB record (three of four 6 MiB parts fetched), with 'There is not enough room' and nothing kept; once a download's lease ends its lessons are not read offline and Downloads says offline access ended; a course Academy no longer gives the account says so after relaunch and offers no Open.",
+      "result": "pass",
+      "observation": "a course past Academy's bundle cap (four 6 MiB unit bundles, each within Academy's 7 MiB cap): requests [['desktop.access', 200], ['desktop.bundle', 413], ['desktop.manifest', 200], ['desktop.unitBundle', 200], ['desktop.unitBundle', 200], ['desktop.unitBundle', 200]] (fetching stopped once the course could not fit one record); 'There is not enough room for this course in offline storage': True; kept: False; offline files unchanged: True; a 12 s lease once ended: its lesson offline said 'Unable to load this lesson.': True (lesson text shown: False) and Downloads says 'Offline access ended. Connect to renew it.': True; a course Academy withdrew shows 'No longer part of your account' after relaunch: True and offers Open: False",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json",
+        "docs/planning/evidence/C16/native-C07/tree-too-large.json",
+        "docs/planning/evidence/C16/native-C07/tree-lease-ended-lesson.json",
+        "docs/planning/evidence/C16/native-C07/tree-lease-ended.json",
+        "docs/planning/evidence/C16/native-C07/tree-withdrawn.json"
+      ]
+    },
+    {
+      "id": "C07-N08",
+      "description": "'Reset local data' removes the offline root and every learner keychain item, including the offline key.",
+      "result": "pass",
+      "observation": "before reset: offline root present True, learner keychain items ['cr-58ba6fd014506ab8', 'cr-9604694e39786657']; 'Reset local data' completed: True; after: offline root present False, learner keychain items []",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json"
+      ]
+    },
+    {
+      "id": "C07-N09",
+      "description": "At 200% zoom and at the minimum window size, Tab reaches 'Download <course>' on Downloads inside the window and clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Download Runtime Security Foundations', 'pos': [1127, 616], 'size': [191, 89]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Download Runtime Security Foundations', 'pos': [859, 516], 'size': [95, 45]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json"
+      ]
+    },
+    {
+      "id": "C07-N10",
+      "description": "Every learner request is an allowlisted or public procedure, and every desktop offline procedure carries the account credential.",
+      "result": "pass",
+      "observation": "44 learner requests; outside the allowlist and public queries: []; desktop procedures sent without the account credential: []",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C07/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "Academy is a local synthetic endpoint answering Academy's offline contract (desktop.access, desktop.bundle, desktop.manifest, desktop.unitBundle) with synthetic coursework shaped after Academy's routers at the pinned commit; hosted Academy is qualified in C25 (L13).",
+    "Offline is the synthetic endpoint stopped (connections refused); a network that drops mid-transfer or hangs is covered by the Rust offline suite, not natively.",
+    "The 512 MiB account budget and 1024-record cap are covered by the store unit test an_account_is_bounded_in_bytes_and_records; natively a course past the 16 MiB record limit is refused.",
+    "Keychain denial and an unreadable record are covered by the Rust offline suite; the fixture keychain is not made to refuse natively.",
+    "Spoken VoiceOver output was not recorded; AX roles, names, focus and live regions are inspected."
+  ]
+}

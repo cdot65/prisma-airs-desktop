@@ -990,6 +990,72 @@ Decided in C15 (implementer decision, recorded for review).
 - **Not done here.** The catalogue's 193 requests are specifications;
   live qualification of any operation is C25.
 
+
+## D042 — Gateway workspace and configuration reads
+
+Decided in C16 (implementer decision, recorded for review).
+
+- **Dependency.** desktop-core enables the pinned `scm-sdk =0.1.0` crate's
+  `gateway` feature (it implies `models` and `iam`). Nothing new is
+  resolved: the only Cargo.lock change is `getrandom 0.4.3`, already
+  pinned, listed among scm-sdk's dependencies; the crate's checksum is the
+  one D033 verified.
+- **One credential.** Gateway reads use the tenant's management OAuth
+  client (the SDK's `AIGatewayClient` over the management binding's
+  client; v1 used the same client). The data, admin and IAM planes are the
+  SDK's defaults at the management origin (`/ai_gw/v2`,
+  `/ai_gw/admin/v2`, `/iam/v1`); fixture builds place them at the
+  synthetic origin, and the binding's origin policy admits exactly them.
+  The scan key and workbench secrets are never consulted, and no Gateway
+  inference credential exists yet (C18).
+- **Reads advertised** (each through the SDK's typed operation; replies
+  meet its contract, so an inventory without `total` is invalid where v1
+  tolerated it): workspaces (data plane, active ones as the service
+  returns by default) and a workspace; within the chosen workspace
+  providers, routes (configs), guardrails, service and user keys (each
+  `?workspace_id=`) and their details; tenant-wide integrations (admin),
+  an integration's models; the workspace's IAM scope. Deferred: rate- and
+  usage-limit policies, telemetry, logs, cost and pricing (C18), admin
+  workspace listing and provisioning (C17), MCP servers and integrations
+  (C22), secret references, IAM scope listing and every write.
+- **Projections.** Items leave the core only as v1's allow-list
+  (`projectGateway`): base scalar fields, limits' scalar fields, defaults
+  and string scopes. Provider keys and model configuration, key values,
+  masked keys, integration secrets and every credential-bearing routing or
+  guardrail value stay in Rust; a route shows its public document, whether
+  it carries credentials and where (paths and shapes, never values); a
+  guardrail with credentials shows only that it has them. v1's secret-name
+  rule is used; separators are ignored, which only widens it.
+- **Completeness.** At most 200 rows. `has_more` decides when present;
+  otherwise a list is complete only when its total is no more than the
+  rows received. A total below the rows, a repeated ID or a scoped row
+  naming another workspace makes the reply invalid. A partial inventory is
+  shown as part of a larger one and never as empty.
+- **Details belong to the chosen workspace.** A reply must carry the asked
+  ID; a workspace item naming another workspace is invalid; one naming
+  none is shown only when the workspace's inventory lists it (absent only
+  from a complete inventory, otherwise nothing is claimed).
+- **Workspace choice is native.** A Workspaces listing settled under the
+  current tenant context records the workspaces; `SelectGatewayWorkspace`
+  admits only a listed one and issues a `WorkspaceRef` (`gw-`), saved per
+  tenant (a failed save refuses and leaves the previous choice). Scoped
+  reads carry the reference, are admitted only with the current one and
+  read the workspace it names (never one the presentation supplies), under
+  the reference as their operations domain: choosing again retires them,
+  and a result settled under an earlier choice is withdrawn when observed.
+  A tenant context change (switch, credential replacement, reset) clears
+  the listing and the choice; the remembered workspace is restored only
+  when a listing under the new context lists it, and a complete listing
+  without it clears it and says so. A choice never touches the tenant
+  context, so Runtime reviews stay protected.
+- **Prerequisites.** One read of the chosen workspace's routes, providers,
+  service keys and the tenant's integrations, with the IAM scope named by
+  the workspace: each source keeps its data or its sanitized failure; the
+  scope binds the workspace, does not, is absent, is denied or failed;
+  each plane is readable, not allowed or failed; the count of service keys
+  with `completions.write`. The management client is never offered for
+  inference, and identity administration is not provided.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

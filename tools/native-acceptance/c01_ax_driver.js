@@ -124,12 +124,12 @@ function run(argv) {
   delay(0.8);
   const openTree = tree();
   const afterOpen = focused();
-  stroke('gate');
+  stroke('harn');
   capture('palette-filtered');
   const paletteTree = tree();
   const options = find(paletteTree, n => n.role === 'AXStaticText' && n.depth > 6).map(n => n.label);
   key(36);
-  record('palette', 'Cmd+K, type "gate", Return', { dialogOpenAfterCmdK: dialog(openTree), focusAfterOpen: afterOpen,
+  record('palette', 'Cmd+K, type "harn", Return', { dialogOpenAfterCmdK: dialog(openTree), focusAfterOpen: afterOpen,
     optionsAfterTyping: options, dialogOpenAfterReturn: dialog(tree()), focusAfterReturn: focused() }, paletteTree);
   // Escape restores focus to the control focused before opening: use the trigger button.
   key(48, ['shift down']);

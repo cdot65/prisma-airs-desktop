@@ -1343,7 +1343,75 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only"
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/features/gateway/gateway-view.test.tsx",
+          "src/shell/desktop-shell.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "gateway"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "management_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "redteam_model_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "workbench_execution"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ]
+      ]
     },
     "C17": {
       "rust_target": "gateway_changes",

@@ -1,0 +1,34 @@
+baseline gateway_reads [0, 0, 0]
+baseline gateway [0, 0, 0]
+baseline src/features/gateway/gateway-view.test.tsx [0, 0, 0]
+baseline src/contracts/snapshot-validation.test.ts [0, 0, 0]
+a projection carries the provider key 101 True
+limits are passed through whole 101 True
+api keys are not secret field names 101 True
+forward headers are hidden as credentials 101 True
+has_more true is complete 101 True
+a missing has_more is complete 101 True
+a total below its rows is accepted 101 True
+duplicate rows are accepted 101 True
+another workspace's rows are accepted 101 True
+a detail naming another workspace is shown 101 True
+absence is claimed from a partial inventory 101 True
+a reply for another item is shown 101 True
+identifiers may hold path characters 101 True
+a tenant-wide read may carry a workspace 101 True
+a scoped read takes any reference 101 True
+an unlisted workspace can be chosen 101 True
+a settled result is shown after another choice 101 True
+a context change keeps the choice 101 True
+a remembered workspace is never restored 101 True
+a choice no longer listed stays 101 True
+a choice is not saved 101 True
+a refused plane is reported as failed 101 True
+an absent scope is reported unbound 101 True
+inference keys ignore their scopes 101 True
+a late reply for another workspace is shown 1 True
+focus is not returned on close 1 True
+a partial inventory reads as complete 1 True
+rows that disagree with their count pass the contract 1 True
+a total below the rows passes the contract 1 True
+any reference passes as a workspace choice 1 True

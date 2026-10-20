@@ -278,6 +278,9 @@ impl State {
             &endpoints.model_mgmt,
             &endpoints.agentguard_data,
             &endpoints.agentguard_mgmt,
+            &endpoints.gateway_data,
+            &endpoints.gateway_admin,
+            &endpoints.gateway_iam,
         ]
         .into_iter()
         .chain(&self.workbench_api_origins)
@@ -355,6 +358,9 @@ impl State {
                 &endpoints.model_mgmt,
                 &endpoints.agentguard_data,
                 &endpoints.agentguard_mgmt,
+                &endpoints.gateway_data,
+                &endpoints.gateway_admin,
+                &endpoints.gateway_iam,
             ] {
                 if let Ok(u) = url::Url::parse(base) {
                     destinations

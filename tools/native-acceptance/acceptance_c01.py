@@ -249,26 +249,26 @@ def evaluate_flows(run):
                                    f"Tab sequence {[t and t['label'] for t in tabs]}; Return focused {enter['role']} {enter['label']!r}; AXARIACurrent=page exposed: {current_seen}")
     pal = step(run, "palette")["observation"]
     esc = step(run, "palette-escape")["observation"]
-    ok = (pal["dialogOpenAfterCmdK"] and any("AI Gateway" in (o or "") for o in pal["optionsAfterTyping"])
-          and not pal["dialogOpenAfterReturn"] and pal["focusAfterReturn"]["label"] == "AI Gateway"
+    ok = (pal["dialogOpenAfterCmdK"] and any("Harness" in (o or "") for o in pal["optionsAfterTyping"])
+          and not pal["dialogOpenAfterReturn"] and pal["focusAfterReturn"]["label"] == "Harness"
           and esc["dialogOpened"] and not esc["dialogOpenAfterEscape"] and esc["after"] == esc["before"])
-    results["C01-N04"] = (ok, f"Cmd+K opened the dialog; typing 'gate' left options {pal['optionsAfterTyping']}; Return closed it and focused heading {pal['focusAfterReturn']['label']!r}; Escape returned focus to {esc['after']['label']!r} (was {esc['before']['label']!r})")
+    results["C01-N04"] = (ok, f"Cmd+K opened the dialog; typing 'harn' left options {pal['optionsAfterTyping']}; Return closed it and focused heading {pal['focusAfterReturn']['label']!r}; Escape returned focus to {esc['after']['label']!r} (was {esc['before']['label']!r})")
     ga = step(run, "go-academy")["observation"]["focused"]
     gs = step(run, "go-settings-with-palette-open")["observation"]
     results["C01-N05"] = (ga["label"] == ACADEMY_HEADING and gs["focused"]["label"] == "Settings" and not gs["dialogOpen"],
                           f"Cmd+2 focused heading {ga['label']!r}; Cmd+K then Cmd+, focused {gs['focused']['label']!r} with palette open={gs['dialogOpen']}")
     # Runtime Security is available since C03, Academy since C05,
     # Administration since C08, Sessions & Reports since C11, the Case
-    # Library since C12, Red Team & Models since C13 and the API Client since
-    # C14 (their views' headings are shown); every other product destination
-    # is still unavailable.
-    expected = {"AI Gateway": "C16", "Harness": "C19", "Import from v1": "C23"}
+    # Library since C12, Red Team & Models since C13, the API Client since
+    # C14 and AI Gateway since C16 (their views' headings are shown); every
+    # other product destination is still unavailable.
+    expected = {"Harness": "C19", "Import from v1": "C23"}
     available = {"Scan a prompt or response", ACADEMY_HEADING, "Tenant inventories", "Investigate sessions", "Test case library",
-                 "Red Teaming and model observation", "API Client"}
+                 "Red Teaming and model observation", "API Client", "Gateway workspaces and configuration"}
     dests = step(run, "destinations")["observation"]
     unavailable = [d for d in dests if d["heading"] not in available]
-    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 7
-          and len(unavailable) == 3 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
+    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 8
+          and len(unavailable) == 2 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
     results["C01-N06"] = (ok, "; ".join(f"{d['shortcut']}: {d['heading']} ({', '.join(d['planned'])})" for d in dests))
     dark = step(run, "appearance-view-dark")["observation"]
     light = step(run, "appearance-view-light")["observation"]
@@ -283,7 +283,7 @@ def evaluate_flows(run):
     buttons = [n for n in snap if n["role"] == "AXButton" and n["depth"] > 3]
     named = [b for b in buttons if b["label"]]
     heads = [n for n in snap if n["role"] == "AXHeading"]
-    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 3 and len(heads) == 1
+    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 2 and len(heads) == 1
     results["C01-N08"] = (ok, f"inspected AXRole, AXSubrole, AXTitle/AXDescription/AXValue, AXARIACurrent, AXFocused and tree order: 'Features' navigation landmark present={bool(nav)}; {len(named)}/{len(buttons)} buttons named; {sum('Not available in this build' in (b['label'] or '') for b in buttons)} destinations announce 'Not available in this build'; headings {[h['label'] for h in heads]}. Spoken VoiceOver output was not recorded.")
     mn = step(run, "min-size")["observation"]
     last = mn["lastDestination"]

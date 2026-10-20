@@ -736,6 +736,44 @@
         "id": "C15-N09",
         "check": "No Node, Bun or Deno process runs beside the app while requests are sent, and v1 data is unchanged."
       }
+    ],
+    "C16": [
+      {
+        "id": "C16-N01",
+        "check": "Without a management client AI Gateway asks for one in Settings and reads nothing."
+      },
+      {
+        "id": "C16-N02",
+        "check": "AI Gateway lists the tenant's workspaces on opening; choosing one reads its providers with the workspace query and the tenant header, and the chosen workspace is shown checked; nothing is chosen for the operator."
+      },
+      {
+        "id": "C16-N03",
+        "check": "A route's detail opens with focus on its heading and says the configuration carries credentials without showing them; Close returns focus to its Details button; the tenant-wide integrations and an integration's models are read; no key value, provider key, model configuration or credential-bearing setting from the service reaches the window."
+      },
+      {
+        "id": "C16-N04",
+        "check": "Choosing another workspace while a read of the first is in flight shows the second workspace's reads and never the first's late reply; a partial inventory is shown as part of a larger one, never as all of it."
+      },
+      {
+        "id": "C16-N05",
+        "check": "Inference prerequisites state the IAM scope binding, each plane's access and each source as read: a scope that does not list the workspace is unbound, a refused admin or IAM plane is stated as not allowed while the data plane's reads stand, and the management client is never offered for inference."
+      },
+      {
+        "id": "C16-N06",
+        "check": "A pending Runtime change review stays protected across Gateway use: after choosing workspaces, the reviewed change is still held (Review again)."
+      },
+      {
+        "id": "C16-N07",
+        "check": "After a restart the remembered workspace is restored only because a new listing lists it, and says so; a complete listing without it clears the choice and says it is no longer listed."
+      },
+      {
+        "id": "C16-N08",
+        "check": "At 200% zoom and at the minimum window size the workspace refresh and an inventory row's Details are reached by keyboard inside the window."
+      },
+      {
+        "id": "C16-N09",
+        "check": "Every Gateway request is a GET (only the token grant is a POST); no secret or synthetic private marker appears in any Accessibility snapshot; v1 data is unchanged."
+      }
     ]
   }
 }

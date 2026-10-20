@@ -1,0 +1,122 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C10",
+  "recorded_utc": "2026-10-20T15:50:17Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window and its AppKit sheet through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c10.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "81334825320a30bba43d055e4649dd74cd869fc72fc11bad684e0c7062df16e9",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C10-N01",
+      "description": "Editing a data pattern: Edit\u2026 opens it as a JSON draft; Review change reads it by its own get; Apply\u2026 opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-patterns/<id> with the draft (no authorship added) and the window says it was read back.",
+      "result": "pass",
+      "observation": "applied and read back: True; writes [{'path': '/dlp/v2/api/data-patterns/pattern-1', 'dlpBody': {'detection_config': {'technique': 'regex'}, 'name': 'Card numbers v2', 'type': 'custom'}}]",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-pattern-applied.json"
+      ]
+    },
+    {
+      "id": "C10-N02",
+      "description": "Creating a dictionary from typed keywords: the endpoint receives exactly one multipart/form-data POST (boundary scm-sdk-\u2026) with a json part (metadata.json, application/json) holding the metadata and a file part named by original_file_name (text/plain) whose bytes are exactly the typed keywords; the window says it was read back.",
+      "result": "pass",
+      "observation": "applied: True; upload [{'contentType': 'multipart/form-data', 'boundaryPrefix': True, 'parts': [{'name': 'json', 'filename': 'metadata.json', 'contentType': 'application/json', 'sha256': '5a2b8550923f088d566593f5c8f47819e826013ff93c9c491c034fd74125d643', 'bytes': 133}, {'name': 'file', 'filename': 'keywords.txt', 'contentType': 'text/plain', 'sha256': 'a4c4aeb92c20500f364b12b3771ef3a11193e2cf04d0f28956a829749993b39f', 'bytes': 9}]}]; expected file sha a4c4aeb92c20500f364b12b3771ef3a11193e2cf04d0f28956a829749993b39f",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-dictionary-typed.json"
+      ]
+    },
+    {
+      "id": "C10-N03",
+      "description": "Native file selection: Choose keyword file\u2026 reads the staged text file (the window shows its name, size and line count), Use the chosen file and Review/Apply upload exactly its bytes as the file part; the source file is unchanged afterwards and no AX snapshot holds its path.",
+      "result": "pass",
+      "observation": "chosen file shown with its line count: True; applied: True; upload [{'contentType': 'multipart/form-data', 'parts': [{'name': 'json', 'filename': 'metadata.json', 'contentType': 'application/json', 'sha256': '5a2b8550923f088d566593f5c8f47819e826013ff93c9c491c034fd74125d643', 'bytes': 133}, {'name': 'file', 'filename': 'keywords.txt', 'contentType': 'text/plain', 'sha256': '8d2e30b11105946ac5a58fa7299af0d2c858a1c5c77343801da59e40f02e2423', 'bytes': 20}]}] (expected sha 8d2e30b11105946ac5a58fa7299af0d2c858a1c5c77343801da59e40f02e2423); source unchanged: True; AX snapshots with a path: []",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-dictionary-file.json"
+      ]
+    },
+    {
+      "id": "C10-N04",
+      "description": "A chosen file that is not UTF-8 text is reported ('That file is not UTF-8 text.') and nothing is staged or sent; a cancelled sheet stages nothing.",
+      "result": "pass",
+      "observation": "non-UTF-8 file reported and nothing sent: True; cancelled sheet staged nothing: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-not-text.json"
+      ]
+    },
+    {
+      "id": "C10-N05",
+      "description": "Unavailable operations are not offered: data profiles have Edit\u2026 but no Delete\u2026, data filtering profiles have no New, and deployment profiles say they are read only.",
+      "result": "pass",
+      "observation": "data profiles Edit but no Delete (and New offered): True; filtering profiles without New: True; deployment profiles read only: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-unavailable.json"
+      ]
+    },
+    {
+      "id": "C10-N06",
+      "description": "A data pattern changed by another writer between Review and Apply is reported as changed since review after confirming, and nothing is written.",
+      "result": "pass",
+      "observation": "changed elsewhere \u2192 'changed since it was reviewed' and no second PUT: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-conflict.json"
+      ]
+    },
+    {
+      "id": "C10-N07",
+      "description": "A denied dictionary upload (403) is reported as not allowed, without server text, with nothing changed.",
+      "result": "pass",
+      "observation": "403 upload reported as not allowed, nothing changed, no server text: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-denied.json"
+      ]
+    },
+    {
+      "id": "C10-N08",
+      "description": "T23: with the endpoint stopped, a confirmed data pattern create reports that the service could not be reached and may or may not have been applied, nothing is queued, and nothing is sent within 6 s after the endpoint returns.",
+      "result": "pass",
+      "observation": "offline create reported unreachable with an unknown outcome: True; requests within 6 s of return: 0",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-offline.json"
+      ]
+    },
+    {
+      "id": "C10-N10",
+      "description": "The production NSOpenPanel (rfd) opens from Choose keyword file\u2026: the file chosen through it is staged by name and line count, and Use the chosen file, Review and Apply with the native confirmation upload exactly its bytes as the multipart file part and read the dictionary back, with the source file unchanged and focus returned to the window; Cancel stages nothing; a file over the 256 KiB read bound is refused as too large.",
+      "result": "pass",
+      "observation": "production open panel: {'panel_shown': True, 'chosen': True, 'focus_in_window': True, 'applied': True, 'uploaded_exact_bytes': True, 'source_unchanged': True}; upload [{'contentType': 'multipart/form-data', 'parts': [{'name': 'json', 'filename': 'metadata.json', 'contentType': 'application/json', 'sha256': '5a2b8550923f088d566593f5c8f47819e826013ff93c9c491c034fd74125d643', 'bytes': 133}, {'name': 'file', 'filename': 'keywords.txt', 'contentType': 'text/plain', 'sha256': 'c3f9c8c283a2b1f2f1896f27a01cbe3cddc0c9d93f752e4639035a0f5b36f6e8', 'bytes': 8}]}]; cancelled panel staged nothing: True; a 300 KiB file refused: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json",
+        "docs/planning/evidence/C16/native-C10/tree-panel-chosen.json",
+        "docs/planning/evidence/C16/native-C10/tree-panel-applied.json",
+        "docs/planning/evidence/C16/native-C10/tree-panel-refused.json"
+      ]
+    },
+    {
+      "id": "C10-N09",
+      "description": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file\u2026 and Review change inside the window and clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Choose keyword file\u2026', 'pos': [649, 616], 'size': [346, 89]} / {'label': 'Review change', 'pos': [649, 616], 'size': [257, 89]}; minimum size: {'label': 'Choose keyword file\u2026', 'pos': [384, 517], 'size': [173, 44]} / {'label': 'Review change', 'pos': [384, 517], 'size': [129, 44]}; all clear: True",
+      "evidence": [
+        "docs/planning/evidence/C16/native-C10/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "N03/N04 answer the keyword-file sheet with a file the driver staged in the fixture data root; N10 drives the production rfd/NSOpenPanel sheet (the fixture switch fixture-native-sheets) with driver-owned temporary files. No Accessibility tree is saved while a panel lists folders; files are only read.",
+    "The DLP endpoint is a local synthetic fixture; live DLP writes are qualified in C25.",
+    "Spoken VoiceOver output was not recorded; AX roles, names, the sheet subtree and focus are inspected."
+  ]
+}

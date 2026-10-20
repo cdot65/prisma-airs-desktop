@@ -15,6 +15,7 @@ mod delivery;
 pub mod features;
 #[cfg(any(test, feature = "test-fixtures"))]
 pub mod fixtures;
+pub mod gateway;
 pub mod import;
 pub mod learner;
 pub mod library;
@@ -39,13 +40,14 @@ pub use authority::{
     AuthorityHandle, CatalogSource, ChangeFailure, ChangeResultView, ChangeReviewState,
     ChangeReviewView, ChangesView, ConfirmationRequest, Core, CoreConfig, CredentialStore,
     DownloadStatus, DownloadView, EndpointReviewView, ExportKind, ExportState, ExportView,
-    FileSaver, HeldItem, HoldKind, ImagePicker, ImportFile, ImportPicker, ImportView, Intent,
-    InvestigationView, LibraryNotice, LibraryState, LibraryView, LocalDraftView, MAX_TENANTS,
-    Observation, OfflineState, OfflineView, OperatorConfirmation, OverviewView, PagePrinter,
-    Principal, Readback, Receipt, Refusal, ReportTarget, ReportUndoView, ReportsState, ReportsView,
-    ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView, SecretPresenter,
-    SecretState, SessionsView, ShellSnapshot, StagedFileFailure, StagedFileState, StagedFileView,
-    StorageHealth, TenantView, UrlOpener, ViewScope,
+    FileSaver, GatewayView, HeldItem, HoldKind, ImagePicker, ImportFile, ImportPicker, ImportView,
+    Intent, InvestigationView, LibraryNotice, LibraryState, LibraryView, LocalDraftView,
+    MAX_TENANTS, Observation, OfflineState, OfflineView, OperatorConfirmation, OverviewView,
+    PagePrinter, Principal, Readback, Receipt, Refusal, ReportTarget, ReportUndoView, ReportsState,
+    ReportsView, ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView,
+    SecretPresenter, SecretState, SelectedWorkspace, SessionsView, ShellSnapshot,
+    StagedFileFailure, StagedFileState, StagedFileView, StorageHealth, TenantView, UrlOpener,
+    ViewScope,
 };
 pub use authority::{
     CollectionView, ConflictKind, DocumentView, EnvironmentView, FolderPicker, RecentView,

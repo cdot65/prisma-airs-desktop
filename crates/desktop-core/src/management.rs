@@ -17,6 +17,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use scm_sdk::airs::agentguard::AgentGuardClient;
+use scm_sdk::airs::gateway::AIGatewayClient;
 use scm_sdk::airs::management::{
     DeploymentProfileListOptions, ManagementClient, PaginationOptions, TopicListOptions,
 };
@@ -60,6 +61,11 @@ pub const MODEL_MGMT_URL: &str = "https://api.apps.paloaltonetworks.com/aims/mgm
 /// The production AgentGuard (skill scanning) planes (the SDK's defaults).
 pub const AGENTGUARD_DATA_URL: &str = "https://api.apps.paloaltonetworks.com/aiag/data";
 pub const AGENTGUARD_MGMT_URL: &str = "https://api.apps.paloaltonetworks.com/aiag/mgmt";
+/// The production AI Gateway data, admin and IAM planes (the SDK's
+/// defaults, at the management API origin; C16).
+pub const GATEWAY_DATA_URL: &str = "https://api.apps.paloaltonetworks.com/ai_gw/v2";
+pub const GATEWAY_ADMIN_URL: &str = "https://api.apps.paloaltonetworks.com/ai_gw/admin/v2";
+pub const GATEWAY_IAM_URL: &str = "https://api.apps.paloaltonetworks.com/iam/v1";
 /// Largest page a read may ask for.
 pub const MAX_PAGE: u32 = 100;
 /// The bounded walk a detail read may make (v1: 40 pages of 25).
@@ -89,6 +95,10 @@ pub struct ManagementEndpoints {
     /// AgentGuard skill-scanning data and management planes (C13).
     pub agentguard_data: String,
     pub agentguard_mgmt: String,
+    /// AI Gateway data, admin and IAM planes (C16).
+    pub gateway_data: String,
+    pub gateway_admin: String,
+    pub gateway_iam: String,
 }
 
 impl Default for ManagementEndpoints {
@@ -104,6 +114,9 @@ impl Default for ManagementEndpoints {
             model_mgmt: MODEL_MGMT_URL.to_owned(),
             agentguard_data: AGENTGUARD_DATA_URL.to_owned(),
             agentguard_mgmt: AGENTGUARD_MGMT_URL.to_owned(),
+            gateway_data: GATEWAY_DATA_URL.to_owned(),
+            gateway_admin: GATEWAY_ADMIN_URL.to_owned(),
+            gateway_iam: GATEWAY_IAM_URL.to_owned(),
         }
     }
 }
@@ -123,6 +136,9 @@ impl ManagementEndpoints {
             model_mgmt: format!("{origin}/aims/mgmt"),
             agentguard_data: format!("{origin}/aiag/data"),
             agentguard_mgmt: format!("{origin}/aiag/mgmt"),
+            gateway_data: format!("{origin}/ai_gw/v2"),
+            gateway_admin: format!("{origin}/ai_gw/admin/v2"),
+            gateway_iam: format!("{origin}/iam/v1"),
         }
     }
 
@@ -249,6 +265,13 @@ pub enum ManagementRequest {
         page: u8,
         received: u32,
     },
+    /// One AI Gateway read (C16). A workspace-scoped read carries the
+    /// selection reference it was asked under and reads the workspace that
+    /// reference names natively; a tenant-wide one carries none.
+    Gateway {
+        workspace: Option<crate::context::WorkspaceRef>,
+        read: crate::gateway::GatewayRead,
+    },
 }
 
 impl ManagementRequest {
@@ -290,6 +313,9 @@ impl ManagementRequest {
                 crate::red_team::is_uuid(scan_id)
                     && *page < crate::red_team::ATTACK_PAGES
                     && *received <= u32::from(*page) * crate::red_team::LIST_LIMIT
+            }
+            Self::Gateway { workspace, read } => {
+                read.is_valid() && workspace.is_some() == read.scoped()
             }
         }
     }
@@ -476,6 +502,9 @@ pub enum ManagementResult {
     Attacks {
         attacks: crate::red_team::AttackPage,
     },
+    Gateway {
+        gateway: crate::gateway::GatewayResult,
+    },
     Failed {
         failure: ManagementFailure,
         outcome: Outcome,
@@ -533,6 +562,7 @@ pub struct ManagementBinding {
     red_team: RedTeamClient,
     model_security: ModelSecurityClient,
     agentguard: AgentGuardClient,
+    gateway: AIGatewayClient,
 }
 
 impl ManagementBinding {
@@ -559,6 +589,9 @@ impl ManagementBinding {
             &endpoints.model_mgmt,
             &endpoints.agentguard_data,
             &endpoints.agentguard_mgmt,
+            &endpoints.gateway_data,
+            &endpoints.gateway_admin,
+            &endpoints.gateway_iam,
         ]
         .map(|url| parse(url));
         let [
@@ -569,12 +602,16 @@ impl ManagementBinding {
             ms_mgmt,
             ag_data,
             ag_mgmt,
+            gw_data,
+            gw_admin,
+            gw_iam,
         ] = products;
         let (rt_data, rt_mgmt, rt_broker) = (rt_data?, rt_mgmt?, rt_broker?);
         let (ms_data, ms_mgmt, ag_data, ag_mgmt) = (ms_data?, ms_mgmt?, ag_data?, ag_mgmt?);
+        let (gw_data, gw_admin, gw_iam) = (gw_data?, gw_admin?, gw_iam?);
         let all = [
             &token, &api, &dlp, &rt_data, &rt_mgmt, &rt_broker, &ms_data, &ms_mgmt, &ag_data,
-            &ag_mgmt,
+            &ag_mgmt, &gw_data, &gw_admin, &gw_iam,
         ];
         if !all.iter().all(|e| e.origin().starts_with("https://")) {
             return Err(ManagementFailure::Destination);
@@ -608,6 +645,15 @@ impl ManagementBinding {
                 .map_err(configured)?;
         let agentguard = AgentGuardClient::new(management.client().clone(), ag_data, ag_mgmt)
             .map_err(configured)?;
+        let gateway = AIGatewayClient::new(
+            management
+                .client()
+                .with_endpoint(gw_data)
+                .map_err(configured)?,
+            gw_admin,
+            gw_iam,
+        )
+        .map_err(configured)?;
         let dlp = management.dlp(dlp).map_err(configured)?;
         Ok(Self {
             management,
@@ -615,10 +661,11 @@ impl ManagementBinding {
             red_team,
             model_security,
             agentguard,
+            gateway,
         })
     }
 
-    fn options(deadline: Instant) -> Option<RequestOptions> {
+    pub(crate) fn options(deadline: Instant) -> Option<RequestOptions> {
         let remaining = deadline.saturating_duration_since(Instant::now());
         RequestOptions::with_timeout(remaining.max(Duration::from_millis(1)))
             .and_then(|o| o.with_retries(0))
@@ -1475,6 +1522,8 @@ pub(crate) struct ManagementJob {
     pub source: BindingSource,
     pub request: ManagementRequest,
     pub slot: ResultSlot,
+    /// The selected Gateway workspace a scoped Gateway read reads (C16).
+    pub workspace: Option<crate::gateway::WorkspaceScope>,
 }
 
 impl BindingSource {
@@ -2042,6 +2091,14 @@ impl ManagementJob {
                             .ok_or(PageError::Invalid)
                     })
                     .map(|attacks| ManagementResult::Attacks { attacks }),
+                ManagementRequest::Gateway { read, .. } => crate::gateway::read(
+                    &binding.gateway,
+                    read,
+                    self.workspace.as_ref(),
+                    ManagementBinding::options(deadline).as_ref(),
+                )
+                .await
+                .map(|gateway| ManagementResult::Gateway { gateway }),
                 request => self.investigate(binding, request, deadline).await,
             }
         };

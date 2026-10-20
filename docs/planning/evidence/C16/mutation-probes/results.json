@@ -1,0 +1,685 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/gateway/gateway-view.tsx": "2b573ac54b3c79a62875fc59e742076d3c5f5eba54ff7ffa9bbc1c1fac3ad78c",
+      "crates/desktop-core/src/authority.rs": "f672221cb2db41837723c5119a2dee1e9a56cb6409df366ec2c554f9dcbe1f8d",
+      "crates/desktop-core/src/authority/gateway_domain.rs": "2f1b6d8e1ae8530c4d2d389f1ac1eb73d75ab3b29d7b3f3677a2e8e2c119ea71",
+      "crates/desktop-core/src/authority/management_domain.rs": "9e47deb020e8f01a7e8cd96c8684823499a354e669abfc4531cb03111b7f3002",
+      "crates/desktop-core/src/gateway.rs": "4e8dada47848dc81ea2aee8e5c046f5ec8b1276a0f5a162792e64710760c188d",
+      "crates/desktop-core/src/management.rs": "062a0f409b9ee4a4d2fc40d9fcdf4a292bb7ae180d6123abe62aeadc154590fd",
+      "packages/desktop-contracts/src/client.ts": "5cad62889b74070a763f7dbe4f11a5ec59cfb4d6b68b362d5b855f41e5d7588c"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "a projection carries the provider key",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "key_material_and_credential_bearing_configuration_stay_in_the_core",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "limits are passed through whole",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway"
+    ],
+    "guard": "projections_never_carry_key_material",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "api keys are not secret field names",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "key_material_and_credential_bearing_configuration_stay_in_the_core",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "forward headers are hidden as credentials",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "key_material_and_credential_bearing_configuration_stay_in_the_core",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "has_more true is complete",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "partial_and_malformed_inventories_are_never_complete_or_empty",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a missing has_more is complete",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "partial_and_malformed_inventories_are_never_complete_or_empty",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a total below its rows is accepted",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "partial_and_malformed_inventories_are_never_complete_or_empty",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "duplicate rows are accepted",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "partial_and_malformed_inventories_are_never_complete_or_empty",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another workspace's rows are accepted",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "partial_and_malformed_inventories_are_never_complete_or_empty",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a detail naming another workspace is shown",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "details_are_shown_only_when_they_belong_to_the_chosen_workspace",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "absence is claimed from a partial inventory",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "details_are_shown_only_when_they_belong_to_the_chosen_workspace",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a reply for another item is shown",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "details_are_shown_only_when_they_belong_to_the_chosen_workspace",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "identifiers may hold path characters",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "reads_are_admitted_only_for_listed_workspaces_and_their_current_reference",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a tenant-wide read may carry a workspace",
+    "files": [
+      "crates/desktop-core/src/management.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "reads_are_admitted_only_for_listed_workspaces_and_their_current_reference",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a scoped read takes any reference",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "choosing_another_workspace_retires_the_reads_of_the_one_before",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unlisted workspace can be chosen",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "reads_are_admitted_only_for_listed_workspaces_and_their_current_reference",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a settled result is shown after another choice",
+    "files": [
+      "crates/desktop-core/src/authority/management_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "a_result_settled_before_another_choice_is_withdrawn_when_observed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a context change keeps the choice",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "a_context_change_clears_the_choice_which_returns_only_when_listed_again",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a remembered workspace is never restored",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "a_context_change_clears_the_choice_which_returns_only_when_listed_again",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a choice no longer listed stays",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "a_context_change_clears_the_choice_which_returns_only_when_listed_again",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a choice is not saved",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "the_choice_is_remembered_across_restarts_and_forgotten_with_the_tenant",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused plane is reported as failed",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "prerequisites_report_each_plane_and_the_scope_binding_as_read",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an absent scope is reported unbound",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "prerequisites_report_each_plane_and_the_scope_binding_as_read",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "inference keys ignore their scopes",
+    "files": [
+      "crates/desktop-core/src/gateway.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_reads"
+    ],
+    "guard": "prerequisites_report_each_plane_and_the_scope_binding_as_read",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a late reply for another workspace is shown",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "drops a reply for a workspace chosen before",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "focus is not returned on close",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "opens a detail with focus on its heading and returns focus on close",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a partial inventory reads as complete",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "never reads \"none\" from a partial inventory and says a complete one is empty",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "rows that disagree with their count pass the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects inventories, details and prerequisites Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a total below the rows passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects inventories, details and prerequisites Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "any reference passes as a workspace choice",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "validates the workspace choice in the snapshot",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

@@ -401,6 +401,53 @@ describe('management result validation', () => {
             bad({ kind: 'attacks', attacks: { ...attacks, rows: [{ ...attacks.rows[0], threat: 'yes' }] } })
         })
     })
+
+    describe('AI Gateway (C16)', () => {
+        const WS = '16f7e90d-382a-4e78-b577-1b01eb5f8297'
+        const bad = (value: unknown) => expect(() => parseManagementResult(value)).toThrow(ContractViolation)
+        const list = { resource: 'providers', workspace: WS, rows: '[{"id":"p1"}]', count: 1, total: 3, complete: false }
+        const prerequisites = {
+            workspace: WS, routes: { ...list, resource: 'routes' }, routesFailure: null, providers: null, providersFailure: 'denied',
+            integrations: { ...list, resource: 'integrations', workspace: null }, integrationsFailure: null, serviceKeys: null,
+            serviceKeysFailure: 'timeout', inferenceKeys: 0, scopeName: 'scope-a', scope: 'unbound', dataPlane: 'granted',
+            adminPlane: 'granted', iamPlane: 'granted',
+        }
+        const gateway = (g: unknown) => ({ kind: 'gateway', gateway: g })
+
+        it('accepts what Rust issues', () => {
+            expect(parseManagementResult(gateway({ kind: 'list', list }))).toBeTruthy()
+            expect(parseManagementResult(gateway({ kind: 'detail', detail: { resource: 'routes', id: 'r1', found: 'incomplete', item: null } }))).toBeTruthy()
+            expect(parseManagementResult(gateway({ kind: 'models', models: { integration: 'i1', models: '[{"slug":"o3"}]', count: 1, total: null, complete: true, allowAll: false } }))).toBeTruthy()
+            expect(parseManagementResult(gateway({ kind: 'prerequisites', prerequisites }))).toBeTruthy()
+        })
+
+        it('rejects inventories, details and prerequisites Rust never issues', () => {
+            bad(gateway({ kind: 'list', list: { ...list, count: 2 } }))
+            bad(gateway({ kind: 'list', list: { ...list, total: 0 } }))
+            bad(gateway({ kind: 'list', list: { ...list, workspace: null } }))
+            bad(gateway({ kind: 'list', list: { ...list, resource: 'integrations' } }))
+            bad(gateway({ kind: 'list', list: { ...list, resource: 'secrets' } }))
+            bad(gateway({ kind: 'detail', detail: { resource: 'routes', id: '../r', found: 'found', item: '{}' } }))
+            bad(gateway({ kind: 'detail', detail: { resource: 'routes', id: 'r1', found: 'absent', item: '{}' } }))
+            bad(gateway({ kind: 'prerequisites', prerequisites: { ...prerequisites, routesFailure: 'denied' } }))
+            bad(gateway({ kind: 'prerequisites', prerequisites: { ...prerequisites, providersFailure: null } }))
+            bad(gateway({ kind: 'prerequisites', prerequisites: { ...prerequisites, scope: 'maybe' } }))
+        })
+
+        it('validates the workspace choice in the snapshot', () => {
+            const workspace = { id: WS, name: 'Team A', slug: 'team-a', scopeName: 'scope-a' }
+            const view = { workspaces: [workspace], complete: true, selected: { reference: 'gw-aaaaaaaaaaaaaaaaaaaaaaaa', workspace, restored: true }, remembered: null, rememberedMissing: false }
+            expect(parseShellSnapshot({ ...valid, gateway: view })).toBeTruthy()
+            for (const broken of [
+                { ...view, selected: { ...view.selected, reference: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' } },
+                { ...view, workspaces: [{ ...workspace, id: 'a b' }] },
+                { ...view, rememberedMissing: true },
+                { ...view, complete: undefined },
+            ]) {
+                expect(() => parseShellSnapshot({ ...valid, gateway: broken })).toThrow(ContractViolation)
+            }
+        })
+    })
 })
 
 describe('API Client validation', () => {

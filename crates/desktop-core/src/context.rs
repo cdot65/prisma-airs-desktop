@@ -83,6 +83,41 @@ impl<'de> Deserialize<'de> for LearnerRef {
     }
 }
 
+/// A native-issued reference to one Gateway workspace selection under one
+/// tenant context (C16). Choosing a workspace, restoring one, and every
+/// tenant context change issue a new value, so a read admitted for one
+/// selection is never shown under another (A→B→A issues a third value).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
+#[serde(transparent)]
+pub struct WorkspaceRef(String);
+
+impl WorkspaceRef {
+    /// The operations-runtime domain of Gateway workspace selections.
+    pub const PREFIX: &'static str = "gw-";
+
+    pub(crate) fn issue(salt: &[u8; 16], epoch: u64) -> Self {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(b"prisma-airs-desktop-v2/gateway-workspace");
+        hasher.update(salt);
+        hasher.update(epoch.to_be_bytes());
+        Self(format!("gw-{}", hex::encode(&hasher.finalize()[..12])))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for WorkspaceRef {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        bounded_ascii(&text, "gw-", 64)
+            .then_some(Self(text))
+            .ok_or_else(|| serde::de::Error::custom("not a workspace reference"))
+    }
+}
+
 /// A native-issued review reference (endpoint change or import preview).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, TS)]
 #[serde(transparent)]

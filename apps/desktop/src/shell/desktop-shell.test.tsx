@@ -106,11 +106,16 @@ describe('desktop shell', () => {
         expect(nav().queryByRole('button', { name: /^API Client.*Not available in this build/ })).toBeNull()
         expect(screen.getByRole('heading', { level: 1, name: 'API Client' })).toBeInTheDocument()
         expect(screen.getByText('Opening the API Client…')).toBeInTheDocument()
-        // A planned destination still says so explicitly.
+        // AI Gateway is available (C16) and asks for a tenant first.
         await user.click(nav().getByRole('button', { name: /^AI Gateway/ }))
-        expect(nav().getByRole('button', { name: /^AI Gateway.*Not available in this build/ })).toBeInTheDocument()
+        expect(nav().queryByRole('button', { name: /^AI Gateway.*Not available in this build/ })).toBeNull()
+        expect(screen.getByRole('heading', { level: 1, name: 'Gateway workspaces and configuration' })).toBeInTheDocument()
+        expect(screen.getByText('Add a tenant in Settings to read its AI Gateway workspaces.')).toBeInTheDocument()
+        // A planned destination still says so explicitly.
+        await user.click(nav().getByRole('button', { name: /^Harness/ }))
+        expect(nav().getByRole('button', { name: /^Harness.*Not available in this build/ })).toBeInTheDocument()
         expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C16')).toBeInTheDocument()
+        expect(screen.getByText('Planned in C19')).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
         // Academy learning is available (C05) and opens its learner region.
         await user.click(nav().getByRole('button', { name: /^Academy/ }))
@@ -225,11 +230,11 @@ describe('desktop shell', () => {
         const dialog = screen.getByRole('dialog', { name: 'Command palette' })
         const field = within(dialog).getByRole('combobox', { name: 'Go to destination' })
         expect(field).toHaveFocus()
-        await user.keyboard('gate')
-        expect(within(dialog).getAllByRole('option').map((o) => o.textContent)).toEqual(['AI GatewayNot available'])
+        await user.keyboard('harn')
+        expect(within(dialog).getAllByRole('option').map((o) => o.textContent)).toEqual(['HarnessNot available'])
         await user.keyboard('{Enter}')
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-        expect(screen.getByRole('heading', { level: 1, name: 'AI Gateway' })).toHaveFocus()
+        expect(screen.getByRole('heading', { level: 1, name: 'Harness' })).toHaveFocus()
 
         // Native navigation while the modal palette is open closes it and
         // focuses the destination heading (never focus behind a modal).

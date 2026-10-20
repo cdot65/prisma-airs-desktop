@@ -46,6 +46,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlsplit
 
 TOKEN_PREFIX = "c08-mgmt-access-"
+# C16 synthetic Gateway workspaces and the tenant-wide integration.
+GW_A = "16f7e90d-382a-4e78-b577-1b01eb5f8297"
+GW_B = "16f7e90d-382a-4e78-b577-1b01eb5f8298"
+GW_INTEGRATION = "f6692544-3265-49be-9711-bbdcebc079eb"
 
 
 CONTENT_PROMPT = "SYNTHETIC-C11-PROMPT-CONTENT"
@@ -233,6 +237,9 @@ class Handler(BaseHTTPRequestHandler):
         red_team = self.red_team(path, query, mode)
         if red_team is not None:
             return red_team
+        gateway = self.gateway(path, query, mode)
+        if gateway is not None:
+            return gateway
         if path == "/aisec/v1/mgmt/deploymentprofiles":
             return 200, {"deployment_profiles": [{"dp_name": f"dp-{n}", "auth_code": srv.auth_code if n == 0 else f"SYNTHETIC-C08-DP-CODE-{n}",
                                                   "status": "active"} for n in range(3)], "status": "success"}
@@ -314,6 +321,113 @@ class Handler(BaseHTTPRequestHandler):
                      "created_at": "2026-10-18T10:00:00Z"} for n in range(100)]
             return 200, {"scans": rows, "pagination": {"total_items": 100}}
         return None
+
+    def gateway(self, path, query, mode):
+        """C16: AI Gateway reads (data plane /ai_gw/v2, admin /ai_gw/admin/v2,
+        IAM /iam/v1) in the SDK's contract shapes. Key values, provider keys,
+        model configuration and credential-bearing settings carry GW-PRIVATE
+        markers the desktop must never show. Modes: gwWorkspaces ("both",
+        "onlyA", "onlyB"), gwAdminStatus and gwIamStatus (HTTP statuses);
+        delayMs slows any path prefix."""
+        if not path.startswith(("/ai_gw/", "/iam/v1/")):
+            return None
+        stamp = {"created_at": "2026-10-01T00:00:00Z", "last_updated_at": "2026-10-02T00:00:00Z"}
+        spaces = {GW_A: ("Team A", "team-a"), GW_B: ("Team B", "team-b")}
+        listed = {"both": [GW_A, GW_B], "onlyA": [GW_A], "onlyB": [GW_B]}[mode.get("gwWorkspaces", "both")]
+
+        def listing(rows, total=None, more=False):
+            return {"object": "list", "total": len(rows) if total is None else total, "success": True,
+                    "has_more": more, "data": rows}
+
+        def workspace(ws):
+            name, slug = spaces[ws]
+            return {"id": ws, "slug": slug, "name": name, "icon": None, "description": None, **stamp, "is_default": 0,
+                    "status": "active", "scope_name": f"scope-{slug}", "object": "workspace"}
+
+        def provider(ws, n):
+            return {"id": f"7e3a0000-0000-4000-8000-{ws[-4:]}0000000{n}", "name": f"{spaces[ws][1]}-provider-{n}",
+                    "slug": f"{spaces[ws][1]}-provider-{n}", "object": "provider", "integration_id": GW_INTEGRATION,
+                    "status": "active", "key": "GW-PRIVATE-PROVIDER-KEY",
+                    "usage_limits": {"credit_limit": 100, "type": "cost", "current_usage": 7}}
+
+        def route(ws):
+            return {"id": f"7e3a0000-0000-4000-8000-{ws[-4:]}00000010", "name": f"{spaces[ws][1]}-route",
+                    "slug": f"{spaces[ws][1]}-route", "organisation_id": "org-1", "is_default": 1, "status": "active",
+                    "owner_id": "owner-1", "updated_by": "owner-1", **stamp, "workspace_id": ws, "object": "config"}
+
+        def guardrail(ws):
+            return {"id": f"7e3a0000-0000-4000-8000-{ws[-4:]}00000020", "name": f"{spaces[ws][1]}-guardrail",
+                    "slug": f"{spaces[ws][1]}-guardrail", "organisation_id": "org-1", "status": "active",
+                    "owner_id": "owner-1", "updated_by": None, **stamp, "workspace_id": ws, "object": "guardrail"}
+
+        def key(ws, n, scopes):
+            return {"id": f"7e3a0000-0000-4000-8000-{ws[-4:]}0000003{n}", "name": f"{spaces[ws][1]}-key-{n}",
+                    "object": "api-key", "status": "active", "key": "GW-PRIVATE-KEY-VALUE", "scopes": scopes}
+
+        integration = {"id": GW_INTEGRATION, "name": "OpenAI", "owner_id": "owner-1", "status": "active",
+                       "created_at": "2026-10-01T00:00:00Z", "last_updated_at": None, "slug": "openai",
+                       "description": None, "workspace_id": None, "ai_provider_id": "openai",
+                       "object": "integration", "masked_key": "GW-PRIVATE-MASKED"}
+        admin, iam = int(mode.get("gwAdminStatus", 200)), int(mode.get("gwIamStatus", 200))
+        if path.startswith("/ai_gw/admin/v2/"):
+            if admin != 200:
+                return admin, {"error": "SERVER-TEXT-NEVER-SHOWN"}
+            rest = path[len("/ai_gw/admin/v2"):]
+            if rest == "/integrations":
+                return 200, listing([integration])
+            if rest == f"/integrations/{GW_INTEGRATION}":
+                return 200, {**integration, "configurations": json.dumps(
+                    {"api_key": "GW-PRIVATE-INTEGRATION-SECRET", "region": "us-east-1"})}
+            if rest == f"/integrations/{GW_INTEGRATION}/models":
+                return 200, {"object": "list", "allow_all_models": False, "total": 2, "models": [
+                    {"slug": "gpt-4o", "enabled": True, "name": "GPT-4o"}, {"slug": "o3", "enabled": False}]}
+            return 404, {"error": "not found"}
+        if path.startswith("/iam/v1/scopes/"):
+            if iam != 200:
+                return iam, {"error": "SERVER-TEXT-NEVER-SHOWN"}
+            name = path[len("/iam/v1/scopes/"):]
+            # Team A's scope binds it; Team B's binds someone else.
+            bound = "team-a" if name == "scope-team-a" else "someone-else"
+            return 200, {"name": name, "description": "", "tsg_id": self.server.tsg, "id": f"id-{name}",
+                         "resources": [{"resource_type": "workspace", "resource_id": bound}]}
+        rest = path[len("/ai_gw/v2"):]
+        ws = query.get("workspace_id")
+        if rest == "/workspaces":
+            return 200, listing([workspace(w) for w in listed])
+        if ws is not None and ws not in spaces:
+            return 200, listing([])
+        if rest == "/providers":
+            # Team B's providers are a partial page: 1 of 5, more follow.
+            return 200, listing([provider(ws, 1), provider(ws, 2)]) if ws == GW_A else listing([provider(ws, 1)], 5, True)
+        if rest == "/configs":
+            return 200, listing([route(ws)])
+        if rest == "/guardrails":
+            return 200, listing([guardrail(ws)])
+        if rest == "/api-keys/service":
+            return 200, listing([key(ws, 1, ["completions.write"]), key(ws, 2, ["models.read"])])
+        if rest == "/api-keys/user":
+            return 200, listing([key(ws, 3, ["completions.write"])])
+        for w in spaces:
+            r = route(w)
+            if rest == f"/configs/{r['id']}":
+                return 200, {**r, "config": json.dumps({"strategy": {"mode": "fallback"}, "targets": [
+                    {"provider": "@primary", "api_key": "GW-PRIVATE-ROUTE-KEY", "forward_headers": ["x-trace"]},
+                    {"provider": "@backup", "weight": 1}]}), "format": "json", "type": "ROUTING", "version_id": "v-1"}
+            g = guardrail(w)
+            if rest == f"/guardrails/{g['id']}":
+                return 200, {**g, "checks": [{"id": "pii", "parameters": {"apiKey": "GW-PRIVATE-GUARDRAIL-KEY"},
+                                              "is_enabled": True}],
+                             "actions": {"deny": True, "async": False, "sequential": False}, "version_id": "v-1"}
+            for n in (1, 2):
+                p = provider(w, n)
+                if rest == f"/providers/{p['id']}":
+                    return 200, {"id": p["id"], "ai_provider_name": "openai",
+                                 "model_config": {"api_key": "GW-PRIVATE-MODEL-CONFIG"}, "key": "GW-PRIVATE-PROVIDER-KEY",
+                                 "masked_api_key": "GW-PRIVATE-MASKED", "slug": p["slug"], "name": p["name"],
+                                 "usage_limits": None, "status": "active", "note": None,
+                                 "created_at": "2026-10-01T00:00:00Z", "expires_at": None, "last_reset_at": None,
+                                 "rate_limits": [], "integration_id": GW_INTEGRATION, "object": "provider"}
+        return 404, {"error": "not found"}
 
     def dlp_write(self, method, path, record, mode):
         """DLP writes (C10): JSON bodies, or a dictionary's multipart upload."""

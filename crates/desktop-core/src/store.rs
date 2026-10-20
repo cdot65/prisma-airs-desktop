@@ -72,6 +72,14 @@ pub struct StoredLearner {
     pub client_id: String,
 }
 
+/// The Gateway workspace a tenant last chose (C16; nonsecret).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GatewayPreference {
+    pub tenant: TenantId,
+    pub workspace: String,
+}
+
 /// The persisted document.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -90,6 +98,9 @@ pub struct PersistedState {
     /// signed out or abandoned), drained only after a confirmed save.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub learner_cleanup: Vec<RecordId>,
+    /// Each tenant's chosen Gateway workspace (C16; absent before).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gateway_workspaces: Vec<GatewayPreference>,
 }
 
 impl Default for PersistedState {
@@ -103,6 +114,7 @@ impl Default for PersistedState {
             pending_cleanup: Vec::new(),
             learner: None,
             learner_cleanup: Vec::new(),
+            gateway_workspaces: Vec::new(),
         }
     }
 }
@@ -160,8 +172,16 @@ impl PersistedState {
                 && crate::academy::origin_of(&l.issuer).as_deref() == Some(l.issuer.as_str())
                 && !l.client_id.is_empty()
         });
+        // One remembered Gateway workspace per existing tenant.
+        let mut chose = BTreeSet::new();
+        let gateway_ok = self.gateway_workspaces.iter().all(|p| {
+            ids.contains(&p.tenant)
+                && chose.insert(p.tenant.clone())
+                && crate::gateway::is_id(&p.workspace)
+        });
         self.schema == STATE_SCHEMA
             && learner_ok
+            && gateway_ok
             && tenants_ok
             && credentials_ok
             && one_per_tenant

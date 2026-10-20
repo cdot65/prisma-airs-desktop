@@ -1426,6 +1426,47 @@ and History views. D041 records the decisions; ADR 0004 the policy.
   `.review` and `.network`; results `ran`, `reviewRequired`,
   `sendRefused`, `history`, `responseSaved`, `saveResponseFailed`.
 
+### C16 implementation: Gateway workspace and configuration reads
+
+Implemented in `crates/desktop-core` (`gateway`: the advertised reads, v1's
+projections and completeness rules; `management`: the Gateway planes in
+`ManagementEndpoints`, the SDK's `AIGatewayClient` in `ManagementBinding`,
+`ManagementRequest::Gateway` and its result; `authority/gateway_domain`:
+the workspace listing, the native choice, restore and admission;
+`context::WorkspaceRef`) and the AI Gateway destination
+(`features/gateway`). D042 records the decisions.
+
+- **Reads.**
+
+  | Request | Service reads | Result |
+  |---|---|---|
+  | `Inventory { workspaces }` | data `GET /workspaces` | listed workspaces (id, name, slug, IAM scope name); recorded for the context |
+  | `Inventory { providers \| routes \| guardrails \| serviceKeys \| userKeys }` (scoped) | data `GET /providers`, `/configs`, `/guardrails`, `/api-keys/service`, `/api-keys/user` with `workspace_id` | projected rows, count, total, completeness |
+  | `Inventory { integrations }` | admin `GET /integrations` | projected rows (tenant-wide) |
+  | `Detail { resource, id }` | the matching `GET …/{id}`; for an item naming no workspace, also its inventory | the projected item, or absent/incomplete |
+  | `IntegrationModels { id }` | admin `GET /integrations/{id}/models` | model slugs, names, enablement, all-models flag |
+  | `Prerequisites` (scoped) | routes, providers, service keys, integrations and IAM `GET /scopes/{scope_name}` | each source or its failure, the scope binding, each plane's access, inference-scoped key count |
+
+- **Choice and admission.** The workspaces listed under the current context
+  are the only ones that can be chosen; a choice issues a `WorkspaceRef`,
+  is saved per tenant and retires the reads of the one before (their
+  operations run under the reference). Scoped reads are admitted only
+  with the current reference and read the workspace it names; a result
+  settled under an earlier choice is withdrawn when observed. A context
+  change clears the listing and the choice; a later listing that lists the
+  remembered workspace restores it, and a complete one without it says it
+  is gone. Runtime reviews are untouched.
+- **Presentation.** The workspace is a native radio group; inventories are
+  tabs read when first shown, with coverage that never calls a partial
+  inventory empty; a detail's heading takes focus and Close returns it;
+  credential-bearing configuration says so without values; the
+  prerequisites tab states each source, the scope binding and each plane,
+  and that no inference credential is configured. Keyed by context; a
+  reply for an earlier choice is dropped.
+- **Not done here.** No real endpoint is called before C25; nothing is
+  created, changed, provisioned or sent for inference; limits policies,
+  telemetry, cost and MCP are later chunks.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

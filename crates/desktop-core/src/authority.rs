@@ -18,6 +18,7 @@ use ts_rs::TS;
 use zeroize::Zeroizing;
 
 mod change_domain;
+mod gateway_domain;
 mod learner_domain;
 mod library_domain;
 mod management_domain;
@@ -30,6 +31,7 @@ pub use change_domain::{
     ChangeFailure, ChangeResultView, ChangeReviewState, ChangeReviewView, ChangesView, Readback,
     SecretState, StagedFileFailure, StagedFileState, StagedFileView,
 };
+pub use gateway_domain::{GatewayView, SelectedWorkspace};
 pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
 use learner_domain::{LearnerPhase, LearnerSession};
 pub use library_domain::{CatalogSource, LibraryNotice, LibraryState, LibraryView};
@@ -135,6 +137,12 @@ pub enum Intent {
     Management {
         context: ContextRef,
         request: ManagementRequest,
+    },
+    /// Choose one of the Gateway workspaces the active context listed
+    /// (C16); remembered for the tenant.
+    SelectGatewayWorkspace {
+        context: ContextRef,
+        workspace: String,
     },
     /// Prepare a review of a Runtime change (C09): Rust normalizes the
     /// captured draft and reads its baseline.
@@ -593,6 +601,8 @@ pub struct ShellSnapshot {
     pub overview: OverviewView,
     /// API Client projects on this Mac (C14).
     pub workbench: WorkbenchView,
+    /// The active context's Gateway workspaces and choice (C16).
+    pub gateway: GatewayView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -855,6 +865,8 @@ struct Tenant {
     management: ScanCapability,
     /// The management OAuth client ID that goes with it.
     management_client: Option<String>,
+    /// The Gateway workspace last chosen for this tenant (C16).
+    gateway_workspace: Option<String>,
 }
 
 impl Tenant {
@@ -864,6 +876,7 @@ impl Tenant {
             scan: ScanCapability::Missing,
             management: ScanCapability::Missing,
             management_client: None,
+            gateway_workspace: None,
         }
     }
 
@@ -999,6 +1012,8 @@ struct State {
     adoption_source: Option<std::path::PathBuf>,
     workbench_network: crate::workbench::admission::Network,
     workbench_api_origins: Vec<String>,
+    /// The active context's Gateway workspaces and choice (C16).
+    gateway: gateway_domain::GatewayState,
 }
 
 impl State {
@@ -1063,6 +1078,7 @@ impl State {
             library: self.library_view(),
             overview: self.overview_view(),
             workbench: self.workbench_view(),
+            gateway: self.gateway_view(),
         }
     }
 
@@ -1113,6 +1129,19 @@ impl State {
             pending_cleanup: self.data.pending_cleanup.clone(),
             learner: self.data.learner.clone(),
             learner_cleanup: self.data.learner_cleanup.clone(),
+            gateway_workspaces: self
+                .data
+                .tenants
+                .iter()
+                .filter_map(|t| {
+                    t.gateway_workspace
+                        .as_ref()
+                        .map(|workspace| crate::store::GatewayPreference {
+                            tenant: t.profile.id.clone(),
+                            workspace: workspace.clone(),
+                        })
+                })
+                .collect(),
             ..PersistedState::default()
         }
     }
@@ -1156,6 +1185,8 @@ impl State {
         self.workbench.sending.retire(self.active_ref.as_ref());
         self.retire_scan_sessions();
         self.retire_management_bindings();
+        let mut starts = starts;
+        starts.extend(self.retire_gateway());
         self.sync_scans();
         self.sync_management_calls();
         self.sync_changes();
@@ -1370,6 +1401,8 @@ impl State {
         self.workbench.sending.retire(None);
         self.retire_scan_sessions();
         self.retire_management_bindings();
+        let mut starts = starts;
+        starts.extend(self.retire_gateway());
         self.sync_scans();
         self.sync_management_calls();
         self.sync_changes();
@@ -1601,6 +1634,7 @@ impl Core {
             overview_published: None,
             deadline_tick: config.deadline_tick,
             workbench: workbench_domain::Workbench::default(),
+            gateway: gateway_domain::GatewayState::default(),
             workbench_root: adapters.workbench_root.clone(),
             git: config.git.clone(),
             adoption_source: config.adoption_source.clone(),
@@ -1828,8 +1862,14 @@ fn data_from(doc: PersistedState) -> Data {
                 .credentials
                 .iter()
                 .find(|c| c.class == CredentialClass::Management && c.tenant == profile.id);
+            let gateway_workspace = doc
+                .gateway_workspaces
+                .iter()
+                .find(|p| p.tenant == profile.id)
+                .map(|p| p.workspace.clone());
             let mut tenant = Tenant::new(profile);
             tenant.scan = scan;
+            tenant.gateway_workspace = gateway_workspace;
             if let Some(c) = management {
                 tenant.management = ScanCapability::Ready {
                     record: c.record.clone(),
@@ -2391,6 +2431,13 @@ fn admit(
             )?;
             operation_ref = Some(operation);
             effects.push(Effect::Start(starts));
+            effects.push(Effect::Start(state.take_gateway_starts()));
+            state.changed();
+        }
+        Intent::SelectGatewayWorkspace { context, workspace } => {
+            let starts = state.select_gateway_workspace(&context, &workspace)?;
+            effects.push(Effect::Start(starts));
+            effects.push(Effect::Start(state.take_gateway_starts()));
             state.changed();
         }
         Intent::RemoveScanCredential { context } => {
