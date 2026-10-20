@@ -2,9 +2,9 @@
 
 G00 and G01 passed (historical Claude reviews). C01–C04 and the P01 cumulative review completed on
 2026-10-17; C05–C07 and the P02 cumulative review completed on 2026-10-18;
-C08–C12 and the P03 cumulative review completed on 2026-10-19 and C13 the same
-day, C14 and C15 the same day; implementation is at the **P04 push** (raising
-C13–C15 to 9/10, then the P04 cumulative review). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+C08–C12 and the P03 cumulative review completed on 2026-10-19; C13–C15 and
+the P04 cumulative review completed on 2026-10-20; implementation is at
+**C16** (P05). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no
 blockers; each phase review still needs 9/10, after every chunk accepted below
@@ -29,10 +29,11 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C11 | **Complete** (generation 2): completed at 8/10 under D034 (0e4bda6), then raised; Codex attempt-03 passed with 9 in all five dimensions; committed as aec2cbc and verified | Follow-ups remediated, including production save panel evidence (`reviews/C11/follow-ups.md`) |
 | C12 | **Complete** (generation 2): completed at 8/10 under D034 (1911da6), then raised; Codex attempt-04 passed with 9 in all five dimensions; committed as 962747b and verified | Attempts 02–03 remediated: status stamps for library outcomes, hardened mutation harness, C12-N11 offline Library (`reviews/C12/follow-ups.md`) |
 | P03 | **Complete**: Codex phase attempt-02 scored 9 in all five dimensions; committed as bbbad43 and verified against the reviewed source fingerprint | Attempt-01 R1 (context-bound Playground handoff) remediated (`reviews/P03/follow-ups.md`); integrated native checks for C08–C12, the C11 workload and 129/129 mutation probes on the P03 bundle |
-| C13 | **Complete** (generation 1): completed at 8/10 under D034; Codex attempt-01 scored 9/8/9/8/8 with no blockers; committed as 0d105e0 and verified against the reviewed source fingerprint | Follow-ups R1–R3/E1 open for the P04 push (`reviews/C13/follow-ups.md`) |
-| C14 | **Complete** (generation 1): completed at 8/10 under D034; Codex attempt-02 scored 9/8/9/9/8 with no blockers; committed as 8d219b0 and verified against the reviewed source fingerprint | Attempt-01 (9/7/9/8/7) remediated (`reviews/C14/remediation-attempt-01.md`); remaining R5 and the probe items open for the P04 push (`reviews/C14/follow-ups.md`) |
-| C15 | **Complete** (generation 1): completed at 8/10 under D034; Codex attempt-02 scored 9/8/8/8/8 with no blockers; committed as 6d78143 and verified against the reviewed source fingerprint | Attempt-01 remediated (`reviews/C15/remediation-attempt-01.md`); remaining R2, R5 and the redirect probe open for the P04 push (`reviews/C15/follow-ups.md`) |
-| C16–C26 | Planned | Ordered predecessors required |
+| C13 | **Complete** (generation 2): completed at 8/10 under D034 (0d105e0), then raised; Codex attempt-03 passed with 9 in all five dimensions; committed as bdd57c2 and verified | Follow-ups R1–R4/E1 remediated, including nested rated targets, pagination shape and capped totals (`reviews/C13/follow-ups.md`) |
+| C14 | **Complete** (generation 2): completed at 8/10 under D034 (8d219b0), then raised; Codex attempt-06 passed with 9 in all five dimensions; committed as 0c6a604 and verified | Follow-ups R1/R5/R6 remediated: body ownership by the file reached and by schema role, unchanged saves superseding drafts, bounded discovery (`reviews/C14/follow-ups.md`) |
+| C15 | **Complete** (generation 2): completed at 8/10 under D034 (6d78143), then raised; Codex attempt-04 passed with 9 in all five dimensions; committed as e9df1db and verified | Follow-ups R2/R5 remediated: the effective credential set (including the jar Cookie) at registered origins and reviews bound to the credentials sent (`reviews/C15/follow-ups.md`) |
+| P04 | **Complete**: Codex phase attempt-03 scored 9 in all five dimensions; committed as 8d5d436 and verified against the reviewed source fingerprint | Integrated native checks for C13–C15, the C13 and C15 workloads and 149/149 mutation probes on the P04 bundle |
+| C16–C26 | Planned | Ordered predecessors required; C16 opens P05 |
 
 ## C01 evidence (docs/planning/evidence/C01)
 
