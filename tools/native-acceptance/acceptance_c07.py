@@ -259,8 +259,10 @@ def run():
     obs["inventory_downloaded"] = inventory()
     obs["plaintext_downloaded"] = plaintext_found([LESSON_TEXT, cat.COURSE, FIRST, "Ada Lovelace", COURSE])
     # The redacted storage manifest: names (digests), modes, sizes and
-    # content digests only; never contents, keys or account ids.
-    with open(os.path.join(EVIDENCE, "storage-manifest.json"), "w") as f:
+    # content digests only; never contents, keys or account ids. As a
+    # regression under a later subject it stays with C07's native records.
+    manifest = os.path.join(EVIDENCE if SUBJECT == "C07" else NATIVE, "storage-manifest.json")
+    with open(manifest, "w") as f:
         json.dump({"schema": "airs-v2/offline-storage-manifest/1", "subject": "C07",
                    "root": "<app data root>/academy-offline",
                    "after": f"one course downloaded ({COURSE}) for one synthetic account",

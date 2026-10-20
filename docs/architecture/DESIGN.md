@@ -1308,9 +1308,10 @@ the decisions.
   of their known fields; a breakdown has at most 64 entries and labels
   outside v1's list for it are OTHER. A missing total is zero only when
   every reported count (totals, every breakdown entry, every rated target;
-  AgentGuard: both counts and no top vulnerability) is zero; every rated
-  target group is validated first (an array of at most 64 objects, each
-  with a whole, non-negative count). A list needs its pagination object
+  AgentGuard: both counts and no top vulnerability) is zero; every reported
+  rated-target group is validated first (an array of at most 64 objects,
+  each with a whole, non-negative count; an absent or null group is
+  unreported, a narrow tolerance v1's parser did not have). A list needs its pagination object
   (the total may be omitted); a total below its page's rows, or a present
   non-boolean `count_capped` (null included), is invalid, and such a page
   never proves "no scans"; every
@@ -1353,7 +1354,7 @@ Client destination (`features/workbench`). D040 records the decisions.
 
   | Request | Effect |
   |---|---|
-  | `save { id, revision, fields, edit }` | stale revision refused; the submitted snapshot sealed as the draft before any project write; `check` (Fix to save with field/row); inventory complete, identity unmoved and not duplicated; a body that reaches a file something else owns refused (`sharedBody`): another request file's body (duplicates and invalid ones included) or a project file (any request file, `collection.toml`, an environment, a schema), compared by the file reached (case-folded name, or the same device and inode) rather than its spelling; files equal the baseline (else conflict); journal, body, metadata, journal cleared; new revision |
+  | `save { id, revision, fields, edit }` | stale revision refused; the submitted snapshot sealed as the draft before any project write (a snapshot equal to the saved version is `unchanged` and removes any older draft, stored before the reply); `check` (Fix to save with field/row); inventory complete, identity unmoved and not duplicated; a body that reaches a file something else owns refused (`sharedBody`): another request file's body (duplicates and invalid ones included), a schema a request associates, or a project file (any request file, `collection.toml`, an environment, a standalone schema; a `.json`/YAML file a request names as its body is that body), compared by the file reached (case-folded name, or the same device and inode) rather than its spelling; files equal the baseline (else conflict); journal, body, metadata, journal cleared; new revision |
   | `protect { id, revision, fields, edit }` | the snapshot (valid or not) sealed as the document's draft |
   | `editing { id, edit }` / close | the close guard's unprotected mark keeps the newest edit generation reported; a Protect or Save clears it only when its snapshot covers that generation. Closing a tab or the collection with a mark is refused (`unprotected`) unless the operator discards; the editor protects its latest text first and asks when that fails |
   | `resolve { choice }` | both versions archived; Use disk reopens; Keep mine rebases |

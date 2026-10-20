@@ -1,14 +1,15 @@
 
  RUN  v3.2.6 /private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/mut/repo/apps/desktop
 
- ✓ src/features/workbench/document-save.test.tsx (14 tests) 2969ms
-   ✓ API Client document Save > sends the fields typed before the protection debounce fires  673ms
+ ✓ src/features/workbench/document-save.test.tsx (15 tests) 4193ms
+   ✓ API Client document Save > sends the fields typed before the protection debounce fires  711ms
    ✓ API Client document Save > protects the snapshot when typing pauses, marking unprotected edits once  460ms
-   ✓ API Client document Save > re-arms the close guard after a save and while an older protection is outstanding  529ms
-   ✓ API Client document Save > asks before closing the collection when the latest typing cannot be kept  553ms
+   ✓ API Client document Save > re-arms the close guard after a save and while an older protection is outstanding  556ms
+   ✓ API Client document Save > asks before closing the collection when the latest typing cannot be kept  571ms
+   ✓ API Client document Save > saves a reverted document before the pause, so the older protected draft is superseded  980ms
 
  Test Files  1 passed (1)
-      Tests  14 passed (14)
-   Start at  16:36:03
-   Duration  4.43s (transform 688ms, setup 56ms, collect 1.08s, tests 2.97s, environment 144ms, prepare 41ms)
+      Tests  15 passed (15)
+   Start at  03:29:43
+   Duration  5.41s (transform 564ms, setup 52ms, collect 885ms, tests 4.19s, environment 126ms, prepare 29ms)
 

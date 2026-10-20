@@ -1,0 +1,78 @@
+{
+  "request_id": "rq-C14-20261020T074508Z-c0ac7550",
+  "attempt_id": "attempt-04",
+  "subject": "C14",
+  "fingerprints": {
+    "source": "fbe4dec888cadbc2c516581f54ab7e0f5d4363369e1c94f3e0590a5ab6632b95",
+    "dependencies": "7152403bd50e4d0995506a13820bd7f260711c8ce6e2d00d78774a9c01f1f503",
+    "build_flags": "38634cb1cdc318a1b043b1f033d19392e581d20726954b3bec3e41d8c4c568f4",
+    "evidence": "54a637be73d83fd3c7501f72e6e47dbb318718e6baa437fe1e95222fc7ad858b"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "required_fixes": [
+    "R1: crates/desktop-core/src/authority/workbench_domain.rs:1810 and the save() Ok(None) branch retain an obsolete protected draft when the submitted fields equal the saved baseline. Reproduction: open saved snapshot A, edit to B and allow Protect to complete, revert to A, then Save before the protection debounce. save() neither replaces nor removes draft B, persists it, returns Unchanged with B in document.fields, and clears the editing guard. The React handler cancels the pending debounce and acknowledges this Save, so quitting and reopening can recover B despite the successful save of A. Reconcile and durably persist draft/recovered state for unchanged saves before acknowledging them. Add a production-interface regression covering Protect(B), Save(A), restart and reopen, asserting fields A, no obsolete draft and unchanged project bytes; add a React regression for reverting and saving before debounce."
+  ],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [
+    "crates/desktop-core/src/workbench/project.rs:369 collects and sorts the entire directory before enforcing MAX_ENTRIES. Bound enumeration before collection so a very large directory cannot defeat the advertised discovery resource limit; handle directory-entry errors explicitly rather than dropping them.",
+    "docs/planning/evidence/C14/storage-manifest.json identifies subject C07 and an Academy offline download. Replace or clearly classify this unrelated record so it cannot be mistaken for API Client storage evidence."
+  ],
+  "limitations": [
+    "The session enforces read-only filesystem access. The designated verdict.json could not be written atomically; this response supplies the verdict.",
+    "No source was changed, credentials accessed, application launched or endpoints called. Tests were inspected as retained evidence and were not independently rerun. R1 is established by source-path analysis rather than a newly executed reproduction.",
+    "Verified all 528 source-inventory content hashes, all 259 directly referenced packet artifact hashes, and the supplied runs' command-log hashes. Aggregate source/dependency/build/evidence fingerprints are echoed as supplied; their complete derivation was not independently reconstructed.",
+    "Verified the C13 predecessor receipt hash and its matching passing verdict hash. This does not independently re-review C13.",
+    "Retained scoped logs report 17 production-interface Rust tests and 14 React tests passing. Existing unchanged-save coverage repeats an already saved snapshot; it does not cover an older protected draft followed by reversion to the baseline.",
+    "Native acceptance records cover 13 synthetic authoring checks. Production file sheets, spoken VoiceOver, live services and signed installed artifacts remain outside the established evidence. This verdict does not constitute cumulative P04 approval."
+  ],
+  "inspected_files": [
+    "AGENTS.md",
+    "GLOSSARY.md",
+    "docs/planning/chunks/C14.md",
+    "docs/planning/IMPLEMENTATION-PLAN.md",
+    "docs/planning/review-protocol.md",
+    "docs/planning/dependencies.md",
+    "docs/planning/test-catalogue.md",
+    "docs/planning/parity-matrix.md",
+    "docs/planning/decisions.md",
+    "docs/architecture/DESIGN.md",
+    "docs/architecture/qualification.md",
+    "docs/architecture/checks.json",
+    "docs/architecture/native-checks.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/adr/0004-managed-workbench-admission.md",
+    "docs/planning/reviews/C14/attempt-04/request.json",
+    "docs/planning/reviews/C14/attempt-04/source-inventory.json",
+    "docs/planning/reviews/C14/attempt-04/diff.patch",
+    "docs/planning/reviews/C14/follow-ups.md",
+    "docs/planning/reviews/C13/attempt-03/receipt.json",
+    "docs/planning/reviews/C13/attempt-03/verdict.json",
+    "crates/desktop-core/src/workbench/document.rs",
+    "crates/desktop-core/src/workbench/project.rs",
+    "crates/desktop-core/src/workbench/environments.rs",
+    "crates/desktop-core/src/workbench/git.rs",
+    "crates/desktop-core/src/workbench/adoption.rs",
+    "crates/desktop-core/src/authority/workbench_domain.rs",
+    "crates/desktop-core/tests/workbench_documents/main.rs",
+    "apps/desktop/src/features/workbench/document-editor.tsx",
+    "apps/desktop/src/features/workbench/document-save.test.tsx",
+    "tools/native-acceptance/acceptance_c14.py",
+    "docs/planning/evidence/C14/native-acceptance.json",
+    "docs/planning/evidence/C14/native/observations.json",
+    "docs/planning/evidence/C14/native-prepare.json",
+    "docs/planning/evidence/C14/storage-manifest.json",
+    "docs/planning/evidence/C14/mutation-probes/results.json",
+    "docs/planning/evidence/C14/runs/check-20261020T053952Z-786043/run.json",
+    "docs/planning/evidence/C14/runs/test-20261020T054137Z-23b1f3/run.json",
+    "docs/planning/evidence/C14/runs/test-20261020T054137Z-23b1f3/logs/C14-fixture.log",
+    "docs/planning/evidence/C14/runs/native-prepare-20261020T054241Z-30e18d/run.json"
+  ],
+  "recommendation": "fail"
+}

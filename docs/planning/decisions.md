@@ -732,9 +732,10 @@ Decided in C13 (implementer decision, recorded for review).
   when the count is not capped and the total is no larger than the rows
   actually received, or without a total the page is short, and a total
   below a page's rows is invalid; partial and capped counts are lower
-  bounds, and a capped total says so ("≥ N"); rated-target groups are
-  validated (arrays of at most 64 objects with whole, non-negative counts)
-  before a source counts as quiet, and a list needs its pagination object
+  bounds, and a capped total says so ("≥ N"); reported rated-target
+  groups are validated (arrays of at most 64 objects with whole,
+  non-negative counts; an absent or null group is unreported, where v1
+  rejected null) before a source counts as quiet, and a list needs its pagination object
   and a boolean `count_capped` when present, so a malformed page never
   proves "no scans"; breakdown labels from v1's
   list for each breakdown are upper-cased with `_` read as a space and any
@@ -773,7 +774,9 @@ Decided in C14 (implementer decision, recorded for review).
   lock), so comments, row decoration, extension keys and CRLF survive a Save.
   A new collection is created only inside a Git repository (v1).
 - **Inventory.** Discovery is read-only and bounded (1 MiB metadata, 2,000
-  requests, 20,000 entries, depth 24, 512-byte paths); it never follows a
+  requests, 20,000 entries, depth 24, 512-byte paths; a directory is read
+  no further than the entry budget, and an unreadable entry makes the
+  inventory incomplete); it never follows a
   link, enters `.git` or a nested collection; invalid files and every copy of
   a duplicate identity are reported and left out, and an incomplete
   inventory refuses every write (v1). Writes are atomic and refuse links,
@@ -786,14 +789,19 @@ Decided in C14 (implementer decision, recorded for review).
   field and row ("Fix to save") and nothing is written, and files that
   changed since the baseline are a conflict, never overwritten. A body is
   written only when no one else owns the file it reaches: not another
-  request's body and not a project file (request files, `collection.toml`,
-  environments, schemas), compared by the file itself (the same device and
+  request's body, not a schema a request associates, and not a project file
+  (request files, `collection.toml`, environments, standalone schemas; a
+  `.json` or YAML file a request names as its body is that request's body,
+  so the built-in catalogue's JSON sidecars save), compared by the file itself (the same device and
   inode) or, for a file not yet written, its case-folded name, so case or
   Unicode-normalization aliases on the Mac's volumes are refused
-  (`sharedBody`; P04 push, attempt-02 R5). The editor
+  (`sharedBody`; P04 push, attempt-02 R5 and attempt-05 R6). The editor
   captures the fields it holds at the click (not a debounced copy) and keeps
   text typed while a save was in flight, protecting it against the new
-  revision.
+  revision. A Save whose snapshot equals the saved version is `unchanged`
+  and supersedes any older protected draft: the draft is removed and that
+  removal is stored before the Save is acknowledged, so a restart never
+  recovers it (P04 push, attempt-04 R1).
 - **Saves and interruption.** A save writes its journal (each file's before
   and after hash, sealed) first, then the body, then the metadata, then
   clears the journal. On opening, a journal whose files hold neither the old

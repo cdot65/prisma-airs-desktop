@@ -359,6 +359,28 @@ describe('API Client document Save', () => {
         expect(of(requests, 'selectTab')).toEqual([{ kind: 'selectTab', id: 'create' }])
     })
 
+    it('saves a reverted document before the pause, so the older protected draft is superseded', async () => {
+        const native = scriptedNative(opened())
+        const requests = workbench(native, (request) =>
+            request.kind === 'save' && JSON.stringify(request.fields) === JSON.stringify(fields())
+                ? { kind: 'unchanged', document: doc() }
+                : standard()(request)
+        )
+        const user = await open(native)
+        await user.type(url(), '/b')
+        await waitFor(() => expect(of(requests, 'protect')).toHaveLength(1), { timeout: PROTECT_DELAY_MS * 4 })
+        expect(of(requests, 'protect')[0]).toMatchObject({ fields: { url: 'https://a.example/items/b' } })
+        // Reverted to the saved text and saved inside the next pause.
+        await user.type(url(), '{Backspace}{Backspace}')
+        await user.click(screen.getByRole('button', { name: 'Save' }))
+        await waitFor(() => expect(document.querySelector('[data-slot="workbench-save-status"]')).toHaveTextContent(/^No changes to save$/))
+        expect(of(requests, 'save')).toEqual([{ kind: 'save', id: 'list', revision: R1, fields: fields(), edit: expect.any(Number) }])
+        expect(url()).toHaveValue('https://a.example/items')
+        // The Save is the newest snapshot: no protection of B or A follows.
+        await new Promise((r) => setTimeout(r, PROTECT_DELAY_MS + 50))
+        expect(of(requests, 'protect')).toHaveLength(1)
+    })
+
     it('shows a recovered draft and discards it to the saved version', async () => {
         const recovered = doc({ recovered: true, fields: fields({ url: 'https://draft.example/' }) })
         const native = scriptedNative(opened({ tabs: [tab({ draft: true, recovered: true })] }))

@@ -12,7 +12,7 @@ files are written before the journal 101 True
 an interrupted save looks unstarted 101 True
 private data is stored unsealed 101 True
 writes follow symbolic links 101 True
-parent components are accepted in paths 0 False
+parent components are accepted in paths 101 True
 duplicate identities stay in the inventory 101 True
 a secret variable shows its reference 101 True
 shared environments override private ones 101 True
@@ -28,7 +28,7 @@ the close guard ignores unprotected edits 101 True
 Save sends the loaded fields 1 True
 a save reply overwrites newer typing 1 True
 a refused save clears the editor 1 True
-leaving a document drops pending edits 0 False
+leaving a document drops pending edits 1 True
 every keystroke reports editing 1 True
 the menu Save is ignored 1 True
 parent paths pass the contract 1 True
@@ -39,6 +39,15 @@ closing a tab drops unprotected edits 101 True
 Save writes before protecting its snapshot 101 True
 documents open from the inventory 101 True
 duplicate requests lose their body ownership 101 True
+a body alias by file identity is written 101 True
+a body alias by case is written 101 True
+a body may be another project file 101 True
 an outstanding protection silences new edits 1 True
 closing does not protect first 1 True
 closing never asks when protection fails 1 True
+an unchanged Save keeps an older protected draft 101 True
+Save leaves the pending protection armed 1 True
+a directory past the entry budget is cut short silently 101 True
+every schema candidate blocks its own body 101 True
+an associated schema may be rewritten as a body 101 True
+a standalone schema may become a new body 101 True

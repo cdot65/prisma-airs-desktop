@@ -1806,7 +1806,9 @@ async fn save(
             return Ok(Err(SaveRefusal::Interrupted));
         }
         // The submitted snapshot is protected before any project file is
-        // written, so a stop between writes can always be recovered.
+        // written, so a stop between writes can always be recovered. A
+        // snapshot equal to the saved one makes any older draft obsolete,
+        // and it is dropped durably before the Save is acknowledged.
         if doc.dirty(&fields) {
             o.data.drafts.insert(
                 id.clone(),
@@ -1815,6 +1817,9 @@ async fn save(
                     fields: fields.clone(),
                 },
             );
+        } else {
+            o.data.drafts.remove(&id);
+            o.recovered.remove(&id);
         }
         Ok(Ok((
             doc,

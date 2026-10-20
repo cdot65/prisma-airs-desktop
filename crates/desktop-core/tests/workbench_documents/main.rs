@@ -193,6 +193,71 @@ async fn saves_a_fresh_snapshot_keeping_the_files_layout_and_revisions() {
     assert_eq!(desk.workbench()["collection"]["tabs"][0]["draft"], false);
 }
 
+/// Every file under `root`, by path, with its bytes.
+fn project_bytes(root: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut files = Vec::new();
+    let mut pending = vec![root.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+        for entry in std::fs::read_dir(&dir).expect("fixture") {
+            let path = entry.expect("fixture").path();
+            if path.is_dir() {
+                pending.push(path);
+            } else {
+                let bytes = std::fs::read(&path).expect("fixture");
+                files.push((path, bytes));
+            }
+        }
+    }
+    files.sort();
+    files
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn saving_the_saved_snapshot_drops_an_older_protected_draft() {
+    let root = collection();
+    let before = project_bytes(&root);
+    let mut desk = desk().await;
+    desk.open(&root).await;
+    let doc = desk.request("items/list.request.toml").await;
+    // B is protected, then the editor reverts to the saved A and saves it
+    // before the next Protect would run.
+    desk.wb(json!({"kind": "editing", "edit": 1, "id": "list"}))
+        .await;
+    let b = with(&doc, "url", "https://a.example/obsolete");
+    let p = desk
+        .wb(json!({"kind": "protect", "edit": 1, "id": "list", "revision": doc["revision"], "fields": b}))
+        .await;
+    assert_eq!(p, json!({"kind": "protected", "id": "list"}));
+    assert_eq!(desk.workbench()["collection"]["tabs"][0]["draft"], true);
+    desk.wb(json!({"kind": "editing", "edit": 2, "id": "list"}))
+        .await;
+    let saved = desk
+        .wb(json!({"kind": "save", "edit": 2, "id": "list", "revision": doc["revision"], "fields": fields(&doc)}))
+        .await;
+    assert_eq!(saved["kind"], "unchanged", "{saved}");
+    assert_eq!(saved["document"]["fields"], doc["saved"]);
+    assert_eq!(saved["document"]["recovered"], false);
+    assert_eq!(desk.workbench()["collection"]["tabs"][0]["draft"], false);
+    assert_eq!(desk.workbench()["unprotected"], false);
+    assert_eq!(project_bytes(&root), before);
+    // The acknowledgement was durable: a restart recovers nothing.
+    let handles = desk.adapters;
+    drop(desk.core);
+    let mut again = start(Some(&handles), CoreConfig::default()).await;
+    again.open(&root).await;
+    let tab = &again.workbench()["collection"]["tabs"];
+    assert!(
+        tab.as_array().is_none_or(|t| t
+            .iter()
+            .all(|t| t["draft"] == false && t["recovered"] == false)),
+        "{tab}"
+    );
+    let reopened = again.request("items/list.request.toml").await;
+    assert_eq!(reopened["fields"], doc["saved"]);
+    assert_eq!(reopened["recovered"], false);
+    assert_eq!(project_bytes(&root), before);
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn stale_and_invalid_snapshots_never_write_and_typing_during_save_stays_protected() {
     let root = collection();
@@ -593,6 +658,41 @@ async fn the_built_in_collection_is_private_generic_and_keeps_edits() {
             .iter()
             .all(|s| s["managed"] == true && s["stored"] == false)
     );
+    // A catalogue request with a JSON body sidecar saves its own payload.
+    let (relative, sidecar) = project_bytes(&folder)
+        .into_iter()
+        .find_map(|(p, bytes)| {
+            let text = String::from_utf8(bytes).ok()?;
+            let body = text
+                .lines()
+                .find_map(|l| {
+                    l.strip_prefix("body = \"")?
+                        .strip_suffix('"')
+                        .map(str::to_owned)
+                })
+                .filter(|b| b.ends_with(".json"))?;
+            let relative = p.strip_prefix(&folder).ok()?.to_str()?.to_owned();
+            relative
+                .ends_with(".request.toml")
+                .then_some((relative, body))
+        })
+        .expect("a catalogue request with a JSON body");
+    let metadata = std::fs::read(folder.join(&relative)).expect("fixture");
+    let doc = desk.request(&relative).await;
+    let saved = desk
+        .wb(json!({"kind": "save", "edit": 1, "id": doc["id"], "revision": doc["revision"], "fields": with(&doc, "body", "{\"edited\": true}")}))
+        .await;
+    assert_eq!(saved["kind"], "saved", "{saved}");
+    assert_eq!(
+        std::fs::read_to_string(folder.join(&sidecar)).expect("fixture"),
+        "{\"edited\": true}"
+    );
+    assert_eq!(
+        std::fs::read(folder.join(&relative)).expect("fixture"),
+        metadata
+    );
+    let reopened = desk.request(&relative).await;
+    assert_eq!(reopened["fields"]["body"], "{\"edited\": true}");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1033,6 +1133,63 @@ async fn a_body_is_owned_by_the_file_it_reaches_not_its_spelling() {
         std::fs::read_to_string(root.join("items/own.body.txt")).expect("fixture"),
         "changed"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_json_body_saves_as_its_requests_while_an_associated_schema_stays_owned() {
+    let root = collection();
+    let write = |name: &str, text: &str| std::fs::write(root.join(name), text).expect("fixture");
+    write(
+        "items/post.request.toml",
+        "format_version = 1\nid = \"post\"\nmethod = \"POST\"\nurl = \"https://a.example/\"\nbody = \"items/post.body.json\"\n",
+    );
+    write("items/post.body.json", "{\"q\": 1}");
+    write(
+        "items/linked.request.toml",
+        "format_version = 1\nid = \"linked\"\nmethod = \"POST\"\nurl = \"https://b.example/\"\nbody = \"items/linked.yaml\"\n",
+    );
+    write(
+        "items/user.request.toml",
+        "format_version = 1\nid = \"user\"\nmethod = \"GET\"\nurl = \"https://c.example/\"\nschema = \"items/linked.yaml\"\n",
+    );
+    write("items/linked.yaml", "openapi: 3.1.0\n");
+    let others = |root: &Path| -> Vec<(PathBuf, Vec<u8>)> {
+        project_bytes(root)
+            .into_iter()
+            .filter(|(p, _)| !p.ends_with("items/post.body.json"))
+            .collect()
+    };
+    let before = others(&root);
+    let mut desk = desk().await;
+    desk.open(&root).await;
+    // The schema another request associates is never a body's to rewrite.
+    let doc = desk.request("items/linked.request.toml").await;
+    let r = desk
+        .wb(json!({"kind": "save", "edit": 1, "id": "linked", "revision": doc["revision"], "fields": with(&doc, "body", "overwritten")}))
+        .await;
+    assert_eq!(
+        r,
+        json!({"kind": "saveRefused", "refusal": {"kind": "sharedBody"}})
+    );
+    // A JSON body named only by its own request saves and reopens.
+    let doc = desk.request("items/post.request.toml").await;
+    assert_eq!(doc["fields"]["body"], "{\"q\": 1}");
+    let saved = desk
+        .wb(json!({"kind": "save", "edit": 1, "id": "post", "revision": doc["revision"], "fields": with(&doc, "body", "{\"q\": 2}")}))
+        .await;
+    assert_eq!(saved["kind"], "saved", "{saved}");
+    assert_eq!(
+        std::fs::read_to_string(root.join("items/post.body.json")).expect("fixture"),
+        "{\"q\": 2}"
+    );
+    assert_eq!(others(&root), before, "metadata and every other file kept");
+    let handles = desk.adapters;
+    drop(desk.core);
+    let mut again = start(Some(&handles), CoreConfig::default()).await;
+    again.open(&root).await;
+    let reopened = again.request("items/post.request.toml").await;
+    assert_eq!(reopened["fields"]["body"], "{\"q\": 2}");
+    assert_eq!(reopened["recovered"], false);
 }
 
 async fn support_eventually(mut condition: impl FnMut() -> bool) -> bool {

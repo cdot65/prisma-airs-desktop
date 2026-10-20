@@ -110,6 +110,9 @@ pub struct Catalog {
     /// invalid requests included) and the request files naming it: the
     /// ownership evidence a body write is checked against.
     pub bodies: BTreeMap<String, std::collections::BTreeSet<String>>,
+    /// Every schema association named by a parseable request file and the
+    /// request files naming it.
+    pub schema_links: BTreeMap<String, std::collections::BTreeSet<String>>,
 }
 
 pub(crate) fn valid_id(id: &str) -> bool {
@@ -313,6 +316,7 @@ pub fn discover(root: &Path) -> Result<Catalog, ProjectProblem> {
         complete: true,
         references: std::collections::BTreeSet::new(),
         bodies: BTreeMap::new(),
+        schema_links: BTreeMap::new(),
     };
     if let Ok(Some(bytes)) =
         read_optional(&catalog.root, Path::new("collection.toml"), METADATA_BYTES)
@@ -366,7 +370,25 @@ fn scan(catalog: &mut Catalog, walk: &mut Walk, directory: &Path, depth: usize) 
         });
         return;
     };
-    let mut entries: Vec<_> = read.filter_map(Result::ok).collect();
+    // Enumeration stops one entry past the budget, so a huge directory
+    // costs no more than the limit it trips; an unreadable entry makes the
+    // catalog incomplete rather than silently smaller.
+    let budget = MAX_ENTRIES.saturating_sub(walk.entries) + 1;
+    let mut entries = Vec::new();
+    let mut unreadable = false;
+    for entry in read.take(budget) {
+        match entry {
+            Ok(e) => entries.push(e),
+            Err(_) => unreadable = true,
+        }
+    }
+    if unreadable {
+        catalog.complete = false;
+        catalog.issues.push(Issue {
+            relative: slash(directory).unwrap_or_default(),
+            kind: IssueKind::Invalid,
+        });
+    }
     entries.sort_by_key(|e| e.file_name());
     if let Some(folder) = slash(directory).filter(|f| !f.is_empty()) {
         catalog.folders.push(folder);
@@ -454,6 +476,13 @@ fn request(catalog: &mut Catalog, walk: &mut Walk, relative: &Path, text: String
         catalog
             .bodies
             .entry(body.to_owned())
+            .or_default()
+            .insert(text.clone());
+    }
+    if let Some(schema) = doc.get("schema").and_then(Item::as_str) {
+        catalog
+            .schema_links
+            .entry(schema.to_owned())
             .or_default()
             .insert(text.clone());
     }
@@ -637,6 +666,24 @@ mod tests {
         assert_eq!(catalog.environments, ["dev"]);
         assert_eq!(catalog.schemas, ["f/api.yaml"]);
         assert_eq!(catalog.folders, ["environments", "f"]);
+    }
+
+    #[test]
+    fn a_directory_past_the_entry_budget_makes_the_catalog_incomplete() {
+        let (_d, root) = collection();
+        let big = root.join("big");
+        std::fs::create_dir(&big).expect("fixture");
+        for i in 0..MAX_ENTRIES + 10 {
+            std::fs::write(big.join(format!("{i}.txt")), "").expect("fixture");
+        }
+        let catalog = discover(&root).expect("fixture");
+        assert!(!catalog.complete);
+        assert!(
+            catalog
+                .issues
+                .iter()
+                .any(|i| i.relative == "big" && i.kind == IssueKind::Limit)
+        );
     }
 
     #[test]

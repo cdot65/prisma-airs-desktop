@@ -749,12 +749,15 @@ pub fn plan(
 
 /// Whether writing `body` for the request at `relative` could change a file
 /// something else owns: a body any other request file names (a duplicate
-/// or invalid one included), or a project file itself (any request file,
-/// this one included, `collection.toml`, an environment or a schema).
-/// Names are compared by the file they reach, not their spelling: equal
-/// ignoring case (a volume may fold case, and a file not yet written has no
-/// identity), or the same existing file (device and inode), so no alias of
-/// another owner's file is written.
+/// or invalid one included), a schema any request file associates, or a
+/// project file itself (any request file, this one included,
+/// `collection.toml`, an environment or a standalone schema). A `.json` or
+/// YAML file some request names as its body is that body, owned by the
+/// requests naming it, not a standalone schema. Names are compared by the
+/// file they reach, not their spelling: equal ignoring case (a volume may
+/// fold case, and a file not yet written has no identity), or the same
+/// existing file (device and inode), so no alias of another owner's file
+/// is written.
 fn shared(root: &Path, catalog: &project::Catalog, relative: &str, body: &str) -> bool {
     use std::os::unix::fs::MetadataExt;
     let identity = |reference: &str| {
@@ -773,6 +776,21 @@ fn shared(root: &Path, catalog: &project::Catalog, relative: &str, body: &str) -
         .iter()
         .filter(|(_, owners)| owners.iter().any(|r| r != relative))
         .map(|(other, _)| other.clone());
+    let schema_links = catalog.schema_links.keys().cloned();
+    // Each body file named anywhere, by case-folded name and identity, so a
+    // schema candidate that is a body is recognised in one pass.
+    let body_names: std::collections::BTreeSet<String> =
+        catalog.bodies.keys().map(|b| b.to_lowercase()).collect();
+    let body_files: std::collections::BTreeSet<(u64, u64)> =
+        catalog.bodies.keys().filter_map(|b| identity(b)).collect();
+    let standalone = catalog
+        .schemas
+        .iter()
+        .filter(|s| {
+            !body_names.contains(&s.to_lowercase())
+                && !identity(s).is_some_and(|i| body_files.contains(&i))
+        })
+        .cloned();
     let environments = catalog
         .environments
         .iter()
@@ -782,10 +800,13 @@ fn shared(root: &Path, catalog: &project::Catalog, relative: &str, body: &str) -
         .iter()
         .map(|r| r.relative.clone())
         .chain(catalog.issues.iter().map(|i| i.relative.clone()))
-        .chain(catalog.schemas.iter().cloned())
+        .chain(standalone)
         .chain(environments)
         .chain(["collection.toml".to_owned(), relative.to_owned()]);
-    bodies.chain(project_files).any(|other| same(&other))
+    bodies
+        .chain(schema_links)
+        .chain(project_files)
+        .any(|other| same(&other))
 }
 
 /// The document after its planned changes were written.
@@ -831,6 +852,52 @@ mod tests {
         assert!(shared(&root, &catalog, me, "Collection.TOML"));
         assert!(shared(&root, &catalog, me, "items/New.Request.toml"));
         assert!(!shared(&root, &catalog, me, "items/free.body.txt"));
+    }
+
+    #[test]
+    fn a_json_body_is_its_requests_and_a_schema_is_owned_by_its_role() {
+        let dir = crate::workbench::testdir::Dir::new();
+        let root = dir.path().join("c");
+        std::fs::create_dir_all(root.join("items")).expect("fixture");
+        std::fs::write(
+            root.join("collection.toml"),
+            "format_version = 1\nid = \"coll\"\nname = \"Coll\"\n",
+        )
+        .expect("fixture");
+        let request = |id: &str, extra: &str| {
+            std::fs::write(
+                root.join(format!("items/{id}.request.toml")),
+                format!("format_version = 1\nid = \"{id}\"\nmethod = \"POST\"\nurl = \"https://{id}.example/\"\n{extra}"),
+            )
+            .expect("fixture");
+        };
+        request("post", "body = \"items/post.body.json\"\n");
+        request("linked", "body = \"items/linked.yaml\"\n");
+        request("user", "schema = \"items/linked.yaml\"\n");
+        std::fs::write(root.join("items/post.body.json"), "{}").expect("fixture");
+        std::fs::write(root.join("items/linked.yaml"), "openapi: 3.1.0\n").expect("fixture");
+        std::fs::write(root.join("items/api.yaml"), "openapi: 3.1.0\n").expect("fixture");
+        let catalog = project::discover(&root).expect("fixture");
+        assert!(catalog.schemas.contains(&"items/post.body.json".to_owned()));
+        // A JSON body named only by its own request is that request's.
+        assert!(!shared(
+            &root,
+            &catalog,
+            "items/post.request.toml",
+            "items/post.body.json"
+        ));
+        // A schema another request associates is owned by that role.
+        assert!(shared(
+            &root,
+            &catalog,
+            "items/linked.request.toml",
+            "items/linked.yaml"
+        ));
+        // A standalone schema, by any spelling, is no new request's body.
+        let me = "items/new.request.toml";
+        assert!(shared(&root, &catalog, me, "items/api.yaml"));
+        assert!(shared(&root, &catalog, me, "items/API.yaml"));
+        assert!(shared(&root, &catalog, me, "items/post.body.json"));
     }
 
     #[test]

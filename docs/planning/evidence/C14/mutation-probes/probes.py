@@ -183,7 +183,7 @@ PROBES = [
      [(DOC, "        other.to_lowercase() == mine.0 ||", "        other == body ||")],
      UNIT_T, "a_body_not_yet_written_is_owned_by_its_case_folded_name"),
     ("a body may be another project file",
-     [(DOC, "    bodies.chain(project_files).any(|other| same(&other))", "    bodies.chain(project_files.take(0)).any(|other| same(&other))")],
+     [(DOC, "        .chain(project_files)\n        .any(|other| same(&other))", "        .chain(project_files.take(0))\n        .any(|other| same(&other))")],
      WB_T, "a_body_is_owned_by_the_file_it_reaches_not_its_spelling"),
     ("an outstanding protection silences new edits",
      [(EDITOR, "        sentGen.current = Math.max(sentGen.current, edit)\n        return call({ kind: 'protect'", "        return call({ kind: 'protect'")],
@@ -194,6 +194,28 @@ PROBES = [
     ("closing never asks when protection fails",
      [(VIEW, "            if (kept.includes(false)) {", "            if (false) {")],
      FE_SAVE, "asks before closing the collection when the latest typing cannot be kept"),
+    # P04 push, attempt-04: an unchanged Save supersedes an older draft, and
+    # discovery enumerates no more than its entry budget.
+    ("an unchanged Save keeps an older protected draft",
+     [(DOMAIN, "        } else {\n            o.data.drafts.remove(&id);\n            o.recovered.remove(&id);\n        }\n        Ok(Ok((", "        }\n        Ok(Ok((")],
+     WB_T, "saving_the_saved_snapshot_drops_an_older_protected_draft"),
+    ("Save leaves the pending protection armed",
+     [(EDITOR, "        if (timer.current !== null) {\n            clearTimeout(timer.current)\n            timer.current = null\n        }\n        sentGen.current", "        sentGen.current")],
+     FE_SAVE, "saves a reverted document before the pause, so the older protected draft is superseded"),
+    ("a directory past the entry budget is cut short silently",
+     [(PROJECT, "        if walk.entries > MAX_ENTRIES {", "        if false {")],
+     UNIT_T, "a_directory_past_the_entry_budget_makes_the_catalog_incomplete"),
+    # P04 push, attempt-05 R6: a JSON body is its request's; a schema is
+    # owned by its role (associated, or standalone).
+    ("every schema candidate blocks its own body",
+     [(DOC, "        .chain(standalone)\n", "        .chain(catalog.schemas.iter().cloned())\n")],
+     WB_T, "the_built_in_collection_is_private_generic_and_keeps_edits"),
+    ("an associated schema may be rewritten as a body",
+     [(DOC, "        .chain(schema_links)\n", "")],
+     WB_T, "a_json_body_saves_as_its_requests_while_an_associated_schema_stays_owned"),
+    ("a standalone schema may become a new body",
+     [(DOC, "        .chain(standalone)\n", "")],
+     UNIT_T, "a_json_body_is_its_requests_and_a_schema_is_owned_by_its_role"),
 ]
 
 
