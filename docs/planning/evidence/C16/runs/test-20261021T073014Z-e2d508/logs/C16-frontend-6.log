@@ -1,0 +1,22 @@
+
+running 12 tests
+test navigation_policy_accepts_only_packaged_assets ... ok
+test other_windows_and_remote_origins_cannot_reach_commands ... ok
+test unregistered_and_plugin_commands_are_denied ... ok
+test literal_dispatch_round_trip_matches_fixtures ... ok
+test ambient_environment_credentials_are_never_adopted ... ok
+test shell_observation_matches_the_literal_snapshot ... ok
+test delivery_sequence_rules_hold_through_ipc ... ok
+test malformed_requests_are_refused_before_authority ... ok
+test observations_per_webview_are_bounded_without_silent_eviction ... ok
+test observations_are_native_owned_closable_and_retired_with_the_webview ... ok
+test tenant_and_scan_key_intents_cross_ipc_without_echoing_the_key ... ok
+test json_bodies_and_oversized_payloads_are_refused ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+
+--- stderr ---
+   Compiling desktop-host v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.05s
+     Running tests/ipc_admission.rs (target/debug/deps/ipc_admission-fd43f7c2f58ca436)

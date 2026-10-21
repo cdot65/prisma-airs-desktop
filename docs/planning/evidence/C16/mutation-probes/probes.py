@@ -146,7 +146,7 @@ PROBES = [
      [(VIEW, "        if (mine !== tokens.current[resource] || gen !== generation.current) return\n", "        void mine\n        void gen\n")],
      FE_GW, LATE),
     ("focus is not returned on close",
-     [(VIEW, "        opener.current?.focus()\n", "        void opener\n")],
+     [(VIEW, "        setDetail(null)\n        opener.current?.focus()\n", "        setDetail(null)\n        void opener\n")],
      FE_GW, FOCUS),
     ("a partial inventory reads as complete",
      [(VIEW, "    if (list.complete) return list.count === 0", "    if (list.complete || true) return list.count === 0")],

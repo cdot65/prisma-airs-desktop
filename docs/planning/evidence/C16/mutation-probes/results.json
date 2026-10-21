@@ -1,13 +1,13 @@
 [
   {
     "inputs": {
-      "apps/desktop/src/features/gateway/gateway-view.tsx": "2b573ac54b3c79a62875fc59e742076d3c5f5eba54ff7ffa9bbc1c1fac3ad78c",
-      "crates/desktop-core/src/authority.rs": "f672221cb2db41837723c5119a2dee1e9a56cb6409df366ec2c554f9dcbe1f8d",
-      "crates/desktop-core/src/authority/gateway_domain.rs": "2f1b6d8e1ae8530c4d2d389f1ac1eb73d75ab3b29d7b3f3677a2e8e2c119ea71",
-      "crates/desktop-core/src/authority/management_domain.rs": "9e47deb020e8f01a7e8cd96c8684823499a354e669abfc4531cb03111b7f3002",
-      "crates/desktop-core/src/gateway.rs": "4e8dada47848dc81ea2aee8e5c046f5ec8b1276a0f5a162792e64710760c188d",
-      "crates/desktop-core/src/management.rs": "062a0f409b9ee4a4d2fc40d9fcdf4a292bb7ae180d6123abe62aeadc154590fd",
-      "packages/desktop-contracts/src/client.ts": "5cad62889b74070a763f7dbe4f11a5ec59cfb4d6b68b362d5b855f41e5d7588c"
+      "apps/desktop/src/features/gateway/gateway-view.tsx": "863af869f6cb197a01c036228c373acc662441ed692991fa49aaa4fe609ec012",
+      "crates/desktop-core/src/authority.rs": "1aaad7001f4ffbe47289c111cb4b860e3176d2db03b95522783017e50ff4f525",
+      "crates/desktop-core/src/authority/gateway_domain.rs": "4707f62149e7fcee6dba02e89bd6e50ea69bbea5d0cf2d766908d5c1d4dcb0de",
+      "crates/desktop-core/src/authority/management_domain.rs": "bde0ef0cb2cbfc40e923cfd822e116d40a8a76e80e29e89810ef7d965addaf40",
+      "crates/desktop-core/src/gateway.rs": "01bd781ffcb739dd2dd315c2fc5da1282969dceaedb7947ae5e83c3863d1a7a5",
+      "crates/desktop-core/src/management.rs": "27ec0bf44ee40a190ae64fd83c43ab8765992bec49671b652db9862463a0a61b",
+      "packages/desktop-contracts/src/client.ts": "f4b5d26c8a21d2b712c77245dd9594703b9848b23ee8488eb515f3221fb5f5a8"
     }
   },
   {
@@ -679,6 +679,66 @@
       "src/contracts/snapshot-validation.test.ts"
     ],
     "guard": "validates the workspace choice in the snapshot",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a detail keeps another integration's models",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "never shows one integration\u2019s models under another",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a late workspace detail is shown under another workspace",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "shows the chosen workspace\u2019s own settings and limits, and its failures",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the workspace detail is never read",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-view.test.tsx"
+    ],
+    "guard": "shows the chosen workspace\u2019s own settings and limits, and its failures",
     "exit_code": 1,
     "guard_failed": true
   }
