@@ -21,6 +21,7 @@ pub mod gateway_files;
 pub mod gateway_inference;
 pub mod gateway_local;
 pub mod gateway_observe;
+pub mod harness;
 pub mod import;
 pub mod learner;
 pub mod library;

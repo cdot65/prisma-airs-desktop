@@ -2311,7 +2311,13 @@ async fn drafts_and_uncertain_outcomes_survive_an_offline_restart_and_nothing_is
             Some(&reference),
         ))
         .await;
-    assert!(settle(|| local(&desk.snap())["unsaved"] == false).await);
+    // `unsaved` is false before the first write starts too: wait for the
+    // write itself.
+    let kept = desktop_core::gateway_local::path(
+        &desk.adapters.sessions_root,
+        desk.snap().active.expect("active").tenant.as_str(),
+    );
+    assert!(settle(|| kept.exists() && local(&desk.snap())["unsaved"] == false).await);
     let file = std::fs::read_to_string(desktop_core::gateway_local::path(
         &desk.adapters.sessions_root,
         desk.snap().active.expect("active").tenant.as_str(),

@@ -28,6 +28,11 @@ dbg_macro = "deny"
 todo = "deny"
 unwrap_used = "warn"
 
+# The Harness verifies the 320 MiB engine's SHA-256 before every start (C19);
+# unoptimized, that alone takes about ten seconds in test builds.
+[profile.dev.package.sha2]
+opt-level = 3
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

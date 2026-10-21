@@ -571,7 +571,7 @@ fn git(repo: &Repo, args: &[&str]) -> Result<String> {
         .args(args)
         .current_dir(repo.root())
         .env_clear()
-        .env("PATH", "/usr/bin:/bin")
+        .env("PATH", crate::git_path())
         .env("HOME", std::env::var("HOME").unwrap_or_default())
         .output()
         .map_err(io_err(repo.root()))?;

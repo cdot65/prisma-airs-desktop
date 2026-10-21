@@ -919,6 +919,90 @@ function isGatewayView(value: unknown): boolean {
     )
 }
 
+export const HARNESS_PHASES: readonly string[] = ['starting', 'ready', 'answering', 'interrupting', 'ending', 'ended', 'failed']
+export const HARNESS_FAILURES: readonly string[] = [
+    'engineUnavailable',
+    'credentialMissing',
+    'credentialLocked',
+    'credentialDenied',
+    'startFailed',
+    'bootstrapRejected',
+    'timeout',
+    'protocol',
+    'bounds',
+    'exited',
+    'refused',
+    'turnFailed',
+    'cleanupFailed',
+]
+const HARNESS_STOPS: readonly string[] = ['ended', 'sleep', 'quit', 'deadline']
+const TURN_ENDS: readonly string[] = ['completed', 'interrupted', 'truncated', 'failed', 'refused']
+const ENTRY_STATES: readonly string[] = ['streaming', 'complete', 'interrupted', 'truncated', 'failed']
+const CLEANUPS: readonly string[] = ['graceful', 'forced', 'failed']
+/** The Harness's bounds (C19): entries, a conversation's text and one answer. */
+const MAX_HARNESS_ENTRIES = 200
+const MAX_TRANSCRIPT_BYTES = 1024 * 1024
+const MAX_ANSWER_BYTES = 256 * 1024
+const GIT_COMMIT = /^[0-9a-f]{40}$/
+
+function utf8Bytes(text: string): number {
+    return new TextEncoder().encode(text).length
+}
+
+function isHarnessEntry(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        value.id.length > 0 &&
+        value.id.length <= 300 &&
+        oneOf(['operator', 'assistant'], value.role) &&
+        typeof value.text === 'string' &&
+        utf8Bytes(value.text) <= (value.role === 'operator' ? 32 * 1024 : MAX_ANSWER_BYTES) &&
+        oneOf(ENTRY_STATES, value.state) &&
+        Object.keys(value).length === 4
+    )
+}
+
+/** The native Harness (C19): the bundled engine and the bound conversation. */
+function isHarnessView(value: unknown): boolean {
+    if (!isRecord(value) || !isRecord(value.engine)) return false
+    const e = value.engine
+    const engineOk =
+        typeof e.available === 'boolean' &&
+        e.protocol === 'airs-desktop/1' &&
+        isString(e.runtimeVersion) &&
+        typeof e.engineCommit === 'string' &&
+        GIT_COMMIT.test(e.engineCommit)
+    return engineOk && optional(isConversationView, value.conversation)
+}
+
+function isConversationView(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    const entries = value.entries
+    return (
+        typeof value.id === 'string' &&
+        OPERATION_ID.test(value.id) &&
+        isListedWorkspace(value.workspace) &&
+        typeof value.endpoint === 'string' &&
+        value.endpoint.startsWith('https://') &&
+        oneOf(HARNESS_PHASES, value.phase) &&
+        optional((f) => oneOf(HARNESS_FAILURES, f), value.failure) &&
+        // A failed conversation names its failure.
+        (value.phase !== 'failed' || value.failure !== null) &&
+        optional((s) => oneOf(HARNESS_STOPS, s), value.stop) &&
+        Array.isArray(entries) &&
+        entries.length <= MAX_HARNESS_ENTRIES &&
+        entries.every(isHarnessEntry) &&
+        entries.reduce((n: number, x) => n + utf8Bytes((x as { text: string }).text), 0) <= MAX_TRANSCRIPT_BYTES &&
+        optional((t) => oneOf(TURN_ENDS, t), value.lastTurn) &&
+        optional((u) => isRecord(u) && isCount(u.input) && isCount(u.output) && isCount(u.total), value.usage) &&
+        optional((c) => oneOf(CLEANUPS, c), value.cleanup) &&
+        // An ended conversation says how its engine was stopped.
+        (value.phase !== 'ended' || value.cleanup !== null) &&
+        optional(isString, value.runtimeVersion)
+    )
+}
+
 /** The change a kept Gateway draft or record describes (C17). */
 function isGatewayChange(value: Record<string, unknown>): boolean {
     return (
@@ -1995,6 +2079,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isOverviewView(value.overview) ||
         !isWorkbenchView(value.workbench) ||
         !isGatewayView(value.gateway) ||
+        !isHarnessView(value.harness) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')

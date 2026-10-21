@@ -56,10 +56,13 @@ default-features = false
 # the clipboard (C09, D035); fixture-only WebView self-capture (WebKit).
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "=0.6.5" }
-objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSData", "NSDictionary", "NSError", "NSString", "NSGeometry"] }
-objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSAlert", "NSApplication", "NSButton", "NSControl", "NSResponder", "NSView", "NSWindow", "NSTextField", "NSPasteboard", "block2"] }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSData", "NSDictionary", "NSError", "NSString", "NSGeometry", "NSNotification", "NSOperation", "block2"] }
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSAlert", "NSApplication", "NSButton", "NSControl", "NSResponder", "NSView", "NSWindow", "NSTextField", "NSPasteboard", "NSWorkspace", "block2"] }
 objc2-web-kit = { version = "=0.3.2", optional = true, default-features = false, features = ["std", "WKWebView", "WKSnapshotConfiguration", "block2", "objc2-app-kit"] }
 block2 = { version = "=0.6.2" }
+# The Harness sidecar's process group and exit observed without reaping
+# (C19; already locked through tokio and Tauri).
+libc = "=0.2.191"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time"] }
@@ -96,4 +99,8 @@ required-features = ["test-fixtures"]
 
 [[test]]
 name = "clipboard_secret"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "sidecar_supervision"
 required-features = ["test-fixtures"]

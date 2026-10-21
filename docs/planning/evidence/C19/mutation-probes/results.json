@@ -1,0 +1,916 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src-tauri/src/sidecar.rs": "39385bfa0f786135a5b98684f6ff9d5f5d45ab3a147fc611848ba0a47a16d335",
+      "apps/desktop/src/features/harness/harness-view.tsx": "1f63693ebf7229314fa0370eea00e37db2ea0fa25f8cc11f9af49b0e0bcad6c5",
+      "crates/desktop-core/src/authority.rs": "d18e626118785edbfc62e954f2793a9b29733d5e1b2da72dd871965d716a6a3d",
+      "crates/desktop-core/src/authority/harness_domain.rs": "e4ed7b8caf482f6bcf4c7ccce499500f41f59fec90a4c251e8ac19ff99f706c9",
+      "crates/desktop-core/src/harness/engine.rs": "00ed563b25fe5c4e4f42703ffa2c50f855a658f971aaf17960a1f569b313ca4a",
+      "crates/desktop-core/src/harness/session.rs": "3bd2363b64cb1628036fef508dde5bbe713c89563d26ec8c13739760586bf630",
+      "packages/desktop-contracts/src/client.ts": "6a035f923e89409621a5e7ddf589123f2da3e1b435bf26efb78f7181f28983ae"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sidecar_supervision"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "an engine with other bytes runs",
+    "files": [
+      "crates/desktop-core/src/harness/engine.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "a_changed_or_missing_engine_is_never_started_and_no_key_is_read",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a link to the engine verifies",
+    "files": [
+      "crates/desktop-core/src/harness/engine.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "only_the_pinned_bytes_at_a_real_path_verify",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the engine is reached through a linked folder",
+    "files": [
+      "crates/desktop-core/src/harness/engine.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "only_the_pinned_bytes_at_a_real_path_verify",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the engine inherits the app's PATH",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "a_conversation_streams_through_the_pinned_engine_with_only_the_workspace_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the key is put in the engine's environment",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "the_engine_is_given_nothing_but_its_bootstrap",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a receipt for another binding is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "malformed_oversized_duplicate_or_foreign_frames_fail_the_conversation_and_reap_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "frames are not bounded",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "malformed_oversized_duplicate_or_foreign_frames_fail_the_conversation_and_reap_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an answer to nothing pending is ignored",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "malformed_oversized_duplicate_or_foreign_frames_fail_the_conversation_and_reap_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an engine ignoring its input is never killed",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "an_engine_that_ignores_its_input_closing_is_killed_with_its_descendants",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "descendants outlive the engine",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "an_engine_that_ignores_its_input_closing_is_killed_with_its_descendants",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a stuck process is called stopped",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_process_that_cannot_be_reaped_is_a_cleanup_failure_never_success",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the runtime home is left behind",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "a_conversation_streams_through_the_pinned_engine_with_only_the_workspace_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another run's home is removed",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "runtime_homes_are_private_ephemeral_and_only_ours_are_removed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unbound conversation keeps running",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "a_changed_key_workspace_or_context_retires_the_conversation_at_once",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a replaced key leaves the conversation bound",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "a_changed_key_workspace_or_context_retires_the_conversation_at_once",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "sleep leaves the conversation running",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "sleep_and_quit_end_the_conversation_and_reap_the_engine",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "quitting does not stop the engine",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "sleep_and_quit_end_the_conversation_and_reap_the_engine",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "requests pile up unanswered",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_full_queue_or_too_many_pending_requests_is_a_bound_never_a_wait",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "approvals are accepted",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "approvals_are_declined_and_an_answer_past_its_bound_is_truncated",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an answer is not bounded",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "approvals_are_declined_and_an_answer_past_its_bound_is_truncated",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the key is shown when an answer holds it",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "the_engine_is_given_nothing_but_its_bootstrap",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the engine's retries go on",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "a_failed_answer_is_named_and_only_server_failures_are_retried_by_the_engine",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Stop answer sends nothing",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "stopping_an_answer_interrupts_only_that_turn",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a prompt is taken while answering",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "stopping_an_answer_interrupts_only_that_turn",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an oversized prompt is admitted",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "only_one_conversation_and_only_bounded_prompts_are_admitted",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a second conversation is admitted",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "only_one_conversation_and_only_bounded_prompts_are_admitted",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the host launcher inherits the environment",
+    "files": [
+      "apps/desktop/src-tauri/src/sidecar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sidecar_supervision"
+    ],
+    "guard": "nothing_is_inherited_and_stderr_is_discarded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the host launcher shares the app's process group",
+    "files": [
+      "apps/desktop/src-tauri/src/sidecar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sidecar_supervision"
+    ],
+    "guard": "killing_the_group_takes_descendants_with_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "observing exit reaps the engine",
+    "files": [
+      "apps/desktop/src-tauri/src/sidecar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sidecar_supervision"
+    ],
+    "guard": "closing_input_ends_a_reader_and_exit_is_seen_before_reaping",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "killing signals only the leader",
+    "files": [
+      "apps/desktop/src-tauri/src/sidecar.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-host",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sidecar_supervision"
+    ],
+    "guard": "killing_the_group_takes_descendants_with_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Send is offered while answering",
+    "files": [
+      "apps/desktop/src/features/harness/harness-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "streams a conversation, sends with \u2318\u21a9, stops an answer and ends it with focus following",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "focus stays put when the conversation is ready",
+    "files": [
+      "apps/desktop/src/features/harness/harness-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "streams a conversation, sends with \u2318\u21a9, stops an answer and ends it with focus following",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a conversation is offered without this workspace's key",
+    "files": [
+      "apps/desktop/src/features/harness/harness-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "offers a conversation only with the bundled engine, a chosen workspace and its stored key",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a completion past the bound is shown complete",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "completed_answers_and_token_counts_are_held_to_their_bounds",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "completed answers are not counted against the turn",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "completed_answers_and_token_counts_are_held_to_their_bounds",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unbounded completion item id names an entry",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "malformed_oversized_duplicate_or_foreign_frames_fail_the_conversation_and_reap_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unsafe token count is published",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "completed_answers_and_token_counts_are_held_to_their_bounds",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed answer says it was not sent again",
+    "files": [
+      "apps/desktop/src/features/harness/harness-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "names every failure and stop without the engine\u2019s text and never shows the key",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an http endpoint passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects conversations, entries and engines Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "more entries than the bound pass the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects conversations, entries and engines Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failure without its name passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects conversations, entries and engines Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

@@ -1360,6 +1360,140 @@ Responses or file workflow.
   copy of its content (not in the tenant book, logs or snapshots) and never
   downloads one. Deleting asks first and names the file and workspace.
 
+## D046 — The native Harness engine: sealed resource, lifecycle and the C19 conversation
+
+Decided in C19 (implementer decision for the C19 milestones, recorded for
+review).
+
+**The engine and its seal.** The engine is the pinned build of
+`prisma-airs-harness` 9331a58 (protocol `airs-desktop/1`, runtime
+0.1.7-desktop.2). It is not rebuilt here. It is the binary v1 sealed at v1
+commit 74754c02: `packaging/harness/darwin-arm64.tar.gz`, a Git LFS object
+with sha256 e79f564a…. That binary's SHA-256 (f8e49cee…) matches its
+`BUILD-INFO.json`, which names the source commit 9331a58 and the build
+command, and v1's runtime pin.
+
+`tools/harness/seal.py` reseals it for v2 and takes only the engine and
+its notices:
+- `airs-harness`;
+- `BUILD-INFO.json`, `DEPENDENCIES.json`, `LICENSE` and `NOTICE`;
+- `licenses/engine/`, the engine's dependencies' licenses.
+
+Node, the launcher scripts, the managed CLI and its `node_modules` are
+left out. The output is deterministic. It consists of:
+- `resources/harness/darwin-arm64.tar.gz` (Git LFS, 113 MB): the files
+  above and a `MANIFEST.json` inventory;
+- `resources/harness/pin.json`: the pin record, compiled into
+  desktop-core.
+
+`xtask native-prepare` extracts the archive and checks every file against
+the inventory and the pin. A Tauri overlay of its own,
+`tauri.harness.conf.json`, bundles it as `Contents/Resources/harness/`; the
+fixture overlay still only renames the identity. Signed release packaging
+is C26.
+
+**Verification on every start.** Before a conversation reads its key or
+launches anything, the bundled executable must be:
+- an absolute path named `airs-harness`;
+- a regular file, not a link;
+- unchanged while it is read (same device, inode, size and time);
+- the pinned SHA-256.
+
+A changed or missing engine fails as `engineUnavailable`. Nothing is
+started and no key is read. The check is part of the measured start
+(`harness-start-ready`, C19 workload).
+
+**Lifecycle (DESIGN §3).** desktop-core owns the conversation policy.
+desktop-host owns the OS adapter: `sidecar::OsLauncher` spawns, owns the
+process group and reaps. The engine starts with:
+- no inherited environment;
+- the argument `desktop-server` only;
+- stdin and stdout piped, and stderr discarded, so raw engine diagnostics
+  never reach a view or a log;
+- its own process group;
+- a fresh `0700` runtime home, `<app data>/harness-runtime/run-<hex>`, as
+  its `AIRS_HARNESS_HOME`.
+
+The environment it gets is exactly:
+- `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and `LANG`;
+- `TMPDIR`, inside the home;
+- `AIRS_HARNESS_HOME`;
+- `CODEX_CA_CERTIFICATE`: a file in the home holding the app transport
+  policy's additional roots, only when there are any;
+- the transport policy's proxy mode: `NO_PROXY=*` for Direct, the
+  explicit proxy URL (never one with credentials), or nothing for
+  System.
+
+The key reaches the engine only in the bootstrap frame on stdin, encoded
+into one zeroizing buffer within the 64 KiB frame bound.
+
+Stopping closes stdin, waits 2 s, kills the process group, waits 2 s, and
+reaps. Exit is observed without reaping (`waitid` with `WNOWAIT`), so the
+group is killed while it is still the engine's, and nothing is signalled
+after reaping. The engine runs a supervisor process of its own, which
+goes with the group. A process that cannot be reaped is
+`cleanupFailed`, never success. The home is then removed; at a start,
+homes left by an earlier run are removed too.
+
+**Binding and retirement.** A conversation is admitted exactly as a
+Playground run is (D044):
+- the current context;
+- the chosen Gateway workspace's reference;
+- the inference key stored for that workspace, sent only to the runtime
+  endpoint stored with it.
+
+The engine's identifiers are UUIDs. The workspace's Gateway ID is one.
+The tenant and credential IDs are derived UUIDs (SHA-256 of a purpose and
+the native ID, shaped as version 8). The credential epoch is 1 until C20
+brings refresh epochs. The receipt must echo the binding exactly, with no
+MCP server.
+
+A conversation is its own task, not one of the four operation slots,
+because it may last hours (at most eight). It is retired the moment it is
+no longer bound, which every published change checks: another context,
+another workspace, or the key replaced or removed. Its view is withdrawn
+at once, and its engine is stopped and reaped. Ending it, sleep
+(NSWorkspace will-sleep) and quitting also stop it; quitting waits up to
+5 s for the reap.
+
+**The C19 conversation.** C19 runs a read-only conversation:
+- no project and no local environment;
+- `dynamicTools` empty;
+- approval policy on-request.
+
+Every approval or elicitation the engine asks for is declined, and any
+other engine request is refused. Tools, project access and approvals are
+C21; workspace MCP servers are C22.
+
+One prompt runs at a time: at most 32 KiB, as eight 8 KiB text items.
+Answers stream into a memory-only transcript:
+- at most 200 entries and 1 MiB of text;
+- one answer at most 256 KiB; past that, the answer is stopped and marked
+  truncated;
+- any copy of the key in engine text is replaced.
+
+Stop answer sends `turn/interrupt`. Nothing of a conversation is written
+to disk. Protected history and restore are C20.
+
+**Retries.** The pinned engine's provider retries a Gateway 5xx or
+transport failure four more times within one attempt. It also reconnects
+a dropped or failed stream up to five times, each with those retries
+again. A failing Gateway was measured to receive 30 requests for one
+message. The bootstrap cannot change this. Instead, the host stops the turn
+at the engine's first reconnect notice (an `error` notification with
+`willRetry`), and the turn ends as failed. A failing Gateway therefore sees
+at most the five requests of one attempt, and no 4xx is retried. The
+engine's in-attempt retries remain an engine property. Removing them
+needs an engine change. Live qualification is C25.
+
+**Not done here.** The following are not done in C19:
+- Gateway sign-in and refresh (C20);
+- protected history and restore (C20);
+- tools, proposals and project access (C21);
+- MCP (C22);
+- importing v1 history (C23);
+- signed packaging (C26).
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

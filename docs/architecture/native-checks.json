@@ -886,6 +886,48 @@
         "id": "C18-N13",
         "check": "The workspace's Files tab reads its files with the inference key; a file chosen in the sheet shows only its name and size, is uploaded once by keyboard (multipart, purpose assistants, the chosen bytes) and the status takes focus; a Responses run attaches it as an input_file; Delete asks first (focus on Delete file, Cancel sends nothing and returns focus to the row) and deletes one file once; an upload answered 503 is named as possibly stored, kept on this Mac with its trace and never sent again."
       }
+    ],
+    "C19": [
+      {
+        "id": "C19-N01",
+        "check": "The bundle's engine resource is the pinned engine (its SHA-256 and sealed inventory match the compiled pin) and the bundle holds no Node, Bun, npm or managed CLI. The Harness is an available destination naming the engine's version, commit and protocol, and offers no conversation without a tenant, a chosen Gateway workspace and the inference key stored for it; once those exist it shows the workspace and the only endpoint the engine is given."
+      },
+      {
+        "id": "C19-N02",
+        "check": "Start conversation launches exactly one engine as a child of the app, leading its own process group, with `desktop-server` as its only argument, a fixed PATH, its own runtime home under the app's data and no credential in its environment or arguments; the conversation becomes ready and focus moves to the message box."
+      },
+      {
+        "id": "C19-N03",
+        "check": "A message sent with Command-Return is answered through the engine: exactly one streamed Responses request reaches the Gateway with the workspace key and a read-only sandbox, and the operator's message, the streamed answer, its end and the token counts are shown."
+      },
+      {
+        "id": "C19-N04",
+        "check": "Stop answer interrupts only the answer being streamed: the Gateway stream is closed by the client, the answer is marked as stopped, and the same conversation then answers another message."
+      },
+      {
+        "id": "C19-N05",
+        "check": "End conversation stops and reaps the engine (no engine process remains) and removes its runtime home; the status says the conversation ended and takes focus, and a new conversation is offered."
+      },
+      {
+        "id": "C19-N06",
+        "check": "Choosing another Gateway workspace retires the conversation at once (its engine is reaped, its view withdrawn and its home removed), and the system will-sleep notification ends a conversation the same way and says so."
+      },
+      {
+        "id": "C19-N07",
+        "check": "Quitting with a conversation open leaves no engine process and no runtime home; no prompt, answer or key is found anywhere in the app's data on disk; a relaunch restores no conversation and starts a new one."
+      },
+      {
+        "id": "C19-N08",
+        "check": "The transcript is a list named Messages, the message box is labelled, the status is an accessible status, a message is sent by keyboard, and End conversation is reached by Tab and pressed with Space, reaping the engine."
+      },
+      {
+        "id": "C19-N09",
+        "check": "No secret appears in any captured accessibility tree, the Gateway log holds neither prompt nor key, the engine reached only the Responses endpoint, no engine process outlives the run, and v1 data is unchanged."
+      },
+      {
+        "id": "C19-N10",
+        "check": "An engine killed from outside is named as having stopped unexpectedly, its processes and runtime home are gone, and a new conversation starts a new engine."
+      }
     ]
   }
 }

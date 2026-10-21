@@ -1,0 +1,129 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C16",
+  "recorded_utc": "2026-10-21T15:00:44Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c16.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "646cf8dc2f2d776c4efb644c3ea442b930d5ea204747c216330e3d1819eccb2c",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C16-N01",
+      "description": "Without a management client AI Gateway asks for one in Settings and reads nothing.",
+      "result": "pass",
+      "observation": "without a management client: {'asked': True, 'requests': 0}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json"
+      ]
+    },
+    {
+      "id": "C16-N02",
+      "description": "AI Gateway lists the tenant's workspaces on opening; choosing one reads its providers with the workspace query and the tenant header, and the chosen workspace is shown checked; nothing is chosen for the operator.",
+      "result": "pass",
+      "observation": "choose {'listed': True, 'nothing_chosen_first': True, 'providers': True, 'checked': True, 'workspace_query': ['16f7e90d-382a-4e78-b577-1b01eb5f8297'], 'tsg_header': ['1234567890'], 'bearer': ['bearer-issued'], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json",
+        "docs/planning/evidence/C19/native-C16/tree-providers.json"
+      ]
+    },
+    {
+      "id": "C16-N03",
+      "description": "A route's detail opens with focus on its heading and says the configuration carries credentials without showing them; Close returns focus to its Details button; the tenant-wide integrations and an integration's models are read; no key value, provider key, model configuration or credential-bearing setting from the service reaches the window.",
+      "result": "pass",
+      "observation": "details {'route_opened': True, 'heading_focused': True, 'focus_returned': True, 'tenant_wide': True, 'models': True, 'protected_listed': True, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json",
+        "docs/planning/evidence/C19/native-C16/tree-route-detail.json",
+        "docs/planning/evidence/C19/native-C16/tree-integration.json"
+      ]
+    },
+    {
+      "id": "C16-N04",
+      "description": "Choosing another workspace while a read of the first is in flight shows the second workspace's reads and never the first's late reply; a partial inventory is shown as part of a larger one, never as all of it.",
+      "result": "pass",
+      "observation": "switch {'b_shown': True, 'a_late_reply_shown': False, 'checked_b': True, 'partial': True, 'guardrail_reads': ['16f7e90d-382a-4e78-b577-1b01eb5f8297', '16f7e90d-382a-4e78-b577-1b01eb5f8298'], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json",
+        "docs/planning/evidence/C19/native-C16/tree-switch.json"
+      ]
+    },
+    {
+      "id": "C16-N10",
+      "description": "With two integrations, opening the second while the first's models are shown, or while the first's model read is still out, shows none of the first's models, loading state or count, and its late reply is dropped; reading the second shows only its own models.",
+      "result": "pass",
+      "observation": "models bound {'a_read': True, 'b_opened': True, 'cached_a_under_b': [], 'a_pending': True, 'late_a_under_b': [], 'b_read': True, 'b_only': True, 'model_reads': ['f6692544-3265-49be-9711-bbdcebc079eb', 'f6692544-3265-49be-9711-bbdcebc079eb', 'f6692544-3265-49be-9711-bbdcebc079eb', '0b6f3a10-5c2d-4e8a-9f1b-2c3d4e5f6a7b'], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json",
+        "docs/planning/evidence/C19/native-C16/tree-models-bound.json"
+      ]
+    },
+    {
+      "id": "C16-N11",
+      "description": "The Workspace tab shows the chosen workspace's own settings with its defaults and embedded limits; Refresh workspace is reached and pressed by keyboard and keeps focus; choosing another workspace shows only that workspace's settings.",
+      "result": "pass",
+      "observation": "workspace detail {'shown_b': True, 'own': True, 'limits': True, 'defaults': True, 'keyboard_refresh': True, 'focus_kept': True, 'shown_a': True, 'reads': {'a': 1, 'b': 2}, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json",
+        "docs/planning/evidence/C19/native-C16/tree-workspace-detail.json"
+      ]
+    },
+    {
+      "id": "C16-N05",
+      "description": "Inference prerequisites state the IAM scope binding, each plane's access and each source as read: a scope that does not list the workspace is unbound, a refused admin or IAM plane is stated as not allowed while the data plane's reads stand, and the management client is never offered for inference.",
+      "result": "pass",
+      "observation": "prerequisites {'unbound': True, 'inference_statement': True, 'inference_keys': True, 'scope_denied': True, 'admin_denied': True, 'integrations_unavailable': True, 'data_readable': True, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json",
+        "docs/planning/evidence/C19/native-C16/tree-prerequisites.json"
+      ]
+    },
+    {
+      "id": "C16-N06",
+      "description": "A pending Runtime change review stays protected across Gateway use: after choosing workspaces, the reviewed change is still held (Review again).",
+      "result": "pass",
+      "observation": "review {'reviewed': True, 'held_after_gateway': True, 'writes': []}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json",
+        "docs/planning/evidence/C19/native-C16/tree-review-held.json"
+      ]
+    },
+    {
+      "id": "C16-N07",
+      "description": "After a restart the remembered workspace is restored only because a new listing lists it, and says so; a complete listing without it clears the choice and says it is no longer listed.",
+      "result": "pass",
+      "observation": "restore {'restored': True, 'checked_b': True, 'read_b': True, 'missing': True, 'cleared': True}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json",
+        "docs/planning/evidence/C19/native-C16/tree-restore-missing.json"
+      ]
+    },
+    {
+      "id": "C16-N08",
+      "description": "At 200% zoom and at the minimum window size the workspace refresh and an inventory row's Details are reached by keyboard inside the window.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Refresh workspaces', 'pos': [803, 617], 'size': [341, 88]}; minimum size: {'label': 'Details for team-b-provider-1', 'pos': [890, 516], 'size': [78, 45]}",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json"
+      ]
+    },
+    {
+      "id": "C16-N09",
+      "description": "Every Gateway request is a GET (only the token grant is a POST); no secret or synthetic private marker appears in any Accessibility snapshot; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "non-GET Gateway requests: [] (non-GET requests overall, the Runtime review excluded: []); 39 Gateway reads; secrets or private markers in AX snapshots: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C19/native-C16/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The AI Gateway data, admin and IAM planes are a synthetic local TLS endpoint at the production paths; no product endpoint is called before C25.",
+    "The synthetic replies follow the SDK's Gateway contract shapes; live Gateway qualification (C25) is not claimed.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

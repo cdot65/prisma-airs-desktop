@@ -7,6 +7,9 @@ terminal. No screen-recording grant is needed: pixels come from the fixture
 build's own WebView self-capture (Fixture > Capture Window).
 
 Steps:
+0. point the fixture build at the synthetic Academy endpoint
+   (academy_server.py serving academy_catalog.py), as C05-C07 do, so no
+   check depends on the live Academy service;
 1. launch the prepared bundle and sample startup sockets (app + WebKit);
 2. run the AX driver (tools/native-acceptance/c01_ax_driver.js) with captures;
 3. read AX text colors in Dark and Light themes (ax_colors.swift);
@@ -27,8 +30,13 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 import zlib
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import academy_catalog  # noqa: E402
+import fixture_app as fx  # noqa: E402
 
 ROOT = os.getcwd()
 # A phase review runs every member chunk's checks into the phase's own
@@ -260,15 +268,16 @@ def evaluate_flows(run):
     # Runtime Security is available since C03, Academy since C05,
     # Administration since C08, Sessions & Reports since C11, the Case
     # Library since C12, Red Team & Models since C13, the API Client since
-    # C14 and AI Gateway since C16 (their views' headings are shown); every
-    # other product destination is still unavailable.
-    expected = {"Harness": "C19", "Import from v1": "C23"}
+    # C14, AI Gateway since C16 and the Harness since C19 (their views'
+    # headings are shown); every other product destination is still
+    # unavailable.
+    expected = {"Import from v1": "C23"}
     available = {"Scan a prompt or response", ACADEMY_HEADING, "Tenant inventories", "Investigate sessions", "Test case library",
-                 "Red Teaming and model observation", "API Client", "Gateway workspaces and configuration"}
+                 "Red Teaming and model observation", "API Client", "Gateway workspaces and configuration", "Harness"}
     dests = step(run, "destinations")["observation"]
     unavailable = [d for d in dests if d["heading"] not in available]
-    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 8
-          and len(unavailable) == 2 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
+    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 9
+          and len(unavailable) == 1 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
     results["C01-N06"] = (ok, "; ".join(f"{d['shortcut']}: {d['heading']} ({', '.join(d['planned'])})" for d in dests))
     dark = step(run, "appearance-view-dark")["observation"]
     light = step(run, "appearance-view-light")["observation"]
@@ -283,7 +292,7 @@ def evaluate_flows(run):
     buttons = [n for n in snap if n["role"] == "AXButton" and n["depth"] > 3]
     named = [b for b in buttons if b["label"]]
     heads = [n for n in snap if n["role"] == "AXHeading"]
-    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 2 and len(heads) == 1
+    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 1 and len(heads) == 1
     results["C01-N08"] = (ok, f"inspected AXRole, AXSubrole, AXTitle/AXDescription/AXValue, AXARIACurrent, AXFocused and tree order: 'Features' navigation landmark present={bool(nav)}; {len(named)}/{len(buttons)} buttons named; {sum('Not available in this build' in (b['label'] or '') for b in buttons)} destinations announce 'Not available in this build'; headings {[h['label'] for h in heads]}. Spoken VoiceOver output was not recorded.")
     mn = step(run, "min-size")["observation"]
     last = mn["lastDestination"]
@@ -309,6 +318,28 @@ def evaluate_flows(run):
 
 
 def main():
+    # The Academy destination is served by the synthetic endpoint; it is
+    # only contacted once the destination is opened (C01-N13 still samples
+    # startup for any socket).
+    work = tempfile.mkdtemp(prefix="airs-v2-c01-academy-")
+    academy = fx.AcademyEndpoint(os.path.join(work, "academy"))
+    with open(os.path.join(academy.dir, "catalog.json"), "w") as f:
+        json.dump(academy_catalog.build(ROOT), f)
+    academy.install()
+    academy.start()
+    try:
+        return run()
+    finally:
+        quit_app()
+        academy.stop()
+        for name in ("fixture-academy-origin", "fixture-transport-roots.pem"):
+            path = os.path.join(fx.DATA, name)
+            if os.path.exists(path):
+                os.remove(path)
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def run():
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
     exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
@@ -410,6 +441,7 @@ def main():
             "Pixels come from the fixture build's own WKWebView snapshot (the rendered page), not a screen capture; native window chrome and menus are verified through AX.",
             "Spoken VoiceOver output was not recorded; C01-N08 inspects the accessibility attributes VoiceOver consumes.",
             "Startup network evidence is sampled lsof output, not a packet capture.",
+            "The Academy destination is served by the synthetic Academy endpoint (tools/native-acceptance/academy_server.py with academy_catalog.py), as in C05-C07, not the live Academy service.",
         ],
     }
     with open(RECORD, "w") as f:

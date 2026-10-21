@@ -58,7 +58,7 @@ fn write_diff(repo: &Repo, base: &str, out: &Path) -> Result<HashedPath> {
             .args(args)
             .current_dir(repo.root())
             .env_clear()
-            .env("PATH", "/usr/bin:/bin")
+            .env("PATH", crate::git_path())
             .env("HOME", std::env::var("HOME").unwrap_or_default())
             .env("GIT_INDEX_FILE", &index)
             .output()

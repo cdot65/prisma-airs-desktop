@@ -1,0 +1,11 @@
+PASS C11-N01 pages 1–25 and 26–50 of 60: True; Malicious on page 2: ['Open session ses-00028', 'Open session ses-00035', 'Open session ses-00042', 'Open session ses-00049']; inventory queries [{'time_interval': '1', 'time_unit': 'day
+PASS C11-N02 scans listed: True; no content read or shown before reveal: True; one read and shown on reveal: True; Hide removed it: True; none after leaving and returning: True
+PASS C11-N03 detector coverage statement: True; session ID absent among 60 over 30 days: True; scan metadata only: True (1 lookup read)
+PASS C11-N04 listed with metadata: True; remove/undo: True; CSV {'saved': True, 'file': 'fpfn-reports-tenant-a-20261021-1447.csv', 'mode': '0o600', 'header': 'tenant,tsg_id,kind,scan_id,scan_sub_req_id,session_id,application,applicat
+PASS C11-N05 sealed {'files': 1, 'plaintext': False, 'mode': '0o600'}; shown after relaunch without a content read: True; removed with the client: True
+PASS C11-N06 metadata export {'saved': True, 'file': 'investigation-tenant-a-20261021-1448.json', 'sessions': True, 'content': False, 'mode': '0o600'}; cleared with the seal removed: True; read again after clearing: True (resealed: T
+PASS C11-N07 19 requests; non-read requests: []; secrets in AX snapshots: []
+PASS C11-N08 synthetic label shown and no request sent: True
+PASS C11-N10 production save panel: {'panel_shown': True, 'saved': True, 'mode': '0o600', 'replaced': True, 'replaced_mode': '0o600', 'cancelled': True, 'focus_in_window': True}
+PASS C11-N11 switch to tenant B and back: {'a_content_shown': True, 'b_active': True, 'needs_client': True, 'no_content': True, 'no_rows': True, 'empty': True, 'no_a_report': True, 'a_report_back': True, 'a_content_not_restored': Tru
+PASS C11-N09 200% zoom: {'label': 'Refresh', 'pos': [1114, 617], 'size': [165, 88]} / {'label': 'Next page', 'pos': [815, 617], 'size': [196, 88]}; minimum size: {'label': 'Refresh', 'pos': [363, 344], 'size': [82, 44]} / {'label': '

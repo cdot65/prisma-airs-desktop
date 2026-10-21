@@ -10,7 +10,7 @@ publish.workspace = true
 [features]
 default = []
 # Deterministic fixtures for integration tests. Never enabled by shipping builds.
-test-fixtures = []
+test-fixtures = ["dep:libc"]
 
 [dependencies]
 serde.workspace = true
@@ -48,6 +48,9 @@ serde_yaml_ng = "=0.10.0"
 # API Client execution (C15): Set-Cookie parsing for the bounded,
 # host-only cookie jar (already locked through the desktop host).
 cookie = { version = "=0.18.2", default-features = false }
+# The fixture sidecar launcher's process group (test-fixtures only; already
+# locked through tokio).
+libc = { version = "=0.2.191", optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
@@ -141,6 +144,18 @@ required-features = ["test-fixtures"]
 [[test]]
 name = "gateway_inference"
 path = "tests/gateway_inference/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "harness_process"
+path = "tests/harness_process/main.rs"
+required-features = ["test-fixtures"]
+
+# A scripted stand-in for the engine's desktop-server (C19 protocol and
+# lifecycle failures the real engine cannot be made to produce).
+[[bin]]
+name = "harness-fixture-sidecar"
+path = "src/bin/harness_fixture_sidecar.rs"
 required-features = ["test-fixtures"]
 
 [lints]

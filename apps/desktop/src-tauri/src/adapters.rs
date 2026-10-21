@@ -81,6 +81,41 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
             gateway_files(app, root.as_deref()),
             Arc::new(NativeUploadPicker { app: app.clone() }),
         ),
+        harness: harness(app, root.as_deref()),
+    }
+}
+
+/// The bundled Harness engine (`Contents/Resources/harness/airs-harness`),
+/// its OS launcher and where its ephemeral runtime homes are made. A build
+/// without the engine resource offers no Harness.
+fn harness<R: Runtime>(
+    app: &AppHandle<R>,
+    root: Option<&Path>,
+) -> desktop_core::harness::sidecar::HarnessAdapters {
+    use desktop_core::harness::{engine::Engine, sidecar::HarnessAdapters};
+    let engine = app
+        .path()
+        .resource_dir()
+        .ok()
+        .map(|r| {
+            r.join("harness")
+                .join(desktop_core::harness::engine::pin().executable)
+        })
+        .and_then(|p| p.canonicalize().ok())
+        .filter(|p| p.is_file())
+        .map(|executable| Engine { executable });
+    #[cfg(target_os = "macos")]
+    let launcher: Arc<dyn desktop_core::harness::sidecar::SidecarLauncher> =
+        Arc::new(crate::sidecar::OsLauncher);
+    #[cfg(not(target_os = "macos"))]
+    let launcher: Arc<dyn desktop_core::harness::sidecar::SidecarLauncher> =
+        Arc::new(desktop_core::harness::sidecar::UnavailableLauncher);
+    HarnessAdapters {
+        launcher,
+        engine,
+        runtime_root: root.map(|r| r.join("harness-runtime")),
+        #[cfg(feature = "test-fixtures")]
+        fixture: None,
     }
 }
 

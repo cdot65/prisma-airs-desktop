@@ -14,6 +14,7 @@ pub mod env;
 pub mod evidence;
 pub mod fingerprint;
 pub mod gate;
+pub mod harness;
 pub mod ledger;
 pub mod manifest;
 pub mod native;
@@ -59,6 +60,25 @@ pub(crate) fn io_err(path: &std::path::Path) -> impl FnOnce(std::io::Error) -> E
         path: path.to_path_buf(),
         source,
     }
+}
+
+/// The PATH git runs with: the system tools, plus the directory of the Git
+/// LFS command the repository's filter needs (the sealed Harness archive,
+/// C19 and D046), found on the caller's PATH. Nothing else is inherited.
+pub(crate) fn git_path() -> String {
+    let mut path = String::from("/usr/bin:/bin");
+    let lfs = std::env::var_os("PATH").and_then(|p| {
+        std::env::split_paths(&p).find(|dir| dir.is_absolute() && dir.join("git-lfs").is_file())
+    });
+    if let Some(dir) = lfs
+        .as_deref()
+        .and_then(|d| d.to_str())
+        .filter(|d| !d.contains(':'))
+    {
+        path.push(':');
+        path.push_str(dir);
+    }
+    path
 }
 
 pub(crate) fn sha256_hex(bytes: &[u8]) -> String {

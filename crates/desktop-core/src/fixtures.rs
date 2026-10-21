@@ -781,6 +781,7 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             workbench_files: handles.workbench_files.clone(),
             gateway_files: handles.gateway_files.clone(),
             workbench_root: Some(handles.workbench_root.clone()),
+            harness: crate::harness::sidecar::HarnessAdapters::unavailable(),
         },
         handles,
     )
@@ -795,4 +796,129 @@ fn fresh_offline_root() -> std::path::PathBuf {
         .canonicalize()
         .unwrap_or_else(|_| std::env::temp_dir());
     base.join(format!("airs-v2-offline-{}", hex::encode(entropy)))
+}
+
+/// The fixture sidecar launcher (C19): the host adapter's semantics
+/// (`desktop-host` `sidecar::OsLauncher`) for core tests, which cannot
+/// depend on the host. No inherited environment, piped stdin and stdout, no
+/// stderr, its own process group; exit observed without reaping; the group
+/// killed, never signalled once reaped; killed and reaped on drop.
+#[cfg(feature = "test-fixtures")]
+#[allow(unsafe_code)]
+pub mod sidecar {
+    use std::io::{Read, Write};
+    use std::os::unix::process::CommandExt;
+    use std::process::{Child, Command, Stdio};
+    use std::sync::{Arc, Mutex};
+
+    use crate::harness::sidecar::{LaunchSpec, Sidecar, SidecarLauncher};
+
+    /// Launches processes and records every spec it was given.
+    #[derive(Default)]
+    pub struct ProcessLauncher {
+        pub launched: Mutex<Vec<LaunchSpec>>,
+    }
+
+    impl ProcessLauncher {
+        pub fn new() -> Arc<Self> {
+            Arc::new(Self::default())
+        }
+        pub fn launches(&self) -> Vec<LaunchSpec> {
+            self.launched.lock().map(|l| l.clone()).unwrap_or_default()
+        }
+    }
+
+    impl SidecarLauncher for ProcessLauncher {
+        fn launch(&self, spec: &LaunchSpec) -> std::io::Result<Box<dyn Sidecar>> {
+            if let Ok(mut l) = self.launched.lock() {
+                l.push(spec.clone());
+            }
+            let child = Command::new(&spec.executable)
+                .args(&spec.args)
+                .env_clear()
+                .envs(spec.env.iter().map(|(k, v)| (k, v)))
+                .current_dir(&spec.cwd)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .process_group(0)
+                .spawn()?;
+            Ok(Box::new(Process {
+                child,
+                reaped: None,
+            }))
+        }
+    }
+
+    struct Process {
+        child: Child,
+        reaped: Option<i32>,
+    }
+
+    impl Sidecar for Process {
+        fn pid(&self) -> u32 {
+            self.child.id()
+        }
+        fn take_stdin(&mut self) -> Option<Box<dyn Write + Send>> {
+            self.child
+                .stdin
+                .take()
+                .map(|s| Box::new(s) as Box<dyn Write + Send>)
+        }
+        fn take_stdout(&mut self) -> Option<Box<dyn Read + Send>> {
+            self.child
+                .stdout
+                .take()
+                .map(|s| Box::new(s) as Box<dyn Read + Send>)
+        }
+        fn exited(&mut self) -> std::io::Result<bool> {
+            if self.reaped.is_some() {
+                return Ok(true);
+            }
+            // SAFETY: a zeroed siginfo_t for our own unreaped child.
+            let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
+            let rc = unsafe {
+                libc::waitid(
+                    libc::P_PID,
+                    self.child.id() as libc::id_t,
+                    &mut info,
+                    libc::WEXITED | libc::WNOHANG | libc::WNOWAIT,
+                )
+            };
+            if rc != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(info.si_pid != 0)
+        }
+        fn kill_group(&mut self) {
+            if self.reaped.is_none()
+                && let Ok(pid) = libc::pid_t::try_from(self.child.id())
+                && pid > 1
+            {
+                // SAFETY: our unreaped child leads its own group.
+                unsafe {
+                    libc::kill(-pid, libc::SIGKILL);
+                }
+            }
+        }
+        fn reap(&mut self) -> std::io::Result<Option<i32>> {
+            if let Some(code) = self.reaped {
+                return Ok(Some(code));
+            }
+            Ok(self.child.try_wait()?.map(|status| {
+                let code = status.code().unwrap_or(-1);
+                self.reaped = Some(code);
+                code
+            }))
+        }
+    }
+
+    impl Drop for Process {
+        fn drop(&mut self) {
+            if self.reaped.is_none() {
+                self.kill_group();
+                let _ = self.child.wait();
+            }
+        }
+    }
 }

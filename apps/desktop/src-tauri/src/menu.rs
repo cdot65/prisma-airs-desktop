@@ -200,6 +200,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 &MenuItemBuilder::with_id("fixture:unlock-store", "Unlock Credential Store")
                     .build(app)?,
             )
+            .item(&MenuItemBuilder::with_id("fixture:will-sleep", "Post Will Sleep").build(app)?)
             .build()?,
     );
     menu.build()
@@ -223,6 +224,11 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
                 store.unlock_for_fixture(crate::adapters::FIXTURE_KEYCHAIN_PASSWORD);
             }
         }
+        return;
+    }
+    #[cfg(all(feature = "test-fixtures", target_os = "macos"))]
+    if id == "fixture:will-sleep" {
+        crate::power::post_will_sleep();
         return;
     }
     if id == "quit" {

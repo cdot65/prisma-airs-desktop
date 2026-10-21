@@ -5,6 +5,7 @@ import type { ChangesView } from "./ChangesView";
 import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
 import type { GatewayView } from "./GatewayView";
+import type { HarnessView } from "./HarnessView";
 import type { ImportView } from "./ImportView";
 import type { LearnerRef } from "./LearnerRef";
 import type { LibraryView } from "./LibraryView";
@@ -86,4 +87,4 @@ workbench: WorkbenchView,
 /**
  * The active context's Gateway workspaces and choice (C16).
  */
-gateway: GatewayView, };
+gateway: GatewayView, harness: HarnessView, };

@@ -143,6 +143,19 @@ fn production_csp_permits_packaged_assets_and_ipc_only() {
 }
 
 #[test]
+fn the_harness_overlay_only_bundles_the_sealed_engine() {
+    // C19 (D046): the one overlay besides the fixture identity adds the
+    // extracted, verified engine directory as a resource, and nothing else.
+    let overlay = json("tauri.harness.conf.json");
+    assert_eq!(
+        overlay,
+        serde_json::json!({"bundle": {"resources": {
+            "../../../target/harness/unpacked/harness/": "harness/"
+        }}})
+    );
+}
+
+#[test]
 fn identities_are_independent_and_fixture_config_relaxes_nothing() {
     let conf = json("tauri.conf.json");
     assert_eq!(conf["identifier"], "io.cdot.prisma-airs-desktop.v2");

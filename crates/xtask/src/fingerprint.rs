@@ -261,9 +261,10 @@ pub fn build_flags(repo: &Repo, manifest: &Manifest, subject: Subject) -> Result
 }
 
 /// Native configuration files whose bytes are part of the build flags.
-pub const BUILD_FLAG_FILES: [&str; 6] = [
+pub const BUILD_FLAG_FILES: [&str; 7] = [
     "apps/desktop/src-tauri/tauri.conf.json",
     "apps/desktop/src-tauri/tauri.fixture.conf.json",
+    "apps/desktop/src-tauri/tauri.harness.conf.json",
     "apps/desktop/src-tauri/capabilities/main.json",
     "apps/desktop/src-tauri/Cargo.toml",
     "Cargo.toml",

@@ -21,6 +21,7 @@ mod change_domain;
 mod gateway_domain;
 mod gateway_files_domain;
 mod gateway_local_domain;
+mod harness_domain;
 mod inference_domain;
 mod learner_domain;
 mod library_domain;
@@ -226,6 +227,29 @@ pub enum Intent {
     /// Clear a Playground run that has ended.
     ClearInference {
         operation: OperationId,
+    },
+    /// Start a native Harness conversation in the chosen workspace with
+    /// its stored inference key (C19).
+    StartHarness {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+    },
+    /// Send one prompt to the conversation (only while it is ready).
+    SendHarness {
+        conversation: OperationId,
+        prompt: String,
+    },
+    /// Stop the answer being given.
+    InterruptHarness {
+        conversation: OperationId,
+    },
+    /// End the conversation: the engine is stopped and reaped.
+    EndHarness {
+        conversation: OperationId,
+    },
+    /// Clear a conversation that has ended (nothing of it is kept).
+    ClearHarness {
+        conversation: OperationId,
     },
     /// Read the chosen workspace's Gateway files with its inference key.
     ReadGatewayFiles {
@@ -690,6 +714,7 @@ pub struct ShellSnapshot {
     pub workbench: WorkbenchView,
     /// The active context's Gateway workspaces and choice (C16).
     pub gateway: GatewayView,
+    pub harness: harness_domain::HarnessView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -926,6 +951,8 @@ pub struct Adapters {
     /// The API Client's private folder: its sealed profile and the built-in
     /// collection (None: the API Client is unavailable).
     pub workbench_root: Option<std::path::PathBuf>,
+    /// The native Harness engine, its launcher and runtime homes (C19).
+    pub harness: crate::harness::sidecar::HarnessAdapters,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1127,6 +1154,10 @@ struct State {
     workbench_api_origins: Vec<String>,
     /// The active context's Gateway workspaces and choice (C16).
     gateway: gateway_domain::GatewayState,
+    /// The native Harness conversation (C19).
+    harness: Option<harness_domain::Conversation>,
+    /// The engine is bundled with this build.
+    harness_engine: bool,
 }
 
 impl State {
@@ -1192,6 +1223,7 @@ impl State {
             overview: self.overview_view(),
             workbench: self.workbench_view(),
             gateway: self.gateway_view(),
+            harness: self.harness_view(self.harness_engine),
         }
     }
 
@@ -1280,6 +1312,7 @@ impl State {
         self.sync_changes();
         self.sync_inference();
         self.sync_files();
+        self.sync_harness();
         self.revision += 1;
         let update = Update::Shell(Box::new(self.snapshot()));
         self.subscribers.publish(&update);
@@ -1693,6 +1726,8 @@ enum Effect {
         operation: OperationId,
         request: WorkbenchRequest,
     },
+    /// Run a Harness conversation as its own task (C19).
+    Harness(Box<harness_domain::HarnessStart>),
 }
 
 struct Inner {
@@ -1798,6 +1833,8 @@ impl Core {
             adoption_source: config.adoption_source.clone(),
             workbench_network: config.workbench_network,
             workbench_api_origins: config.workbench_api_origins.clone(),
+            harness: None,
+            harness_engine: adapters.harness.engine.is_some(),
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -1916,6 +1953,46 @@ impl Core {
             state.offline = None;
             state.changed();
         }
+    }
+
+    /// The Mac is going to sleep: a Harness conversation is ended (its
+    /// engine stopped and reaped) rather than left running unattended.
+    pub fn system_will_sleep(&self) {
+        if let Ok(mut state) = lock(&self.inner)
+            && state.stop_harness(harness_domain::HarnessStop::Sleep)
+        {
+            state.changed();
+        }
+    }
+
+    /// The app is quitting: ends a Harness conversation and waits up to
+    /// `wait` for its engine to be reaped. Blocking; call once, at exit.
+    /// Returns whether nothing is left running.
+    pub fn end_harness_for_exit(&self, wait: std::time::Duration) -> bool {
+        if let Ok(mut state) = lock(&self.inner)
+            && state.stop_harness(harness_domain::HarnessStop::Quit)
+        {
+            state.changed();
+        }
+        let until = std::time::Instant::now() + wait;
+        loop {
+            let running = lock(&self.inner)
+                .map(|s| s.harness_running())
+                .unwrap_or(false);
+            if !running {
+                return true;
+            }
+            if std::time::Instant::now() >= until {
+                return false;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    /// The running Harness engine's process id (fixture builds only).
+    #[cfg(feature = "test-fixtures")]
+    pub fn harness_pid_for_tests(&self) -> Option<u32> {
+        lock(&self.inner).ok()?.harness_pid()
     }
 
     /// Resumes durable work after launch (pending Keychain cleanup). Call on
@@ -2631,6 +2708,37 @@ fn admit(
             state.clear_inference(&operation)?;
             state.changed();
         }
+        Intent::StartHarness { context, workspace } => {
+            let start = state.start_harness(
+                context,
+                workspace,
+                &adapters.harness,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = Some(start.id.clone());
+            effects.push(Effect::Harness(Box::new(start)));
+            state.changed();
+        }
+        Intent::SendHarness {
+            conversation,
+            prompt,
+        } => {
+            state.send_harness(&conversation, prompt)?;
+            state.changed();
+        }
+        Intent::InterruptHarness { conversation } => {
+            state.interrupt_harness(&conversation)?;
+            state.changed();
+        }
+        Intent::EndHarness { conversation } => {
+            state.end_harness(&conversation)?;
+            state.changed();
+        }
+        Intent::ClearHarness { conversation } => {
+            state.clear_harness(&conversation)?;
+            state.changed();
+        }
         Intent::SavePlaygroundDraft {
             context,
             workspace,
@@ -3201,6 +3309,19 @@ fn intent_digest(salt: &[u8; 16], intent: &Intent) -> [u8; 32] {
 fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
     for effect in effects {
         match effect {
+            Effect::Harness(start) => {
+                let inner = Arc::clone(inner);
+                let harness_domain::HarnessStart { id, inputs, cancel } = *start;
+                tokio::spawn(async move {
+                    let deadline =
+                        tokio::time::Instant::now() + crate::harness::session::SESSION_DEADLINE;
+                    let outcome = crate::harness::session::run(inputs, cancel, deadline).await;
+                    if let Ok(mut state) = lock(&inner) {
+                        state.harness_settled(&id, outcome);
+                        state.changed();
+                    }
+                });
+            }
             Effect::Start(starts) => {
                 for start in starts {
                     let inner = Arc::clone(inner);

@@ -54,7 +54,15 @@ for max_output_tokens after one delta, "failed" with response.failed; the
 same "status:<code>" refusals).
 The log records the run's headers by name, the inference key only as a
 SHA-256, the trace and route, the body's field names and model and an
-attached input_file's ID, never the prompt. /rt/v1/files lists, uploads
+attached input_file's ID, never the prompt. A Responses request from the
+native Harness engine (C19: it carries instructions, tools and the
+x-codex-turn-metadata header) is answered as the engine expects (created,
+output_item.added, text deltas "Answer <n>: Hello from the synthetic
+Gateway.", output_item.done, completed with usage;
+mode "harness": "short", the default, or "paced", one 32-byte delta every
+50 ms for about 20 s, until the client goes away); its log row says
+"harness": true and records the engine's sandbox mode from its turn
+metadata. /rt/v1/files lists, uploads
 (multipart) and deletes the workspace's files (mode "files": "ok",
 "status:<code>" or "lost"); the log records an upload's file name, purpose,
 size and SHA-256, never its content.
@@ -776,6 +784,13 @@ class Handler(BaseHTTPRequestHandler):
         attached = [part.get("file_id") for item in (sent.get("input") if isinstance(sent, dict) and isinstance(sent.get("input"), list) else [])
                     for part in (item.get("content") or []) if isinstance(part, dict) and part.get("type") == "input_file"]
         record["inputFiles"] = attached
+        meta = self.headers.get("x-codex-turn-metadata")
+        if responses and meta is not None and isinstance(sent, dict) and "instructions" in sent and "tools" in sent:
+            record["harness"] = True
+            try:
+                record["sandboxMode"] = json.loads(meta).get("sandbox_mode")
+            except ValueError:
+                record["sandboxMode"] = None
         chat = mode.get("chat") or "text"
         with srv.lock:
             srv.serial += 1
@@ -790,6 +805,9 @@ class Handler(BaseHTTPRequestHandler):
         with srv.lock, open(srv.log, "a") as f:
             f.write(json.dumps(record) + "\n")
         cid = f"chatcmpl-{serial}"
+        if responses and record.get("harness"):
+            self.harness_stream(f"resp_{serial}", record, mode.get("harness") or "short", serial)
+            return
         if responses:
             self.response_stream(f"resp_{serial}", record, end=mode.get("responses") or "completed")
             return
@@ -874,6 +892,45 @@ class Handler(BaseHTTPRequestHandler):
             with srv.lock, open(srv.log, "a") as f:
                 f.write(json.dumps({"t": time.time(), "method": "POST", "path": "/rt/v1/responses",
                                     "closedByClient": True, "trace": record["trace"]}) + "\n")
+
+    def harness_stream(self, rid, record, pace, serial):
+        """C19: a Responses stream the native engine accepts."""
+        srv = self.server
+
+        def event(obj):
+            return f"event: {obj['type']}\ndata: {json.dumps(obj)}\n\n".encode()
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        base = {"id": rid, "object": "response", "status": "in_progress", "model": "fixture", "output": []}
+        item = {"id": "msg_1", "type": "message", "role": "assistant", "status": "in_progress", "content": []}
+        try:
+            self.wfile.write(event({"type": "response.created", "response": base}))
+            self.wfile.write(event({"type": "response.output_item.added", "output_index": 0, "item": item}))
+            self.wfile.flush()
+            # Numbered, so each answer is told apart from earlier ones.
+            pieces = ([f"Answer {serial}: Hello from ", "the synthetic Gateway."] if pace != "paced"
+                      else ["thirty-two bytes of paced text. "] * 400)
+            for piece in pieces:
+                self.wfile.write(event({"type": "response.output_text.delta", "item_id": "msg_1", "output_index": 0,
+                                        "content_index": 0, "delta": piece}))
+                self.wfile.flush()
+                if pace == "paced":
+                    time.sleep(0.05)
+            text = "".join(pieces)
+            done = dict(item, status="completed", content=[{"type": "output_text", "text": text, "annotations": []}])
+            self.wfile.write(event({"type": "response.output_item.done", "output_index": 0, "item": done}))
+            self.wfile.write(event({"type": "response.completed", "response": dict(base, status="completed", output=[done],
+                usage={"input_tokens": 10, "output_tokens": 6, "total_tokens": 16,
+                       "input_tokens_details": {"cached_tokens": 0}, "output_tokens_details": {"reasoning_tokens": 0}})}))
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            with srv.lock, open(srv.log, "a") as f:
+                f.write(json.dumps({"t": time.time(), "method": "POST", "path": "/rt/v1/responses",
+                                    "closedByClient": True, "harness": True}) + "\n")
 
     def files(self, method, path, body, record, mode):
         """C18: the workspace's files with the inference key: list, one

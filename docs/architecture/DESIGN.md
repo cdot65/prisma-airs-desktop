@@ -1627,6 +1627,54 @@ D045 record the decisions.
   and limit-policy writes are not provided. No real endpoint is called
   before C25.
 
+### C19 implementation: the native Harness runtime and lifecycle
+
+Implemented in `crates/desktop-core`:
+- `harness::engine`: the compiled pin (`resources/harness/pin.json`) and
+  the check every start makes before anything runs.
+- `harness::protocol`: the `airs-desktop/1` frames, bounded and
+  shape-checked; the bootstrap in one zeroizing buffer; the receipt
+  matched against the binding.
+- `harness::session`: one conversation's lifecycle:
+  1. verify the engine;
+  2. make its runtime home;
+  3. read the key;
+  4. launch, bootstrap, initialize and start a read-only thread;
+  5. turns;
+  6. the bounded stop and reap.
+
+  Two threads own the pipes: the writer owns stdin, so closing its
+  channel closes stdin, and the reader owns stdout, bounding every line
+  and the stream's lifetime.
+- `harness::sidecar`: the seam to the host's OS adapter (`LaunchSpec`,
+  `SidecarLauncher`, `Sidecar`) and `HarnessAdapters`.
+- `authority/harness_domain`: admission (as a Playground run), the
+  conversation task, its retirement when it is no longer bound, and the
+  view.
+- Intents `StartHarness`, `SendHarness`, `InterruptHarness`, `EndHarness`
+  and `ClearHarness`.
+- Snapshot field `harness`: the engine's pin and the bound conversation.
+- `Core::system_will_sleep` and `Core::end_harness_for_exit`.
+
+In `apps/desktop/src-tauri`:
+- `sidecar::OsLauncher`: process group, exit without reaping, group kill,
+  reap on drop.
+- `power`: the NSWorkspace will-sleep observer.
+- The quit handler waits up to 5 s for the engine to be reaped.
+- The bundled engine is resolved inside the app's resources.
+
+In `xtask`, `harness::unpack` runs before every fixture build.
+
+The presentation adds the Harness destination:
+- the binding (workspace and endpoint);
+- Start conversation;
+- a streamed transcript (a list named Messages);
+- Send (⌘↩), Stop answer, End conversation and Clear conversation;
+- a status line that takes focus when a conversation ends or fails.
+
+D046 records the decisions, including the engine's retries and how the
+host limits them.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

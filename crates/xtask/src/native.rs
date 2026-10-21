@@ -64,6 +64,9 @@ pub fn build_commands(target: &str) -> Vec<Vec<&str>> {
             "test-fixtures",
             "--config",
             "src-tauri/tauri.fixture.conf.json",
+            // The sealed Harness engine as a bundle resource (C19, D046).
+            "--config",
+            "src-tauri/tauri.harness.conf.json",
         ],
     ]
 }
@@ -110,6 +113,8 @@ pub fn prepare(
             "native-prepare requires exactly the fixture-only features",
         ));
     }
+    // The sealed engine the fixture configuration bundles (C19).
+    crate::harness::unpack(repo)?;
     let commands = build_commands(target);
     for argv in &commands {
         run(env, repo, argv)?;

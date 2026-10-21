@@ -31,6 +31,10 @@ pub mod fixture_capture;
 pub mod keychain;
 mod menu;
 pub mod native_confirmation;
+#[cfg(target_os = "macos")]
+pub mod power;
+#[cfg(target_os = "macos")]
+pub mod sidecar;
 
 /// Label of the single packaged window allowed to call application commands.
 pub const MAIN_WINDOW: &str = "main";
@@ -412,6 +416,8 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
                 core.set_transport_policy(policy)
                     .map_err(|e| std::io::Error::other(e.to_string()))?;
             }
+            #[cfg(target_os = "macos")]
+            power::observe_sleep(core.clone());
             app.manage(Host::new(&core));
             app.manage(Exit {
                 core: core.clone(),
@@ -435,6 +441,10 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             if matches!(event, tauri::RunEvent::Exit)
                 && let Some(exit) = app.try_state::<Exit>()
             {
+                // A Harness engine is stopped and reaped before the app goes
+                // (DESIGN §3: 2 s graceful plus 2 s forced, with margin).
+                exit.core
+                    .end_harness_for_exit(std::time::Duration::from_secs(5));
                 exit.core.shutdown();
             }
         });

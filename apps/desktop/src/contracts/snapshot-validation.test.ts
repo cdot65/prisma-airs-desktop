@@ -659,6 +659,76 @@ describe('Gateway inference and observation (C18)', () => {
     })
 })
 
+describe('native Harness (C19)', () => {
+    const workspace = { id: '16f7e90d-382a-4e78-b577-1b01eb5f8297', name: 'Team A', slug: 'team-a', scopeName: 'scope-team-a' }
+    const engine = { available: true, protocol: 'airs-desktop/1', runtimeVersion: '0.1.7-desktop.2', engineCommit: '9331a5839bc6a763d94dee7584746f58bbbe1181' }
+    const conversation = {
+        id: 'op-7', workspace, endpoint: 'https://gateway.example/rt/v1', phase: 'ready', failure: null, stop: null,
+        entries: [
+            { id: 'u-1', role: 'operator', text: 'Say hello', state: 'complete' },
+            { id: 'u-1/msg_1', role: 'assistant', text: 'Hello', state: 'complete' },
+        ],
+        lastTurn: 'completed', usage: { input: 10, output: 6, total: 16 }, cleanup: null, runtimeVersion: '0.1.7-desktop.2',
+    }
+    const harness = (c: Record<string, unknown> | null, e: Record<string, unknown> = {}) => ({ ...valid, harness: { engine: { ...engine, ...e }, conversation: c } })
+
+    it('accepts what Rust issues', () => {
+        expect(parseShellSnapshot(harness(null, { available: false }))).toBeTruthy()
+        expect(parseShellSnapshot(harness(conversation))).toBeTruthy()
+        expect(parseShellSnapshot(harness({ ...conversation, phase: 'ended', stop: 'sleep', cleanup: 'forced' }))).toBeTruthy()
+        expect(parseShellSnapshot(harness({ ...conversation, phase: 'failed', failure: 'exited', cleanup: 'graceful' }))).toBeTruthy()
+        // The bounds themselves: 200 entries, a 256 KiB answer.
+        const many = Array.from({ length: 200 }, (_, i) => ({ id: `u-${i}`, role: 'operator', text: 'x', state: 'complete' }))
+        expect(parseShellSnapshot(harness({ ...conversation, entries: many }))).toBeTruthy()
+        const long = [{ id: 'u-1/m', role: 'assistant', text: 'y'.repeat(256 * 1024), state: 'truncated' }]
+        expect(parseShellSnapshot(harness({ ...conversation, entries: long, lastTurn: 'truncated' }))).toBeTruthy()
+    })
+
+    it('holds token counts to the safe integers the core publishes (MAX_SAFE_COUNT)', () => {
+        const max = Number.MAX_SAFE_INTEGER
+        expect(parseShellSnapshot(harness({ ...conversation, usage: { input: max, output: max, total: max } }))).toBeTruthy()
+        // The core never publishes more (session.rs MAX_SAFE_COUNT), so a
+        // larger value is a contract violation, as JSON beyond 2^53 cannot be
+        // read exactly here.
+        for (const usage of [
+            { input: max + 1, output: 0, total: 0 },
+            JSON.parse('{"input": 18446744073709551615, "output": 0, "total": 0}'),
+        ]) {
+            expect(() => parseShellSnapshot(harness({ ...conversation, usage }))).toThrow(ContractViolation)
+        }
+    })
+
+    it('rejects conversations, entries and engines Rust never issues', () => {
+        const entry = conversation.entries[1]
+        for (const broken of [
+            { ...valid, harness: undefined },
+            harness(null, { protocol: 'airs-desktop/2' }),
+            harness(null, { engineCommit: '9331a58' }),
+            harness(null, { available: 'yes' }),
+            harness({ ...conversation, id: 'conversation-1' }),
+            harness({ ...conversation, endpoint: 'http://gateway.example/rt/v1' }),
+            harness({ ...conversation, phase: 'paused' }),
+            harness({ ...conversation, phase: 'failed', failure: null }),
+            harness({ ...conversation, phase: 'ended', cleanup: null }),
+            harness({ ...conversation, failure: 'gatewaySaid: boom' }),
+            harness({ ...conversation, stop: 'crashed' }),
+            harness({ ...conversation, lastTurn: 'maybe' }),
+            harness({ ...conversation, cleanup: 'eventually' }),
+            harness({ ...conversation, usage: { input: -1, output: 0, total: 0 } }),
+            harness({ ...conversation, entries: Array.from({ length: 201 }, (_, i) => ({ ...entry, id: `e-${i}` })) }),
+            harness({ ...conversation, entries: [{ ...entry, text: 'y'.repeat(256 * 1024 + 1) }] }),
+            harness({ ...conversation, entries: [{ ...entry, role: 'operator', text: 'x'.repeat(32 * 1024 + 1) }] }),
+            harness({ ...conversation, entries: Array.from({ length: 5 }, (_, i) => ({ ...entry, id: `e-${i}`, text: 'z'.repeat(256 * 1024) })) }),
+            harness({ ...conversation, entries: [{ ...entry, role: 'system' }] }),
+            harness({ ...conversation, entries: [{ ...entry, state: 'pending' }] }),
+            harness({ ...conversation, entries: [{ ...entry, apiKey: 'gw-x' }] }),
+            harness({ ...conversation, entries: [{ ...entry, id: '' }] }),
+        ]) {
+            expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
+        }
+    })
+})
+
 describe('API Client validation', () => {
     const fields = { method: 'GET', url: 'https://a.example/', headers: '', query: '', body: '', bodyKind: 'text', settings: '' }
     const document = {
