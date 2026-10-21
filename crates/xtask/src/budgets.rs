@@ -290,8 +290,10 @@ pub struct Workload {
 /// red-team/model collections workload (registered by C13 before it
 /// implemented Red Team observation, measured in C13) and the large HTTP
 /// bodies and downloads workload (registered by C15 before it implemented
-/// API Client execution, measured in C15); each also in the phases
-/// containing its measuring chunk.
+/// API Client execution, measured in C15), the Harness native-engine
+/// startup and memory workload (C19) and the protected Harness history
+/// workload (C20, both registered before their chunk was built); each also
+/// in the phases containing its measuring chunk.
 pub const WORKLOADS: &[Workload] = &[
     Workload {
         registered_by: "C04",
@@ -315,6 +317,18 @@ pub const WORKLOADS: &[Workload] = &[
         registered_by: "C15",
         registration: "docs/planning/evidence/C15/workload-budget-registration.json",
         measured_by: "C15",
+        evidence: "workload-perf.json",
+    },
+    Workload {
+        registered_by: "C19",
+        registration: "docs/planning/evidence/C19/workload-budget-registration.json",
+        measured_by: "C19",
+        evidence: "workload-perf.json",
+    },
+    Workload {
+        registered_by: "C20",
+        registration: "docs/planning/evidence/C20/workload-budget-registration.json",
+        measured_by: "C20",
         evidence: "workload-perf.json",
     },
 ];

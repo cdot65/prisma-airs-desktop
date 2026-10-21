@@ -669,8 +669,13 @@ describe('native Harness (C19)', () => {
             { id: 'u-1/msg_1', role: 'assistant', text: 'Hello', state: 'complete' },
         ],
         lastTurn: 'completed', usage: { input: 10, output: 6, total: 16 }, cleanup: null, runtimeVersion: '0.1.7-desktop.2',
+        source: 'workspaceKey', historyId: '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d', savedAt: 1790000000, saveFailure: null,
+        unsent: null, signInFailure: null,
     }
-    const harness = (c: Record<string, unknown> | null, e: Record<string, unknown> = {}) => ({ ...valid, harness: { engine: { ...engine, ...e }, conversation: c } })
+    const harness = (c: Record<string, unknown> | null, e: Record<string, unknown> = {}) => ({
+        ...valid,
+        harness: { engine: { ...engine, ...e }, conversation: c, signIn: null, history: null },
+    })
 
     it('accepts what Rust issues', () => {
         expect(parseShellSnapshot(harness(null, { available: false }))).toBeTruthy()
@@ -723,6 +728,59 @@ describe('native Harness (C19)', () => {
             harness({ ...conversation, entries: [{ ...entry, state: 'pending' }] }),
             harness({ ...conversation, entries: [{ ...entry, apiKey: 'gw-x' }] }),
             harness({ ...conversation, entries: [{ ...entry, id: '' }] }),
+        ]) {
+            expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
+        }
+    })
+})
+
+describe('Harness company sign-in and protected history (C20)', () => {
+    const workspace = { id: '16f7e90d-382a-4e78-b577-1b01eb5f8297', name: 'Team A', slug: 'team-a', scopeName: 'scope-team-a' }
+    const engine = { available: true, protocol: 'airs-desktop/1', runtimeVersion: '0.1.7-desktop.2', engineCommit: '9331a5839bc6a763d94dee7584746f58bbbe1181' }
+    const id = '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d'
+    const signIn = {
+        workspace, endpoint: 'https://gateway.example/rt/v1', issuer: 'https://id.example/oauth2', clientId: 'desktop',
+        audience: 'https://gateway.example', selected: true, account: 'alice@example.com', step: null, failure: null,
+    }
+    const saved = { id, title: 'Remember periwinkle', updated: 1790000000, entries: 4, source: 'companySignIn' }
+    const opened = {
+        id, title: 'Remember periwinkle', updated: 1790000000, source: 'workspaceKey', notContinuable: 'otherCredential',
+        entries: [{ id: 'u-1', role: 'operator', text: 'Remember periwinkle', state: 'complete' }],
+    }
+    const history = {
+        state: 'ready', conversations: [saved], unreadable: [], failure: null, full: false, opened, busy: false, problem: null,
+        export: { kind: 'harnessConversation', state: 'saved', name: 'harness-x.md' },
+    }
+    const harness = (s: unknown, h: unknown) => ({ ...valid, harness: { engine, conversation: null, signIn: s, history: h } })
+
+    it('accepts what Rust issues', () => {
+        expect(parseShellSnapshot(harness(signIn, history))).toBeTruthy()
+        expect(parseShellSnapshot(harness({ ...signIn, account: null, step: 'browser' }, { ...history, opened: null, export: null }))).toBeTruthy()
+        expect(parseShellSnapshot(harness(null, { ...history, state: 'failed', failure: 'locked', conversations: [] }))).toBeTruthy()
+        const sixteen = Array.from({ length: 16 }, (_, i) => ({ ...saved, id: id.replace(/d$/, i.toString(16)) }))
+        expect(parseShellSnapshot(harness(null, { ...history, conversations: sixteen, full: true }))).toBeTruthy()
+    })
+
+    it('rejects sign-ins, saved conversations and exports Rust never issues', () => {
+        for (const broken of [
+            harness({ ...signIn, issuer: 'http://id.example' }, null),
+            harness({ ...signIn, endpoint: 'http://gateway.example' }, null),
+            harness({ ...signIn, step: 'waiting' }, null),
+            harness({ ...signIn, failure: 'idpSaid: no' }, null),
+            harness({ ...signIn, selected: 'yes' }, null),
+            harness(null, { ...history, conversations: [{ ...saved, id: 'cr-1' }] }),
+            harness(null, { ...history, conversations: [{ ...saved, title: 't'.repeat(81) }] }),
+            harness(null, { ...history, conversations: [{ ...saved, entries: 201 }] }),
+            harness(null, { ...history, conversations: [{ ...saved, source: 'password' }] }),
+            harness(null, { ...history, conversations: Array.from({ length: 17 }, () => saved) }),
+            harness(null, { ...history, state: 'failed', failure: null }),
+            harness(null, { ...history, failure: 'gone' }),
+            harness(null, { ...history, problem: 'vanished' }),
+            harness(null, { ...history, unreadable: ['../escape'] }),
+            harness(null, { ...history, opened: { ...opened, notContinuable: 'maybe' } }),
+            harness(null, { ...history, opened: { ...opened, entries: [{ ...opened.entries[0], role: 'system' }] } }),
+            harness(null, { ...history, export: { kind: 'cases', state: 'saved', name: 'x' } }),
+            { ...valid, harness: { engine, conversation: null, signIn: null } },
         ]) {
             expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
         }

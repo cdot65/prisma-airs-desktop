@@ -3,4 +3,4 @@
 /**
  * Where a conversation stands.
  */
-export type HarnessPhase = "starting" | "ready" | "answering" | "interrupting" | "ending" | "ended" | "failed";
+export type HarnessPhase = "starting" | "ready" | "answering" | "interrupting" | "renewing" | "ending" | "ended" | "failed";

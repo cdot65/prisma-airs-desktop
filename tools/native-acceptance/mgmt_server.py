@@ -59,13 +59,26 @@ native Harness engine (C19: it carries instructions, tools and the
 x-codex-turn-metadata header) is answered as the engine expects (created,
 output_item.added, text deltas "Answer <n>: Hello from the synthetic
 Gateway.", output_item.done, completed with usage;
-mode "harness": "short", the default, or "paced", one 32-byte delta every
-50 ms for about 20 s, until the client goes away); its log row says
+mode "harness": "short", the default, "paced", one 32-byte delta every
+50 ms for about 20 s, until the client goes away, or "kib", a 1 KiB answer
+at full speed); its log row says
 "harness": true and records the engine's sandbox mode from its turn
 metadata. /rt/v1/files lists, uploads
 (multipart) and deletes the workspace's files (mode "files": "ok",
 "status:<code>" or "lost"); the log records an upload's file name, purpose,
 size and SHA-256, never its content.
+
+Company sign-in (C20): a synthetic OpenID provider under /idp: discovery,
+JWKS (one P-256 key made at start with the system openssl), /idp/authorize
+(the browser step: it answers 302 to the app's loopback redirect with a
+code bound to the PKCE challenge and nonce), /idp/token (authorization code
+with S256, and refresh with rotation) and /idp/revoke. Tokens are ES256
+JWTs; mode "idpSubject" names the account (default "native-c20-alice"),
+"idpLifetime" the access token's seconds (default 3600) and "idpRefresh":
+"refuse" refuses renewals. The log records grant types, subjects and
+SHA-256s of tokens only. A Harness request records whether its key is an
+access token this provider issued ("keyIssuedByIdp") and whether its body
+carries the marker "C20-CANARY" ("carriesCanary"), never the prompt.
 """
 
 import argparse
@@ -79,7 +92,8 @@ import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, quote, urlsplit
+import subprocess
+from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
 TOKEN_PREFIX = "c08-mgmt-access-"
 # C16 synthetic Gateway workspaces and the tenant-wide integration.
@@ -164,6 +178,9 @@ class Handler(BaseHTTPRequestHandler):
             "xTsgId": self.headers.get("x-tsg-id"),
             "scanToken": self.headers.get("x-pan-token") is not None,
         }
+        if url.path.startswith("/idp/"):
+            self.idp(method, url.path[4:], query, body, record, mode)
+            return
         if method == "POST" and url.path in ("/rt/v1/chat/completions", "/rt/v1/responses"):
             self.inference(body, record, mode, responses=url.path.endswith("/responses"))
             return
@@ -784,6 +801,9 @@ class Handler(BaseHTTPRequestHandler):
         attached = [part.get("file_id") for item in (sent.get("input") if isinstance(sent, dict) and isinstance(sent.get("input"), list) else [])
                     for part in (item.get("content") or []) if isinstance(part, dict) and part.get("type") == "input_file"]
         record["inputFiles"] = attached
+        with srv.lock:
+            record["keyIssuedByIdp"] = key in srv.idp_access
+        record["carriesCanary"] = b"C20-CANARY" in body
         meta = self.headers.get("x-codex-turn-metadata")
         if responses and meta is not None and isinstance(sent, dict) and "instructions" in sent and "tools" in sent:
             record["harness"] = True
@@ -912,8 +932,11 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(event({"type": "response.output_item.added", "output_index": 0, "item": item}))
             self.wfile.flush()
             # Numbered, so each answer is told apart from earlier ones.
-            pieces = ([f"Answer {serial}: Hello from ", "the synthetic Gateway."] if pace != "paced"
-                      else ["thirty-two bytes of paced text. "] * 400)
+            pieces = ([f"Answer {serial}: Hello from ", "the synthetic Gateway."] if pace == "short"
+                      else ["thirty-two bytes of paced text. "] * 400 if pace == "paced"
+                      # C20 "kib": a 1 KiB answer in 32-byte deltas.
+                      else [f"Answer {serial}: Hello from the synthetic Gateway. ".ljust(64, ".")]
+                      + ["thirty-two bytes of a long answer"] * 30)
             for piece in pieces:
                 self.wfile.write(event({"type": "response.output_text.delta", "item_id": "msg_1", "output_index": 0,
                                         "content_index": 0, "delta": piece}))
@@ -986,6 +1009,103 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.respond(status, json.dumps(payload).encode())
 
+    def idp(self, method, path, query, body, record, mode):
+        """C20: the synthetic OpenID provider (see the module docstring)."""
+        srv = self.server
+        issuer = f"https://localhost:{srv.server_address[1]}/idp"
+        record["idp"] = path
+        status, payload, location = 404, {"error": "not_found"}, None
+        if path == "/.well-known/openid-configuration":
+            status, payload = 200, {
+                "issuer": issuer,
+                "authorization_endpoint": f"{issuer}/authorize",
+                "token_endpoint": f"{issuer}/token",
+                "jwks_uri": f"{issuer}/jwks",
+                "revocation_endpoint": f"{issuer}/revoke",
+                "response_types_supported": ["code"],
+                "code_challenge_methods_supported": ["S256"],
+                "scopes_supported": ["openid", "offline_access"],
+                "authorization_response_iss_parameter_supported": True,
+            }
+        elif path == "/jwks":
+            status, payload = 200, {"keys": [srv.jwk]}
+        elif path == "/authorize" and method == "GET":
+            redirect = query.get("redirect_uri", "")
+            ok = (query.get("response_type") == "code" and query.get("code_challenge_method") == "S256"
+                  and redirect.startswith("http://127.0.0.1:") and query.get("state") and query.get("nonce"))
+            if ok:
+                with srv.lock:
+                    srv.counter += 1
+                    code = f"c20-code-{srv.counter}"
+                    srv.idp_codes[code] = (query.get("code_challenge"), query.get("nonce"), redirect,
+                                           query.get("client_id"))
+                location = redirect + "?" + urlencode({"code": code, "state": query["state"], "iss": issuer})
+                status, payload = 302, None
+            else:
+                status, payload = 400, {"error": "invalid_request"}
+        elif path == "/token" and method == "POST":
+            form = {k: v[0] for k, v in parse_qs(body.decode("utf-8", "replace")).items()}
+            grant = form.get("grant_type")
+            record["grantType"] = grant
+            subject = mode.get("idpSubject") or "native-c20-alice"
+            lifetime = int(mode.get("idpLifetime") or 3600)
+            nonce, client = None, form.get("client_id")
+            if grant == "authorization_code":
+                with srv.lock:
+                    bound = srv.idp_codes.pop(form.get("code", ""), None)
+                verifier = form.get("code_verifier", "")
+                challenge = b64url(hashlib.sha256(verifier.encode()).digest())
+                if not bound or bound[0] != challenge or bound[2] != form.get("redirect_uri") or bound[3] != client:
+                    status, payload = 400, {"error": "invalid_grant"}
+                else:
+                    nonce = bound[1]
+                    status = 200
+            elif grant == "refresh_token":
+                with srv.lock:
+                    known = srv.idp_refresh.pop(form.get("refresh_token", ""), None)
+                if mode.get("idpRefresh") == "refuse" or known is None:
+                    status, payload = 400, {"error": "invalid_grant"}
+                else:
+                    subject, status = known, 200
+            else:
+                status, payload = 400, {"error": "unsupported_grant_type"}
+            if status == 200:
+                now = int(time.time())
+                access = srv.sign({"iss": issuer, "aud": [IDP_AUDIENCE], "azp": client, "sub": subject,
+                                   "iat": now, "exp": now + lifetime, "portkey_workspace": "team-a"})
+                with srv.lock:
+                    srv.counter += 1
+                    refresh = f"c20-refresh-{srv.counter}"
+                    srv.idp_refresh[refresh] = subject
+                    srv.idp_access.add(access)
+                payload = {"token_type": "Bearer", "access_token": access, "expires_in": lifetime,
+                           "refresh_token": refresh}
+                if nonce is not None:
+                    payload["id_token"] = srv.sign({"iss": issuer, "aud": client, "sub": subject, "iat": now,
+                                                    "exp": now + 300, "nonce": nonce,
+                                                    "preferred_username": f"{subject}@example.com"})
+                record["subject"] = subject
+                record["accessSha256"] = hashlib.sha256(access.encode()).hexdigest()
+        elif path == "/revoke" and method == "POST":
+            form = {k: v[0] for k, v in parse_qs(body.decode("utf-8", "replace")).items()}
+            token = form.get("token", "")
+            with srv.lock:
+                srv.idp_refresh.pop(token, None)
+            record["revokedSha256"] = hashlib.sha256(token.encode()).hexdigest()
+            status, payload = 200, {}
+        record["status"] = status
+        with srv.lock, open(srv.log, "a") as f:
+            f.write(json.dumps(record) + "\n")
+        if location is not None:
+            self.send_response(302)
+            self.send_header("location", location)
+            self.send_header("content-length", "0")
+            self.send_header("connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            return
+        self.respond(status, json.dumps(payload).encode())
+
     def respond(self, status, payload):
         if status == 204:
             self.send_response(204)
@@ -1027,6 +1147,26 @@ def multipart(content_type, body):
     return parts
 
 
+IDP_AUDIENCE = "https://gateway.example/native-c20"
+
+
+def b64url(data):
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+
+def der_signature_to_raw(der):
+    """An ECDSA DER signature (SEQUENCE of two INTEGERs) as JWS r || s."""
+    def integer(at):
+        assert der[at] == 0x02
+        n = der[at + 1]
+        value = der[at + 2:at + 2 + n].lstrip(b"\x00")
+        return value.rjust(32, b"\x00"), at + 2 + n
+    at = 2 if der[1] < 0x80 else 3
+    r, at = integer(at)
+    s, _ = integer(at)
+    return r + s
+
+
 class Server(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -1041,6 +1181,15 @@ class Server(ThreadingHTTPServer):
         except (OSError, ValueError):
             self.issued = set()
         self.counter = len(self.issued) + 1000 * int(time.time() % 1000)
+        # C20: the provider's signing key, made for this run.
+        self.idp_codes, self.idp_refresh, self.idp_access = {}, {}, set()
+        self.idp_key = os.path.join(directory, "idp-key.pem")
+        subprocess.run(["/usr/bin/openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout",
+                        "-out", self.idp_key], check=True, env={}, capture_output=True)
+        public = subprocess.run(["/usr/bin/openssl", "ec", "-in", self.idp_key, "-pubout", "-outform", "DER"],
+                                check=True, env={}, capture_output=True).stdout[-65:]
+        self.jwk = {"kty": "EC", "crv": "P-256", "kid": "native-c20", "use": "sig", "alg": "ES256",
+                    "x": b64url(public[1:33]), "y": b64url(public[33:65])}
         self.serial = 0
         self.files = [{"id": "file-seed", "object": "file", "bytes": 64, "created_at": 1760000000,
                        "filename": "seed-notes.txt", "purpose": "assistants", "status": "processed"}]
@@ -1064,6 +1213,14 @@ class Server(ThreadingHTTPServer):
         self.keys = [{"api_key_id": "key-1", "api_key_name": "Runtime", "api_key_last8": "abcd1234",
                       "api_key": "SYNTHETIC-C08-KEY-VALUE", "auth_code": "SYNTHETIC-C08-AUTH-CODE", "cust_app": "Support bot",
                       "expiration": "2027-01-01T00:00:00Z", "revoked": False, "status": "FUTURE_STATUS"}]
+
+    def sign(self, claims):
+        header = b64url(json.dumps({"alg": "ES256", "typ": "JWT", "kid": "native-c20"}).encode())
+        payload = b64url(json.dumps(claims).encode())
+        signing_input = f"{header}.{payload}".encode()
+        der = subprocess.run(["/usr/bin/openssl", "dgst", "-sha256", "-sign", self.idp_key],
+                             input=signing_input, check=True, env={}, capture_output=True).stdout
+        return f"{header}.{payload}.{b64url(der_signature_to_raw(der))}"
 
     def mode(self):
         try:

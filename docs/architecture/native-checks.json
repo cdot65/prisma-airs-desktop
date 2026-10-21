@@ -928,6 +928,48 @@
         "id": "C19-N10",
         "check": "An engine killed from outside is named as having stopped unexpectedly, its processes and runtime home are gone, and a new conversation starts a new engine."
       }
+    ],
+    "C20": [
+      {
+        "id": "C20-N01",
+        "check": "Company sign-in is configured for the chosen workspace (an http issuer is refused) and opens exactly one HTTPS authorization URL at the configured issuer, with the client ID, PKCE S256, fresh state and nonce, and a 127.0.0.1 loopback redirect; a callback with another state is refused; the real callback signs the account in, adds one Keychain item, and the app's state holds no token."
+      },
+      {
+        "id": "C20-N02",
+        "check": "A conversation with company sign-in is answered by the pinned engine with an access token the identity provider issued (not the workspace key), and the conversation says it was saved."
+      },
+      {
+        "id": "C20-N03",
+        "check": "Once the token is inside its renewal margin, the next message renews it (one refresh), stops the old engine and starts a new one with the new token, restores the conversation (the Gateway request carries the first turn) and answers, with one runtime home at a time."
+      },
+      {
+        "id": "C20-N04",
+        "check": "A refused renewal sends nothing: the message is given back to the box and the reason is announced; signing in again as the same account continues the same conversation, restored, in a new engine."
+      },
+      {
+        "id": "C20-N05",
+        "check": "Signing out withdraws the running conversation and reaps its engine, revokes the refresh token at the provider and deletes its Keychain item."
+      },
+      {
+        "id": "C20-N06",
+        "check": "Every conversation is saved after each answer as one sealed file (0600 in a 0700 directory) with no plaintext of the conversation, the key or the tokens anywhere in the app's data; quitting leaves no engine, and after a relaunch the saved conversation is listed again."
+      },
+      {
+        "id": "C20-N07",
+        "check": "After a relaunch, a saved conversation opens as a list of its messages and continues in a new engine with its history restored (the Gateway request carries the first turn); the same record is updated."
+      },
+      {
+        "id": "C20-N08",
+        "check": "Export saves the opened conversation's transcript (Markdown) through the save sheet, with no key, token or replay; Delete asks first, then removes the record from the list and from disk."
+      },
+      {
+        "id": "C20-N09",
+        "check": "The credential choice is a labelled radio group, Saved conversations is a heading with a named list, and Sign in is reached by Tab from the credential choice."
+      },
+      {
+        "id": "C20-N10",
+        "check": "No key, token or refresh token appears in any accessibility snapshot, the synthetic servers' logs hold only hashes and no prompt, v1 data is unchanged, and no engine process is left."
+      }
     ]
   }
 }

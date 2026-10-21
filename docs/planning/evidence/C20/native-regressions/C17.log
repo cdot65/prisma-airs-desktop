@@ -1,0 +1,12 @@
+PASS C17-N01 edit {'heading_focused': True, 'reviewed': True, 'nothing_before_confirm': True, 'sheet_scope': True, 'sheet_title': True, 'applied': True, 'puts': [{'path': '/ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000001', 't
+PASS C17-N02 switch {'ready': True, 'switched': True, 'closed': True, 'still_closed': True, 'writes': 1}
+PASS C17-N03 delete {'listed': True, 'route': True, 'apply_disabled': True, 'delete_sheet': True, 'return_cancelled': True, 'deleted': True, 'deletes': ['DELETE /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000002']}
+PASS C17-N04 key {'held': True, 'body': {'description': '', 'name': 'native-key', 'organisation_id': '1234567890', 'scopes': ['completions.write'], 'type': 'service', 'workspace_id': '16f7e90d-382a-4e78-b577-1b01eb5f8297'}, 'revealed
+PASS C17-N05 provision {'heading_focused': True, 'reviewed': True, 'sheet_scope': True, 'done': True, 'steps': True, 'relisted': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces', 'PUT /iam/v1/scopes/scope-tea
+PASS C17-N06 lost reply {'unknown': True, 'workspace_unknown': True, 'found_by_readback': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces'], 'no_cleanup': True}
+PASS C17-N07 stop {'offered': True, 'stopped': True, 'nothing_undone': True, 'scope_reported': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces'], 'no_cleanup': True}
+PASS C17-N08 workspace {'shown': True, 'limits': True, 'defaults': True, 'actions': True, 'read': 1, 'leaks': []}
+PASS C17-N11 offline {'kept_before_quit': True, 'listing_failed': True, 'kept': True, 'draft_listed': True, 'records': 2, 'stale_said': True, 'nothing_reviewed': True, 'heading_focused': True, 'text_restored': True, 'review_blocked':
+PASS C17-N12 reconnect {'listed': True, 'writes_after_reconnect': [], 'draft_listed': True, 'records': 2, 'reach_open_draft': {'zoom': 1, 'window': {'pos': [95, 37], 'size': [1280, 820]}, 'found': {'label': 'Open draft: Update provid
+PASS C17-N09 200% zoom: {'label': 'Provision workspace…', 'pos': [607, 617], 'size': [324, 88]}; minimum size: {'label': 'Edit workspace…', 'pos': [363, 517], 'size': [130, 44]}
+PASS C17-N10 Gateway and IAM writes ['PUT /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000001', 'DELETE /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000002', 'POST /ai_gw/v2/api-keys/service', 'POST /iam/v1/scopes', 'POST /

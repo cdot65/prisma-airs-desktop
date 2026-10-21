@@ -1,0 +1,819 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/harness/harness-view.tsx": "0c3ab639578fdbefb714d96ef74d5d5c09f78fa122ca6621eb1f2618b56d2d6b",
+      "apps/desktop/src/features/harness/history-panel.tsx": "c673a99ca9ac1cd06c9a5909e09c3027c4c5566109427b6d55d824eb6b19ef6f",
+      "crates/desktop-core/src/authority.rs": "340a07f9e4de95de54fd2eaee7336cb02a95f4256e88ab1970ac5da48839e696",
+      "crates/desktop-core/src/authority/harness_domain.rs": "bc468ec33beb04b62c40b177ed66a51b716dd44c307e193269a6bc723c728231",
+      "crates/desktop-core/src/authority/harness_history.rs": "bfa4f76729aa9f5b6e5810f415082d1fef581b239126d3f0a2eb1ee5e94c5f74",
+      "crates/desktop-core/src/authority/harness_identity.rs": "72b984198cd719b902c30edad9a5241273e1cdd08a017a67e863cad5d8027a14",
+      "crates/desktop-core/src/harness/callback.rs": "174fa761a72545013eca3413adff9ec5944eeea26dd83a8591b90c925ff9c368",
+      "crates/desktop-core/src/harness/history.rs": "1f29a10ed48ea456627c9ae612e5674156b1d44adbecb87a4996ca12331bdc19",
+      "crates/desktop-core/src/harness/identity.rs": "b06d68ca79ac5182139bd19e2e663db633b0bce774fd3fc5c4404fbf2cd4ade7",
+      "crates/desktop-core/src/harness/session.rs": "f0a5d3b68ce6704445f76da59cada90ac9ea9aab5d9871fa6d2aa7f87ad17ab1",
+      "packages/desktop-contracts/src/client.ts": "ca60614784530ab73706906143c653fcccaa4103385eed85af68e2615c25b748"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "discovery may name another issuer",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an endpoint off the issuer's origin is used",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a provider without S256 is used",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the challenge is not the verifier's digest",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "an_attempt_carries_pkce_state_nonce_and_the_loopback",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a forged signature is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the access token's issuer is not checked",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the access token's audience is not checked",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another client's access token is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an expired token is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a token not yet valid is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the ID token's nonce is not checked",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an ID token for another client is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another workspace's token is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an opaque token is only invalid",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another account renews into the grant",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "another_account_or_signing_out_ends_the_grant_and_its_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another state completes the attempt",
+    "files": [
+      "crates/desktop-core/src/harness/callback.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "only_this_attempts_callback_is_taken",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another Host is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/callback.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "only_this_attempts_callback_is_taken",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another issuer's callback is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/callback.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "only_this_attempts_callback_is_taken",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a token is never renewed before a message",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_restarts_the_engine_and_restores_the_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a renewal margin of nothing",
+    "files": [
+      "crates/desktop-core/src/harness/identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_token_is_renewed_inside_its_margin",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a renewed engine starts a new thread",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_restarts_the_engine_and_restores_the_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused renewal still sends with the old token",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_refused_renewal_gives_the_message_back_and_a_new_sign_in_continues",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "signing out keeps the conversation",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "another_account_or_signing_out_ends_the_grant_and_its_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "signing out keeps the refresh token",
+    "files": [
+      "crates/desktop-core/src/authority/harness_identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "another_account_or_signing_out_ends_the_grant_and_its_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "history is written in plaintext",
+    "files": [
+      "crates/desktop-core/src/harness/history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "history_is_sealed_after_every_turn_and_read_exported_and_deleted",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a record opens in another scope",
+    "files": [
+      "crates/desktop-core/src/harness/history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_record_is_sealed_and_opens_only_in_its_own_scope_and_name",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a full workspace saves another",
+    "files": [
+      "crates/desktop-core/src/harness/history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_full_workspace_refuses_new_history_and_never_evicts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an export carries the replay",
+    "files": [
+      "crates/desktop-core/src/harness/history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "history_is_sealed_after_every_turn_and_read_exported_and_deleted",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the running conversation can be deleted",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "history_is_sealed_after_every_turn_and_read_exported_and_deleted",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another binding's conversation is continuable",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_saved_conversation_continues_only_with_its_binding",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a locked Keychain is not reported",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "without_its_key_history_is_never_written_in_plaintext_and_reads_unreadable",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a removed tenant's history stays on disk",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "removing_the_tenant_removes_its_history_its_key_and_its_sign_in",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a message given back is dropped",
+    "files": [
+      "apps/desktop/src/features/harness/harness-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "gives a message back when its renewal fails and shows the conversation as saved or not",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Continue is offered for a conversation that cannot continue",
+    "files": [
+      "apps/desktop/src/features/harness/history-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "says why a saved conversation cannot be continued, names unreadable ones and a full workspace",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Delete does not ask first",
+    "files": [
+      "apps/desktop/src/features/harness/history-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "lists, opens, continues, exports and deletes saved conversations",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an http issuer passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects sign-ins, saved conversations and exports Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "more saved conversations than the bound pass the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects sign-ins, saved conversations and exports Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

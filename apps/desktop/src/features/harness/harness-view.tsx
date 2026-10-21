@@ -13,6 +13,8 @@ import type {
 } from '@prisma-airs/desktop-contracts'
 import { PageHeading } from '../../shell/feature-view'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
+import { HISTORY_FAILURE_TEXT, HistoryPanel, savedAt } from './history-panel'
+import { SIGN_IN_FAILURE_TEXT, SignInPanel } from './sign-in-panel'
 
 /** The engine's prompt bound (eight 8 KiB text items). */
 const MAX_PROMPT_BYTES = 32 * 1024
@@ -32,6 +34,8 @@ export const HARNESS_FAILURE_TEXT: Record<HarnessFailure, string> = {
     refused: 'The engine refused the request.',
     turnFailed: 'The answer failed. The Gateway or the model ended it with an error.',
     cleanupFailed: 'The engine could not be stopped and removed in time. Quit the app to end it.',
+    restoreFailed: 'The saved conversation could not be continued in a new engine. It is still saved; start a new conversation.',
+    signInNeeded: 'Your company sign-in must be renewed. Sign in again, then start the conversation.',
 }
 
 const PHASE_TEXT: Record<HarnessPhase, string> = {
@@ -39,6 +43,7 @@ const PHASE_TEXT: Record<HarnessPhase, string> = {
     ready: 'Ready.',
     answering: 'Answering…',
     interrupting: 'Stopping the answer…',
+    renewing: 'Renewing your sign-in and restarting the engine with the conversation…',
     ending: 'Ending the conversation…',
     ended: 'Ended.',
     failed: 'Failed.',
@@ -104,6 +109,13 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
     const keyHere = key?.state === 'ready' && selected !== null && key.target?.workspace.id === selected.workspace.id
     const engine = snapshot.harness.engine
     const conversation = snapshot.harness.conversation
+    const signIn = snapshot.harness.signIn
+    const signInHere = signIn !== null && selected !== null && signIn.workspace.id === selected.workspace.id
+    // The credential new conversations use: the company sign-in when it is
+    // chosen for this workspace, otherwise the workspace key.
+    const usesSignIn = signInHere && signIn.selected
+    const credentialReady = usesSignIn ? signIn.account !== null : keyHere
+    const endpoint = usesSignIn ? signIn.endpoint : key?.target?.endpoint
     const [prompt, setPrompt] = useState('')
     const [message, setMessage] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
@@ -126,6 +138,15 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
         if (phase === 'ready' && was === 'starting') promptRef.current?.focus()
         if ((phase === 'ended' || phase === 'failed') && was !== null) statusRef.current?.focus()
     }, [phase])
+
+    // A message given back by a failed renewal returns to the box.
+    const unsent = conversation?.unsent ?? null
+    useEffect(() => {
+        if (unsent !== null) {
+            setPrompt((current) => (current === '' ? unsent : current))
+            promptRef.current?.focus()
+        }
+    }, [unsent])
 
     useEffect(() => {
         if (focusStart && !busy) {
@@ -160,15 +181,16 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
         if (await send({ kind: 'sendHarness', conversation: conversation.id, prompt })) setPrompt('')
     }
 
-    const ready = engine.available && context !== null && selected !== null && keyHere
+    const ready = engine.available && context !== null && selected !== null && credentialReady
     return (
         <section aria-labelledby={`${ids}-heading`} data-slot='harness' className='flex flex-col gap-5'>
             <PageHeading ref={ref} id={`${ids}-heading`} kicker='Native engine' title='Harness' />
             <Callout tone='default' icon={Info} data-slot='harness-about'>
                 <p>
-                    The Prisma AIRS Harness engine runs on this Mac. Every answer comes from your AI Gateway workspace, with the inference key stored
-                    for it, and nothing else. A conversation exists only while it is open: nothing of it is saved, and changing the tenant, the
-                    workspace or its key, sleep or quitting ends it. Tools, files and project access are not offered yet.
+                    The Prisma AIRS Harness engine runs on this Mac. Every answer comes from your AI Gateway workspace, with its inference key or
+                    your company sign-in, and nothing else. Each conversation is saved on this Mac after every answer, encrypted, and can be
+                    continued later with the same credential. Changing the tenant, the workspace or its credential, sleep or quitting ends the
+                    running conversation. Tools, files and project access are not offered yet.
                 </p>
                 <p className='text-academy-ink-faint mt-2 font-mono text-[11px]'>
                     {`Engine ${engine.runtimeVersion} · ${engine.engineCommit.slice(0, 12)} · ${engine.protocol}`}
@@ -189,20 +211,35 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                         Go to AI Gateway
                     </Button>
                 </Callout>
-            ) : !keyHere ? (
-                <Callout tone='default' icon={AlertTriangle}>
-                    <p>{`Store an inference key for ${selected.workspace.name} in the AI Gateway Playground to use the Harness.`}</p>
-                    <Button type='button' tier='secondary' size='sm' className='mt-2' onClick={() => onNavigate('gateway')}>
-                        Go to AI Gateway
-                    </Button>
-                </Callout>
             ) : (
-                <dl className='grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]' data-slot='harness-binding'>
-                    <dt className='text-academy-ink-faint'>Workspace</dt>
-                    <dd>{selected.workspace.name}</dd>
-                    <dt className='text-academy-ink-faint'>Gateway endpoint</dt>
-                    <dd className='font-mono text-[12px] break-all'>{key?.target?.endpoint}</dd>
-                </dl>
+                <>
+                    {!keyHere && !signInHere ? (
+                        <Callout tone='default' icon={AlertTriangle}>
+                            <p>{`Store an inference key for ${selected.workspace.name} in the AI Gateway Playground, or set up company sign-in below, to use the Harness.`}</p>
+                            <Button type='button' tier='secondary' size='sm' className='mt-2' onClick={() => onNavigate('gateway')}>
+                                Go to AI Gateway
+                            </Button>
+                        </Callout>
+                    ) : (
+                        <dl className='grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]' data-slot='harness-binding'>
+                            <dt className='text-academy-ink-faint'>Workspace</dt>
+                            <dd>{selected.workspace.name}</dd>
+                            <dt className='text-academy-ink-faint'>Gateway endpoint</dt>
+                            <dd className='font-mono text-[12px] break-all'>{endpoint}</dd>
+                            <dt className='text-academy-ink-faint'>Credential</dt>
+                            <dd>{usesSignIn ? (signIn.account ? `Company sign-in (${signIn.account})` : 'Company sign-in (not signed in)') : 'Workspace inference key'}</dd>
+                        </dl>
+                    )}
+                    <SignInPanel
+                        context={context}
+                        selected={selected}
+                        signIn={signIn}
+                        keyHere={keyHere}
+                        running={live}
+                        dispatch={dispatch}
+                        onMessage={setMessage}
+                    />
+                </>
             )}
             {!live ? (
                 <Button ref={startRef} type='button' tier='primary' className='self-start' disabled={!ready || busy} onClick={() => void start()}>
@@ -239,6 +276,20 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                     </ol>
                     {conversation.usage ? (
                         <p className='text-academy-ink-faint text-[12px]'>{`Tokens so far: ${conversation.usage.input} in, ${conversation.usage.output} out.`}</p>
+                    ) : null}
+                    {conversation.saveFailure ? (
+                        <p className='text-academy-accent-warn text-[12px]' data-slot='harness-saved'>
+                            {`Not saved: ${HISTORY_FAILURE_TEXT[conversation.saveFailure]}`}
+                        </p>
+                    ) : conversation.savedAt !== null ? (
+                        <p className='text-academy-ink-faint text-[12px]' data-slot='harness-saved'>
+                            {`Saved ${savedAt(conversation.savedAt)}`}
+                        </p>
+                    ) : null}
+                    {conversation.signInFailure ? (
+                        <p role='alert' className='text-academy-accent-warn text-[13px]' data-slot='harness-renew-failure'>
+                            {`${SIGN_IN_FAILURE_TEXT[conversation.signInFailure]} Your message was not sent; it is back in the box.`}
+                        </p>
                     ) : null}
                     {live ? (
                         <form
@@ -310,6 +361,16 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                         </div>
                     )}
                 </section>
+            ) : null}
+            {engine.available && context && selected ? (
+                <HistoryPanel
+                    context={context}
+                    selected={selected}
+                    history={snapshot.harness.history}
+                    running={live}
+                    dispatch={dispatch}
+                    onMessage={setMessage}
+                />
             ) : null}
         </section>
     )

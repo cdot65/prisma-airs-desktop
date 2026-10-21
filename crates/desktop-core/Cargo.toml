@@ -48,6 +48,10 @@ serde_yaml_ng = "=0.10.0"
 # API Client execution (C15): Set-Cookie parsing for the bounded,
 # host-only cookie jar (already locked through the desktop host).
 cookie = { version = "=0.18.2", default-features = false }
+# Harness company sign-in (C20, D047): verified JWT decoding with the
+# aws-lc-rs provider the transport already ships; JWKs only (no PEM).
+jsonwebtoken = { version = "=11.1.0", default-features = false, features = ["aws_lc_rs"] }
+base64 = "=0.22.1"
 # The fixture sidecar launcher's process group (test-fixtures only; already
 # locked through tokio).
 libc = { version = "=0.2.191", optional = true }
@@ -144,6 +148,11 @@ required-features = ["test-fixtures"]
 [[test]]
 name = "gateway_inference"
 path = "tests/gateway_inference/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "harness_identity_history"
+path = "tests/harness_identity_history/main.rs"
 required-features = ["test-fixtures"]
 
 [[test]]

@@ -21,6 +21,7 @@ use tokio_util::sync::CancellationToken;
 use zeroize::{Zeroize, Zeroizing};
 
 use super::engine::{self, Engine, Pin};
+use super::history::HistoryFailure;
 use super::protocol::{
     self, Binding, EVENT_LIMIT, FRAME_LIMIT, Incoming, Method, Outbound, Receipt, RequestId,
 };
@@ -65,7 +66,30 @@ pub enum Command {
         prompt: Zeroizing<String>,
     },
     Interrupt,
+    /// The Gateway credential was renewed (C20): the engine is restarted
+    /// with it, the conversation restored from its last export, and then
+    /// `prompt` is sent.
+    Renew {
+        key: Zeroizing<String>,
+        id: String,
+        prompt: Zeroizing<String>,
+    },
 }
+
+/// What the engine exported after a turn, with the engine context it was
+/// exported under (user work: kept in memory and in the sealed store only).
+#[derive(Clone)]
+pub struct Replay {
+    pub context: Value,
+    pub replay: Value,
+}
+
+/// Saves the conversation after a turn (blocking; returns once durable).
+pub type HistorySink = Arc<
+    dyn Fn(Vec<HarnessEntry>, Option<HarnessUsage>, &Replay) -> Result<u64, HistoryFailure>
+        + Send
+        + Sync,
+>;
 
 /// How the engine reaches the Gateway, from the app's transport policy.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -105,6 +129,10 @@ pub struct Progress {
     pub pid: Option<u32>,
     /// The runtime home, while it exists.
     pub home: Option<PathBuf>,
+    /// When the conversation was last saved (wall-clock seconds).
+    pub saved_at: Option<u64>,
+    /// Why the last save did not happen.
+    pub save_failure: Option<HistoryFailure>,
 }
 
 pub type ProgressSlot = Arc<Mutex<Progress>>;
@@ -125,6 +153,11 @@ pub struct Inputs {
     pub pulse: Arc<Notify>,
     pub client_version: String,
     pub bootstrap_timeout: Duration,
+    /// Saves after every turn; `None` keeps the conversation in memory.
+    pub history: Option<HistorySink>,
+    /// A saved conversation to continue (its transcript is already in
+    /// `progress`).
+    pub restore: Option<Replay>,
 }
 
 fn update(slot: &ProgressSlot, pulse: &Notify, f: impl FnOnce(&mut Progress)) {
@@ -156,80 +189,147 @@ pub async fn run(inputs: Inputs, cancel: CancellationToken, deadline: Instant) -
         update(&slot, &pulse, |p| p.phase = HarnessPhase::Ended);
         return Outcome::NotSent;
     }
-    let home = match Home::make(&inputs.runtime_root, &inputs.roots) {
-        Ok(home) => home,
-        Err(_) => {
-            fail(HarnessFailure::StartFailed);
-            return Outcome::NotSent;
-        }
-    };
-    update(&slot, &pulse, |p| p.home = Some(home.path.clone()));
-    let outcome = launched(inputs, home.clone(), &cancel, deadline).await;
-    let removed = home.remove();
-    update(&slot, &pulse, |p| {
-        p.home = None;
-        if !removed && p.failure.is_none() {
-            p.failure = Some(HarnessFailure::CleanupFailed);
-            p.phase = HarnessPhase::Failed;
-        }
-    });
-    outcome
-}
-
-/// From the key read to the reaped process.
-async fn launched(
-    inputs: Inputs,
-    home: Home,
-    cancel: &CancellationToken,
-    deadline: Instant,
-) -> Outcome {
     let Inputs {
+        engine,
+        pin,
         launcher,
+        runtime_root,
+        roots,
+        proxy,
         binding,
         key,
         commands,
         progress,
-        pulse,
-        pin,
-        engine,
-        proxy,
+        pulse: notify,
         client_version,
         bootstrap_timeout,
-        ..
+        history,
+        restore,
     } = inputs;
+    let mut shared = Shared {
+        engine,
+        pin,
+        launcher,
+        proxy,
+        binding,
+        commands,
+        progress,
+        pulse: notify,
+        client_version,
+        bootstrap_timeout,
+        history,
+    };
+    let mut next = Launch {
+        key: Key::Reader(key),
+        restore,
+        then: None,
+    };
+    let mut handed_any = false;
+    loop {
+        let home = match Home::make(&runtime_root, &roots) {
+            Ok(home) => home,
+            Err(_) => {
+                fail(HarnessFailure::StartFailed);
+                return Outcome::NotSent;
+            }
+        };
+        update(&slot, &pulse, |p| p.home = Some(home.path.clone()));
+        let (outcome, renewal) = launched(&mut shared, next, home.clone(), &cancel, deadline).await;
+        handed_any |= slot.lock().map(|p| p.turn_handed).unwrap_or(true);
+        let removed = home.remove();
+        update(&slot, &pulse, |p| {
+            p.home = None;
+            if !removed && p.failure.is_none() {
+                p.failure = Some(HarnessFailure::CleanupFailed);
+                p.phase = HarnessPhase::Failed;
+            }
+        });
+        match renewal {
+            Some(launch) if removed => next = launch,
+            _ if handed_any && outcome == Outcome::NotSent => return Outcome::Unknown,
+            _ => return outcome,
+        }
+    }
+}
+
+/// What does not change when the engine is restarted.
+struct Shared {
+    engine: Engine,
+    pin: Pin,
+    launcher: Arc<dyn SidecarLauncher>,
+    proxy: ProxyEnv,
+    binding: Binding,
+    commands: mpsc::Receiver<Command>,
+    progress: ProgressSlot,
+    pulse: Arc<Notify>,
+    client_version: String,
+    bootstrap_timeout: Duration,
+    history: Option<HistorySink>,
+}
+
+enum Key {
+    Reader(KeyReader),
+    /// A renewed Gateway credential (C20).
+    Renewed(Zeroizing<String>),
+}
+
+/// One engine process: its key, what it restores, and what it sends once
+/// ready.
+pub(crate) struct Launch {
+    key: Key,
+    restore: Option<Replay>,
+    then: Option<(String, Zeroizing<String>)>,
+}
+
+/// From the key read to the reaped process. Returns the next launch when
+/// the conversation continues in a new engine (a renewed credential).
+async fn launched(
+    shared: &mut Shared,
+    launch: Launch,
+    home: Home,
+    cancel: &CancellationToken,
+    deadline: Instant,
+) -> (Outcome, Option<Launch>) {
+    let progress = Arc::clone(&shared.progress);
+    let pulse = Arc::clone(&shared.pulse);
     let fail = |f: HarnessFailure| {
         update(&progress, &pulse, |p| {
             p.phase = HarnessPhase::Failed;
             p.failure = Some(f);
         })
     };
-    let key = match tokio::task::spawn_blocking(key)
-        .await
-        .unwrap_or(Err(HarnessFailure::CredentialMissing))
-    {
-        Ok(key) => key,
-        Err(f) => {
-            fail(f);
-            return Outcome::NotSent;
-        }
+    let Launch { key, restore, then } = launch;
+    let key = match key {
+        Key::Renewed(key) => key,
+        Key::Reader(read) => match tokio::task::spawn_blocking(read)
+            .await
+            .unwrap_or(Err(HarnessFailure::CredentialMissing))
+        {
+            Ok(key) => key,
+            Err(f) => {
+                fail(f);
+                return (Outcome::NotSent, None);
+            }
+        },
     };
-    let frame = match protocol::bootstrap(&binding, &key) {
+    let frame = match protocol::bootstrap(&shared.binding, &key) {
         Ok(frame) => frame,
         Err(f) => {
             fail(f);
-            return Outcome::NotSent;
+            return (Outcome::NotSent, None);
         }
     };
     let spec = LaunchSpec {
-        executable: engine.executable.clone(),
+        executable: shared.engine.executable.clone(),
         args: vec!["desktop-server".into()],
-        env: environment(&home, &proxy),
+        env: environment(&home, &shared.proxy),
         cwd: home.path.clone(),
     };
+    let launcher = Arc::clone(&shared.launcher);
     let launch = tokio::task::spawn_blocking(move || launcher.launch(&spec)).await;
     let Ok(Ok(mut child)) = launch else {
         fail(HarnessFailure::StartFailed);
-        return Outcome::NotSent;
+        return (Outcome::NotSent, None);
     };
     update(&progress, &pulse, |p| p.pid = Some(child.pid()));
     let (Some(stdin), Some(stdout)) = (child.take_stdin(), child.take_stdout()) else {
@@ -239,7 +339,7 @@ async fn launched(
             p.pid = None;
         });
         fail(HarnessFailure::StartFailed);
-        return Outcome::NotSent;
+        return (Outcome::NotSent, None);
     };
     let (events_tx, events) = mpsc::channel::<Event>(64);
     let reader = std::thread::Builder::new()
@@ -255,13 +355,13 @@ async fn launched(
         .spawn(move || write_frames(stdin, frame, writer_rx, events_tx))
         .ok();
     let mut conversation = Conversation {
-        binding,
-        runtime_version: pin.runtime_version.clone(),
-        client_version,
+        binding: shared.binding.clone(),
+        runtime_version: shared.pin.runtime_version.clone(),
+        client_version: shared.client_version.clone(),
         secret: key,
         writer: Some(writer_tx),
         events,
-        commands,
+        commands: std::mem::replace(&mut shared.commands, mpsc::channel(1).1),
         progress: Arc::clone(&progress),
         pulse: Arc::clone(&pulse),
         next_id: 1,
@@ -272,17 +372,31 @@ async fn launched(
         answer_bytes: 0,
         truncating: false,
         retry_refused: false,
+        history: shared.history.clone(),
+        latest: restore.clone(),
+        restore,
+        reading: None,
+        deferred: None,
+        exported: None,
+        renewal: None,
     };
     let ended = if reader.is_none() || writer.is_none() {
         Err(HarnessFailure::StartFailed)
     } else {
         conversation
-            .drive(cancel, deadline, bootstrap_timeout)
+            .drive(cancel, deadline, shared.bootstrap_timeout, then)
             .await
     };
+    shared.commands = std::mem::replace(&mut conversation.commands, mpsc::channel(1).1);
+    let renewal = conversation.renewal.take();
+    let latest = conversation.latest.take();
     let handed = progress.lock().map(|p| p.turn_handed).unwrap_or(true);
     update(&progress, &pulse, |p| {
-        p.phase = HarnessPhase::Ending;
+        p.phase = if renewal.is_some() {
+            HarnessPhase::Renewing
+        } else {
+            HarnessPhase::Ending
+        };
         if let Err(f) = ended {
             p.failure = Some(f);
         }
@@ -302,11 +416,38 @@ async fn launched(
         });
         let _ = tokio::time::timeout(Duration::from_secs(1), joined).await;
     }
+    // A renewed credential continues in a new engine, restoring what this
+    // one last exported; a conversation that had turns but nothing to
+    // restore cannot continue (it would silently lose its context).
+    let next = match (renewal, ended.is_ok() && cleanup != Cleanup::Failed) {
+        (Some((key, id, prompt)), true) => {
+            let had_turns = progress
+                .lock()
+                .map(|p| !p.entries.is_empty())
+                .unwrap_or(true);
+            if latest.is_none() && had_turns {
+                update(&progress, &pulse, |p| {
+                    p.failure = Some(HarnessFailure::RestoreFailed)
+                });
+                None
+            } else {
+                Some(Launch {
+                    key: Key::Renewed(key),
+                    restore: latest,
+                    then: Some((id, prompt)),
+                })
+            }
+        }
+        _ => None,
+    };
     update(&progress, &pulse, |p| {
         p.cleanup = Some(cleanup);
         p.pid = None;
         if cleanup == Cleanup::Failed {
             p.failure = Some(HarnessFailure::CleanupFailed);
+        }
+        if next.is_some() {
+            return;
         }
         p.phase = if p.failure.is_some() {
             HarnessPhase::Failed
@@ -321,11 +462,12 @@ async fn launched(
             e.state = EntryState::Interrupted;
         }
     });
-    match ended {
+    let outcome = match ended {
         Ok(()) => Outcome::Completed,
         Err(_) if handed => Outcome::Unknown,
         Err(_) => Outcome::NotSent,
-    }
+    };
+    (outcome, next)
 }
 
 /// The bounded stop: close input, wait, kill the group, wait, reap.
@@ -553,6 +695,18 @@ struct Conversation {
     writer: Option<std_mpsc::SyncSender<Outbound>>,
     events: mpsc::Receiver<Event>,
     commands: mpsc::Receiver<Command>,
+    history: Option<HistorySink>,
+    /// The last export (or the restored one), for a renewal.
+    latest: Option<Replay>,
+    /// Restored instead of starting a new thread.
+    restore: Option<Replay>,
+    /// A history read is pending until this: commands wait for it.
+    reading: Option<Instant>,
+    deferred: Option<Command>,
+    /// An export to save once the frame is handled.
+    exported: Option<Replay>,
+    /// The conversation continues in a new engine with this credential.
+    renewal: Option<(Zeroizing<String>, String, Zeroizing<String>)>,
     progress: ProgressSlot,
     pulse: Arc<Notify>,
     next_id: u64,
@@ -606,6 +760,7 @@ impl Conversation {
         cancel: &CancellationToken,
         deadline: Instant,
         bootstrap: Duration,
+        then: Option<(String, Zeroizing<String>)>,
     ) -> Result<(), HarnessFailure> {
         tokio::select! {
             biased;
@@ -614,18 +769,56 @@ impl Conversation {
             started = self.start(bootstrap) => started?,
         }
         self.set(|p| p.phase = HarnessPhase::Ready);
+        if let Some((id, prompt)) = then {
+            self.on_command(Command::Send { id, prompt })?;
+        }
         loop {
+            let read_by = self.reading.unwrap_or(deadline);
             tokio::select! {
                 biased;
                 _ = cancel.cancelled() => return Ok(()),
                 _ = tokio::time::sleep_until(deadline) => return Ok(()),
+                _ = tokio::time::sleep_until(read_by), if self.reading.is_some() => {
+                    return Err(HarnessFailure::Timeout);
+                }
                 event = self.events.recv() => self.on_frame(frame_of(event)?)?,
                 command = self.commands.recv() => match command {
                     Some(command) => self.on_command(command)?,
                     None => return Ok(()),
                 },
             }
+            if let Some(export) = self.exported.take() {
+                self.save(export).await;
+                if let Some(command) = self.deferred.take() {
+                    self.on_command(command)?;
+                }
+            }
+            if self.renewal.is_some() {
+                return Ok(());
+            }
         }
+    }
+
+    /// Keeps the export for a renewal and saves it (off this task).
+    async fn save(&mut self, export: Replay) {
+        self.latest = Some(export.clone());
+        let Some(sink) = self.history.clone() else {
+            return;
+        };
+        let (entries, usage) = match self.progress.lock() {
+            Ok(p) => (p.entries.clone(), p.usage),
+            Err(_) => return,
+        };
+        let saved = tokio::task::spawn_blocking(move || sink(entries, usage, &export))
+            .await
+            .unwrap_or(Err(HistoryFailure::Unavailable));
+        self.set(|p| match saved {
+            Ok(at) => {
+                p.saved_at = Some(at);
+                p.save_failure = None;
+            }
+            Err(f) => p.save_failure = Some(f),
+        });
     }
 
     /// Receipt, initialize, initialized and the thread.
@@ -656,8 +849,25 @@ impl Conversation {
         self.request(Method::Initialize, params)?;
         self.answer(Method::Initialize).await?;
         self.send(protocol::initialized())?;
-        self.request(Method::ThreadStart, protocol::thread_params())?;
-        let result = self.answer(Method::ThreadStart).await?;
+        let result = match self.restore.take() {
+            // The engine accepts it only under exactly the context it was
+            // exported for; a refusal names the conversation as not
+            // continuable, never a new thread in its place.
+            Some(saved) => {
+                let params = protocol::restore_params(&saved.context, &saved.replay);
+                self.request(Method::HistoryRestore, params)?;
+                self.answer(Method::HistoryRestore)
+                    .await
+                    .map_err(|f| match f {
+                        HarnessFailure::Refused => HarnessFailure::RestoreFailed,
+                        other => other,
+                    })?
+            }
+            None => {
+                self.request(Method::ThreadStart, protocol::thread_params())?;
+                self.answer(Method::ThreadStart).await?
+            }
+        };
         let thread = result["thread"]["id"]
             .as_str()
             .filter(|t| bounded_id(t))
@@ -705,7 +915,18 @@ impl Conversation {
     }
 
     fn on_command(&mut self, command: Command) -> Result<(), HarnessFailure> {
+        if self.reading.is_some() && !matches!(command, Command::Interrupt) {
+            // The engine exports only an idle thread: the next turn (or a
+            // restart) waits for the read.
+            self.deferred = Some(command);
+            return Ok(());
+        }
         match command {
+            Command::Renew { key, id, prompt } => {
+                if self.turn.is_none() {
+                    self.renewal = Some((key, id, prompt));
+                }
+            }
             Command::Send { id, prompt } => {
                 let thread = self.thread.clone().ok_or(HarnessFailure::Protocol)?;
                 if self.turn.is_some() {
@@ -777,13 +998,38 @@ impl Conversation {
                     }
                 }
                 Method::TurnInterrupt => {}
-                Method::Initialize | Method::ThreadStart => return Err(HarnessFailure::Protocol),
+                Method::HistoryRead => {
+                    self.reading = None;
+                    let (Some(context), Some(replay)) = (
+                        result.get("context").filter(|v| v.is_object()),
+                        result.get("replay").filter(|v| v.is_object()),
+                    ) else {
+                        return Err(HarnessFailure::Protocol);
+                    };
+                    self.exported = Some(Replay {
+                        context: context.clone(),
+                        replay: replay.clone(),
+                    });
+                }
+                Method::Initialize | Method::ThreadStart | Method::HistoryRestore => {
+                    return Err(HarnessFailure::Protocol);
+                }
             },
             Incoming::Failure { id, .. } => match self.take_pending(&id)? {
                 Method::TurnStart => self.end_turn(TurnEnd::Refused),
                 // The turn may have ended already.
                 Method::TurnInterrupt => {}
-                Method::Initialize | Method::ThreadStart => return Err(HarnessFailure::Refused),
+                // Not saved this time; the conversation goes on.
+                Method::HistoryRead => {
+                    self.reading = None;
+                    self.set(|p| p.save_failure = Some(HistoryFailure::Unavailable));
+                    if let Some(command) = self.deferred.take() {
+                        self.on_command(command)?;
+                    }
+                }
+                Method::Initialize | Method::ThreadStart | Method::HistoryRestore => {
+                    return Err(HarnessFailure::Refused);
+                }
             },
             Incoming::Request { id, method, .. } => {
                 // Nothing that needs a decision is offered before C21: every
@@ -1034,6 +1280,14 @@ impl Conversation {
             p.last_turn = Some(end);
             p.phase = HarnessPhase::Ready;
         });
+        // Export the idle thread for protected history and renewal.
+        if let Some(thread) = self.thread.clone()
+            && self
+                .request(Method::HistoryRead, json!({"threadId": thread}))
+                .is_ok()
+        {
+            self.reading = Some(Instant::now() + REQUEST_TIMEOUT);
+        }
     }
 }
 
@@ -1140,6 +1394,13 @@ mod tests {
             answer_bytes: 0,
             truncating: false,
             retry_refused: false,
+            history: None,
+            latest: None,
+            restore: None,
+            reading: None,
+            deferred: None,
+            exported: None,
+            renewal: None,
         }
     }
 

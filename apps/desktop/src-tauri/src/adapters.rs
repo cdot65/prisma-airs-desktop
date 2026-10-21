@@ -114,6 +114,7 @@ fn harness<R: Runtime>(
         launcher,
         engine,
         runtime_root: root.map(|r| r.join("harness-runtime")),
+        history_root: root.map(|r| r.join("harness-history")),
         #[cfg(feature = "test-fixtures")]
         fixture: None,
     }

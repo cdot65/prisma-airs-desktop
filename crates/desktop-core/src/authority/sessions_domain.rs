@@ -80,6 +80,8 @@ pub enum ExportKind {
     Investigation,
     /// The case Library (C12).
     Cases,
+    /// A saved Harness conversation's transcript (C20).
+    HarnessConversation,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -510,7 +512,11 @@ impl State {
         let export = self
             .export
             .as_ref()
-            .filter(|e| Some(&e.context) == active && !e.is_kind(ExportKind::Cases))
+            .filter(|e| {
+                Some(&e.context) == active
+                    && !e.is_kind(ExportKind::Cases)
+                    && !e.is_kind(ExportKind::HarnessConversation)
+            })
             .map(Export::view);
         SessionsView {
             reports,

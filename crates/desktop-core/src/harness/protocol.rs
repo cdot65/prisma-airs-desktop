@@ -146,6 +146,10 @@ pub enum Method {
     ThreadStart,
     TurnStart,
     TurnInterrupt,
+    /// The thread's replay after a turn, for protected history (C20).
+    HistoryRead,
+    /// A saved replay into a new engine under the same context (C20).
+    HistoryRestore,
 }
 
 impl Method {
@@ -155,6 +159,8 @@ impl Method {
             Self::ThreadStart => "thread/start",
             Self::TurnStart => "turn/start",
             Self::TurnInterrupt => "turn/interrupt",
+            Self::HistoryRead => "desktop/history/read",
+            Self::HistoryRestore => "desktop/history/restore",
         }
     }
 }
@@ -164,9 +170,13 @@ impl Method {
 pub struct Outbound(pub Zeroizing<Vec<u8>>);
 
 fn encode(value: &Value) -> Result<Outbound, HarnessFailure> {
+    encode_within(value, FRAME_LIMIT)
+}
+
+fn encode_within(value: &Value, limit: usize) -> Result<Outbound, HarnessFailure> {
     let mut bytes =
         Zeroizing::new(serde_json::to_vec(value).map_err(|_| HarnessFailure::Protocol)?);
-    if bytes.len() >= FRAME_LIMIT {
+    if bytes.len() >= limit {
         return Err(HarnessFailure::Bounds);
     }
     bytes.push(b'\n');
@@ -177,7 +187,23 @@ pub fn request(id: u64, method: Method, params: Value) -> Result<Outbound, Harne
     if id == 0 || !params.is_object() {
         return Err(HarnessFailure::Protocol);
     }
-    encode(&json!({"id":id,"method":method.as_str(),"params":params}))
+    // The engine reads a restore up to its replay limit, anything else up
+    // to its frame limit.
+    let limit = if method == Method::HistoryRestore {
+        EVENT_LIMIT
+    } else {
+        FRAME_LIMIT
+    };
+    encode_within(
+        &json!({"id":id,"method":method.as_str(),"params":params}),
+        limit,
+    )
+}
+
+/// A saved replay with the context it was exported under, and no tools
+/// (the conversation has none before C21).
+pub fn restore_params(context: &Value, replay: &Value) -> Value {
+    json!({"context":context,"replay":replay,"dynamicTools":[]})
 }
 
 pub fn initialized() -> Outbound {

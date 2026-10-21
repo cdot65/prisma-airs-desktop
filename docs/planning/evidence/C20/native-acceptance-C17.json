@@ -1,0 +1,142 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C17",
+  "recorded_utc": "2026-10-21T21:59:24Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c17.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "f639703db1784ba94fb736345b82f973f63c91e6a435846b357e9dd34b75fb87",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C17-N01",
+      "description": "Editing a provider from its details opens the change with focus on its heading; Review shows the exact workspace (name, slug and IAM scope) with no credential; nothing is written until the native confirmation, which names the workspace and its IAM scope; confirming sends exactly one PUT of the reviewed fields with the tenant header, and the result reads the item back.",
+      "result": "pass",
+      "observation": "edit {'heading_focused': True, 'reviewed': True, 'nothing_before_confirm': True, 'sheet_scope': True, 'sheet_title': True, 'applied': True, 'puts': [{'path': '/ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000001', 'tsg': '1234567890', 'fields': ['name'], 'auth': 'bearer-issued'}], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-edit-sheet.json",
+        "docs/planning/evidence/C20/native-C17/tree-edit-applied.json"
+      ]
+    },
+    {
+      "id": "C17-N02",
+      "description": "Choosing another workspace while a change is prepared in the first closes it (no Review again or Apply\u2026 remains) and nothing is written.",
+      "result": "pass",
+      "observation": "switch {'ready': True, 'switched': True, 'closed': True, 'still_closed': True, 'writes': 1}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-switch.json"
+      ]
+    },
+    {
+      "id": "C17-N03",
+      "description": "A provider a route still references lists that route in its review and Apply\u2026 is disabled; an unreferenced provider's delete names the workspace in a destructive sheet whose Return cancels, and Delete sends exactly one DELETE, read back as absent.",
+      "result": "pass",
+      "observation": "delete {'listed': True, 'route': True, 'apply_disabled': True, 'delete_sheet': True, 'return_cancelled': True, 'deleted': True, 'deletes': ['DELETE /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000002']}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-delete-blocked.json",
+        "docs/planning/evidence/C20/native-C17/tree-deleted.json"
+      ]
+    },
+    {
+      "id": "C17-N04",
+      "description": "A new service key is created in the chosen workspace and tenant; its one-time value is held in memory, appears in no Accessibility snapshot, is shown once in the native secret sheet (matching the issued key) and is no longer held afterwards; closing the change returns focus to New service key\u2026.",
+      "result": "pass",
+      "observation": "key {'held': True, 'body': {'description': '', 'name': 'native-key', 'organisation_id': '1234567890', 'scopes': ['completions.write'], 'type': 'service', 'workspace_id': '16f7e90d-382a-4e78-b577-1b01eb5f8297'}, 'revealed_matches_issued': True, 'shown_once': True, 'focus_returned': True, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-key-held.json"
+      ]
+    },
+    {
+      "id": "C17-N05",
+      "description": "Provisioning a workspace opens with focus on its heading, names the IAM scope in its review and native confirmation, sends the scope create, the workspace create and the scope binding once each, reports every step done and read back, and the workspace listing then lists the new workspace.",
+      "result": "pass",
+      "observation": "provision {'heading_focused': True, 'reviewed': True, 'sheet_scope': True, 'done': True, 'steps': True, 'relisted': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces', 'PUT /iam/v1/scopes/scope-team-c']}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-provisioned.json"
+      ]
+    },
+    {
+      "id": "C17-N06",
+      "description": "When the workspace create's reply is lost the result says not every step's outcome is known and nothing was undone, reports the workspace step as unknown and what the readback found, and nothing is retried or deleted.",
+      "result": "pass",
+      "observation": "lost reply {'unknown': True, 'workspace_unknown': True, 'found_by_readback': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces'], 'no_cleanup': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-lost-reply.json"
+      ]
+    },
+    {
+      "id": "C17-N07",
+      "description": "An applying provisioning offers Stop waiting, saying stopping undoes nothing already sent; stopping it reports the stop, that nothing was undone and what reading the tenant back found, and sends no cleanup.",
+      "result": "pass",
+      "observation": "stop {'offered': True, 'stopped': True, 'nothing_undone': True, 'scope_reported': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces'], 'no_cleanup': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-stopped.json"
+      ]
+    },
+    {
+      "id": "C17-N08",
+      "description": "The Workspace tab reads the chosen workspace and shows its defaults and embedded usage and rate limits, with its Edit and Archive actions; no credential or private marker is shown.",
+      "result": "pass",
+      "observation": "workspace {'shown': True, 'limits': True, 'defaults': True, 'actions': True, 'read': 1, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-workspace.json"
+      ]
+    },
+    {
+      "id": "C17-N11",
+      "description": "Gateway work kept on this Mac (T23): a provider draft edited in the window and the two uncertain provisionings are listed after a relaunch with the management service unreachable (the workspaces cannot be read, which the window says); each record says the service has not been read since; the draft opens with focus on its heading and its kept text, cannot be reviewed until its workspace is chosen from a fresh listing, keeps its offline edit, and Close returns focus to it; nothing reaches the service.",
+      "result": "pass",
+      "observation": "offline {'kept_before_quit': True, 'listing_failed': True, 'kept': True, 'draft_listed': True, 'records': 2, 'stale_said': True, 'nothing_reviewed': True, 'heading_focused': True, 'text_restored': True, 'review_blocked': True, 'focus_returned': True, 'requests': 0}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-offline-kept.json",
+        "docs/planning/evidence/C20/native-C17/tree-offline-draft.json"
+      ]
+    },
+    {
+      "id": "C17-N12",
+      "description": "Reconnecting replays nothing (T23): after a relaunch with the service reachable no Gateway or IAM write is sent, the draft (with its offline edit) and both records are still listed, a record goes only when dismissed, and the kept draft's action is reachable by keyboard inside the window.",
+      "result": "pass",
+      "observation": "reconnect {'listed': True, 'writes_after_reconnect': [], 'draft_listed': True, 'records': 2, 'reach_open_draft': {'zoom': 1, 'window': {'pos': [95, 37], 'size': [1280, 820]}, 'found': {'label': 'Open draft: Update provider 7e3a0000-0000-4000-8000-829700000001 in Team A', 'pos': [1058, 737], 'size': [70, 44]}, 'clear': True}, 'edit_kept': True, 'dismissed_one': True, 'team_d_gone': True, 'writes_total': []}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json",
+        "docs/planning/evidence/C20/native-C17/tree-reconnect.json"
+      ]
+    },
+    {
+      "id": "C17-N09",
+      "description": "At 200% zoom and at the minimum window size Provision workspace\u2026 and Edit workspace\u2026 are reached by keyboard inside the window.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Provision workspace\u2026', 'pos': [607, 617], 'size': [324, 88]}; minimum size: {'label': 'Edit workspace\u2026', 'pos': [363, 517], 'size': [130, 44]}",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json"
+      ]
+    },
+    {
+      "id": "C17-N10",
+      "description": "The only Gateway and IAM writes are the reviewed and confirmed ones, in order; no secret, one-time key or synthetic private marker appears in any saved Accessibility snapshot; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "Gateway and IAM writes ['PUT /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000001', 'DELETE /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000002', 'POST /ai_gw/v2/api-keys/service', 'POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces', 'PUT /iam/v1/scopes/scope-team-c', 'POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces', 'POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces']; secrets or private markers in AX snapshots: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C17/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The AI Gateway data, admin and IAM planes are a synthetic local TLS endpoint at the production paths; no product endpoint is called before C25.",
+    "The synthetic replies follow the SDK's Gateway contract shapes; a lost reply and a hung step are simulated by the endpoint. Live Gateway qualification (C25) is not claimed.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

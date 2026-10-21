@@ -208,7 +208,8 @@ def run():
     app.ax("press", "AXRadioButton", "Team A")
     c8.text(app, "2 providers · complete", 15)
     open_harness(app)
-    tree, wants_key = c8.text(app, "Store an inference key for Team A in the AI Gateway Playground to use the Harness.", 10)
+    # C20 adds company sign-in as the other way to answer.
+    tree, wants_key = c8.text(app, "Store an inference key for Team A in the AI Gateway Playground", 10)
     obs["offer"]["needs_key"] = wants_key and not enabled(tree, "Start conversation")
     c16.open_gateway(app)
     c16.tab(app, "Playground")
@@ -355,7 +356,9 @@ def run():
     tree, _ = open_harness(app)
     tree, offered = c8.text(app, "Start conversation", 15)
     obs["quit"] = {"had_engine": pid_quit is not None, "engine_gone": quit_gone, "homes": homes_after_quit,
-                   "plaintext_on_disk": leaks, "nothing_restored": not app.has_text(tree, PROMPT)
+                   # Since C20 a saved conversation is listed by its title
+                   # (sealed on disk); none is running or reopened.
+                   "plaintext_on_disk": leaks, "nothing_restored": fx.App.node(tree, "AXTextArea", "Message") is None
                    and not app.has_text(tree, "Conversation in"), "start_offered": offered}
     obs["tree_relaunch"] = save_tree("relaunch", tree)
     # The workspace listing is read again before a workspace can be chosen.

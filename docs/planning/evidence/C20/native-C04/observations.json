@@ -1,0 +1,639 @@
+{
+ "observations": {
+  "origin": "https://localhost:59106",
+  "group": true,
+  "tree_signed_out": "docs/planning/evidence/C20/native-C04/tree-signed-out.json",
+  "keyboard_reached_sign_in": true,
+  "awaiting": true,
+  "code_label": true,
+  "page_shown": true,
+  "status_regions": 1,
+  "tree_awaiting": "docs/planning/evidence/C20/native-C04/tree-awaiting.json",
+  "keyboard_open_and_cancel": true,
+  "opened": [
+   "https://localhost:59106/activate?user_code=WDJB-MJHT"
+  ],
+  "signed_in": true,
+  "requests_sign_in": [
+   {
+    "t": 1792617827.2372181,
+    "method": "GET",
+    "path": "/api/desktop/config",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617827.238945,
+    "method": "GET",
+    "path": "/.well-known/oauth-authorization-server",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617827.2399821,
+    "method": "POST",
+    "path": "/oauth/device",
+    "fields": [
+     "client_id",
+     "scope"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617828.244014,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617829.2482402,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617830.25354,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617831.257267,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617832.2635672,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617833.266284,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617833.2672691,
+    "method": "GET",
+    "path": "/api/trpc/desktop.me",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false
+   }
+  ],
+  "academy_items": [
+   "cr-67a828b49c55a865"
+  ],
+  "scan_items": [],
+  "tree_signed_in": "docs/planning/evidence/C20/native-C04/tree-signed-in.json",
+  "after_tenant_switch": true,
+  "active_tenant_b": true,
+  "restored": true,
+  "tree_restored": "docs/planning/evidence/C20/native-C04/tree-restored.json",
+  "signed_out": true,
+  "academy_items_after_sign_out": [],
+  "revocations": [
+   {
+    "t": 1792617848.9922729,
+    "method": "POST",
+    "path": "/oauth/revoke",
+    "fields": [
+     "client_id",
+     "token",
+     "token_type_hint"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": "refresh_token",
+    "revokedToken": "fixture-refresh-1",
+    "authorization": false,
+    "clientSecret": false
+   }
+  ],
+  "cancelled": true,
+  "cancel_stays_out": true,
+  "academy_items_after_cancel": [],
+  "denied": true,
+  "academy_items_after_denied": [],
+  "tree_denied": "docs/planning/evidence/C20/native-C04/tree-denied.json",
+  "offline": true,
+  "academy_items_after_offline": [],
+  "tree_offline": "docs/planning/evidence/C20/native-C04/tree-offline.json",
+  "zoom": {
+   "zoom": 2,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     1280,
+     820
+    ]
+   },
+   "found": {
+    "label": "Sign in again",
+    "pos": [
+     649,
+     617
+    ],
+    "size": [
+     225,
+     88
+    ]
+   },
+   "clear": true
+  },
+  "min_size": {
+   "zoom": 1,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     900,
+     600
+    ]
+   },
+   "found": {
+    "label": "Sign in again",
+    "pos": [
+     384,
+     490
+    ],
+    "size": [
+     113,
+     45
+    ]
+   },
+   "clear": true
+  },
+  "signed_in_again": true,
+  "academy_items_before_reset": [
+   "cr-5b82fb1147e39241"
+  ],
+  "reset_signed_out": true,
+  "academy_items_after_reset": [],
+  "secret_in_trees": [],
+  "data_root_hits": [],
+  "requests": [
+   {
+    "t": 1792617827.2372181,
+    "method": "GET",
+    "path": "/api/desktop/config",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617827.238945,
+    "method": "GET",
+    "path": "/.well-known/oauth-authorization-server",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617827.2399821,
+    "method": "POST",
+    "path": "/oauth/device",
+    "fields": [
+     "client_id",
+     "scope"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617828.244014,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617829.2482402,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617830.25354,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617831.257267,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617832.2635672,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617833.266284,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617833.2672691,
+    "method": "GET",
+    "path": "/api/trpc/desktop.me",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617848.9872901,
+    "method": "GET",
+    "path": "/api/desktop/config",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617848.990392,
+    "method": "GET",
+    "path": "/.well-known/oauth-authorization-server",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617848.9922729,
+    "method": "POST",
+    "path": "/oauth/revoke",
+    "fields": [
+     "client_id",
+     "token",
+     "token_type_hint"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": "refresh_token",
+    "revokedToken": "fixture-refresh-1",
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617850.6349308,
+    "method": "GET",
+    "path": "/api/desktop/config",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617850.636279,
+    "method": "GET",
+    "path": "/.well-known/oauth-authorization-server",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617850.637342,
+    "method": "POST",
+    "path": "/oauth/device",
+    "fields": [
+     "client_id",
+     "scope"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617854.154769,
+    "method": "GET",
+    "path": "/api/desktop/config",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617854.1582139,
+    "method": "GET",
+    "path": "/.well-known/oauth-authorization-server",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617854.1612659,
+    "method": "POST",
+    "path": "/oauth/device",
+    "fields": [
+     "client_id",
+     "scope"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617855.164905,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617899.787883,
+    "method": "GET",
+    "path": "/api/desktop/config",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617899.789187,
+    "method": "GET",
+    "path": "/.well-known/oauth-authorization-server",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617899.78995,
+    "method": "POST",
+    "path": "/oauth/device",
+    "fields": [
+     "client_id",
+     "scope"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617900.7928839,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1792617900.793984,
+    "method": "GET",
+    "path": "/api/trpc/desktop.me",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false
+   }
+  ]
+ },
+ "log": [
+  {
+   "t": "16:23:55",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "16:23:57",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  },
+  {
+   "t": "16:24:00",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "16:24:01",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  }
+ ]
+}

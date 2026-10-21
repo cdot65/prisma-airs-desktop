@@ -87,6 +87,35 @@ pub struct GatewayPreference {
     pub workspace: String,
 }
 
+/// A tenant's company sign-in for the Harness Gateway credential (C20;
+/// nonsecret: the refresh token is in the Keychain under `grant.record`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredSignIn {
+    pub tenant: TenantId,
+    /// The Gateway workspace and runtime endpoint the token is used for.
+    pub target: crate::gateway_inference::InferenceTarget,
+    pub issuer: String,
+    pub client_id: String,
+    pub audience: String,
+    /// The Harness uses this sign-in rather than the workspace key.
+    #[serde(default)]
+    pub selected: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grant: Option<StoredGrant>,
+}
+
+/// A signed-in account: the stable grant a conversation is bound to.
+/// Renewals keep it; signing out ends it and a new sign-in is a new grant.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredGrant {
+    pub id: String,
+    pub subject: String,
+    pub label: String,
+    pub record: RecordId,
+}
+
 /// The persisted document.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -108,6 +137,13 @@ pub struct PersistedState {
     /// Each tenant's chosen Gateway workspace (C16; absent before).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub gateway_workspaces: Vec<GatewayPreference>,
+    /// Company sign-ins for the Harness (C20; absent before).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub harness_sign_ins: Vec<StoredSignIn>,
+    /// Workspaces whose protected Harness history may exist (C20), so a
+    /// tenant's removal also removes their keys.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub harness_history: Vec<GatewayPreference>,
 }
 
 impl Default for PersistedState {
@@ -122,6 +158,8 @@ impl Default for PersistedState {
             learner: None,
             learner_cleanup: Vec::new(),
             gateway_workspaces: Vec::new(),
+            harness_sign_ins: Vec::new(),
+            harness_history: Vec::new(),
         }
     }
 }
@@ -197,7 +235,29 @@ impl PersistedState {
                 && chose.insert(p.tenant.clone())
                 && crate::gateway::is_id(&p.workspace)
         });
+        // One company sign-in per existing tenant, with a valid target and
+        // configuration and a UUID grant.
+        let mut signed = BTreeSet::new();
+        let sign_ins_ok = self.harness_sign_ins.iter().all(|s| {
+            ids.contains(&s.tenant)
+                && signed.insert(s.tenant.clone())
+                && s.target.is_valid()
+                && crate::harness::identity::SsoConfig::parse(&s.issuer, &s.client_id, &s.audience)
+                    .is_some_and(|c| c.issuer == s.issuer)
+                && s.grant.as_ref().is_none_or(|g| {
+                    crate::harness::protocol::is_uuid(&g.id)
+                        && !g.subject.is_empty()
+                        && g.subject.len() <= 255
+                        && g.label.len() <= 256
+                })
+        });
+        let history_ok = self
+            .harness_history
+            .iter()
+            .all(|p| ids.contains(&p.tenant) && crate::gateway::is_id(&p.workspace));
         self.schema == STATE_SCHEMA
+            && sign_ins_ok
+            && history_ok
             && learner_ok
             && gateway_ok
             && tenants_ok

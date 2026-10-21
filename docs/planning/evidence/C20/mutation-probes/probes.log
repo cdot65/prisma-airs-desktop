@@ -1,0 +1,41 @@
+baseline harness_identity_history [0, 0, 0]
+baseline harness [0, 0, 0]
+baseline src/features/harness/harness-view.test.tsx [0, 0, 0]
+baseline src/contracts/snapshot-validation.test.ts [0, 0, 0]
+discovery may name another issuer 101 True
+an endpoint off the issuer's origin is used 101 True
+a provider without S256 is used 101 True
+the challenge is not the verifier's digest 101 True
+a forged signature is accepted 101 True
+the access token's issuer is not checked 101 True
+the access token's audience is not checked 101 True
+another client's access token is accepted 101 True
+an expired token is accepted 101 True
+a token not yet valid is accepted 101 True
+the ID token's nonce is not checked 101 True
+an ID token for another client is accepted 101 True
+another workspace's token is accepted 101 True
+an opaque token is only invalid 101 True
+another account renews into the grant 101 True
+another state completes the attempt 101 True
+another Host is accepted 101 True
+another issuer's callback is accepted 101 True
+a token is never renewed before a message 101 True
+a renewal margin of nothing 101 True
+a renewed engine starts a new thread 101 True
+a refused renewal still sends with the old token 101 True
+signing out keeps the conversation 101 True
+signing out keeps the refresh token 101 True
+history is written in plaintext 101 True
+a record opens in another scope 101 True
+a full workspace saves another 101 True
+an export carries the replay 101 True
+the running conversation can be deleted 101 True
+another binding's conversation is continuable 101 True
+a locked Keychain is not reported 101 True
+a removed tenant's history stays on disk 101 True
+a message given back is dropped 1 True
+Continue is offered for a conversation that cannot continue 1 True
+Delete does not ask first 1 True
+an http issuer passes the contract 1 True
+more saved conversations than the bound pass the contract 1 True

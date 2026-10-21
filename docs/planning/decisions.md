@@ -1494,6 +1494,165 @@ needs an engine change. Live qualification is C25.
 - importing v1 history (C23);
 - signed packaging (C26).
 
+## D047 — Harness company sign-in, renewal and protected history
+
+Decided in C20 (implementer decision for the C20 milestones, recorded for
+review).
+
+**Credential choice.** A tenant may configure one company sign-in for the
+Harness: the Gateway workspace and runtime endpoint the token is for, and
+the identity provider's issuer, public client ID and Gateway audience. The
+operator chooses, for that workspace, whether new conversations answer with
+the workspace inference key (C18) or the company sign-in; signing in chooses
+the sign-in. This follows v1's choice of a selected SSO session, otherwise
+the stored key. Changing the choice, signing out, removing the
+configuration or the tenant retires the running conversation. The engine
+sends either credential as the Gateway key (`x-portkey-api-key`), as v1 did.
+
+**Sign-in.** OpenID Connect authorization code with PKCE (S256) through the
+system browser and a loopback redirect on `127.0.0.1` at an ephemeral port
+(RFC 8252 §7.3). The app is a public client.
+- Discovery must name exactly the configured issuer. It must support the
+  code flow and S256. Every endpoint (authorization, token, JWKS,
+  revocation) must be HTTPS on the issuer's own origin, so metadata never
+  grants a new destination (the Academy rule, D028). `offline_access` is
+  asked for when listed.
+- State and nonce are 256-bit random values. The verifier is 384 bits.
+- The listener lives for one attempt: 5 minutes, at most 32 connections,
+  3 s per connection, 8 KiB per request and 4 KiB per code.
+  - Only `GET /callback` with exactly one `Host` naming the listener is
+    considered.
+  - Only this attempt's `state` (compared in constant time) ends it.
+    Anything else is answered and ignored, so another local page can
+    neither complete nor cancel the attempt.
+  - An `iss` parameter must be the issuer. It is required when the provider
+    says it sends one (RFC 9207).
+- Replies are bounded at 128 KiB (JWKS 64 KiB, 32 keys), redirects are
+  refused, and 5xx or transport failures read as network failures.
+
+**Verification (stricter than v1, which did not check signatures).**
+- Both the ID token and the Gateway access token are JWTs, verified with
+  `jsonwebtoken` 11.1.0's verified `decode` against the issuer's JWKS. The
+  decode is never unchecked.
+- Only asymmetric algorithms are accepted: RS256/384/512, PS256/384/512,
+  ES256, ES384 and EdDSA. `none` and HMAC never verify.
+- The key must match the header: by `kid`, signature use, declared
+  algorithm, type and curve, and an RSA modulus of at least 2048 bits.
+- An unknown `kid` allows one bounded JWKS refresh. Failing that, the token
+  is refused, never accepted unsigned.
+- ID token: issuer; the client as audience; the authorized party when
+  there are several audiences, or when present; this attempt's nonce; and
+  expiry and issued-at with 30 s skew.
+- Access token: issuer; the configured audience; `azp` or `client_id` when
+  present must be this client; expiry, not-before and issued-at with 30 s
+  skew. A `portkey_workspace` claim, when present, must be the chosen
+  workspace's slug.
+- The access token's `sub` is the grant's account. After a grant exists,
+  a token for another subject is `differentAccount` and the new refresh
+  token is revoked.
+- Opaque access tokens are refused (`opaqueToken`): no introspection
+  contract exists.
+- The provider is `aws_lc_rs`, not the `rust_crypto` that qualification.md
+  proposed. Reasons:
+  - aws-lc-rs 1.18.2 is already in the shipped graph (rustls-webpki).
+  - `rust_crypto` would add `rsa` 0.9, which carries an advisory with no
+    fixed release (RUSTSEC-2023-0071, a timing side channel in private-key
+    operations). Verification does not use private keys, but this choice
+    keeps the crate out.
+  - Default features are off: no PEM.
+- `openidconnect`/`oauth2` are not used, for D028's reasons: the authority
+  owns cancellation, flow supersession and revocation of a grant that
+  lands after cancel. Their HTTP integration targets another reqwest.
+  The flow is a small, fully bounded request set over the app's own client.
+
+**Grants and epochs.** Signing in creates a grant: a random UUID kept with
+the configuration (nonsecret). The engine binding's credential is
+`derived_uuid("sign-in-grant", grant)` with epoch 1. For the workspace key
+it stays C19's `derived_uuid("credential", record)`.
+- Renewals keep the grant, so the binding, and with it the engine's exact
+  `replay.context == context` check, is unchanged.
+- Signing in again to the same account under a live grant (after a refused
+  renewal) also keeps it.
+- Signing out, removing the configuration or the tenant ends the grant. A
+  later sign-in is a new grant: it never revives an old conversation, whose
+  saved history can then be read and exported but not continued.
+- Changing the configuration requires signing out first.
+- The refresh token is a Keychain item (JSON, one per grant, new record
+  per rotation) under the C02 write-ahead cleanup ledger. The access token
+  is kept in memory only.
+- One renewal runs at a time per grant and runs to completion even if its
+  caller goes away. A rotated token is saved or revoked, never lost.
+
+**Renewal and restart.** Before each message, a sign-in conversation
+compares the wall clock with the engine token's renewal time,
+`exp − min(120 s, lifetime/2)`.
+- Inside the margin, the message is held (phase `renewing`) while the
+  token is renewed. The engine accepts its credential only in the
+  bootstrap, so the running engine is then stopped and reaped. A new engine
+  is started with the new token and the same binding, and
+  `desktop/history/restore` restores the conversation's last export. Only
+  then is the message sent.
+- A refused or failed renewal sends nothing. The message is given back to
+  the box, and the conversation stays with `sessionExpired` (sign in
+  again).
+- A transient network failure gives the message back without expiring the
+  grant.
+- A conversation with turns but no export to restore cannot continue
+  (`restoreFailed`); it is never silently restarted without context.
+- Sleep still ends conversations (C19), so expiry across sleep is met at
+  the next start or resume. The C20 conversation has no tools or effects,
+  so "rollback to a pre-turn checkpoint" has nothing to roll back: a
+  failed turn stays shown as failed, and nothing is resent. Tool and
+  effect recovery, and WorkspaceWrite re-confirmation on restart, are C21.
+
+**Protected history.** After every turn (completed, stopped, cut or
+failed) the host asks the idle engine for `desktop/history/read`. Messages
+wait for the read, which is bounded by the 15 s request timeout. The
+conversation is saved as one sealed record:
+- the transcript;
+- the binding it ran under;
+- the engine's replay and context exactly as exported.
+
+Storage:
+- `<data>/harness-history/<tenant digest>/<scope digest>/<id>.sealed`, one
+  scope per tenant and Gateway workspace.
+- XChaCha20-Poly1305 (`chacha20poly1305` 0.10.1, D031; the DESIGN's 0.11.0
+  is not adopted), with a fresh 24-byte nonce per write.
+- A random 32-byte key per scope in the Keychain, at a record derived from
+  the scope, made on first save.
+- Associated data binds the schema, the scope and the record ID.
+- Files are 0600 in 0700 directories and replaced atomically.
+- Scopes are noted in the state document before their first write, so
+  removing a tenant removes its keys (cleanup ledger) and its directory.
+- Locked, denied or missing storage never falls back to plaintext. The
+  conversation goes on unsaved and says why.
+
+Limits:
+- 16 conversations per workspace. A seventeenth is refused (`full`),
+  never made room for by deleting.
+- 8 MiB per record. The engine's replay is at most 4 MiB, and the
+  transcript bounds are C19's.
+- A record that does not open is listed as unreadable, can be deleted, and
+  is never rewritten.
+
+Operations:
+- **Open** reads one record.
+- **Export** writes the transcript only (Markdown, text or JSON), never the
+  replay or context, through the native save sheet.
+- **Delete** asks for confirmation and is refused for the running
+  conversation.
+- **Continue** starts a new engine and restores the record. It is offered
+  only when the record's binding equals the binding a new conversation
+  would have now (tenant, workspace, credential, epoch, endpoint and
+  credential choice). Otherwise the record is read-only and says why. The
+  engine checks the context again. The continued conversation keeps
+  updating the same record.
+- Imported v1 history is C23 and stays inspect-only.
+
+**Out of scope here:** tools, approvals, project access and WorkspaceWrite
+(C21); MCP and its token rotation (C22); v1 history import (C23); live
+identity-provider and Gateway qualification (C25).
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

@@ -1,0 +1,39 @@
+
+running 10 tests
+test without_its_key_history_is_never_written_in_plaintext_and_reads_unreadable ... ok
+test a_full_workspace_refuses_new_history_and_never_evicts ... ok
+test tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept ... ok
+test removing_the_tenant_removes_its_history_its_key_and_its_sign_in ... ok
+test company_sign_in_verifies_both_tokens_and_keeps_only_the_refresh_token ... ok
+test another_account_or_signing_out_ends_the_grant_and_its_conversation ... ok
+test history_is_sealed_after_every_turn_and_read_exported_and_deleted ... ok
+test a_saved_conversation_continues_only_with_its_binding ... ok
+test a_refused_renewal_gives_the_message_back_and_a_new_sign_in_continues ... ok
+test a_renewal_restarts_the_engine_and_restores_the_conversation ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.58s
+
+   Compiling aws-lc-rs v1.18.2
+   Compiling syn v2.0.119
+   Compiling untrusted v0.7.1
+   Compiling signature v2.2.0
+   Compiling rustls v0.23.46
+   Compiling zeroize_derive v1.5.0
+   Compiling ts-rs-macros v12.0.1
+   Compiling zeroize v1.9.1
+   Compiling rustls-pki-types v1.15.1
+   Compiling cipher v0.4.4
+   Compiling scm-sdk v0.1.0
+   Compiling ts-rs v12.0.1
+   Compiling chacha20 v0.9.1
+   Compiling chacha20poly1305 v0.10.1
+   Compiling rustls-webpki v0.103.15
+   Compiling jsonwebtoken v11.1.0
+   Compiling rcgen v0.14.10
+   Compiling tokio-rustls v0.26.6
+   Compiling rustls-platform-verifier v0.7.1
+   Compiling hyper-rustls v0.27.10
+   Compiling reqwest v0.13.5
+   Compiling desktop-core v0.1.0 (/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/mut/repo/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 37.07s
+     Running tests/harness_identity_history/main.rs (target/debug/deps/harness_identity_history-76c9c60c53f68af4)

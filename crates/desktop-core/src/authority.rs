@@ -22,6 +22,8 @@ mod gateway_domain;
 mod gateway_files_domain;
 mod gateway_local_domain;
 mod harness_domain;
+mod harness_history;
+mod harness_identity;
 mod inference_domain;
 mod learner_domain;
 mod library_domain;
@@ -233,6 +235,72 @@ pub enum Intent {
     StartHarness {
         context: ContextRef,
         workspace: WorkspaceRef,
+    },
+    /// Configure company sign-in for the chosen Gateway workspace: its
+    /// runtime endpoint and the identity provider (C20).
+    #[serde(rename_all = "camelCase")]
+    ConfigureHarnessSignIn {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        endpoint: String,
+        issuer: String,
+        client_id: String,
+        audience: String,
+    },
+    /// Sign out and remove the company sign-in configuration.
+    RemoveHarnessSignIn {
+        context: ContextRef,
+    },
+    /// Choose the credential new conversations use.
+    ChooseHarnessCredential {
+        context: ContextRef,
+        source: crate::harness::history::CredentialSource,
+    },
+    /// Sign in through the system browser.
+    SignInHarness {
+        context: ContextRef,
+    },
+    CancelHarnessSignIn {
+        context: ContextRef,
+    },
+    /// Sign out: the grant ends and its conversation is retired.
+    SignOutHarness {
+        context: ContextRef,
+    },
+    /// List the chosen workspace's saved conversations (C20).
+    ListHarnessHistory {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+    },
+    /// Open a saved conversation for reading.
+    OpenHarnessHistory {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        id: String,
+    },
+    CloseHarnessHistory {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+    },
+    /// Delete a saved conversation (not the one running).
+    DeleteHarnessHistory {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        id: String,
+    },
+    /// Save the opened conversation's transcript in the native save sheet.
+    ExportHarnessHistory {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        id: String,
+        format: harness_history::HistoryFormat,
+    },
+    /// Continue the opened conversation in a new engine (only with the
+    /// binding it was saved under).
+    ResumeHarness {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        id: String,
     },
     /// Send one prompt to the conversation (only while it is ready).
     SendHarness {
@@ -988,6 +1056,8 @@ struct Tenant {
     /// and the workspace and endpoint it is for (C18).
     inference: ScanCapability,
     inference_target: Option<crate::gateway_inference::InferenceTarget>,
+    /// Company sign-in for the Harness Gateway credential (C20).
+    harness_sign_in: Option<crate::store::StoredSignIn>,
 }
 
 impl Tenant {
@@ -1000,6 +1070,7 @@ impl Tenant {
             gateway_workspace: None,
             inference: ScanCapability::Missing,
             inference_target: None,
+            harness_sign_in: None,
         }
     }
 
@@ -1029,6 +1100,8 @@ struct Data {
     pending_cleanup: Vec<RecordId>,
     learner: Option<StoredLearner>,
     learner_cleanup: Vec<RecordId>,
+    /// Workspaces whose protected Harness history may exist (C20).
+    harness_history: Vec<crate::store::GatewayPreference>,
 }
 
 struct EndpointReview {
@@ -1158,6 +1231,13 @@ struct State {
     harness: Option<harness_domain::Conversation>,
     /// The engine is bundled with this build.
     harness_engine: bool,
+    /// An interactive company sign-in (C20).
+    harness_sign_in: Option<harness_identity::SignInFlow>,
+    /// Signed-in grants' live tokens (C20).
+    harness_grants: Vec<Arc<harness_identity::Grant>>,
+    /// The chosen workspace's protected history (C20).
+    harness_history: Option<harness_history::HistoryState>,
+    harness_history_root: Option<std::path::PathBuf>,
 }
 
 impl State {
@@ -1295,6 +1375,13 @@ impl State {
                         })
                 })
                 .collect(),
+            harness_sign_ins: self
+                .data
+                .tenants
+                .iter()
+                .filter_map(|t| t.harness_sign_in.clone())
+                .collect(),
+            harness_history: self.data.harness_history.clone(),
             ..PersistedState::default()
         }
     }
@@ -1728,6 +1815,16 @@ enum Effect {
     },
     /// Run a Harness conversation as its own task (C19).
     Harness(Box<harness_domain::HarnessStart>),
+    /// Company sign-in through the browser (C20).
+    HarnessSignIn(Box<harness_identity::SignInJob>),
+    /// Revoke a signed-out grant (C20).
+    HarnessSignedOut(Arc<harness_identity::Grant>),
+    /// Renew a sign-in token before a message is sent (C20).
+    HarnessRenew(Box<harness_domain::RenewJob>),
+    /// Read, open or delete protected history (C20).
+    HarnessHistory(harness_history::HistoryJob),
+    /// Remove a removed tenant's history directory (C20).
+    ForgetHarnessHistory(std::path::PathBuf),
 }
 
 struct Inner {
@@ -1835,6 +1932,10 @@ impl Core {
             workbench_api_origins: config.workbench_api_origins.clone(),
             harness: None,
             harness_engine: adapters.harness.engine.is_some(),
+            harness_sign_in: None,
+            harness_grants: Vec::new(),
+            harness_history: None,
+            harness_history_root: adapters.harness.history_root.clone(),
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -2129,9 +2230,15 @@ fn data_from(doc: PersistedState) -> Data {
                 .iter()
                 .find(|p| p.tenant == profile.id)
                 .map(|p| p.workspace.clone());
+            let harness_sign_in = doc
+                .harness_sign_ins
+                .iter()
+                .find(|s| s.tenant == profile.id)
+                .cloned();
             let mut tenant = Tenant::new(profile);
             tenant.scan = scan;
             tenant.gateway_workspace = gateway_workspace;
+            tenant.harness_sign_in = harness_sign_in;
             if let Some(c) = management {
                 tenant.management = ScanCapability::Ready {
                     record: c.record.clone(),
@@ -2160,6 +2267,7 @@ fn data_from(doc: PersistedState) -> Data {
         pending_cleanup: doc.pending_cleanup,
         learner: doc.learner,
         learner_cleanup: doc.learner_cleanup,
+        harness_history: doc.harness_history,
     }
 }
 
@@ -2415,6 +2523,25 @@ fn admit(
             let retired_session = state.retire_credential(&tenant);
             let retired_management = state.retire_class(&tenant, CredentialClass::Management);
             let retired_inference = state.retire_class(&tenant, CredentialClass::Inference);
+            // Its company sign-in ends: the refresh token item is deleted
+            // through the ledger and revoked at the provider.
+            let signed_in = state.grant(&tenant);
+            if let Some(record) = state
+                .tenant(&tenant)
+                .and_then(|t| t.harness_sign_in.as_ref())
+                .and_then(|s| s.grant.as_ref())
+                .map(|g| g.record.clone())
+            {
+                state.data.pending_cleanup.push(record);
+            }
+            // Its protected history keys go through the ledger too (the
+            // sealed records are removed with its directory below).
+            let (history_keys, history_dir) = state.forget_harness_history(&tenant);
+            for key in history_keys {
+                if !state.data.pending_cleanup.contains(&key) {
+                    state.data.pending_cleanup.push(key);
+                }
+            }
             state.data.tenants.retain(|t| t.profile.id != tenant);
             if was_active {
                 state.data.active = None;
@@ -2437,6 +2564,13 @@ fn admit(
             }
             state.forget_library(&tenant);
             state.forget_holds(&tenant);
+            if let Some(dir) = history_dir {
+                effects.push(Effect::ForgetHarnessHistory(dir));
+            }
+            state.harness_grants.retain(|g| g.tenant != tenant);
+            if let Some(grant) = signed_in {
+                effects.push(Effect::HarnessSignedOut(grant));
+            }
             for record in [retired_session, retired_management, retired_inference]
                 .into_iter()
                 .flatten()
@@ -2715,16 +2849,115 @@ fn admit(
                 &adapters.harness,
                 Arc::clone(&adapters.keychain),
                 Arc::clone(session),
+                None,
             )?;
             operation_ref = Some(start.id.clone());
             effects.push(Effect::Harness(Box::new(start)));
+            state.changed();
+        }
+        Intent::ListHarnessHistory { context, workspace } => {
+            effects.push(state.list_harness_history(&context, &workspace)?);
+            state.changed();
+        }
+        Intent::OpenHarnessHistory {
+            context,
+            workspace,
+            id,
+        } => {
+            effects.push(state.open_harness_history(&context, &workspace, &id)?);
+            state.changed();
+        }
+        Intent::CloseHarnessHistory { context, workspace } => {
+            state.close_harness_history(&context, &workspace)?;
+            state.changed();
+        }
+        Intent::DeleteHarnessHistory {
+            context,
+            workspace,
+            id,
+        } => {
+            effects.push(state.delete_harness_history(&context, &workspace, &id)?);
+            state.changed();
+        }
+        Intent::ExportHarnessHistory {
+            context,
+            workspace,
+            id,
+            format,
+        } => {
+            let (lease, suggested, bytes) =
+                state.export_harness_history(&context, &workspace, &id, format)?;
+            effects.push(Effect::SaveFile {
+                lease,
+                suggested,
+                bytes,
+            });
+            state.changed();
+        }
+        Intent::ResumeHarness {
+            context,
+            workspace,
+            id,
+        } => {
+            let resume = state.resume_harness(&context, &workspace, &id)?;
+            let start = state.start_harness(
+                context,
+                workspace,
+                &adapters.harness,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+                Some(resume),
+            )?;
+            operation_ref = Some(start.id.clone());
+            effects.push(Effect::Harness(Box::new(start)));
+            state.changed();
+        }
+        Intent::ConfigureHarnessSignIn {
+            context,
+            workspace,
+            endpoint,
+            issuer,
+            client_id,
+            audience,
+        } => {
+            state.configure_harness_sign_in(
+                &context, &workspace, endpoint, &issuer, &client_id, &audience,
+            )?;
+            state.changed();
+        }
+        Intent::RemoveHarnessSignIn { context } => {
+            if let Some(grant) = state.remove_harness_sign_in(&context)? {
+                effects.push(Effect::HarnessSignedOut(grant));
+            }
+            effects.push(Effect::Cleanup);
+            state.changed();
+        }
+        Intent::ChooseHarnessCredential { context, source } => {
+            state.choose_harness_credential(&context, source)?;
+            state.changed();
+        }
+        Intent::SignInHarness { context } => {
+            effects.push(state.begin_harness_sign_in(&context)?);
+            state.changed();
+        }
+        Intent::CancelHarnessSignIn { context } => {
+            state.cancel_harness_sign_in(&context)?;
+            state.changed();
+        }
+        Intent::SignOutHarness { context } => {
+            if let Some(grant) = state.sign_out_harness(&context)? {
+                effects.push(Effect::HarnessSignedOut(grant));
+            }
+            effects.push(Effect::Cleanup);
             state.changed();
         }
         Intent::SendHarness {
             conversation,
             prompt,
         } => {
-            state.send_harness(&conversation, prompt)?;
+            if let Some(job) = state.send_harness(&conversation, prompt)? {
+                effects.push(Effect::HarnessRenew(Box::new(job)));
+            }
             state.changed();
         }
         Intent::InterruptHarness { conversation } => {
@@ -3311,10 +3544,33 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
         match effect {
             Effect::Harness(start) => {
                 let inner = Arc::clone(inner);
-                let harness_domain::HarnessStart { id, inputs, cancel } = *start;
+                let harness_domain::HarnessStart {
+                    id,
+                    mut inputs,
+                    cancel,
+                    grant,
+                    history,
+                } = *start;
+                inputs.history = history.map(|plan| harness_history::sink(&inner, plan));
                 tokio::spawn(async move {
                     let deadline =
                         tokio::time::Instant::now() + crate::harness::session::SESSION_DEADLINE;
+                    // Company sign-in: the token the engine is given, renewed
+                    // first if it is inside its margin; none is never sent.
+                    if let Some(grant) = grant {
+                        match grant.access(&inner).await {
+                            Ok((token, renew_at)) => {
+                                if let Ok(mut state) = lock(&inner) {
+                                    state.harness_keyed(&id, renew_at);
+                                }
+                                inputs.key = Box::new(move || Ok(token));
+                            }
+                            Err(_) => {
+                                inputs.key =
+                                    Box::new(|| Err(crate::harness::HarnessFailure::SignInNeeded))
+                            }
+                        }
+                    }
                     let outcome = crate::harness::session::run(inputs, cancel, deadline).await;
                     if let Ok(mut state) = lock(&inner) {
                         state.harness_settled(&id, outcome);
@@ -3363,6 +3619,30 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
             Effect::Cleanup => {
                 drain_cleanup(inner);
                 learner_domain::drain_learner_cleanup(inner);
+            }
+            Effect::HarnessSignIn(job) => {
+                tokio::spawn(harness_identity::sign_in(Arc::clone(inner), *job));
+            }
+            Effect::HarnessSignedOut(grant) => {
+                tokio::spawn(harness_identity::signed_out(Arc::clone(inner), grant));
+            }
+            Effect::HarnessRenew(job) => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let renewed = job.grant.access(&inner).await;
+                    if let Ok(mut state) = lock(&inner) {
+                        state.harness_renewed(*job, renewed);
+                        state.changed();
+                    }
+                });
+            }
+            Effect::HarnessHistory(job) => {
+                tokio::spawn(harness_history::run_job(Arc::clone(inner), job));
+            }
+            Effect::ForgetHarnessHistory(dir) => {
+                tokio::task::spawn_blocking(move || {
+                    let _ = std::fs::remove_dir_all(dir);
+                });
             }
             Effect::AcademySignIn { flow, client } => {
                 tokio::spawn(learner_domain::sign_in(Arc::clone(inner), flow, client));

@@ -9,7 +9,15 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { type ConversationView, DesktopClient, type GatewayView, type ListedWorkspace, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import {
+    type ConversationView,
+    DesktopClient,
+    type GatewayView,
+    type HarnessHistoryView,
+    type HarnessSignInView,
+    type ListedWorkspace,
+    type ShellSnapshot,
+} from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
 import { baseSnapshot, type Native, scriptedNative, tenant, withTenant } from '../../test/native'
 import { HARNESS_FAILURE_TEXT } from './harness-view'
@@ -34,14 +42,56 @@ const gateway = (selected: ListedWorkspace | null): GatewayView => ({
 type Key = ShellSnapshot['tenants'][number]['inference']
 const keyFor = (workspace: ListedWorkspace): Key => ({ state: 'ready', mode: 'keychain', failure: null, target: { workspace, endpoint: ENDPOINT } })
 
-function snapshot(options: { engine?: boolean; selected?: ListedWorkspace | null; key?: Key; conversation?: ConversationView | null } = {}): ShellSnapshot {
+function snapshot(
+    options: {
+        engine?: boolean
+        selected?: ListedWorkspace | null
+        key?: Key
+        conversation?: ConversationView | null
+        signIn?: HarnessSignInView | null
+        history?: HarnessHistoryView | null
+    } = {}
+): ShellSnapshot {
     const s = withTenant(baseSnapshot, tenant({ inference: options.key ?? keyFor(A) }), CONTEXT)
     return {
         ...s,
         gateway: gateway(options.selected === undefined ? A : options.selected),
-        harness: { engine: { ...baseSnapshot.harness.engine, available: options.engine ?? true }, conversation: options.conversation ?? null },
+        harness: {
+            engine: { ...baseSnapshot.harness.engine, available: options.engine ?? true },
+            conversation: options.conversation ?? null,
+            signIn: options.signIn ?? null,
+            history: options.history ?? null,
+        },
     }
 }
+
+const ISSUER = 'https://id.example/oauth2/default'
+const signIn = (overrides: Partial<HarnessSignInView> = {}): HarnessSignInView => ({
+    workspace: A,
+    endpoint: ENDPOINT,
+    issuer: ISSUER,
+    clientId: 'desktop-client',
+    audience: 'https://gateway.example',
+    selected: true,
+    account: null,
+    step: null,
+    failure: null,
+    ...overrides,
+})
+
+const SAVED_ID = '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d'
+const history = (overrides: Partial<HarnessHistoryView> = {}): HarnessHistoryView => ({
+    state: 'ready',
+    conversations: [{ id: SAVED_ID, title: 'Remember periwinkle', updated: 1_790_000_000, entries: 4, source: 'workspaceKey' }],
+    unreadable: [],
+    failure: null,
+    full: false,
+    opened: null,
+    busy: false,
+    problem: null,
+    export: null,
+    ...overrides,
+})
 
 const conversation = (overrides: Partial<ConversationView> = {}): ConversationView => ({
     id: 'op-7',
@@ -55,6 +105,12 @@ const conversation = (overrides: Partial<ConversationView> = {}): ConversationVi
     usage: null,
     cleanup: null,
     runtimeVersion: null,
+    source: 'workspaceKey',
+    historyId: SAVED_ID,
+    savedAt: null,
+    saveFailure: null,
+    unsent: null,
+    signInFailure: null,
     ...overrides,
 })
 
@@ -79,7 +135,9 @@ describe('the native Harness (C19)', () => {
         expect(screen.getByRole('button', { name: 'Start conversation' })).toBeDisabled()
 
         await native.push(snapshot({ key: keyFor(B) }))
-        expect(await screen.findByText('Store an inference key for Team A in the AI Gateway Playground to use the Harness.')).toBeInTheDocument()
+        expect(
+            await screen.findByText('Store an inference key for Team A in the AI Gateway Playground, or set up company sign-in below, to use the Harness.')
+        ).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Start conversation' })).toBeDisabled()
 
         await native.push(snapshot())
@@ -220,5 +278,160 @@ describe('the native Harness (C19)', () => {
         await native.push(snapshot())
         await waitFor(() => expect(screen.getByRole('button', { name: 'Start conversation' })).toHaveFocus())
         expect(document.body.textContent).not.toContain('gw-')
+    })
+})
+
+describe('company sign-in and protected history (C20)', () => {
+    it('sets up company sign-in, signs in through the browser, chooses it and signs out', async () => {
+        const native = scriptedNative(snapshot())
+        const user = await open(native)
+        await user.click(screen.getByRole('button', { name: 'Set up company sign-in' }))
+        const form = screen.getByRole('button', { name: 'Save company sign-in' }).closest('form') as HTMLFormElement
+        await user.type(within(form).getByLabelText('Gateway endpoint'), ENDPOINT)
+        await user.type(within(form).getByLabelText('Identity provider (issuer URL)'), ISSUER)
+        await user.type(within(form).getByLabelText('Client ID'), 'desktop-client')
+        await user.type(within(form).getByLabelText('Gateway audience'), 'https://gateway.example')
+        await user.click(screen.getByRole('button', { name: 'Save company sign-in' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({
+                kind: 'configureHarnessSignIn',
+                context: CONTEXT,
+                workspace: REF_A,
+                endpoint: ENDPOINT,
+                issuer: ISSUER,
+                clientId: 'desktop-client',
+                audience: 'https://gateway.example',
+            })
+        )
+
+        await native.push(snapshot({ signIn: signIn({ selected: false }) }))
+        const choice = await screen.findByRole('group', { name: 'Answer with' })
+        expect(within(choice).getByRole('radio', { name: /The workspace inference key/ })).toBeChecked()
+        expect(screen.getByRole('button', { name: 'Start conversation' })).toBeEnabled()
+        await user.click(screen.getByRole('button', { name: 'Sign in with your browser' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signInHarness', context: CONTEXT }))
+        await native.push(snapshot({ signIn: signIn({ step: 'browser' }) }))
+        expect(await screen.findByText('Continue in your browser. This app is waiting for it to come back.')).toBeInTheDocument()
+        // Not signed in yet: no conversation with company sign-in.
+        expect(screen.getByRole('button', { name: 'Start conversation' })).toBeDisabled()
+        await user.click(screen.getByRole('button', { name: 'Cancel sign-in' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'cancelHarnessSignIn', context: CONTEXT }))
+
+        await native.push(snapshot({ signIn: signIn({ failure: 'invalidToken' }) }))
+        expect(await screen.findByRole('alert')).toHaveTextContent('A token from the identity provider did not verify')
+
+        await native.push(snapshot({ signIn: signIn({ account: 'alice@example.com' }) }))
+        expect(await screen.findByText('Company sign-in (alice@example.com)')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Start conversation' })).toBeEnabled()
+        await user.click(within(screen.getByRole('group', { name: 'Answer with' })).getByRole('radio', { name: /The workspace inference key/ }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'chooseHarnessCredential', context: CONTEXT, source: 'workspaceKey' })
+        )
+        await user.click(screen.getByRole('button', { name: 'Sign out' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signOutHarness', context: CONTEXT }))
+        expect(document.body.textContent).not.toContain('eyJ')
+    })
+
+    it('gives a message back when its renewal fails and shows the conversation as saved or not', async () => {
+        const native = scriptedNative(
+            snapshot({
+                signIn: signIn({ account: 'alice@example.com' }),
+                conversation: conversation({ phase: 'ready', source: 'companySignIn', savedAt: 1_790_000_000 }),
+            })
+        )
+        await open(native)
+        expect(await screen.findByText(/^Saved /, { selector: '[data-slot="harness-saved"]' })).toBeInTheDocument()
+        await native.push(
+            snapshot({
+                signIn: signIn({ account: 'alice@example.com', failure: 'sessionExpired' }),
+                conversation: conversation({
+                    phase: 'ready',
+                    source: 'companySignIn',
+                    unsent: 'What did I ask?',
+                    signInFailure: 'sessionExpired',
+                    saveFailure: 'locked',
+                }),
+            })
+        )
+        const box = await screen.findByLabelText('Message')
+        await waitFor(() => expect(box).toHaveValue('What did I ask?'))
+        await waitFor(() => expect(box).toHaveFocus())
+        expect(screen.getByText('Your sign-in has expired. Sign in again to send. Your message was not sent; it is back in the box.')).toBeInTheDocument()
+        expect(screen.getByText(/^Not saved: The Keychain is locked/)).toBeInTheDocument()
+        await native.push(snapshot({ conversation: conversation({ phase: 'renewing', source: 'companySignIn' }) }))
+        expect(await screen.findByText('Renewing your sign-in and restarting the engine with the conversation…')).toBeInTheDocument()
+    })
+
+    it('lists, opens, continues, exports and deletes saved conversations', async () => {
+        const native = scriptedNative(snapshot({ history: null }))
+        const user = await open(native)
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'listHarnessHistory', context: CONTEXT, workspace: REF_A }))
+        expect(screen.getByText('Reading saved conversations…')).toBeInTheDocument()
+        await native.push(snapshot({ history: history() }))
+        const list = await screen.findByRole('list', { name: 'Saved conversations' })
+        expect(within(list).getByText('4 messages', { exact: false })).toBeInTheDocument()
+        await user.click(within(list).getByRole('button', { name: 'Open Remember periwinkle' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'openHarnessHistory', context: CONTEXT, workspace: REF_A, id: SAVED_ID }))
+        const opened = {
+            id: SAVED_ID,
+            title: 'Remember periwinkle',
+            updated: 1_790_000_000,
+            entries: [
+                { id: 'u-1', role: 'operator' as const, text: 'Remember periwinkle', state: 'complete' as const },
+                { id: 'u-1/msg_1', role: 'assistant' as const, text: 'Noted.', state: 'complete' as const },
+            ],
+            source: 'workspaceKey' as const,
+            notContinuable: null,
+        }
+        await native.push(snapshot({ history: history({ opened }) }))
+        const heading = await screen.findByRole('heading', { name: 'Remember periwinkle' })
+        await waitFor(() => expect(heading).toHaveFocus())
+        expect(within(screen.getByRole('list', { name: 'Saved messages' })).getAllByRole('listitem')).toHaveLength(2)
+        await user.click(screen.getByRole('button', { name: 'Continue this conversation' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'resumeHarness', context: CONTEXT, workspace: REF_A, id: SAVED_ID }))
+        await user.selectOptions(screen.getByLabelText('Export as'), 'json')
+        await user.click(screen.getByRole('button', { name: 'Export…' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'exportHarnessHistory', context: CONTEXT, workspace: REF_A, id: SAVED_ID, format: 'json' })
+        )
+        await native.push(snapshot({ history: history({ opened, export: { kind: 'harnessConversation', state: 'saved', name: 'harness-x.json' } }) }))
+        expect(await screen.findByText('Saved harness-x.json.')).toBeInTheDocument()
+        // Deleting asks first.
+        const before = native.dispatched.length
+        await user.click(screen.getByRole('button', { name: 'Delete…' }))
+        expect(screen.getByText('Delete this saved conversation from this Mac? It cannot be recovered.')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Keep it' }))
+        expect(native.dispatched.slice(before)).toEqual([])
+        await user.click(screen.getByRole('button', { name: 'Delete…' }))
+        await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'deleteHarnessHistory', context: CONTEXT, workspace: REF_A, id: SAVED_ID }))
+        await native.push(snapshot({ history: history({ conversations: [] }) }))
+        expect(await screen.findByText('No saved conversations in this workspace.')).toBeInTheDocument()
+        await waitFor(() => expect(screen.getByRole('heading', { name: 'Saved conversations' })).toHaveFocus())
+    })
+
+    it('says why a saved conversation cannot be continued, names unreadable ones and a full workspace', async () => {
+        const opened = {
+            id: SAVED_ID,
+            title: 'Old key',
+            updated: 1_790_000_000,
+            entries: [],
+            source: 'workspaceKey' as const,
+            notContinuable: 'otherCredential' as const,
+        }
+        const unreadable = '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6e'
+        const native = scriptedNative(snapshot({ history: history({ opened, unreadable: [unreadable], full: true }) }))
+        const user = await open(native)
+        expect(
+            await screen.findByText(
+                'It ran with another key, sign-in or endpoint than this workspace uses now, so it can be read and exported but not continued.'
+            )
+        ).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Continue this conversation' })).toBeNull()
+        expect(screen.getAllByText('This workspace already keeps 16 saved conversations. Delete one to keep new conversations.').length).toBeGreaterThan(0)
+        await user.click(screen.getByRole('button', { name: 'Delete unreadable conversation' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'deleteHarnessHistory', context: CONTEXT, workspace: REF_A, id: unreadable }))
+        await native.push(snapshot({ history: history({ state: 'failed', failure: 'locked', conversations: [] }) }))
+        expect(await screen.findByRole('alert')).toHaveTextContent('The Keychain is locked, so saved conversations cannot be read or saved.')
     })
 })

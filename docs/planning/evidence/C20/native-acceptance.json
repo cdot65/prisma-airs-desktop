@@ -1,0 +1,122 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C20",
+  "recorded_utc": "2026-10-21T20:49:45Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes), playing the browser against the app's loopback callback, and inspecting the engine's processes, the fixture keychain and the sealed history files, against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c20.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "f639703db1784ba94fb736345b82f973f63c91e6a435846b357e9dd34b75fb87",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C20-N01",
+      "description": "Company sign-in is configured for the chosen workspace (an http issuer is refused) and opens exactly one HTTPS authorization URL at the configured issuer, with the client ID, PKCE S256, fresh state and nonce, and a 127.0.0.1 loopback redirect; a callback with another state is refused; the real callback signs the account in, adds one Keychain item, and the app's state holds no token.",
+      "result": "pass",
+      "observation": "sign-in {'refused_http': True, 'saved': True, 'opened': ['https://localhost:57204/idp/authorize'], 'https_issuer': True, 'pkce': True, 'loopback': True, 'state_nonce': True, 'client': True, 'status': 200, 'forged': 400, 'signed_in': True, 'provider_shown': True, 'account_shown': True, 'keychain_item_added': True, 'token_exchanges': ['authorization_code'], 'no_token_in_state': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-configured.json",
+        "docs/planning/evidence/C20/native/tree-signed-in.json"
+      ]
+    },
+    {
+      "id": "C20-N02",
+      "description": "A conversation with company sign-in is answered by the pinned engine with an access token the identity provider issued (not the workspace key), and the conversation says it was saved.",
+      "result": "pass",
+      "observation": "conversation {'ready': True, 'answered': True, 'sent': 1, 'token_from_idp': True, 'not_the_key': True, 'saved_shown': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-conversation.json"
+      ]
+    },
+    {
+      "id": "C20-N03",
+      "description": "Once the token is inside its renewal margin, the next message renews it (one refresh), stops the old engine and starts a new one with the new token, restores the conversation (the Gateway request carries the first turn) and answers, with one runtime home at a time.",
+      "result": "pass",
+      "observation": "renewal {'answered': True, 'refreshes': 1, 'new_engine': True, 'old_gone': True, 'restored': True, 'one_home': True, 'messages': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-renewed.json"
+      ]
+    },
+    {
+      "id": "C20-N04",
+      "description": "A refused renewal sends nothing: the message is given back to the box and the reason is announced; signing in again as the same account continues the same conversation, restored, in a new engine.",
+      "result": "pass",
+      "observation": "refused renewal {'shown': True, 'nothing_sent': True, 'message_back': True, 'signed_in_again': True, 'continued': True, 'restored': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-refused-renewal.json"
+      ]
+    },
+    {
+      "id": "C20-N05",
+      "description": "Signing out withdraws the running conversation and reaps its engine, revokes the refresh token at the provider and deletes its Keychain item.",
+      "result": "pass",
+      "observation": "sign-out {'signed_out': True, 'engine_gone': True, 'revoked': True, 'item_deleted': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-signed-out.json"
+      ]
+    },
+    {
+      "id": "C20-N06",
+      "description": "Every conversation is saved after each answer as one sealed file (0600 in a 0700 directory) with no plaintext of the conversation, the key or the tokens anywhere in the app's data; quitting leaves no engine, and after a relaunch the saved conversation is listed again.",
+      "result": "pass",
+      "observation": "history {'files': 1, 'file_modes': ['0o600'], 'dir_modes': ['0o700'], 'plaintext': [], 'listed': True, 'engine_gone_at_quit': True, 'relisted': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-relisted.json"
+      ]
+    },
+    {
+      "id": "C20-N07",
+      "description": "After a relaunch, a saved conversation opens as a list of its messages and continues in a new engine with its history restored (the Gateway request carries the first turn); the same record is updated.",
+      "result": "pass",
+      "observation": "continue {'opened': True, 'resumed': True, 'answered': True, 'restored': True, 'same_record': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-opened.json",
+        "docs/planning/evidence/C20/native/tree-continued.json"
+      ]
+    },
+    {
+      "id": "C20-N08",
+      "description": "Export saves the opened conversation's transcript (Markdown) through the save sheet, with no key, token or replay; Delete asks first, then removes the record from the list and from disk.",
+      "result": "pass",
+      "observation": "export and delete {'exported': True, 'files': ['harness-remember-this-c20-canary-periwinkle-20261021-2049.md'], 'transcript': True, 'no_secrets': True, 'asked': True, 'deleted': True, 'files_left': 0}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-deleted.json"
+      ]
+    },
+    {
+      "id": "C20-N09",
+      "description": "The credential choice is a labelled radio group, Saved conversations is a heading with a named list, and Sign in is reached by Tab from the credential choice.",
+      "result": "pass",
+      "observation": "keyboard and accessibility {'credential_radios': 2, 'history_heading': True, 'tab_order': [{'role': 'AXButton', 'subrole': None, 'label': 'Sign in with your browser'}, {'role': 'AXButton', 'subrole': None, 'label': 'Change identity provider'}, {'role': 'AXButton', 'subrole': None, 'label': 'Remove company sign-in'}, None, {'role': 'AXButton', 'subrole': None, 'label': 'Runtime Security'}, {'role': 'AXButton', 'subrole': None, 'label': 'Academy'}, {'role': 'AXButton', 'subrole': None, 'label': 'Administration'}, {'role': 'AXButton', 'subrole': None, 'label': 'Sessions & Reports'}], 'sign_in_by_tab': True}",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json",
+        "docs/planning/evidence/C20/native/tree-a11y.json"
+      ]
+    },
+    {
+      "id": "C20-N10",
+      "description": "No key, token or refresh token appears in any accessibility snapshot, the synthetic servers' logs hold only hashes and no prompt, v1 data is unchanged, and no engine process is left.",
+      "result": "pass",
+      "observation": "secrets in AX snapshots: []; secret or prompt in the server log: False; engines left: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The identity provider and the Gateway are synthetic local TLS services; no product identity provider or endpoint is called before C25.",
+    "The browser is played by the driver (an HTTPS request to the provider's authorize endpoint and an HTTP request to the app's loopback callback); no real browser session is involved, and the fixture build records the URL instead of opening it.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

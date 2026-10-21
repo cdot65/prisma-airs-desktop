@@ -1,0 +1,144 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C08",
+  "recorded_utc": "2026-10-21T21:33:09Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic TLS endpoints tools/native-acceptance/scan_server.py and tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c08.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "f639703db1784ba94fb736345b82f973f63c91e6a435846b357e9dd34b75fb87",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C08-N01",
+      "description": "Administration is an available destination (no 'Soon'); without a tenant it directs to Settings; for a scan-only tenant it says no management client is ready and offers Open Settings, and a scan through the UI is allowed using the scan key alone (no Authorization header) while the management endpoint receives nothing.",
+      "result": "pass",
+      "observation": "Administration available without 'Not available': True; no-tenant guidance: True; scan-only tenant shows the no-management-client guidance with Open Settings: True; scan-only scan allowed with the scan key and no Authorization: True; management endpoint requests so far: 0",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-admin-no-tenant.json",
+        "docs/planning/evidence/C20/native-C08/tree-admin-not-configured.json"
+      ]
+    },
+    {
+      "id": "C08-N02",
+      "description": "Management onboarding by keyboard in Settings: the status first says no management client is needed for scans; the client ID and secret are typed and Return saves them; the status says the secret is in the Keychain and shows the client ID; the secret field is empty afterwards; exactly one more fixture credential item exists while the scan key's item is kept and the scan key stays saved.",
+      "result": "pass",
+      "observation": "status before: no management client (scans do not need one): True; client typed and saved with Return, status and Client ID shown: True; secret field empty after saving: True; fixture credential items 1 \u2192 2 with the scan key's item kept: True; scan key still saved: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-client-saved.json"
+      ]
+    },
+    {
+      "id": "C08-N03",
+      "description": "Verify sends exactly one POST /oauth2/access_token to the configured token origin with HTTP Basic client authentication equal to the synthetic client (form-encoded), grant_type client_credentials and a scope naming the tenant's TSG, with no secret in the body, then exactly one profiles read under /aisec with the issued bearer token and limit 1 and no scan key; the window says the client can read this tenant.",
+      "result": "pass",
+      "observation": "'can read this tenant' shown: True; token requests [('POST', 'basic-ok', 'client_credentials', 'tsg_id:1234567890', False)]; reads [('/aisec/v1/mgmt/profiles/tsg/1234567890', {'offset': '0', 'limit': '1', 'latest': 'true'}, 'bearer-issued', False)]",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-verified.json"
+      ]
+    },
+    {
+      "id": "C08-N04",
+      "description": "Profiles open at 'Items 1\u201325 of 25+' with rows Profile 00\u201324 and a note that unread rows are not assumed absent; Next page reads offset 25 (limit 25, issued bearer token) and shows 'Items 26\u201330 of 30' with Next page disabled and no partial note; exactly those two profile reads were made.",
+      "result": "pass",
+      "observation": "page 1 rows 00\u201324 with 'Items 1\u201325 of 25+': True; partial note: True; page 2 rows to 29 with 'Items 26\u201330 of 30': True; Next page disabled: True; partial note gone: True; profile reads (offset, limit, auth): [('0', '25', 'bearer-issued'), ('25', '25', 'bearer-issued')]",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-page1.json",
+        "docs/planning/evidence/C20/native-C08/tree-page2.json"
+      ]
+    },
+    {
+      "id": "C08-N05",
+      "description": "A profile's details show its fields and say directional and customized prompt-injection settings were local previews and are not sent; an API key's details show its unknown status value 'FUTURE_STATUS' and last8 while none of the service's secret field values (api_key, auth_code) appear anywhere in the window; deployment profiles (local paging, 1\u20133 of 3) and DLP data patterns (Spring paging, 1\u20131 of 2) are listed.",
+      "result": "pass",
+      "observation": "profile detail with fields and the local-preview classification: True; API key detail with the unknown status 'FUTURE_STATUS' and last8: True; secret field values in the tree: []; deployment profiles 1\u20133 of 3: True; DLP data patterns 'Items 1\u20131 of 2': True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-profile-detail.json",
+        "docs/planning/evidence/C20/native-C08/tree-api-key-detail.json",
+        "docs/planning/evidence/C20/native-C08/tree-data-patterns.json"
+      ]
+    },
+    {
+      "id": "C08-N06",
+      "description": "A 403 on custom topics is shown as the client not being allowed to read them, without server text and not as an empty inventory; after the service returns an empty list, Refresh shows that the service reports no custom topics.",
+      "result": "pass",
+      "observation": "403 shown as not allowed, without server text and not as empty: True; the service's empty list shown as reported empty: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-topics-denied.json",
+        "docs/planning/evidence/C20/native-C08/tree-topics-empty.json"
+      ]
+    },
+    {
+      "id": "C08-N07",
+      "description": "With profile rows shown, a denied Refresh shows the denial and keeps the earlier rows, marked with the time they were read and that they may be out of date.",
+      "result": "pass",
+      "observation": "a denied refresh shows the denial and keeps the earlier rows marked with their read time: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-refresh-denied.json"
+      ]
+    },
+    {
+      "id": "C08-N08",
+      "description": "Replacing the management client in Settings while page 2 of profiles is delayed in flight: back in Administration the inventory restarts at 'Items 1\u201325 of 25+', the delayed reply for the retired credential neither shows its page nor an alert after it arrives, and exactly one new token grant is made for the new credential.",
+      "result": "pass",
+      "observation": "client replaced while page 2 was in flight: True; Administration restarted at 'Items 1\u201325 of 25+' and still there after the late reply: True; no alert from the retired read: True; new token grants: 1",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-replaced-mid-pagination.json"
+      ]
+    },
+    {
+      "id": "C08-N09",
+      "description": "A refused token grant (401) is reported as the management client not being accepted, without server text, after only the token request; a scan afterwards is still allowed with the scan key.",
+      "result": "pass",
+      "observation": "refused grant shown as not accepted without server text: True; management requests [('/oauth2/access_token', 401)]; scan afterwards allowed with the scan key: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-grant-refused.json"
+      ]
+    },
+    {
+      "id": "C08-N10",
+      "description": "After quitting and relaunching, the Keychain-held management client reads profiles again; 'Remove management client' returns the status to no management client while the scan key stays saved, leaves only the scan key's fixture credential item, Administration says no management client is ready, and a scan is still allowed.",
+      "result": "pass",
+      "observation": "after relaunch the Keychain client reads page 1: True; removal shows no management client and keeps the scan key: True; fixture credential items after removal equal the scan key's alone: True; Administration not configured: True; scan still allowed: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json",
+        "docs/planning/evidence/C20/native-C08/tree-relaunch.json"
+      ]
+    },
+    {
+      "id": "C08-N11",
+      "description": "At 200% zoom and at the minimum window size, Tab reaches Administration's 'Next page' inside the window and clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Next page', 'pos': [815, 616], 'size': [196, 89]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Next page', 'pos': [467, 516], 'size': [99, 45]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json"
+      ]
+    },
+    {
+      "id": "C08-N12",
+      "description": "No file in the fixture data root other than the fixture keychain, and no fixture WebKit data, contains the client secret, the scan key or any redacted secret field value; no AX snapshot contains them; no management request carried the scan key and no scan request carried an Authorization header; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "data root files ['~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/.fl8C9901EB', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/fixture-management-origin', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/fixture-transport-roots.pem', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/state.json', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/state.lock', '~/Library/Caches/io.cdot.prisma-airs-desktop.v2.fixture/WebKit/CacheStorage/salt', '~/Library/Caches/io.cdot.prisma-airs-desktop.v2.fixture/WebKit/NetworkCache/Version 17/salt', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/Default/salt', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db-shm', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/EnhancedSecurity/EnhancedSecuritySites.db-wal', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/MediaKeys/v1/salt', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db-shm', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/observations.db-wal', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db-shm', '~/Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture/WebsiteData/ResourceLoadStatistics/pcm.db-wal']; files with a secret or redacted value: []; AX snapshots with a secret: []; with a redacted value: []; management requests carrying the scan key: False; scan requests with Authorization: False; v1 data unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C20/native-C08/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The endpoints are local synthetic fixtures with a disposable test CA and a management origin trusted only by the fixture build; live management behavior is qualified in C25.",
+    "Keychain items are inspected by attributes only (security dump-keychain without -d); stored secrets are never read back.",
+    "Spoken VoiceOver output was not recorded; AX roles, names, focus and live status regions are inspected."
+  ]
+}

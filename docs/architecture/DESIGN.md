@@ -1675,6 +1675,66 @@ The presentation adds the Harness destination:
 D046 records the decisions, including the engine's retries and how the
 host limits them.
 
+### C20 implementation: company sign-in, renewal and protected history
+
+Implemented in `crates/desktop-core`:
+- `harness::identity`: the provider (discovery, PKCE attempt, code
+  exchange, refresh, revocation) over the app-owned client, and the
+  `Verifier`. The verifier checks both JWTs against the issuer's JWKS,
+  allowing one bounded refresh for an unknown key; time is judged on the
+  caller's wall clock.
+- `harness::callback`: the one-attempt loopback listener on `127.0.0.1`.
+- `harness::history`: sealed records per tenant and workspace scope (list,
+  read, save, delete, purge) and the transcript exports.
+- `harness::session`: these additions:
+  - After every turn, `desktop/history/read`. Commands wait for it, bounded
+    by the request timeout.
+  - The save sink runs off the task.
+  - `Command::Renew` stops the engine and starts a new one with the new
+    token, restoring the last export (`desktop/history/restore`), and then
+    sends the held message.
+  - A resumed conversation restores instead of starting a thread.
+- `authority/harness_identity`:
+  - the sign-in configuration and the browser sign-in job;
+  - the live grant: serialized renewal, write-ahead refresh-token rotation
+    and revocation;
+  - sign-out.
+- `authority/harness_history`: the chosen workspace's list, open, export,
+  delete and continue; the sink that notes the scope (write-ahead) before
+  sealing a record.
+- `authority/harness_domain`:
+  - the conversation is admitted with the chosen credential;
+  - a message inside the token's renewal margin is held and renewed first;
+  - a failed renewal gives the message back;
+  - a conversation is bound to its grant or key and to the credential
+    choice.
+- Intents:
+  - sign-in: `ConfigureHarnessSignIn`, `RemoveHarnessSignIn`,
+    `ChooseHarnessCredential`, `SignInHarness`, `CancelHarnessSignIn`,
+    `SignOutHarness`;
+  - history: `ListHarnessHistory`, `OpenHarnessHistory`,
+    `CloseHarnessHistory`, `DeleteHarnessHistory`, `ExportHarnessHistory`,
+    `ResumeHarness`.
+- Removing a tenant also ends its grant (revoked; its item in the cleanup
+  ledger), deletes its history keys through the ledger and removes its
+  history directory.
+
+The host bundles nothing new. History lives in `<data>/harness-history`.
+
+The presentation adds two parts to the Harness destination:
+- The Gateway credential: a radio group for the workspace key or company
+  sign-in; the sign-in configuration form; Sign in (browser), Sign in
+  again, Sign out and Remove.
+- Saved conversations: a list with each conversation's message count;
+  opening one shows its messages, with Continue (when its binding
+  matches), Export (Markdown, text or JSON) and Delete (confirmed).
+
+The conversation says when it was last saved or why it was not. A message
+whose renewal failed returns to the box with the reason.
+
+D047 records the decisions: verification, grants and epochs, renewal,
+storage, limits and the crypto provider.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

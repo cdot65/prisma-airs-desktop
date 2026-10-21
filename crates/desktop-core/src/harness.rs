@@ -14,12 +14,15 @@
 //! written to disk (protected history is C20); tools, approvals and
 //! project access are C21, workspace MCP servers C22.
 
+pub mod callback;
 pub mod engine;
+pub mod history;
+pub mod identity;
 pub mod protocol;
 pub mod session;
 pub mod sidecar;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 /// Why a conversation failed or could not start (sanitized: never the
@@ -64,6 +67,13 @@ pub enum HarnessFailure {
     /// The process could not be stopped and reaped within its bound.
     #[error("cleanup failed")]
     CleanupFailed,
+    /// A saved conversation could not be continued: the engine refused its
+    /// replay, or there was none to restore after a renewal (C20).
+    #[error("restore failed")]
+    RestoreFailed,
+    /// Company sign-in must be renewed before anything is sent (C20).
+    #[error("sign-in needed")]
+    SignInNeeded,
 }
 
 /// Where a conversation stands.
@@ -78,6 +88,9 @@ pub enum HarnessPhase {
     Answering,
     /// Stopping the answer.
     Interrupting,
+    /// Renewing the Gateway sign-in, then restarting the engine and
+    /// restoring the conversation before the message is sent (C20).
+    Renewing,
     /// Stopping the engine.
     Ending,
     Ended,
@@ -85,7 +98,7 @@ pub enum HarnessPhase {
 }
 
 /// Who wrote an entry.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum HarnessRole {
     Operator,
@@ -93,7 +106,7 @@ pub enum HarnessRole {
 }
 
 /// How an entry stands.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum EntryState {
     Streaming,
@@ -105,7 +118,7 @@ pub enum EntryState {
     Failed,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HarnessEntry {
     pub id: String,
@@ -127,7 +140,7 @@ pub enum Cleanup {
 }
 
 /// Tokens the engine reported for the conversation so far.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, TS, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HarnessUsage {
     #[ts(type = "number")]

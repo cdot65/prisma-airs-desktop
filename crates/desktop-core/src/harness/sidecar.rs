@@ -56,6 +56,8 @@ pub struct HarnessAdapters {
     pub engine: Option<super::engine::Engine>,
     /// Where ephemeral runtime homes are made (None: unavailable).
     pub runtime_root: Option<PathBuf>,
+    /// Where protected history is kept (C20; None: not kept).
+    pub history_root: Option<PathBuf>,
     /// Fixture builds only: a stand-in engine's pin and a shorter
     /// bootstrap bound. Shipping builds always use the compiled pin.
     #[cfg(feature = "test-fixtures")]
@@ -76,6 +78,7 @@ impl HarnessAdapters {
             launcher: std::sync::Arc::new(UnavailableLauncher),
             engine: None,
             runtime_root: None,
+            history_root: None,
             #[cfg(feature = "test-fixtures")]
             fixture: None,
         }

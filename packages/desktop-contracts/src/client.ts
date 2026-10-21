@@ -919,7 +919,16 @@ function isGatewayView(value: unknown): boolean {
     )
 }
 
-export const HARNESS_PHASES: readonly string[] = ['starting', 'ready', 'answering', 'interrupting', 'ending', 'ended', 'failed']
+export const HARNESS_PHASES: readonly string[] = [
+    'starting',
+    'ready',
+    'answering',
+    'interrupting',
+    'renewing',
+    'ending',
+    'ended',
+    'failed',
+]
 export const HARNESS_FAILURES: readonly string[] = [
     'engineUnavailable',
     'credentialMissing',
@@ -934,7 +943,32 @@ export const HARNESS_FAILURES: readonly string[] = [
     'refused',
     'turnFailed',
     'cleanupFailed',
+    'restoreFailed',
+    'signInNeeded',
 ]
+export const SIGN_IN_FAILURES: readonly string[] = [
+    'invalidConfig',
+    'network',
+    'invalidResponse',
+    'denied',
+    'timedOut',
+    'cancelled',
+    'browserUnavailable',
+    'callbackUnavailable',
+    'invalidToken',
+    'opaqueToken',
+    'wrongWorkspace',
+    'differentAccount',
+    'sessionExpired',
+    'storeFailed',
+]
+export const HISTORY_FAILURES: readonly string[] = ['locked', 'denied', 'unavailable', 'full', 'tooLarge', 'unreadable', 'missing']
+const CREDENTIAL_SOURCES: readonly string[] = ['workspaceKey', 'companySignIn']
+const SIGN_IN_STEPS: readonly string[] = ['contacting', 'browser', 'completing']
+const NOT_CONTINUABLE: readonly string[] = ['running', 'otherCredential', 'engineUnavailable']
+/** Saved conversations per workspace and a title's length (C20). */
+const MAX_SAVED_CONVERSATIONS = 16
+const MAX_TITLE_CHARS = 80
 const HARNESS_STOPS: readonly string[] = ['ended', 'sleep', 'quit', 'deadline']
 const TURN_ENDS: readonly string[] = ['completed', 'interrupted', 'truncated', 'failed', 'refused']
 const ENTRY_STATES: readonly string[] = ['streaming', 'complete', 'interrupted', 'truncated', 'failed']
@@ -973,7 +1007,84 @@ function isHarnessView(value: unknown): boolean {
         isString(e.runtimeVersion) &&
         typeof e.engineCommit === 'string' &&
         GIT_COMMIT.test(e.engineCommit)
-    return engineOk && optional(isConversationView, value.conversation)
+    return (
+        engineOk &&
+        optional(isConversationView, value.conversation) &&
+        optional(isHarnessSignInView, value.signIn) &&
+        optional(isHarnessHistoryView, value.history)
+    )
+}
+
+/** The company sign-in for the Harness Gateway credential (C20). */
+function isHarnessSignInView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isListedWorkspace(value.workspace) &&
+        typeof value.endpoint === 'string' &&
+        value.endpoint.startsWith('https://') &&
+        typeof value.issuer === 'string' &&
+        value.issuer.startsWith('https://') &&
+        isString(value.clientId) &&
+        isString(value.audience) &&
+        typeof value.selected === 'boolean' &&
+        optional(isString, value.account) &&
+        optional((v) => oneOf(SIGN_IN_STEPS, v), value.step) &&
+        optional((v) => oneOf(SIGN_IN_FAILURES, v), value.failure)
+    )
+}
+
+function isSavedConversation(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        UUID.test(value.id) &&
+        typeof value.title === 'string' &&
+        [...value.title].length <= MAX_TITLE_CHARS &&
+        isCount(value.updated) &&
+        isCount(value.entries) &&
+        (value.entries as number) <= MAX_HARNESS_ENTRIES &&
+        oneOf(CREDENTIAL_SOURCES, value.source)
+    )
+}
+
+function isOpenedConversation(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    const entries = value.entries
+    return (
+        typeof value.id === 'string' &&
+        UUID.test(value.id) &&
+        typeof value.title === 'string' &&
+        [...value.title].length <= MAX_TITLE_CHARS &&
+        isCount(value.updated) &&
+        Array.isArray(entries) &&
+        entries.length <= MAX_HARNESS_ENTRIES &&
+        entries.every(isHarnessEntry) &&
+        oneOf(CREDENTIAL_SOURCES, value.source) &&
+        optional((v) => oneOf(NOT_CONTINUABLE, v), value.notContinuable)
+    )
+}
+
+/** The chosen workspace's protected history (C20). */
+function isHarnessHistoryView(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    const conversations = value.conversations
+    const unreadable = value.unreadable
+    return (
+        oneOf(['loading', 'ready', 'failed'], value.state) &&
+        Array.isArray(conversations) &&
+        Array.isArray(unreadable) &&
+        conversations.length + unreadable.length <= MAX_SAVED_CONVERSATIONS &&
+        conversations.every(isSavedConversation) &&
+        unreadable.every((id) => typeof id === 'string' && UUID.test(id)) &&
+        optional((v) => oneOf(HISTORY_FAILURES, v), value.failure) &&
+        // A failed list names why.
+        (value.state !== 'failed' || value.failure !== null) &&
+        typeof value.full === 'boolean' &&
+        optional(isOpenedConversation, value.opened) &&
+        typeof value.busy === 'boolean' &&
+        optional((v) => oneOf(HISTORY_FAILURES, v), value.problem) &&
+        optional((e) => isExportView(e) && (e as Record<string, unknown>).kind === 'harnessConversation', value.export)
+    )
 }
 
 function isConversationView(value: unknown): boolean {
@@ -999,7 +1110,14 @@ function isConversationView(value: unknown): boolean {
         optional((c) => oneOf(CLEANUPS, c), value.cleanup) &&
         // An ended conversation says how its engine was stopped.
         (value.phase !== 'ended' || value.cleanup !== null) &&
-        optional(isString, value.runtimeVersion)
+        optional(isString, value.runtimeVersion) &&
+        oneOf(CREDENTIAL_SOURCES, value.source) &&
+        typeof value.historyId === 'string' &&
+        UUID.test(value.historyId) &&
+        optional(isCount, value.savedAt) &&
+        optional((v) => oneOf(HISTORY_FAILURES, v), value.saveFailure) &&
+        optional((v) => typeof v === 'string' && utf8Bytes(v) <= 32 * 1024, value.unsent) &&
+        optional((v) => oneOf(SIGN_IN_FAILURES, v), value.signInFailure)
     )
 }
 
@@ -1199,7 +1317,7 @@ export const REPORT_PROBLEMS: readonly string[] = ['reason', 'field', 'detectors
 const REPORTS_STATES: readonly string[] = ['idle', 'loading', 'ready', 'failed']
 const REPORT_STORE_FAILURES: readonly string[] = ['unavailable', 'unreadable']
 const INVESTIGATION_STORAGE: readonly string[] = ['memory', 'protected', 'unavailable']
-const EXPORT_KINDS: readonly string[] = ['reports', 'investigation', 'cases']
+const EXPORT_KINDS: readonly string[] = ['reports', 'investigation', 'cases', 'harnessConversation']
 const EXPORT_STATES: readonly string[] = ['saving', 'saved', 'cancelled', 'failed']
 
 function isReport(value: unknown): boolean {
@@ -1243,7 +1361,13 @@ function isSessionsView(value: unknown): boolean {
                 isCount(i.contents),
             value.investigation
         ) &&
-        optional((e) => isExportView(e) && (e as Record<string, unknown>).kind !== 'cases', value.export)
+        optional(
+            (e) =>
+                isExportView(e) &&
+                (e as Record<string, unknown>).kind !== 'cases' &&
+                (e as Record<string, unknown>).kind !== 'harnessConversation',
+            value.export
+        )
     )
 }
 

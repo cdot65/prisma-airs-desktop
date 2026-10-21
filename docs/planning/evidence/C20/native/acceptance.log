@@ -1,0 +1,10 @@
+PASS C20-N01 sign-in {'refused_http': True, 'saved': True, 'opened': ['https://localhost:57204/idp/authorize'], 'https_issuer': True, 'pkce': True, 'loopback': True, 'state_nonce': True, 'client': True, 'status': 200, 'forged': 400, 
+PASS C20-N02 conversation {'ready': True, 'answered': True, 'sent': 1, 'token_from_idp': True, 'not_the_key': True, 'saved_shown': True}
+PASS C20-N03 renewal {'answered': True, 'refreshes': 1, 'new_engine': True, 'old_gone': True, 'restored': True, 'one_home': True, 'messages': True}
+PASS C20-N04 refused renewal {'shown': True, 'nothing_sent': True, 'message_back': True, 'signed_in_again': True, 'continued': True, 'restored': True}
+PASS C20-N05 sign-out {'signed_out': True, 'engine_gone': True, 'revoked': True, 'item_deleted': True}
+PASS C20-N06 history {'files': 1, 'file_modes': ['0o600'], 'dir_modes': ['0o700'], 'plaintext': [], 'listed': True, 'engine_gone_at_quit': True, 'relisted': True}
+PASS C20-N07 continue {'opened': True, 'resumed': True, 'answered': True, 'restored': True, 'same_record': True}
+PASS C20-N08 export and delete {'exported': True, 'files': ['harness-remember-this-c20-canary-periwinkle-20261021-2049.md'], 'transcript': True, 'no_secrets': True, 'asked': True, 'deleted': True, 'files_left': 0}
+PASS C20-N09 keyboard and accessibility {'credential_radios': 2, 'history_heading': True, 'tab_order': [{'role': 'AXButton', 'subrole': None, 'label': 'Sign in with your browser'}, {'role': 'AXButton', 'subrole': None, 'label': 'Chan
+PASS C20-N10 secrets in AX snapshots: []; secret or prompt in the server log: False; engines left: []; v1 unchanged: True

@@ -72,6 +72,11 @@ rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs
 rustls = { version = "=0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
 tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws_lc_rs", "tls12"] }
 time = "=0.3.55"
+# The synthetic OpenID provider for browser_callback (C20; same pins as
+# desktop-core).
+jsonwebtoken = { version = "=11.1.0", default-features = false, features = ["aws_lc_rs"] }
+base64 = "=0.22.1"
+sha2.workspace = true
 
 [lints]
 workspace = true

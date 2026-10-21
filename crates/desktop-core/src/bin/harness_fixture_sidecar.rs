@@ -347,6 +347,28 @@ fn main() {
                 }
             }
             "turn/interrupt" => send(&json!({"id": id, "result": {}})),
+            // C20: an export of the idle thread (a stand-in replay naming
+            // its turns), and a restore of one.
+            "desktop/history/read" => match mode.as_str() {
+                "history-silent" => {}
+                "history-refuse" => {
+                    send(&json!({"id": id, "error": {"code": -32600, "message": "busy"}}))
+                }
+                _ => send(&json!({"id": id, "result": {
+                    "context": {"fixture": true, "credentialId": p["credentialId"]},
+                    "replay": {"schemaVersion": 1, "turns": turns}}})),
+            },
+            "desktop/history/restore" => {
+                let params = &message["params"];
+                if mode == "restore-refuse"
+                    || params["context"]["credentialId"] != p["credentialId"]
+                {
+                    send(&json!({"id": id, "error": {"code": -32600, "message": "context"}}));
+                } else {
+                    turns = params["replay"]["turns"].as_u64().unwrap_or(0) as u32;
+                    send(&json!({"id": id, "result": {"thread": {"id": thread, "turns": []}}}));
+                }
+            }
             _ => {
                 if !id.is_null() {
                     send(&json!({"id": id, "error": {"code": -32601, "message": "unknown"}}));

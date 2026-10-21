@@ -7,7 +7,16 @@
 //! it is still bound (the same context, the chosen workspace and the key it
 //! was started with); the moment it is not, it is retired: its view is
 //! withdrawn and its engine is stopped and reaped. Ending it, sleep and
-//! quitting stop it too. Nothing of it is kept once it is cleared.
+//! quitting stop it too.
+//!
+//! C20: a conversation runs with either the workspace key or the tenant's
+//! company sign-in for that workspace (its grant), whichever is chosen when
+//! it starts; choosing the other, signing out or a new grant retires it.
+//! Before each message, a sign-in token inside its renewal margin (wall
+//! clock) is renewed and the engine restarted with it, the conversation
+//! restored; a failed renewal gives the message back and nothing is sent.
+//! After every turn the conversation is saved to protected history, and a
+//! saved conversation with the same binding can be continued.
 
 use std::sync::Arc;
 
@@ -17,11 +26,14 @@ use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 use zeroize::Zeroizing;
 
+use super::harness_identity::{Grant, now};
 use super::{Refusal, ScanCapability, State};
 use crate::context::{ContextRef, WorkspaceRef};
 use crate::gateway::ListedWorkspace;
 use crate::gateway_inference::InferenceFailure;
-use crate::harness::session::{Command, Inputs, ProgressSlot, ProxyEnv, TurnEnd};
+use crate::harness::history::{CredentialSource, HistoryFailure, SavedBinding, Scope};
+use crate::harness::identity::SignInFailure;
+use crate::harness::session::{Command, Inputs, ProgressSlot, ProxyEnv, Replay, TurnEnd};
 use crate::harness::sidecar::HarnessAdapters;
 use crate::harness::{
     Cleanup, HarnessEntry, HarnessFailure, HarnessPhase, HarnessUsage, engine, protocol,
@@ -51,7 +63,8 @@ pub(super) struct Conversation {
     tenant: TenantId,
     reference: WorkspaceRef,
     workspace: ListedWorkspace,
-    record: RecordId,
+    /// The workspace key it runs with (workspace key).
+    record: Option<RecordId>,
     endpoint: String,
     commands: mpsc::Sender<Command>,
     cancel: CancellationToken,
@@ -63,6 +76,44 @@ pub(super) struct Conversation {
     /// No longer bound: withdrawn from every view at once.
     retired: bool,
     entries: u64,
+    source: CredentialSource,
+    /// The signed-in grant it runs under (company sign-in).
+    grant: Option<Arc<Grant>>,
+    /// When the engine's sign-in token must be renewed (wall clock).
+    engine_renew_at: Option<u64>,
+    /// A message given back because its renewal failed (shown in the box).
+    unsent: Option<String>,
+    renew_failure: Option<SignInFailure>,
+    /// Its protected history record.
+    pub(super) history_id: String,
+}
+
+/// A saved conversation to continue.
+pub(super) struct Resume {
+    pub(super) id: String,
+    pub(super) created: u64,
+    pub(super) binding: SavedBinding,
+    pub(super) entries: Vec<HarnessEntry>,
+    pub(super) usage: Option<HarnessUsage>,
+    pub(super) replay: Replay,
+}
+
+/// How a conversation's turns are saved (the sink is made with the core).
+pub(super) struct HistoryPlan {
+    pub(super) scope: Scope,
+    pub(super) id: String,
+    pub(super) created: u64,
+    pub(super) binding: SavedBinding,
+    pub(super) tenant: TenantId,
+    pub(super) workspace: String,
+}
+
+/// A message waiting for its sign-in to be renewed.
+pub(super) struct RenewJob {
+    pub(super) conversation: OperationId,
+    pub(super) grant: Arc<Grant>,
+    pub(super) id: String,
+    pub(super) prompt: Zeroizing<String>,
 }
 
 /// What a dispatch starts outside the lock.
@@ -70,6 +121,9 @@ pub(super) struct HarnessStart {
     pub(super) id: OperationId,
     pub(super) inputs: Inputs,
     pub(super) cancel: CancellationToken,
+    /// Company sign-in: the token is obtained (renewed if needed) first.
+    pub(super) grant: Option<Arc<Grant>>,
+    pub(super) history: Option<HistoryPlan>,
 }
 
 /// The bundled engine, as the presentation sees it.
@@ -100,6 +154,18 @@ pub struct ConversationView {
     pub usage: Option<HarnessUsage>,
     pub cleanup: Option<Cleanup>,
     pub runtime_version: Option<String>,
+    /// The credential it runs with.
+    pub source: CredentialSource,
+    /// Its protected history record (a UUID).
+    pub history_id: String,
+    /// When it was last saved (wall-clock seconds), and why the last save
+    /// did not happen.
+    #[ts(type = "number | null")]
+    pub saved_at: Option<u64>,
+    pub save_failure: Option<HistoryFailure>,
+    /// A message given back because renewing the sign-in failed.
+    pub unsent: Option<String>,
+    pub sign_in_failure: Option<SignInFailure>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -107,6 +173,10 @@ pub struct ConversationView {
 pub struct HarnessView {
     pub engine: HarnessEngineView,
     pub conversation: Option<ConversationView>,
+    /// The active tenant's company sign-in (C20).
+    pub sign_in: Option<super::harness_identity::HarnessSignInView>,
+    /// The chosen workspace's protected history (C20).
+    pub history: Option<super::harness_history::HarnessHistoryView>,
 }
 
 fn key_failure(f: InferenceFailure) -> HarnessFailure {
@@ -118,7 +188,10 @@ fn key_failure(f: InferenceFailure) -> HarnessFailure {
 }
 
 impl State {
-    /// Admits a conversation in the chosen workspace with its stored key.
+    /// Admits a conversation in the chosen workspace with the chosen
+    /// credential: the company sign-in's grant when it is chosen for this
+    /// workspace, otherwise the workspace's stored key. `resume` continues
+    /// a saved conversation with exactly this binding.
     pub(super) fn start_harness(
         &mut self,
         context: ContextRef,
@@ -126,15 +199,17 @@ impl State {
         adapters: &HarnessAdapters,
         keychain: Arc<dyn super::CredentialStore>,
         session_vault: Arc<SessionVault>,
+        resume: Option<Resume>,
     ) -> Result<HarnessStart, Refusal> {
-        let admission = self.admit_key(&context, &reference, keychain, session_vault)?;
+        let tenant = self.check_context(&context)?;
+        let workspace = self.inference_workspace(&context, &reference)?;
         let (Some(engine), Some(runtime_root)) =
             (adapters.engine.clone(), adapters.runtime_root.clone())
         else {
             return Err(Refusal::CapabilityMissing);
         };
         // The engine names a workspace by UUID; a Gateway workspace ID is one.
-        if !protocol::is_uuid(&admission.workspace.id) {
+        if !protocol::is_uuid(&workspace.id) {
             return Err(Refusal::InvalidInput);
         }
         if self.harness.as_ref().is_some_and(|c| c.ended.is_none()) {
@@ -157,18 +232,86 @@ impl State {
                 ProxyEnv::Explicit(url)
             }
         };
+        let (credential, endpoint, record, grant, key, source) =
+            match self.harness_source(&tenant, &workspace) {
+                Some((sign_in, grant)) => {
+                    // Read in the job, after the token is renewed if needed.
+                    let key: crate::harness::session::KeyReader =
+                        Box::new(|| Err(HarnessFailure::SignInNeeded));
+                    (
+                        protocol::derived_uuid("sign-in-grant", &grant.id),
+                        sign_in.target.endpoint,
+                        None,
+                        Some(grant),
+                        key,
+                        CredentialSource::CompanySignIn,
+                    )
+                }
+                None => {
+                    let admission =
+                        self.admit_key(&context, &reference, keychain.clone(), session_vault)?;
+                    let read = admission.key;
+                    let key: crate::harness::session::KeyReader =
+                        Box::new(move || read().map_err(key_failure));
+                    (
+                        protocol::derived_uuid("credential", admission.record.as_str()),
+                        admission.endpoint,
+                        Some(admission.record),
+                        None,
+                        key,
+                        CredentialSource::WorkspaceKey,
+                    )
+                }
+            };
         let binding = protocol::Binding {
-            tenant: protocol::derived_uuid("tenant", admission.tenant.as_str()),
-            workspace: admission.workspace.id.clone(),
-            credential: protocol::derived_uuid("credential", admission.record.as_str()),
+            tenant: protocol::derived_uuid("tenant", tenant.as_str()),
+            workspace: workspace.id.clone(),
+            credential,
             credential_epoch: 1,
-            endpoint: admission.endpoint.clone(),
+            endpoint: endpoint.clone(),
         };
+        let saved = SavedBinding {
+            tenant: binding.tenant.clone(),
+            workspace: binding.workspace.clone(),
+            credential: binding.credential.clone(),
+            credential_epoch: binding.credential_epoch,
+            endpoint: binding.endpoint.clone(),
+            source,
+        };
+        // Only exactly the binding it was saved under continues it.
+        if resume.as_ref().is_some_and(|r| r.binding != saved) {
+            return Err(Refusal::StaleContext);
+        }
+        let (history_id, created, entries, usage, restore) = match resume {
+            Some(r) => (r.id, r.created, r.entries, r.usage, Some(r.replay)),
+            None => (
+                new_history_id().ok_or(Refusal::CapabilityMissing)?,
+                now(),
+                Vec::new(),
+                None,
+                None,
+            ),
+        };
+        let history_plan = adapters.history_root.as_ref().map(|root| HistoryPlan {
+            scope: Scope::new(root, tenant.as_str(), &workspace.id),
+            id: history_id.clone(),
+            created,
+            binding: saved.clone(),
+            tenant: tenant.clone(),
+            workspace: workspace.id.clone(),
+        });
+        let operator_entries = entries
+            .iter()
+            .filter(|e| e.role == crate::harness::HarnessRole::Operator)
+            .count() as u64;
         let id = self.operations.reserve();
         let (commands, receiver) = mpsc::channel(4);
         let cancel = CancellationToken::new();
         let progress = ProgressSlot::default();
-        let read = admission.key;
+        if let Ok(mut p) = progress.lock() {
+            p.entries = entries;
+            p.usage = usage;
+        }
         let inputs = Inputs {
             engine,
             pin: adapters.pin(),
@@ -177,30 +320,51 @@ impl State {
             roots: policy.extra_roots.clone(),
             proxy,
             binding,
-            key: Box::new(move || read().map_err(key_failure)),
+            key,
             commands: receiver,
             progress: Arc::clone(&progress),
             pulse: Arc::clone(&self.stream_pulse),
             client_version: env!("CARGO_PKG_VERSION").to_owned(),
             bootstrap_timeout: adapters.bootstrap_timeout(),
+            history: None,
+            restore,
         };
         self.harness = Some(Conversation {
             id: id.clone(),
             context,
-            tenant: admission.tenant,
+            tenant,
             reference,
-            workspace: admission.workspace,
-            record: admission.record,
-            endpoint: admission.endpoint,
+            workspace,
+            record,
+            endpoint,
             commands,
             cancel: cancel.clone(),
             progress,
             stop: None,
             ended: None,
             retired: false,
-            entries: 0,
+            entries: operator_entries,
+            source,
+            grant: grant.clone(),
+            engine_renew_at: None,
+            unsent: None,
+            renew_failure: None,
+            history_id,
         });
-        Ok(HarnessStart { id, inputs, cancel })
+        Ok(HarnessStart {
+            id,
+            inputs,
+            cancel,
+            grant,
+            history: history_plan,
+        })
+    }
+
+    /// The engine's sign-in token was obtained (company sign-in).
+    pub(super) fn harness_keyed(&mut self, id: &OperationId, renew_at: u64) {
+        if let Some(c) = self.harness.as_mut().filter(|c| &c.id == id) {
+            c.engine_renew_at = Some(renew_at);
+        }
     }
 
     /// The bound, unended conversation `id`.
@@ -220,12 +384,26 @@ impl State {
         Ok(conversation)
     }
 
-    /// Sends one prompt; only while the conversation is ready.
-    pub(super) fn send_harness(&mut self, id: &OperationId, prompt: String) -> Result<(), Refusal> {
+    /// Sends one prompt; only while the conversation is ready. With
+    /// company sign-in, a token inside its renewal margin is renewed first
+    /// (the returned job): nothing is sent with it.
+    pub(super) fn send_harness(
+        &mut self,
+        id: &OperationId,
+        prompt: String,
+    ) -> Result<Option<RenewJob>, Refusal> {
         let prompt = Zeroizing::new(prompt);
         if prompt.trim().is_empty() || prompt.len() > protocol::MAX_PROMPT_BYTES {
             return Err(Refusal::InvalidInput);
         }
+        // A sign-in again to the same account replaces the live grant: the
+        // current one renews.
+        let signed_in = self
+            .harness
+            .as_ref()
+            .filter(|c| &c.id == id && c.grant.is_some())
+            .map(|c| c.tenant.clone());
+        let live = signed_in.and_then(|tenant| self.grant(&tenant));
         let conversation = self.live_harness(id)?;
         if conversation
             .progress
@@ -237,6 +415,24 @@ impl State {
         }
         conversation.entries += 1;
         let entry = format!("u-{}", conversation.entries);
+        conversation.unsent = None;
+        conversation.renew_failure = None;
+        let renew = match (live, conversation.engine_renew_at) {
+            (Some(grant), Some(at)) if now() >= at => Some(grant),
+            _ => None,
+        };
+        if let Some(grant) = renew {
+            conversation.grant = Some(Arc::clone(&grant));
+            if let Ok(mut p) = conversation.progress.lock() {
+                p.phase = HarnessPhase::Renewing;
+            }
+            return Ok(Some(RenewJob {
+                conversation: id.clone(),
+                grant,
+                id: entry,
+                prompt,
+            }));
+        }
         // Ready until the task takes it: nothing else may be queued.
         if let Ok(mut p) = conversation.progress.lock() {
             p.phase = HarnessPhase::Answering;
@@ -244,7 +440,47 @@ impl State {
         conversation
             .commands
             .try_send(Command::Send { id: entry, prompt })
-            .map_err(|_| Refusal::Busy)
+            .map_err(|_| Refusal::Busy)?;
+        Ok(None)
+    }
+
+    /// The renewal for a message ended: restart with the new token, or
+    /// give the message back and say why.
+    pub(super) fn harness_renewed(
+        &mut self,
+        job: RenewJob,
+        renewed: Result<(Zeroizing<String>, u64), SignInFailure>,
+    ) {
+        let bound = self.harness.as_ref().is_some_and(|c| self.harness_bound(c));
+        let Some(c) = self
+            .harness
+            .as_mut()
+            .filter(|c| c.id == job.conversation && c.ended.is_none() && c.stop.is_none())
+        else {
+            return;
+        };
+        match renewed {
+            Ok((key, renew_at)) if bound => {
+                c.engine_renew_at = Some(renew_at);
+                let sent = c.commands.try_send(Command::Renew {
+                    key,
+                    id: job.id,
+                    prompt: job.prompt,
+                });
+                if sent.is_err() {
+                    c.cancel.cancel();
+                }
+            }
+            Ok(_) => {}
+            Err(failure) => {
+                c.entries -= 1;
+                c.unsent = Some(job.prompt.to_string());
+                c.renew_failure = Some(failure);
+                if let Ok(mut p) = c.progress.lock() {
+                    p.phase = HarnessPhase::Ready;
+                }
+            }
+        }
     }
 
     pub(super) fn interrupt_harness(&mut self, id: &OperationId) -> Result<(), Refusal> {
@@ -311,12 +547,29 @@ impl State {
     /// Whether the conversation still belongs to the active context, the
     /// chosen workspace and the key it was started with.
     fn harness_bound(&self, c: &Conversation) -> bool {
+        let Some(tenant) = self.tenant(&c.tenant) else {
+            return false;
+        };
+        // The credential chosen for its workspace now, and its identity.
+        let sign_in = tenant
+            .harness_sign_in
+            .as_ref()
+            .filter(|s| s.selected && s.target.workspace.id == c.workspace.id);
+        let credential_ok = match (&c.grant, sign_in) {
+            (Some(grant), Some(s)) => s
+                .grant
+                .as_ref()
+                .is_some_and(|g| g.id == grant.id && s.target.endpoint == c.endpoint),
+            (None, None) => matches!(
+                &tenant.inference,
+                ScanCapability::Ready { record, .. } if Some(record) == c.record.as_ref()
+            ),
+            _ => false,
+        };
         !c.retired
+            && credential_ok
             && Some(&c.context) == self.active_ref.as_ref()
             && self.workspace_current(Some(&c.reference))
-            && self.tenant(&c.tenant).is_some_and(|t| {
-                matches!(&t.inference, ScanCapability::Ready { record, .. } if record == &c.record)
-            })
     }
 
     /// Retires a conversation that is no longer bound (run on every change).
@@ -370,6 +623,12 @@ impl State {
                     usage: p.usage,
                     cleanup: p.cleanup,
                     runtime_version: p.runtime_version,
+                    source: c.source,
+                    history_id: c.history_id.clone(),
+                    saved_at: p.saved_at,
+                    save_failure: p.save_failure,
+                    unsent: c.unsent.clone(),
+                    sign_in_failure: c.renew_failure,
                 })
             });
         HarnessView {
@@ -380,6 +639,22 @@ impl State {
                 engine_commit: pin.engine_commit,
             },
             conversation,
+            sign_in: self.harness_sign_in_view(),
+            history: self.harness_history_view(),
         }
     }
+
+    /// The live conversation's history record, if it is in this scope.
+    pub(super) fn harness_history_live(&self) -> Option<&str> {
+        self.harness
+            .as_ref()
+            .filter(|c| c.ended.is_none())
+            .map(|c| c.history_id.as_str())
+    }
+}
+
+fn new_history_id() -> Option<String> {
+    let mut bytes = [0u8; 16];
+    getrandom::fill(&mut bytes).ok()?;
+    Some(protocol::derived_uuid("conversation", &hex::encode(bytes)))
 }
