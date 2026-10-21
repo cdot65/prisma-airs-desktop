@@ -227,6 +227,13 @@ impl State {
         let lists_workspaces = super::gateway_domain::lists_workspaces(&request);
         let (domain, workspace, scope) = match gateway {
             Some(g) => (g.domain, g.workspace, g.scope),
+            // An overview also reads the chosen Gateway workspace's
+            // activity (C18); it is labelled with that workspace.
+            None if overview => (
+                context.as_str().to_owned(),
+                None,
+                self.chosen_scope(&context),
+            ),
             None => (context.as_str().to_owned(), None, None),
         };
         let slot: ResultSlot = Arc::default();

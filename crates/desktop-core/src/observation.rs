@@ -81,6 +81,8 @@ pub enum Tone {
 pub enum InboxDestination {
     ApiKeys,
     Sessions,
+    /// The AI Gateway's observation of the chosen workspace (C18).
+    Gateway,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -123,12 +125,71 @@ pub struct RuntimeOverview {
     pub items: Vec<InboxItem>,
     /// What the sources could not establish (sorted, deduplicated).
     pub gaps: Vec<String>,
+    /// The chosen Gateway workspace's last day (C18); none when no
+    /// workspace was chosen when the overview was read.
+    pub gateway: Option<crate::gateway_observe::GatewayOverview>,
 }
 
 fn count(value: Option<&Value>) -> Option<u32> {
     value
         .and_then(Value::as_u64)
         .and_then(|n| u32::try_from(n).ok())
+}
+
+/// The Inbox item a Gateway workspace's errors raise.
+pub fn gateway_item_id(workspace: &str) -> String {
+    format!("gateway-errors-{workspace}")
+}
+
+/// The Gateway's Inbox item and gaps (C18): an item when the chosen
+/// workspace answered with errors in the last day (bad at one error in
+/// ten); a gap for each source that could not be read or was partial.
+pub fn gateway_items(
+    gateway: &crate::gateway_observe::GatewayOverview,
+) -> (Option<InboxItem>, Vec<String>) {
+    let mut gaps = Vec::new();
+    if gateway.usage_failure.is_some() {
+        gaps.push("Gateway activity unavailable".to_owned());
+    } else if gateway.partial {
+        gaps.push("Gateway activity partial (over the service's quota)".to_owned());
+    } else if !gateway.activity_known() {
+        gaps.push("Gateway requests or errors not reported".to_owned());
+    }
+    if gateway.limits_failure.is_some() || gateway.policies.is_none() {
+        gaps.push("Gateway limit policies unavailable".to_owned());
+    }
+    let item = match (gateway.requests, gateway.errors) {
+        (Some(requests), Some(errors)) if errors.value() > 0.0 => {
+            let (requests, errors) = (requests.value(), errors.value());
+            let bad = requests > 0.0 && errors * 10.0 >= requests;
+            Some(InboxItem {
+                id: gateway_item_id(&gateway.workspace),
+                title: format!("Gateway errors in {}", gateway.workspace_name),
+                detail: format!(
+                    "{errors:.0} of {requests:.0} Gateway requests in the last day failed."
+                ),
+                source: "AI Gateway".to_owned(),
+                action: true,
+                tone: if bad { Tone::Bad } else { Tone::Warn },
+                destination: InboxDestination::Gateway,
+                action_label: "Open Gateway logs".to_owned(),
+                facts: vec![
+                    Fact {
+                        label: "Requests".to_owned(),
+                        value: format!("{requests:.0}"),
+                    },
+                    Fact {
+                        label: "Errors".to_owned(),
+                        value: format!("{errors:.0}"),
+                    },
+                ],
+                per_mille: (requests > 0.0)
+                    .then(|| ((errors / requests) * 1000.0).round().min(1000.0) as u32),
+            })
+        }
+        _ => None,
+    };
+    (item, gaps)
 }
 
 /// v1's chart contract: an empty reply is an empty hourly chart; otherwise

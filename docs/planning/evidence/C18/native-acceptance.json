@@ -1,0 +1,159 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C18",
+  "recorded_utc": "2026-10-21T05:51:30Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c18.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "fc84ed85339208e3f86ccfa9321a10afeea53217453bb67e8050c6979607c440",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C18-N01",
+      "description": "The Playground offers no run without a workspace inference key and never the management client; the key is entered for the chosen workspace with its runtime endpoint, stored natively and never shown, and nothing is sent by storing it.",
+      "result": "pass",
+      "observation": "key {'offered': True, 'run_disabled_without_key': True, 'stored': True, 'shown': False, 'runs': 0}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-key-stored.json"
+      ]
+    },
+    {
+      "id": "C18-N02",
+      "description": "One run is sent only when Run is pressed: once, with the inference key (no management authorization) to the stored endpoint, streaming, at most 256 tokens; its output, served model, token counts and trace are shown and the trace matches the request.",
+      "result": "pass",
+      "observation": "run {'warned': True, 'nothing_before_run': True, 'completed': True, 'output': True, 'sent': 1, 'key_sha_matches': True, 'no_authorization': True, 'model': '@openai-prod/gpt-4o', 'stream': True, 'max_tokens': 256, 'trace_shown': True, 'tokens': True}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-run-completed.json"
+      ]
+    },
+    {
+      "id": "C18-N03",
+      "description": "Stop ends a run mid-stream: the stream is closed, the response says the Gateway may have run and charged for it, and the run is kept on this Mac without its output.",
+      "result": "pass",
+      "observation": "stop {'partial': True, 'stop_offered': True, 'stopped': True, 'kept': True, 'output_kept': True, 'closed_by_client': True, 'sent': 1}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-run-stopped.json"
+      ]
+    },
+    {
+      "id": "C18-N04",
+      "description": "A guardrail refusal (HTTP 446) is named as blocked and never retried; a Gateway failure (HTTP 503) is named, said to be possibly run and charged, kept on this Mac as uncertain with its trace, and never retried.",
+      "result": "pass",
+      "observation": "refusals {'named': True, 'sent': 1, 'unavailable_named': True, 'unavailable_kept': True, 'unavailable_trace_kept': True, 'unavailable_sent': 1}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-run-blocked.json",
+        "docs/planning/evidence/C18/native/tree-run-unavailable.json"
+      ]
+    },
+    {
+      "id": "C18-N05",
+      "description": "Choosing another workspace mid-stream stops the run (the stream is closed) and nothing of it is shown again under either workspace; nothing is replayed.",
+      "result": "pass",
+      "observation": "switch {'streaming': True, 'switched': True, 'closed_by_client': True, 'gone': True, 'sent': 1}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-switch.json"
+      ]
+    },
+    {
+      "id": "C18-N06",
+      "description": "Usage shows each series' total with an accessible chart name and its values reachable by keyboard; a failed source says it was not read instead of a zero; errors and the busiest models are shown.",
+      "result": "pass",
+      "observation": "usage {'requests': True, 'chart_named': True, 'cost_failed': True, 'errors': True, 'models': True, 'reach_values': {'zoom': 1, 'window': {'pos': [95, 37], 'size': [1280, 820]}, 'found': {'role': 'AXDisclosureTriangle', 'label': 'Show requests values', 'pos': [363, 762], 'size': [484, 19]}, 'clear': True}}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-usage.json"
+      ]
+    },
+    {
+      "id": "C18-N07",
+      "description": "Find in logs reads the chosen workspace's logs filtered by the run's trace; Limits shows the usage- and rate-limit policies of the workspace.",
+      "result": "pass",
+      "observation": "logs {'filtered': True, 'trace_query': True, 'slug': True, 'limits': True}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-logs.json",
+        "docs/planning/evidence/C18/native/tree-limits.json"
+      ]
+    },
+    {
+      "id": "C18-N08",
+      "description": "Home/Inbox shows the chosen Gateway workspace's last day (requests, errors, cost, policies) and a Gateway errors item.",
+      "result": "pass",
+      "observation": "home {'day': True, 'item': True, 'heading': True, 'policies': True}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-home.json"
+      ]
+    },
+    {
+      "id": "C18-N09",
+      "description": "An offline relaunch shows the Playground draft and the uncertain runs kept on this Mac (no output) and sends nothing; the kept draft is opened and edited offline by keyboard without a workspace listing, the edit survives another offline relaunch and opens in the Playground once online, and reconnecting sends no inference.",
+      "result": "pass",
+      "observation": "offline {'listing_failed': True, 'kept': True, 'draft': True, 'run_kept': True, 'file_kept': True, 'no_response': True, 'editor': True, 'done': True, 'focus_returned': True, 'edit_kept_offline': True, 'requests': 0, 'opens_online': True, 'reconnect_sent': 0}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-offline.json",
+        "docs/planning/evidence/C18/native/tree-offline-edited.json"
+      ]
+    },
+    {
+      "id": "C18-N12",
+      "description": "Choosing the Responses API sends one streamed /responses run with the inference key and store false (at most 256 output tokens); its output, API, served model and tokens are shown, and nothing goes to chat completions. A run the Gateway ends at the output token limit is shown as incomplete with its reason (max_output_tokens), its partial output and tokens, never as completed; a run the model fails is shown as failed. Each is sent once.",
+      "result": "pass",
+      "observation": "responses {'completed': True, 'output': True, 'sent': 1, 'chat_sent': 0, 'key_sha_matches': True, 'no_authorization': True, 'store': False, 'max_output_tokens': 256, 'stream': True, 'api_shown': True, 'served': True, 'tokens': True, 'incomplete': True, 'reason': True, 'finish_shown': True, 'partial': True, 'incomplete_tokens': True, 'not_completed': True, 'incomplete_sent': 1, 'failed': True, 'failed_not_incomplete': True, 'failed_sent': 1}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-responses.json",
+        "docs/planning/evidence/C18/native/tree-responses-incomplete.json",
+        "docs/planning/evidence/C18/native/tree-responses-failed.json"
+      ]
+    },
+    {
+      "id": "C18-N13",
+      "description": "The workspace's Files tab reads its files with the inference key; a file chosen in the sheet shows only its name and size, is uploaded once by keyboard (multipart, purpose assistants, the chosen bytes) and the status takes focus; a Responses run attaches it as an input_file; Delete asks first (focus on Delete file, Cancel sends nothing and returns focus to the row) and deletes one file once; an upload answered 503 is named as possibly stored, kept on this Mac with its trace and never sent again.",
+      "result": "pass",
+      "observation": "files {'heading': True, 'listed': True, 'retention': True, 'read_key': True, 'chosen': True, 'path_hidden': True, 'uploaded': True, 'upload_sent': 1, 'upload_body': True, 'upload_key': True, 'upload_trace_shown': True, 'focus_node': {'role': 'AXGroup', 'subrole': 'AXApplicationStatus', 'label': '', 'value': ''}, 'status_focused': True, 'picked': True, 'attached_run': True, 'attached_id': True, 'asked': True, 'confirm_focus': True, 'cancel_focus': True, 'nothing_on_cancel': True, 'deleted': True, 'delete_sent': 1, 'delete_target': True, 'uncertain': True, 'kept': True, 'uncertain_sent': 1, 'mismatch_uncertain': True, 'mismatch_kept': True, 'mismatch_listed': True, 'mismatch_sent': 1, 'late_listed': True}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json",
+        "docs/planning/evidence/C18/native/tree-files-uploaded.json",
+        "docs/planning/evidence/C18/native/tree-files-attached.json",
+        "docs/planning/evidence/C18/native/tree-files-deleted.json",
+        "docs/planning/evidence/C18/native/tree-files-uncertain.json",
+        "docs/planning/evidence/C18/native/tree-files-mismatch.json",
+        "docs/planning/evidence/C18/native/tree-files-late.json"
+      ]
+    },
+    {
+      "id": "C18-N10",
+      "description": "Run prompt is keyboard-reachable at 200% zoom and Remove key at the minimum window size, inside the window; a chart's values disclosure is keyboard-reachable.",
+      "result": "pass",
+      "observation": "200% zoom: {'role': 'AXButton', 'label': 'Run prompt', 'pos': [607, 616], 'size': [189, 89]}; minimum size: {'role': 'AXButton', 'label': 'Remove key', 'pos': [521, 516], 'size': [98, 45]}",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json"
+      ]
+    },
+    {
+      "id": "C18-N11",
+      "description": "No AX snapshot carries the inference key, the management secret or the scan key; the synthetic server never logged the prompt or the key; the runtime requests are exactly the runs pressed; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "inference requests [{'trace': 'airs-acec2331eadb2ca4', 'status': 200}, {'trace': 'airs-d9f15e2eaa6626c2', 'status': 200}, {'trace': 'airs-0d71d331c89aefa0', 'status': 446}, {'trace': 'airs-22d2ee9caf2df202', 'status': 503}, {'trace': 'airs-fe1e7482e9b4697d', 'status': 200}, {'trace': 'airs-b2d085c9a68c84a7', 'status': 200}]; responses 4; secrets in AX snapshots: []; upload content or path in AX snapshots: []; prompt or key in the server log: False; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C18/native/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The AI Gateway planes and the runtime endpoint are a synthetic local TLS endpoint; no product endpoint is called before C25 and no live inference budget is used.",
+    "The synthetic replies follow the SDK's Gateway contract shapes; a hung stream and a refusal are simulated by the endpoint.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

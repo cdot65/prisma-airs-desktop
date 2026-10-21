@@ -1176,6 +1176,190 @@ Decided in C17 (implementer decision, recorded for review).
   takes a new generation from the authority's counter, so work admitted
   before a reset finds nothing to read or write after it.
 
+## D044 — Gateway inference, observation and Home/Inbox
+
+Decided in C18 (implementer decision, recorded for review).
+
+- **Dependency.** No new dependency or SDK feature: the pinned `scm-sdk
+  =0.1.0` `gateway` feature already provides `RuntimeClient`, the
+  telemetry, usage- and rate-limit clients and `ContractStream`. Cargo.lock
+  is unchanged.
+- **Inference key.** A third credential class, `Inference`, holds one
+  workspace inference key per tenant. It is entered (masked) in the
+  Playground and passed once to the core, like the management secret. It
+  is bound to the workspace chosen when it was stored (named natively by
+  the current `WorkspaceRef`, never by the presentation) and to the
+  runtime endpoint entered with it: an `https` URL with a host and no
+  credentials, query or fragment (v1's rule). It is stored in the Keychain
+  or for the session, with the same write-ahead ledger, cleanup, tenant
+  deletion and reset as the other classes. The binding (workspace and
+  endpoint, never the key) is saved with the tenant. Storing or removing it
+  is not a tenant-context change: it stops only the run that used the old
+  key, and reviews, reads and the workspace choice stay. The management
+  client is never offered for inference, and the inference key is never
+  offered for management.
+- **Runs.** `RunInference` admits one Playground run under the current
+  context and workspace reference with the key stored for that workspace.
+  One run is admitted at a time. It is the SDK's streamed chat completion:
+  v1's shape (system and user messages, `stream: true`, `max_tokens`
+  256), with the route as `x-portkey-config` when one is chosen and a fresh
+  `airs-` trace as `x-portkey-trace-id`.
+  - **Bounds.** At most 32 KiB of input and 64 KiB of output; once the
+    output reaches its bound, the stream is closed and the run is
+    `truncated`. A stream event may be at most 64 KiB; the stream may be
+    idle for at most 30 s; the whole run may take at most 120 s.
+  - **No retry, no replay.** Retries are 0 and replay stays the SDK's
+    default `Never`. A failed route never falls back to a direct model.
+  - **Binding.** The run's operation lives in the workspace reference's
+    domain. Choosing another workspace or changing the tenant context stops
+    it; replacing or removing the key does too. Its output is shown only
+    while it is still bound, and a late chunk of a retired run is never
+    shown. A key replacement or removal withdraws the run from the very
+    snapshot that admits it, before its cancellation has finished; its end
+    is still recorded (below).
+  - **Outcomes.** Not sent; rejected; completed (the Gateway answered, even
+    if a later chunk was malformed); unknown (stopped or lost after it was
+    sent). When the stream cannot be opened, the outcome is the SDK's own
+    `RemoteOutcome`, never one derived from the failure's label: a 4xx is
+    rejected (446 named `blocked`), while a 5xx, a lost handshake or a
+    malformed successful one is unknown, since the Gateway may have run it.
+    Stopping ends the stream on this Mac. It never establishes that nothing
+    was charged.
+  - **Publishing.** Snapshots follow a streaming run at most every 40 ms.
+- **Observation reads.** These are scoped Gateway reads
+  (`GatewayRead::Observe`) through the SDK's telemetry and policy clients
+  over the management client, for the chosen workspace (its slug for
+  telemetry, its ID for policies). Each source keeps its data or its
+  sanitized failure, and a read fails only when no source answered.
+  - **Usage** (1, 7 or 30 days): the requests, cost, tokens and latency
+    series (at most 2,048 points each) and the busiest models (at most 100
+    of at most 200 rows).
+  - **Logs:** a 25-row page, at most 40 pages, filterable by trace or
+    status. Every row must name the chosen workspace and match the filter,
+    and IDs are unique. The last page that may be read, with more reported
+    (or a full page without a total), is `capped`: the list says more exist
+    and never "all read". A further page continues only the query of the
+    pages shown (its own window and filters, never the form's edited ones),
+    and a reply for any other query or an earlier read is dropped.
+  - **Limits:** the usage- and rate-limit policies naming the chosen
+    workspace.
+  - **Totals.** A total the service did not report is unknown. It is zero
+    only for an empty, complete answer. A window over the service's quota is
+    partial and claims no total.
+  - **What is never shown.** Log metadata, user identities, request URLs
+    and policy conditions stay in the core. Limit policies are read, not
+    changed.
+- **Home and Inbox.** An overview read also reads the chosen workspace's
+  last day: requests, errors and cost, plus how many policies apply. It is
+  labelled with that workspace, and none is read when no workspace is
+  chosen. Errors in the day make a Gateway Inbox item: bad at one error in
+  ten, otherwise a warning. A failed or partial Gateway source, or a day
+  whose requests or errors were not reported, is a gap, so the face is
+  never "All clear". A Gateway item's hold (acknowledged or snoozed) ends
+  only when a read of its own workspace established both the requests and
+  the errors and no longer reports it: a read of another workspace, or an
+  unknown day, keeps it. An overview whose Runtime sources failed but whose
+  Gateway answered is kept.
+- **Work kept on this Mac (T23).** The tenant's Gateway book also keeps:
+  - one Playground draft per workspace (model, route, system text and
+    prompt; saved as typed, within the run bounds);
+  - the record of every run that was sent and did not complete (stopped,
+    or failed after it was sent): workspace, model, route, trace, how it
+    ended, its outcome and token counts, never its output.
+  Both are listed under "Kept on this Mac" (offline too). A kept draft is
+  edited there by its local ID (`SavePlaygroundDraft` with the draft's
+  `id` and no workspace), which needs no listing or workspace reference
+  and so works offline. A pending edit is kept when the form loses focus
+  or closes, not only after the pause in typing. Nothing is replayed on
+  relaunch or reconnect, and a run is always an explicit press from the
+  chosen workspace with its stored key.
+- **Not done here.** File operations beyond D045's subset, the model catalogue
+  (`/models`), log exports, audit logs, pricing, limit-policy writes and
+  entity resets are not provided. Spoken VoiceOver output is not recorded.
+  No real endpoint is called before C25, and no live inference budget is
+  used.
+
+## D045 — Playground APIs and Gateway files: chat completions, Responses and a bounded file subset
+
+Decided in C18 remediation (implementer decision for the C18 milestone
+"supported response/file workflows", recorded for review). Corrected after
+review attempt 2: an earlier version of this decision said the pinned SDK
+could not upload files. That was wrong. `RuntimeClient::create_file`
+(`scm-sdk-0.1.0/src/airs/gateway/runtime_audio.rs`, multipart `POST /files`,
+compiled under the `gateway` feature this build already enables) uploads a
+file, so the file requirement is met here with a bounded subset.
+
+The pinned SDK's `RuntimeClient` and v1 were compared operation by
+operation. v1's Playground streamed chat completions only
+(`bridge/src/gateway-stream.ts`, `createChatCompletion`). It had no
+Responses or file workflow.
+
+| Operation (pinned `scm-sdk 0.1.0`, `RuntimeClient`) | v1 | C18 |
+| --- | --- | --- |
+| `create_chat_completion_stream` | Playground | Supported (v1 parity). |
+| `create_response_stream` | None | Supported: a Playground run with the Responses API, optionally attaching one listed file. |
+| `create_response`, `create_completion(_stream)`, prompt completions/renders, embeddings | None | Not offered: the Playground streams, and v1 had none of them. |
+| `get_response`, `list_input_items`, `delete_response` | None | Not offered: Responses runs are sent with `store: false`, so the Gateway keeps no response to read back, continue or delete. |
+| `list_files` | None | Supported: the chosen workspace's files (metadata only; the first 200, more reported). An upload adds its file at the top and keeps the bound: a file pushed past it is reported as more. A creation time no date can render is shown as unknown, not refused. |
+| `create_file` (multipart) | None | Supported: one file chosen in the native sheet, at most 4 MiB, purpose `assistants`. |
+| `delete_file` | None | Supported: one listed file, after an in-app confirmation. The answer counts only if it names that file: `deleted: true` completes, `deleted: false` is a refusal, and an answer naming another file is uncertain (kept with its trace, the file still listed, never resent). |
+| `retrieve_file` | None | Not needed: the list already gives each file's metadata, and the upload's answer gives the new file's. |
+| `download_file` (content) | None | Not offered: the app never reads a file's content back (retention below). |
+| Purposes `batch`, `fine-tune`, `vision` | None | Not offered: this app has no batch, fine-tuning or image workflow to use them. |
+| Vector stores and their files, batches, fine-tuning jobs | None | Not offered: no v1 workflow and none in the plan. |
+
+- **Responses runs.** These follow D044's rules for runs: the same key,
+  endpoint, workspace binding, trace and route headers, bounds, single
+  send, outcomes and records. The request is `input` (the prompt) with the
+  system text as `instructions`, `max_output_tokens` 256, `stream: true`
+  and `store: false`. With a file attached, `input` is one user message of
+  an `input_text` (the prompt) and an `input_file` (the file's ID). The SDK
+  ends the stream at the completed, incomplete or failed event. Text and
+  refusal deltas are output. The completed or incomplete event gives the
+  response's ID, served model, token counts and end. A failed or error
+  event ends the run as failed, named `modelFailed`; its outcome is
+  completed, since the Gateway answered. Tool, audio and search events are
+  not asked for and add no output.
+- **Cut short (both APIs).** A Responses `response.incomplete`, or a chat
+  finish of `length` or `content_filter`, ends the run as `incomplete`:
+  the Gateway answered, so the outcome is completed and nothing is retried
+  or kept as uncertain. The status says the answer is incomplete and why
+  (the sanitized reason, for example `max_output_tokens`), and the partial
+  output, tokens and trace stay shown. It is never shown as "Completed."
+- **Choice.** The Playground offers the API as a choice (Chat completions
+  by default). It is kept with the draft, shown with the run and kept in
+  an uncertain run's record.
+- **Files: binding.** Every file request uses the workspace inference key
+  and goes only to the runtime endpoint stored with it, admitted through
+  the same check as a run (current context, current workspace reference,
+  the key stored for that workspace). One file request runs at a time, in
+  the reference's operations domain, so another workspace or context stops
+  it. Replacing or removing the key withdraws the files view at once and
+  drops a chosen file. Requests carry a fresh trace header and no route.
+- **Files: choosing and uploading.** A file is chosen in the native sheet.
+  Rust reads it once, up to 4 MiB (a larger or empty file is refused with
+  its reason before anything is sent), and holds it in memory under a
+  random token. The presentation sees only its name and size, never its
+  path or bytes. One upload takes the chosen file; uploading again needs a
+  new choice. The multipart name drops the characters a part name may not
+  carry.
+- **Files: outcomes.** Each request is sent once and never retried. A
+  failed request keeps the SDK's finding (`remote_outcome`): a refusal (4xx)
+  changed nothing; a 5xx, a lost answer, or an answer that is not a file
+  may have stored or deleted it. An upload or delete with an unknown result
+  is kept on this Mac (tenant book, D044) with its action, file name, size,
+  file ID (for a delete), trace and failure. It is never sent again and
+  is shown offline until dismissed; reading the files shows what exists.
+- **Files: attachment.** A Responses run may attach one file, and only one
+  that the files last read for that workspace with that key listed. The
+  Playground offers those files; a draft keeps the chosen file's ID, and a
+  run with a file no longer listed (another key, another workspace, not
+  read since a relaunch) is refused before anything is sent.
+- **Files: retention.** An uploaded file stays in the Gateway until it is
+  deleted, here or elsewhere. The app never deletes one by itself, keeps no
+  copy of its content (not in the tenant book, logs or snapshots) and never
+  downloads one. Deleting asks first and names the file and workspace.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

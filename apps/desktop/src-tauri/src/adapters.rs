@@ -76,6 +76,11 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
             Arc::new(NativeExportPicker { app: app.clone() }),
         ),
         workbench_root: root.as_ref().map(|r| r.join("api-client")),
+        gateway_files: sheet_picker(
+            root.as_deref(),
+            gateway_files(app, root.as_deref()),
+            Arc::new(NativeUploadPicker { app: app.clone() }),
+        ),
     }
 }
 
@@ -446,6 +451,84 @@ fn case_files<R: Runtime>(_app: &AppHandle<R>, root: Option<&Path>) -> Arc<dyn I
 
 /// Where the fixture driver stages case import files.
 pub const FIXTURE_CASE_FILES: &str = "fixture-case-files";
+
+/// The native file sheet for Gateway file uploads (C18).
+#[cfg(not(feature = "test-fixtures"))]
+fn gateway_files<R: Runtime>(app: &AppHandle<R>, _root: Option<&Path>) -> Arc<dyn ImportPicker> {
+    Arc::new(NativeUploadPicker { app: app.clone() })
+}
+
+/// The fixture build answers the upload sheet with the first file the
+/// acceptance driver staged in `fixture-gateway-files/` (none: cancelled).
+/// The file is only read.
+#[cfg(feature = "test-fixtures")]
+fn gateway_files<R: Runtime>(_app: &AppHandle<R>, root: Option<&Path>) -> Arc<dyn ImportPicker> {
+    struct StagedUploads(Option<PathBuf>);
+    impl ImportPicker for StagedUploads {
+        fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+            let dir = self.0.clone();
+            Box::pin(async move {
+                let dir = dir?;
+                tokio::task::spawn_blocking(move || {
+                    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+                        .ok()?
+                        .filter_map(|e| e.ok().map(|e| e.path()))
+                        .collect();
+                    files.sort();
+                    let path = files.into_iter().next()?;
+                    let name = path.file_name()?.to_string_lossy().into_owned();
+                    Some(
+                        read_limited(&path, MAX_UPLOAD_FILE_BYTES)
+                            .map(|bytes| ImportFile { name, bytes }),
+                    )
+                })
+                .await
+                .ok()?
+            })
+        }
+    }
+    Arc::new(StagedUploads(root.map(|r| r.join(FIXTURE_GATEWAY_FILES))))
+}
+
+/// Where the fixture driver stages Gateway upload files.
+pub const FIXTURE_GATEWAY_FILES: &str = "fixture-gateway-files";
+/// Uploads are read up to the core's bound (one byte more is "too large").
+const MAX_UPLOAD_FILE_BYTES: usize = desktop_core::gateway_files::MAX_UPLOAD_BYTES;
+
+/// The native sheet for choosing a file to upload to the Gateway; reads
+/// are bounded to the upload limit.
+#[cfg_attr(feature = "test-fixtures", allow(dead_code))]
+pub struct NativeUploadPicker<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> ImportPicker for NativeUploadPicker<R> {
+    fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
+            let window = app.get_webview_window(MAIN_WINDOW)?;
+            app.run_on_main_thread(move || {
+                let chosen = rfd::FileDialog::new()
+                    .set_parent(&window)
+                    .set_title("Choose a file to upload to the Gateway")
+                    .pick_file();
+                let _ = tx.send(chosen);
+            })
+            .ok()?;
+            let path = rx.await.ok()??;
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let read =
+                tokio::task::spawn_blocking(move || read_limited(&path, MAX_UPLOAD_FILE_BYTES))
+                    .await
+                    .ok()?;
+            Some(read.map(|bytes| ImportFile { name, bytes }))
+        })
+    }
+}
 
 #[cfg_attr(feature = "test-fixtures", allow(dead_code))]
 pub struct NativeCasePicker<R: Runtime> {

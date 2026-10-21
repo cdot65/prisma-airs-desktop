@@ -1581,6 +1581,7 @@ fn failure_of(error: PageError) -> ManagementFailure {
 async fn runtime_overview(
     binding: &ManagementBinding,
     deadline: Instant,
+    gateway: Option<&crate::gateway::WorkspaceScope>,
 ) -> crate::observation::RuntimeOverview {
     use crate::observation as obs;
     let now = std::time::SystemTime::now()
@@ -1626,10 +1627,26 @@ async fn runtime_overview(
             (false, Some(failure_of(error)))
         }
     };
+    let gateway = match gateway {
+        Some(scope) => {
+            let read = crate::gateway_observe::overview(
+                binding.gateway(),
+                scope,
+                ManagementBinding::options(deadline).as_ref(),
+            )
+            .await;
+            let (item, gateway_gaps) = obs::gateway_items(&read);
+            items.extend(item);
+            gaps.extend(gateway_gaps);
+            Some(read)
+        }
+        None => None,
+    };
     obs::sort_items(&mut items);
     gaps.sort();
     gaps.dedup();
     obs::RuntimeOverview {
+        gateway,
         read_at: u32::try_from(now).unwrap_or(u32::MAX),
         chart,
         chart_failure,
@@ -2065,7 +2082,7 @@ impl ManagementJob {
                     .await
                     .map(|detail| ManagementResult::Detail { detail }),
                 ManagementRequest::Overview => Ok(ManagementResult::Overview {
-                    overview: runtime_overview(binding, deadline).await,
+                    overview: runtime_overview(binding, deadline, self.workspace.as_ref()).await,
                 }),
                 ManagementRequest::RedTeam { window } => red_team_read(binding, *window, deadline)
                     .await

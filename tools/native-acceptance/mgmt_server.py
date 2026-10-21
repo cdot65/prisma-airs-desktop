@@ -37,6 +37,27 @@ logged only as a SHA-256), created IAM scopes and their bindings, and
 provisioned workspaces. Modes gwLose ("METHOD path": apply, then close
 without a reply) and gwHang ("METHOD path": never reply) make a step's
 outcome unknown.
+
+Gateway observation and inference (C18): the data plane answers usage
+charts (requests, cost, tokens, latency: mode "gwChartPoints" hourly
+points, default 24), the model groups (mode "gwModelRows", default 3),
+request logs (25 a page; a trace or status filter is honoured) and the
+usage- and rate-limit policies of a workspace (mode "gwTelemetry":
+"ok" or "fail" makes the cost chart answer 500). The runtime endpoint
+POST /rt/v1/chat/completions streams a chat completion as server-sent
+events according to mode "chat": "text" (two deltas), "bulk" (64 KiB in
+2,048 chunks of 32 bytes), "paced" (one 32-byte chunk every 10 ms, 2,048
+times), "hang" (one chunk, then nothing until the client goes away) or
+"status:<code>". POST /rt/v1/responses streams a Responses run (created, two text deltas,
+completed; mode "responses": "incomplete" ends it with response.incomplete
+for max_output_tokens after one delta, "failed" with response.failed; the
+same "status:<code>" refusals).
+The log records the run's headers by name, the inference key only as a
+SHA-256, the trace and route, the body's field names and model and an
+attached input_file's ID, never the prompt. /rt/v1/files lists, uploads
+(multipart) and deletes the workspace's files (mode "files": "ok",
+"status:<code>" or "lost"); the log records an upload's file name, purpose,
+size and SHA-256, never its content.
 """
 
 import argparse
@@ -57,6 +78,8 @@ TOKEN_PREFIX = "c08-mgmt-access-"
 GW_A = "16f7e90d-382a-4e78-b577-1b01eb5f8297"
 GW_B = "16f7e90d-382a-4e78-b577-1b01eb5f8298"
 GW_INTEGRATION = "f6692544-3265-49be-9711-bbdcebc079eb"
+# A second tenant-wide integration, listed only with mode gwIntegrations=2.
+GW_INTEGRATION_B = "0b6f3a10-5c2d-4e8a-9f1b-2c3d4e5f6a7b"
 
 
 CONTENT_PROMPT = "SYNTHETIC-C11-PROMPT-CONTENT"
@@ -133,6 +156,12 @@ class Handler(BaseHTTPRequestHandler):
             "xTsgId": self.headers.get("x-tsg-id"),
             "scanToken": self.headers.get("x-pan-token") is not None,
         }
+        if method == "POST" and url.path in ("/rt/v1/chat/completions", "/rt/v1/responses"):
+            self.inference(body, record, mode, responses=url.path.endswith("/responses"))
+            return
+        if url.path == "/rt/v1/files" or url.path.startswith("/rt/v1/files/"):
+            self.files(method, url.path, body, record, mode)
+            return
         if url.path == "/oauth2/access_token":
             form = {k: v[0] for k, v in parse_qs(body.decode("utf-8", "replace")).items()}
             record["grantType"] = form.get("grant_type")
@@ -382,6 +411,9 @@ class Handler(BaseHTTPRequestHandler):
                        "created_at": "2026-10-01T00:00:00Z", "last_updated_at": None, "slug": "openai",
                        "description": None, "workspace_id": None, "ai_provider_id": "openai",
                        "object": "integration", "masked_key": "GW-PRIVATE-MASKED"}
+        integration_b = {**integration, "id": GW_INTEGRATION_B, "name": "Anthropic", "slug": "anthropic",
+                         "ai_provider_id": "anthropic"}
+        integrations = [integration, integration_b] if mode.get("gwIntegrations") == 2 else [integration]
         admin, iam = int(mode.get("gwAdminStatus", 200)), int(mode.get("gwIamStatus", 200))
         gw = self.server.gw
         with self.server.lock:
@@ -396,7 +428,13 @@ class Handler(BaseHTTPRequestHandler):
                 # The admin inventory (C17 reconciliation reads it).
                 return 200, listing([workspace(w) for w in listed] + created_ws)
             if rest == "/integrations":
-                return 200, listing([integration])
+                return 200, listing(integrations)
+            if rest == f"/integrations/{GW_INTEGRATION_B}" and len(integrations) == 2:
+                return 200, {**integration_b, "configurations": json.dumps(
+                    {"api_key": "GW-PRIVATE-INTEGRATION-SECRET", "region": "us-west-2"})}
+            if rest == f"/integrations/{GW_INTEGRATION_B}/models" and len(integrations) == 2:
+                return 200, {"object": "list", "allow_all_models": False, "total": 1, "models": [
+                    {"slug": "claude-sonnet", "enabled": True, "name": "Claude Sonnet"}]}
             if rest == f"/integrations/{GW_INTEGRATION}":
                 return 200, {**integration, "configurations": json.dumps(
                     {"api_key": "GW-PRIVATE-INTEGRATION-SECRET", "region": "us-east-1"})}
@@ -419,6 +457,9 @@ class Handler(BaseHTTPRequestHandler):
                          "resources": [{"resource_type": "workspace", "resource_id": bound}]}
         rest = path[len("/ai_gw/v2"):]
         ws = query.get("workspace_id")
+        observed = self.observation(rest, query, mode, spaces)
+        if observed is not None:
+            return observed
         if rest == "/workspaces":
             return 200, listing([workspace(w) for w in listed] + created_ws)
         if rest.startswith("/workspaces/"):
@@ -476,6 +517,68 @@ class Handler(BaseHTTPRequestHandler):
                                  "created_at": "2026-10-01T00:00:00Z", "expires_at": None, "last_reset_at": None,
                                  "rate_limits": [], "integration_id": GW_INTEGRATION, "object": "provider"}
         return 404, {"error": "not found"}
+
+    def observation(self, rest, query, mode, spaces):
+        """C18: telemetry, logs and limit policies of one workspace."""
+        slug = query.get("workspaceSlug")
+        points = int(mode.get("gwChartPoints") or 24)
+
+        def records(scale):
+            return [{"x": f"2026-10-{1 + i // 24:02d}T{i % 24:02d}:00:00Z", "y": scale} for i in range(points)]
+        quota = {"isQuotaExceeded": False}
+        if rest == "/logs/charts/requests":
+            return 200, {"success": True, "data": {"records": records(5), "total": 5 * points,
+                                                   "total_llm_count": 5 * points, "total_llm_error_count": points, **quota}}
+        if rest == "/logs/charts/cost":
+            if (mode.get("gwTelemetry") or "ok") == "fail":
+                return 500, {"error": "synthetic failure"}
+            return 200, {"success": True, "data": {"records": records(30), "total": 30 * points, "avg": 30, **quota}}
+        if rest == "/logs/charts/tokens":
+            rows = [{**r, "total_request_units": 40, "total_response_units": 80, "avg": 24} for r in records(120)]
+            return 200, {"success": True, "data": {"records": rows, "total": 120 * points, "avg": 24,
+                                                   "total_request_units": 40 * points, "total_response_units": 80 * points, **quota}}
+        if rest == "/logs/charts/latency":
+            rows = [{**r, "p50": 300, "p90": 500, "p99": 900} for r in records(350)]
+            return 200, {"success": True, "data": {"records": rows, "total": 350, "p50": 300, "p90": 500, "p99": 900, **quota}}
+        if rest == "/logs/groups/model":
+            n = int(mode.get("gwModelRows") or 3)
+            rows = [{"object": "group", "model": f"model-{i:03d}", "ai_org": "openai", "requests": 1000 - i,
+                     "cost": 10 * (1000 - i), "total_tokens": 50 * (1000 - i), "success_rate": 0.98} for i in range(n)]
+            return 200, {"object": "list", "is_quota_exceeded": False, "total": n, "data": rows}
+        if rest == "/logs":
+            trace = query.get("traceId")
+            status = query.get("statusCode")
+            rows = []
+            for i in range(3):
+                code = 446 if i == 1 else 200
+                rows.append({"id": f"log-{i}", "workspace_slug": slug, "ai_model": "gpt-4o", "_user": "synthetic-user",
+                             "total_units": 120, "cost": 0.4, "trace_id": trace or f"airs-fixture-{i}", "is_proxy_call": 0,
+                             "created_at": f"2026-10-20T0{i}:00:00Z", "is_success": 1 if code < 400 else 0,
+                             "cache_status": "MISS", "retry_success_count": 0, "mode": "single",
+                             "last_used_option_index": 0, "response_status_code": code,
+                             "request_url": "https://runtime.invalid/v1/chat/completions", "request_method": "post",
+                             "ai_org": "openai", "api_key_id": "key-1", "license_id": "l-1",
+                             "log_store_file_path_format": "v1", "metadataKey": [], "metadataValue": [],
+                             "prompt_slug": "", "feedback": []})
+            if trace:
+                rows = rows[:1]
+            if status:
+                rows = [r for r in rows if str(r["response_status_code"]) == status]
+            return 200, {"success": True, "data": {"records": rows, "total": len(rows), "capturedTotal": len(rows), **quota}}
+        if rest in ("/policies/usage-limits", "/policies/rate-limits"):
+            ws = query.get("workspace_id")
+            if ws not in spaces:
+                return 200, {"object": "list", "total": 0, "data": []}
+            base = {"status": "active", "workspace_id": ws, "organisation_id": self.server.tsg,
+                    "created_at": "2026-10-01T00:00:00Z", "last_updated_at": "2026-10-01T00:00:00Z",
+                    "group_by": [{"key": "api_key"}]}
+            if rest == "/policies/usage-limits":
+                row = {**base, "id": "ul-1", "name": "Monthly budget", "type": "cost", "credit_limit": 5000,
+                       "alert_threshold": 80, "periodic_reset": "monthly", "next_usage_reset_at": "2026-11-01T00:00:00Z"}
+            else:
+                row = {**base, "id": "rl-1", "name": "Requests per minute", "type": "requests", "unit": "rpm", "value": 60}
+            return 200, {"object": "list", "total": 1, "data": [row]}
+        return None
 
     def dlp_write(self, method, path, record, mode):
         """DLP writes (C10): JSON bodies, or a dictionary's multipart upload."""
@@ -650,6 +753,182 @@ class Handler(BaseHTTPRequestHandler):
             return "lost", None
         return status, payload
 
+    def inference(self, body, record, mode, responses=False):
+        """C18: one streamed chat completion or Responses run (never the
+        prompt in the log)."""
+        srv = self.server
+        key = self.headers.get("x-portkey-api-key") or ""
+        record["inferenceKeySha256"] = hashlib.sha256(key.encode()).hexdigest() if key else None
+        record["trace"] = self.headers.get("x-portkey-trace-id")
+        record["route"] = self.headers.get("x-portkey-config")
+        record["authorizationHeader"] = self.headers.get("authorization") is not None
+        try:
+            sent = json.loads(body or b"{}")
+        except ValueError:
+            sent = {}
+        record["fields"] = sorted(sent) if isinstance(sent, dict) else None
+        record["model"] = sent.get("model") if isinstance(sent, dict) else None
+        record["stream"] = sent.get("stream") if isinstance(sent, dict) else None
+        record["maxTokens"] = sent.get("max_tokens") if isinstance(sent, dict) else None
+        record["messages"] = len(sent.get("messages") or []) if isinstance(sent, dict) else None
+        record["store"] = sent.get("store") if isinstance(sent, dict) else None
+        record["maxOutputTokens"] = sent.get("max_output_tokens") if isinstance(sent, dict) else None
+        attached = [part.get("file_id") for item in (sent.get("input") if isinstance(sent, dict) and isinstance(sent.get("input"), list) else [])
+                    for part in (item.get("content") or []) if isinstance(part, dict) and part.get("type") == "input_file"]
+        record["inputFiles"] = attached
+        chat = mode.get("chat") or "text"
+        with srv.lock:
+            srv.serial += 1
+            serial = srv.serial
+        if chat.startswith("status:"):
+            record["status"] = int(chat[7:])
+            with srv.lock, open(srv.log, "a") as f:
+                f.write(json.dumps(record) + "\n")
+            self.respond(int(chat[7:]), json.dumps({"error": {"message": "synthetic refusal"}}).encode())
+            return
+        record["status"] = 200
+        with srv.lock, open(srv.log, "a") as f:
+            f.write(json.dumps(record) + "\n")
+        cid = f"chatcmpl-{serial}"
+        if responses:
+            self.response_stream(f"resp_{serial}", record, end=mode.get("responses") or "completed")
+            return
+
+        def chunk(text, finish=None, usage=None):
+            event = {"id": cid, "object": "chat.completion.chunk", "created": 1760000000, "model": "gpt-4o",
+                     "choices": [{"index": 0, "delta": {"content": text} if text is not None else {}, "finish_reason": finish}]}
+            if usage:
+                event["usage"] = usage
+            return f"data: {json.dumps(event)}\n\n".encode()
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        try:
+            if chat == "hang":
+                self.wfile.write(chunk("Synthetic partial answer"))
+                self.wfile.flush()
+                # Nothing more until the client goes away.
+                while self.rfile.read(1):
+                    pass
+                raise ConnectionResetError
+            if chat in ("bulk", "paced"):
+                text = ("C18-STREAM-" + "x" * 32)[:32]
+                for n in range(2048):
+                    self.wfile.write(chunk(text))
+                    if chat == "paced":
+                        self.wfile.flush()
+                        time.sleep(0.01)
+            else:
+                for text in ("Hello from the", " synthetic Gateway."):
+                    self.wfile.write(chunk(text))
+                    self.wfile.flush()
+            self.wfile.write(chunk(None, "stop", {"prompt_tokens": 7, "completion_tokens": 12, "total_tokens": 19}))
+            self.wfile.write(b"data: [DONE]\n\n")
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            with srv.lock, open(srv.log, "a") as f:
+                f.write(json.dumps({"t": time.time(), "method": "POST", "path": "/rt/v1/chat/completions",
+                                    "closedByClient": True, "trace": record["trace"]}) + "\n")
+
+    def response_stream(self, rid, record, end="completed"):
+        """A Responses stream: created, two text deltas, completed (or one
+        delta, then incomplete at the output token limit, or failed)."""
+        srv = self.server
+        def response(status, usage):
+            r = {"id": rid, "object": "response", "created_at": 1760000000, "status": status, "model": "gpt-4o-2024",
+                 "metadata": None, "temperature": None, "top_p": None, "instructions": None, "tools": [],
+                 "tool_choice": "auto", "error": None, "incomplete_details": None, "output": [],
+                 "parallel_tool_calls": False}
+            if usage:
+                r["usage"] = {"input_tokens": 5, "input_tokens_details": {"cached_tokens": 0}, "output_tokens": 9,
+                              "output_tokens_details": {"reasoning_tokens": 0}, "total_tokens": 14}
+            if status == "incomplete":
+                r["incomplete_details"] = {"reason": "max_output_tokens"}
+            return r
+
+        def event(value):
+            return f"data: {json.dumps(value)}\n\n".encode()
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        try:
+            self.wfile.write(event({"type": "response.created", "response": response("in_progress", False)}))
+            for text in (("Partial from the",) if end != "completed" else ("Responses from the", " synthetic Gateway.")):
+                self.wfile.write(event({"type": "response.output_text.delta", "item_id": "msg_1", "output_index": 0,
+                                        "content_index": 0, "delta": text}))
+                self.wfile.flush()
+            if end == "incomplete":
+                self.wfile.write(event({"type": "response.incomplete", "response": response("incomplete", True)}))
+            elif end == "failed":
+                self.wfile.write(event({"type": "response.failed", "response": response("failed", False)}))
+            else:
+                self.wfile.write(event({"type": "response.completed", "response": response("completed", True)}))
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            with srv.lock, open(srv.log, "a") as f:
+                f.write(json.dumps({"t": time.time(), "method": "POST", "path": "/rt/v1/responses",
+                                    "closedByClient": True, "trace": record["trace"]}) + "\n")
+
+    def files(self, method, path, body, record, mode):
+        """C18: the workspace's files with the inference key: list, one
+        multipart upload, one delete. The content is hashed, never logged."""
+        srv = self.server
+        key = self.headers.get("x-portkey-api-key") or ""
+        record["inferenceKeySha256"] = hashlib.sha256(key.encode()).hexdigest() if key else None
+        record["trace"] = self.headers.get("x-portkey-trace-id")
+        record["route"] = self.headers.get("x-portkey-config")
+        reply = mode.get("files") or "ok"
+        if method == "POST":
+            parts = {p["name"]: p for p in multipart(self.headers.get("content-type") or "", body)}
+            upload = parts.get("file") or {}
+            content = upload.get("body") or b""
+            record["filename"] = upload.get("filename")
+            record["purpose"] = (parts.get("purpose") or {}).get("body", b"").decode("utf-8", "replace")
+            record["bytes"] = len(content)
+            record["contentSha256"] = hashlib.sha256(content).hexdigest()
+        if method == "DELETE":
+            record["file"] = path.rsplit("/", 1)[-1]
+        status, payload = 200, None
+        if method == "GET" and path == "/rt/v1/files":
+            with srv.lock:
+                payload = {"object": "list", "data": list(srv.files)}
+            if mode.get("filesLate"):
+                # A time later than any date can render (seconds).
+                payload["data"].append({"id": "file-late", "object": "file", "bytes": 5, "created_at": 9000000000000,
+                                        "filename": "late-notes.txt", "purpose": "assistants", "status": "processed"})
+        elif reply.startswith("status:"):
+            status, payload = int(reply[7:]), {"error": {"message": "synthetic refusal"}}
+        elif method == "POST" and path == "/rt/v1/files":
+            with srv.lock:
+                srv.serial += 1
+                created = {"id": f"file-up{srv.serial}", "object": "file", "bytes": record["bytes"],
+                           "created_at": 1760000000, "filename": record["filename"], "purpose": "assistants",
+                           "status": "processed"}
+                srv.files.insert(0, created)
+            payload = created
+        elif method == "DELETE" and reply == "another":
+            # Answered for another file: nothing is said about this one.
+            payload = {"id": "file-other", "object": "file", "deleted": True}
+        elif method == "DELETE":
+            with srv.lock:
+                srv.files = [f for f in srv.files if f["id"] != record["file"]]
+            payload = {"id": record["file"], "object": "file", "deleted": True}
+        else:
+            status, payload = 404, {"error": {"message": "not here"}}
+        record["status"] = "lost" if reply == "lost" and method != "GET" else status
+        with srv.lock, open(srv.log, "a") as f:
+            f.write(json.dumps(record) + "\n")
+        if record["status"] == "lost":
+            self.close_connection = True
+            return
+        self.respond(status, json.dumps(payload).encode())
+
     def respond(self, status, payload):
         if status == 204:
             self.send_response(204)
@@ -706,6 +985,8 @@ class Server(ThreadingHTTPServer):
             self.issued = set()
         self.counter = len(self.issued) + 1000 * int(time.time() % 1000)
         self.serial = 0
+        self.files = [{"id": "file-seed", "object": "file", "bytes": 64, "created_at": 1760000000,
+                       "filename": "seed-notes.txt", "purpose": "assistants", "status": "processed"}]
         self.dlp = {
             "data-patterns": [{"id": "pattern-1", "name": "Card numbers", "type": "custom",
                                "detection_config": {"technique": "regex"}},

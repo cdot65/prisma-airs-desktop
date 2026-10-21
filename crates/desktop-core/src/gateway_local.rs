@@ -92,6 +92,83 @@ pub struct GatewayRecord {
     pub settled_at: String,
 }
 
+/// A Playground draft for one workspace (C18): what the next run would
+/// send. It is never sent by itself; a run is always an explicit press.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundDraft {
+    pub id: String,
+    pub workspace: ListedWorkspace,
+    #[serde(default)]
+    pub api: crate::gateway_inference::InferenceApi,
+    pub model: String,
+    pub route: Option<String>,
+    pub system: Option<String>,
+    pub prompt: String,
+    /// The Gateway file to attach (a Responses run; D045).
+    #[serde(default)]
+    pub file: Option<String>,
+    pub saved_at: String,
+}
+
+impl PlaygroundDraft {
+    fn valid(&self) -> bool {
+        self.id.len() <= MAX_ID
+            && crate::gateway::is_id(&self.workspace.id)
+            && self.workspace.name.len() <= 256
+            && self.model.len() <= 256
+            && !self.model.chars().any(char::is_control)
+            && self.route.as_deref().is_none_or(crate::gateway::is_id)
+            && self.prompt.len() + self.system.as_deref().map_or(0, str::len)
+                <= crate::gateway_inference::MAX_INPUT_BYTES
+            && self.file.as_deref().is_none_or(crate::gateway::is_id)
+    }
+}
+
+/// A Playground run that ended without a known result (C18): sent, then
+/// stopped or failed before it completed. Its output is not kept; its
+/// trace finds it in the Gateway's logs.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundRunRecord {
+    pub id: String,
+    pub workspace: ListedWorkspace,
+    #[serde(default)]
+    pub api: crate::gateway_inference::InferenceApi,
+    pub model: String,
+    pub route: Option<String>,
+    pub trace: String,
+    pub end: crate::gateway_inference::RunEnd,
+    pub outcome: Outcome,
+    pub failure: Option<crate::gateway_inference::InferenceFailure>,
+    /// The Gateway answered before it ended.
+    pub answered: bool,
+    pub output_bytes: u32,
+    pub usage: Option<crate::gateway_inference::TokenUsage>,
+    pub settled_at: String,
+}
+
+/// A Gateway file upload or delete that was sent and ended without a known
+/// result (C18, D045): the file may or may not exist now. Its trace finds
+/// it in the Gateway's logs, and reading the files shows what exists. The
+/// file's content is never kept.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GatewayFileRecord {
+    pub id: String,
+    pub workspace: ListedWorkspace,
+    pub action: crate::gateway_files::FileAction,
+    pub filename: Option<String>,
+    /// The file deleted.
+    pub file: Option<String>,
+    #[ts(type = "number | null")]
+    pub bytes: Option<u64>,
+    pub trace: String,
+    pub outcome: Outcome,
+    pub failure: Option<crate::gateway_inference::InferenceFailure>,
+    pub settled_at: String,
+}
+
 /// A tenant's file.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -101,6 +178,15 @@ pub struct LocalBook {
     pub drafts: Vec<GatewayDraft>,
     /// Newest first.
     pub records: Vec<GatewayRecord>,
+    /// One per workspace, newest first (C18).
+    #[serde(default)]
+    pub playground: Vec<PlaygroundDraft>,
+    /// Newest first (C18).
+    #[serde(default)]
+    pub runs: Vec<PlaygroundRunRecord>,
+    /// File uploads and deletes without a known result, newest first (C18).
+    #[serde(default)]
+    pub files: Vec<GatewayFileRecord>,
 }
 
 impl Default for LocalBook {
@@ -109,6 +195,9 @@ impl Default for LocalBook {
             schema: LOCAL_SCHEMA.to_owned(),
             drafts: Vec::new(),
             records: Vec::new(),
+            playground: Vec::new(),
+            runs: Vec::new(),
+            files: Vec::new(),
         }
     }
 }
@@ -168,10 +257,36 @@ impl LocalBook {
 
     /// Removes a draft or record by ID; true when one was removed.
     pub fn discard(&mut self, id: &str) -> bool {
-        let before = self.drafts.len() + self.records.len();
+        let count = |b: &Self| {
+            b.drafts.len() + b.records.len() + b.playground.len() + b.runs.len() + b.files.len()
+        };
+        let before = count(self);
         self.drafts.retain(|d| d.id != id);
         self.records.retain(|r| r.id != id);
-        self.drafts.len() + self.records.len() != before
+        self.playground.retain(|d| d.id != id);
+        self.runs.retain(|r| r.id != id);
+        self.files.retain(|r| r.id != id);
+        count(self) != before
+    }
+
+    /// Keeps a workspace's Playground draft (one per workspace).
+    pub fn save_playground(&mut self, draft: PlaygroundDraft) {
+        self.playground
+            .retain(|d| d.id != draft.id && d.workspace.id != draft.workspace.id);
+        self.playground.insert(0, draft);
+        self.playground.truncate(MAX_DRAFTS);
+    }
+
+    /// Records a run that ended without a known result.
+    pub fn ran(&mut self, record: PlaygroundRunRecord) {
+        self.runs.insert(0, record);
+        self.runs.truncate(MAX_RECORDS);
+    }
+
+    /// Records a file upload or delete that ended without a known result.
+    pub fn filed(&mut self, record: GatewayFileRecord) {
+        self.files.insert(0, record);
+        self.files.truncate(MAX_RECORDS);
     }
 
     /// A change settled: one that changed something drops its draft (an
@@ -197,6 +312,24 @@ impl LocalBook {
                 .all(|d| d.id.len() <= MAX_ID && check(&d.change, &d.body).is_ok())
             && self.records.iter().all(|r| {
                 r.id.len() <= MAX_ID && r.change.valid() && check(&r.change, &r.body).is_ok()
+            })
+            && self.playground.len() <= MAX_DRAFTS
+            && self.playground.iter().all(PlaygroundDraft::valid)
+            && self.runs.len() <= MAX_RECORDS
+            && self.runs.iter().all(|r| {
+                r.id.len() <= MAX_ID
+                    && crate::gateway::is_id(&r.workspace.id)
+                    && r.model.len() <= 256
+                    && crate::gateway_observe::trace_is_valid(&r.trace)
+            })
+            && self.files.len() <= MAX_RECORDS
+            && self.files.iter().all(|r| {
+                r.id.len() <= MAX_ID
+                    && crate::gateway::is_id(&r.workspace.id)
+                    && r.action != crate::gateway_files::FileAction::Read
+                    && r.filename.as_deref().is_none_or(|n| n.len() <= 255)
+                    && r.file.as_deref().is_none_or(crate::gateway::is_id)
+                    && crate::gateway_observe::trace_is_valid(&r.trace)
             })
     }
 }

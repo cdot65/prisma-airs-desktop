@@ -40,6 +40,9 @@ pub enum CredentialClass {
     Scan,
     /// The tenant's management OAuth client secret (C08).
     Management,
+    /// A Gateway workspace inference key (C18): used only for that
+    /// workspace's inference, sent only to its runtime endpoint.
+    Inference,
 }
 
 /// A Keychain credential the core may use after restart.
@@ -57,6 +60,10 @@ pub struct StoredCredential {
     /// The management OAuth client ID (management credentials only).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
+    /// The workspace and runtime endpoint an inference key is for
+    /// (inference credentials only; the destination is that endpoint).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inference: Option<crate::gateway_inference::InferenceTarget>,
 }
 
 /// The signed-in Academy learner account (nonsecret; the refresh token is in
@@ -142,6 +149,7 @@ impl PersistedState {
                 && match c.class {
                     CredentialClass::Scan => {
                         c.client_id.is_none()
+                            && c.inference.is_none()
                             && self.tenants.iter().any(|t| {
                                 t.id == c.tenant && t.destination.origin() == c.destination
                             })
@@ -149,14 +157,24 @@ impl PersistedState {
                     // A management credential needs the tenant's TSG, its
                     // client ID and an exact HTTPS token origin.
                     CredentialClass::Management => {
-                        c.client_id
-                            .as_deref()
-                            .is_some_and(crate::management::client_id_is_valid)
+                        c.inference.is_none()
+                            && c.client_id
+                                .as_deref()
+                                .is_some_and(crate::management::client_id_is_valid)
                             && crate::management::is_origin(&c.destination)
                             && self
                                 .tenants
                                 .iter()
                                 .any(|t| t.id == c.tenant && t.tsg_id.is_some())
+                    }
+                    // An inference key names its workspace and the HTTPS
+                    // runtime endpoint it is sent to.
+                    CredentialClass::Inference => {
+                        c.client_id.is_none()
+                            && c.inference
+                                .as_ref()
+                                .is_some_and(|t| t.is_valid() && t.endpoint == c.destination)
+                            && self.tenants.iter().any(|t| t.id == c.tenant)
                     }
                 }
         });
@@ -450,6 +468,7 @@ mod tests {
                 destination: Region::Europe.origin().into(),
                 class: CredentialClass::Scan,
                 client_id: None,
+                inference: None,
             }],
             ..PersistedState::default()
         }

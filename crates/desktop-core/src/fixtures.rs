@@ -728,6 +728,7 @@ pub struct Handles {
     pub library_root: std::path::PathBuf,
     pub folders: Arc<ScriptedFolders>,
     pub workbench_files: Arc<ScriptedPicker>,
+    pub gateway_files: Arc<ScriptedPicker>,
     /// This instance's private API Client folder.
     pub workbench_root: std::path::PathBuf,
 }
@@ -756,6 +757,7 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         library_root: fresh_offline_root().with_extension("library"),
         folders: Arc::new(ScriptedFolders::default()),
         workbench_files: Arc::new(ScriptedPicker::default()),
+        gateway_files: Arc::new(ScriptedPicker::default()),
         workbench_root: fresh_offline_root().with_extension("workbench"),
     };
     (
@@ -777,6 +779,7 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             library_root: Some(handles.library_root.clone()),
             folders: handles.folders.clone(),
             workbench_files: handles.workbench_files.clone(),
+            gateway_files: handles.gateway_files.clone(),
             workbench_root: Some(handles.workbench_root.clone()),
         },
         handles,

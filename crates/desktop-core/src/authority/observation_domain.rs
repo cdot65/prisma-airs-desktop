@@ -133,7 +133,12 @@ impl State {
             // Every source failed: a failed refresh. The last read stays
             // (marked by the failure); with none, the failed read is shown.
             ManagementResult::Overview { overview }
-                if overview.chart.is_none() && overview.keys_failure.is_some() =>
+                if overview.chart.is_none()
+                    && overview.keys_failure.is_some()
+                    && overview
+                        .gateway
+                        .as_ref()
+                        .is_none_or(|g| g.usage_failure.is_some() && g.policies.is_none()) =>
             {
                 record.failure = overview.chart_failure.or(overview.keys_failure);
                 record.failed_at = Some(clock);
@@ -147,15 +152,31 @@ impl State {
                 let complete = overview.chart.is_some()
                     && overview.keys_complete
                     && overview.keys_failure.is_none();
+                // A Gateway item's hold ends only when a read of its own
+                // workspace established the day's requests and errors and
+                // no longer reports it (C18); a read of another workspace
+                // says nothing about it.
+                let gateway_known = overview
+                    .gateway
+                    .as_ref()
+                    .filter(|g| g.activity_known())
+                    .map(|g| crate::observation::gateway_item_id(&g.workspace));
                 let reported: Vec<String> = overview.items.iter().map(|i| i.id.clone()).collect();
                 record.read = Some(overview);
                 // v1: a complete fresh answer that no longer reports an item
-                // ends its hold.
-                if complete
-                    && let Some(tenant) = tenant
+                // ends its hold (a Runtime item by the Runtime sources, a
+                // Gateway item by its own workspace's read).
+                if let Some(tenant) = tenant
                     && let Some((_, holds)) = self.holds.iter_mut().find(|(t, _)| t == &tenant)
                 {
-                    holds.retain(|h| reported.contains(&h.id));
+                    holds.retain(|h| {
+                        reported.contains(&h.id)
+                            || if h.id.starts_with("gateway-") {
+                                gateway_known.as_ref() != Some(&h.id)
+                            } else {
+                                !complete
+                            }
+                    });
                 }
             }
             ManagementResult::Failed { failure, .. } => {

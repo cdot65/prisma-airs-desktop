@@ -3,4 +3,4 @@
 /**
  * Where an Inbox item leads.
  */
-export type InboxDestination = "apiKeys" | "sessions";
+export type InboxDestination = "apiKeys" | "sessions" | "gateway";

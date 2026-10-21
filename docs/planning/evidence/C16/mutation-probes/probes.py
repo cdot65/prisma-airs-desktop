@@ -65,6 +65,8 @@ FOCUS = "opens a detail with focus on its heading and returns focus on close"
 COVERAGE = "never reads \"none\" from a partial inventory and says a complete one is empty"
 CONTRACT = "rejects inventories, details and prerequisites Rust never issues"
 CHOICE = "validates the workspace choice in the snapshot"
+SPACE = "shows the chosen workspace’s own settings and limits, and its failures"
+MODELS = "never shows one integration’s models under another"
 
 PROBES = [
     ("a projection carries the provider key",
@@ -158,6 +160,17 @@ PROBES = [
     ("any reference passes as a workspace choice",
      [(CLIENT, "                WORKSPACE_REF.test(s.reference) &&\n", "")],
      FE_SNAPSHOT, CHOICE),
+    # Follow-ups R1 and R2 (reviews/C16/follow-ups.md).
+    ("a detail keeps another integration's models",
+     [(VIEW, "<DetailPanel key={detail.id} state={detail}", "<DetailPanel state={detail}")],
+     FE_GW, MODELS),
+    ("a late workspace detail is shown under another workspace",
+     [(VIEW, "        if (mine !== tokens.current.workspace || gen !== generation.current) return\n", "")],
+     FE_GW, SPACE),
+    ("the workspace detail is never read",
+     [(VIEW, "        const result = await read({ kind: 'detail', resource: 'workspaces', id: selected.workspace.id }, false)\n",
+       "        const result = 'not read'\n")],
+     FE_GW, SPACE),
 ]
 
 

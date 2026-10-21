@@ -1530,6 +1530,103 @@ Administration change workbench and results). D043 records the decisions.
   entry, integration bindings, limit policies (C18) and MCP (C22) are not
   provided.
 
+### C18 implementation: Gateway inference, observation and Home/Inbox
+
+Implemented in `crates/desktop-core`:
+- `gateway_inference`: the run, its bounds, the runtime-key client and the
+  stream.
+- `gateway_observe`: usage, logs, limits and the overview day.
+- `gateway_files`: the workspace's files (list, one upload, one delete)
+  with the runtime key.
+- `authority/inference_domain`: the inference key's admission, the
+  Playground's run and its binding.
+- `authority/gateway_files_domain`: the files view, the chosen file and
+  one file request at a time, under the same admission and binding.
+- Extensions: `gateway_local` (Playground drafts and run records),
+  `observation` (the Gateway Inbox item and gaps) and `store`
+  (`CredentialClass::Inference`).
+- Intents `ConfigureInferenceCredential`, `RemoveInferenceCredential`,
+  `RunInference`, `StopInference`, `ClearInference`,
+  `SavePlaygroundDraft`, `ReadGatewayFiles`, `ChooseGatewayFile`,
+  `UploadGatewayFile` and `DeleteGatewayFile`; `GatewayRead::Observe`.
+- Snapshot fields `gateway.playground`, `gateway.files`,
+  `tenants[].inference` and `overview.read.gateway`.
+- Adapter `gateway_files`: the native upload sheet (reads bounded to
+  4 MiB; the fixture build reads a staged file).
+
+The presentation adds the Playground, Files, Usage, Logs and Limits tabs,
+the Gateway day on Home, and kept runs, file changes and drafts. D044 and
+D045 record the decisions.
+
+- **Inference key.** Stored per tenant, bound to the workspace chosen when
+  it was stored and to its runtime endpoint (`https`, no credentials,
+  query or fragment). It is sent only there, only for that workspace's
+  runs, as `x-portkey-api-key`. Storing or removing it stops only its run
+  and never changes the tenant context.
+- **Playground.** One run at a time, sent only on Run and never retried
+  or replayed. A run uses chat completions (v1) or, when chosen, the
+  Responses API with `store: false` (D045):
+
+  | Bound | Limit |
+  |---|---|
+  | Input (system and prompt) | 32 KiB |
+  | Output | 64 KiB (then the stream is closed: `truncated`) |
+  | Tokens asked for | 256 |
+  | One event | 64 KiB |
+  | Idle | 30 s |
+  | Run | 120 s |
+
+  An answer the Gateway ends early (a Responses `incomplete` event, or a
+  chat finish of `length` or `content_filter`) is `incomplete`: the status
+  says so with the sanitized reason, the partial output and tokens stay,
+  and the outcome is completed. A Responses run may attach one file that
+  the workspace's last file read listed.
+
+  Stop, another workspace, a context change or a new key ends it. Its
+  output is shown only while it is bound, so late chunks are dropped; a new
+  or removed key withdraws it at once. The response states its outcome: a
+  stream that could not be opened keeps the SDK's outcome (a 5xx or lost
+  handshake is unknown, a 4xx rejected). A stopped, lost or unknown run
+  says the Gateway may have run and charged for it and gives its trace,
+  which "Find in logs" reads.
+- **Observation.** Usage (requests, cost, tokens, latency and the busiest
+  models), logs (25 a page, at most 40 pages, trace and status filters)
+  and limit policies (usage and rate) are read for the chosen workspace
+  only. More logs continue only the query shown, and a list at the page
+  cap says more exist instead of "all read". Each source
+  keeps its data or failure, and an unreported total is unknown. Charts
+  have a text name for assistive technology and a values table behind a
+  disclosure, built only while open. A long series is drawn with at most
+  160 bars (consecutive points summed, or averaged for latency), while its
+  summary and table keep every point. The first calibration of the
+  registered workload measured 540.8 MiB resident against the 450 MiB
+  budget with every point drawn and every table built; both bounds were
+  added before acceptance.
+- **Home/Inbox.** The overview also reads the chosen workspace's last
+  day. A Gateway errors item leads to AI Gateway. A failed or partial
+  Gateway source, or unreported requests or errors, is a gap. A Gateway
+  item's hold ends only by a known day of its own workspace.
+- **Files (D045).** The chosen workspace's files are read (metadata only,
+  the first 200), one file chosen in the native sheet is uploaded
+  (purpose `assistants`, at most 4 MiB, held only in Rust until sent), and
+  one listed file is deleted after an in-app confirmation. Each request
+  uses the inference key and its endpoint, is sent once, and keeps the
+  SDK's outcome. Uploads keep the list's bound (files pushed past it are
+  reported as more). A delete counts only when its answer names that file.
+  A creation time no date can render is shown as unknown. The view is withdrawn with the key, the workspace or the
+  context. Files stay in the Gateway until deleted; content is never read
+  back or kept.
+- **Kept on this Mac (T23).** One Playground draft per workspace (with an
+  attached file's ID), runs that were sent and did not complete (never
+  their output) and file uploads or deletes without a known result (never
+  the content), listed offline. A kept draft is edited there by its ID,
+  offline too, and a pending edit is kept on leaving the form. Nothing is
+  replayed.
+- **Not done here.** File downloads, other file purposes, vector stores,
+  batches, fine-tuning, the model catalogue, exports, audit logs, pricing
+  and limit-policy writes are not provided. No real endpoint is called
+  before C25.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

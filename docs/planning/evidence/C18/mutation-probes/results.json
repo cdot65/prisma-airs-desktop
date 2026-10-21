@@ -1,0 +1,1048 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/gateway/gateway-files.tsx": "66005ae76627dfc1052db43971c8707cdda7cb231775ddd81e7cf0c758e1b504",
+      "apps/desktop/src/features/gateway/gateway-observe.tsx": "83554f087877e5feb2cb947bc1996a6e83a43e64f02b15bb7a0f693a5e63755f",
+      "apps/desktop/src/features/gateway/playground.tsx": "ed25071ffd7a624260af184a38e421be215571074d58610f1e38ac689a2db230",
+      "crates/desktop-core/src/authority.rs": "1aaad7001f4ffbe47289c111cb4b860e3176d2db03b95522783017e50ff4f525",
+      "crates/desktop-core/src/authority/gateway_files_domain.rs": "66f49451e7219970d70d02db815b0c123654bb6e17403843b51190d250a6ebff",
+      "crates/desktop-core/src/authority/gateway_local_domain.rs": "fdd0f544df0006bf3d6c2fb5bf3a63c26b15b8569266e84ff97349b3c7977e93",
+      "crates/desktop-core/src/authority/inference_domain.rs": "00dcae0fc8bd4082f5731f201ecdd00354446f684aa50ec2d152a1fc9541e830",
+      "crates/desktop-core/src/authority/observation_domain.rs": "b646fb789a24c89c7dbe7565cc1252998963db42f20583cfdb4f5d16e1e75b2f",
+      "crates/desktop-core/src/gateway_files.rs": "af6da26a2c49368958c0a00e75ecbdc97275312175137c0be1b01fd5a5e313dd",
+      "crates/desktop-core/src/gateway_inference.rs": "9737db46c1b2858cd3ab87de13cd830db8caa497de18c6306b3ca965775aeb49",
+      "crates/desktop-core/src/gateway_observe.rs": "2e07004f9a4b2fac59d7fe374e96006e9a164b287d210bc8b76f5462c34b6347",
+      "packages/desktop-contracts/src/client.ts": "f4b5d26c8a21d2b712c77245dd9594703b9848b23ee8488eb515f3221fb5f5a8"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_observe"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "output is not bounded",
+    "files": [
+      "crates/desktop-core/src/gateway_inference.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "output_is_bounded_and_a_malformed_chunk_ends_the_run",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a run is shown under another workspace",
+    "files": [
+      "crates/desktop-core/src/authority/inference_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "another_workspace_tenant_or_key_stops_the_run_and_its_late_output_is_dropped",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "replacing the key leaves its run going",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "another_workspace_tenant_or_key_stops_the_run_and_its_late_output_is_dropped",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "storing the key changes the tenant context",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "the_inference_key_is_bound_to_its_workspace_and_endpoint_and_never_leaves_the_core",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the key is used for another workspace",
+    "files": [
+      "crates/desktop-core/src/authority/inference_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "the_inference_key_is_bound_to_its_workspace_and_endpoint_and_never_leaves_the_core",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "stopping claims nothing was sent",
+    "files": [
+      "crates/desktop-core/src/gateway_inference.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "stopping_ends_the_stream_and_never_claims_nothing_was_charged",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "two runs at once",
+    "files": [
+      "crates/desktop-core/src/authority/inference_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "a_run_streams_its_output_once_with_its_route_and_trace_and_is_never_retried",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another workspace's log row is shown",
+    "files": [
+      "crates/desktop-core/src/gateway_observe.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "usage_logs_and_limits_read_only_the_chosen_workspace_and_keep_each_sources_failure",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another workspace's policy is shown",
+    "files": [
+      "crates/desktop-core/src/gateway_observe.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_observe"
+    ],
+    "guard": "policies_name_the_chosen_workspace_and_hide_their_conditions",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a partial window claims a total",
+    "files": [
+      "crates/desktop-core/src/gateway_observe.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "gateway_observe"
+    ],
+    "guard": "charts_report_only_what_the_service_did",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "one failed usage source fails them all",
+    "files": [
+      "crates/desktop-core/src/gateway_observe.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "usage_logs_and_limits_read_only_the_chosen_workspace_and_keep_each_sources_failure",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the overview drops the Gateway when Runtime fails",
+    "files": [
+      "crates/desktop-core/src/authority/observation_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "the_overview_reports_the_chosen_workspaces_gateway_day_with_its_source_state",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an uncertain run is not kept on this Mac",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_local_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "stopping_ends_the_stream_and_never_claims_nothing_was_charged",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the response says nothing about charges",
+    "files": [
+      "apps/desktop/src/features/gateway/playground.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "runs once when asked, streams the output, and stopping never claims nothing was charged",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Run is offered without this workspace's key",
+    "files": [
+      "apps/desktop/src/features/gateway/playground.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "stores the inference key for the chosen workspace and never shows it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a 5xx opening is called a refusal",
+    "files": [
+      "crates/desktop-core/src/gateway_inference.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "uncertain_openings_keep_their_trace_across_a_restart_and_are_never_replayed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a retired key's run is still shown",
+    "files": [
+      "crates/desktop-core/src/authority/inference_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "a_replaced_or_removed_key_withdraws_its_run_from_every_snapshot_at_once",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a kept draft cannot be edited offline",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_local_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "playground_drafts_and_uncertain_runs_survive_an_offline_restart_and_nothing_is_replayed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "leaving the Playground drops a pending edit",
+    "files": [
+      "apps/desktop/src/features/gateway/playground.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "keeps a Playground edit made just before leaving the tab",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an offline draft edit names a workspace",
+    "files": [
+      "apps/desktop/src/features/gateway/playground.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "edits a kept Playground draft offline by its ID and keeps edits made just before leaving",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "more logs follow the edited filters",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-observe.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "continues the logs of the query shown, never mixes queries and never calls a capped list complete",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a page of another query joins the list",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-observe.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "continues the logs of the query shown, never mixes queries and never calls a capped list complete",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a capped list is complete",
+    "files": [
+      "crates/desktop-core/src/gateway_observe.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "usage_logs_and_limits_read_only_the_chosen_workspace_and_keep_each_sources_failure",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another workspace's read ends a Gateway hold",
+    "files": [
+      "crates/desktop-core/src/authority/observation_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "a_gateway_hold_ends_only_from_a_known_day_of_its_own_workspace",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "unreported errors end a Gateway hold",
+    "files": [
+      "crates/desktop-core/src/gateway_observe.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "a_gateway_hold_ends_only_from_a_known_day_of_its_own_workspace",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Responses run asks the Gateway to store it",
+    "files": [
+      "crates/desktop-core/src/gateway_inference.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "a_responses_run_streams_once_and_reports_how_it_ended",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed response is shown as completed",
+    "files": [
+      "crates/desktop-core/src/gateway_inference.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "a_responses_run_streams_once_and_reports_how_it_ended",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an incomplete Responses answer is shown completed",
+    "files": [
+      "crates/desktop-core/src/gateway_inference.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "a_responses_run_streams_once_and_reports_how_it_ended",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a chat answer cut at its token limit is shown completed",
+    "files": [
+      "crates/desktop-core/src/gateway_inference.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "a_responses_run_streams_once_and_reports_how_it_ended",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the Playground calls an incomplete answer completed",
+    "files": [
+      "apps/desktop/src/features/gateway/playground.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "tells a complete answer from one the Gateway cut short and from a failed one",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a run attaches a file the workspace did not list",
+    "files": [
+      "crates/desktop-core/src/authority/inference_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "gateway_files_are_read_uploaded_attached_and_deleted_once_with_the_workspace_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an upload is sent again",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_files_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "gateway_files_are_read_uploaded_attached_and_deleted_once_with_the_workspace_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a file over the bound is held for upload",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_files_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "gateway_files_are_read_uploaded_attached_and_deleted_once_with_the_workspace_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unlisted file is deleted",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_files_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "gateway_files_are_read_uploaded_attached_and_deleted_once_with_the_workspace_key",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a replaced key leaves the files shown",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_files_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "another_key_or_workspace_withdraws_the_files_and_their_attachments",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an uncertain upload is not kept",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_files_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "uncertain_file_changes_are_kept_with_their_trace_and_never_resent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused upload is called uncertain",
+    "files": [
+      "crates/desktop-core/src/gateway_files.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "uncertain_file_changes_are_kept_with_their_trace_and_never_resent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a file is deleted without asking",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-files.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "reads, uploads and deletes Gateway files once each, and the view never holds a path or content",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a chosen file may carry more than its name and size",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects observations, runs and keys Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a chat run carries the attached file",
+    "files": [
+      "apps/desktop/src/features/gateway/playground.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "attaches a file the workspace listed to a Responses run, and keeps it in the draft",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an upload grows the list past its bound",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_files_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "file_lists_keep_their_bound_deletes_their_identity_and_times_their_range",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an upload into a full list hides what it drops",
+    "files": [
+      "crates/desktop-core/src/authority/gateway_files_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "file_lists_keep_their_bound_deletes_their_identity_and_times_their_range",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a delete answered for another file settles this one",
+    "files": [
+      "crates/desktop-core/src/gateway_files.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "file_lists_keep_their_bound_deletes_their_identity_and_times_their_range",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a time no date can render refuses the list",
+    "files": [
+      "crates/desktop-core/src/gateway_files.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "gateway_inference"
+    ],
+    "guard": "file_lists_keep_their_bound_deletes_their_identity_and_times_their_range",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a time no date can render throws in the Files view",
+    "files": [
+      "apps/desktop/src/features/gateway/gateway-files.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/gateway/gateway-inference.test.tsx"
+    ],
+    "guard": "keeps the Files view usable with a full list after uploads and times no date can render",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the contract accepts a time no date can render",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects observations, runs and keys Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the contract refuses a file with an unknown time",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "accepts what Rust issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a kept run may carry its output",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects observations, runs and keys Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

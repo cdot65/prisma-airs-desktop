@@ -47,7 +47,9 @@ const view = (overrides: Partial<GatewayView> = {}): GatewayView => ({
     selected: null,
     remembered: null,
     rememberedMissing: false,
-    local: { state: 'ready', failure: null, drafts: [], records: [], problem: null, unsaved: false },
+    local: { state: 'ready', failure: null, drafts: [], records: [], playground: [], runs: [], files: [], problem: null, unsaved: false },
+    playground: null,
+    files: null,
     ...overrides,
 })
 
@@ -260,10 +262,13 @@ describe('AI Gateway', () => {
     it('shows the chosen workspace’s own settings and limits, and its failures', async () => {
         const native = scriptedNative(ready(listed(A)))
         let deny = false
+        // Holds the next detail read of A until released.
+        let holdA = false
+        let releaseA = () => {}
         const reads = gateway(native, (request) => {
             if (request.kind === 'gateway' && request.read.kind === 'detail' && request.read.resource === 'workspaces') {
                 if (deny) return { kind: 'failed', failure: 'denied', outcome: 'rejected' }
-                return ok({
+                const reply = ok({
                     kind: 'detail',
                     detail: {
                         resource: 'workspaces',
@@ -271,13 +276,18 @@ describe('AI Gateway', () => {
                         found: 'found',
                         item: JSON.stringify({
                             id: request.read.id,
-                            name: 'Team A',
+                            name: request.read.id === WS_A ? 'Team A' : 'Team B',
                             defaults: { config_id: 'r1', allow_config_override: true },
                             usage_limits: [{ credit_limit: 100, type: 'cost' }],
                             rate_limits: [{ type: 'requests', unit: 'rpm', value: 60 }],
                         }),
                     },
                 })
+                if (holdA && request.read.id === WS_A) {
+                    holdA = false
+                    return new Promise<ManagementResult>((resolve) => (releaseA = () => resolve(reply)))
+                }
+                return reply
             }
             return standard(request)
         })
@@ -291,9 +301,20 @@ describe('AI Gateway', () => {
         deny = true
         await user.click(screen.getByRole('button', { name: /Refresh workspace$/ }))
         expect(await screen.findByRole('alert')).toHaveTextContent('The workspace could not be read: This management client is not allowed')
-        // Another workspace starts with nothing held.
+        // A refresh of A is still out when B is chosen: B starts with nothing
+        // held, shows only its own detail, and A's late reply is dropped.
+        deny = false
+        holdA = true
+        await user.click(screen.getByRole('button', { name: /Refresh workspace$/ }))
+        await screen.findByText('Reading the workspace…')
         await chosen(native, B)
         await waitFor(() => expect(reads.filter((r) => r.kind === 'gateway' && r.read.kind === 'detail' && r.read.id === WS_B)).toHaveLength(1))
+        await waitFor(() => expect(screen.getByText('id', { selector: 'dt' }).nextElementSibling).toHaveTextContent(WS_B))
+        releaseA()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(screen.getByText('id', { selector: 'dt' }).nextElementSibling).toHaveTextContent(WS_B)
+        expect(screen.queryByText(WS_A)).toBeNull()
+        expect(screen.queryByText(/The workspace could not be read/)).toBeNull()
     })
 
     it('never shows one integration’s models under another', async () => {
@@ -557,6 +578,9 @@ describe('AI Gateway', () => {
                     settledAt: '2026-10-20T09:00:00Z',
                 },
             ],
+            playground: [],
+            runs: [],
+            files: [],
             problem: null,
             unsaved: false,
         }

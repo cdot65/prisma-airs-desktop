@@ -242,7 +242,9 @@ const STEP_STATES: readonly string[] = ['notStarted', 'notSent', 'rejected', 'un
 const RECONCILED: readonly string[] = ['found', 'absent', 'incomplete', 'failed', 'ambiguous']
 const SCOPE_CLEANUPS: readonly string[] = ['notNeeded', 'retained', 'deleted', 'failed', 'unknown']
 export const GATEWAY_DRAFT_PROBLEMS: readonly string[] = ['unsupported', 'tooLarge', 'credential', 'incomplete']
-const GATEWAY_LOCAL_ID = /^g[dr]-[0-9a-f]{24}$/
+const GATEWAY_LOCAL_ID = /^g[drpif]-[0-9a-f]{24}$/
+/** A file chosen to upload is named by a token, never by its path. */
+const FILE_TOKEN = /^gf-[0-9a-f]{24}$/
 const SECRET_STATES: readonly string[] = ['none', 'held', 'forgotten', 'shown']
 /** Largest page the native side reads (`management::MAX_PAGE`). */
 const MANAGEMENT_MAX_PAGE = 100
@@ -272,6 +274,28 @@ function isManagementView(value: unknown): boolean {
     )
 }
 
+/** The workspace inference key's state and binding (C18; never the key). */
+function isInferenceKeyView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(SCAN_STATES, value.state) &&
+        optional((m) => oneOf(MODES, m), value.mode) &&
+        optional((f) => oneOf(VAULT_ERRORS, f), value.failure) &&
+        optional(
+            (t) =>
+                isRecord(t) &&
+                isListedWorkspace(t.workspace) &&
+                typeof t.endpoint === 'string' &&
+                t.endpoint.startsWith('https://') &&
+                !t.endpoint.includes('?') &&
+                !t.endpoint.includes('#'),
+            value.target
+        ) &&
+        // A ready key is always bound to a workspace and endpoint.
+        (value.state !== 'ready' || value.target !== null)
+    )
+}
+
 function isTenant(value: unknown): boolean {
     return (
         isRecord(value) &&
@@ -285,7 +309,8 @@ function isTenant(value: unknown): boolean {
         oneOf(SCAN_STATES, value.scan.state) &&
         optional((m) => oneOf(MODES, m), value.scan.mode) &&
         optional((f) => oneOf(VAULT_ERRORS, f), value.scan.failure) &&
-        isManagementView(value.management)
+        isManagementView(value.management) &&
+        isInferenceKeyView(value.inference)
     )
 }
 
@@ -614,8 +639,261 @@ function isGatewayResult(value: unknown): boolean {
             return isGatewayModels(value.models)
         case 'prerequisites':
             return isGatewayPrerequisites(value.prerequisites)
+        case 'observed':
+            return isObserveResult(value.observed)
     }
     return false
+}
+
+/** A finite, non-negative measure. */
+const isMeasure = (value: unknown): boolean => typeof value === 'number' && Number.isFinite(value) && value >= 0
+const optionalMeasure = (value: unknown): boolean => value === null || isMeasure(value)
+const GATEWAY_WINDOWS: readonly number[] = [1, 7, 30]
+const TRACE_ID = /^[A-Za-z0-9_.:-]{1,128}$/
+
+function isSeries(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        Array.isArray(value.points) &&
+        value.points.length <= 2048 &&
+        value.points.every((p) => isRecord(p) && isString(p.x) && isMeasure(p.y)) &&
+        optionalMeasure(value.total) &&
+        optionalMeasure(value.errors) &&
+        typeof value.partial === 'boolean' &&
+        // A partial window never claims a total.
+        (!value.partial || value.total === null)
+    )
+}
+
+function isUsage(value: unknown): boolean {
+    if (!isRecord(value) || !isGatewayId(value.workspace) || !GATEWAY_WINDOWS.includes(value.days as number)) return false
+    const series = ['requests', 'cost', 'tokens', 'latency'].every((k) =>
+        optional(isSeries, value[k]) && optionalFailure(value[`${k}Failure`]) && (value[k] === null) !== (value[`${k}Failure`] === null)
+    )
+    const models = value.models
+    const modelsOk =
+        models === null ||
+        (isRecord(models) &&
+            Array.isArray(models.rows) &&
+            models.rows.length <= 100 &&
+            models.rows.every(
+                (m) =>
+                    isRecord(m) &&
+                    isString(m.model) &&
+                    optional(isString, m.provider) &&
+                    isMeasure(m.requests) &&
+                    optionalMeasure(m.cost) &&
+                    optionalMeasure(m.totalTokens) &&
+                    optionalMeasure(m.successRate)
+            ) &&
+            optionalMeasure(models.total) &&
+            typeof models.complete === 'boolean' &&
+            typeof models.partial === 'boolean')
+    return series && modelsOk && optionalFailure(value.modelsFailure) && (models === null) !== (value.modelsFailure === null)
+}
+
+function isLogs(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isString(value.workspace) &&
+        GATEWAY_WINDOWS.includes(value.days as number) &&
+        isCount(value.page) &&
+        (value.page as number) < 40 &&
+        optional((t) => typeof t === 'string' && TRACE_ID.test(t), value.trace) &&
+        optional((c) => isCount(c) && (c as number) >= 100 && (c as number) <= 599, value.status) &&
+        Array.isArray(value.rows) &&
+        value.rows.length <= 25 &&
+        value.rows.every(
+            (r) =>
+                isRecord(r) &&
+                isString(r.id) &&
+                isString(r.createdAt) &&
+                typeof r.model === 'string' &&
+                optional(isString, r.provider) &&
+                isCount(r.status) &&
+                optionalMeasure(r.units) &&
+                optionalMeasure(r.cost) &&
+                optional((t) => typeof t === 'string' && TRACE_ID.test(t), r.traceId) &&
+                optional(isString, r.cacheStatus) &&
+                optional(isString, r.apiKeyId) &&
+                // A filtered page carries only what was asked for.
+                (value.trace === null || r.traceId === value.trace) &&
+                (value.status === null || r.status === value.status)
+        ) &&
+        optionalCount(value.total) &&
+        typeof value.more === 'boolean' &&
+        typeof value.capped === 'boolean' &&
+        // A capped page is the last one read: nothing more is offered.
+        !(value.more && value.capped) &&
+        typeof value.partial === 'boolean'
+    )
+}
+
+function isPolicyList(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        Array.isArray(value.policies) &&
+        value.policies.length <= 200 &&
+        value.policies.every(
+            (p) =>
+                isRecord(p) &&
+                isString(p.id) &&
+                optional(isString, p.name) &&
+                isString(p.status) &&
+                optional(isString, p.limitType) &&
+                Array.isArray(p.groupBy) &&
+                p.groupBy.every(isString) &&
+                optionalMeasure(p.creditLimit) &&
+                optionalMeasure(p.alertThreshold) &&
+                optional(isString, p.periodicReset) &&
+                optional(isString, p.nextResetAt) &&
+                optionalMeasure(p.value) &&
+                optional(isString, p.unit) &&
+                optional(isString, p.target)
+        ) &&
+        optionalCount(value.total) &&
+        typeof value.complete === 'boolean'
+    )
+}
+
+function isLimits(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isGatewayId(value.workspace) &&
+        ['usage', 'rate'].every(
+            (k) => optional(isPolicyList, value[k]) && optionalFailure(value[`${k}Failure`]) && (value[k] === null) !== (value[`${k}Failure`] === null)
+        )
+    )
+}
+
+function isObserveResult(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    switch (value.kind) {
+        case 'usage':
+            return isUsage(value.usage)
+        case 'logs':
+            return isLogs(value.logs)
+        case 'limits':
+            return isLimits(value.limits)
+    }
+    return false
+}
+
+const PLAYGROUND_STATES: readonly string[] = ['running', 'completed', 'incomplete', 'truncated', 'stopped', 'failed']
+export const INFERENCE_FAILURES: readonly string[] = [
+    'blocked',
+    'unauthorized',
+    'denied',
+    'notFound',
+    'rejected',
+    'rateLimited',
+    'unavailable',
+    'timeout',
+    'network',
+    'destination',
+    'invalidResponse',
+    'modelFailed',
+    'credentialLocked',
+    'credentialDenied',
+    'credentialMissing',
+    'configuration',
+]
+const RUN_ENDS: readonly string[] = ['completed', 'incomplete', 'truncated', 'stopped', 'failed']
+export const INFERENCE_APIS: readonly string[] = ['chat', 'responses']
+
+function isTokenUsage(value: unknown): boolean {
+    return isRecord(value) && optionalCount(value.prompt) && optionalCount(value.completion) && optionalCount(value.total)
+}
+
+/** The Playground's run (C18): bounded output, its trace and how it ended. */
+function isPlaygroundView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.operation === 'string' &&
+        OPERATION_ID.test(value.operation) &&
+        isListedWorkspace(value.workspace) &&
+        oneOf(INFERENCE_APIS, value.api) &&
+        isString(value.model) &&
+        optional(isGatewayId, value.route) &&
+        optional(isGatewayId, value.file) &&
+        // Only a Responses run attaches a file.
+        (value.file === null || value.api === 'responses') &&
+        typeof value.trace === 'string' &&
+        TRACE_ID.test(value.trace) &&
+        oneOf(PLAYGROUND_STATES, value.state) &&
+        typeof value.output === 'string' &&
+        value.output.length <= 64 * 1024 &&
+        // A running run has no outcome yet; an ended one always does.
+        (value.state === 'running' ? value.outcome === null : oneOf(OUTCOMES, value.outcome)) &&
+        optional((f) => oneOf(INFERENCE_FAILURES, f), value.failure) &&
+        typeof value.sent === 'boolean' &&
+        typeof value.answered === 'boolean' &&
+        optional(isString, value.servedModel) &&
+        optional(isString, value.responseId) &&
+        optional(isString, value.finish) &&
+        optional(isTokenUsage, value.usage)
+    )
+}
+
+const FILE_CHANGES: readonly string[] = ['upload', 'delete']
+/** Latest file creation time, in seconds, a date can render (8.64e15 ms). */
+const MAX_CREATED_AT = 8_640_000_000_000
+
+/** One Gateway file's metadata (C18, D045): never its content. */
+function isGatewayFile(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isGatewayId(value.id) &&
+        isString(value.filename) &&
+        isCount(value.bytes) &&
+        // Seconds; null when the Gateway named a time no date can render.
+        optional((c) => isCount(c) && (c as number) <= MAX_CREATED_AT, value.createdAt) &&
+        isString(value.purpose) &&
+        isString(value.status) &&
+        !('content' in value)
+    )
+}
+
+/** An upload or delete: going (no outcome yet) or how it settled. */
+function isFileAction(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        oneOf(FILE_CHANGES, value.action) &&
+        optional(isString, value.filename) &&
+        optional(isGatewayId, value.file) &&
+        optional(isCount, value.bytes) &&
+        typeof value.trace === 'string' &&
+        TRACE_ID.test(value.trace) &&
+        optional((o) => oneOf(OUTCOMES, o), value.outcome) &&
+        optional((f) => oneOf(INFERENCE_FAILURES, f), value.failure) &&
+        typeof value.sent === 'boolean'
+    )
+}
+
+/** The chosen workspace's files (C18): metadata and a chosen file's name and size only. */
+function isGatewayFiles(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isListedWorkspace(value.workspace) &&
+        optional((f) => Array.isArray(f) && f.length <= 200 && f.every(isGatewayFile), value.files) &&
+        typeof value.more === 'boolean' &&
+        typeof value.reading === 'boolean' &&
+        optional((f) => oneOf(INFERENCE_FAILURES, f), value.readFailure) &&
+        optional(
+            (c) =>
+                isRecord(c) &&
+                typeof c.token === 'string' &&
+                FILE_TOKEN.test(c.token) &&
+                isString(c.name) &&
+                isCount(c.bytes) &&
+                (c.bytes as number) <= 4 * 1024 * 1024 &&
+                Object.keys(c).length === 3,
+            value.chosen
+        ) &&
+        typeof value.choosing === 'boolean' &&
+        optional((f) => oneOf(STAGED_FAILURES, f), value.chooseFailure) &&
+        optional(isFileAction, value.action)
+    )
 }
 
 function isGatewayView(value: unknown): boolean {
@@ -635,7 +913,9 @@ function isGatewayView(value: unknown): boolean {
         optional(isGatewayId, value.remembered) &&
         typeof value.rememberedMissing === 'boolean' &&
         (!value.rememberedMissing || value.remembered !== null) &&
-        isGatewayLocal(value.local)
+        isGatewayLocal(value.local) &&
+        optional(isPlaygroundView, value.playground) &&
+        optional(isGatewayFiles, value.files)
     )
 }
 
@@ -674,6 +954,62 @@ function isGatewayLocal(value: unknown): boolean {
                 (r.provisioning === null ||
                     (r.kind === 'gatewayWorkspaces' && r.action === 'create' && isProvisioning(r.provisioning))) &&
                 isString(r.settledAt)
+        ) &&
+        Array.isArray(value.playground) &&
+        value.playground.every(
+            (d) =>
+                isRecord(d) &&
+                typeof d.id === 'string' &&
+                GATEWAY_LOCAL_ID.test(d.id) &&
+                isListedWorkspace(d.workspace) &&
+                oneOf(INFERENCE_APIS, d.api) &&
+                typeof d.model === 'string' &&
+                optional(isGatewayId, d.route) &&
+                optional((x) => typeof x === 'string', d.system) &&
+                typeof d.prompt === 'string' &&
+                optional(isGatewayId, d.file) &&
+                isString(d.savedAt)
+        ) &&
+        Array.isArray(value.runs) &&
+        value.runs.every(
+            (r) =>
+                isRecord(r) &&
+                typeof r.id === 'string' &&
+                GATEWAY_LOCAL_ID.test(r.id) &&
+                isListedWorkspace(r.workspace) &&
+                oneOf(INFERENCE_APIS, r.api) &&
+                isString(r.model) &&
+                optional(isGatewayId, r.route) &&
+                typeof r.trace === 'string' &&
+                TRACE_ID.test(r.trace) &&
+                oneOf(RUN_ENDS, r.end) &&
+                oneOf(OUTCOMES, r.outcome) &&
+                optional((f) => oneOf(INFERENCE_FAILURES, f), r.failure) &&
+                typeof r.answered === 'boolean' &&
+                isCount(r.outputBytes) &&
+                optional(isTokenUsage, r.usage) &&
+                isString(r.settledAt) &&
+                // Kept output never: only its size.
+                !('output' in r)
+        ) &&
+        Array.isArray(value.files) &&
+        value.files.every(
+            (r) =>
+                isRecord(r) &&
+                typeof r.id === 'string' &&
+                GATEWAY_LOCAL_ID.test(r.id) &&
+                isListedWorkspace(r.workspace) &&
+                oneOf(FILE_CHANGES, r.action) &&
+                optional(isString, r.filename) &&
+                optional(isGatewayId, r.file) &&
+                optional(isCount, r.bytes) &&
+                typeof r.trace === 'string' &&
+                TRACE_ID.test(r.trace) &&
+                oneOf(OUTCOMES, r.outcome) &&
+                optional((f) => oneOf(INFERENCE_FAILURES, f), r.failure) &&
+                isString(r.settledAt) &&
+                // A file's content is never kept.
+                !('content' in r)
         ) &&
         optional((p) => oneOf(GATEWAY_DRAFT_PROBLEMS, p), value.problem) &&
         typeof value.unsaved === 'boolean'
@@ -858,7 +1194,7 @@ export const CASE_PROBLEMS: readonly string[] = [
 const LIBRARY_STATES: readonly string[] = ['idle', 'loading', 'ready', 'failed']
 const LIBRARY_FAILURES: readonly string[] = ['locked', 'denied', 'unavailable', 'unreadable']
 const TONES: readonly string[] = ['ok', 'warn', 'bad']
-const INBOX_DESTINATIONS: readonly string[] = ['apiKeys', 'sessions']
+const INBOX_DESTINATIONS: readonly string[] = ['apiKeys', 'sessions', 'gateway']
 const FACES: readonly string[] = ['items', 'firstLaunch', 'allClear', 'gap']
 const HOLD_KINDS: readonly string[] = ['acknowledge', 'snooze']
 
@@ -971,7 +1307,24 @@ function isRuntimeOverview(value: unknown): boolean {
         Array.isArray(value.items) &&
         value.items.every(isInboxItem) &&
         Array.isArray(value.gaps) &&
-        value.gaps.every(isString)
+        value.gaps.every(isString) &&
+        optional(isGatewayOverview, value.gateway)
+    )
+}
+
+/** The chosen Gateway workspace's last day on Home (C18). */
+function isGatewayOverview(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isGatewayId(value.workspace) &&
+        isString(value.workspaceName) &&
+        optionalMeasure(value.requests) &&
+        optionalMeasure(value.errors) &&
+        optionalMeasure(value.cost) &&
+        typeof value.partial === 'boolean' &&
+        optionalFailure(value.usageFailure) &&
+        optionalCount(value.policies) &&
+        optionalFailure(value.limitsFailure)
     )
 }
 

@@ -70,6 +70,10 @@ pub enum GatewayRead {
     /// providers, integrations and inference-scoped service keys, the IAM
     /// scope's workspace binding and each plane's access.
     Prerequisites,
+    /// The selected workspace's usage, logs or limit policies (C18).
+    Observe {
+        read: crate::gateway_observe::ObserveRead,
+    },
 }
 
 impl GatewayRead {
@@ -77,6 +81,7 @@ impl GatewayRead {
         match self {
             Self::Inventory { .. } | Self::Prerequisites => true,
             Self::Detail { id, .. } | Self::IntegrationModels { id } => is_id(id),
+            Self::Observe { read } => read.is_valid(),
         }
     }
 
@@ -85,7 +90,7 @@ impl GatewayRead {
         match self {
             Self::Inventory { resource } | Self::Detail { resource, .. } => resource.scoped(),
             Self::IntegrationModels { .. } => false,
-            Self::Prerequisites => true,
+            Self::Prerequisites | Self::Observe { .. } => true,
         }
     }
 }
@@ -217,12 +222,16 @@ pub enum GatewayResult {
     Prerequisites {
         prerequisites: Box<GatewayPrerequisites>,
     },
+    Observed {
+        observed: crate::gateway_observe::ObserveResult,
+    },
 }
 
 /// The selected workspace's listed identity and the scope it reads under.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WorkspaceScope {
     pub id: String,
+    pub name: String,
     pub slug: String,
     pub scope_name: String,
 }
@@ -231,6 +240,7 @@ impl From<&ListedWorkspace> for WorkspaceScope {
     fn from(w: &ListedWorkspace) -> Self {
         Self {
             id: w.id.clone(),
+            name: w.name.clone(),
             slug: w.slug.clone(),
             scope_name: w.scope_name.clone(),
         }
@@ -949,6 +959,12 @@ pub(crate) async fn read(
                 .map(|prerequisites| GatewayResult::Prerequisites {
                     prerequisites: Box::new(prerequisites),
                 })
+        }
+        GatewayRead::Observe { read } => {
+            let scope = scope.ok_or(PageError::Invalid)?;
+            crate::gateway_observe::read(gw, read, scope, options)
+                .await
+                .map(|observed| GatewayResult::Observed { observed })
         }
     }
 }

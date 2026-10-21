@@ -286,6 +286,7 @@ async fn a_keychain_scan_key_is_stored_indexed_and_never_observed() {
             destination: Region::Europe.origin().to_owned(),
             class: desktop_core::store::CredentialClass::Scan,
             client_id: None,
+            inference: None,
         }]
     );
     let everything = format!("{} {:?}", redacted(&desk.snap()), saved);
@@ -1397,6 +1398,7 @@ fn persisted_state_rejects_dangling_references() {
             destination: Region::Europe.origin().into(),
             class: desktop_core::store::CredentialClass::Scan,
             client_id: None,
+            inference: None,
         }],
         ..PersistedState::default()
     };

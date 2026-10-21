@@ -25,7 +25,7 @@ const inbox = {
 const runtimeRead = {
     readAt: 1792000000, chart: { bucketSeconds: 3600, buckets: [{ time: '2026-10-19T00:00:00Z', total: 1, violating: 0, detections: null }] },
     chartFailure: null, summary: { sessions: 1, violating: 0, benign: 1, detectionEvents: null }, keysComplete: true, keysFailure: null,
-    items: [inbox], gaps: [],
+    items: [inbox], gaps: [], gateway: null,
 }
 const report = {
     scanId: 'scn-1', scanSubReqId: 0, sessionId: 'ses-1', applicationId: 'app-1', application: 'Bot', kind: 'false_positive',
@@ -440,7 +440,7 @@ describe('management result validation', () => {
 
         it('validates the workspace choice in the snapshot', () => {
             const workspace = { id: WS, name: 'Team A', slug: 'team-a', scopeName: 'scope-a' }
-            const view = { workspaces: [workspace], complete: true, selected: { reference: 'gw-aaaaaaaaaaaaaaaaaaaaaaaa', workspace, restored: true }, remembered: null, rememberedMissing: false, local: { state: 'ready', failure: null, drafts: [], records: [], problem: null, unsaved: false } }
+            const view = { workspaces: [workspace], complete: true, selected: { reference: 'gw-aaaaaaaaaaaaaaaaaaaaaaaa', workspace, restored: true }, remembered: null, rememberedMissing: false, local: { state: 'ready', failure: null, drafts: [], records: [], playground: [], runs: [], files: [], problem: null, unsaved: false }, playground: null, files: null }
             expect(parseShellSnapshot({ ...valid, gateway: view })).toBeTruthy()
             for (const broken of [
                 { ...view, selected: { ...view.selected, reference: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' } },
@@ -516,10 +516,10 @@ describe('management result validation', () => {
                 id: `gr-${'b'.repeat(24)}`, workspace: null, kind: 'gatewayWorkspaces', action: 'create', target: '',
                 name: null, body: '{}', outcome: 'unknown', readback: 'incomplete', provisioning, settledAt: '2026-10-20T00:00:00Z',
             }
-            const local = { state: 'ready', failure: null, drafts: [draft], records: [record], problem: null, unsaved: false }
+            const local = { state: 'ready', failure: null, drafts: [draft], records: [record], playground: [], runs: [], files: [], problem: null, unsaved: false }
             const gateway = (l: unknown) => ({
                 ...valid,
-                gateway: { workspaces: null, complete: false, selected: null, remembered: null, rememberedMissing: false, local: l },
+                gateway: { workspaces: null, complete: false, selected: null, remembered: null, rememberedMissing: false, local: l, playground: null, files: null },
             })
 
             it('accepts what Rust issues', () => {
@@ -547,6 +547,115 @@ describe('management result validation', () => {
                 }
             })
         })
+    })
+})
+
+describe('Gateway inference and observation (C18)', () => {
+    const WS = '16f7e90d-382a-4e78-b577-1b01eb5f8297'
+    const workspace = { id: WS, name: 'Team A', slug: 'team-a', scopeName: 'scope-a' }
+    const series = { points: [{ x: '2026-10-20T00:00:00Z', y: 4 }], total: 4, errors: 1, partial: false }
+    const usage = {
+        workspace: WS, days: 7, requests: series, requestsFailure: null, cost: null, costFailure: 'unavailable', tokens: series,
+        tokensFailure: null, latency: { ...series, errors: null }, latencyFailure: null,
+        models: { rows: [{ model: 'gpt-4o', provider: 'openai', requests: 3, cost: null, totalTokens: 9, successRate: 0.9 }], total: 1, complete: true, partial: false },
+        modelsFailure: null,
+    }
+    const row = { id: 'log-1', createdAt: '2026-10-20T00:00:00Z', model: 'gpt-4o', provider: 'openai', status: 446, units: 1, cost: 0.2, traceId: 'airs-1', cacheStatus: null, apiKeyId: null }
+    const logs = { workspace: 'team-a', days: 7, page: 0, trace: 'airs-1', status: null, rows: [row], total: 1, more: false, capped: false, partial: false }
+    const policy = { id: 'ul-1', name: 'n', status: 'active', limitType: 'cost', groupBy: ['api_key'], creditLimit: 5000, alertThreshold: 80, periodicReset: 'monthly', nextResetAt: null, value: null, unit: null, target: null }
+    const limits = { workspace: WS, usage: { policies: [policy], total: 1, complete: true }, usageFailure: null, rate: null, rateFailure: 'denied' }
+    const observed = (o: unknown) => ({ kind: 'gateway', gateway: { kind: 'observed', observed: o } })
+    const bad = (value: unknown) => expect(() => parseManagementResult(value)).toThrow(ContractViolation)
+    const run = {
+        operation: 'op-12', workspace, api: 'chat', model: '@openai-prod/gpt-4o', route: 'cfg-1', file: null, trace: 'airs-0123456789abcdef', state: 'stopped',
+        output: 'partial', outcome: 'unknown', failure: null, sent: true, answered: true, servedModel: 'gpt-4o', responseId: 'c1',
+        finish: null, usage: { prompt: 3, completion: null, total: null },
+    }
+    const kept = {
+        id: `gi-${'c'.repeat(24)}`, workspace, api: 'chat', model: 'm', route: null, trace: 'airs-1', end: 'stopped', outcome: 'unknown', failure: null,
+        answered: true, outputBytes: 7, usage: null, settledAt: '2026-10-20T00:00:00Z',
+    }
+    const draft = { id: `gp-${'d'.repeat(24)}`, workspace, api: 'responses', model: 'm', route: null, system: null, prompt: 'p', file: null, savedAt: '2026-10-20T00:00:00Z' }
+    const file = { id: 'file-abc123', filename: 'notes.txt', bytes: 12, createdAt: 1760000000, purpose: 'assistants', status: 'processed' }
+    const action = { action: 'upload', filename: 'notes.txt', file: 'file-abc123', bytes: 12, trace: 'airs-0123456789abcdef', outcome: 'completed', failure: null, sent: true }
+    const files = {
+        workspace, files: [file], more: false, reading: false, readFailure: null,
+        chosen: { token: `gf-${'e'.repeat(24)}`, name: 'report.csv', bytes: 8 }, choosing: false, chooseFailure: null, action,
+    }
+    const keptFile = {
+        id: `gf-${'f'.repeat(24)}`, workspace, action: 'upload', filename: 'report.csv', file: null, bytes: 8, trace: 'airs-1', outcome: 'unknown',
+        failure: 'unavailable', settledAt: '2026-10-20T00:00:00Z',
+    }
+    const gateway = (extra: Record<string, unknown>, local: Record<string, unknown> = {}) => ({
+        ...valid,
+        gateway: {
+            ...valid.gateway,
+            local: { ...valid.gateway.local, state: 'ready', playground: [draft], runs: [kept], ...local },
+            ...extra,
+        },
+    })
+    const key = { state: 'ready', mode: 'keychain', failure: null, target: { workspace, endpoint: 'https://gw.example/v1' } }
+
+    it('accepts what Rust issues', () => {
+        expect(parseManagementResult(observed({ kind: 'usage', usage }))).toBeTruthy()
+        expect(parseManagementResult(observed({ kind: 'logs', logs }))).toBeTruthy()
+        expect(parseManagementResult(observed({ kind: 'logs', logs: { ...logs, capped: true } }))).toBeTruthy()
+        expect(parseManagementResult(observed({ kind: 'limits', limits }))).toBeTruthy()
+        expect(parseShellSnapshot(gateway({ playground: run }))).toBeTruthy()
+        expect(parseShellSnapshot(gateway({ playground: { ...run, state: 'running', outcome: null } }))).toBeTruthy()
+        expect(parseShellSnapshot(gateway({ playground: { ...run, api: 'responses', file: 'file-abc123', state: 'incomplete', outcome: 'completed', finish: 'max_output_tokens' } }))).toBeTruthy()
+        expect(parseShellSnapshot(gateway({ files }, { files: [keptFile], playground: [{ ...draft, file: 'file-abc123' }] }))).toBeTruthy()
+        expect(parseShellSnapshot(gateway({ files: { ...files, files: null, chosen: null, action: { ...action, outcome: null, file: null } } }))).toBeTruthy()
+        // A full list after uploads (the bound, with more reported), and times
+        // at and past the renderable range (the latter as unknown).
+        const full = Array.from({ length: 200 }, (_, i) => ({ ...file, id: `file-${i}`, createdAt: i === 0 ? null : i === 1 ? 8_640_000_000_000 : 1760000000 }))
+        expect(parseShellSnapshot(gateway({ files: { ...files, files: full, more: true } }))).toBeTruthy()
+        expect(parseShellSnapshot({ ...valid, tenants: [{ ...tenant(), inference: key }] })).toBeTruthy()
+    })
+
+    it('rejects observations, runs and keys Rust never issues', () => {
+        bad(observed({ kind: 'usage', usage: { ...usage, costFailure: null } }))
+        bad(observed({ kind: 'usage', usage: { ...usage, days: 2 } }))
+        bad(observed({ kind: 'usage', usage: { ...usage, requests: { ...series, partial: true } } }))
+        bad(observed({ kind: 'usage', usage: { ...usage, requests: { ...series, total: -1 } } }))
+        bad(observed({ kind: 'logs', logs: { ...logs, rows: [{ ...row, traceId: 'other' }] } }))
+        bad(observed({ kind: 'logs', logs: { ...logs, page: 40 } }))
+        bad(observed({ kind: 'logs', logs: { ...logs, more: true, capped: true } }))
+        bad(observed({ kind: 'logs', logs: { ...logs, capped: undefined } }))
+        bad(observed({ kind: 'limits', limits: { ...limits, rateFailure: null } }))
+        bad(observed({ kind: 'secrets' }))
+        for (const broken of [
+            gateway({ playground: { ...run, state: 'running' } }),
+            gateway({ playground: { ...run, outcome: null } }),
+            gateway({ playground: { ...run, output: 'x'.repeat(64 * 1024 + 1) } }),
+            gateway({ playground: { ...run, trace: 'a b' } }),
+            gateway({ playground: { ...run, failure: 'exploded' } }),
+            gateway({ playground: { ...run, api: 'files' } }),
+            gateway({}, { playground: [{ ...draft, api: undefined }] }),
+            gateway({}, { runs: [{ ...kept, output: 'partial' }] }),
+            gateway({}, { runs: [{ ...kept, id: 'gx-1' }] }),
+            gateway({}, { playground: [{ ...draft, route: 'a b' }] }),
+            gateway({ playground: { ...run, file: 'file-abc123' } }),
+            gateway({ playground: { ...run, state: 'cut' } }),
+            gateway({}, { playground: [{ ...draft, file: '../etc' }] }),
+            gateway({ files: { ...files, chosen: { ...files.chosen, path: '/Users/x/report.csv' } } }),
+            gateway({ files: { ...files, chosen: { ...files.chosen, token: 'report.csv' } } }),
+            gateway({ files: { ...files, chosen: { ...files.chosen, bytes: 4 * 1024 * 1024 + 1 } } }),
+            gateway({ files: { ...files, files: [{ ...file, content: 'CANARY' }] } }),
+            gateway({ files: { ...files, files: [{ ...file, id: 'a b' }] } }),
+            gateway({ files: { ...files, files: [{ ...file, createdAt: 8_640_000_000_001 }] } }),
+            gateway({ files: { ...files, files: [{ ...file, createdAt: -1 }] } }),
+            gateway({ files: { ...files, more: true, files: Array.from({ length: 201 }, (_, i) => ({ ...file, id: `file-${i}` })) } }),
+            gateway({ files: { ...files, action: { ...action, action: 'read' } } }),
+            gateway({ files: { ...files, chooseFailure: 'exploded' } }),
+            gateway({}, { files: [{ ...keptFile, content: 'a,b' }] }),
+            gateway({}, { files: [{ ...keptFile, trace: 'a b' }] }),
+            { ...valid, tenants: [{ ...tenant(), inference: { ...key, target: null } }] },
+            { ...valid, tenants: [{ ...tenant(), inference: { ...key, target: { ...key.target, endpoint: 'https://gw.example/v1?key=x' } } }] },
+            { ...valid, tenants: [{ ...tenant(), inference: undefined }] },
+        ]) {
+            expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
+        }
     })
 })
 

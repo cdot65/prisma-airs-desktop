@@ -773,6 +773,14 @@
       {
         "id": "C16-N09",
         "check": "Every Gateway request is a GET (only the token grant is a POST); no secret or synthetic private marker appears in any Accessibility snapshot; v1 data is unchanged."
+      },
+      {
+        "id": "C16-N10",
+        "check": "With two integrations, opening the second while the first's models are shown, or while the first's model read is still out, shows none of the first's models, loading state or count, and its late reply is dropped; reading the second shows only its own models."
+      },
+      {
+        "id": "C16-N11",
+        "check": "The Workspace tab shows the chosen workspace's own settings with its defaults and embedded limits; Refresh workspace is reached and pressed by keyboard and keeps focus; choosing another workspace shows only that workspace's settings."
       }
     ],
     "C17": [
@@ -823,6 +831,60 @@
       {
         "id": "C17-N12",
         "check": "Reconnecting replays nothing (T23): after a relaunch with the service reachable no Gateway or IAM write is sent, the draft (with its offline edit) and both records are still listed, a record goes only when dismissed, and the kept draft's action is reachable by keyboard inside the window."
+      }
+    ],
+    "C18": [
+      {
+        "id": "C18-N01",
+        "check": "The Playground offers no run without a workspace inference key and never the management client; the key is entered for the chosen workspace with its runtime endpoint, stored natively and never shown, and nothing is sent by storing it."
+      },
+      {
+        "id": "C18-N02",
+        "check": "One run is sent only when Run is pressed: once, with the inference key (no management authorization) to the stored endpoint, streaming, at most 256 tokens; its output, served model, token counts and trace are shown and the trace matches the request."
+      },
+      {
+        "id": "C18-N03",
+        "check": "Stop ends a run mid-stream: the stream is closed, the response says the Gateway may have run and charged for it, and the run is kept on this Mac without its output."
+      },
+      {
+        "id": "C18-N04",
+        "check": "A guardrail refusal (HTTP 446) is named as blocked and never retried; a Gateway failure (HTTP 503) is named, said to be possibly run and charged, kept on this Mac as uncertain with its trace, and never retried."
+      },
+      {
+        "id": "C18-N05",
+        "check": "Choosing another workspace mid-stream stops the run (the stream is closed) and nothing of it is shown again under either workspace; nothing is replayed."
+      },
+      {
+        "id": "C18-N06",
+        "check": "Usage shows each series' total with an accessible chart name and its values reachable by keyboard; a failed source says it was not read instead of a zero; errors and the busiest models are shown."
+      },
+      {
+        "id": "C18-N07",
+        "check": "Find in logs reads the chosen workspace's logs filtered by the run's trace; Limits shows the usage- and rate-limit policies of the workspace."
+      },
+      {
+        "id": "C18-N08",
+        "check": "Home/Inbox shows the chosen Gateway workspace's last day (requests, errors, cost, policies) and a Gateway errors item."
+      },
+      {
+        "id": "C18-N09",
+        "check": "An offline relaunch shows the Playground draft and the uncertain runs kept on this Mac (no output) and sends nothing; the kept draft is opened and edited offline by keyboard without a workspace listing, the edit survives another offline relaunch and opens in the Playground once online, and reconnecting sends no inference."
+      },
+      {
+        "id": "C18-N10",
+        "check": "Run prompt is keyboard-reachable at 200% zoom and Remove key at the minimum window size, inside the window; a chart's values disclosure is keyboard-reachable."
+      },
+      {
+        "id": "C18-N11",
+        "check": "No AX snapshot carries the inference key, the management secret or the scan key; the synthetic server never logged the prompt or the key; the runtime requests are exactly the runs pressed; v1 data is unchanged."
+      },
+      {
+        "id": "C18-N12",
+        "check": "Choosing the Responses API sends one streamed /responses run with the inference key and store false (at most 256 output tokens); its output, API, served model and tokens are shown, and nothing goes to chat completions. A run the Gateway ends at the output token limit is shown as incomplete with its reason (max_output_tokens), its partial output and tokens, never as completed; a run the model fails is shown as failed. Each is sent once."
+      },
+      {
+        "id": "C18-N13",
+        "check": "The workspace's Files tab reads its files with the inference key; a file chosen in the sheet shows only its name and size, is uploaded once by keyboard (multipart, purpose assistants, the chosen bytes) and the status takes focus; a Responses run attaches it as an input_file; Delete asks first (focus on Delete file, Cancel sends nothing and returns focus to the row) and deletes one file once; an upload answered 503 is named as possibly stored, kept on this Mac with its trace and never sent again."
       }
     ]
   }

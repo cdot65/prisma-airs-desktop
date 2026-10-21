@@ -1,0 +1,17 @@
+
+running 8 tests
+test the_overview_reports_the_chosen_workspaces_gateway_day_with_its_source_state ... ok
+test usage_logs_and_limits_read_only_the_chosen_workspace_and_keep_each_sources_failure ... ok
+test stopping_ends_the_stream_and_never_claims_nothing_was_charged ... ok
+test the_inference_key_is_bound_to_its_workspace_and_endpoint_and_never_leaves_the_core ... ok
+test output_is_bounded_and_a_malformed_chunk_ends_the_run ... ok
+test a_run_streams_its_output_once_with_its_route_and_trace_and_is_never_retried ... ok
+test playground_drafts_and_uncertain_runs_survive_an_offline_restart_and_nothing_is_replayed ... ok
+test another_workspace_tenant_or_key_stops_the_run_and_its_late_output_is_dropped ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.53s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.37s
+     Running tests/gateway_inference/main.rs (target/debug/deps/gateway_inference-4eda4ab622c04f8d)

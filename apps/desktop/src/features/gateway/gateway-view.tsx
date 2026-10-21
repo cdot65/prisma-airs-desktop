@@ -37,6 +37,9 @@ import {
     ProvisioningSteps,
     verbOf,
 } from '../administration/runtime-changes'
+import { LimitsPanel, LogsPanel, UsagePanel } from './gateway-observe'
+import { fileFailureText, FilesPanel, sizeText } from './gateway-files'
+import { INFERENCE_FAILURE_TEXT, KeptDraftEditor, PlaygroundPanel } from './playground'
 
 interface Props {
     snapshot: ShellSnapshot
@@ -45,7 +48,7 @@ interface Props {
     onNavigate: (id: FeatureId) => void
 }
 
-type Tab = Exclude<GatewayResource, 'workspaces'> | 'workspace' | 'prerequisites'
+type Tab = Exclude<GatewayResource, 'workspaces'> | 'workspace' | 'prerequisites' | 'playground' | 'files' | 'usage' | 'logs' | 'limits'
 
 const TABS: readonly [Tab, string][] = [
     ['workspace', 'Workspace'],
@@ -56,7 +59,15 @@ const TABS: readonly [Tab, string][] = [
     ['userKeys', 'User keys'],
     ['integrations', 'Integrations'],
     ['prerequisites', 'Inference prerequisites'],
+    ['playground', 'Playground'],
+    ['files', 'Files'],
+    ['usage', 'Usage'],
+    ['logs', 'Logs'],
+    ['limits', 'Limits'],
 ]
+
+/** Tabs whose panels read for themselves (C18). */
+const OBSERVED: readonly Tab[] = ['usage', 'logs', 'limits']
 
 const LABEL: Record<GatewayResource, string> = {
     workspaces: 'workspaces',
@@ -213,6 +224,8 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
     const [prerequisites, setPrerequisites] = useState<Held<GatewayPrerequisites>>(empty)
     const [space, setSpace] = useState<Held<GatewayDetail>>(empty)
     const [change, setChange] = useState<Opened | null>(null)
+    /** The trace the Logs tab opens with ("Find in logs"). */
+    const [logsTrace, setLogsTrace] = useState<string | undefined>(undefined)
     const local = gateway.local
     const opener = useRef<HTMLElement | null>(null)
     const settledSeen = useRef<Set<string> | null>(null)
@@ -363,8 +376,11 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
             if (!space.read && !space.loading && !space.failure) void readWorkspace()
             return
         }
-        const held = lists[tab]
-        if (!held) void readList(tab)
+        if (OBSERVED.includes(tab)) return
+        // The Playground offers the workspace's routes.
+        const resource = (tab === 'playground' ? 'routes' : tab) as GatewayResource
+        const held = lists[resource]
+        if (!held) void readList(resource)
     }, [tab, ready, reference, lists, prerequisites, space])
 
     const heading = <PageHeading ref={ref} id='gateway-heading' kicker='AI Gateway' title='Gateway workspaces and configuration' />
@@ -400,8 +416,8 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
             <p className='text-academy-ink-soft max-w-3xl text-[14px]'>
                 {tenant.label}’s AI Gateway through its management client. Key values, provider keys and credential-bearing
                 settings stay in the desktop’s native core and are never shown or entered here. Every change is reviewed
-                against what the service holds and applied only after you confirm it in the desktop’s dialog. No inference
-                is sent.
+                against what the service holds and applied only after you confirm it in the desktop’s dialog. Inference is
+                sent only from the Playground, with the chosen workspace’s own inference key.
             </p>
             <LocalWork local={local} context={context} dispatch={dispatch} onOpen={openKept} />
             {!ready ? (
@@ -498,7 +514,40 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
                                 ))}
                             </div>
                             <div role='tabpanel' id={`${ids}-panel`} aria-labelledby={`${ids}-tab-${tab}`} className='flex flex-col gap-4'>
-                                {tab === 'prerequisites' ? (
+                                {tab === 'playground' && context && reference ? (
+                                    <PlaygroundPanel
+                                        key={reference}
+                                        snapshot={snapshot}
+                                        dispatch={dispatch}
+                                        context={context}
+                                        reference={reference as WorkspaceRef}
+                                        workspace={selected.workspace}
+                                        routes={lists.routes?.read ?? null}
+                                        onLogs={(trace) => {
+                                            setLogsTrace(trace)
+                                            setTab('logs')
+                                        }}
+                                    />
+                                ) : tab === 'files' && context && reference ? (
+                                    <FilesPanel
+                                        key={reference}
+                                        snapshot={snapshot}
+                                        dispatch={dispatch}
+                                        context={context}
+                                        reference={reference as WorkspaceRef}
+                                        workspace={selected.workspace}
+                                        onLogs={(trace) => {
+                                            setLogsTrace(trace)
+                                            setTab('logs')
+                                        }}
+                                    />
+                                ) : tab === 'usage' ? (
+                                    <UsagePanel key={reference} workspace={selected.workspace.name} read={read} />
+                                ) : tab === 'logs' ? (
+                                    <LogsPanel key={`${reference}-${logsTrace ?? ''}`} workspace={selected.workspace.name} read={read} trace={logsTrace} />
+                                ) : tab === 'limits' ? (
+                                    <LimitsPanel key={reference} workspace={selected.workspace.name} read={read} />
+                                ) : tab === 'prerequisites' ? (
                                     <PrerequisitesPanel held={prerequisites} onRefresh={() => void readPrerequisites()} />
                                 ) : tab === 'workspace' ? (
                                     <WorkspacePanel
@@ -512,12 +561,12 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
                                 ) : (
                                     <InventoryPanel
                                         key={`${reference}-${tab}`}
-                                        resource={tab}
-                                        held={lists[tab] ?? empty<GatewayList>()}
-                                        onRefresh={() => void readList(tab)}
+                                        resource={tab as Exclude<GatewayResource, 'workspaces'>}
+                                        held={lists[tab as GatewayResource] ?? empty<GatewayList>()}
+                                        onRefresh={() => void readList(tab as GatewayResource)}
                                         read={read}
                                         onChange={(action, target, name, from, body) =>
-                                            startChange(gatewayChange(tab, action, target, name, reference, body), from)
+                                            startChange(gatewayChange(tab as GatewayResource, action, target, name, reference, body), from)
                                         }
                                     />
                                 )}
@@ -607,7 +656,18 @@ function LocalWork({
 }) {
     const ids = useId()
     const [message, setMessage] = useState<string | null>(null)
-    if (local.state !== 'failed' && local.drafts.length === 0 && local.records.length === 0 && !local.unsaved) return null
+    const [editing, setEditing] = useState<string | null>(null)
+    const items = useRef(new Map<string, HTMLLIElement>())
+    if (
+        local.state !== 'failed' &&
+        local.drafts.length === 0 &&
+        local.records.length === 0 &&
+        local.runs.length === 0 &&
+        local.files.length === 0 &&
+        local.playground.length === 0 &&
+        !local.unsaved
+    )
+        return null
 
     async function discard(id: string) {
         const outcome = await dispatch({ kind: 'discardGatewayLocal', context, id })
@@ -648,6 +708,112 @@ function LocalWork({
                                 </Button>
                                 <Button type='button' tier='tertiary' size='sm' aria-label={`Dismiss record: ${keptLabel(r)}`} onClick={() => void discard(r.id)}>
                                     Dismiss
+                                </Button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+            {local.runs.length > 0 ? (
+                <ul aria-label='Playground runs without a known result' className='flex flex-col gap-2'>
+                    {local.runs.map((r) => (
+                        <li key={r.id} className='flex flex-col gap-1 text-[13px]' data-slot='gateway-local-run'>
+                            <p>
+                                {`Playground run in ${r.workspace.name} (${r.model}) ${r.end === 'stopped' ? 'was stopped' : 'failed'} after it was sent${
+                                    r.answered ? ' and answered' : ''
+                                }: the Gateway may have run it and charged for it.${r.failure ? ` ${INFERENCE_FAILURE_TEXT[r.failure]}` : ''} Trace ${r.trace} · ${keptAt(
+                                    r.settledAt
+                                )}. Its output is not kept.`}
+                            </p>
+                            <Button
+                                type='button'
+                                tier='tertiary'
+                                size='sm'
+                                className='self-start'
+                                aria-label={`Dismiss run: ${r.trace}`}
+                                onClick={() => void discard(r.id)}
+                            >
+                                Dismiss
+                            </Button>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+            {local.files.length > 0 ? (
+                <ul aria-label='Gateway file changes without a known result' className='flex flex-col gap-2'>
+                    {local.files.map((r) => (
+                        <li key={r.id} className='flex flex-col gap-1 text-[13px]' data-slot='gateway-local-file'>
+                            <p>
+                                {`${r.action === 'upload' ? 'Upload' : 'Delete'} of ${r.filename ?? r.file ?? 'a file'}${r.bytes !== null ? ` (${sizeText(r.bytes)})` : ''} in ${
+                                    r.workspace.name
+                                } was sent without a known result: the file ${r.action === 'upload' ? 'may have been stored' : 'may have been deleted'}.${
+                                    r.failure ? ` ${fileFailureText(r.failure)}` : ''
+                                } Trace ${r.trace} · ${keptAt(r.settledAt)}. It is never sent again; read the workspace's files to see what exists.`}
+                            </p>
+                            <Button
+                                type='button'
+                                tier='tertiary'
+                                size='sm'
+                                className='self-start'
+                                aria-label={`Dismiss file record: ${r.trace}`}
+                                onClick={() => void discard(r.id)}
+                            >
+                                Dismiss
+                            </Button>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+            {local.playground.length > 0 ? (
+                <ul aria-label='Playground drafts' className='flex flex-col gap-2'>
+                    {local.playground.map((d) => (
+                        <li
+                            key={d.id}
+                            ref={(li) => {
+                                if (li) items.current.set(d.id, li)
+                                else items.current.delete(d.id)
+                            }}
+                            className='flex flex-col gap-1 text-[13px]'
+                            data-slot='gateway-local-playground'
+                        >
+                            <p>
+                                {`Playground draft for ${d.workspace.name} · ${d.model || 'no model yet'} · saved ${keptAt(d.savedAt)}. It opens in the Playground when ${d.workspace.name} is chosen; nothing is sent until you press Run.`}
+                            </p>
+                            {editing === d.id && local.state === 'ready' ? (
+                                <KeptDraftEditor
+                                    draft={d}
+                                    context={context}
+                                    dispatch={dispatch}
+                                    onDone={() => {
+                                        setEditing(null)
+                                        requestAnimationFrame(() =>
+                                            items.current.get(d.id)?.querySelector<HTMLButtonElement>('button[aria-label^="Edit Playground draft"]')?.focus()
+                                        )
+                                    }}
+                                />
+                            ) : (
+                                <p className='text-academy-ink-soft line-clamp-2 whitespace-pre-wrap'>{d.prompt}</p>
+                            )}
+                            <div className='flex gap-2'>
+                                {editing !== d.id && local.state === 'ready' ? (
+                                    <Button
+                                        type='button'
+                                        tier='secondary'
+                                        size='sm'
+                                        aria-label={`Edit Playground draft for ${d.workspace.name}`}
+                                        onClick={() => setEditing(d.id)}
+                                    >
+                                        Edit
+                                    </Button>
+                                ) : null}
+                                <Button
+                                    type='button'
+                                    tier='tertiary'
+                                    size='sm'
+                                    aria-label={`Discard Playground draft for ${d.workspace.name}`}
+                                    onClick={() => void discard(d.id)}
+                                >
+                                    Discard
                                 </Button>
                             </div>
                         </li>

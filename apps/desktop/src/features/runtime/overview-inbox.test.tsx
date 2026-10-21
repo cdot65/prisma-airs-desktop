@@ -55,6 +55,7 @@ const read = (overrides: Partial<RuntimeOverview> = {}): RuntimeOverview => ({
     keysFailure: null,
     items: [KEY, ACTIVITY],
     gaps: [],
+    gateway: null,
     ...overrides,
 })
 
@@ -111,6 +112,39 @@ describe('Runtime Overview & Inbox', () => {
         expect(reads(native)).toEqual([])
         expect(screen.getByRole('alert')).toHaveTextContent('The last refresh failed')
         expect(screen.getByText(/Showing what was read at/)).toBeInTheDocument()
+    })
+
+    it('shows the chosen Gateway workspace’s day with its source state and opens AI Gateway from its item', async () => {
+        const GATEWAY: InboxItem = {
+            id: 'gateway-errors-16f7e90d-382a-4e78-b577-1b01eb5f8297',
+            title: 'Gateway errors in Team A',
+            detail: '4 of 40 Gateway requests in the last day failed.',
+            source: 'AI Gateway',
+            action: true,
+            tone: 'bad',
+            destination: 'gateway',
+            actionLabel: 'Open Gateway logs',
+            facts: [{ label: 'Requests', value: '40' }],
+            perMille: 100,
+        }
+        const gateway = {
+            workspace: '16f7e90d-382a-4e78-b577-1b01eb5f8297', workspaceName: 'Team A', requests: 40, errors: 4, cost: 120, partial: false,
+            usageFailure: null, policies: null, limitsFailure: 'denied' as const,
+        }
+        const native = scriptedNative(ready(overview({ read: read({ items: [GATEWAY, KEY], gateway }), attention: [GATEWAY, KEY], face: 'items' })))
+        const user = await openOverview(native)
+        const day = screen.getByRole('region', { name: 'AI Gateway · Team A' })
+        expect(within(day).getByText(/Last day: 40 requests · 4 errors · \$1\.20 cost/)).toBeInTheDocument()
+        expect(within(day).getByText(/Limit policies unavailable: This management client is not allowed/)).toBeInTheDocument()
+        await user.click(within(screen.getByRole('list', { name: 'Insights' })).getByRole('button', { name: /Gateway errors in Team A/ }))
+        expect(screen.getByText('10.0% of Gateway requests failed')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Open Gateway logs' }))
+        expect(await screen.findByRole('heading', { level: 1, name: 'Gateway workspaces and configuration' })).toBeInTheDocument()
+        cleanup()
+        // No workspace chosen when read: said so, never a zero.
+        const none = scriptedNative(ready(overview({ read: read({ gateway: null }) })))
+        await openOverview(none)
+        expect(screen.getByText(/No Gateway workspace was chosen when this was read\./)).toBeInTheDocument()
     })
 
     it('states unknown and failed sources instead of zeros', async () => {

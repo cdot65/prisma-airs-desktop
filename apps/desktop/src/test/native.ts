@@ -19,6 +19,7 @@ export function tenant(overrides: Partial<TenantView> = {}): TenantView {
         origin: 'https://service-de.api.aisecurity.paloaltonetworks.com',
         scan: { state: 'missing', mode: null, failure: null },
         management: { state: 'missing', mode: null, failure: null, clientId: null, tokenOrigin: null },
+        inference: { state: 'missing', mode: null, failure: null, target: null },
         ...overrides,
     }
 }

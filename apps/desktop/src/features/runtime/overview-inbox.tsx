@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { Button, Callout } from '@ai-security-academy/presentation'
 import { AlertTriangle, CheckCircle2, Info, RefreshCw } from 'lucide-react'
-import type { ContextRef, FeatureId, InboxItem, OverviewView, RuntimeChart } from '@prisma-airs/desktop-contracts'
+import type { ContextRef, FeatureId, InboxItem, OverviewView, RuntimeChart, RuntimeOverview } from '@prisma-airs/desktop-contracts'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
 import { MANAGEMENT_FAILURE_TEXT } from '../administration/management-read'
 
@@ -58,7 +58,8 @@ export function OverviewInbox({ context, overview, ready, dispatch, onNavigate }
     const shown = items.filter((i) => filter === 'all' || (filter === 'action' ? i.action : !i.action))
     const detail = shown.find((i) => i.id === selected) ?? shown[0] ?? null
     const hold = (id: string, kind: 'acknowledge' | 'snooze') => void dispatch({ kind: 'holdInsight', context, id, hold: kind })
-    const go = (item: InboxItem) => onNavigate(item.destination === 'sessions' ? 'sessions' : 'administration')
+    const go = (item: InboxItem) =>
+        onNavigate(item.destination === 'sessions' ? 'sessions' : item.destination === 'gateway' ? 'gateway' : 'administration')
 
     const status = overview.refreshing
         ? 'Refreshing Runtime insights…'
@@ -122,6 +123,8 @@ export function OverviewInbox({ context, overview, ready, dispatch, onNavigate }
                 )}
             </section>
 
+            <GatewayDay read={read} onOpen={() => onNavigate('gateway')} />
+
             <section aria-labelledby={`${ids}-inbox`} className='flex flex-col gap-3' data-slot='inbox'>
                 <h2 id={`${ids}-inbox`} className='text-[15px] font-semibold'>
                     Inbox
@@ -168,7 +171,11 @@ export function OverviewInbox({ context, overview, ready, dispatch, onNavigate }
                                 <h3 className='text-[14px] font-semibold'>{detail.title}</h3>
                                 <p>{detail.detail}</p>
                                 {detail.perMille !== null ? (
-                                    <p>{`${(detail.perMille / 10).toFixed(1)}% of sessions reported violating`}</p>
+                                    <p>
+                                        {`${(detail.perMille / 10).toFixed(1)}% of ${
+                                            detail.destination === 'gateway' ? 'Gateway requests failed' : 'sessions reported violating'
+                                        }`}
+                                    </p>
                                 ) : null}
                                 <dl className='grid grid-cols-[auto_1fr] gap-x-3 gap-y-1'>
                                     {detail.facts.map((f) => (
@@ -197,6 +204,52 @@ export function OverviewInbox({ context, overview, ready, dispatch, onNavigate }
                 ) : null}
             </section>
         </div>
+    )
+}
+
+const usd = (cents: number) => (cents / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' })
+
+/**
+ * The chosen Gateway workspace's last day (C18), with each source's state:
+ * no workspace chosen, its data, or why it could not be read.
+ */
+function GatewayDay({ read, onOpen }: { read: RuntimeOverview | null; onOpen: () => void }) {
+    const ids = useId()
+    if (!read) return null
+    const g = read.gateway
+    return (
+        <section aria-labelledby={`${ids}-gw`} className='flex flex-col gap-2' data-slot='overview-gateway'>
+            <h2 id={`${ids}-gw`} className='text-[15px] font-semibold'>
+                {g ? `AI Gateway · ${g.workspaceName}` : 'AI Gateway'}
+            </h2>
+            {!g ? (
+                <div className='flex flex-wrap items-center gap-2 text-[13px]'>
+                    <p>No Gateway workspace was chosen when this was read. Choose one in AI Gateway to see its last day here.</p>
+                    <Button type='button' size='sm' tier='tertiary' onClick={onOpen}>
+                        Open AI Gateway
+                    </Button>
+                </div>
+            ) : (
+                <>
+                    {g.usageFailure ? (
+                        <p className='text-[13px]'>Gateway activity unavailable: {MANAGEMENT_FAILURE_TEXT[g.usageFailure]}</p>
+                    ) : (
+                        <p className='text-[13px]' data-slot='overview-gateway-day'>
+                            {`Last day${g.partial ? ' (part of the day only: the service’s quota was exceeded)' : ''}: ${
+                                g.requests === null ? 'requests not reported' : `${g.requests.toLocaleString()} requests`
+                            } · ${g.errors === null ? 'errors not reported' : `${g.errors.toLocaleString()} errors`} · ${
+                                g.cost === null ? 'cost not reported' : `${usd(g.cost)} cost`
+                            }`}
+                        </p>
+                    )}
+                    <p className='text-academy-ink-soft text-[12px]'>
+                        {g.policies !== null
+                            ? `${g.policies} limit polic${g.policies === 1 ? 'y applies' : 'ies apply'} to this workspace.`
+                            : `Limit policies unavailable${g.limitsFailure ? `: ${MANAGEMENT_FAILURE_TEXT[g.limitsFailure]}` : '.'}`}
+                    </p>
+                </>
+            )}
+        </section>
     )
 }
 

@@ -19,7 +19,9 @@ use zeroize::Zeroizing;
 
 mod change_domain;
 mod gateway_domain;
+mod gateway_files_domain;
 mod gateway_local_domain;
+mod inference_domain;
 mod learner_domain;
 mod library_domain;
 mod management_domain;
@@ -50,7 +52,7 @@ pub use workbench_domain::{
 };
 
 use crate::academy::AcademyClient;
-use crate::context::{ContextRef, EnteredSecret, LearnerRef, ReviewId};
+use crate::context::{ContextRef, EnteredSecret, LearnerRef, ReviewId, WorkspaceRef};
 use crate::delivery::{Admit, Delivery, DeliverySession, Sessions};
 use crate::features::{self, FeatureEntry};
 use crate::import::{self, Discarded, ImportCandidate, ImportError, ImportFormat, ImportPreview};
@@ -195,6 +197,68 @@ pub enum Intent {
     DiscardGatewayLocal {
         context: ContextRef,
         id: String,
+    },
+    /// Store the chosen workspace's inference key (C18), replacing any
+    /// previous one; it is sent only to `endpoint`, only for that
+    /// workspace's inference.
+    #[serde(rename_all = "camelCase")]
+    ConfigureInferenceCredential {
+        context: ContextRef,
+        mode: StorageMode,
+        workspace: WorkspaceRef,
+        endpoint: String,
+        secret: EnteredSecret,
+    },
+    /// Remove the tenant's inference key (stops its run).
+    RemoveInferenceCredential {
+        context: ContextRef,
+    },
+    /// Run one streamed inference in the Playground (never retried).
+    RunInference {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        run: crate::gateway_inference::InferenceRun,
+    },
+    /// Stop the Playground's run (whether it was charged is not known).
+    StopInference {
+        operation: OperationId,
+    },
+    /// Clear a Playground run that has ended.
+    ClearInference {
+        operation: OperationId,
+    },
+    /// Read the chosen workspace's Gateway files with its inference key.
+    ReadGatewayFiles {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+    },
+    /// Choose a file to upload in the native file sheet; the desktop reads
+    /// it once and holds it until one upload takes it.
+    ChooseGatewayFile {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+    },
+    /// Upload the chosen file (named by its token) once, for the
+    /// `assistants` purpose (never retried).
+    UploadGatewayFile {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        file: String,
+    },
+    /// Delete one file the last read listed, once (never retried).
+    DeleteGatewayFile {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        file: String,
+    },
+    /// Keep the chosen workspace's Playground draft on this Mac, or (with
+    /// no workspace, by the draft's `id`) edit one already kept.
+    SavePlaygroundDraft {
+        context: ContextRef,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        workspace: Option<WorkspaceRef>,
+        draft: gateway_local_domain::PlaygroundDraftInput,
     },
     /// Open the active tenant's FP/FN reports (C11).
     OpenReports {
@@ -507,6 +571,8 @@ pub struct TenantView {
     pub scan: ScanView,
     /// The separate management OAuth capability (no secret material).
     pub management: ManagementView,
+    /// The Gateway workspace inference key (C18; no secret material).
+    pub inference: inference_domain::InferenceKeyView,
 }
 
 /// Redacted management-capability state. Never contains the client secret.
@@ -854,6 +920,9 @@ pub struct Adapters {
     pub folders: Arc<dyn FolderPicker>,
     /// The native file sheet for Insomnia exports (bounded reads).
     pub workbench_files: Arc<dyn ImportPicker>,
+    /// The native file sheet for Gateway file uploads (C18; reads bounded
+    /// to [`crate::gateway_files::MAX_UPLOAD_BYTES`]).
+    pub gateway_files: Arc<dyn ImportPicker>,
     /// The API Client's private folder: its sealed profile and the built-in
     /// collection (None: the API Client is unavailable).
     pub workbench_root: Option<std::path::PathBuf>,
@@ -888,6 +957,10 @@ struct Tenant {
     management_client: Option<String>,
     /// The Gateway workspace last chosen for this tenant (C16).
     gateway_workspace: Option<String>,
+    /// The workspace inference key (destination: its runtime endpoint)
+    /// and the workspace and endpoint it is for (C18).
+    inference: ScanCapability,
+    inference_target: Option<crate::gateway_inference::InferenceTarget>,
 }
 
 impl Tenant {
@@ -898,6 +971,8 @@ impl Tenant {
             management: ScanCapability::Missing,
             management_client: None,
             gateway_workspace: None,
+            inference: ScanCapability::Missing,
+            inference_target: None,
         }
     }
 
@@ -905,6 +980,7 @@ impl Tenant {
         match class {
             CredentialClass::Scan => &self.scan,
             CredentialClass::Management => &self.management,
+            CredentialClass::Inference => &self.inference,
         }
     }
 
@@ -912,6 +988,7 @@ impl Tenant {
         match class {
             CredentialClass::Scan => &mut self.scan,
             CredentialClass::Management => &mut self.management,
+            CredentialClass::Inference => &mut self.inference,
         }
     }
 }
@@ -1017,6 +1094,12 @@ struct State {
     gateway_local: Vec<gateway_local_domain::LocalWork>,
     /// Gateway work writes collected by settlements, started by the caller.
     gateway_local_writes: Vec<(TenantId, u64)>,
+    /// The Playground's run (C18).
+    playground: Option<inference_domain::Run>,
+    /// The chosen workspace's Gateway files (C18).
+    files: Option<gateway_files_domain::Files>,
+    /// Woken by a streaming run after each batch of output.
+    stream_pulse: Arc<tokio::sync::Notify>,
     /// The last report or investigation export.
     export: Option<sessions_domain::Export>,
     /// Report and case Library file writes, one at a time (tenant deletion
@@ -1135,25 +1218,33 @@ impl State {
                 .tenants
                 .iter()
                 .flat_map(|t| {
-                    [CredentialClass::Scan, CredentialClass::Management]
-                        .into_iter()
-                        .filter_map(move |class| match t.capability(class) {
-                            ScanCapability::Ready {
-                                record,
-                                mode: StorageMode::Keychain,
-                                destination,
-                            } => Some(StoredCredential {
-                                record: record.clone(),
-                                tenant: t.profile.id.clone(),
-                                destination: destination.clone(),
-                                class,
-                                client_id: match class {
-                                    CredentialClass::Scan => None,
-                                    CredentialClass::Management => t.management_client.clone(),
-                                },
-                            }),
-                            _ => None,
-                        })
+                    [
+                        CredentialClass::Scan,
+                        CredentialClass::Management,
+                        CredentialClass::Inference,
+                    ]
+                    .into_iter()
+                    .filter_map(move |class| match t.capability(class) {
+                        ScanCapability::Ready {
+                            record,
+                            mode: StorageMode::Keychain,
+                            destination,
+                        } => Some(StoredCredential {
+                            record: record.clone(),
+                            tenant: t.profile.id.clone(),
+                            destination: destination.clone(),
+                            class,
+                            client_id: match class {
+                                CredentialClass::Management => t.management_client.clone(),
+                                _ => None,
+                            },
+                            inference: match class {
+                                CredentialClass::Inference => t.inference_target.clone(),
+                                _ => None,
+                            },
+                        }),
+                        _ => None,
+                    })
                 })
                 .collect(),
             pending_cleanup: self.data.pending_cleanup.clone(),
@@ -1187,6 +1278,8 @@ impl State {
         self.sync_academy_calls();
         self.sync_management_calls();
         self.sync_changes();
+        self.sync_inference();
+        self.sync_files();
         self.revision += 1;
         let update = Update::Shell(Box::new(self.snapshot()));
         self.subscribers.publish(&update);
@@ -1356,6 +1449,9 @@ impl State {
         if class == CredentialClass::Management {
             t.management_client = None;
         }
+        if class == CredentialClass::Inference {
+            t.inference_target = None;
+        }
         match std::mem::replace(t.capability_mut(class), ScanCapability::Missing) {
             ScanCapability::Ready {
                 record,
@@ -1486,6 +1582,22 @@ fn tenant_view(t: &Tenant) -> TenantView {
                 token_origin,
             }
         },
+        inference: {
+            let (state, mode, failure) = match &t.inference {
+                ScanCapability::Missing => (ScanState::Missing, None, None),
+                ScanCapability::Storing { mode, .. } => (ScanState::Storing, Some(*mode), None),
+                ScanCapability::Ready { mode, .. } => (ScanState::Ready, Some(*mode), None),
+                ScanCapability::Failed { mode, failure } => {
+                    (ScanState::Failed, Some(*mode), Some(*failure))
+                }
+            };
+            inference_domain::InferenceKeyView {
+                state,
+                mode,
+                failure,
+                target: t.inference_target.clone(),
+            }
+        },
     }
 }
 
@@ -1535,6 +1647,9 @@ enum Effect {
         secret: Zeroizing<String>,
     },
     ChooseTextFile {
+        lease: u64,
+    },
+    ChooseGatewayFile {
         lease: u64,
     },
     LoadReports {
@@ -1663,6 +1778,9 @@ impl Core {
             reports: Vec::new(),
             gateway_local: Vec::new(),
             gateway_local_writes: Vec::new(),
+            playground: None,
+            files: None,
+            stream_pulse: Arc::default(),
             export: None,
             report_writer: Arc::default(),
             library_root: adapters.library_root.clone(),
@@ -1809,7 +1927,30 @@ impl Core {
         run_effects(&self.inner, effects);
         // Deadlines pass without any event (a read going stale, a snooze
         // ending, sleep and wake): re-evaluate them and publish a change.
+        // A streaming Playground run wakes this after each batch of
+        // output; snapshots follow at most every 40 ms.
         let weak = Arc::downgrade(&self.inner);
+        let pulse = lock(&self.inner).ok().map(|s| Arc::clone(&s.stream_pulse));
+        if let Some(pulse) = pulse {
+            let weak = weak.clone();
+            tokio::spawn(async move {
+                loop {
+                    pulse.notified().await;
+                    tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+                    let Some(inner) = weak.upgrade() else {
+                        return;
+                    };
+                    let effects = match lock(&inner) {
+                        Ok(mut state) => {
+                            state.changed();
+                            gateway_local_effects(&mut state)
+                        }
+                        Err(_) => return,
+                    };
+                    run_effects(&inner, effects);
+                }
+            });
+        }
         tokio::spawn(async move {
             loop {
                 let Some(tick) = weak
@@ -1902,6 +2043,10 @@ fn data_from(doc: PersistedState) -> Data {
                 .credentials
                 .iter()
                 .find(|c| c.class == CredentialClass::Management && c.tenant == profile.id);
+            let inference = doc
+                .credentials
+                .iter()
+                .find(|c| c.class == CredentialClass::Inference && c.tenant == profile.id);
             let gateway_workspace = doc
                 .gateway_workspaces
                 .iter()
@@ -1917,6 +2062,16 @@ fn data_from(doc: PersistedState) -> Data {
                     destination: c.destination.clone(),
                 };
                 tenant.management_client = c.client_id.clone();
+            }
+            if let Some(c) = inference
+                && let Some(target) = c.inference.clone()
+            {
+                tenant.inference = ScanCapability::Ready {
+                    record: c.record.clone(),
+                    mode: StorageMode::Keychain,
+                    destination: c.destination.clone(),
+                };
+                tenant.inference_target = Some(target);
             }
             tenant
         })
@@ -2182,6 +2337,7 @@ fn admit(
             let was_active = state.data.active.as_ref() == Some(&tenant);
             let retired_session = state.retire_credential(&tenant);
             let retired_management = state.retire_class(&tenant, CredentialClass::Management);
+            let retired_inference = state.retire_class(&tenant, CredentialClass::Inference);
             state.data.tenants.retain(|t| t.profile.id != tenant);
             if was_active {
                 state.data.active = None;
@@ -2204,7 +2360,10 @@ fn admit(
             }
             state.forget_library(&tenant);
             state.forget_holds(&tenant);
-            for record in [retired_session, retired_management].into_iter().flatten() {
+            for record in [retired_session, retired_management, retired_inference]
+                .into_iter()
+                .flatten()
+            {
                 let _ = session.delete(&record);
             }
             if state
@@ -2235,6 +2394,7 @@ fn admit(
                 CredentialClass::Scan,
                 mode,
                 key,
+                None,
                 None,
             )?;
         }
@@ -2271,6 +2431,7 @@ fn admit(
                 mode,
                 secret,
                 Some(client_id),
+                None,
             )?;
         }
         Intent::RemoveManagementCredential { context } => {
@@ -2347,6 +2508,136 @@ fn admit(
         }
         Intent::DiscardGatewayLocal { context, id } => {
             let (tenant, generation) = state.discard_gateway_local(&context, &id)?;
+            effects.push(Effect::StoreGatewayLocal { tenant, generation });
+            state.changed();
+        }
+        Intent::ConfigureInferenceCredential {
+            context,
+            mode,
+            workspace,
+            endpoint,
+            secret,
+        } => {
+            // The key is bound to the workspace chosen now (natively) and
+            // to the runtime endpoint entered with it.
+            let workspace = state.inference_workspace(&context, &workspace)?;
+            let target = crate::gateway_inference::InferenceTarget {
+                workspace,
+                endpoint,
+            };
+            if !target.is_valid()
+                || secret.expose().is_empty()
+                || secret.expose().len() > MAX_SECRET_BYTES
+                || !secret.expose().bytes().all(|b| b.is_ascii_graphic())
+            {
+                return Err(Refusal::InvalidInput);
+            }
+            configure_credential(
+                state,
+                session,
+                effects,
+                &context,
+                CredentialClass::Inference,
+                mode,
+                secret,
+                None,
+                Some(target),
+            )?;
+        }
+        Intent::RemoveInferenceCredential { context } => {
+            remove_credential(
+                state,
+                session,
+                effects,
+                &context,
+                CredentialClass::Inference,
+            )?;
+        }
+        Intent::RunInference {
+            context,
+            workspace,
+            run,
+        } => {
+            let (operation, starts) = state.run_inference(
+                context,
+                workspace,
+                run,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::ReadGatewayFiles { context, workspace } => {
+            let (operation, starts) = state.read_files(
+                context,
+                workspace,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::ChooseGatewayFile { context, workspace } => {
+            let lease = state.choose_file(
+                context,
+                workspace,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            effects.push(Effect::ChooseGatewayFile { lease });
+            state.changed();
+        }
+        Intent::UploadGatewayFile {
+            context,
+            workspace,
+            file,
+        } => {
+            let (operation, starts) = state.upload_file(
+                context,
+                workspace,
+                &file,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::DeleteGatewayFile {
+            context,
+            workspace,
+            file,
+        } => {
+            let (operation, starts) = state.delete_file(
+                context,
+                workspace,
+                &file,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::StopInference { operation } => {
+            let starts = state.stop_inference(&operation)?;
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::ClearInference { operation } => {
+            state.clear_inference(&operation)?;
+            state.changed();
+        }
+        Intent::SavePlaygroundDraft {
+            context,
+            workspace,
+            draft,
+        } => {
+            let (tenant, generation) =
+                state.save_playground_draft(&context, workspace.as_ref(), draft)?;
             effects.push(Effect::StoreGatewayLocal { tenant, generation });
             state.changed();
         }
@@ -2660,6 +2951,7 @@ fn admit(
                     [
                         state.retire_credential(id),
                         state.retire_class(id, CredentialClass::Management),
+                        state.retire_class(id, CredentialClass::Inference),
                     ]
                 })
                 .flatten()
@@ -2994,6 +3286,23 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     });
                     if let Ok(mut state) = lock(&inner) {
                         state.settle_dictionary_file(lease, chosen);
+                        state.changed();
+                    }
+                });
+            }
+            Effect::ChooseGatewayFile { lease } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let chosen = inner.adapters.gateway_files.choose().await.map(|r| {
+                        r.map(|file| (file.name.clone(), file.bytes.to_vec()))
+                            .map_err(|error| match error {
+                                ImportError::TooLarge => StagedFileFailure::TooLarge,
+                                ImportError::Empty => StagedFileFailure::Empty,
+                                ImportError::Unsupported => StagedFileFailure::Unreadable,
+                            })
+                    });
+                    if let Ok(mut state) = lock(&inner) {
+                        state.settle_file_choice(lease, chosen);
                         state.changed();
                     }
                 });
@@ -3426,6 +3735,7 @@ fn configure_credential(
     mode: StorageMode,
     key: EnteredSecret,
     client_id: Option<String>,
+    inference: Option<crate::gateway_inference::InferenceTarget>,
 ) -> Result<(), Refusal> {
     let tenant = state.check_context(context)?;
     if mode == StorageMode::Keychain {
@@ -3450,6 +3760,9 @@ fn configure_credential(
         if class == CredentialClass::Management {
             t.management_client = client_id;
         }
+        if class == CredentialClass::Inference {
+            t.inference_target = inference;
+        }
     }
     if mode == StorageMode::Keychain {
         // Write-ahead: the new record is in the cleanup ledger until
@@ -3468,7 +3781,14 @@ fn configure_credential(
     // The retirement of the previous key stays visible either way.
     let authorized =
         mode == StorageMode::Session || !state.durability_unconfirmed || state.confirm_durable();
-    effects.push(Effect::Start(state.reissue_context()));
+    // An inference key is not part of the tenant context: replacing it
+    // stops only the run that used the old one (reviews, reads and the
+    // workspace choice are untouched).
+    if class == CredentialClass::Inference {
+        effects.push(Effect::Start(state.retire_inference(&tenant)));
+    } else {
+        effects.push(Effect::Start(state.reissue_context()));
+    }
     if authorized {
         if mode == StorageMode::Keychain {
             state.writes_in_flight.push(record.clone());
@@ -3541,7 +3861,11 @@ fn remove_credential(
     if let Some(old) = retired_session {
         let _ = session.delete(&old);
     }
-    effects.push(Effect::Start(state.reissue_context()));
+    if class == CredentialClass::Inference {
+        effects.push(Effect::Start(state.retire_inference(&tenant)));
+    } else {
+        effects.push(Effect::Start(state.reissue_context()));
+    }
     effects.push(Effect::Cleanup);
     state.changed();
     Ok(())
@@ -3592,6 +3916,11 @@ fn settle_store(
         CredentialClass::Management => state
             .management_endpoints
             .token_origin()
+            .unwrap_or_default(),
+        CredentialClass::Inference => state
+            .tenant(tenant)
+            .and_then(|t| t.inference_target.as_ref())
+            .map(|t| t.endpoint.clone())
             .unwrap_or_default(),
     };
     let next = match result {

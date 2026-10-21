@@ -13,7 +13,8 @@ use super::{Refusal, State};
 use crate::changes::{ChangeAction, ChangeKind};
 use crate::context::{ContextRef, WorkspaceRef};
 use crate::gateway_local::{
-    GatewayDraft, GatewayDraftProblem, GatewayRecord, GatewayTarget, LocalBook,
+    GatewayDraft, GatewayDraftProblem, GatewayFileRecord, GatewayRecord, GatewayTarget, LocalBook,
+    PlaygroundDraft, PlaygroundRunRecord,
 };
 use crate::sessions::ReportStoreFailure;
 use crate::tenants::TenantId;
@@ -49,6 +50,12 @@ pub struct GatewayLocalView {
     pub drafts: Vec<GatewayDraft>,
     /// Changes that settled uncertain, newest first.
     pub records: Vec<GatewayRecord>,
+    /// Playground drafts, one per workspace (C18).
+    pub playground: Vec<PlaygroundDraft>,
+    /// Playground runs that ended without a known result (C18).
+    pub runs: Vec<PlaygroundRunRecord>,
+    /// File uploads and deletes without a known result (C18).
+    pub files: Vec<GatewayFileRecord>,
     /// Why the last draft was not kept.
     pub problem: Option<GatewayDraftProblem>,
     /// The last change could not be written to this Mac.
@@ -62,8 +69,51 @@ impl GatewayLocalView {
             failure: None,
             drafts: Vec::new(),
             records: Vec::new(),
+            playground: Vec::new(),
+            runs: Vec::new(),
+            files: Vec::new(),
             problem: None,
             unsaved: false,
+        }
+    }
+}
+
+/// A Playground draft to keep (C18): a new or changed one for the chosen
+/// workspace, or (by `id`) an edit of one already kept, which needs no
+/// workspace listing and so works offline (T23).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundDraftInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub api: crate::gateway_inference::InferenceApi,
+    pub model: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub route: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub system: Option<String>,
+    pub prompt: String,
+    /// The Gateway file to attach (its ID).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub file: Option<String>,
+}
+
+/// A run or file record to keep in a tenant's book.
+pub(super) enum Kept {
+    Run(PlaygroundRunRecord),
+    File(GatewayFileRecord),
+}
+
+impl LocalBook {
+    fn keep(&mut self, kept: Kept) {
+        match kept {
+            Kept::Run(r) => self.ran(r),
+            Kept::File(r) => self.filed(r),
         }
     }
 }
@@ -84,6 +134,8 @@ pub(super) struct LocalWork {
     problem: Option<GatewayDraftProblem>,
     /// Settlements waiting for the book to be read.
     queued: Vec<Settled>,
+    /// Run and file records waiting for the book to be read.
+    queued_kept: Vec<Kept>,
     /// Issued afresh (from the authority's lease counter, never reused) by
     /// every change; only the newest is written, so no write admitted for
     /// an earlier book, tenant or reset can apply to a later one.
@@ -126,9 +178,14 @@ impl State {
             return Ok(None);
         }
         let lease = self.lease();
-        let queued = self
+        let (queued, queued_kept) = self
             .local_work(&tenant)
-            .map(|w| std::mem::take(&mut w.queued))
+            .map(|w| {
+                (
+                    std::mem::take(&mut w.queued),
+                    std::mem::take(&mut w.queued_kept),
+                )
+            })
             .unwrap_or_default();
         self.gateway_local.retain(|w| w.tenant != tenant);
         self.gateway_local.push(LocalWork {
@@ -139,6 +196,7 @@ impl State {
             book: LocalBook::default(),
             problem: None,
             queued,
+            queued_kept,
             generation: 0,
             unsaved: false,
         });
@@ -169,9 +227,12 @@ impl State {
             Ok(book) => {
                 work.book = book;
                 work.state = LocalState::Ready;
-                if !work.queued.is_empty() {
+                if !work.queued.is_empty() || !work.queued_kept.is_empty() {
                     for s in std::mem::take(&mut work.queued) {
                         work.book.settled(s.record, &s.change, s.sent);
+                    }
+                    for k in std::mem::take(&mut work.queued_kept) {
+                        work.book.keep(k);
                     }
                     work.generation = generation;
                     let write = (work.tenant.clone(), work.generation);
@@ -266,6 +327,187 @@ impl State {
         Ok((tenant, generation))
     }
 
+    /// Keeps a Playground draft (one per workspace; its text is kept as
+    /// typed, within the run bounds): by `id`, an edit of one already kept,
+    /// under the workspace it was kept for; otherwise the draft of the
+    /// workspace `reference` names.
+    pub(super) fn save_playground_draft(
+        &mut self,
+        context: &ContextRef,
+        reference: Option<&WorkspaceRef>,
+        input: PlaygroundDraftInput,
+    ) -> Result<(TenantId, u64), Refusal> {
+        let tenant = self.check_context(context)?;
+        let workspace = match (&input.id, reference) {
+            (Some(id), None) => self
+                .ready_local(&tenant)?
+                .book
+                .playground
+                .iter()
+                .find(|d| &d.id == id)
+                .map(|d| d.workspace.clone())
+                .ok_or(Refusal::InvalidInput)?,
+            (None, Some(reference)) => self.inference_workspace(context, reference)?,
+            _ => return Err(Refusal::InvalidInput),
+        };
+        let input_bytes = input.prompt.len() + input.system.as_deref().map_or(0, str::len);
+        if input.model.len() > 256
+            || input.model.chars().any(char::is_control)
+            || input
+                .route
+                .as_deref()
+                .is_some_and(|r| !crate::gateway::is_id(r))
+            || input
+                .file
+                .as_deref()
+                .is_some_and(|f| !crate::gateway::is_id(f))
+            || input_bytes > crate::gateway_inference::MAX_INPUT_BYTES
+        {
+            return Err(Refusal::InvalidInput);
+        }
+        let generation = self.lease();
+        let work = self.ready_local(&tenant)?;
+        let id = work
+            .book
+            .playground
+            .iter()
+            .find(|d| d.workspace.id == workspace.id)
+            .map(|d| d.id.clone());
+        let id = match id {
+            Some(id) => id,
+            None => local_id("gp").ok_or(Refusal::Busy)?,
+        };
+        work.book.save_playground(PlaygroundDraft {
+            id,
+            workspace,
+            api: input.api,
+            model: input.model,
+            route: input.route,
+            system: input.system,
+            prompt: input.prompt,
+            file: input.file,
+            saved_at: now(),
+        });
+        work.generation = generation;
+        Ok((tenant, generation))
+    }
+
+    /// A Playground run ended: one that was sent and did not complete is
+    /// kept (without its output) under its tenant.
+    pub(super) fn inference_settled(
+        &mut self,
+        tenant: &TenantId,
+        workspace: crate::gateway::ListedWorkspace,
+        run: &crate::gateway_inference::InferenceRun,
+        trace: String,
+        outcome: crate::runtime::Outcome,
+        progress: &crate::gateway_inference::RunProgress,
+    ) {
+        use crate::gateway_inference::RunEnd;
+        let uncertain = progress.sent
+            && matches!(progress.end, Some(RunEnd::Stopped | RunEnd::Failed) | None)
+            && matches!(
+                outcome,
+                crate::runtime::Outcome::Unknown | crate::runtime::Outcome::Completed
+            );
+        if !uncertain
+            || self.tenant(tenant).is_none()
+            || self.sessions_root.is_none()
+            || self.storage == super::StorageHealth::Resetting
+        {
+            return;
+        }
+        let Some(id) = local_id("gi") else {
+            return;
+        };
+        self.keep_local(
+            tenant,
+            Kept::Run(PlaygroundRunRecord {
+                id,
+                workspace,
+                api: run.api,
+                model: run.model.clone(),
+                route: run.route.clone(),
+                trace,
+                end: progress.end.unwrap_or(RunEnd::Stopped),
+                outcome,
+                failure: progress.failure,
+                answered: progress.answered,
+                output_bytes: u32::try_from(progress.output.len()).unwrap_or(u32::MAX),
+                usage: progress.usage,
+                settled_at: now(),
+            }),
+        );
+    }
+
+    /// A file upload or delete was sent and ended without a known result:
+    /// it is kept (without the file's content) under its tenant.
+    pub(super) fn file_settled(
+        &mut self,
+        tenant: &TenantId,
+        workspace: crate::gateway::ListedWorkspace,
+        action: &super::gateway_files_domain::FileActionView,
+    ) {
+        if self.tenant(tenant).is_none()
+            || self.sessions_root.is_none()
+            || self.storage == super::StorageHealth::Resetting
+        {
+            return;
+        }
+        let Some(id) = local_id("gf") else {
+            return;
+        };
+        self.keep_local(
+            tenant,
+            Kept::File(GatewayFileRecord {
+                id,
+                workspace,
+                action: action.action,
+                filename: action.filename.clone(),
+                file: action.file.clone(),
+                bytes: action.bytes,
+                trace: action.trace.clone(),
+                outcome: action.outcome.unwrap_or(crate::runtime::Outcome::Unknown),
+                failure: action.failure,
+                settled_at: now(),
+            }),
+        );
+    }
+
+    /// Keeps a run or file record in the tenant's book (queued until the
+    /// book is read).
+    fn keep_local(&mut self, tenant: &TenantId, kept: Kept) {
+        let generation = self.lease();
+        let write = match self.local_work(tenant) {
+            Some(work) if work.state == LocalState::Ready => {
+                work.book.keep(kept);
+                work.generation = generation;
+                Some((tenant.clone(), generation))
+            }
+            Some(work) => {
+                work.queued_kept.push(kept);
+                None
+            }
+            None => {
+                let lease = self.lease();
+                self.gateway_local.push(LocalWork {
+                    tenant: tenant.clone(),
+                    lease,
+                    state: LocalState::Idle,
+                    failure: None,
+                    book: LocalBook::default(),
+                    problem: None,
+                    queued: Vec::new(),
+                    queued_kept: vec![kept],
+                    generation: 0,
+                    unsaved: false,
+                });
+                None
+            }
+        };
+        self.gateway_local_writes.extend(write);
+    }
+
     /// Removes a kept draft or record of the active tenant.
     pub(super) fn discard_gateway_local(
         &mut self,
@@ -324,6 +566,7 @@ impl State {
                     book: LocalBook::default(),
                     problem: None,
                     queued: vec![settled],
+                    queued_kept: Vec::new(),
                     generation: 0,
                     unsaved: false,
                 });
@@ -339,7 +582,9 @@ impl State {
         let writes = std::mem::take(&mut self.gateway_local_writes);
         let mut reads = Vec::new();
         for work in &mut self.gateway_local {
-            if work.state == LocalState::Idle && !work.queued.is_empty() {
+            if work.state == LocalState::Idle
+                && (!work.queued.is_empty() || !work.queued_kept.is_empty())
+            {
                 work.state = LocalState::Loading;
                 reads.push(work.lease);
             }
@@ -414,6 +659,9 @@ impl State {
                 failure: w.failure,
                 drafts: w.book.drafts.clone(),
                 records: w.book.records.clone(),
+                playground: w.book.playground.clone(),
+                runs: w.book.runs.clone(),
+                files: w.book.files.clone(),
                 problem: w.problem,
                 unsaved: w.unsaved,
             })

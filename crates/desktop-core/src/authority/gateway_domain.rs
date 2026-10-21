@@ -47,6 +47,12 @@ pub struct GatewayView {
     /// The tenant's Gateway drafts and uncertain changes on this Mac
     /// (readable offline; C17).
     pub local: super::gateway_local_domain::GatewayLocalView,
+    /// The Playground's run while it is bound to this context and
+    /// workspace (C18).
+    pub playground: Option<super::inference_domain::PlaygroundView>,
+    /// The chosen workspace's files while they are bound to this context,
+    /// workspace and inference key (C18).
+    pub files: Option<super::gateway_files_domain::GatewayFilesView>,
 }
 
 struct Listing {
@@ -116,6 +122,8 @@ impl State {
             remembered,
             remembered_missing,
             local: self.gateway_local_view(),
+            playground: self.playground_view(),
+            files: self.files_view(),
         }
     }
 
@@ -282,6 +290,33 @@ impl State {
     /// The current selection's reference.
     pub(super) fn gateway_selection(&self) -> Option<WorkspaceRef> {
         self.gateway.selection.as_ref().map(|s| s.reference.clone())
+    }
+
+    /// The workspace `reference` names, while it is the current choice
+    /// under `context`.
+    pub(super) fn selected_workspace(
+        &self,
+        context: &ContextRef,
+        reference: &WorkspaceRef,
+    ) -> Option<ListedWorkspace> {
+        self.gateway
+            .selection
+            .as_ref()
+            .filter(|s| &s.context == context && &s.reference == reference)
+            .map(|s| s.workspace.clone())
+    }
+
+    /// The chosen workspace under `context`, if any (an overview reads its
+    /// Gateway activity).
+    pub(super) fn chosen_scope(
+        &self,
+        context: &ContextRef,
+    ) -> Option<crate::gateway::WorkspaceScope> {
+        self.gateway
+            .selection
+            .as_ref()
+            .filter(|s| &s.context == context)
+            .map(|s| crate::gateway::WorkspaceScope::from(&s.workspace))
     }
 
     /// Whether a result read under `workspace` may still be shown.

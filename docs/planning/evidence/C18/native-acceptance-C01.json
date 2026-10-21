@@ -1,0 +1,151 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C01",
+  "recorded_utc": "2026-10-21T06:12:46Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events/JXA and AX attributed text) with fixture WebView self-capture; tools/native-acceptance/acceptance_c01.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "fc84ed85339208e3f86ccfa9321a10afeea53217453bb67e8050c6979607c440",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C01-N01",
+      "description": "Fixture app launches from the prepared bundle; window title 'Prisma AIRS Desktop v2 (Fixture)'; rail shows 'Fixture build'.",
+      "result": "pass",
+      "observation": "window title 'Prisma AIRS Desktop v2 (Fixture)'; 'FIXTURE BUILD' shown in the rail: True",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json",
+        "docs/planning/evidence/C18/native-C01/captures/standard/launch.png"
+      ]
+    },
+    {
+      "id": "C01-N02",
+      "description": "Native menus: app menu (About, Settings\u2026 Cmd+,, Hide, Quit), Edit, View (Command Palette\u2026 Cmd+K, Appearance, zoom), Go (destinations Cmd+1\u2013Cmd+9), Window.",
+      "result": "pass",
+      "observation": "menus ['Apple', 'Edit', 'File', 'Fixture', 'Go', 'Prisma AIRS Desktop v2 Fixture', 'View', 'Window']; Settings\u2026 cmd ','; Command Palette\u2026 'K'; Go shortcuts 1..9 present: True",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json"
+      ]
+    },
+    {
+      "id": "C01-N03",
+      "description": "Keyboard only: Tab reaches the Features navigation; Enter on a destination moves focus to its heading and marks it current; a visible focus ring is rendered on focused controls (fixture WebView self-capture).",
+      "result": "pass",
+      "observation": "Tab sequence ['Runtime Security', 'Academy']; Return focused AXHeading 'What will you take up next?'; AXARIACurrent=page exposed: True. Focus-ring pixels around the Academy control: 3972 with keyboard focus vs 0 without (accent outline rendered).",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json",
+        "docs/planning/evidence/C18/native-C01/captures/standard/launch.png",
+        "docs/planning/evidence/C18/native-C01/captures/standard/focus-ring-academy.png"
+      ]
+    },
+    {
+      "id": "C01-N04",
+      "description": "Cmd+K opens the palette with focus in the field; typing filters; Enter navigates and closes; Escape closes and restores focus to the previously focused control.",
+      "result": "pass",
+      "observation": "Cmd+K opened the dialog; typing 'harn' left options ['harn', 'Harness NOT AVAILABLE']; Return closed it and focused heading 'Harness'; Escape returned focus to 'Go to\u2026 Command K' (was 'Go to\u2026 Command K')",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json",
+        "docs/planning/evidence/C18/native-C01/captures/standard/palette-filtered.png"
+      ]
+    },
+    {
+      "id": "C01-N05",
+      "description": "Go-menu shortcuts (Cmd+2 Academy, Cmd+, Settings) navigate through the native menu and observation channel, including while the palette is open (palette closes, heading receives focus).",
+      "result": "pass",
+      "observation": "Cmd+2 focused heading 'What will you take up next?'; Cmd+K then Cmd+, focused 'Settings' with palette open=False",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json"
+      ]
+    },
+    {
+      "id": "C01-N06",
+      "description": "Every product destination not yet implemented states it is not available in this build with its planned chunk and shows no data or service contact; Runtime Security (available since C03) opens its scan view instead.",
+      "result": "pass",
+      "observation": "Cmd+1: Scan a prompt or response (); Cmd+2: What will you take up next? (); Cmd+3: Tenant inventories (); Cmd+4: Investigate sessions (); Cmd+5: Test case library (); Cmd+6: Red Teaming and model observation (); Cmd+7: API Client (); Cmd+8: Gateway workspaces and configuration (); Cmd+9: Harness (PLANNED IN C19); Go > Import from v1: Import from v1 (PLANNED IN C23)",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json"
+      ]
+    },
+    {
+      "id": "C01-N07",
+      "description": "Settings > Appearance and View > Appearance change the general theme (Paper light / Gruvbox dark / match system) only after the native snapshot arrives.",
+      "result": "pass",
+      "observation": "after View > Appearance > Dark the checked radio is ['Dark']; after Light it is ['Light']. Self-capture mean luminance Dark 0.13, Light 0.94; AX text ink for 'Prisma AIRS' Dark #efe1bf (Gruvbox ink #ebdbb2 in sRGB conversion), Light #1a1a23 (Paper ink #14141a).",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json",
+        "docs/planning/evidence/C18/native-C01/captures/standard/settings-dark.png",
+        "docs/planning/evidence/C18/native-C01/captures/standard/settings-light.png",
+        "docs/planning/evidence/C18/native-C01/colors-dark.json",
+        "docs/planning/evidence/C18/native-C01/colors-light.json"
+      ]
+    },
+    {
+      "id": "C01-N08",
+      "description": "Accessibility tree: 'Features' navigation landmark; destination buttons expose names (unavailable ones including 'Not available in this build'); the current destination is exposed; page headings are in reading order. Records which AX attributes were inspected; spoken VoiceOver output is not claimed unless separately recorded.",
+      "result": "pass",
+      "observation": "inspected AXRole, AXSubrole, AXTitle/AXDescription/AXValue, AXARIACurrent, AXFocused and tree order: 'Features' navigation landmark present=True; 13/13 buttons named; 2 destinations announce 'Not available in this build'; headings ['Scan a prompt or response']. Spoken VoiceOver output was not recorded.",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json"
+      ]
+    },
+    {
+      "id": "C01-N09",
+      "description": "Resizing to the minimum window size (900x600) keeps rail, topbar and content usable without overlap or clipping of controls.",
+      "result": "pass",
+      "observation": "window resized to [900, 600]; last destination reachable by Tab at [111, 596] size [207, 41] inside window {'pos': [95, 37], 'size': [900, 600]}; Settings radio 'Light Paper light theme' operated by keyboard ['Tab', 'Tab', 'Up', 'Space'] (checked=1) at [384, 127] inside the window and clear of the bottom fade: True",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json",
+        "docs/planning/evidence/C18/native-C01/captures/standard/min-size.png",
+        "docs/planning/evidence/C18/native-C01/captures/standard/min-size-settings.png"
+      ]
+    },
+    {
+      "id": "C01-N10",
+      "description": "Zoom/large text: View zoom in to 150% and 200% (Cmd+=) keeps navigation, headings and settings readable and operable; Cmd+0 restores.",
+      "result": "pass",
+      "observation": "heading height 35 \u2192 53 (\u00d71.51) \u2192 70 (\u00d72.00); last destination at 200% [127, 611] size [414, 82] within the window and clear of the bottom fade: True; at 200% the Settings radio 'Dark Gruvbox dark theme' was reached and operated by keyboard ['Tab', 'Tab', 'Down', 'Space'] (checked=1) and scrolled into the window at [649, 297] size [652, 88], clear of the bottom fade: True; Cmd+0 restored [984, 35]",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json",
+        "docs/planning/evidence/C18/native-C01/captures/standard/zoom-200.png",
+        "docs/planning/evidence/C18/native-C01/captures/standard/zoom-200-settings.png"
+      ]
+    },
+    {
+      "id": "C01-N11",
+      "description": "Reduced motion: with macOS Reduce Motion enabled, every automated C01 flow still passes (no control depends on motion), and the stylesheet built into the same native-prepare run contains the shared prefers-reduced-motion clamp.",
+      "result": "pass",
+      "observation": "Reduce Motion enabled (NSWorkspace reports True); app relaunched; all 11 AX-evaluated flows passed again: True; built stylesheet apps/desktop/dist/assets/index-CJGQOAF9.css contains the prefers-reduced-motion clamp: True; setting restored to its prior state: True.",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-reduced-motion.json"
+      ]
+    },
+    {
+      "id": "C01-N12",
+      "description": "No Academy learner or gamification element (XP, credits, streak, notifications, earned skins) appears on general screens.",
+      "result": "pass",
+      "observation": "scanned every AX snapshot (644 nodes) for gamification terms ['xp', 'credits', 'credit', 'streak', 'notifications', 'reward', 'rank', 'badge', 'vegas', 'phosphor']: found []",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/driver-standard.json"
+      ]
+    },
+    {
+      "id": "C01-N13",
+      "description": "Startup makes no internet connection (referencing evidence/C01/native/startup-network.json for the same executable).",
+      "result": "pass",
+      "observation": "0 internet sockets across 30 samples over 15s of startup for the app and 3 WebKit processes (0.5s polling; DNS via mDNSResponder not attributed).",
+      "evidence": [
+        "docs/planning/evidence/C18/native-C01/startup-network.json",
+        "docs/planning/evidence/C18/native-C01/startup-network-samples.log"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot (the rendered page), not a screen capture; native window chrome and menus are verified through AX.",
+    "Spoken VoiceOver output was not recorded; C01-N08 inspects the accessibility attributes VoiceOver consumes.",
+    "Startup network evidence is sampled lsof output, not a packet capture."
+  ]
+}

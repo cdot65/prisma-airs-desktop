@@ -96,6 +96,13 @@ pub enum Reply {
     Delayed { millis: u64, then: Box<Reply> },
     /// Choose the reply from the request (routing fixtures).
     Route(Arc<dyn Fn(&Seen) -> Reply + Send + Sync>),
+    /// A response head, then each part after its delay (a streamed body);
+    /// then close, or (`hang`) wait for the client to go away.
+    Stream {
+        head: String,
+        parts: Vec<(u64, Vec<u8>)>,
+        hang: bool,
+    },
 }
 
 impl Reply {
@@ -224,6 +231,36 @@ impl TlsServer {
                         }
                         Reply::Close => {
                             let _ = tls.shutdown().await;
+                        }
+                        Reply::Stream { head, parts, hang } => {
+                            let _ = tls.write_all(format!("{head}\r\n\r\n").as_bytes()).await;
+                            let _ = tls.flush().await;
+                            let mut gone = false;
+                            for (millis, part) in parts {
+                                if millis > 0 {
+                                    tokio::time::sleep(Duration::from_millis(millis)).await;
+                                }
+                                if tls.write_all(&part).await.is_err() || tls.flush().await.is_err()
+                                {
+                                    gone = true;
+                                    break;
+                                }
+                            }
+                            if hang && !gone {
+                                let mut sink = [0u8; 64];
+                                loop {
+                                    match tls.read(&mut sink).await {
+                                        Ok(0) | Err(_) => break,
+                                        Ok(_) => {}
+                                    }
+                                }
+                                gone = true;
+                            }
+                            if gone {
+                                log.lock().expect("log").closed_by_client += 1;
+                            } else {
+                                let _ = tls.shutdown().await;
+                            }
                         }
                         Reply::Delayed { .. } | Reply::Route(_) => {}
                     }

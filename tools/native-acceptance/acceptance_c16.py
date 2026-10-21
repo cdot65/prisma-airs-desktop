@@ -27,6 +27,8 @@ NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C16" else "native-C16")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C16" else "native-acceptance-C16.json")
 GW_A = "16f7e90d-382a-4e78-b577-1b01eb5f8297"
 GW_B = "16f7e90d-382a-4e78-b577-1b01eb5f8298"
+GW_INTEGRATION = "f6692544-3265-49be-9711-bbdcebc079eb"
+GW_INTEGRATION_B = "0b6f3a10-5c2d-4e8a-9f1b-2c3d4e5f6a7b"
 # Markers the synthetic planes put in key values, provider keys, model
 # configuration, integration secrets, credential-bearing routing and
 # guardrail settings and error bodies; none may ever reach the window.
@@ -176,6 +178,57 @@ def run():
     obs["tree_integration"] = save_tree("integration", tree)
     app.ax("press", "AXButton", "Close details")
 
+    # ---- N10: one integration's models never shown under another ----
+    mgmt.mode(gwIntegrations=2)
+    app.ax("press", "AXButton", "Refresh integrations")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Details for Anthropic") is not None, 12)
+    a_models = f"/ai_gw/admin/v2/integrations/{GW_INTEGRATION}/models"
+    a_traces = ("GPT-4o", "2 models", "Reading models…")
+    app.ax("press", "AXButton", "Details for OpenAI")
+    c8.text(app, "Read models", 12)
+    app.ax("press", "AXButton", "Read models")
+    tree, a_read = c8.text(app, "2 models", 12)
+    a_listed = app.has_text(tree, "GPT-4o · enabled")
+    # A's models were read; B is opened without closing A's details.
+    app.ax("press", "AXButton", "Details for Anthropic")
+    tree, b_opened = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Anthropic") is not None
+                                  and fx.App.node(t, "AXButton", "Read models") is not None, 12)
+    time.sleep(0.6)
+    tree = app.tree()
+    cached = sorted(s for s in a_traces if app.has_text(tree, s))
+    # A's read is still out when B is opened; its late reply must be dropped.
+    app.ax("press", "AXButton", "Details for OpenAI")
+    c8.text(app, "Read models", 12)
+    mgmt.mode(gwIntegrations=2, delayMs={a_models: 4000})
+    app.ax("press", "AXButton", "Refresh models" if fx.App.node(app.tree(), "AXButton", "Refresh models") else "Read models")
+    _, a_pending = c8.text(app, "Reading models…", 6)
+    app.ax("press", "AXButton", "Details for Anthropic")
+    late = set()
+    deadline = time.time() + 6
+    while time.time() < deadline:
+        tree = app.tree()
+        late |= {s for s in a_traces if app.has_text(tree, s)}
+        time.sleep(0.3)
+    mgmt.mode(gwIntegrations=2)
+    app.ax("press", "AXButton", "Read models")
+    tree, b_read = c8.text(app, "1 model", 12)
+    model_reads = [r["path"].rsplit("/", 2)[-2] for r in gateway_requests(mgmt)
+                   if r["path"].startswith("/ai_gw/admin/v2/integrations/") and r["path"].endswith("/models")]
+    obs["models_bound"] = {
+        "a_read": a_read and a_listed,
+        "b_opened": b_opened,
+        "cached_a_under_b": cached,
+        "a_pending": a_pending,
+        "late_a_under_b": sorted(late),
+        "b_read": b_read and app.has_text(tree, "Claude Sonnet · enabled"),
+        "b_only": not any(app.has_text(tree, s) for s in a_traces),
+        "model_reads": model_reads,
+        "leaks": leaks(app, tree),
+    }
+    obs["tree_models_bound"] = save_tree("models-bound", tree)
+    app.ax("press", "AXButton", "Close details")
+    mgmt.mode()
+
     # ---- N04: another workspace while the first's read is in flight ----
     mgmt.mode(delayMs={"/ai_gw/v2/guardrails": 4000})
     tab(app, "Guardrails")
@@ -201,6 +254,34 @@ def run():
     obs["switch"] = {"b_shown": shown_b, "a_late_reply_shown": seen_a, "checked_b": checked(tree, "Team B"),
                      "partial": partial, "guardrail_reads": guardrail_reads, "leaks": leaks(app, tree)}
     obs["tree_switch"] = save_tree("switch", tree)
+
+    # ---- N11: the chosen workspace's own settings, by keyboard ----
+    tab(app, "Workspace")
+    tree, shown_b = c8.text(app, "Settings of Team B as read from the service.", 12)
+    b_detail = {"own": app.has_text(tree, GW_B) and not app.has_text(tree, GW_A),
+                "limits": app.has_text(tree, "rpm") and app.has_text(tree, "credit_limit"),
+                "defaults": app.has_text(tree, "allow_config_override")}
+    detail_reads = lambda ws: len([r for r in gateway_requests(mgmt) if r["path"] == f"/ai_gw/v2/workspaces/{ws}"])
+    before = detail_reads(GW_B)
+    refresh = c8.reach(app, 1, "Refresh workspace")
+    if refresh["found"]:
+        app.keycode(49)
+    tree, reread = app.wait_for(lambda t: detail_reads(GW_B) > before
+                                and app.has_text(t, "Settings of Team B as read from the service."), 12)
+    refocused = fx.App.focused(app.tree())
+    app.ax("press", "AXRadioButton", "Team A")
+    tree, shown_a = c8.text(app, "Settings of Team A as read from the service.", 12)
+    obs["workspace_detail"] = {
+        "shown_b": shown_b, **b_detail,
+        "keyboard_refresh": refresh["clear"] and reread,
+        "focus_kept": bool(refocused) and refocused.get("label") == "Refresh workspace",
+        "shown_a": shown_a and app.has_text(tree, GW_A) and not app.has_text(tree, GW_B),
+        "reads": {"a": detail_reads(GW_A), "b": detail_reads(GW_B)},
+        "leaks": leaks(app, tree),
+    }
+    obs["tree_workspace_detail"] = save_tree("workspace-detail", tree)
+    app.ax("press", "AXRadioButton", "Team B")
+    c8.text(app, "Settings of Team B as read from the service.", 12)
 
     # ---- N05: prerequisites as read ----
     tab(app, "Inference prerequisites")
@@ -309,6 +390,13 @@ def evaluate(prepared, o):
     sw = o["switch"]
     add("C16-N04", sw["b_shown"] and not sw["a_late_reply_shown"] and sw["checked_b"] and sw["partial"]
         and sw["guardrail_reads"][:2] == [GW_A, GW_B] and not sw["leaks"], f"switch {sw}", [o["tree_switch"]])
+    mb = o["models_bound"]
+    add("C16-N10", mb["a_read"] and mb["b_opened"] and not mb["cached_a_under_b"] and mb["a_pending"]
+        and not mb["late_a_under_b"] and mb["b_read"] and mb["b_only"] and mb["model_reads"][-1:] == [GW_INTEGRATION_B]
+        and not mb["leaks"], f"models bound {mb}", [o["tree_models_bound"]])
+    wd = o["workspace_detail"]
+    add("C16-N11", wd["shown_b"] and wd["own"] and wd["limits"] and wd["defaults"] and wd["keyboard_refresh"]
+        and wd["focus_kept"] and wd["shown_a"] and not wd["leaks"], f"workspace detail {wd}", [o["tree_workspace_detail"]])
     p = o["prerequisites"]
     add("C16-N05", p["unbound"] and p["inference_statement"] and p["inference_keys"] and p["scope_denied"]
         and p["admin_denied"] and p["integrations_unavailable"] and p["data_readable"] and not p["leaks"],
