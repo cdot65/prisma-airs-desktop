@@ -1,0 +1,394 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "P05",
+  "recorded_utc": "2026-10-21T09:14:04Z",
+  "method": "cua",
+  "performed_by": "C16: Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c16.py (recorded 2026-10-21T09:06:39Z); C17: Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c17.py (recorded 2026-10-21T09:09:33Z); C18: Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c18.py (recorded 2026-10-21T09:12:09Z)",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "fc84ed85339208e3f86ccfa9321a10afeea53217453bb67e8050c6979607c440",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C16-N01",
+      "description": "Without a management client AI Gateway asks for one in Settings and reads nothing.",
+      "result": "pass",
+      "observation": "without a management client: {'asked': True, 'requests': 0}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json"
+      ]
+    },
+    {
+      "id": "C16-N02",
+      "description": "AI Gateway lists the tenant's workspaces on opening; choosing one reads its providers with the workspace query and the tenant header, and the chosen workspace is shown checked; nothing is chosen for the operator.",
+      "result": "pass",
+      "observation": "choose {'listed': True, 'nothing_chosen_first': True, 'providers': True, 'checked': True, 'workspace_query': ['16f7e90d-382a-4e78-b577-1b01eb5f8297'], 'tsg_header': ['1234567890'], 'bearer': ['bearer-issued'], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json",
+        "docs/planning/evidence/P05/native-C16/tree-providers.json"
+      ]
+    },
+    {
+      "id": "C16-N03",
+      "description": "A route's detail opens with focus on its heading and says the configuration carries credentials without showing them; Close returns focus to its Details button; the tenant-wide integrations and an integration's models are read; no key value, provider key, model configuration or credential-bearing setting from the service reaches the window.",
+      "result": "pass",
+      "observation": "details {'route_opened': True, 'heading_focused': True, 'focus_returned': True, 'tenant_wide': True, 'models': True, 'protected_listed': True, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json",
+        "docs/planning/evidence/P05/native-C16/tree-route-detail.json",
+        "docs/planning/evidence/P05/native-C16/tree-integration.json"
+      ]
+    },
+    {
+      "id": "C16-N04",
+      "description": "Choosing another workspace while a read of the first is in flight shows the second workspace's reads and never the first's late reply; a partial inventory is shown as part of a larger one, never as all of it.",
+      "result": "pass",
+      "observation": "switch {'b_shown': True, 'a_late_reply_shown': False, 'checked_b': True, 'partial': True, 'guardrail_reads': ['16f7e90d-382a-4e78-b577-1b01eb5f8297', '16f7e90d-382a-4e78-b577-1b01eb5f8298'], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json",
+        "docs/planning/evidence/P05/native-C16/tree-switch.json"
+      ]
+    },
+    {
+      "id": "C16-N10",
+      "description": "With two integrations, opening the second while the first's models are shown, or while the first's model read is still out, shows none of the first's models, loading state or count, and its late reply is dropped; reading the second shows only its own models.",
+      "result": "pass",
+      "observation": "models bound {'a_read': True, 'b_opened': True, 'cached_a_under_b': [], 'a_pending': True, 'late_a_under_b': [], 'b_read': True, 'b_only': True, 'model_reads': ['f6692544-3265-49be-9711-bbdcebc079eb', 'f6692544-3265-49be-9711-bbdcebc079eb', 'f6692544-3265-49be-9711-bbdcebc079eb', '0b6f3a10-5c2d-4e8a-9f1b-2c3d4e5f6a7b'], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json",
+        "docs/planning/evidence/P05/native-C16/tree-models-bound.json"
+      ]
+    },
+    {
+      "id": "C16-N11",
+      "description": "The Workspace tab shows the chosen workspace's own settings with its defaults and embedded limits; Refresh workspace is reached and pressed by keyboard and keeps focus; choosing another workspace shows only that workspace's settings.",
+      "result": "pass",
+      "observation": "workspace detail {'shown_b': True, 'own': True, 'limits': True, 'defaults': True, 'keyboard_refresh': True, 'focus_kept': True, 'shown_a': True, 'reads': {'a': 1, 'b': 2}, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json",
+        "docs/planning/evidence/P05/native-C16/tree-workspace-detail.json"
+      ]
+    },
+    {
+      "id": "C16-N05",
+      "description": "Inference prerequisites state the IAM scope binding, each plane's access and each source as read: a scope that does not list the workspace is unbound, a refused admin or IAM plane is stated as not allowed while the data plane's reads stand, and the management client is never offered for inference.",
+      "result": "pass",
+      "observation": "prerequisites {'unbound': True, 'inference_statement': True, 'inference_keys': True, 'scope_denied': True, 'admin_denied': True, 'integrations_unavailable': True, 'data_readable': True, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json",
+        "docs/planning/evidence/P05/native-C16/tree-prerequisites.json"
+      ]
+    },
+    {
+      "id": "C16-N06",
+      "description": "A pending Runtime change review stays protected across Gateway use: after choosing workspaces, the reviewed change is still held (Review again).",
+      "result": "pass",
+      "observation": "review {'reviewed': True, 'held_after_gateway': True, 'writes': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json",
+        "docs/planning/evidence/P05/native-C16/tree-review-held.json"
+      ]
+    },
+    {
+      "id": "C16-N07",
+      "description": "After a restart the remembered workspace is restored only because a new listing lists it, and says so; a complete listing without it clears the choice and says it is no longer listed.",
+      "result": "pass",
+      "observation": "restore {'restored': True, 'checked_b': True, 'read_b': True, 'missing': True, 'cleared': True}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json",
+        "docs/planning/evidence/P05/native-C16/tree-restore-missing.json"
+      ]
+    },
+    {
+      "id": "C16-N08",
+      "description": "At 200% zoom and at the minimum window size the workspace refresh and an inventory row's Details are reached by keyboard inside the window.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Refresh workspaces', 'pos': [803, 617], 'size': [341, 88]}; minimum size: {'label': 'Details for team-b-provider-1', 'pos': [890, 516], 'size': [78, 45]}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json"
+      ]
+    },
+    {
+      "id": "C16-N09",
+      "description": "Every Gateway request is a GET (only the token grant is a POST); no secret or synthetic private marker appears in any Accessibility snapshot; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "non-GET Gateway requests: [] (non-GET requests overall, the Runtime review excluded: []); 39 Gateway reads; secrets or private markers in AX snapshots: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C16/observations.json"
+      ]
+    },
+    {
+      "id": "C17-N01",
+      "description": "Editing a provider from its details opens the change with focus on its heading; Review shows the exact workspace (name, slug and IAM scope) with no credential; nothing is written until the native confirmation, which names the workspace and its IAM scope; confirming sends exactly one PUT of the reviewed fields with the tenant header, and the result reads the item back.",
+      "result": "pass",
+      "observation": "edit {'heading_focused': True, 'reviewed': True, 'nothing_before_confirm': True, 'sheet_scope': True, 'sheet_title': True, 'applied': True, 'puts': [{'path': '/ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000001', 'tsg': '1234567890', 'fields': ['name'], 'auth': 'bearer-issued'}], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-edit-sheet.json",
+        "docs/planning/evidence/P05/native-C17/tree-edit-applied.json"
+      ]
+    },
+    {
+      "id": "C17-N02",
+      "description": "Choosing another workspace while a change is prepared in the first closes it (no Review again or Apply\u2026 remains) and nothing is written.",
+      "result": "pass",
+      "observation": "switch {'ready': True, 'switched': True, 'closed': True, 'still_closed': True, 'writes': 1}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-switch.json"
+      ]
+    },
+    {
+      "id": "C17-N03",
+      "description": "A provider a route still references lists that route in its review and Apply\u2026 is disabled; an unreferenced provider's delete names the workspace in a destructive sheet whose Return cancels, and Delete sends exactly one DELETE, read back as absent.",
+      "result": "pass",
+      "observation": "delete {'listed': True, 'route': True, 'apply_disabled': True, 'delete_sheet': True, 'return_cancelled': True, 'deleted': True, 'deletes': ['DELETE /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000002']}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-delete-blocked.json",
+        "docs/planning/evidence/P05/native-C17/tree-deleted.json"
+      ]
+    },
+    {
+      "id": "C17-N04",
+      "description": "A new service key is created in the chosen workspace and tenant; its one-time value is held in memory, appears in no Accessibility snapshot, is shown once in the native secret sheet (matching the issued key) and is no longer held afterwards; closing the change returns focus to New service key\u2026.",
+      "result": "pass",
+      "observation": "key {'held': True, 'body': {'description': '', 'name': 'native-key', 'organisation_id': '1234567890', 'scopes': ['completions.write'], 'type': 'service', 'workspace_id': '16f7e90d-382a-4e78-b577-1b01eb5f8297'}, 'revealed_matches_issued': True, 'shown_once': True, 'focus_returned': True, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-key-held.json"
+      ]
+    },
+    {
+      "id": "C17-N05",
+      "description": "Provisioning a workspace opens with focus on its heading, names the IAM scope in its review and native confirmation, sends the scope create, the workspace create and the scope binding once each, reports every step done and read back, and the workspace listing then lists the new workspace.",
+      "result": "pass",
+      "observation": "provision {'heading_focused': True, 'reviewed': True, 'sheet_scope': True, 'done': True, 'steps': True, 'relisted': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces', 'PUT /iam/v1/scopes/scope-team-c']}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-provisioned.json"
+      ]
+    },
+    {
+      "id": "C17-N06",
+      "description": "When the workspace create's reply is lost the result says not every step's outcome is known and nothing was undone, reports the workspace step as unknown and what the readback found, and nothing is retried or deleted.",
+      "result": "pass",
+      "observation": "lost reply {'unknown': True, 'workspace_unknown': True, 'found_by_readback': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces'], 'no_cleanup': True}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-lost-reply.json"
+      ]
+    },
+    {
+      "id": "C17-N07",
+      "description": "An applying provisioning offers Stop waiting, saying stopping undoes nothing already sent; stopping it reports the stop, that nothing was undone and what reading the tenant back found, and sends no cleanup.",
+      "result": "pass",
+      "observation": "stop {'offered': True, 'stopped': True, 'nothing_undone': True, 'scope_reported': True, 'writes': ['POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces'], 'no_cleanup': True}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-stopped.json"
+      ]
+    },
+    {
+      "id": "C17-N08",
+      "description": "The Workspace tab reads the chosen workspace and shows its defaults and embedded usage and rate limits, with its Edit and Archive actions; no credential or private marker is shown.",
+      "result": "pass",
+      "observation": "workspace {'shown': True, 'limits': True, 'defaults': True, 'actions': True, 'read': 1, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-workspace.json"
+      ]
+    },
+    {
+      "id": "C17-N11",
+      "description": "Gateway work kept on this Mac (T23): a provider draft edited in the window and the two uncertain provisionings are listed after a relaunch with the management service unreachable (the workspaces cannot be read, which the window says); each record says the service has not been read since; the draft opens with focus on its heading and its kept text, cannot be reviewed until its workspace is chosen from a fresh listing, keeps its offline edit, and Close returns focus to it; nothing reaches the service.",
+      "result": "pass",
+      "observation": "offline {'kept_before_quit': True, 'listing_failed': True, 'kept': True, 'draft_listed': True, 'records': 2, 'stale_said': True, 'nothing_reviewed': True, 'heading_focused': True, 'text_restored': True, 'review_blocked': True, 'focus_returned': True, 'requests': 0}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-offline-kept.json",
+        "docs/planning/evidence/P05/native-C17/tree-offline-draft.json"
+      ]
+    },
+    {
+      "id": "C17-N12",
+      "description": "Reconnecting replays nothing (T23): after a relaunch with the service reachable no Gateway or IAM write is sent, the draft (with its offline edit) and both records are still listed, a record goes only when dismissed, and the kept draft's action is reachable by keyboard inside the window.",
+      "result": "pass",
+      "observation": "reconnect {'listed': True, 'writes_after_reconnect': [], 'draft_listed': True, 'records': 2, 'reach_open_draft': {'zoom': 1, 'window': {'pos': [95, 37], 'size': [1280, 820]}, 'found': {'label': 'Open draft: Update provider 7e3a0000-0000-4000-8000-829700000001 in Team A', 'pos': [1059, 737], 'size': [70, 44]}, 'clear': True}, 'edit_kept': True, 'dismissed_one': True, 'team_d_gone': True, 'writes_total': []}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json",
+        "docs/planning/evidence/P05/native-C17/tree-reconnect.json"
+      ]
+    },
+    {
+      "id": "C17-N09",
+      "description": "At 200% zoom and at the minimum window size Provision workspace\u2026 and Edit workspace\u2026 are reached by keyboard inside the window.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Provision workspace\u2026', 'pos': [607, 617], 'size': [324, 88]}; minimum size: {'label': 'Edit workspace\u2026', 'pos': [363, 517], 'size': [130, 44]}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json"
+      ]
+    },
+    {
+      "id": "C17-N10",
+      "description": "The only Gateway and IAM writes are the reviewed and confirmed ones, in order; no secret, one-time key or synthetic private marker appears in any saved Accessibility snapshot; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "Gateway and IAM writes ['PUT /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000001', 'DELETE /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000002', 'POST /ai_gw/v2/api-keys/service', 'POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces', 'PUT /iam/v1/scopes/scope-team-c', 'POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces', 'POST /iam/v1/scopes', 'POST /ai_gw/admin/v2/workspaces']; secrets or private markers in AX snapshots: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C17/observations.json"
+      ]
+    },
+    {
+      "id": "C18-N01",
+      "description": "The Playground offers no run without a workspace inference key and never the management client; the key is entered for the chosen workspace with its runtime endpoint, stored natively and never shown, and nothing is sent by storing it.",
+      "result": "pass",
+      "observation": "key {'offered': True, 'run_disabled_without_key': True, 'stored': True, 'shown': False, 'runs': 0}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-key-stored.json"
+      ]
+    },
+    {
+      "id": "C18-N02",
+      "description": "One run is sent only when Run is pressed: once, with the inference key (no management authorization) to the stored endpoint, streaming, at most 256 tokens; its output, served model, token counts and trace are shown and the trace matches the request.",
+      "result": "pass",
+      "observation": "run {'warned': True, 'nothing_before_run': True, 'completed': True, 'output': True, 'sent': 1, 'key_sha_matches': True, 'no_authorization': True, 'model': '@openai-prod/gpt-4o', 'stream': True, 'max_tokens': 256, 'trace_shown': True, 'tokens': True}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-run-completed.json"
+      ]
+    },
+    {
+      "id": "C18-N03",
+      "description": "Stop ends a run mid-stream: the stream is closed, the response says the Gateway may have run and charged for it, and the run is kept on this Mac without its output.",
+      "result": "pass",
+      "observation": "stop {'partial': True, 'stop_offered': True, 'stopped': True, 'kept': True, 'output_kept': True, 'closed_by_client': True, 'sent': 1}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-run-stopped.json"
+      ]
+    },
+    {
+      "id": "C18-N04",
+      "description": "A guardrail refusal (HTTP 446) is named as blocked and never retried; a Gateway failure (HTTP 503) is named, said to be possibly run and charged, kept on this Mac as uncertain with its trace, and never retried.",
+      "result": "pass",
+      "observation": "refusals {'named': True, 'sent': 1, 'unavailable_named': True, 'unavailable_kept': True, 'unavailable_trace_kept': True, 'unavailable_sent': 1}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-run-blocked.json",
+        "docs/planning/evidence/P05/native-C18/tree-run-unavailable.json"
+      ]
+    },
+    {
+      "id": "C18-N05",
+      "description": "Choosing another workspace mid-stream stops the run (the stream is closed) and nothing of it is shown again under either workspace; nothing is replayed.",
+      "result": "pass",
+      "observation": "switch {'streaming': True, 'switched': True, 'closed_by_client': True, 'gone': True, 'sent': 1}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-switch.json"
+      ]
+    },
+    {
+      "id": "C18-N06",
+      "description": "Usage shows each series' total with an accessible chart name and its values reachable by keyboard; a failed source says it was not read instead of a zero; errors and the busiest models are shown.",
+      "result": "pass",
+      "observation": "usage {'requests': True, 'chart_named': True, 'cost_failed': True, 'errors': True, 'models': True, 'reach_values': {'zoom': 1, 'window': {'pos': [95, 37], 'size': [1280, 820]}, 'found': {'role': 'AXDisclosureTriangle', 'label': 'Show requests values', 'pos': [363, 762], 'size': [484, 19]}, 'clear': True}}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-usage.json"
+      ]
+    },
+    {
+      "id": "C18-N07",
+      "description": "Find in logs reads the chosen workspace's logs filtered by the run's trace; Limits shows the usage- and rate-limit policies of the workspace.",
+      "result": "pass",
+      "observation": "logs {'filtered': True, 'trace_query': True, 'slug': True, 'limits': True}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-logs.json",
+        "docs/planning/evidence/P05/native-C18/tree-limits.json"
+      ]
+    },
+    {
+      "id": "C18-N08",
+      "description": "Home/Inbox shows the chosen Gateway workspace's last day (requests, errors, cost, policies) and a Gateway errors item.",
+      "result": "pass",
+      "observation": "home {'day': True, 'item': True, 'heading': True, 'policies': True}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-home.json"
+      ]
+    },
+    {
+      "id": "C18-N09",
+      "description": "An offline relaunch shows the Playground draft and the uncertain runs kept on this Mac (no output) and sends nothing; the kept draft is opened and edited offline by keyboard without a workspace listing, the edit survives another offline relaunch and opens in the Playground once online, and reconnecting sends no inference.",
+      "result": "pass",
+      "observation": "offline {'listing_failed': True, 'kept': True, 'draft': True, 'run_kept': True, 'file_kept': True, 'no_response': True, 'editor': True, 'done': True, 'focus_returned': True, 'edit_kept_offline': True, 'requests': 0, 'opens_online': True, 'reconnect_sent': 0}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-offline.json",
+        "docs/planning/evidence/P05/native-C18/tree-offline-edited.json"
+      ]
+    },
+    {
+      "id": "C18-N12",
+      "description": "Choosing the Responses API sends one streamed /responses run with the inference key and store false (at most 256 output tokens); its output, API, served model and tokens are shown, and nothing goes to chat completions. A run the Gateway ends at the output token limit is shown as incomplete with its reason (max_output_tokens), its partial output and tokens, never as completed; a run the model fails is shown as failed. Each is sent once.",
+      "result": "pass",
+      "observation": "responses {'completed': True, 'output': True, 'sent': 1, 'chat_sent': 0, 'key_sha_matches': True, 'no_authorization': True, 'store': False, 'max_output_tokens': 256, 'stream': True, 'api_shown': True, 'served': True, 'tokens': True, 'incomplete': True, 'reason': True, 'finish_shown': True, 'partial': True, 'incomplete_tokens': True, 'not_completed': True, 'incomplete_sent': 1, 'failed': True, 'failed_not_incomplete': True, 'failed_sent': 1}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-responses.json",
+        "docs/planning/evidence/P05/native-C18/tree-responses-incomplete.json",
+        "docs/planning/evidence/P05/native-C18/tree-responses-failed.json"
+      ]
+    },
+    {
+      "id": "C18-N13",
+      "description": "The workspace's Files tab reads its files with the inference key; a file chosen in the sheet shows only its name and size, is uploaded once by keyboard (multipart, purpose assistants, the chosen bytes) and the status takes focus; a Responses run attaches it as an input_file; Delete asks first (focus on Delete file, Cancel sends nothing and returns focus to the row) and deletes one file once; an upload answered 503 is named as possibly stored, kept on this Mac with its trace and never sent again.",
+      "result": "pass",
+      "observation": "files {'heading': True, 'listed': True, 'retention': True, 'read_key': True, 'chosen': True, 'path_hidden': True, 'uploaded': True, 'upload_sent': 1, 'upload_body': True, 'upload_key': True, 'upload_trace_shown': True, 'focus_node': {'role': 'AXGroup', 'subrole': 'AXApplicationStatus', 'label': '', 'value': ''}, 'status_focused': True, 'picked': True, 'attached_run': True, 'attached_id': True, 'asked': True, 'confirm_focus': True, 'cancel_focus': True, 'nothing_on_cancel': True, 'deleted': True, 'delete_sent': 1, 'delete_target': True, 'uncertain': True, 'kept': True, 'uncertain_sent': 1, 'mismatch_uncertain': True, 'mismatch_kept': True, 'mismatch_listed': True, 'mismatch_sent': 1, 'late_listed': True}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json",
+        "docs/planning/evidence/P05/native-C18/tree-files-uploaded.json",
+        "docs/planning/evidence/P05/native-C18/tree-files-attached.json",
+        "docs/planning/evidence/P05/native-C18/tree-files-deleted.json",
+        "docs/planning/evidence/P05/native-C18/tree-files-uncertain.json",
+        "docs/planning/evidence/P05/native-C18/tree-files-mismatch.json",
+        "docs/planning/evidence/P05/native-C18/tree-files-late.json"
+      ]
+    },
+    {
+      "id": "C18-N10",
+      "description": "Run prompt is keyboard-reachable at 200% zoom and Remove key at the minimum window size, inside the window; a chart's values disclosure is keyboard-reachable.",
+      "result": "pass",
+      "observation": "200% zoom: {'role': 'AXButton', 'label': 'Run prompt', 'pos': [607, 616], 'size': [189, 89]}; minimum size: {'role': 'AXButton', 'label': 'Remove key', 'pos': [521, 516], 'size': [98, 45]}",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json"
+      ]
+    },
+    {
+      "id": "C18-N11",
+      "description": "No AX snapshot carries the inference key, the management secret or the scan key; the synthetic server never logged the prompt or the key; the runtime requests are exactly the runs pressed; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "inference requests [{'trace': 'airs-e7b41825d254b7ac', 'status': 200}, {'trace': 'airs-737ac2d1a1ce8635', 'status': 200}, {'trace': 'airs-5a26af82c85d6e65', 'status': 446}, {'trace': 'airs-235ddec5322d73ac', 'status': 503}, {'trace': 'airs-90a4ad499bfd8852', 'status': 200}, {'trace': 'airs-bba432a40009b871', 'status': 200}]; responses 4; secrets in AX snapshots: []; upload content or path in AX snapshots: []; prompt or key in the server log: False; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/P05/native-C18/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "C16: The AI Gateway data, admin and IAM planes are a synthetic local TLS endpoint at the production paths; no product endpoint is called before C25.",
+    "C16: The synthetic replies follow the SDK's Gateway contract shapes; live Gateway qualification (C25) is not claimed.",
+    "C16: Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected.",
+    "C17: The AI Gateway data, admin and IAM planes are a synthetic local TLS endpoint at the production paths; no product endpoint is called before C25.",
+    "C17: The synthetic replies follow the SDK's Gateway contract shapes; a lost reply and a hung step are simulated by the endpoint. Live Gateway qualification (C25) is not claimed.",
+    "C17: Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected.",
+    "C18: The AI Gateway planes and the runtime endpoint are a synthetic local TLS endpoint; no product endpoint is called before C25 and no live inference budget is used.",
+    "C18: The synthetic replies follow the SDK's Gateway contract shapes; a hung stream and a refusal are simulated by the endpoint.",
+    "C18: Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}
