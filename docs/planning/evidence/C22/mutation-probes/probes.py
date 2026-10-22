@@ -75,6 +75,8 @@ UNREADABLE = "a_catalog_that_cannot_be_read_blocks_remote_use_until_read_again"
 SIGNED_OUT = "signing_out_during_a_sign_in_again_never_signs_the_server_back_in"
 SETTLED = "a_written_token_survives_cleanup_until_it_is_settled"
 CUT = "a_call_cut_short_is_recorded_as_interrupted_and_never_replayed"
+FIRST_CUT = "a_first_turns_call_cut_short_is_kept_without_a_restore_point"
+WAITING = "a_finished_call_waiting_for_the_model_is_kept_when_the_turn_is_cut_short"
 
 PROBES = [
     ("another workspace's server is listed",
@@ -142,8 +144,16 @@ PROBES = [
     ("an MCP call too large to show whole is asked",
      [(SESSION, "                let reviewable = whole.len() <= MAX_APPROVAL_COMMAND;", "                let reviewable = true;")], UNIT_T, U_ASK),
     ("a turn cut short is not saved",
-     [(SESSION, "    if cut && let (Some(sink), Some(export)) = (sink, kept) {", "    if false && let (Some(sink), Some(export)) = (sink, kept) {")], WS_T, CUT),
+     [(SESSION, "    if cut && let Some(sink) = sink {", "    if false && let Some(sink) = sink {")], WS_T, CUT),
 
+    # Attempt-02 (C22-R2-F1).
+    ("a cut turn with no export is not saved",
+     [(SESSION, "    if cut && let Some(sink) = sink {", "    if cut && kept.is_some() && let Some(sink) = sink {")], WS_T, FIRST_CUT),
+    ("a record without a restore point is continuable",
+     [(HDOMAIN, "        if record.replay.is_null() || record.context.is_null() {\n            return Some(NotContinuable::NotRestorable);\n        }\n", "")], WS_T, FIRST_CUT),
+    # Attempt-03 (C22-R3-F1).
+    ("an open turn with nothing streaming is not saved",
+     [(SESSION, "        && (turn_open\n", "        && (false\n")], WS_T, WAITING),
 ]
 
 

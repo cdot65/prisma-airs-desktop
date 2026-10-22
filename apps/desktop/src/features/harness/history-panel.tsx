@@ -31,6 +31,8 @@ const NOT_CONTINUABLE_TEXT: Record<NotContinuable, string> = {
         'It ran with other workspace MCP servers or sign-ins than this workspace uses now, or they could not be checked. Turn the same servers on and sign in to them to continue it, or start a new conversation.',
     engineUnavailable: 'The Harness engine is not bundled with this build.',
     workspaceUnavailable: 'AI Gateway’s workspaces could not be read, so it can be read and exported here but not continued.',
+    notRestorable:
+        'It was cut short before the engine saved anything to restore, so it can be read and exported but not continued. A call it shows as interrupted may have run.',
 }
 
 const FORMATS: readonly [HistoryFormat, string][] = [

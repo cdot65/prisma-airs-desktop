@@ -123,6 +123,20 @@ async fn choose_project(desk: &mut Desk, dir: &Path) {
     );
 }
 
+/// Starts a conversation once the previous one has finished ending.
+async fn start_when_free(desk: &mut Desk, reference: &str) -> String {
+    for _ in 0..100 {
+        match desk.start(reference).await {
+            Ok(id) => return id,
+            Err(desktop_core::Refusal::Busy) => {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+            Err(other) => panic!("start refused: {other:?}"),
+        }
+    }
+    panic!("the previous conversation never finished ending");
+}
+
 /// A ready conversation with the workspace key (and the project if chosen).
 async fn ready(desk: &mut Desk) -> String {
     desk.ready(None).await
@@ -702,7 +716,10 @@ async fn the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refus
         .expect("write");
     assert!(settle(|| desk.conversation().is_null()).await);
     assert!(gone(pid).await);
-    let id = desk.start(&reference).await.expect("started");
+    // The retired conversation finishes ending (its engine reaped, its
+    // state settled) just after it leaves the view; until then a start is
+    // refused as busy.
+    let id = start_when_free(&mut desk, &reference).await;
     assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
     assert_eq!(desk.conversation()["write"], true);
     // With it, an approved command changes the project, and only it.

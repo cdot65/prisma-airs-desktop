@@ -974,6 +974,7 @@ const NOT_CONTINUABLE: readonly string[] = [
     'otherMcp',
     'engineUnavailable',
     'workspaceUnavailable',
+    'notRestorable',
 ]
 /** Saved conversations per workspace and a title's length (C20). */
 const MAX_SAVED_CONVERSATIONS = 16

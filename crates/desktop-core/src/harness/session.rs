@@ -513,6 +513,9 @@ async fn launched(
     });
     let cleanup = stop(&mut *child, conversation.writer.take()).await;
     let sink = conversation.history.clone();
+    // A turn was under way (asked, and not ended), whatever its entries
+    // show: a finished call may be waiting for the model's next answer.
+    let turn_open = conversation.turn.is_some();
     drop(conversation);
     if cleanup != Cleanup::Failed {
         // The group is gone, so the reader has its end of file; detached if
@@ -558,12 +561,21 @@ async fn launched(
     // entries interrupted, with the last export (whose context does not
     // hold that turn): a call that may have run is never left unrecorded,
     // and continuing restores only what the engine had (P06, C22 review
-    // G1). Before the phase ends, so quitting waits for it.
+    // G1). With no export (the first turn, or one refused) it is saved with
+    // none: readable and exportable, never continued (C22 review R2-F1).
+    // Before the phase ends, so quitting waits for it.
+    // An open turn is unsaved even when none of its entries is streaming
+    // (C22 review R3-F1); calls already settled keep their outcomes.
     let cut = next.is_none()
-        && progress
-            .lock()
-            .is_ok_and(|p| p.entries.iter().any(|e| e.state == EntryState::Streaming));
-    if cut && let (Some(sink), Some(export)) = (sink, kept) {
+        && (turn_open
+            || progress
+                .lock()
+                .is_ok_and(|p| p.entries.iter().any(|e| e.state == EntryState::Streaming)));
+    if cut && let Some(sink) = sink {
+        let export = kept.unwrap_or(Replay {
+            context: Value::Null,
+            replay: Value::Null,
+        });
         let mut taken = None;
         update(&progress, &pulse, |p| {
             for e in p

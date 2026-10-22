@@ -56,6 +56,9 @@ pub enum NotContinuable {
     /// Read from this Mac without its workspace from AI Gateway (as when it
     /// cannot be reached): it can be read and exported, not continued.
     WorkspaceUnavailable,
+    /// Cut short before the engine exported anything to restore: it can be
+    /// read and exported, never continued (C22 review R2-F1).
+    NotRestorable,
 }
 
 /// A saved conversation opened for reading.
@@ -345,6 +348,9 @@ impl State {
         }
         if !self.harness_engine {
             return Some(NotContinuable::EngineUnavailable);
+        }
+        if record.replay.is_null() || record.context.is_null() {
+            return Some(NotContinuable::NotRestorable);
         }
         let h = self.harness_history.as_ref()?;
         if h.local {

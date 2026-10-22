@@ -202,6 +202,8 @@ struct Delays {
     token: Arc<AtomicU64>,
     answer: Arc<AtomicU64>,
     call: Arc<AtomicU64>,
+    /// Token requests seen (a delayed exchange is under way once this grows).
+    tokens_seen: Arc<AtomicU64>,
 }
 
 /// Routes the MCP plane through `delays` (each taken once).
@@ -210,16 +212,19 @@ fn delayed(desk: &Desk, mcp: &Shared) -> Delays {
         token: Arc::default(),
         answer: Arc::default(),
         call: Arc::default(),
+        tokens_seen: Arc::default(),
     };
-    let (token, answer, call) = (
+    let (token, answer, call, seen_tokens) = (
         Arc::clone(&delays.token),
         Arc::clone(&delays.answer),
         Arc::clone(&delays.call),
+        Arc::clone(&delays.tokens_seen),
     );
     let routed = Arc::clone(mcp);
     desk.gateway.lock().expect("gateway").hook = Some(Arc::new(move |seen| {
         let target = seen.request_line.split(' ').nth(1).unwrap_or_default();
         let wait = if target.ends_with("/token") {
+            seen_tokens.fetch_add(1, Ordering::SeqCst);
             token.swap(0, Ordering::SeqCst)
         } else if target.starts_with(&format!("{RUNTIME}/responses")) {
             answer.swap(0, Ordering::SeqCst)
@@ -853,10 +858,13 @@ async fn signing_out_during_a_sign_in_again_never_signs_the_server_back_in() {
         let url = url::Url::parse(&desk.adapters.opener.opened()[opened]).expect("url");
         let back = mcp.lock().expect("mcp").authorize(&url);
         let sign_out = json!({"kind": "signOutMcpServer", "context": context, "workspace": reference, "server": TOOLS});
+        let issued = mcp.lock().expect("mcp").issued_refresh.len();
         if during_exchange {
+            // Signed out while the exchange is observably under way.
             delays.token.store(2_000, Ordering::SeqCst);
+            let seen = delays.tokens_seen.load(Ordering::SeqCst);
             assert_eq!(callback(&back), 200);
-            tokio::time::sleep(Duration::from_millis(300)).await;
+            assert!(settle(|| delays.tokens_seen.load(Ordering::SeqCst) > seen).await);
             desk.send(sign_out).await.expect("signed out");
         } else {
             desk.send(sign_out).await.expect("signed out");
@@ -872,10 +880,18 @@ async fn signing_out_during_a_sign_in_again_never_signs_the_server_back_in() {
         );
         let doc = desk.adapters.store.saved().expect("doc");
         assert!(doc.pending_cleanup.is_empty(), "{during_exchange}");
+        // The late exchange's own refresh token is revoked at the server.
+        if during_exchange {
+            let m = mcp.lock().expect("mcp");
+            let late = m.issued_refresh[issued..].to_vec();
+            assert_eq!(late.len(), 1, "{late:?}");
+            assert!(
+                m.revoked.iter().any(|(t, _)| t == &late[0]),
+                "{late:?} {:?}",
+                m.revoked
+            );
+        }
     }
-    // The late exchange's tokens were revoked at the server.
-    let m = mcp.lock().expect("mcp");
-    assert!(m.revoked.iter().any(|(t, _)| t.starts_with("mcp-refresh")));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -1015,4 +1031,180 @@ async fn a_call_cut_short_is_recorded_as_interrupted_and_never_replayed() {
     let resumed = desk.conversation()["id"].as_str().expect("id").to_owned();
     desk.end(&resumed).await;
     let _ = id;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_first_turns_call_cut_short_is_kept_without_a_restore_point() {
+    // C22 review R2-F1: no turn has been exported yet when the app stops
+    // while an approved call runs at the server.
+    let (mut desk, mcp) = desk_mcp().await;
+    let delays = delayed(&desk, &mcp);
+    let reference = prepared(&mut desk).await;
+    enable(&mut desk, &reference, TOOLS, true).await;
+    sign_in(&mut desk, &mcp, &reference, TOOLS).await;
+    let id = ready(&mut desk, &reference).await;
+    assert_eq!(started(&desk, "tools").await["status"], "ready");
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    delays.call.store(4_000, Ordering::SeqCst);
+    ask_tool(&desk, "tools");
+    desk.say(&id, "Look up record 1.").await.expect("sent");
+    decide(&mut desk, &id, true).await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    desk.core.system_will_sleep();
+    assert!(
+        settle_for(15, || desk.conversation()["phase"] == "ended").await,
+        "{}",
+        desk.conversation()
+    );
+    assert!(
+        !desk.conversation()["savedAt"].is_null(),
+        "{}",
+        desk.conversation()
+    );
+    // The server ran it.
+    assert!(settle_for(10, || mcp.lock().expect("mcp").calls.len() == 1).await);
+    let answers = desk.requests(&format!("{RUNTIME}/responses")).len();
+    // Offline: this Mac's record shows the call as interrupted, and that
+    // it cannot be continued.
+    let mut desk = relaunch(desk, false, true).await;
+    let context = desk.context();
+    desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+        .await
+        .expect("listed");
+    assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+    desk.send(
+        json!({"kind": "openHarnessHistory", "context": context, "workspace": null, "id": history}),
+    )
+    .await
+    .expect("opened");
+    assert!(settle(|| desk.json()["harness"]["history"]["opened"]["id"] == history.as_str()).await);
+    let opened = desk.json()["harness"]["history"]["opened"].clone();
+    let calls: Vec<Value> = opened["entries"]
+        .as_array()
+        .map(|e| e.iter().filter(|e| e["role"] == "mcp").cloned().collect())
+        .unwrap_or_default();
+    assert_eq!(calls.len(), 1, "{opened}");
+    assert_eq!(calls[0]["state"], "interrupted", "{opened}");
+    assert_eq!(opened["notContinuable"], "notRestorable", "{opened}");
+    // Reconnected: still never continued, and nothing is replayed.
+    let mut desk = relaunch(desk, true, true).await;
+    let reference = desk.choose(WS_A).await;
+    let _ = list(&mut desk, &reference).await;
+    assert_eq!(
+        open_saved(&mut desk, &history).await["notContinuable"],
+        "notRestorable"
+    );
+    let context = desk.context();
+    assert!(desk
+        .send(json!({"kind": "resumeHarness", "context": context, "workspace": reference, "id": history}))
+        .await
+        .is_err());
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    assert!(desk.json()["harness"]["conversation"].is_null());
+    assert_eq!(mcp.lock().expect("mcp").calls.len(), 1);
+    assert_eq!(
+        desk.requests(&format!("{RUNTIME}/responses")).len(),
+        answers
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_finished_call_waiting_for_the_model_is_kept_when_the_turn_is_cut_short() {
+    // C22 review R3-F1: the approved call has run and settled, and the
+    // turn waits for the model's next answer with nothing streaming. On a
+    // first turn (no restore point) and after a saved one.
+    for earlier in [false, true] {
+        let (mut desk, mcp) = desk_mcp().await;
+        let delays = delayed(&desk, &mcp);
+        let reference = prepared(&mut desk).await;
+        enable(&mut desk, &reference, TOOLS, true).await;
+        sign_in(&mut desk, &mcp, &reference, TOOLS).await;
+        let id = ready(&mut desk, &reference).await;
+        assert_eq!(started(&desk, "tools").await["status"], "ready");
+        let history = desk.conversation()["historyId"]
+            .as_str()
+            .expect("id")
+            .to_owned();
+        if earlier {
+            desk.gateway.lock().expect("gateway").answer = Answer::Short;
+            desk.say(&id, "Hello.").await.expect("sent");
+            turn_ended(&mut desk, 2).await;
+            assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+        }
+        ask_tool(&desk, "tools");
+        desk.say(&id, "Look up record 1.").await.expect("sent");
+        let _ = approval(&desk).await;
+        // The answer that would follow the call is held.
+        delays.answer.store(30_000, Ordering::SeqCst);
+        decide(&mut desk, &id, true).await;
+        assert!(
+            settle_for(20, || {
+                let c = desk.conversation();
+                mcp_entries(&c).iter().any(|e| e["state"] == "complete")
+                    && c["entries"]
+                        .as_array()
+                        .is_some_and(|e| e.iter().all(|e| e["state"] != "streaming"))
+                    && c["phase"] == "answering"
+            })
+            .await,
+            "{earlier}: {}",
+            desk.conversation()
+        );
+        let trace = mcp.lock().expect("mcp").traces[0].0.clone();
+        desk.core.system_will_sleep();
+        assert!(settle_for(15, || desk.conversation()["phase"] == "ended").await);
+        assert!(
+            !desk.conversation()["savedAt"].is_null(),
+            "{earlier}: {}",
+            desk.conversation()
+        );
+        let answers = desk.requests(&format!("{RUNTIME}/responses")).len();
+        // Offline: the call, its trace and its known outcome are on this Mac.
+        let mut desk = relaunch(desk, false, true).await;
+        let context = desk.context();
+        desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+            .await
+            .expect("listed");
+        assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+        desk.send(json!({"kind": "openHarnessHistory", "context": context, "workspace": null, "id": history}))
+            .await
+            .expect("opened");
+        assert!(
+            settle(|| desk.json()["harness"]["history"]["opened"]["id"] == history.as_str()).await
+        );
+        let opened = desk.json()["harness"]["history"]["opened"].clone();
+        let calls: Vec<Value> = opened["entries"]
+            .as_array()
+            .map(|e| e.iter().filter(|e| e["role"] == "mcp").cloned().collect())
+            .unwrap_or_default();
+        assert_eq!(calls.len(), 1, "{earlier}: {opened}");
+        assert_eq!(calls[0]["state"], "complete", "{earlier}: {opened}");
+        assert!(
+            calls[0]["text"]
+                .as_str()
+                .is_some_and(|t| t.contains(&trace)),
+            "{earlier}: {opened}"
+        );
+        let expected = if earlier {
+            "workspaceUnavailable"
+        } else {
+            "notRestorable"
+        };
+        assert_eq!(opened["notContinuable"], expected, "{earlier}: {opened}");
+        // Reconnected: nothing is replayed.
+        let mut desk = relaunch(desk, true, true).await;
+        let reference = desk.choose(WS_A).await;
+        let _ = list(&mut desk, &reference).await;
+        let _ = open_saved(&mut desk, &history).await;
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        assert!(desk.json()["harness"]["conversation"].is_null());
+        assert_eq!(mcp.lock().expect("mcp").calls.len(), 1);
+        assert_eq!(
+            desk.requests(&format!("{RUNTIME}/responses")).len(),
+            answers
+        );
+    }
 }

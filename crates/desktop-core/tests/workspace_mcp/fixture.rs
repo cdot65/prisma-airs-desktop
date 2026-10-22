@@ -61,6 +61,8 @@ pub struct Mcp {
     /// Each call's execution trace: its ID (returned in the result) and the
     /// arguments the server ran it with (P06, C22 review G3).
     pub traces: Vec<(String, Value)>,
+    /// Every refresh token issued, in order.
+    pub issued_refresh: Vec<String>,
     /// Every MCP request's server and bearer (or none).
     pub requests: Vec<(String, Option<String>)>,
     /// The authorize URLs the browser stand-in completed.
@@ -102,6 +104,7 @@ impl Mcp {
             refreshes: 0,
             calls: Vec::new(),
             traces: Vec::new(),
+            issued_refresh: Vec::new(),
             requests: Vec::new(),
             authorized: Vec::new(),
             serial: 0,
@@ -133,6 +136,7 @@ impl Mcp {
     fn tokens(&mut self, resource: &str, client: &str) -> Value {
         let access = self.next("mcp-access");
         let refresh = self.next("mcp-refresh");
+        self.issued_refresh.push(refresh.clone());
         let issued = Issued {
             resource: resource.to_owned(),
             client: client.to_owned(),

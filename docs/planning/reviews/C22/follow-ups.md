@@ -140,3 +140,69 @@ follow-ups"). D049 records the resulting rules.
 
 - Native C22-N06 now reaches Approve once with Shift-Tab from Decline,
   activates it with Space, and requires that the call then ran.
+
+## Attempt-02 remediation
+
+Attempt-02 scored 9/8/9/8/8 with one required fix and its evidence gap. It
+found F1–F5, G2 and G3 closed.
+
+**R2-F1 and R2-G1: an interrupted call is kept even with no restore point.**
+- Code (`harness/session.rs`): a turn a stop cuts short is saved whether or
+  not an export exists. With none (the first turn, or after a refused
+  export), the record is saved with no replay or context.
+- `not_continuable` names such a record `notRestorable`. It can be read and
+  exported, never continued, and no context is invented. The contract and
+  the history panel know the reason.
+- Tests:
+  - `a_first_turns_call_cut_short_is_kept_without_a_restore_point`
+    (`workspace_mcp`, real engine):
+    - with no turn ever exported, the Mac sleeps while an approved call
+      runs at the server, and the server does run it;
+    - offline, this Mac's record shows the call `interrupted` and reads
+      `notRestorable`;
+    - reconnected, continuing is refused and nothing is replayed (no call,
+      no Gateway turn).
+  - `a_turn_cut_short_after_a_refused_export_is_kept_without_a_restore_point`
+    (`harness_identity_history`, stand-in mode `history-refuse-stall`):
+    every export is refused, and the second turn stalls until the Mac
+    sleeps. The record is written with that turn interrupted and reads
+    `notRestorable`.
+- Probes:
+  - `a cut turn with no export is not saved`
+  - `a record without a restore point is continuable`
+
+**Suggestion.** In
+`signing_out_during_a_sign_in_again_never_signs_the_server_back_in`, the
+sign-out now waits for the token request to be observed (a counter in the
+delayed MCP plane), not a fixed 300 ms. The test asserts that the
+late-issued refresh token itself is revoked.
+
+**A gate race in a C21 test.** The first attempt-03 run stopped at the
+test gate. `the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused`
+started a new conversation as soon as the retired one left the view, while
+it was still finishing ending. The start was refused as busy. The test now
+retries the start until that conversation has ended, bounded at 10 s; no
+product behavior changed. The full set passed three runs in a row.
+
+## Attempt-03 remediation
+
+Attempt-03 scored 9/8/9/8/8. It had one required fix and its evidence gap,
+and found the no-export cases closed.
+
+**R3-F1 and R3-G1: a turn is saved when stopped while open, whatever its
+entries show.**
+- Code (`harness/session.rs`): the stop-time save keys on the turn being
+  open (asked and not ended), not only on an entry still streaming. An
+  approved call that has settled while the turn waits for the model's next
+  answer is therefore saved. Its known outcome is kept unchanged, and no
+  replay is invented.
+- Test `a_finished_call_waiting_for_the_model_is_kept_when_the_turn_is_cut_short`
+  (`workspace_mcp`, real engine) runs once on a first turn and once after a
+  saved turn:
+  - the approved call runs and settles `complete`, and the model's next
+    answer is held, so no entry is streaming and the turn is answering;
+  - the Mac sleeps, and a record is saved;
+  - offline, this Mac's record shows the call `complete` with its own trace
+    (`notRestorable` on the first turn);
+  - reconnected, nothing is replayed (one call, no further Gateway turn).
+- Probe: `an open turn with nothing streaming is not saved`.

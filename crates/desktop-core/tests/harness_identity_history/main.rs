@@ -1189,6 +1189,53 @@ async fn a_history_key_is_made_only_once_its_scope_is_durably_noted() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_turn_cut_short_after_a_refused_export_is_kept_without_a_restore_point() {
+    // C22 review R2-F1: the stand-in refuses every export, and its second
+    // turn stalls until the Mac sleeps.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+    let id = desk.ready(Some("history-refuse-stall")).await;
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| desk.conversation()["saveFailure"] == "unavailable").await);
+    assert!(history_files(&desk.history_root).is_empty());
+    desk.say(&id, SECOND).await.expect("sent");
+    assert!(
+        settle(|| desk.conversation()["entries"]
+            .as_array()
+            .is_some_and(|e| e.iter().any(|e| e["state"] == "streaming")))
+        .await
+    );
+    desk.core.system_will_sleep();
+    assert!(
+        settle_for(15, || desk.conversation()["phase"] == "ended").await,
+        "{}",
+        desk.conversation()
+    );
+    assert_eq!(history_files(&desk.history_root).len(), 1);
+    let _ = list(&mut desk).await;
+    open(&mut desk, &history).await;
+    let opened = desk.json()["harness"]["history"]["opened"].clone();
+    assert_eq!(opened["notContinuable"], "notRestorable", "{opened}");
+    let entries = opened["entries"].as_array().cloned().unwrap_or_default();
+    assert!(entries.iter().any(|e| e["text"] == SECOND), "{opened}");
+    assert!(
+        entries.iter().any(|e| e["state"] == "interrupted"),
+        "{opened}"
+    );
+    let context = desk.context();
+    let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+    assert!(desk
+        .send(json!({"kind": "resumeHarness", "context": context, "workspace": workspace, "id": history}))
+        .await
+        .is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn another_account_or_signing_out_ends_the_grant_and_its_conversation() {
     let (mut desk, idp) = desk().await;
     let id = signed_in_conversation(&mut desk, &idp).await;

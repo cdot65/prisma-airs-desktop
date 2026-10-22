@@ -179,6 +179,10 @@ fn main() {
                         delta("partial");
                         std::process::exit(3);
                     }
+                    "history-refuse-stall" if turns > 1 => {
+                        delta("partial");
+                        forever();
+                    }
                     "oversized" => {
                         raw(&format!(
                             r#"{{"method":"item/agentMessage/delta","params":{{"delta":"{}"}}}}"#,
@@ -352,6 +356,11 @@ fn main() {
             "desktop/history/read" => match mode.as_str() {
                 "history-silent" => {}
                 "history-refuse" => {
+                    send(&json!({"id": id, "error": {"code": -32600, "message": "busy"}}))
+                }
+                // Never exported, and the second turn stalls (C22 review
+                // R2-F1).
+                "history-refuse-stall" => {
                     send(&json!({"id": id, "error": {"code": -32600, "message": "busy"}}))
                 }
                 // Only the first turn is exported (C20 review F1).

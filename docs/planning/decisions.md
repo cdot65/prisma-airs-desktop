@@ -1625,8 +1625,9 @@ compares the wall clock with the engine token's renewal time,
 
 **Protected history.** After every turn (completed, stopped, cut or
 failed) the host asks the idle engine for `desktop/history/read`. A turn
-cut short when the engine itself is stopped is saved with the last export
-and its unfinished entries `interrupted` (D049, P06). Messages
+cut short when the engine itself is stopped is saved with the last export,
+or without one when none exists (`notRestorable`: read and exported, never
+continued), and its unfinished entries `interrupted` (D049, P06). Messages
 wait for the read, which is bounded by the 15 s request timeout. The
 conversation is saved as one sealed record:
 - the transcript;
@@ -1951,11 +1952,16 @@ because the catalog is not loaded, reads `otherMcp` and cannot be
 continued.
 
 **Offline and reconnecting (T23).** A turn that a stop (sleep, quit or
-ending the conversation) cuts short is saved as it stood. Its unfinished
+ending the conversation) cuts short while it is open is saved as it
+stood. This includes a turn whose call has settled while it waits for the
+model's next answer (C22 review R3-F1). Its unfinished
 entries read `interrupted`, so an approved call that may have run at the
 server is recorded with an unknown outcome. The record keeps the last
 export, which does not hold that turn, so continuing restores only what
-the engine had (P06, C22 review G1). Pending MCP approvals and calls live
+the engine had (P06, C22 review G1). With no export (the first turn, or
+after one was refused) it is saved without a restore point. It reads
+`notRestorable` and can be read and exported but never continued, so no
+context is invented (C22 review R2-F1). Pending MCP approvals and calls live
 only with the conversation in memory. A relaunch, offline or not, never
 restores, re-asks or resubmits them. Servers' enablement and sign-ins are
 kept (the state document and the Keychain), and nothing is called until
