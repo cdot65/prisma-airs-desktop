@@ -76,7 +76,23 @@ def command(mgmt, cmd):
     ask(mgmt, "exec_command", {"cmd": cmd, "yield_time_ms": 1000, "login": False}, namespace=None)
 
 
-def turn(app, mgmt, prompt, decide=None, timeout=40):
+def list_items(tree, label):
+    """The texts inside the AXList named `label` (its descendants, by depth)."""
+    for i, n in enumerate(tree):
+        if n.get("role") == "AXList" and n.get("label") == label:
+            items = []
+            for m in tree[i + 1:]:
+                if (m.get("depth") or 0) <= (n.get("depth") or 0):
+                    break
+                if m.get("role") == "AXStaticText":
+                    text = m.get("value") if m.get("value") is not None else m.get("label")
+                    if text and str(text) not in items:
+                        items.append(str(text))
+            return items
+    return []
+
+
+def turn(app, mgmt, prompt, decide=None, timeout=40, save_as=None):
     """Sends `prompt`; answers the approval it raises with `decide`
     ("Allow" or "Decline") if given, or allows it only if one is shown
     ("ifAsked"). The tool output the engine returned."""
@@ -87,7 +103,12 @@ def turn(app, mgmt, prompt, decide=None, timeout=40):
         tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Decline") is not None
                                or (len(runs(mgmt)) >= before + 2 and app.has_text(t, "Answered.")), timeout)
         if fx.App.node(tree, "AXButton", "Decline") is not None:
-            shown = {"shown": True, "texts": [x for x in app.texts(tree) if x.startswith(("Run a command", "Change files", "In /"))][:6]}
+            # What the approval shows before it is allowed: its Files list,
+            # each path whole (C21 review R2-G1).
+            shown = {"shown": True, "texts": [x for x in app.texts(tree) if x.startswith(("Run a command", "Change files", "In /"))][:6],
+                     "files_list": any(n.get("role") == "AXList" and n.get("label") == "Files" for n in tree),
+                     "files": list_items(tree, "Files"),
+                     "tree": save_tree(save_as, tree) if save_as else None}
             c9.press_exact(app, "Allow")
     elif decide:
         tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Decline") is not None, timeout)
@@ -237,10 +258,14 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before, base, project):
     # engine's writer fails in its sandbox; asked before the file is named,
     # it is declined at once and never shown (C21 review F3). The engine's
     # order varies; neither writes.
-    tree, patched = turn(app, mgmt, "Add a file with a patch.", decide="ifAsked")
+    tree, patched = turn(app, mgmt, "Add a file with a patch.", decide="ifAsked", save_as="patch-approval")
+    named = os.path.join(os.path.realpath(project), "added.txt")
     obs["write"]["patch"] = {**patched, "asked": patched["approval"] is not None,
         "file_change_shown": bool(patched["approval"]) and any(
             x.startswith("Change files") for x in patched["approval"]["texts"]),
+        # Exactly the file the patch adds, whole, in the Files list.
+        "files_exact": bool(patched["approval"]) and patched["approval"]["files_list"]
+            and patched["approval"]["files"] in ([named], [os.path.join(project, "added.txt")]),
         "never_asked": not app.has_text(tree, "Change files"),
         "file": os.path.exists(os.path.join(project, "added.txt")),
         "entry_failed": app.has_text(tree, "(failed)"),
@@ -407,9 +432,9 @@ def evaluate(prepared, o):
         and marked(w["child"], "fork") and w["patch"]["answered"]
         # Shown whole and failing in the sandbox, or declined unshown.
         and not w["patch"]["file"]
-        and ((w["patch"]["asked"] and w["patch"]["file_change_shown"] and w["patch"]["entry_failed"])
+        and ((w["patch"]["asked"] and w["patch"]["file_change_shown"] and w["patch"]["files_exact"] and w["patch"]["entry_failed"])
              or (not w["patch"]["asked"] and w["patch"]["never_asked"] and w["patch"]["entry_declined"])),
-        f"write {w}", [o["tree_write"]])
+        f"write {w}", [o["tree_write"], (w["patch"].get("approval") or {}).get("tree")])
     p = o["proposal"]
     add("C21-N05", p["answered"] and p["listed"] and p["writes_after_staging"] == 0 and p["in_admin"] and p["exact_draft"]
         and p["writes_after_review"] == 0 and p["sheet"] and p["applied"] and p["puts"] == 1 and p["put_description"] and p["closed"],
@@ -455,7 +480,7 @@ def evaluate(prepared, o):
         json.dump(record, f, indent=2)
         f.write("\n")
     for c in checks:
-        print(c["result"].upper(), c["id"], c["observation"][:220])
+        print(c["result"].upper(), c["id"], c["observation"][:220] if c["result"] == "pass" else c["observation"][:4000])
     return 0 if all(c["result"] == "pass" for c in checks) else 1
 
 

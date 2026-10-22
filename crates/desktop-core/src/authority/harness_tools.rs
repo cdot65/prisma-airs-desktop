@@ -396,6 +396,33 @@ pub(super) fn sink(
     })
 }
 
+/// An operation a tool call admitted. Dropped before it settles (the turn
+/// was interrupted or ended, or the call timed out), it is cancelled: work
+/// still queued settles NotSent and sends nothing; work already dispatched
+/// is signalled and keeps its own, honest outcome (C21 review R2-F1). Once
+/// settled, cancelling changes nothing.
+struct Admitted<'a> {
+    inner: &'a Arc<Inner>,
+    operation: OperationId,
+}
+
+impl Drop for Admitted<'_> {
+    fn drop(&mut self) {
+        let starts = lock(self.inner)
+            .map(|mut state| {
+                let (_, starts) = state.operations.cancel(
+                    &self.operation,
+                    crate::runtime::StopReason::Cancelled,
+                    tokio::time::Instant::now(),
+                );
+                state.changed();
+                starts
+            })
+            .unwrap_or_default();
+        super::run_effects(self.inner, vec![Effect::Start(starts)]);
+    }
+}
+
 /// One tool call, admitted under the conversation's current binding and
 /// only while its turn lasts: `cancel` is checked under the lock right
 /// before anything is admitted, and while it waits (C21 review F1). What
@@ -418,7 +445,7 @@ async fn run(
         state.harness_live(conversation)?.context_ref().clone()
     };
     let management = |request: ManagementRequest| async {
-        let (handle, starts) = {
+        let (_admitted, handle, starts) = {
             let mut state = lock(inner)?;
             current(&mut state)?;
             let (operation, mut starts) = state.admit_management(
@@ -430,7 +457,7 @@ async fn run(
             starts.extend(state.take_gateway_starts());
             let handle = state.observe_management(&operation)?;
             state.changed();
-            (handle, starts)
+            (Admitted { inner, operation }, handle, starts)
         };
         super::run_effects(inner, vec![Effect::Start(starts)]);
         let result = handle.result().await;
@@ -492,6 +519,10 @@ async fn run(
                 )?;
                 state.changed();
                 admitted
+            };
+            let _admitted = Admitted {
+                inner,
+                operation: operation.clone(),
             };
             super::run_effects(inner, vec![Effect::Start(starts)]);
             loop {

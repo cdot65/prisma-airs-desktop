@@ -1149,8 +1149,12 @@ async fn a_history_key_is_made_only_once_its_scope_is_durably_noted() {
     assert!(history_files(&desk.history_root).is_empty());
     // The note is known in memory now; without confirmation it still
     // writes nothing (the known-scope branch is not a bypass).
+    let attempts = desk.adapters.store.saves();
     desk.say(&id, SECOND).await.expect("sent");
     assert_eq!(desk.answered().await["lastTurn"], "completed");
+    // This turn's own save attempt (it tries to confirm the note), not
+    // the first turn's failure still shown.
+    assert!(settle(|| desk.adapters.store.saves() > attempts).await);
     assert!(settle(|| desk.conversation()["saveFailure"] == "unavailable").await);
     assert_eq!(puts(&desk), before);
     assert!(history_files(&desk.history_root).is_empty());

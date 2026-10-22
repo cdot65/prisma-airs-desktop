@@ -396,30 +396,43 @@ pub fn result_text(mut value: Value, secrets: &[&str]) -> String {
         text = text.replace(secret, "[redacted]");
     }
     if text.len() > MAX_RESULT_BYTES {
-        // Still JSON: the cut text is a string beside a note.
+        // Still JSON: the cut text is a string beside a note. Escaping can
+        // grow it (quotes, backslashes, control characters), so the prefix
+        // shrinks until the whole envelope fits (C21 review R2-F4).
         let mut end = MAX_RESULT_BYTES - 512;
-        while !text.is_char_boundary(end) {
-            end -= 1;
+        loop {
+            while !text.is_char_boundary(end) {
+                end -= 1;
+            }
+            let envelope = json!({"cut": CUT_NOTE, "partial": &text[..end]}).to_string();
+            if envelope.len() <= MAX_RESULT_BYTES {
+                return envelope;
+            }
+            // Each pass removes at least the overflow, which escaping at
+            // most sextuples.
+            let over = envelope.len() - MAX_RESULT_BYTES;
+            end = end.saturating_sub(over.div_ceil(6).max(1));
         }
-        text.truncate(end);
-        text = json!({"cut": "The result was longer than 24 KiB; ask for a smaller page.",
-            "partial": text})
-        .to_string();
     }
     text
 }
+
+const CUT_NOTE: &str = "The result was longer than 24 KiB; ask for a smaller page.";
+
+/// What stands in for JSON carried as text that is too deep or too large
+/// to open and check: it is never passed on unchecked (C21 review R2-F2).
+const UNCHECKED: &str = "[nested data omitted: too deep or too large to check]";
 
 /// JSON carried as text (a page's items, a detail, a session) as values,
 /// so the scrub reaches every field before anything goes to the model
 /// (C21 review F2). Bounded in size and in how deep text is opened.
 fn structured(value: &mut Value, depth: usize) {
     match value {
-        Value::String(s)
-            if depth < 4
-                && s.len() <= 4 * 1024 * 1024
-                && matches!(s.trim_start().as_bytes().first(), Some(b'{' | b'[')) =>
-        {
-            if let Ok(parsed @ (Value::Object(_) | Value::Array(_))) =
+        Value::String(s) if matches!(s.trim_start().as_bytes().first(), Some(b'{' | b'[')) => {
+            if depth >= 4 || s.len() > 4 * 1024 * 1024 {
+                // Past the bounds: replaced, never forwarded unchecked.
+                *value = Value::String(UNCHECKED.to_owned());
+            } else if let Ok(parsed @ (Value::Object(_) | Value::Array(_))) =
                 serde_json::from_str::<Value>(s)
             {
                 *value = parsed;
@@ -529,5 +542,38 @@ mod tests {
             assert!(!text.contains(canary), "{canary}: {text}");
         }
         assert!(text.contains("safe-metadata") && text.contains("Runtime"));
+        // Encoded deeper than it is opened, or larger: replaced, never
+        // passed on (C21 review R2-F2).
+        let mut deep = json!({"Authorization": "Bearer FIVE-DEEP-CANARY"}).to_string();
+        for _ in 0..5 {
+            deep = json!({"wrapped": deep}).to_string();
+        }
+        let big = json!({"Authorization": "Bearer BIG-CANARY", "pad": "x".repeat(4 * 1024 * 1024)})
+            .to_string();
+        let text = result_text(
+            json!({"name": "Runtime", "metadata": deep, "large": big,
+            "note": "safe-metadata"}),
+            &[],
+        );
+        assert!(
+            !text.contains("FIVE-DEEP-CANARY") && !text.contains("BIG-CANARY"),
+            "{text}"
+        );
+        assert!(
+            text.contains(UNCHECKED) && text.contains("safe-metadata") && text.contains("Runtime")
+        );
+        // The cut envelope fits its bound whatever escaping costs (C21
+        // review R2-F4), and stays valid JSON.
+        for heavy in [
+            "\"".repeat(30_000),
+            "\\".repeat(30_000),
+            "\u{1}".repeat(30_000),
+            "é".repeat(30_000),
+        ] {
+            let text = result_text(json!({"t": heavy}), &[]);
+            assert!(text.len() <= MAX_RESULT_BYTES, "{}", text.len());
+            let cut: Value = serde_json::from_str(&text).expect("still JSON");
+            assert_eq!(cut["cut"], CUT_NOTE);
+        }
     }
 }

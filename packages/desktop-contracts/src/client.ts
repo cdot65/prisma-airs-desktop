@@ -1089,9 +1089,10 @@ function isHarnessApproval(value: unknown): boolean {
         optional(bounded(1024), value.reason) &&
         Array.isArray(value.files) &&
         value.files.length <= 64 &&
-        value.files.every((f) => typeof f === 'string' && f.length > 0) &&
-        // Only a file change names files.
-        (value.kind === 'fileChange' || value.files.length === 0) &&
+        value.files.every((f) => typeof f === 'string' && f.length > 0 && utf8Bytes(f) <= 1024) &&
+        // Only a file change names files, and it names every one whole
+        // (C21 review R2-F3).
+        (value.kind === 'fileChange' ? value.files.length > 0 : value.files.length === 0) &&
         optional((v) => typeof v === 'string' && MCP_NAME.test(v), value.server) &&
         optional(bounded(128), value.tool) &&
         optional((v) => typeof v === 'string' && utf8Bytes(v) <= MAX_APPROVAL_BYTES, value.arguments) &&

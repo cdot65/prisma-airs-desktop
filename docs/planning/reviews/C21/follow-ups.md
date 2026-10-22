@@ -119,3 +119,78 @@ mutation probe in `docs/planning/evidence/C21/mutation-probes/probes.py`
 - Structured truncation envelope: see F2.
 - `confirmWrite` now reads in the future tense: "Your sign-in needs
   renewing, so the engine will restart with this conversation."
+
+## Probe guard kept sharp
+
+The raise's first probe run caught 34 of 35. The C21 F3 rule declines a
+file change that names no files, so the existing probe "a file change is
+asked while changes are off" no longer changed the outcome of its guard's
+read-only case: that file change named none. The guard
+(`approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed`)
+now starts a named file change before asking, so only changes being off
+declines it. The probe is caught again, and the full set is rerun.
+
+## Attempt-02 remediation
+
+Attempt-02 scored 9/8/8/8/8 with four required fixes and one evidence gap,
+each closing what the original F1–F3 left open or a regression in the new
+truncation. Each has a test and a probe (section "Attempt-02" of
+`probes.py`); D048 records the rules.
+
+**R2-F1: turn cancellation reaches the operations a call admitted.**
+- Code (`authority/harness_tools.rs`): an `Admitted` guard holds each
+  management or scan operation a tool call admits. If the call ends before
+  that operation settles (interrupt, end or timeout drop the call's
+  future), the guard cancels it with the runtime's own `Operations::cancel`.
+  Queued work settles NotSent and sends nothing; dispatched work is
+  signalled and keeps its outcome.
+- Test `tool_work_still_queued_when_its_turn_is_stopped_is_never_sent`
+  (`harness_tools`):
+  - the operator's four slow topic reads hold all runtime slots (the server
+    delays them outside its routing lock);
+  - a management read (apiKeys) and then a scan are queued behind them;
+  - the turn is interrupted, then a conversation is ended;
+  - once capacity frees, no API keys request and no scan request is ever
+    made, and no tool output reaches the model.
+- Probe: `queued tool work is not cancelled`.
+
+**R2-F2: JSON text past the decoding bounds is never forwarded.**
+- Code (`harness/tools.rs`, `structured`): a string that starts as JSON but
+  lies deeper than 4 layers or is larger than 4 MiB is replaced by
+  `[nested data omitted: too deep or too large to check]`.
+- Tests:
+  - The unit test adds a credential five layers deep and one inside a
+    string over 4 MiB. Neither survives, and safe metadata stays.
+  - The production `harness_tools` API keys fixture carries
+    `FIVE-DEEP-C21-CANARY` five layers deep. It reaches neither the model
+    nor the view.
+- Probe: `encoded data past the bounds is forwarded`.
+
+**R2-F3: a file change is approved only from its complete file list.**
+- Code (`harness/session.rs`): a file change keeps its files for approval
+  only when every change names a path, there are at most 64, and none is
+  longer than 1 KiB. Anything else leaves nothing to approve, so it is
+  declined at once.
+- The contract requires a file-change approval to name at least one file,
+  each at most 1 KiB.
+- Tests:
+  - The unit test covers 65 changes, a path past 1 KiB, and a change
+    without a path. Each is declined.
+  - Contract cases cover an empty list and an overlong path.
+- Probes:
+  - `a partial file list is approvable`
+  - `a cut file path passes the contract`
+
+**R2-F4: the cut envelope fits its bound after escaping.**
+- Code: the prefix shrinks until the serialized
+  `{"cut": note, "partial": text}` fits `MAX_RESULT_BYTES`.
+- Unit test: quote-, backslash-, control- and multibyte-heavy results each
+  stay valid JSON within 24 KiB, with the note.
+- Probe: `an escaped envelope passes its bound`.
+
+**R2-G1: native C21-N04 records the files shown before Allow.**
+- When the patch writer's approval is shown, the driver saves its tree
+  (`tree-patch-approval.json`) before pressing Allow. It records the
+  approval's Files list.
+- The check requires exactly the patch's file, whole, in that list. The
+  declined-unshown branch is kept for an engine that asks first.

@@ -42,13 +42,24 @@ async fn desk() -> Desk {
                  "api_key": API_KEY_VALUE, "auth_code": AUTH_CODE, "cust_app": "Support bot",
                  // Unknown fields the management client keeps (C21 review F2).
                  "metadata": {"Authorization": "Bearer NESTED-C21-CANARY",
-                     "X-Api-Key": "MIXED-C21-CANARY", "note": "safe-c21-metadata"},
+                     "X-Api-Key": "MIXED-C21-CANARY", "note": "safe-c21-metadata",
+                     // Encoded five times over (C21 review R2-F2).
+                     "wrapped": five_deep()},
                  "expiration": "2027-01-01T00:00:00Z", "revoked": false, "status": "ACTIVE"}]}),
             _ => return None,
         };
         Some(json_reply(200, &body))
     }));
     desk
+}
+
+/// A credential inside JSON carried as text, five layers deep.
+fn five_deep() -> String {
+    let mut deep = json!({"Authorization": "Bearer FIVE-DEEP-C21-CANARY"}).to_string();
+    for _ in 0..5 {
+        deep = json!({"wrapped": deep}).to_string();
+    }
+    deep
 }
 
 fn tool(desk: &Desk, namespace: Option<&str>, name: &str, arguments: Value) {
@@ -188,6 +199,7 @@ async fn a_typed_read_answers_from_the_desktop_without_any_secret() {
         KEY,
         "NESTED-C21-CANARY",
         "MIXED-C21-CANARY",
+        "FIVE-DEEP-C21-CANARY",
     ] {
         assert!(!out[0].contains(secret), "{secret}");
         assert!(!desk.json().to_string().contains(secret), "{secret}");
@@ -259,6 +271,100 @@ async fn a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered() {
     assert_eq!(c["lastTurn"], "completed", "{c}");
     assert!(outputs(&desk).is_empty());
     desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn tool_work_still_queued_when_its_turn_is_stopped_is_never_sent() {
+    // C21 review R2-F1: the runtime's four slots are held by the operator's
+    // own slow reads, so the turn's management read and scan wait in the
+    // queue; the turn is stopped (or ended) and capacity released.
+    let mut desk = desk().await;
+    let fast = desk
+        .gateway
+        .lock()
+        .expect("gateway")
+        .hook
+        .clone()
+        .expect("hook");
+    let slow = Arc::clone(&fast);
+    // Delayed by the server, outside the routing lock: other requests are
+    // answered meanwhile.
+    desk.gateway.lock().expect("gateway").hook = Some(Arc::new(move |seen| {
+        let target = seen.request_line.split(' ').nth(1).unwrap_or_default();
+        let reply = slow(seen);
+        if target.contains("/mgmt/topics/") {
+            return reply.map(|r| crate::support::Reply::Delayed {
+                millis: 4_000,
+                then: Box::new(r),
+            });
+        }
+        reply
+    }));
+    let context = desk.context();
+    desk.send(
+        json!({"kind": "configureScanCredential", "context": context, "mode": "keychain",
+        "key": "synthetic-scan-key-c21"}),
+    )
+    .await
+    .expect("scan key");
+    let id = ready(&mut desk).await;
+    for (call, stop) in [
+        (
+            ("inventory", json!({"resource": "apiKeys", "limit": 5})),
+            "interruptHarness",
+        ),
+        (
+            ("scan", json!({"profile": "Default", "prompt": "hello"})),
+            "endHarness",
+        ),
+    ] {
+        let id = if stop == "endHarness" {
+            desk.end(&id).await;
+            desk.send(json!({"kind": "clearHarness", "conversation": id}))
+                .await
+                .expect("cleared");
+            ready(&mut desk).await
+        } else {
+            id.clone()
+        };
+        let context = desk.context();
+        for _ in 0..4 {
+            desk.send(json!({"kind": "management", "context": context,
+                "request": {"kind": "page", "resource": "topics", "offset": 0, "limit": 25}}))
+                .await
+                .expect("operator read");
+        }
+        let profiles = desk.requests("/aisec/").len();
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        let before_keys = desk.requests("/aisec/v1/mgmt/apikeys").len();
+        let before_scans = desk.requests("/v1/scan").len();
+        tool(&desk, Some("airs_desktop"), call.0, call.1);
+        desk.say(&id, "Use the desktop.").await.expect("sent");
+        answered_with(&mut desk, |c| {
+            entry(c, "tool").is_some_and(|t| t["state"] == "streaming")
+        })
+        .await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        desk.send(json!({"kind": stop, "conversation": id}))
+            .await
+            .expect("stopped");
+        // Capacity frees up: the queued work was cancelled, so nothing is
+        // sent for it.
+        tokio::time::sleep(Duration::from_secs(6)).await;
+        assert_eq!(
+            desk.requests("/aisec/v1/mgmt/apikeys").len(),
+            before_keys,
+            "{stop}"
+        );
+        assert_eq!(desk.requests("/v1/scan").len(), before_scans, "{stop}");
+        assert!(outputs(&desk).is_empty(), "{stop}");
+        // The operator's four slow reads did run (they held the slots).
+        assert!(desk.requests("/aisec/").len() >= profiles + 4, "{stop}");
+        if stop == "interruptHarness" {
+            assert_eq!(desk.conversation()["lastTurn"], "interrupted");
+        }
+    }
+    desk.gateway.lock().expect("gateway").hook = Some(fast);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

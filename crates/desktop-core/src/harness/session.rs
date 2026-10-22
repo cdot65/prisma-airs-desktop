@@ -124,6 +124,10 @@ const MAX_COMMAND_OUTPUT: usize = 8 * 1024;
 /// The longest command an approval shows whole; a longer one is declined,
 /// never shown cut (C21 F3).
 const MAX_APPROVAL_COMMAND: usize = 8 * 1024;
+/// The most files, and the longest path, a file-change approval shows
+/// whole.
+const MAX_APPROVAL_FILES: usize = 64;
+const MAX_APPROVAL_PATH: usize = 1024;
 /// MCP calls tracked in one turn (the engine's own bound).
 const MAX_MCP_ITEMS: usize = 64;
 const DECLINED_MCP: &str = "An MCP request did not name a running tool call of a signed-in server, or asked for other input; it was declined.";
@@ -1544,16 +1548,26 @@ impl Conversation {
                 (HarnessRole::Command, text)
             }
             Some("fileChange") => {
-                let paths: Vec<String> = item["changes"]
+                let changes = item["changes"]
                     .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|c| c["path"].as_str())
-                    .take(64)
-                    .map(|p| cut(p, 1024))
+                    .map(Vec::as_slice)
+                    .unwrap_or_default();
+                let named: Vec<&str> = changes.iter().filter_map(|c| c["path"].as_str()).collect();
+                // Its approval names every file whole or none (C21 review
+                // R2-F3): a change without a path, more than the bound or a
+                // path past it leaves nothing to approve, so it is declined.
+                let complete = !named.is_empty()
+                    && named.len() == changes.len()
+                    && named.len() <= MAX_APPROVAL_FILES
+                    && named.iter().all(|p| p.len() <= MAX_APPROVAL_PATH);
+                let paths: Vec<String> = named
+                    .iter()
+                    .take(MAX_APPROVAL_FILES)
+                    .map(|p| cut(p, MAX_APPROVAL_PATH))
                     .collect();
                 if !done && !self.files.iter().any(|(i, _)| i == item_id) {
-                    self.files.push((item_id.to_owned(), paths.clone()));
+                    let whole = if complete { paths.clone() } else { Vec::new() };
+                    self.files.push((item_id.to_owned(), whole));
                 }
                 (HarnessRole::FileChange, paths.join("\n"))
             }
@@ -2270,6 +2284,14 @@ mod tests {
         // A read-only folder: a command is held; a file change, added
         // permissions or another turn's request is declined at once.
         c.binding.project = Some("/Users/someone/work".into());
+        // A file change that names its files: only changes being off
+        // declines it.
+        c.on_item(
+            &json!({"id":"i-2","type":"fileChange","status":"inProgress",
+                "changes":[{"path":"/Users/someone/work/b.txt","kind":"add"}]}),
+            false,
+        )
+        .expect("started");
         c.on_approval(RequestId::Number(2), ApprovalKind::FileChange, &ask("i-2"))
             .expect("declined");
         let mut extra = ask("i-3");
@@ -2314,6 +2336,36 @@ mod tests {
         none["command"] = Value::Null;
         c.on_approval(RequestId::Number(9), ApprovalKind::Command, &none)
             .expect("declined");
+        assert_eq!(declined(&reader), 3);
+        assert_eq!(c.approvals.len(), 2);
+        // A file change that cannot be named whole is declined, never shown
+        // as a partial list (C21 review R2-F3): more files than the bound,
+        // a path past it, or a change without a path.
+        let many: Vec<Value> = (0..=MAX_APPROVAL_FILES)
+            .map(|n| json!({"path": format!("/Users/someone/work/f{n}.txt"), "kind": "add"}))
+            .collect();
+        let long = format!("/Users/someone/work/{}", "p".repeat(MAX_APPROVAL_PATH));
+        let partial = vec![
+            json!({"path": "/Users/someone/work/c.txt", "kind": "add"}),
+            json!({"kind": "add"}),
+        ];
+        for (n, changes) in [many, vec![json!({"path": long, "kind": "add"})], partial]
+            .into_iter()
+            .enumerate()
+        {
+            let item = format!("i-1{n}");
+            c.on_item(
+                &json!({"id": item, "type": "fileChange", "status": "inProgress", "changes": changes}),
+                false,
+            )
+            .expect("started");
+            c.on_approval(
+                RequestId::Number(10 + n as u64),
+                ApprovalKind::FileChange,
+                &ask(&item),
+            )
+            .expect("declined");
+        }
         assert_eq!(declined(&reader), 3);
         assert_eq!(c.approvals.len(), 2);
         // A held command is shown whole.

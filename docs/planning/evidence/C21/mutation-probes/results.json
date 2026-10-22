@@ -2,14 +2,14 @@
   {
     "inputs": {
       "apps/desktop/src/features/administration/administration-view.tsx": "f9b752d2086b9ffb9e7e7151be7008701fc71299261849eb600b58f12c480bed",
-      "apps/desktop/src/features/harness/decisions-panel.tsx": "30d569cad4c502a0d5340589b0b32bed22bfa6138e1450247979637910b6e8f3",
-      "crates/desktop-core/src/authority/harness_domain.rs": "1ed906cf29abdf144a35a83f33598d5f7fa5969b3d5bc8dc51ecf6d09d269f24",
-      "crates/desktop-core/src/authority/harness_history.rs": "e342c991857b5f95162d74611a8afffb37759a92f76651e76211ea5f229f45fc",
-      "crates/desktop-core/src/authority/harness_tools.rs": "80e17440bd1d8e5719f330c563b3d83cfb88bf27a702b927d84c73becc4d25ee",
-      "crates/desktop-core/src/harness/protocol.rs": "67d1dace0989165177b4e37070f26c4464d7eb0d3cfb8ebadc1e9d73214e6c95",
-      "crates/desktop-core/src/harness/session.rs": "283d638102ca42b7097506c283e117856fec961df5940a3ec253119d8f16b8d9",
-      "crates/desktop-core/src/harness/tools.rs": "a0298dbe736bb1f7ebed73f33762388a74ccfbf446e9b79524e35e0d2f8419eb",
-      "packages/desktop-contracts/src/client.ts": "6c36f29ff634c39d0f77ea96ed4a470ec89305d86a985fb4bb665432b043141c"
+      "apps/desktop/src/features/harness/decisions-panel.tsx": "37d4877a7403ae0d94f668f16749adaf315725b36398421334e3208823d49ceb",
+      "crates/desktop-core/src/authority/harness_domain.rs": "533e15decdf37146cf7e14dda69cd8d8c27dca29c23210d7742328f4e7a20391",
+      "crates/desktop-core/src/authority/harness_history.rs": "1a55e7512300963b090a9731ac4e7d08da2b56f86ae76e8ebc67b730aec1ca83",
+      "crates/desktop-core/src/authority/harness_tools.rs": "d360202d93d3b82199d2a393c2429b2dceda9b0725eab74b46757deadefc3006",
+      "crates/desktop-core/src/harness/protocol.rs": "96ee789ad1476088f0e2d9110935a49f1ee2cbaaca0adbc5ef80fea67529201b",
+      "crates/desktop-core/src/harness/session.rs": "2612ecbcd882256c8ee52858e46a77ddae553b1df0ea1a1c10ea4722afd650f9",
+      "crates/desktop-core/src/harness/tools.rs": "96c26c971a1af2f3fcfda4e1f2bc92ee1138f31d023562c38838d9131e77c607",
+      "packages/desktop-contracts/src/client.ts": "a18c7a4697971b246fa52f36dec943db9e6d56e5c24d361b7b8a93cfcef17ff3"
     }
   },
   {
@@ -629,6 +629,226 @@
   },
   {
     "mutation": "a file-change approval while read-only passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "refuses tool, approval and proposal views Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a stale lease's tool result is sent",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_late",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a tool call is admitted while its turn is stopped",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_late",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a stopped turn's tool calls are not cancelled",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_late",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "JSON inside a string is not scrubbed",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "results_are_scrubbed_redacted_and_bounded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a command too long to show whole is asked",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a file change naming no files is asked",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a replaced entry bypasses the transcript bound",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_replaced_entry_keeps_the_transcript_within_its_bound",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "queued tool work is not cancelled",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "tool_work_still_queued_when_its_turn_is_stopped_is_never_sent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "encoded data past the bounds is forwarded",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "results_are_scrubbed_redacted_and_bounded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a partial file list is approvable",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an escaped envelope passes its bound",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "results_are_scrubbed_redacted_and_bounded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a cut file path passes the contract",
     "files": [
       "packages/desktop-contracts/src/client.ts"
     ],

@@ -1,5 +1,5 @@
 
-running 7 tests
+running 10 tests
 test a_typed_read_answers_from_the_desktop_without_any_secret ... ok
 test a_proposal_is_staged_never_applied_and_never_replaces_a_review ... ok
 test the_sandbox_refuses_children_pipelines_and_other_paths ... ok
@@ -7,8 +7,11 @@ test commands_need_a_project_and_the_operators_approval ... ok
 test forged_unknown_or_credential_bearing_calls_run_nothing ... ok
 test a_saved_conversation_needs_its_project_binding_and_replays_no_authority ... ok
 test the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused ... ok
+test nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_reconnect ... ok
+test a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered ... ok
+test tool_work_still_queued_when_its_turn_is_stopped_is_never_sent ... ok
 
-test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.47s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.92s
 
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
      Running tests/harness_tools/main.rs (target/debug/deps/harness_tools-917d79e1df8b077a)

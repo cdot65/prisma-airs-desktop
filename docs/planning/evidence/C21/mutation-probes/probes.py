@@ -74,6 +74,7 @@ U_LEASE = "a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_l
 U_BOUND = "a_replaced_entry_keeps_the_transcript_within_its_bound"
 STOPPED = "a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered"
 OFFLINE = "nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_reconnect"
+QUEUED = "tool_work_still_queued_when_its_turn_is_stopped_is_never_sent"
 
 PROBES = [
     ("a repeated tool call runs again",
@@ -152,6 +153,19 @@ PROBES = [
      [(SESSION, "            ApprovalKind::FileChange => !files.is_empty(),", "            ApprovalKind::FileChange => true,")], UNIT_T, U_ASK),
     ("a replaced entry bypasses the transcript bound",
      [(SESSION, "            while transcript_bytes(p) > MAX_TRANSCRIPT_BYTES && p.entries.len() > 1 {", "            while false && p.entries.len() > 1 {")], UNIT_T, U_BOUND),
+
+    # Attempt-02 (C21-R2-F1..F4).
+    ("queued tool work is not cancelled",
+     [(HTOOLS, "        let starts = lock(self.inner)\n            .map(|mut state| {",
+       "        let starts = lock(self.inner)\n            .ok()\n            .filter(|_| false)\n            .map(|mut state| {")], HT_T, QUEUED),
+    ("encoded data past the bounds is forwarded",
+     [(TOOLS, "            if depth >= 4 || s.len() > 4 * 1024 * 1024 {", "            if false {")], UNIT_T, U_RESULT),
+    ("a partial file list is approvable",
+     [(SESSION, "let whole = if complete { paths.clone() } else { Vec::new() };", "let whole = paths.clone();")], UNIT_T, U_ASK),
+    ("an escaped envelope passes its bound",
+     [(TOOLS, "            if envelope.len() <= MAX_RESULT_BYTES {", "            if envelope.len() < usize::MAX {")], UNIT_T, U_RESULT),
+    ("a cut file path passes the contract",
+     [(CLIENT, " && utf8Bytes(f) <= 1024) &&", ") &&")], FE_SNAPSHOT, SNAP),
 
 ]
 

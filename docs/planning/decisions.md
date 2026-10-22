@@ -1710,10 +1710,15 @@ Every call goes through the same admission as the operator's own reads:
 `admit_management`, `admit_scan` and the library. The call runs under the
 conversation's context and is refused once that context is stale. The
 desktop holds the credentials. Results are JSON:
+- JSON carried as text is opened first: at most 4 layers deep and 4 MiB.
+  Text still encoded past those bounds is replaced by a note, never
+  passed on unchecked (P06, C21 reviews F2 and R2-F2);
 - field names that carry credentials are removed at any depth (14
   names, case- and dash-insensitive);
 - the conversation's key is redacted;
-- the result is cut to 24 KiB, with a note.
+- a longer result becomes `{"cut": note, "partial": text}`, shortened
+  until the whole envelope, escaping included, fits 24 KiB (P06, C21
+  review R2-F4).
 
 A call is parsed into a closed set:
 - `deny_unknown_fields`;
@@ -1726,7 +1731,10 @@ and only once per call ID; a repeat is a protocol failure. Anything else
 is answered "This tool or its arguments are unavailable." and nothing
 runs. At most 8 calls or approvals wait at a time. A call has 60 s, and
 the engine's pending tool calls are dropped with the turn (interrupt or
-end). This follows C19's rule that a reply to a request the engine forgot
+end). Each call carries its run and turn lease. When the turn ends, the
+call is cancelled, and so is the runtime operation it admitted (P06, C21
+reviews F1 and R2-F1): queued work settles NotSent and sends nothing;
+work already dispatched keeps its own outcome; no result is sent late. This follows C19's rule that a reply to a request the engine forgot
 is fatal.
 
 **Proposals, never Apply.** `proposeChange` accepts Runtime and DLP kinds
@@ -1777,8 +1785,9 @@ without asking, when any of these holds:
 - it asks for added permissions, network access or another root;
 - it belongs to another turn;
 - what it would do cannot be shown whole: a command longer than 8 KiB (or
-  none), or a file change whose files the engine has not named (P06, C21
-  review F3: never shown cut);
+  none), or a file change whose every file is not named whole (none
+  named, a change without a path, more than 64 files or a path past
+  1 KiB) (P06, C21 reviews F3 and R2-F3: never shown cut or partial);
 - 8 decisions are already waiting.
 
 The pinned engine's own desktop sandbox enforces the rest. The negative

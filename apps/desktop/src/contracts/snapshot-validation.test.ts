@@ -845,6 +845,9 @@ describe('Harness tools and project (C21)', () => {
             harness({ ...conversation, approvals: [{ ...approval, kind: 'network' }] }),
             harness({ ...conversation, approvals: [{ ...approval, files: ['x'] }] }),
             harness({ ...conversation, approvals: [{ ...approval, command: 'x'.repeat(8 * 1024 + 1) }] }),
+            // A file change names every file whole (C21 review R2-F3).
+            harness({ ...conversation, approvals: [{ ...approval, kind: 'fileChange', command: null, files: [] }] }),
+            harness({ ...conversation, approvals: [{ ...approval, kind: 'fileChange', command: null, files: [`${PROJECT}/${'p'.repeat(1024)}`] }] }),
             harness({ ...conversation, approvals: Array.from({ length: 9 }, () => approval) }),
             // Gateway changes are never proposed, nor anything but create, update or delete.
             harness({ ...conversation, proposals: [{ ...proposal, draft: { ...proposal.draft, kind: 'gatewayRoutes' } }] }),
