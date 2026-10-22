@@ -133,6 +133,13 @@ impl Grant {
         self.expired.lock().ok().and_then(|e| *e)
     }
 
+    /// Signed in again: usable until it next lapses.
+    fn revive(&self) {
+        if let Ok(mut e) = self.expired.lock() {
+            *e = None;
+        }
+    }
+
     fn expire(&self, failure: SignInFailure) {
         if let Ok(mut e) = self.expired.lock() {
             *e = Some(failure);
@@ -307,7 +314,10 @@ fn identity_client(inner: &Arc<Inner>) -> Option<IdentityClient> {
 }
 
 /// Saves a rotated refresh token under write-ahead ownership; `None` if the
-/// grant ended meanwhile or saving failed (the caller revokes it).
+/// grant ended or its record changed meanwhile, or saving failed (the
+/// caller revokes it). The record is swapped only from `old`, the one this
+/// renewal started from, so a stale completion never overwrites newer
+/// material (C20 review F3).
 async fn rotate(
     inner: &Arc<Inner>,
     grant: &Grant,
@@ -315,18 +325,17 @@ async fn rotate(
     refresh: &str,
 ) -> Option<RecordId> {
     let record = RecordId::issue()?;
-    if !begin_write(inner, grant, &record) {
-        return None;
+    {
+        let mut state = lock(inner).ok()?;
+        if !state.grant_holds(grant, old) || !begin_write(&mut state, &record) {
+            return None;
+        }
     }
-    let writer = Arc::clone(inner);
-    let secret = secret_bytes(Some(refresh));
-    let written = record.clone();
-    let put = tokio::task::spawn_blocking(move || writer.adapters.keychain.put(&written, &secret))
-        .await
-        .unwrap_or(Err(VaultError::Unavailable));
+    let written = write(inner, &record, secret_bytes(Some(refresh))).await;
     let committed = {
         let mut state = lock(inner).ok()?;
-        put.is_ok() && state.grant_current(grant) && {
+        settle_write(&mut state, &record);
+        written && state.grant_holds(grant, old) && {
             let before = state.data.clone();
             if let Some(g) = state
                 .tenant_mut(&grant.tenant)
@@ -344,18 +353,46 @@ async fn rotate(
     committed.then_some(record)
 }
 
-/// Puts `record` in the durable cleanup ledger before it is written, while
-/// `grant` is current.
-fn begin_write(inner: &Arc<Inner>, grant: &Grant, record: &RecordId) -> bool {
-    let Ok(mut state) = lock(inner) else {
-        return false;
-    };
-    if !state.grant_current(grant) {
-        return false;
-    }
+/// Puts `record` in the durable cleanup ledger before it is written and
+/// marks the write in flight, so cleanup and reset wait for it. Only a
+/// ledger entry confirmed durable authorizes the Keychain write (C20
+/// review F2); otherwise nothing is written and the entry settles absent.
+pub(super) fn begin_write(state: &mut State, record: &RecordId) -> bool {
     let before = state.data.clone();
     state.data.pending_cleanup.push(record.clone());
-    state.save_with(&before).is_ok()
+    if state.save_with(&before).is_err()
+        || (state.durability_unconfirmed && !state.confirm_durable())
+    {
+        return false;
+    }
+    state.writes_in_flight.push(record.clone());
+    true
+}
+
+/// Writes a record begun with [`begin_write`]. It stays in flight (so
+/// cleanup leaves it alone) until the caller settles it with
+/// [`settle_write`] under the same lock as the save that names it or leaves
+/// it in the ledger (P06, C22 review F4).
+pub(super) async fn write(
+    inner: &Arc<Inner>,
+    record: &RecordId,
+    bytes: Zeroizing<Vec<u8>>,
+) -> bool {
+    let writer = Arc::clone(inner);
+    let written = record.clone();
+    let put = tokio::task::spawn_blocking(move || writer.adapters.keychain.put(&written, &bytes))
+        .await
+        .unwrap_or(Err(VaultError::Unavailable));
+    let hold = lock(inner).map(|s| Arc::clone(&s.settle_hold));
+    if let Ok(hold) = hold {
+        let _settling = hold.lock().await;
+    }
+    put.is_ok()
+}
+
+/// Ends a write's flight; called under the lock that settles who owns it.
+pub(super) fn settle_write(state: &mut State, record: &RecordId) {
+    state.writes_in_flight.retain(|r| r != record);
 }
 
 impl State {
@@ -369,6 +406,15 @@ impl State {
         self.sign_in_of(&grant.tenant)
             .and_then(|s| s.grant.as_ref())
             .is_some_and(|g| g.id == grant.id && g.subject == grant.subject)
+    }
+
+    /// Whether `grant` is current and its stored refresh token is `record`.
+    fn grant_holds(&self, grant: &Grant, record: &RecordId) -> bool {
+        self.grant_current(grant)
+            && self
+                .sign_in_of(&grant.tenant)
+                .and_then(|s| s.grant.as_ref())
+                .is_some_and(|g| &g.record == record)
     }
 
     /// The live grant of the tenant's signed-in account, made on first use.
@@ -719,32 +765,39 @@ pub(super) async fn sign_in(inner: Arc<Inner>, job: SignInJob) {
             }
         },
     };
+    // A sign-in again to the same account renews the live grant in place:
+    // it waits for a renewal under way and holds the grant's tokens until
+    // its own are in, so neither overwrites the other (C20 review F3).
+    let live = existing.as_ref().and_then(|g| {
+        lock(&inner)
+            .ok()
+            .and_then(|mut state| state.grant(&tenant))
+            .filter(|l| l.id == g.id)
+    });
+    let held = match &live {
+        Some(live) => Some(live.auth.lock().await),
+        None => None,
+    };
     // Write-ahead: the record joins the ledger before it is written, and
     // only while this flow is current.
-    let begun = lock(&inner).map(|mut state| {
+    let begun = lock(&inner).is_ok_and(|mut state| {
         state
             .harness_sign_in
             .as_ref()
             .is_some_and(|f| f.flow == flow)
-            && {
-                let before = state.data.clone();
-                state.data.pending_cleanup.push(record.clone());
-                state.save_with(&before).is_ok()
-            }
+            && begin_write(&mut state, &record)
     });
-    if !matches!(begun, Ok(true)) {
+    if !begun {
+        drop(held);
         revoke(tokens.refresh).await;
         return fail(SignInFailure::StoreFailed);
     }
     let secret = secret_bytes(tokens.refresh.as_deref().map(|r| r.as_str()));
-    let writer = Arc::clone(&inner);
-    let written = record.clone();
-    let put = tokio::task::spawn_blocking(move || writer.adapters.keychain.put(&written, &secret))
-        .await
-        .unwrap_or(Err(VaultError::Unavailable));
+    let written = write(&inner, &record, secret).await;
     let committed = (|| {
         let mut state = lock(&inner).ok()?;
-        if put.is_err()
+        settle_write(&mut state, &record);
+        if !written
             || !state
                 .harness_sign_in
                 .as_ref()
@@ -781,28 +834,48 @@ pub(super) async fn sign_in(inner: Arc<Inner>, job: SignInJob) {
         state.data.pending_cleanup.extend(old);
         state.save_with(&before).ok()?;
         state.harness_sign_in = None;
-        state.harness_grants.retain(|g| g.tenant != tenant);
-        let sign_in = state.sign_in_of(&tenant)?.clone();
-        let live = Grant::new(&sign_in, &stored, config.clone());
-        state.harness_grants.push(Arc::clone(&live));
+        let renewed = live
+            .as_ref()
+            .filter(|l| state.harness_grants.iter().any(|g| Arc::ptr_eq(g, l)))
+            .cloned();
+        let target = match renewed {
+            Some(live) => live,
+            None => {
+                state.harness_grants.retain(|g| g.tenant != tenant);
+                let sign_in = state.sign_in_of(&tenant)?.clone();
+                let made = Grant::new(&sign_in, &stored, config.clone());
+                state.harness_grants.push(Arc::clone(&made));
+                made
+            }
+        };
         state.changed();
-        Some(live)
+        Some(target)
     })();
     match committed {
-        Some(live) => {
-            let mut auth = live.auth.lock().await;
+        Some(target) => {
+            let reused = live.as_ref().is_some_and(|l| Arc::ptr_eq(l, &target));
+            let mut auth = match held {
+                Some(auth) if reused => auth,
+                other => {
+                    drop(other);
+                    target.auth.lock().await
+                }
+            };
             let renew_at = access.renew_at();
             auth.provider = Some(provider);
             auth.verifier = verifier;
             auth.refresh = tokens.refresh;
             auth.access = Some(access);
-            live.renew_at.store(renew_at, Ordering::SeqCst);
+            auth.record = record;
+            target.revive();
+            target.renew_at.store(renew_at, Ordering::SeqCst);
             drop(auth);
             if let Ok(mut state) = lock(&inner) {
                 state.changed();
             }
         }
         None => {
+            drop(held);
             revoke(tokens.refresh).await;
             fail(SignInFailure::StoreFailed);
         }

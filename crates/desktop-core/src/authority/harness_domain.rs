@@ -542,6 +542,20 @@ impl State {
             .filter(|c| &c.id == id && c.grant.is_some())
             .map(|c| c.tenant.clone());
         let live = signed_in.and_then(|tenant| self.grant(&tenant));
+        // With MCP servers in scope, a message waits for a fresh catalog
+        // read: a loading or failed one is never taken as current (P06,
+        // C22 review F2). The message stays in the box.
+        let unchecked = self
+            .harness
+            .as_ref()
+            .filter(|c| &c.id == id)
+            .is_some_and(|c| {
+                self.mcp_scope_check(&c.tenant, &c.workspace.id, &c.mcp)
+                    != super::harness_mcp::ScopeCheck::Current
+            });
+        if unchecked {
+            return Err(Refusal::Busy);
+        }
         let conversation = self.live_harness(id)?;
         if conversation
             .progress
@@ -754,8 +768,10 @@ impl State {
         let project_ok = project.map(|p| &p.path) == c.project.as_ref()
             && project.is_some_and(|p| p.write) == c.write;
         // Its MCP servers: still on, with the same sign-ins and revisions
-        // (C22). An expired sign-in alone keeps it.
-        let mcp_ok = self.mcp_scope_current(&c.tenant, &c.workspace.id, &c.mcp);
+        // (C22). An expired sign-in alone keeps it, and so does a catalog
+        // that is loading or could not be read (nothing remote runs then).
+        let mcp_ok = self.mcp_scope_check(&c.tenant, &c.workspace.id, &c.mcp)
+            != super::harness_mcp::ScopeCheck::Changed;
         !c.retired
             && credential_ok
             && project_ok

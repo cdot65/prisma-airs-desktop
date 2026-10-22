@@ -15,7 +15,7 @@ mandatory checks fail the gate. No empty tests or synthetic passing receipts.
 | Tailwind / Vite / TypeScript | 4.1.18 / 7.3.0 / 5.9.3 | C01 exact lock/resolution |
 | Build Node / package manager | Node24.21.0 / pnpm10.6.5 | C01 build-only preflight |
 | Contract generation | ts-rs12.0.1, serde-compat | C01 literal DTO fixtures/regeneration |
-| OIDC / OAuth | openidconnect4.0.1 / oauth2 5.0.0 | C04/C20/C22 scoped native contracts |
+| OIDC / OAuth | openidconnect4.0.1 / oauth2 5.0.0 (not adopted: C20/C22 use bounded native flows and jsonwebtoken on aws_lc_rs; see D047, D049) | C04/C20/C22 scoped native contracts |
 | Access-token verification | jsonwebtoken11.1.0 | C20 verified claims/signature/JWKS |
 | Protected work | chacha20poly1305 0.11.0, full XChaCha20Poly1305 | C02/C07 storage failure tests |
 | macOS login Keychain | security-framework3.7.0 | C02 macOS27 API availability/ACL/lock/denial; C26 signed upgrade |
@@ -59,7 +59,8 @@ archives and exact locks. Native source snapshots of security-framework, AppKit
 and reqwest verify the mechanisms described in DESIGN; their hashes are part of
 the external review inputs. OAuth/OIDC default HTTP features are disabled in favor
 of the common reqwest0.13.5 adapter. Choose jsonwebtoken's explicit rust_crypto
-provider during C20 lock qualification, not unchecked decode.
+provider during C20 lock qualification, not unchecked decode. (C20 qualified
+`aws_lc_rs` instead, already in the shipped graph; see D047.)
 
 ## Command manifest
 

@@ -306,12 +306,85 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before):
     c8.text(app, "You ended this conversation.", 10)
     c19.wait(lambda: c19.engines() == [], 10)
 
+    # ---- N12: offline (T23): read and export from this Mac; nothing replayed ----
+    app.quit()
+    c19.wait(lambda: c19.engines() == [], 10)
+    mgmt.stop()
+    endpoint.stop()
+    record = history_files()[0]
+    # A copy under another ID does not open (its ID is bound): unreadable.
+    stray = os.path.join(os.path.dirname(record), "00000000-0000-4000-8000-000000000c20.sealed")
+    shutil.copyfile(record, stray)
+    os.chmod(stray, 0o600)
+    exports_before = set(os.listdir(EXPORTS)) if os.path.isdir(EXPORTS) else set()
+    app.launch()
+    c19.open_harness(app)
+    tree, local = app.wait_for(lambda t: app.has_text(t, "AI Gateway’s workspaces are not available")
+                               and fx.App.node(t, "AXButton", f"Open {title}") is not None, 20)
+    offline = {"listed": local, "chooser_shown": app.has_text(tree, "Choose a workspace in AI Gateway first")}
+    app.ax("press", "AXButton", f"Open {title}")
+    tree, offline["opened"] = app.wait_for(lambda t: any(n.get("role") == "AXList" and n.get("label") == "Saved messages" for n in t), 10)
+    offline["not_continuable"] = app.has_text(tree, "it can be read and exported here but not continued")
+    offline["no_continue"] = fx.App.node(tree, "AXButton", "Continue this conversation") is None
+    app.ax("press", "AXButton", "Export…")
+    tree, offline["exported"] = app.wait_for(lambda t: app.has_text(t, "Saved harness-"), 15)
+    new = sorted(set(os.listdir(EXPORTS)) - exports_before) if os.path.isdir(EXPORTS) else []
+    offline["export_transcript"] = len(new) == 1 and CANARY in open(os.path.join(EXPORTS, new[0])).read()
+    # N08 exports the same conversation again under the same name.
+    for name in new:
+        os.remove(os.path.join(EXPORTS, name))
+    offline["engines"] = c19.engines()
+    obs["tree_offline"] = save_tree("offline-history", tree)
+
+    # ---- N11: an unreadable record is deleted only when confirmed, by keyboard ----
+    tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Delete unreadable conversation…") is not None, 10)
+    unread = {"shown": shown}
+    app.ax("focus", "AXButton", "Delete unreadable conversation…")
+    app.keycode(49)
+    tree, unread["asked"] = c8.text(app, "Delete this unreadable conversation from this Mac?", 10)
+    unread["kept_while_asking"] = os.path.exists(stray)
+    app.ax("focus", "AXButton", "Keep it")
+    app.keycode(49)
+    tree, unread["kept"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Keep it") is None
+                                        and fx.App.node(t, "AXButton", "Delete unreadable conversation…") is not None, 10)
+    unread["still_there"] = os.path.exists(stray)
+    app.ax("focus", "AXButton", "Delete unreadable conversation…")
+    app.keycode(49)
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Delete permanently") is not None, 10)
+    app.ax("focus", "AXButton", "Delete permanently")
+    app.keycode(49)
+    unread["deleted"] = c19.wait(lambda: not os.path.exists(stray), 10)
+    tree, unread["gone_from_list"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Delete unreadable conversation…") is None, 10)
+    unread["readable_kept"] = os.path.exists(record)
+    obs["unreadable"] = unread
+    obs["tree_unreadable"] = save_tree("unreadable-deleted", tree)
+
+    # Reconnected: the history is the chosen workspace's again; nothing is
+    # resumed or replayed.
+    app.quit()
+    endpoint.start()
+    mgmt.start()
+    before_runs = len(runs(mgmt))
+    app.launch()
+    c16.open_gateway(app)
+    c8.text(app, "2 workspaces", 25)
+    app.ax("press", "AXRadioButton", "Team A")
+    c8.text(app, "2 providers · complete", 15)
+    c19.open_harness(app)
+    tree, offline["relisted_online"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", f"Open {title}") is not None
+                                                    and not app.has_text(t, "AI Gateway’s workspaces are not available"), 15)
+    time.sleep(3)
+    offline["replayed"] = len(runs(mgmt)) - before_runs
+    offline["engines_after"] = c19.engines()
+    obs["offline"] = offline
+
     # ---- N08: export the transcript, then delete it ----
     app.ax("press", "AXButton", f"Open {title}")
     app.wait_for(lambda t: fx.App.node(t, "AXButton", "Export…") is not None, 10)
+    exports_before = set(os.listdir(EXPORTS)) if os.path.isdir(EXPORTS) else set()
     app.ax("press", "AXButton", "Export…")
-    tree, exported = app.wait_for(lambda t: app.has_text(t, "Saved harness-"), 15)
-    exports = [os.path.join(EXPORTS, n) for n in os.listdir(EXPORTS)] if os.path.isdir(EXPORTS) else []
+    tree, exported = app.wait_for(lambda t: app.has_text(t, "Saved harness-") and fx.App.node(t, "AXButton", "Delete…") is not None, 15)
+    exports = [os.path.join(EXPORTS, n) for n in sorted(set(os.listdir(EXPORTS)) - exports_before)] if os.path.isdir(EXPORTS) else []
     markdown = open(exports[0]).read() if exports else ""
     app.ax("press", "AXButton", "Delete…")
     tree, asked = c8.text(app, "Delete this saved conversation from this Mac? It cannot be recovered.", 10)
@@ -393,6 +466,13 @@ def evaluate(prepared, o):
         and e["asked"] and e["deleted"] and e["files_left"] == 0, f"export and delete {e}", [o["tree_deleted"]])
     y = o["a11y"]
     add("C20-N09", y["credential_radios"] == 2 and y["history_heading"] and y["sign_in_by_tab"], f"keyboard and accessibility {y}", [o["tree_a11y"]])
+    u = o["unreadable"]
+    add("C20-N11", u["shown"] and u["asked"] and u["kept_while_asking"] and u["kept"] and u["still_there"] and u["deleted"]
+        and u["gone_from_list"] and u["readable_kept"], f"unreadable {u}", [o["tree_unreadable"]])
+    off = o["offline"]
+    add("C20-N12", off["listed"] and off["chooser_shown"] and off["opened"] and off["not_continuable"] and off["no_continue"]
+        and off["exported"] and off["export_transcript"] and off["engines"] == [] and off["relisted_online"]
+        and off["replayed"] == 0 and off["engines_after"] == [], f"offline {off}", [o["tree_offline"]])
     add("C20-N10", not o["secret_in_trees"] and not o["secret_in_log"] and o["v1_unchanged"] and o["engines_left"] == [],
         f"secrets in AX snapshots: {o['secret_in_trees']}; secret or prompt in the server log: {o['secret_in_log']}; "
         f"engines left: {o['engines_left']}; v1 unchanged: {o['v1_unchanged']}", [])

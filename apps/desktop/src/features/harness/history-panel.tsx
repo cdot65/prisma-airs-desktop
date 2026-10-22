@@ -30,6 +30,7 @@ const NOT_CONTINUABLE_TEXT: Record<NotContinuable, string> = {
     otherMcp:
         'It ran with other workspace MCP servers or sign-ins than this workspace uses now, or they could not be checked. Turn the same servers on and sign in to them to continue it, or start a new conversation.',
     engineUnavailable: 'The Harness engine is not bundled with this build.',
+    workspaceUnavailable: 'AI Gateway’s workspaces could not be read, so it can be read and exported here but not continued.',
 }
 
 const FORMATS: readonly [HistoryFormat, string][] = [
@@ -44,7 +45,8 @@ export function savedAt(seconds: number): string {
 
 interface Props {
     context: ContextRef
-    selected: SelectedWorkspace
+    /** None while no workspace is chosen (as when AI Gateway cannot be read). */
+    selected: SelectedWorkspace | null
     history: HarnessHistoryView | null
     /** A conversation is running (one at a time). */
     running: boolean
@@ -56,6 +58,8 @@ interface Props {
  * The chosen workspace's saved conversations (C20): saved encrypted on this
  * Mac after every answer. One can be read, exported, deleted, or continued
  * in a new engine when it ran with the credential this workspace uses now.
+ * With no workspace chosen, the last chosen one's, read from this Mac only
+ * (T23): read, exported and deleted, never continued.
  */
 export function HistoryPanel({ context, selected, history, running, dispatch, onMessage }: Props) {
     const ids = useId()
@@ -63,11 +67,20 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
     const [confirming, setConfirming] = useState<string | null>(null)
     const openedRef = useRef<HTMLHeadingElement>(null)
     const listRef = useRef<HTMLHeadingElement>(null)
-    const workspace = selected.reference
+    const workspace = selected?.reference ?? null
+    // Without a chosen workspace there may be none saved on this Mac either.
+    const [none, setNone] = useState(false)
 
     // Read the list whenever the chosen workspace changes.
     useEffect(() => {
-        void dispatch({ kind: 'listHarnessHistory', context, workspace })
+        let current = true
+        setNone(false)
+        void dispatch({ kind: 'listHarnessHistory', context, workspace }).then((outcome) => {
+            if (current) setNone(workspace === null && outcome.kind !== 'admitted')
+        })
+        return () => {
+            current = false
+        }
     }, [dispatch, context, workspace])
 
     const opened = history?.opened ?? null
@@ -88,13 +101,16 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
 
     const busy = history?.busy ?? false
     const exportState = history?.export ?? null
+    if (none || (selected === null && history !== null && !history.local)) return null
     return (
         <section aria-labelledby={`${ids}-heading`} className='flex flex-col gap-3' data-slot='harness-history'>
             <h2 ref={listRef} tabIndex={-1} id={`${ids}-heading`} className='text-[15px] font-semibold'>
                 Saved conversations
             </h2>
             <p className='text-academy-ink-faint text-[12px]'>
-                {`Conversations in ${selected.workspace.name} are saved on this Mac after every answer, encrypted with a key kept in the Keychain. Up to 16 are kept; nothing is deleted to make room.`}
+                {selected
+                    ? `Conversations in ${selected.workspace.name} are saved on this Mac after every answer, encrypted with a key kept in the Keychain. Up to 16 are kept; nothing is deleted to make room.`
+                    : 'AI Gateway’s workspaces are not available, so these are the conversations saved on this Mac for the workspace you chose last. They can be read, exported and deleted here; continuing one needs that workspace from AI Gateway.'}
             </p>
             {history === null || history.state === 'loading' ? (
                 <p role='status' className='text-[13px]'>
@@ -131,15 +147,34 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
                     {history.unreadable.map((id) => (
                         <li key={id} className='border-academy-rule flex flex-wrap items-center gap-3 rounded-[12px] border p-3'>
                             <span className='text-academy-ink-faint flex-1 text-[13px]'>{HISTORY_FAILURE_TEXT.unreadable}</span>
-                            <Button
-                                type='button'
-                                tier='tertiary'
-                                size='sm'
-                                disabled={busy}
-                                onClick={() => void send({ kind: 'deleteHarnessHistory', context, workspace, id })}
-                            >
-                                Delete unreadable conversation
-                            </Button>
+                            {/* Its key may be missing only for now (C20 F5): deleting asks first. */}
+                            {confirming === id ? (
+                                <>
+                                    <span role='alert' className='w-full text-[13px]'>
+                                        Delete this unreadable conversation from this Mac? If its key comes back it could be read again; once deleted
+                                        it cannot be recovered.
+                                    </span>
+                                    <Button
+                                        type='button'
+                                        tier='secondary'
+                                        size='sm'
+                                        disabled={busy}
+                                        onClick={async () => {
+                                            setConfirming(null)
+                                            await send({ kind: 'deleteHarnessHistory', context, workspace, id })
+                                        }}
+                                    >
+                                        Delete permanently
+                                    </Button>
+                                    <Button type='button' tier='tertiary' size='sm' onClick={() => setConfirming(null)}>
+                                        Keep it
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button type='button' tier='tertiary' size='sm' disabled={busy} onClick={() => setConfirming(id)}>
+                                    Delete unreadable conversation…
+                                </Button>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -166,7 +201,7 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
                     </ol>
                     {opened.notContinuable ? <p className='text-[13px]'>{NOT_CONTINUABLE_TEXT[opened.notContinuable]}</p> : null}
                     <div className='flex flex-wrap items-end gap-2'>
-                        {opened.notContinuable === null ? (
+                        {opened.notContinuable === null && workspace !== null ? (
                             <Button
                                 type='button'
                                 tier='primary'

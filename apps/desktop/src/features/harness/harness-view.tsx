@@ -424,7 +424,8 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                     )}
                 </section>
             ) : null}
-            {engine.available && context && selected ? (
+            {/* With no workspace chosen (AI Gateway unreachable), what is saved on this Mac (T23). */}
+            {engine.available && context ? (
                 <HistoryPanel
                     context={context}
                     selected={selected}

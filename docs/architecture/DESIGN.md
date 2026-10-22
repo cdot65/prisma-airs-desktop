@@ -1981,6 +1981,14 @@ Device polling honors pending/slow_down/expiry/cancel. Refresh is serialized per
 grant, rotating storage atomically; revocation/sign-out retires only that identity.
 See [OIDC crate documentation](https://docs.rs/openidconnect/4.0.1/openidconnect/).
 
+As built for C20 and C22 (D047, D049): neither openidconnect nor oauth2 is
+used. Each flow is a small, fully bounded native request set over the app's
+own HTTP client, so the authority owns cancellation, flow supersession and
+revocation of a grant that lands after cancel. JWTs verify with
+jsonwebtoken 11.1.0 on `aws_lc_rs` (not `rust_crypto`, which would add `rsa`
+with RUSTSEC-2023-0071). The device flow is not implemented. D047 and D049
+are authoritative where this section differs.
+
 Signature/JWKS verification is a stricter v2 addition to v1 host behavior.
 Use the OIDC verifier for ID tokens; use jsonwebtoken 11.1.0's verified decode
 for required JWT Gateway access-token claims. Never treat an unverified decode

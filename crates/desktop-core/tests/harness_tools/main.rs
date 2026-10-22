@@ -40,6 +40,9 @@ async fn desk() -> Desk {
             p if p.starts_with("/aisec/v1/mgmt/apikeys/tsg/") => json!({"api_keys": [
                 {"api_key_id": "key-1", "api_key_name": "Runtime", "api_key_last8": "abcd1234",
                  "api_key": API_KEY_VALUE, "auth_code": AUTH_CODE, "cust_app": "Support bot",
+                 // Unknown fields the management client keeps (C21 review F2).
+                 "metadata": {"Authorization": "Bearer NESTED-C21-CANARY",
+                     "X-Api-Key": "MIXED-C21-CANARY", "note": "safe-c21-metadata"},
                  "expiration": "2027-01-01T00:00:00Z", "revoked": false, "status": "ACTIVE"}]}),
             _ => return None,
         };
@@ -66,6 +69,14 @@ fn outputs(desk: &Desk) -> Vec<String> {
             (last["type"] == "function_call_output").then(|| last["output"].to_string())
         })
         .collect()
+}
+
+/// Management requests other than reads.
+fn management_writes(desk: &Desk) -> usize {
+    desk.requests("/aisec/")
+        .iter()
+        .filter(|s| !s.request_line.starts_with("GET"))
+        .count()
 }
 
 fn management_reads(desk: &Desk) -> usize {
@@ -171,10 +182,82 @@ async fn a_typed_read_answers_from_the_desktop_without_any_secret() {
         "{}",
         out[0]
     );
-    for secret in [API_KEY_VALUE, AUTH_CODE, KEY] {
+    for secret in [
+        API_KEY_VALUE,
+        AUTH_CODE,
+        KEY,
+        "NESTED-C21-CANARY",
+        "MIXED-C21-CANARY",
+    ] {
         assert!(!out[0].contains(secret), "{secret}");
         assert!(!desk.json().to_string().contains(secret), "{secret}");
     }
+    assert!(out[0].contains("safe-c21-metadata"), "{}", out[0]);
+    desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered() {
+    // C21 review F1: the management read is slow; the turn is stopped
+    // while it runs.
+    let mut desk = desk().await;
+    let fast = desk
+        .gateway
+        .lock()
+        .expect("gateway")
+        .hook
+        .clone()
+        .expect("hook");
+    let slow = Arc::clone(&fast);
+    desk.gateway.lock().expect("gateway").hook = Some(Arc::new(move |seen| {
+        if seen.request_line.contains("/apikeys/") {
+            std::thread::sleep(Duration::from_secs(3));
+        }
+        slow(seen)
+    }));
+    let id = ready(&mut desk).await;
+    tool(
+        &desk,
+        Some("airs_desktop"),
+        "inventory",
+        json!({"resource": "apiKeys", "limit": 5}),
+    );
+    desk.say(&id, "Which API keys exist?").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        entry(c, "tool").is_some_and(|t| t["state"] == "streaming")
+    })
+    .await;
+    assert!(settle(|| management_reads(&desk) > 0).await);
+    desk.send(json!({"kind": "interruptHarness", "conversation": id}))
+        .await
+        .expect("interrupted");
+    let c = answered_with(&mut desk, |c| {
+        c["phase"] == "ready" && !c["lastTurn"].is_null()
+    })
+    .await;
+    assert_eq!(c["lastTurn"], "interrupted", "{c}");
+    // The read finishes after the turn ended: its result is never sent.
+    tokio::time::sleep(Duration::from_secs(4)).await;
+    assert!(outputs(&desk).is_empty(), "{:?}", outputs(&desk));
+    assert_ne!(
+        entry(&desk.conversation(), "tool").expect("tool")["state"],
+        "complete"
+    );
+    // The next turn answers normally, and still nothing of the stopped
+    // call reaches the model.
+    desk.gateway.lock().expect("gateway").hook = Some(fast);
+    desk.gateway.lock().expect("gateway").answer = Answer::Short;
+    desk.say(&id, "Never mind.").await.expect("sent");
+    let c = answered_with(&mut desk, |c| {
+        c["phase"] == "ready"
+            && c["lastTurn"] == "completed"
+            && c["entries"]
+                .as_array()
+                .is_some_and(|e| e.iter().any(|e| e["id"] == "u-2"))
+    })
+    .await;
+    assert_eq!(c["lastTurn"], "completed", "{c}");
+    assert!(outputs(&desk).is_empty());
     desk.end(&id).await;
 }
 
@@ -531,8 +614,11 @@ async fn the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refus
             .as_deref(),
         Some("kept\n")
     );
-    // The pinned engine asks before its own patch writer, which then fails
-    // in its narrower helper sandbox; the result is shown as it is.
+    // The pinned engine asks before its own patch writer. An approval that
+    // names the file is shown whole and, approved, the writer fails in its
+    // narrower helper sandbox; one asked before the file is named is
+    // declined at once and never shown (C21 review F3). Which comes first
+    // varies between runs; neither writes.
     let patch = "*** Begin Patch\n*** Add File: added.txt\n+added by the engine\n*** End Patch";
     tool(
         &desk,
@@ -541,17 +627,36 @@ async fn the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refus
         json!({"cmd": format!("apply_patch <<'EOF'\n{patch}\nEOF\n")}),
     );
     desk.say(&id, "Add a file.").await.expect("sent");
-    let c = approve(&mut desk, &id, "fileChange").await;
+    let asked = answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+            || (c["phase"] == "ready" && entry(c, "fileChange").is_some())
+    })
+    .await;
+    let c = if asked["approvals"].as_array().is_some_and(|a| !a.is_empty()) {
+        let named = dir.join("added.txt");
+        assert_eq!(
+            asked["approvals"][0]["files"],
+            json!([named.to_str().expect("utf8")]),
+            "{asked}"
+        );
+        let token = asked["approvals"][0]["id"].clone();
+        desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": token, "allow": true}))
+            .await
+            .expect("decided");
+        answered_with(&mut desk, |c| {
+            c["phase"] == "ready"
+                && c["approvals"].as_array().is_some_and(Vec::is_empty)
+                && entry(c, "assistant")
+                    .is_some_and(|e| e["id"].as_str().is_some_and(|i| i.starts_with("u-2/")))
+        })
+        .await
+    } else {
+        asked
+    };
     assert_eq!(
         entry(&c, "fileChange").expect("shown")["state"],
         "failed",
         "{c}"
-    );
-    assert!(
-        outputs(&desk)
-            .last()
-            .expect("output")
-            .contains("Failed to write file")
     );
     assert!(!dir.join("added.txt").exists());
     desk.end(&id).await;
@@ -702,6 +807,111 @@ async fn a_saved_conversation_needs_its_project_binding_and_replays_no_authority
             .as_deref(),
         Some("once\n")
     );
+    desk.end(&id).await;
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_reconnect() {
+    // T23 for C21: a staged proposal opened in review and a command waiting
+    // for its approval, then the app relaunched offline and reconnected.
+    let mut desk = desk().await;
+    let dir = project();
+    let reference = desk.choose(WS_A).await;
+    choose_project(&mut desk, &dir).await;
+    set_write(&mut desk, true).await;
+    desk.store_key(&reference, KEY, None).await;
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    tool(
+        &desk,
+        Some("airs_desktop"),
+        "proposeChange",
+        json!({"kind": "topics", "action": "update", "target": "11111111-1111-4111-8111-111111111111",
+            "body": {"topic_name": "Finance", "description": "Money talk, reviewed"},
+            "summary": "Clarify the Finance topic"}),
+    );
+    desk.say(&id, "Propose a clearer Finance topic.")
+        .await
+        .expect("sent");
+    answered_with(&mut desk, |c| c["lastTurn"] == "completed").await;
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    desk.send(json!({"kind": "reviewHarnessProposal", "conversation": id, "proposal": "P-1"}))
+        .await
+        .expect("review");
+    assert!(settle(|| !desk.json()["changes"]["review"].is_null()).await);
+    tool(
+        &desk,
+        None,
+        "exec_command",
+        json!({"cmd": "echo pending > pending.txt && echo WROTE"}),
+    );
+    desk.say(&id, "Write a file.").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let answers = desk.requests(&format!("{RUNTIME}/responses")).len();
+    let launches = desk.launcher.launches().len();
+
+    // Offline: the conversation, its approval, proposal and review are
+    // gone; the project and this Mac's history remain readable.
+    let mut desk = relaunch(desk, false, true).await;
+    let shell = desk.json();
+    assert!(shell["harness"]["conversation"].is_null(), "{shell}");
+    assert!(shell["changes"]["review"].is_null(), "{}", shell["changes"]);
+    assert_eq!(
+        shell["harness"]["project"]["path"],
+        dir.to_str().expect("utf8")
+    );
+    assert_eq!(shell["harness"]["project"]["write"], true);
+    let context = desk.context();
+    desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+        .await
+        .expect("listed");
+    assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+    assert_eq!(
+        desk.json()["harness"]["history"]["conversations"][0]["id"],
+        history.as_str()
+    );
+    assert!(!dir.join("pending.txt").exists());
+
+    // Reconnected: nothing is resubmitted; continuing is the operator's
+    // explicit choice and restores without running anything.
+    let mut desk = relaunch(desk, true, true).await;
+    let reference = desk.choose(WS_A).await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    assert!(desk.json()["harness"]["conversation"].is_null());
+    assert_eq!(
+        desk.requests(&format!("{RUNTIME}/responses")).len(),
+        answers
+    );
+    assert_eq!(management_writes(&desk), 0);
+    assert_eq!(desk.launcher.launches().len(), launches);
+    let opened = history_open(&mut desk, &history).await;
+    assert!(opened["notContinuable"].is_null(), "{opened}");
+    let context = desk.context();
+    desk.send(
+        json!({"kind": "resumeHarness", "context": context, "workspace": reference, "id": history}),
+    )
+    .await
+    .expect("resumed");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let c = desk.conversation();
+    assert!(c["approvals"].as_array().is_some_and(Vec::is_empty), "{c}");
+    assert!(c["proposals"].as_array().is_some_and(Vec::is_empty), "{c}");
+    assert_eq!(
+        desk.requests(&format!("{RUNTIME}/responses")).len(),
+        answers
+    );
+    assert_eq!(management_writes(&desk), 0);
+    assert!(!dir.join("pending.txt").exists());
+    let id = c["id"].as_str().expect("id").to_owned();
     desk.end(&id).await;
     std::fs::remove_dir_all(&dir).expect("cleanup");
 }

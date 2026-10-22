@@ -57,7 +57,7 @@ export function DecisionsPanel({ conversation, dispatch, onNavigate, onMessage }
         <>
             {conversation.phase === 'confirmWrite' && conversation.project ? (
                 <Callout tone='default' icon={AlertTriangle} data-slot='harness-confirm-write'>
-                    <p>{`Your sign-in was renewed, so the engine restarts with this conversation. Allow it to change files in ${conversation.project} again?`}</p>
+                    <p>{`Your sign-in needs renewing, so the engine will restart with this conversation. Allow it to change files in ${conversation.project} again?`}</p>
                     <div className='mt-2 flex flex-wrap gap-2'>
                         <Button
                             type='button'

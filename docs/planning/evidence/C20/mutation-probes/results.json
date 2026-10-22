@@ -1,17 +1,17 @@
 [
   {
     "inputs": {
-      "apps/desktop/src/features/harness/harness-view.tsx": "0c3ab639578fdbefb714d96ef74d5d5c09f78fa122ca6621eb1f2618b56d2d6b",
-      "apps/desktop/src/features/harness/history-panel.tsx": "c673a99ca9ac1cd06c9a5909e09c3027c4c5566109427b6d55d824eb6b19ef6f",
-      "crates/desktop-core/src/authority.rs": "340a07f9e4de95de54fd2eaee7336cb02a95f4256e88ab1970ac5da48839e696",
-      "crates/desktop-core/src/authority/harness_domain.rs": "bc468ec33beb04b62c40b177ed66a51b716dd44c307e193269a6bc723c728231",
-      "crates/desktop-core/src/authority/harness_history.rs": "bfa4f76729aa9f5b6e5810f415082d1fef581b239126d3f0a2eb1ee5e94c5f74",
-      "crates/desktop-core/src/authority/harness_identity.rs": "72b984198cd719b902c30edad9a5241273e1cdd08a017a67e863cad5d8027a14",
+      "apps/desktop/src/features/harness/harness-view.tsx": "23267c2ff204e43f3e3b5141ce28586853692d39c545b1109d957750373f9484",
+      "apps/desktop/src/features/harness/history-panel.tsx": "ccd569d74983f7f4bc208f459f8afb973af00a126f1362792dc8e1cf5ff9ab75",
+      "crates/desktop-core/src/authority.rs": "9b926433e3334c34459522f232ed993b0f4b9bb9ccb47b60beee1706f9047ac3",
+      "crates/desktop-core/src/authority/harness_domain.rs": "533e15decdf37146cf7e14dda69cd8d8c27dca29c23210d7742328f4e7a20391",
+      "crates/desktop-core/src/authority/harness_history.rs": "1a55e7512300963b090a9731ac4e7d08da2b56f86ae76e8ebc67b730aec1ca83",
+      "crates/desktop-core/src/authority/harness_identity.rs": "a6a3cc641e9ee71f68f87f0fadd98ea3b45daf99d6287873186c82c8cd43546d",
       "crates/desktop-core/src/harness/callback.rs": "174fa761a72545013eca3413adff9ec5944eeea26dd83a8591b90c925ff9c368",
-      "crates/desktop-core/src/harness/history.rs": "1f29a10ed48ea456627c9ae612e5674156b1d44adbecb87a4996ca12331bdc19",
-      "crates/desktop-core/src/harness/identity.rs": "b06d68ca79ac5182139bd19e2e663db633b0bce774fd3fc5c4404fbf2cd4ade7",
-      "crates/desktop-core/src/harness/session.rs": "f0a5d3b68ce6704445f76da59cada90ac9ea9aab5d9871fa6d2aa7f87ad17ab1",
-      "packages/desktop-contracts/src/client.ts": "ca60614784530ab73706906143c653fcccaa4103385eed85af68e2615c25b748"
+      "crates/desktop-core/src/harness/history.rs": "73fc0561b16059a1e0543a8130e67a29a972d467e20a5fbcc69c20263fc041e9",
+      "crates/desktop-core/src/harness/identity.rs": "076462415b1fab4db90ad69f37257bb65922770967b6a85972feec86fd41219f",
+      "crates/desktop-core/src/harness/session.rs": "ea0481e42181c0ff6d8b60b0d05e2b2c902d9c5234d5f9cb1e65544c418113eb",
+      "packages/desktop-contracts/src/client.ts": "2685e430c03fe632e988cc0d6b8adcf887b48b70ba0a0da2d8732beebe402507"
     }
   },
   {
@@ -814,6 +814,326 @@
     ],
     "guard": "rejects sign-ins, saved conversations and exports Rust never issues",
     "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an older export is restored after a refused one",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_never_restores_an_export_older_than_the_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused export is not named",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "refused_or_unanswered_exports_and_refused_restores_are_named",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused restore is not named as one",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "refused_or_unanswered_exports_and_refused_restores_are_named",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a sign-in write needs no confirmed ledger",
+    "files": [
+      "crates/desktop-core/src/authority/harness_identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "sign_in_writes_are_owned_until_they_settle_and_need_a_confirmed_ledger",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Keychain write in flight is not owned",
+    "files": [
+      "crates/desktop-core/src/authority/harness_identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "sign_in_writes_are_owned_until_they_settle_and_need_a_confirmed_ledger",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a sign-in again does not wait for a renewal",
+    "files": [
+      "crates/desktop-core/src/authority/harness_identity.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_and_a_sign_in_again_never_overwrite_each_other",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a history save is not fenced",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "history_saves_racing_tenant_removal_or_reset_never_outlive_them",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset leaves the history folder",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "history_saves_racing_tenant_removal_or_reset_never_outlive_them",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a removed tenant's stray history survives a launch",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "history_saves_racing_tenant_removal_or_reset_never_outlive_them",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "saved history cannot be read offline",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "offline_history_is_read_and_exported_and_nothing_is_replayed_on_reconnect",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an offline record is continuable",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "offline_history_is_read_and_exported_and_nothing_is_replayed_on_reconnect",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "offline history is not shown",
+    "files": [
+      "apps/desktop/src/features/harness/harness-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "reads and exports what is saved on this Mac when no workspace can be chosen (T23)",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an online list is shown as this Mac's",
+    "files": [
+      "apps/desktop/src/features/harness/history-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "reads and exports what is saved on this Mac when no workspace can be chosen (T23)",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unreadable record is deleted without asking",
+    "files": [
+      "apps/desktop/src/features/harness/history-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "says why a saved conversation cannot be continued, names unreadable ones and a full workspace",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a history view without local passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects sign-ins, saved conversations and exports Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a history key is made under an unconfirmed note",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_history_key_is_made_only_once_its_scope_is_durably_noted",
+    "exit_code": 101,
     "guard_failed": true
   }
 ]

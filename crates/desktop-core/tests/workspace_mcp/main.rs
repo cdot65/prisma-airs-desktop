@@ -19,6 +19,7 @@ mod desk;
 mod fixture;
 
 use std::io::{Read, Write};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -83,11 +84,14 @@ async fn enable(desk: &mut Desk, reference: &str, id: &str, enabled: bool) {
     .expect("enabled");
 }
 
-/// One HTTP/1.1 GET to the app's loopback callback; the status code.
+/// One HTTP/1.1 GET to the app's loopback callback; the status code (0
+/// when nothing listens any more).
 fn callback(url: &str) -> u16 {
     let url = url::Url::parse(url).expect("callback url");
     let port = url.port().expect("port");
-    let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).expect("connect");
+    let Ok(mut stream) = std::net::TcpStream::connect(("127.0.0.1", port)) else {
+        return 0;
+    };
     stream
         .set_read_timeout(Some(Duration::from_secs(5)))
         .expect("timeout");
@@ -180,11 +184,74 @@ async fn started(desk: &Desk, name: &str) -> Value {
 }
 
 fn ask_tool(desk: &Desk, server: &str) {
+    ask_tool_for(desk, server, "record-1");
+}
+
+fn ask_tool_for(desk: &Desk, server: &str, query: &str) {
     desk.gateway.lock().expect("gateway").answer = Answer::McpTool {
         server: server.to_owned(),
         tool: "lookup".to_owned(),
-        arguments: json!({"query": "record-1"}).to_string(),
+        arguments: json!({"query": query}).to_string(),
     };
+}
+
+/// One-shot delays (milliseconds) the test sets: before the MCP token
+/// endpoint answers, before the Gateway's next answer, and before a
+/// server runs its next tool call.
+struct Delays {
+    token: Arc<AtomicU64>,
+    answer: Arc<AtomicU64>,
+    call: Arc<AtomicU64>,
+}
+
+/// Routes the MCP plane through `delays` (each taken once).
+fn delayed(desk: &Desk, mcp: &Shared) -> Delays {
+    let delays = Delays {
+        token: Arc::default(),
+        answer: Arc::default(),
+        call: Arc::default(),
+    };
+    let (token, answer, call) = (
+        Arc::clone(&delays.token),
+        Arc::clone(&delays.answer),
+        Arc::clone(&delays.call),
+    );
+    let routed = Arc::clone(mcp);
+    desk.gateway.lock().expect("gateway").hook = Some(Arc::new(move |seen| {
+        let target = seen.request_line.split(' ').nth(1).unwrap_or_default();
+        let wait = if target.ends_with("/token") {
+            token.swap(0, Ordering::SeqCst)
+        } else if target.starts_with(&format!("{RUNTIME}/responses")) {
+            answer.swap(0, Ordering::SeqCst)
+        } else if target.starts_with("/mcp/")
+            && String::from_utf8_lossy(&seen.body).contains("tools/call")
+        {
+            call.swap(0, Ordering::SeqCst)
+        } else {
+            0
+        };
+        if wait > 0 {
+            std::thread::sleep(Duration::from_millis(wait));
+        }
+        routed.lock().expect("mcp").route(seen)
+    }));
+    delays
+}
+
+async fn decide(desk: &mut Desk, id: &str, allow: bool) {
+    let token = approval(desk).await["id"].as_str().expect("id").to_owned();
+    // Refused when the authority declines it natively; the engine is told
+    // either way.
+    let _ = desk
+        .send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": token, "allow": allow}))
+        .await;
+}
+
+fn mcp_entries(c: &Value) -> Vec<Value> {
+    c["entries"]
+        .as_array()
+        .map(|e| e.iter().filter(|e| e["role"] == "mcp").cloned().collect())
+        .unwrap_or_default()
 }
 
 async fn turn_ended(desk: &mut Desk, entries: usize) -> Value {
@@ -360,11 +427,51 @@ async fn an_approved_tool_call_runs_once_with_the_memory_only_bearer() {
         .expect("mcp entry");
     assert_eq!(last["state"], "complete", "{last}");
     assert!(last["text"].as_str().is_some_and(|t| t.contains(RESULT)));
+    // The shown outcome is this call's own execution (C22 review G3): the
+    // declined call left no trace, the approved one exactly one, with the
+    // arguments the operator saw.
+    let first = {
+        let m = mcp.lock().expect("mcp");
+        assert_eq!(m.traces.len(), 1);
+        assert_eq!(m.traces[0].1, json!({"query": "record-1"}));
+        m.traces[0].0.clone()
+    };
+    assert!(
+        last["text"]
+            .as_str()
+            .is_some_and(|t| t.contains(&first) && t.contains("query=record-1")),
+        "{last}"
+    );
     // A used approval is stale.
     assert!(desk
         .send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": token, "allow": true}))
         .await
         .is_err());
+    // Another call is its own trace; the first entry keeps the first.
+    ask_tool_for(&desk, "tools", "record-2");
+    desk.say(&id, "And record 2.").await.expect("sent");
+    decide(&mut desk, &id, true).await;
+    let c = turn_ended(&mut desk, 9).await;
+    let second = {
+        let m = mcp.lock().expect("mcp");
+        assert_eq!(m.traces.len(), 2);
+        assert_eq!(m.traces[1].1, json!({"query": "record-2"}));
+        m.traces[1].0.clone()
+    };
+    let shown = mcp_entries(&c);
+    let texts: Vec<&str> = shown.iter().filter_map(|e| e["text"].as_str()).collect();
+    assert!(
+        texts
+            .iter()
+            .any(|t| t.contains(&second) && t.contains("query=record-2") && !t.contains(&first)),
+        "{texts:?}"
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|t| t.contains(&first) && !t.contains(&second)),
+        "{texts:?}"
+    );
     // The bearer never reaches the Gateway's inference requests or the view,
     // and the engine never signs in itself.
     let bearer = mcp.lock().expect("mcp").calls[0].1.clone();
@@ -587,4 +694,325 @@ async fn a_saved_conversation_continues_only_with_its_mcp_scope() {
     enable(&mut desk, &reference, DOCS, false).await;
     let opened = open_saved(&mut desk, &history).await;
     assert!(opened["notContinuable"].is_null(), "{opened}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_pending_mcp_call_never_survives_going_offline_or_runs_on_reconnect() {
+    // T23 for C22: a call waits for its approval when the app relaunches
+    // offline, then reconnects.
+    let (mut desk, mcp) = desk_mcp().await;
+    let reference = prepared(&mut desk).await;
+    enable(&mut desk, &reference, TOOLS, true).await;
+    sign_in(&mut desk, &mcp, &reference, TOOLS).await;
+    let id = ready(&mut desk, &reference).await;
+    assert_eq!(started(&desk, "tools").await["status"], "ready");
+    ask_tool(&desk, "tools");
+    desk.say(&id, "Look up record 1.").await.expect("sent");
+    assert_eq!(approval(&desk).await["kind"], "mcpTool");
+    let answers = desk.requests(&format!("{RUNTIME}/responses")).len();
+    let launches = desk.launcher.launches().len();
+    let desk = relaunch(desk, false, true).await;
+    assert!(desk.json()["harness"]["conversation"].is_null());
+    let mut desk = relaunch(desk, true, true).await;
+    let reference = desk.choose(WS_A).await;
+    let v = list(&mut desk, &reference).await;
+    let tools = server(&v, TOOLS);
+    // The server stays on and signed in; nothing ran or was asked again.
+    assert_eq!(tools["enabled"], true, "{v}");
+    assert_eq!(tools["signedIn"], true, "{v}");
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    assert!(desk.json()["harness"]["conversation"].is_null());
+    assert_eq!(mcp.lock().expect("mcp").calls.len(), 0);
+    assert_eq!(
+        desk.requests(&format!("{RUNTIME}/responses")).len(),
+        answers
+    );
+    assert_eq!(desk.launcher.launches().len(), launches);
+    let _ = id;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_approval_past_its_tokens_expiry_is_declined_and_inference_goes_on() {
+    // C22 review F1: the token's own expiry, by the clock, with no failure
+    // flag and no message in between.
+    let (mut desk, mcp) = desk_mcp().await;
+    let delays = delayed(&desk, &mcp);
+    mcp.lock().expect("mcp").lifetime = 10;
+    let reference = prepared(&mut desk).await;
+    enable(&mut desk, &reference, TOOLS, true).await;
+    sign_in(&mut desk, &mcp, &reference, TOOLS).await;
+    let id = ready(&mut desk, &reference).await;
+    assert_eq!(started(&desk, "tools").await["status"], "ready");
+    // Held across the token's expiry: Allow declines.
+    ask_tool(&desk, "tools");
+    desk.say(&id, "Look up record 1.").await.expect("sent");
+    let _ = approval(&desk).await;
+    tokio::time::sleep(Duration::from_secs(11)).await;
+    decide(&mut desk, &id, true).await;
+    let c = turn_ended(&mut desk, 3).await;
+    assert_eq!(mcp_entries(&c)[0]["state"], "declined", "{c}");
+    assert!(mcp.lock().expect("mcp").calls.is_empty());
+    // First offered after a fresh token expired (the model answers after
+    // its lifetime): Allow declines too.
+    delays.answer.store(12_000, Ordering::SeqCst);
+    desk.say(&id, "Look it up again.").await.expect("sent");
+    let _ = approval(&desk).await;
+    decide(&mut desk, &id, true).await;
+    let c = turn_ended(&mut desk, 6).await;
+    assert!(
+        mcp_entries(&c).iter().all(|e| e["state"] == "declined"),
+        "{c}"
+    );
+    assert!(mcp.lock().expect("mcp").calls.is_empty());
+    // Inference goes on.
+    desk.gateway.lock().expect("gateway").answer = Answer::Short;
+    desk.say(&id, "Just answer.").await.expect("sent");
+    let c = turn_ended(&mut desk, 8).await;
+    assert_eq!(c["lastTurn"], "completed", "{c}");
+    desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_catalog_that_cannot_be_read_blocks_remote_use_until_read_again() {
+    // C22 review F2: the failed read keeps the last catalog for display
+    // only; nothing remote runs, starts or continues on it.
+    let (mut desk, mcp) = desk_mcp().await;
+    let reference = prepared(&mut desk).await;
+    enable(&mut desk, &reference, TOOLS, true).await;
+    sign_in(&mut desk, &mcp, &reference, TOOLS).await;
+    let id = ready(&mut desk, &reference).await;
+    assert_eq!(started(&desk, "tools").await["status"], "ready");
+    desk.gateway.lock().expect("gateway").answer = Answer::Short;
+    desk.say(&id, "Hello.").await.expect("sent");
+    turn_ended(&mut desk, 2).await;
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    ask_tool(&desk, "tools");
+    desk.say(&id, "Look up record 1.").await.expect("sent");
+    let _ = approval(&desk).await;
+    mcp.lock().expect("mcp").catalog_down = true;
+    let v = list(&mut desk, &reference).await;
+    assert!(!v["failure"].is_null(), "{v}");
+    assert_eq!(server(&v, TOOLS)["signedIn"], true, "{v}");
+    // The pending call is declined natively; the conversation is kept.
+    decide(&mut desk, &id, true).await;
+    let c = turn_ended(&mut desk, 5).await;
+    assert_eq!(mcp_entries(&c)[0]["state"], "declined", "{c}");
+    assert!(mcp.lock().expect("mcp").calls.is_empty());
+    assert!(c["stop"].is_null(), "{c}");
+    // No message is sent, and no conversation starts or continues.
+    let answers = desk.requests(&format!("{RUNTIME}/responses")).len();
+    assert!(desk.say(&id, "Again.").await.is_err());
+    assert_eq!(
+        desk.requests(&format!("{RUNTIME}/responses")).len(),
+        answers
+    );
+    assert_eq!(desk.conversation()["phase"], "ready");
+    desk.end(&id).await;
+    desk.send(json!({"kind": "clearHarness", "conversation": id}))
+        .await
+        .expect("cleared");
+    assert!(desk.start(&reference).await.is_err());
+    assert_eq!(
+        open_saved(&mut desk, &history).await["notContinuable"],
+        "otherMcp"
+    );
+    // Read again: allowed again.
+    mcp.lock().expect("mcp").catalog_down = false;
+    let v = list(&mut desk, &reference).await;
+    assert!(v["failure"].is_null(), "{v}");
+    assert!(open_saved(&mut desk, &history).await["notContinuable"].is_null());
+    desk.gateway.lock().expect("gateway").answer = Answer::Short;
+    let id = ready(&mut desk, &reference).await;
+    desk.say(&id, "Hello again.").await.expect("sent");
+    assert_eq!(turn_ended(&mut desk, 2).await["lastTurn"], "completed");
+    desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn signing_out_during_a_sign_in_again_never_signs_the_server_back_in() {
+    // C22 review F3: before the callback, and during the token exchange.
+    let (mut desk, mcp) = desk_mcp().await;
+    let delays = delayed(&desk, &mcp);
+    let reference = prepared(&mut desk).await;
+    enable(&mut desk, &reference, TOOLS, true).await;
+    for during_exchange in [false, true] {
+        assert_eq!(
+            sign_in(&mut desk, &mcp, &reference, TOOLS).await["signedIn"],
+            true
+        );
+        let opened = desk.adapters.opener.opened().len();
+        let context = desk.context();
+        desk.send(json!({"kind": "signInMcpServer", "context": context, "workspace": reference, "server": TOOLS}))
+            .await
+            .expect("sign-in again");
+        assert!(settle(|| desk.adapters.opener.opened().len() > opened).await);
+        let url = url::Url::parse(&desk.adapters.opener.opened()[opened]).expect("url");
+        let back = mcp.lock().expect("mcp").authorize(&url);
+        let sign_out = json!({"kind": "signOutMcpServer", "context": context, "workspace": reference, "server": TOOLS});
+        if during_exchange {
+            delays.token.store(2_000, Ordering::SeqCst);
+            assert_eq!(callback(&back), 200);
+            tokio::time::sleep(Duration::from_millis(300)).await;
+            desk.send(sign_out).await.expect("signed out");
+        } else {
+            desk.send(sign_out).await.expect("signed out");
+            let _ = callback(&back);
+        }
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        let s = server(&view(&desk), TOOLS).clone();
+        assert_eq!(s["signedIn"], false, "{during_exchange}: {s}");
+        assert!(s["step"].is_null(), "{s}");
+        assert!(
+            settle(|| records_with(&desk, "mcp-access") == 0).await,
+            "{during_exchange}: a token is kept"
+        );
+        let doc = desk.adapters.store.saved().expect("doc");
+        assert!(doc.pending_cleanup.is_empty(), "{during_exchange}");
+    }
+    // The late exchange's tokens were revoked at the server.
+    let m = mcp.lock().expect("mcp");
+    assert!(m.revoked.iter().any(|(t, _)| t.starts_with("mcp-refresh")));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_written_token_survives_cleanup_until_it_is_settled() {
+    // C22 review F4: cleanup runs between the put and its settlement.
+    let (mut desk, mcp) = desk_mcp().await;
+    mcp.lock().expect("mcp").lifetime = 6;
+    let reference = prepared(&mut desk).await;
+    enable(&mut desk, &reference, TOOLS, true).await;
+    // The initial sign-in.
+    let held = desk.core.hold_write_settlement().await;
+    let opened = desk.adapters.opener.opened().len();
+    let context = desk.context();
+    desk.send(json!({"kind": "signInMcpServer", "context": context, "workspace": reference, "server": TOOLS}))
+        .await
+        .expect("sign-in");
+    assert!(settle(|| desk.adapters.opener.opened().len() > opened).await);
+    let url = url::Url::parse(&desk.adapters.opener.opened()[opened]).expect("url");
+    let back = mcp.lock().expect("mcp").authorize(&url);
+    assert_eq!(callback(&back), 200);
+    assert!(
+        settle(|| records_with(&desk, "mcp-access") == 1 && desk.core.writes_in_flight() == 1)
+            .await
+    );
+    desk.core.clean_up_now();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(records_with(&desk, "mcp-access"), 1);
+    drop(held);
+    assert!(settle(|| server(&view(&desk), TOOLS)["signedIn"] == true).await);
+    // A rotation.
+    let id = ready(&mut desk, &reference).await;
+    tokio::time::sleep(Duration::from_secs(4)).await;
+    let held = desk.core.hold_write_settlement().await;
+    desk.gateway.lock().expect("gateway").answer = Answer::Short;
+    desk.say(&id, "Hello.").await.expect("sent");
+    assert!(
+        settle(|| records_with(&desk, "mcp-access") == 2 && desk.core.writes_in_flight() == 1)
+            .await
+    );
+    desk.core.clean_up_now();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(records_with(&desk, "mcp-access"), 2);
+    drop(held);
+    turn_ended(&mut desk, 2).await;
+    assert!(settle(|| records_with(&desk, "mcp-access") == 1).await);
+    desk.end(&id).await;
+    // The committed record is the stored one, and survives a relaunch.
+    let doc = desk.adapters.store.saved().expect("doc");
+    assert!(doc.pending_cleanup.is_empty());
+    let mut desk = relaunch(desk, true, true).await;
+    let reference = desk.choose(WS_A).await;
+    let v = list(&mut desk, &reference).await;
+    assert_eq!(server(&v, TOOLS)["signedIn"], true, "{v}");
+    assert_eq!(records_with(&desk, "mcp-access"), 1);
+    let id = ready(&mut desk, &reference).await;
+    assert_eq!(started(&desk, "tools").await["status"], "ready");
+    desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_call_cut_short_is_recorded_as_interrupted_and_never_replayed() {
+    // C22 review G1: the app stops while an approved call runs at the
+    // server; its outcome is unknown and recorded as such.
+    let (mut desk, mcp) = desk_mcp().await;
+    let delays = delayed(&desk, &mcp);
+    let reference = prepared(&mut desk).await;
+    enable(&mut desk, &reference, TOOLS, true).await;
+    sign_in(&mut desk, &mcp, &reference, TOOLS).await;
+    let id = ready(&mut desk, &reference).await;
+    assert_eq!(started(&desk, "tools").await["status"], "ready");
+    desk.gateway.lock().expect("gateway").answer = Answer::Short;
+    desk.say(&id, "Hello.").await.expect("sent");
+    turn_ended(&mut desk, 2).await;
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    delays.call.store(4_000, Ordering::SeqCst);
+    ask_tool(&desk, "tools");
+    desk.say(&id, "Look up record 1.").await.expect("sent");
+    decide(&mut desk, &id, true).await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    desk.core.system_will_sleep();
+    assert!(
+        settle_for(15, || desk.conversation()["phase"] == "ended").await,
+        "{}",
+        desk.conversation()
+    );
+    let c = desk.conversation();
+    assert_eq!(c["stop"], "sleep");
+    assert_eq!(mcp_entries(&c)[0]["state"], "interrupted", "{c}");
+    // The server did run it.
+    assert!(settle_for(10, || mcp.lock().expect("mcp").calls.len() == 1).await);
+    let answers = desk.requests(&format!("{RUNTIME}/responses")).len();
+    // Offline: this Mac's record shows the call as interrupted.
+    let mut desk = relaunch(desk, false, true).await;
+    let context = desk.context();
+    desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+        .await
+        .expect("listed");
+    assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+    desk.send(
+        json!({"kind": "openHarnessHistory", "context": context, "workspace": null, "id": history}),
+    )
+    .await
+    .expect("opened");
+    assert!(settle(|| desk.json()["harness"]["history"]["opened"]["id"] == history.as_str()).await);
+    let opened = desk.json()["harness"]["history"]["opened"].clone();
+    let calls: Vec<Value> = opened["entries"]
+        .as_array()
+        .map(|e| e.iter().filter(|e| e["role"] == "mcp").cloned().collect())
+        .unwrap_or_default();
+    assert_eq!(calls.len(), 1, "{opened}");
+    assert_eq!(calls[0]["state"], "interrupted", "{opened}");
+    assert_eq!(opened["notContinuable"], "workspaceUnavailable");
+    // Reconnected: nothing is replayed; continuing is explicit and runs
+    // nothing by itself.
+    let mut desk = relaunch(desk, true, true).await;
+    let reference = desk.choose(WS_A).await;
+    let _ = list(&mut desk, &reference).await;
+    let opened = open_saved(&mut desk, &history).await;
+    assert!(opened["notContinuable"].is_null(), "{opened}");
+    let context = desk.context();
+    desk.send(
+        json!({"kind": "resumeHarness", "context": context, "workspace": reference, "id": history}),
+    )
+    .await
+    .expect("resumed");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    assert_eq!(mcp.lock().expect("mcp").calls.len(), 1);
+    assert_eq!(
+        desk.requests(&format!("{RUNTIME}/responses")).len(),
+        answers
+    );
+    let resumed = desk.conversation()["id"].as_str().expect("id").to_owned();
+    desk.end(&resumed).await;
+    let _ = id;
 }

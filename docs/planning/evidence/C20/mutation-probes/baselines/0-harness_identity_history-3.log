@@ -1,17 +1,28 @@
 
-running 10 tests
-test without_its_key_history_is_never_written_in_plaintext_and_reads_unreadable ... ok
+running 21 tests
+test a_history_key_is_made_only_once_its_scope_is_durably_noted ... ok
 test a_full_workspace_refuses_new_history_and_never_evicts ... ok
-test tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept ... ok
-test removing_the_tenant_removes_its_history_its_key_and_its_sign_in ... ok
-test company_sign_in_verifies_both_tokens_and_keeps_only_the_refresh_token ... ok
-test history_is_sealed_after_every_turn_and_read_exported_and_deleted ... ok
 test another_account_or_signing_out_ends_the_grant_and_its_conversation ... ok
+test company_sign_in_verifies_both_tokens_and_keeps_only_the_refresh_token ... ok
 test a_saved_conversation_continues_only_with_its_binding ... ok
+test history_saves_racing_tenant_removal_or_reset_never_outlive_them ... ok
+test offline_history_is_read_and_exported_and_nothing_is_replayed_on_reconnect ... ok
+test history_is_sealed_after_every_turn_and_read_exported_and_deleted ... ok
+test removing_the_tenant_removes_its_history_its_key_and_its_sign_in ... ok
+test signing_out_during_a_sign_in_again_keeps_nothing ... ok
+test tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept ... ok
+test without_its_key_history_is_never_written_in_plaintext_and_reads_unreadable ... ok
+test a_renewal_never_restores_an_export_older_than_the_conversation ... ok
 test a_renewal_restarts_the_engine_and_restores_the_conversation ... ok
 test a_refused_renewal_gives_the_message_back_and_a_new_sign_in_continues ... ok
+test a_renewal_restarts_with_changes_only_once_the_operator_allows_them_again ... ok
+test a_due_gateway_and_mcp_renewal_restart_once_after_one_confirmation ... ok
+test sign_in_writes_are_owned_until_they_settle_and_need_a_confirmed_ledger ... ok
+test after_sleep_an_expired_sign_in_is_renewed_before_anything_is_sent ... ok
+test a_renewal_and_a_sign_in_again_never_overwrite_each_other ... ok
+test refused_or_unanswered_exports_and_refused_restores_are_named ... ok
 
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.46s
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.68s
 
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
      Running tests/harness_identity_history/main.rs (target/debug/deps/harness_identity_history-76c9c60c53f68af4)

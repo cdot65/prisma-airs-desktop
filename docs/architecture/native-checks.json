@@ -969,6 +969,14 @@
       {
         "id": "C20-N10",
         "check": "No key, token or refresh token appears in any accessibility snapshot, the synthetic servers' logs hold only hashes and no prompt, v1 data is unchanged, and no engine process is left."
+      },
+      {
+        "id": "C20-N11",
+        "check": "An unreadable saved conversation (a record that does not open with its workspace's key) is deleted only when confirmed, by keyboard: activating Delete unreadable conversation… only asks, Keep it keeps the file, and Delete permanently removes it while the readable record stays."
+      },
+      {
+        "id": "C20-N12",
+        "check": "Offline (T23): relaunched with the synthetic Gateway and identity provider stopped, the Harness lists the last chosen workspace's history from this Mac; a record opens, says it cannot be continued and exports its transcript, and no engine starts. Reconnected, the history is the chosen workspace's again and nothing is resumed or replayed."
       }
     ],
     "C21": [
@@ -986,7 +994,7 @@
       },
       {
         "id": "C21-N04",
-        "check": "Allowing changes is a new binding: the running conversation ends and its engine is reaped. In the next conversation an allowed command writes inside the folder; a file outside it cannot be read and a child process cannot be started; the engine's own patch writer asks for a file-change approval and its result is shown as the engine reports it."
+        "check": "Allowing changes is a new binding: the running conversation ends and its engine is reaped. In the next conversation an allowed command writes inside the folder; a file outside it cannot be read and a child process cannot be started; the engine's own patch writer writes nothing: asked with its files named, the approval shows them whole and, allowed, the write fails in the engine's sandbox; asked before they are named, it is declined at once and never shown."
       },
       {
         "id": "C21-N05",
@@ -1003,6 +1011,10 @@
       {
         "id": "C21-N08",
         "check": "Removing the folder ends the running conversation and reaps its engine; quitting leaves no engine; no secret appears in AX snapshots or the server log; the folder holds only the driver's files and the allowed write; v1 data is unchanged."
+      },
+      {
+        "id": "C21-N09",
+        "check": "Offline and reconnecting (T23): with a command waiting for its approval and a proposal open in review, the app quits and relaunches with the synthetic services stopped. The engine is gone, no conversation, approval or review is restored, and this Mac's history is listed. Reconnected, nothing is resumed or resubmitted: no Gateway turn, no management write, and the folder is unchanged."
       }
     ],
     "C22": [
@@ -1028,7 +1040,7 @@
       },
       {
         "id": "C22-N06",
-        "check": "Keyboard and accessibility: the Workspace MCP servers region, each server's checkbox and its sign-in and sign-out buttons are named and reachable by Tab, as are the MCP approval's Approve once and Decline buttons."
+        "check": "Keyboard and accessibility: the Workspace MCP servers region, each server's checkbox and its sign-in and sign-out buttons are named and reachable by Tab, as are the MCP approval's Approve once and Decline buttons; Approve once is reached with Shift-Tab from Decline and activated with Space, and the call then runs once."
       },
       {
         "id": "C22-N07",

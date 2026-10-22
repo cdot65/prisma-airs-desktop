@@ -600,18 +600,15 @@ fn timely(claims: &Map<String, Value>, now: u64) -> Option<(u64, u64)> {
 }
 
 /// Verifies tokens against the issuer's keys, refreshing them at most once
-/// for an unknown key ID.
+/// per verification for an unknown key ID (so each later key rotation is
+/// followed too; P06, C20 review suggestion).
 pub struct Verifier {
     keys: Option<JwkSet>,
-    refreshed: bool,
 }
 
 impl Verifier {
     pub fn new() -> Self {
-        Self {
-            keys: None,
-            refreshed: false,
-        }
+        Self { keys: None }
     }
 
     async fn claims(
@@ -626,8 +623,7 @@ impl Verifier {
         let keys = self.keys.as_ref().ok_or(SignInFailure::InvalidToken)?;
         match verified_claims(token, keys) {
             Ok(claims) => Ok(claims),
-            Err(Unverified::UnknownKey) if !self.refreshed => {
-                self.refreshed = true;
+            Err(Unverified::UnknownKey) => {
                 let keys = client.keys(provider).await?;
                 let claims = verified_claims(token, &keys).map_err(|_| SignInFailure::InvalidToken);
                 self.keys = Some(keys);

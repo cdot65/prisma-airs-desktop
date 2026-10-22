@@ -78,11 +78,18 @@ def command(mgmt, cmd):
 
 def turn(app, mgmt, prompt, decide=None, timeout=40):
     """Sends `prompt`; answers the approval it raises with `decide`
-    ("Allow" or "Decline") if given. The tool output the engine returned."""
+    ("Allow" or "Decline") if given, or allows it only if one is shown
+    ("ifAsked"). The tool output the engine returned."""
     before = len(runs(mgmt))
     c19.say(app, prompt)
     shown = None
-    if decide:
+    if decide == "ifAsked":
+        tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Decline") is not None
+                               or (len(runs(mgmt)) >= before + 2 and app.has_text(t, "Answered.")), timeout)
+        if fx.App.node(tree, "AXButton", "Decline") is not None:
+            shown = {"shown": True, "texts": [x for x in app.texts(tree) if x.startswith(("Run a command", "Change files", "In /"))][:6]}
+            c9.press_exact(app, "Allow")
+    elif decide:
         tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Decline") is not None, timeout)
         shown = {"shown": shown, "texts": [x for x in app.texts(tree) if x.startswith(("Run a command", "Change files", "In /"))][:6]}
         c9.press_exact(app, decide)
@@ -226,11 +233,18 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before, base, project):
     obs["write"]["child"] = child
     patch = "*** Begin Patch\n*** Add File: added.txt\n+added by the engine\n*** End Patch"
     command(mgmt, f"apply_patch <<'EOF'\n{patch}\nEOF\n")
-    tree, patched = turn(app, mgmt, "Add a file with a patch.", decide="Allow")
-    obs["write"]["patch"] = {**patched, "file_change_shown": bool(patched["approval"]) and any(
-        x.startswith("Change files") for x in patched["approval"]["texts"]),
+    # Asked with the file named, it is shown whole and, allowed, the
+    # engine's writer fails in its sandbox; asked before the file is named,
+    # it is declined at once and never shown (C21 review F3). The engine's
+    # order varies; neither writes.
+    tree, patched = turn(app, mgmt, "Add a file with a patch.", decide="ifAsked")
+    obs["write"]["patch"] = {**patched, "asked": patched["approval"] is not None,
+        "file_change_shown": bool(patched["approval"]) and any(
+            x.startswith("Change files") for x in patched["approval"]["texts"]),
+        "never_asked": not app.has_text(tree, "Change files"),
         "file": os.path.exists(os.path.join(project, "added.txt")),
-        "entry_failed": app.has_text(tree, "(failed)")}
+        "entry_failed": app.has_text(tree, "(failed)"),
+        "entry_declined": app.has_text(tree, "(declined)")}
     obs["tree_write"] = save_tree("write", tree)
 
     # ---- N06: forged or unknown calls run nothing ----
@@ -296,10 +310,51 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before, base, project):
     obs["a11y"]["reached"] = [x for x in ("Choose another folder…", "Remove folder", "Allow", "Decline", "Review")
                               if any(lbl == x for lbl in labels)]
     obs["tree_a11y"] = save_tree("a11y", tree)
-    c9.press_exact(app, "Decline")
-    app.wait_for(lambda t: app.has_text(t, "Answered.") and fx.App.node(t, "AXButton", "Decline") is None, 30)
+
+    # ---- N09: offline and reconnecting (T23): nothing pending survives or is resubmitted ----
+    # The command still waits for its approval and the second proposal is
+    # opened in review when the app quits.
+    c9.press_exact(app, "Review")
+    tree, reviewing = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Proposed by the Harness") is not None, 20)
+    pending = {"waiting": waiting, "reviewing": reviewing}
+    runs_before, mgmt_before = len(runs(mgmt)), len(mgmt.requests())
+    files_before = sorted(os.listdir(project))
+    app.quit()
+    pending["engine_gone"] = c19.wait(lambda: c19.engines() == [], 10)
+    mgmt.stop()
+    endpoint.stop()
+    app.launch()
+    c19.open_harness(app)
+    tree, pending["offline_history"] = app.wait_for(lambda t: app.has_text(t, "AI Gateway’s workspaces are not available")
+                                                    and app.has_text(t, "messages ·"), 20)
+    pending["no_conversation"] = not app.has_text(tree, "Conversation in Team A") and fx.App.node(tree, "AXButton", "Allow") is None
+    obs["tree_offline"] = save_tree("offline", tree)
+    app.quit()
+    endpoint.start()
+    mgmt.start()
+    app.launch()
+    c16.open_gateway(app)
+    c8.text(app, "2 workspaces", 25)
+    app.ax("press", "AXRadioButton", "Team A")
+    c8.text(app, "2 providers · complete", 15)
+    c19.open_harness(app)
+    tree, pending["reconnected"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Start") is not None, 20)
+    time.sleep(3)
+    tree = app.tree()
+    later = mgmt.requests()[mgmt_before:]
+    pending.update({
+        "no_conversation_after": not app.has_text(tree, "Conversation in Team A") and fx.App.node(tree, "AXButton", "Allow") is None,
+        "no_review": fx.App.node(tree, "AXHeading", "Proposed by the Harness") is None,
+        "replayed_runs": len(runs(mgmt)) - runs_before,
+        "remote_writes": [{k: r.get(k) for k in ("method", "path")} for r in later
+                          if r["method"] != "GET" and r["path"].startswith("/aisec/")],
+        "folder_unchanged": sorted(os.listdir(project)) == files_before,
+        "engines": c19.engines()})
+    obs["pending"] = pending
+    obs["tree_reconnected"] = save_tree("reconnected", tree)
 
     # ---- N08: removing the folder ends the conversation; nothing is left ----
+    tree, _ = c19.start(app)
     pid = c19.leader()
     app.ax("press", "AXButton", "Remove folder")
     tree, removed = app.wait_for(lambda t: app.has_text(t, "No folder.") and not app.has_text(t, "Conversation in Team A"), 15)
@@ -349,9 +404,11 @@ def evaluate(prepared, o):
     w = o["write"]
     add("C21-N04", w["retired"] and w["engine_reaped"] and w["ready"] and w["inside"]["file"] == "kept\n" and marked(w["inside"], "WROTE")
         and marked(w["outside"], "Operation not permitted") and not marked(w["outside"], OUTSIDE)
-        and marked(w["child"], "fork") and w["patch"]["file_change_shown"] and w["patch"]["answered"]
-        # The pinned engine's patch writer fails in its helper sandbox; shown as reported.
-        and marked(w["patch"], "Failed to write file") and not w["patch"]["file"] and w["patch"]["entry_failed"],
+        and marked(w["child"], "fork") and w["patch"]["answered"]
+        # Shown whole and failing in the sandbox, or declined unshown.
+        and not w["patch"]["file"]
+        and ((w["patch"]["asked"] and w["patch"]["file_change_shown"] and w["patch"]["entry_failed"])
+             or (not w["patch"]["asked"] and w["patch"]["never_asked"] and w["patch"]["entry_declined"])),
         f"write {w}", [o["tree_write"]])
     p = o["proposal"]
     add("C21-N05", p["answered"] and p["listed"] and p["writes_after_staging"] == 0 and p["in_admin"] and p["exact_draft"]
@@ -364,6 +421,11 @@ def evaluate(prepared, o):
     add("C21-N07", y["waiting"] and y["checkbox"] and len(y["regions"]) == 3 and set(y["reached"]) >= {"Allow", "Decline", "Review"},
         f"keyboard and accessibility {y}", [o["tree_a11y"]])
     m = o["removed"]
+    pd = o["pending"]
+    add("C21-N09", pd["waiting"] and pd["reviewing"] and pd["engine_gone"] and pd["offline_history"] and pd["no_conversation"]
+        and pd["reconnected"] and pd["no_conversation_after"] and pd["no_review"] and pd["replayed_runs"] == 0
+        and pd["remote_writes"] == [] and pd["folder_unchanged"] and pd["engines"] == [],
+        f"offline and reconnect {pd}", [o["tree_offline"], o["tree_reconnected"]])
     add("C21-N08", m["removed"] and m["engine_reaped"] and m["no_engine_after_quit"] and not o["secret_in_trees"] and not o["secret_in_log"]
         and not o["tool_output_secret"] and o["project_files"] == ["file-0.txt", "file-1.txt", "file-2.txt", "kept.txt"]
         and o["v1_unchanged"] and o["engines_left"] == [],

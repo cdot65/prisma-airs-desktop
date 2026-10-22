@@ -354,6 +354,10 @@ fn main() {
                 "history-refuse" => {
                     send(&json!({"id": id, "error": {"code": -32600, "message": "busy"}}))
                 }
+                // Only the first turn is exported (C20 review F1).
+                "history-refuse-later" if turns > 1 => {
+                    send(&json!({"id": id, "error": {"code": -32600, "message": "busy"}}))
+                }
                 _ => send(&json!({"id": id, "result": {
                     "context": {"fixture": true, "credentialId": p["credentialId"]},
                     "replay": {"schemaVersion": 1, "turns": turns}}})),

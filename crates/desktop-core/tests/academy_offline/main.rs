@@ -2038,10 +2038,18 @@ async fn a_confirmation_the_kept_attempt_cannot_hold_leaves_the_local_copy() {
         matches!(cleared, AcademyCallResult::Failed { .. }),
         "{cleared:?}"
     );
-    // Offline after restart the newest work is still on this Mac.
+    // Offline after restart the newest work is still on this Mac. Opening
+    // the 900 KiB sealed copy may take more than `eventually`'s two seconds
+    // on a loaded host.
     desk.script.lock().expect("script").unreachable = true;
     let mut desk = restart(desk, |_| {}).await;
-    assert!(eventually(|| desk.snap().academy_offline.state == OfflineState::Ready).await);
+    let opened = tokio::time::timeout(Duration::from_secs(10), async {
+        while desk.snap().academy_offline.state != OfflineState::Ready {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await;
+    assert!(opened.is_ok());
     let learner = desk.learner();
     let loaded = host(
         &mut desk,

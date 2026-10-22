@@ -1538,7 +1538,8 @@ system browser and a loopback redirect on `127.0.0.1` at an ephemeral port
   ES256, ES384 and EdDSA. `none` and HMAC never verify.
 - The key must match the header: by `kid`, signature use, declared
   algorithm, type and curve, and an RSA modulus of at least 2048 bits.
-- An unknown `kid` allows one bounded JWKS refresh. Failing that, the token
+- An unknown `kid` allows one bounded JWKS refresh per verification, so
+  each later key rotation is followed too (P06). Failing that, the token
   is refused, never accepted unsigned.
 - ID token: issuer; the client as audience; the authorized party when
   there are several audiences, or when present; this attempt's nonce; and
@@ -1580,8 +1581,20 @@ it stays C19's `derived_uuid("credential", record)`.
 - The refresh token is a Keychain item (JSON, one per grant, new record
   per rotation) under the C02 write-ahead cleanup ledger. The access token
   is kept in memory only.
+- Both writes (sign-in and rotation) follow the confirmed write-ahead
+  contract (P06, C20 review F2). The record joins the ledger, the save is
+  confirmed durable, and only then is it written. It is marked in flight
+  until the save that settles it, under that save's lock, so cleanup and
+  reset wait for it. An unconfirmed ledger writes nothing. A
+  write that lands after its sign-in was cancelled, signed out or
+  superseded stays in the ledger and is deleted; the new token is revoked.
 - One renewal runs at a time per grant and runs to completion even if its
   caller goes away. A rotated token is saved or revoked, never lost.
+- A sign-in again to the same account renews the live grant in place under
+  the same lock (P06, C20 review F3). It waits for a renewal under way, and
+  a renewal waits for it. A rotation commits only if the stored record is
+  still the one it started from. Exactly the current refresh record stays
+  owned, and the grant (with it the engine binding) is unchanged.
 
 **Renewal and restart.** Before each message, a sign-in conversation
 compares the wall clock with the engine token's renewal time,
@@ -1599,6 +1612,11 @@ compares the wall clock with the engine token's renewal time,
   grant.
 - A conversation with turns but no export to restore cannot continue
   (`restoreFailed`); it is never silently restarted without context.
+- An export matches the conversation only until its next turn ends. A
+  turn whose export is refused or unanswered leaves nothing to restore, so
+  the renewal fails as `restoreFailed` without starting an engine or
+  sending the message. An older export never stands in for newer turns
+  (P06, C20 review F1).
 - Sleep still ends conversations (C19), so expiry across sleep is met at
   the next start or resume. The C20 conversation has no tools or effects,
   so "rollback to a pre-turn checkpoint" has nothing to roll back: a
@@ -1606,7 +1624,9 @@ compares the wall clock with the engine token's renewal time,
   effect recovery, and WorkspaceWrite re-confirmation on restart, are C21.
 
 **Protected history.** After every turn (completed, stopped, cut or
-failed) the host asks the idle engine for `desktop/history/read`. Messages
+failed) the host asks the idle engine for `desktop/history/read`. A turn
+cut short when the engine itself is stopped is saved with the last export
+and its unfinished entries `interrupted` (D049, P06). Messages
 wait for the read, which is bounded by the 15 s request timeout. The
 conversation is saved as one sealed record:
 - the transcript;
@@ -1624,6 +1644,15 @@ Storage:
 - Files are 0600 in 0700 directories and replaced atomically.
 - Scopes are noted in the state document before their first write, so
   removing a tenant removes its keys (cleanup ledger) and its directory.
+- Each save is admitted under the authority lock (storage ready, tenant
+  present, the scope's note confirmed durable) and counted until it
+  settles. An unconfirmed note writes nothing (C20 review R2). Its scope key is kept in flight
+  meanwhile (P06, C20 review F4), and saves are refused once reset or
+  tenant removal begins. Tenant removal deletes the directory only after
+  that tenant's saves settle, and cleanup deletes the key after them.
+  Reset waits for every save, then purges the history folder with the
+  Keychain namespace; a failure is reported as a reset failure. A launch
+  removes history folders of tenants that no longer exist.
 - Locked, denied or missing storage never falls back to plaintext. The
   conversation goes on unsaved and says why.
 
@@ -1639,7 +1668,8 @@ Operations:
 - **Open** reads one record.
 - **Export** writes the transcript only (Markdown, text or JSON), never the
   replay or context, through the native save sheet.
-- **Delete** asks for confirmation and is refused for the running
+- **Delete** asks for confirmation (an unreadable record too: its key may
+  be missing only for now) and is refused for the running
   conversation.
 - **Continue** starts a new engine and restores the record. It is offered
   only when the record's binding equals the binding a new conversation
@@ -1647,6 +1677,12 @@ Operations:
   credential choice). Otherwise the record is read-only and says why. The
   engine checks the context again. The continued conversation keeps
   updating the same record.
+- **Offline (T23).** With no workspace chosen, as when AI Gateway cannot
+  be read, the tenant's last chosen workspace's history is listed from
+  this Mac (`local`). It can be opened, exported and deleted but not
+  continued (`workspaceUnavailable`). A launch or reconnect never restarts
+  or resubmits a conversation; continuing is the operator's explicit
+  choice from history.
 - Imported v1 history is C23 and stays inspect-only.
 
 **Out of scope here:** tools, approvals, project access and WorkspaceWrite
@@ -1740,6 +1776,9 @@ without asking, when any of these holds:
 - it is a file change while changes are off;
 - it asks for added permissions, network access or another root;
 - it belongs to another turn;
+- what it would do cannot be shown whole: a command longer than 8 KiB (or
+  none), or a file change whose files the engine has not named (P06, C21
+  review F3: never shown cut);
 - 8 decisions are already waiting.
 
 The pinned engine's own desktop sandbox enforces the rest. The negative
@@ -1750,9 +1789,13 @@ probes are recorded:
 - reads outside the folder fail with "Operation not permitted";
 - writes only inside the folder, and only with `workspaceWrite`.
 
-The engine's own patch writer (`apply_patch`) runs in its narrower helper
-sandbox and fails to write in this build. The app shows the engine's
-result as reported, and the engine is not changed.
+The engine's own patch writer (`apply_patch`) names its files only with
+the change item, which may reach the desktop before or after the approval
+request. Asked first, the request is declined at once; asked after, the
+approval shows the named files whole. Approved, the patch still fails to
+write in this build: it runs in the engine's narrower helper sandbox (the
+engine is not changed). Allowed shell commands are what change the folder.
+Both orders are exercised (harness_tools, native C21-N04).
 
 **Renewal with changes allowed.** When a company sign-in renewal
 (D047) would restart an engine that may change the folder, the message is
@@ -1817,11 +1860,18 @@ item.
   reserved as in flight before it is written. It leaves the ledger only in
   the save that names it, so a stale or failed write is never left
   untracked.
+- The in-flight reservation ends under the same lock as that settlement
+  (P06, C22 review F4), so cleanup can never delete a record between its
+  write and the save that names it. Company sign-in (D047) uses the same
+  functions.
 - A refresh renews inside `min(120 s, lifetime/2)` and rotates the item.
   One renewal runs at a time per grant, and it completes even if its caller
   goes away.
 - Signing out, removing the tenant or resetting deletes the item through
   the ledger, then revokes both tokens at the server (best effort).
+- Signing out of a server also ends a sign-in to it that is under way
+  (P06, C22 review F3). A late callback or token reply then installs
+  nothing, and its tokens are revoked.
 
 **A conversation's scope** is fixed at its start:
 - the servers turned on (at most eight per workspace) that are in the
@@ -1829,7 +1879,16 @@ item.
 - each with its grant only if that grant was made for the server's current
   URL and revision.
 
-With any server on, the catalog must be loaded, or nothing starts (`Busy`).
+With any server on, the catalog must have been read successfully, with no
+read under way, or nothing starts (`Busy`). A failed or pending read keeps
+the last catalog for display only (P06, C22 review F2). Until a read
+succeeds:
+- no conversation starts or continues from history (`otherMcp`);
+- a running conversation sends nothing (its message stays in the box);
+- every MCP approval is declined natively.
+
+A changed revision or URL in the last catalog read still retires the
+conversation.
 The bootstrap carries `mcpServers` in scope order. Each server gets its
 token, or the 32-byte placeholder `airs-desktop-mcp-sign-in-expired` when
 there is no current sign-in, so the scope stays the same and that server
@@ -1863,7 +1922,10 @@ declined at once with a transcript notice; the engine's reserved-key
 forgeries never arrive. The operator's Approve once or Decline is sent as
 exactly `{"action":"accept"}` or `{"action":"decline"}`. When an approval
 is decided, the desktop checks again that the server's grant is the scope's
-and is unexpired; if not, it declines whatever the operator chose. Pending
+and is unexpired, both by failure and by the token's own expiry against
+the clock (P06, C22 review F1). A call held across expiry, sleep
+included, or first offered after it, is declined whatever the operator
+chose. Pending
 approvals end with the turn or an interrupt, and no late reply is sent.
 Calls, results and errors are bounded, and every token is redacted.
 
@@ -1878,6 +1940,18 @@ one restart does both and D048's re-confirmation applies.
 differs from what a new conversation would get now, or cannot be checked
 because the catalog is not loaded, reads `otherMcp` and cannot be
 continued.
+
+**Offline and reconnecting (T23).** A turn that a stop (sleep, quit or
+ending the conversation) cuts short is saved as it stood. Its unfinished
+entries read `interrupted`, so an approved call that may have run at the
+server is recorded with an unknown outcome. The record keeps the last
+export, which does not hold that turn, so continuing restores only what
+the engine had (P06, C22 review G1). Pending MCP approvals and calls live
+only with the conversation in memory. A relaunch, offline or not, never
+restores, re-asks or resubmits them. Servers' enablement and sign-ins are
+kept (the state document and the Keychain), and nothing is called until
+the operator starts a conversation again (P06,
+`a_pending_mcp_call_never_survives_going_offline_or_runs_on_reconnect`).
 
 **Fixtures.** The integration tests and the native driver serve the MCP
 plane over loopback HTTPS that the engine trusts through the app's own

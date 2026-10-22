@@ -748,7 +748,7 @@ describe('Harness company sign-in and protected history (C20)', () => {
         entries: [{ id: 'u-1', role: 'operator', text: 'Remember periwinkle', state: 'complete' }],
     }
     const history = {
-        state: 'ready', conversations: [saved], unreadable: [], failure: null, full: false, opened, busy: false, problem: null,
+        local: false, state: 'ready', conversations: [saved], unreadable: [], failure: null, full: false, opened, busy: false, problem: null,
         export: { kind: 'harnessConversation', state: 'saved', name: 'harness-x.md' },
     }
     const harness = (s: unknown, h: unknown) => ({ ...valid, harness: { engine, conversation: null, signIn: s, history: h, project: null, projectRefused: null, mcp: null } })
@@ -777,6 +777,7 @@ describe('Harness company sign-in and protected history (C20)', () => {
             harness(null, { ...history, failure: 'gone' }),
             harness(null, { ...history, problem: 'vanished' }),
             harness(null, { ...history, unreadable: ['../escape'] }),
+            harness(null, { ...history, local: 'yes' }),
             harness(null, { ...history, opened: { ...opened, notContinuable: 'maybe' } }),
             harness(null, { ...history, opened: { ...opened, entries: [{ ...opened.entries[0], role: 'system' }] } }),
             harness(null, { ...history, export: { kind: 'cases', state: 'saved', name: 'x' } }),
@@ -843,7 +844,7 @@ describe('Harness tools and project (C21)', () => {
             harness({ ...conversation, approvals: [{ ...approval, id: 'not-a-token' }] }),
             harness({ ...conversation, approvals: [{ ...approval, kind: 'network' }] }),
             harness({ ...conversation, approvals: [{ ...approval, files: ['x'] }] }),
-            harness({ ...conversation, approvals: [{ ...approval, command: 'x'.repeat(4096) }] }),
+            harness({ ...conversation, approvals: [{ ...approval, command: 'x'.repeat(8 * 1024 + 1) }] }),
             harness({ ...conversation, approvals: Array.from({ length: 9 }, () => approval) }),
             // Gateway changes are never proposed, nor anything but create, update or delete.
             harness({ ...conversation, proposals: [{ ...proposal, draft: { ...proposal.draft, kind: 'gatewayRoutes' } }] }),

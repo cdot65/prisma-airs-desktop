@@ -8,7 +8,12 @@ import type { SavedConversationView } from "./SavedConversationView";
 /**
  * The chosen workspace's protected history.
  */
-export type HarnessHistoryView = { state: HistoryListState, conversations: Array<SavedConversationView>, 
+export type HarnessHistoryView = { 
+/**
+ * Read from this Mac for the tenant's last chosen workspace, without
+ * that workspace from AI Gateway (T23): read-only.
+ */
+local: boolean, state: HistoryListState, conversations: Array<SavedConversationView>, 
 /**
  * Records present that do not open with this workspace's key.
  */

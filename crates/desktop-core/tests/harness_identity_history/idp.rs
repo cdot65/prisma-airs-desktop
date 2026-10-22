@@ -105,6 +105,8 @@ pub struct Idp {
     pub refuse_refresh: bool,
     codes: HashMap<String, Code>,
     refresh: HashMap<String, String>,
+    /// Refresh tokens issued (each name is new, even after revocations).
+    issued: u32,
     pub revoked: Vec<String>,
     pub refreshes: u32,
     pub jwks_reads: u32,
@@ -152,6 +154,7 @@ impl Idp {
             refuse_refresh: false,
             codes: HashMap::new(),
             refresh: HashMap::new(),
+            issued: 0,
             revoked: Vec::new(),
             refreshes: 0,
             jwks_reads: 0,
@@ -209,7 +212,8 @@ impl Idp {
             .raw_access
             .clone()
             .unwrap_or_else(|| self.signer().sign(&access));
-        let refresh = format!("refresh-{}-{}", self.refresh.len() + 1, issue.subject);
+        self.issued += 1;
+        let refresh = format!("refresh-{}-{}", self.issued, issue.subject);
         self.refresh.insert(refresh.clone(), issue.subject.clone());
         let mut body = json!({"token_type": "Bearer", "access_token": access,
             "expires_in": issue.lifetime, "refresh_token": refresh});

@@ -389,20 +389,47 @@ pub fn scrub(value: &mut Value) {
 /// A result for the model: scrubbed, with any of `secrets` removed from its
 /// text, and cut to [`MAX_RESULT_BYTES`] with a note.
 pub fn result_text(mut value: Value, secrets: &[&str]) -> String {
+    structured(&mut value, 0);
     scrub(&mut value);
     let mut text = value.to_string();
     for secret in secrets.iter().filter(|s| !s.is_empty()) {
         text = text.replace(secret, "[redacted]");
     }
     if text.len() > MAX_RESULT_BYTES {
-        let mut end = MAX_RESULT_BYTES;
+        // Still JSON: the cut text is a string beside a note.
+        let mut end = MAX_RESULT_BYTES - 512;
         while !text.is_char_boundary(end) {
             end -= 1;
         }
         text.truncate(end);
-        text.push_str(" …[cut: the result was longer than 24 KiB; ask for a smaller page]");
+        text = json!({"cut": "The result was longer than 24 KiB; ask for a smaller page.",
+            "partial": text})
+        .to_string();
     }
     text
+}
+
+/// JSON carried as text (a page's items, a detail, a session) as values,
+/// so the scrub reaches every field before anything goes to the model
+/// (C21 review F2). Bounded in size and in how deep text is opened.
+fn structured(value: &mut Value, depth: usize) {
+    match value {
+        Value::String(s)
+            if depth < 4
+                && s.len() <= 4 * 1024 * 1024
+                && matches!(s.trim_start().as_bytes().first(), Some(b'{' | b'[')) =>
+        {
+            if let Ok(parsed @ (Value::Object(_) | Value::Array(_))) =
+                serde_json::from_str::<Value>(s)
+            {
+                *value = parsed;
+                structured(value, depth + 1);
+            }
+        }
+        Value::Object(map) => map.values_mut().for_each(|v| structured(v, depth)),
+        Value::Array(items) => items.iter_mut().for_each(|v| structured(v, depth)),
+        _ => {}
+    }
 }
 
 #[cfg(test)]
@@ -489,6 +516,18 @@ mod tests {
         );
         assert!(text.contains("Runtime") && text.contains("[redacted]") && !text.contains("KEY-1"));
         let long = result_text(json!({"t":"z".repeat(MAX_RESULT_BYTES * 2)}), &[]);
-        assert!(long.len() < MAX_RESULT_BYTES + 100 && long.contains("[cut:"));
+        assert!(long.len() <= MAX_RESULT_BYTES);
+        let cut: Value = serde_json::from_str(&long).expect("still JSON");
+        assert!(cut["cut"].as_str().is_some_and(|c| c.contains("24 KiB")));
+        // Credentials inside JSON carried as text (a page's items, a
+        // detail) are found too, whatever their case or nesting.
+        let page = json!({"page": {"items": json!([{"name": "Runtime", "metadata": {
+            "Authorization": "Bearer NESTED-CANARY", "X-Api-Key": "MIXED-CANARY",
+            "note": "safe-metadata", "inner": json!({"Client-Secret": "DEEP-CANARY"}).to_string()}}]).to_string()}});
+        let text = result_text(page, &[]);
+        for canary in ["NESTED-CANARY", "MIXED-CANARY", "DEEP-CANARY"] {
+            assert!(!text.contains(canary), "{canary}: {text}");
+        }
+        assert!(text.contains("safe-metadata") && text.contains("Runtime"));
     }
 }

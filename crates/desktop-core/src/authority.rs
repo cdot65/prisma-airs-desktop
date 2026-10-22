@@ -328,31 +328,33 @@ pub enum Intent {
         workspace: WorkspaceRef,
         server: String,
     },
-    /// List the chosen workspace's saved conversations (C20).
+    /// List the chosen workspace's saved conversations (C20). Without a
+    /// workspace (none is chosen, as when AI Gateway cannot be read), the
+    /// tenant's last chosen workspace on this Mac, read-only (T23).
     ListHarnessHistory {
         context: ContextRef,
-        workspace: WorkspaceRef,
+        workspace: Option<WorkspaceRef>,
     },
     /// Open a saved conversation for reading.
     OpenHarnessHistory {
         context: ContextRef,
-        workspace: WorkspaceRef,
+        workspace: Option<WorkspaceRef>,
         id: String,
     },
     CloseHarnessHistory {
         context: ContextRef,
-        workspace: WorkspaceRef,
+        workspace: Option<WorkspaceRef>,
     },
     /// Delete a saved conversation (not the one running).
     DeleteHarnessHistory {
         context: ContextRef,
-        workspace: WorkspaceRef,
+        workspace: Option<WorkspaceRef>,
         id: String,
     },
     /// Save the opened conversation's transcript in the native save sheet.
     ExportHarnessHistory {
         context: ContextRef,
-        workspace: WorkspaceRef,
+        workspace: Option<WorkspaceRef>,
         id: String,
         format: harness_history::HistoryFormat,
     },
@@ -1212,6 +1214,9 @@ struct State {
     reset_failure: Option<ResetFailure>,
     durability_unconfirmed: bool,
     cleaning: bool,
+    /// Cleanup was asked for while a pass ran: run another when it ends,
+    /// so a record released meanwhile is not left waiting (P06).
+    clean_again: bool,
     /// Keychain records whose write has not settled; cleanup never deletes
     /// them (a delete could precede the write and drop the ledger entry).
     writes_in_flight: Vec<RecordId>,
@@ -1310,6 +1315,17 @@ struct State {
     /// The chosen workspace's protected history (C20).
     harness_history: Option<harness_history::HistoryState>,
     harness_history_root: Option<std::path::PathBuf>,
+    /// Tenants with a Harness history save under way (one entry each):
+    /// removing a tenant waits for its saves before removing its folder,
+    /// and reset waits for all of them (C20 review F4).
+    history_writers: Vec<TenantId>,
+    /// Holds every Harness history save after it is admitted (fixture
+    /// builds expose it to tests; otherwise uncontended).
+    history_hold: Arc<tokio::sync::Mutex<()>>,
+    /// Holds every Keychain write of a sign-in or rotation after its put
+    /// and before it is settled (fixture builds expose it; otherwise
+    /// uncontended).
+    settle_hold: Arc<tokio::sync::Mutex<()>>,
     /// The app's data folder, never a Harness project (C21).
     harness_data_root: Option<std::path::PathBuf>,
     /// The folder last refused as a tenant's project, until the next choice.
@@ -2002,8 +2018,9 @@ enum Effect {
     HarnessRenew(Box<harness_domain::RenewJob>),
     /// Read, open or delete protected history (C20).
     HarnessHistory(harness_history::HistoryJob),
-    /// Remove a removed tenant's history directory (C20).
-    ForgetHarnessHistory(std::path::PathBuf),
+    /// Remove a removed tenant's history directory once its saves under
+    /// way have settled (C20).
+    ForgetHarnessHistory(TenantId, std::path::PathBuf),
     /// Choose the Harness project in the native folder sheet (C21).
     ChooseHarnessProject(ContextRef),
     /// Reads the chosen workspace's MCP catalog (C22).
@@ -2066,6 +2083,7 @@ impl Core {
             reset_failure: None,
             durability_unconfirmed: false,
             cleaning: false,
+            clean_again: false,
             writes_in_flight: Vec::new(),
             next_lease: 0,
             operations: Operations::new(config.operations),
@@ -2125,6 +2143,9 @@ impl Core {
             harness_grants: Vec::new(),
             harness_history: None,
             harness_history_root: adapters.harness.history_root.clone(),
+            history_writers: Vec::new(),
+            history_hold: Arc::default(),
+            settle_hold: Arc::default(),
             harness_data_root: adapters
                 .harness
                 .runtime_root
@@ -2142,6 +2163,9 @@ impl Core {
             adapters,
             session: Arc::new(SessionVault::new()),
         });
+        if let Ok(state) = lock(&inner) {
+            state.sweep_harness_history();
+        }
         if let Ok(mut state) = lock(&inner) {
             // A saved learner resumes signed in; its session renews the
             // access token from the Keychain on first use.
@@ -2220,6 +2244,49 @@ impl Core {
         if let Ok(mut s) = lock(&self.inner) {
             s.workbench.interrupt = Some(workbench_domain::Interrupt { files, crash: true });
         }
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Holds every admitted Harness history save until the guard drops
+    /// (fixture builds only).
+    pub async fn hold_history_writes(&self) -> tokio::sync::OwnedMutexGuard<()> {
+        let hold = lock(&self.inner)
+            .map(|s| Arc::clone(&s.history_hold))
+            .expect("authority");
+        hold.lock_owned().await
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Holds every sign-in or rotation Keychain write after its put and
+    /// before it is settled, until the guard drops (fixture builds only).
+    pub async fn hold_write_settlement(&self) -> tokio::sync::OwnedMutexGuard<()> {
+        let hold = lock(&self.inner)
+            .map(|s| Arc::clone(&s.settle_hold))
+            .expect("authority");
+        hold.lock_owned().await
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Runs the cleanup ledger now (fixture builds only).
+    pub fn clean_up_now(&self) {
+        run_effects(&self.inner, vec![Effect::Cleanup]);
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Keychain writes in flight (fixture builds only).
+    pub fn writes_in_flight(&self) -> usize {
+        lock(&self.inner)
+            .map(|s| s.writes_in_flight.len())
+            .unwrap_or(0)
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Harness history saves admitted and not yet settled (fixture builds
+    /// only).
+    pub fn history_writes_under_way(&self) -> usize {
+        lock(&self.inner)
+            .map(|s| s.history_writers.len())
+            .unwrap_or(0)
     }
 
     #[cfg(feature = "test-fixtures")]
@@ -2801,7 +2868,7 @@ fn admit(
             state.forget_library(&tenant);
             state.forget_holds(&tenant);
             if let Some(dir) = history_dir {
-                effects.push(Effect::ForgetHarnessHistory(dir));
+                effects.push(Effect::ForgetHarnessHistory(tenant.clone(), dir));
             }
             state.harness_grants.retain(|g| g.tenant != tenant);
             if let Some(grant) = signed_in {
@@ -3183,7 +3250,7 @@ fn admit(
             state.changed();
         }
         Intent::ListHarnessHistory { context, workspace } => {
-            effects.push(state.list_harness_history(&context, &workspace)?);
+            effects.push(state.list_harness_history(&context, workspace.as_ref())?);
             state.changed();
         }
         Intent::OpenHarnessHistory {
@@ -3191,11 +3258,11 @@ fn admit(
             workspace,
             id,
         } => {
-            effects.push(state.open_harness_history(&context, &workspace, &id)?);
+            effects.push(state.open_harness_history(&context, workspace.as_ref(), &id)?);
             state.changed();
         }
         Intent::CloseHarnessHistory { context, workspace } => {
-            state.close_harness_history(&context, &workspace)?;
+            state.close_harness_history(&context, workspace.as_ref())?;
             state.changed();
         }
         Intent::DeleteHarnessHistory {
@@ -3203,7 +3270,7 @@ fn admit(
             workspace,
             id,
         } => {
-            effects.push(state.delete_harness_history(&context, &workspace, &id)?);
+            effects.push(state.delete_harness_history(&context, workspace.as_ref(), &id)?);
             state.changed();
         }
         Intent::ExportHarnessHistory {
@@ -3213,7 +3280,7 @@ fn admit(
             format,
         } => {
             let (lease, suggested, bytes) =
-                state.export_harness_history(&context, &workspace, &id, format)?;
+                state.export_harness_history(&context, workspace.as_ref(), &id, format)?;
             effects.push(Effect::SaveFile {
                 lease,
                 suggested,
@@ -3226,7 +3293,7 @@ fn admit(
             workspace,
             id,
         } => {
-            let resume = state.resume_harness(&context, &workspace, &id)?;
+            let resume = state.resume_harness(&context, Some(&workspace), &id)?;
             let start = state.start_harness(
                 context,
                 workspace,
@@ -3978,9 +4045,17 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
             Effect::McpSignedOut(grant) => {
                 tokio::spawn(harness_mcp::signed_out(Arc::clone(inner), grant));
             }
-            Effect::ForgetHarnessHistory(dir) => {
-                tokio::task::spawn_blocking(move || {
-                    let _ = std::fs::remove_dir_all(dir);
+            Effect::ForgetHarnessHistory(tenant, dir) => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    // A save admitted before the removal finishes first (its
+                    // key stays in flight until then, so cleanup waits too);
+                    // none is admitted after it. A folder that cannot be
+                    // removed now is removed at the next launch.
+                    while lock(&inner).is_ok_and(|s| s.history_writers.contains(&tenant)) {
+                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                    }
+                    let _ = tokio::task::spawn_blocking(move || std::fs::remove_dir_all(dir)).await;
                 });
             }
             Effect::AcademySignIn { flow, client } => {
@@ -4308,6 +4383,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                                 s.writes_in_flight.len()
                                     + s.learner_writes.len()
                                     + s.offline_writers
+                                    + s.history_writers.len()
                             })
                             .unwrap_or(0);
                         if pending == 0 {
@@ -4383,6 +4459,19 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                         }
                         // Sealed case libraries go with their keys too.
                         if let Some(root) = &worker.adapters.library_root {
+                            match std::fs::remove_dir_all(root) {
+                                Ok(()) => {}
+                                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                                Err(_) => {
+                                    return Err(ResetFailure {
+                                        stage: ResetStage::Document,
+                                        reason: VaultError::Unavailable,
+                                    });
+                                }
+                            }
+                        }
+                        // Harness history goes with its keys (purged above).
+                        if let Some(root) = &worker.adapters.harness.history_root {
                             match std::fs::remove_dir_all(root) {
                                 Ok(()) => {}
                                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -4712,7 +4801,11 @@ fn drain_cleanup(inner: &Arc<Inner>) {
             .filter(|r| !in_flight.contains(r))
             .cloned()
             .collect();
-        if state.cleaning || records.is_empty() || state.storage == StorageHealth::Resetting {
+        if state.cleaning {
+            state.clean_again = true;
+            return;
+        }
+        if records.is_empty() || state.storage == StorageHealth::Resetting {
             return;
         }
         state.cleaning = true;
@@ -4761,6 +4854,10 @@ fn drain_cleanup(inner: &Arc<Inner>) {
             }
             state.changed();
         };
+        let again = lock(&inner).is_ok_and(|mut s| std::mem::take(&mut s.clean_again));
+        if again {
+            drain_cleanup(&inner);
+        }
     });
 }
 

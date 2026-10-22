@@ -58,6 +58,9 @@ pub struct Mcp {
     pub refreshes: usize,
     /// Tool calls each server ran, with the bearer they carried.
     pub calls: Vec<(String, String)>,
+    /// Each call's execution trace: its ID (returned in the result) and the
+    /// arguments the server ran it with (P06, C22 review G3).
+    pub traces: Vec<(String, Value)>,
     /// Every MCP request's server and bearer (or none).
     pub requests: Vec<(String, Option<String>)>,
     /// The authorize URLs the browser stand-in completed.
@@ -98,6 +101,7 @@ impl Mcp {
             registrations: 0,
             refreshes: 0,
             calls: Vec::new(),
+            traces: Vec::new(),
             requests: Vec::new(),
             authorized: Vec::new(),
             serial: 0,
@@ -342,7 +346,14 @@ impl Mcp {
             Some("tools/call") => {
                 self.calls
                     .push((slug.to_owned(), bearer.clone().unwrap_or_default()));
-                json!({"content": [{"type": "text", "text": RESULT}], "isError": false})
+                let trace = format!("trace-{slug}-{}", self.calls.len());
+                let arguments = body["params"]["arguments"].clone();
+                let text = format!(
+                    "{RESULT} {trace} query={}",
+                    arguments["query"].as_str().unwrap_or_default()
+                );
+                self.traces.push((trace, arguments));
+                json!({"content": [{"type": "text", "text": text}], "isError": false})
             }
             _ => json!({}),
         };

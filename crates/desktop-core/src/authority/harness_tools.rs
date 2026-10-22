@@ -21,6 +21,7 @@ use std::time::Duration;
 use serde::Serialize;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
 use super::harness_domain::RenewJob;
@@ -364,8 +365,21 @@ pub(super) fn sink(
         let conversation = conversation.clone();
         let commands = commands.clone();
         tokio::spawn(async move {
-            let ToolRequest { request, call } = request;
-            let ran = tokio::time::timeout(TOOL_TIMEOUT, run(&inner, &conversation, call)).await;
+            let ToolRequest {
+                request,
+                call,
+                lease,
+                cancel,
+            } = request;
+            // Interrupted, ended or stopped: whatever was not admitted is
+            // not, and no result is sent (the engine forgot the call).
+            let ran = tokio::select! {
+                () = cancel.cancelled() => return,
+                ran = tokio::time::timeout(TOOL_TIMEOUT, run(&inner, &conversation, call, &cancel)) => ran,
+            };
+            if cancel.is_cancelled() {
+                return;
+            }
             let (success, text) = match ran {
                 Ok(Ok(text)) => (true, text),
                 _ => (false, UNAVAILABLE.to_owned()),
@@ -373,6 +387,7 @@ pub(super) fn sink(
             let _ = commands
                 .send(Command::ToolResult {
                     request,
+                    lease,
                     success,
                     text,
                 })
@@ -381,19 +396,31 @@ pub(super) fn sink(
     })
 }
 
-/// One tool call, admitted under the conversation's current binding.
+/// One tool call, admitted under the conversation's current binding and
+/// only while its turn lasts: `cancel` is checked under the lock right
+/// before anything is admitted, and while it waits (C21 review F1). What
+/// was already sent is not undone.
 async fn run(
     inner: &Arc<Inner>,
     conversation: &OperationId,
     call: ToolCall,
+    cancel: &CancellationToken,
 ) -> Result<String, Refusal> {
-    let context = lock(inner)?
-        .harness_live(conversation)?
-        .context_ref()
-        .clone();
+    let current = |state: &mut State| -> Result<(), Refusal> {
+        if cancel.is_cancelled() {
+            return Err(Refusal::StaleContext);
+        }
+        state.harness_live(conversation).map(|_| ())
+    };
+    let context = {
+        let mut state = lock(inner)?;
+        current(&mut state)?;
+        state.harness_live(conversation)?.context_ref().clone()
+    };
     let management = |request: ManagementRequest| async {
         let (handle, starts) = {
             let mut state = lock(inner)?;
+            current(&mut state)?;
             let (operation, mut starts) = state.admit_management(
                 context.clone(),
                 request,
@@ -456,6 +483,7 @@ async fn run(
             };
             let (operation, starts) = {
                 let mut state = lock(inner)?;
+                current(&mut state)?;
                 let admitted = state.admit_scan(
                     context.clone(),
                     draft,
@@ -469,6 +497,7 @@ async fn run(
             loop {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 let mut state = lock(inner)?;
+                current(&mut state)?;
                 state.sync_scans_now();
                 if let Some(view) = state.scan_settled(&operation) {
                     return Ok(tools::result_text(
@@ -479,13 +508,18 @@ async fn run(
             }
         }
         ToolCall::Cases => {
-            let load = lock(inner)?.open_library(&context)?;
+            let load = {
+                let mut state = lock(inner)?;
+                current(&mut state)?;
+                state.open_library(&context)?
+            };
             if let Some(lease) = load {
                 super::run_effects(inner, vec![Effect::LoadLibrary { lease }]);
             }
             loop {
                 {
-                    let state = lock(inner)?;
+                    let mut state = lock(inner)?;
+                    current(&mut state)?;
                     state.check_context(&context)?;
                     let view = state.library_view();
                     if !matches!(view.state, super::library_domain::LibraryState::Loading) {
@@ -518,11 +552,13 @@ async fn run(
                 body,
                 workspace: None,
             };
-            let id = lock(inner)?.stage_proposal(conversation, draft, summary)?;
-            {
+            let id = {
                 let mut state = lock(inner)?;
+                current(&mut state)?;
+                let id = state.stage_proposal(conversation, draft, summary)?;
                 state.changed();
-            }
+                id
+            };
             Ok(format!(
                 "Proposal {id} is staged for the operator. It has not been applied: only the operator can review and confirm it in the desktop."
             ))

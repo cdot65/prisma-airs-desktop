@@ -17,9 +17,11 @@ use super::harness_identity::now;
 use super::sessions_domain::ExportKind;
 use super::{Effect, Inner, Refusal, State, lock};
 use crate::context::{ContextRef, WorkspaceRef};
-use crate::harness::history::{self, CredentialSource, HistoryFailure, Listed, Record, Scope};
+use crate::harness::history::{
+    self, CredentialSource, HistoryFailure, Listed, Record, SavedBinding, Scope,
+};
 use crate::harness::session::{HistorySink, Replay};
-use crate::harness::{HarnessEntry, HarnessRole, protocol};
+use crate::harness::{HarnessEntry, HarnessRole, HarnessUsage, protocol};
 use crate::store::GatewayPreference;
 use crate::tenants::TenantId;
 
@@ -51,6 +53,9 @@ pub enum NotContinuable {
     OtherMcp,
     /// The bundled engine is not available.
     EngineUnavailable,
+    /// Read from this Mac without its workspace from AI Gateway (as when it
+    /// cannot be reached): it can be read and exported, not continued.
+    WorkspaceUnavailable,
 }
 
 /// A saved conversation opened for reading.
@@ -78,6 +83,9 @@ pub enum HistoryListState {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct HarnessHistoryView {
+    /// Read from this Mac for the tenant's last chosen workspace, without
+    /// that workspace from AI Gateway (T23): read-only.
+    pub local: bool,
     pub state: HistoryListState,
     pub conversations: Vec<SavedConversationView>,
     /// Records present that do not open with this workspace's key.
@@ -108,6 +116,8 @@ pub(super) struct HistoryState {
     tenant: TenantId,
     workspace: String,
     scope: Scope,
+    /// Addressed without the workspace from AI Gateway.
+    local: bool,
     /// The newest list request, and the newest open or delete.
     list_lease: u64,
     lease: u64,
@@ -143,24 +153,43 @@ impl State {
 
     /// The history state for the chosen workspace, (re)made when the scope
     /// changed.
+    ///
+    /// Without a `reference`, the tenant's last chosen workspace on this
+    /// Mac, only while no workspace is chosen under `context` (T23).
     fn history_for(
         &mut self,
         context: &ContextRef,
-        reference: &WorkspaceRef,
+        reference: Option<&WorkspaceRef>,
     ) -> Result<&mut HistoryState, Refusal> {
         let tenant = self.check_context(context)?;
-        let workspace = self.inference_workspace(context, reference)?;
+        let workspace = match reference {
+            Some(reference) => self.inference_workspace(context, reference)?.id,
+            None => {
+                if self.chosen_scope(context).is_some() {
+                    return Err(Refusal::StaleContext);
+                }
+                self.tenant(&tenant)
+                    .and_then(|t| t.gateway_workspace.clone())
+                    .ok_or(Refusal::InvalidInput)?
+            }
+        };
+        let local = reference.is_none();
         let root = self.history_root().ok_or(Refusal::CapabilityMissing)?;
         let same = self
             .harness_history
             .as_ref()
-            .is_some_and(|h| h.tenant == tenant && h.workspace == workspace.id);
-        if !same {
+            .is_some_and(|h| h.tenant == tenant && h.workspace == workspace);
+        if same {
+            if let Some(h) = self.harness_history.as_mut() {
+                h.local = local;
+            }
+        } else {
             let lease = self.lease();
             self.harness_history = Some(HistoryState {
-                scope: Scope::new(&root, tenant.as_str(), &workspace.id),
+                scope: Scope::new(&root, tenant.as_str(), &workspace),
+                local,
                 tenant,
-                workspace: workspace.id,
+                workspace,
                 list_lease: lease,
                 lease,
                 list: None,
@@ -178,7 +207,7 @@ impl State {
     pub(super) fn list_harness_history(
         &mut self,
         context: &ContextRef,
-        reference: &WorkspaceRef,
+        reference: Option<&WorkspaceRef>,
     ) -> Result<Effect, Refusal> {
         let lease = self.lease();
         let h = self.history_for(context, reference)?;
@@ -194,7 +223,7 @@ impl State {
     pub(super) fn open_harness_history(
         &mut self,
         context: &ContextRef,
-        reference: &WorkspaceRef,
+        reference: Option<&WorkspaceRef>,
         id: &str,
     ) -> Result<Effect, Refusal> {
         if !protocol::is_uuid(id) {
@@ -217,7 +246,7 @@ impl State {
     pub(super) fn close_harness_history(
         &mut self,
         context: &ContextRef,
-        reference: &WorkspaceRef,
+        reference: Option<&WorkspaceRef>,
     ) -> Result<(), Refusal> {
         self.history_for(context, reference)?.opened = None;
         Ok(())
@@ -227,7 +256,7 @@ impl State {
     pub(super) fn delete_harness_history(
         &mut self,
         context: &ContextRef,
-        reference: &WorkspaceRef,
+        reference: Option<&WorkspaceRef>,
         id: &str,
     ) -> Result<Effect, Refusal> {
         if !protocol::is_uuid(id) {
@@ -255,7 +284,7 @@ impl State {
     pub(super) fn export_harness_history(
         &mut self,
         context: &ContextRef,
-        reference: &WorkspaceRef,
+        reference: Option<&WorkspaceRef>,
         id: &str,
         format: HistoryFormat,
     ) -> Result<(u64, String, Vec<u8>), Refusal> {
@@ -283,7 +312,7 @@ impl State {
     pub(super) fn resume_harness(
         &mut self,
         context: &ContextRef,
-        reference: &WorkspaceRef,
+        reference: Option<&WorkspaceRef>,
         id: &str,
     ) -> Result<Resume, Refusal> {
         let record = self
@@ -318,6 +347,9 @@ impl State {
             return Some(NotContinuable::EngineUnavailable);
         }
         let h = self.harness_history.as_ref()?;
+        if h.local {
+            return Some(NotContinuable::WorkspaceUnavailable);
+        }
         let tenant = self.tenant(&h.tenant)?;
         let b = &record.binding;
         let sign_in = tenant
@@ -441,6 +473,69 @@ impl State {
         self.save_with(&before).is_ok()
     }
 
+    /// Admits one save of `scope`: only while storage is ready (not
+    /// resetting) and the tenant exists, with the scope noted first. The
+    /// tenant counts as writing and the scope's key stays in flight until
+    /// [`State::history_written`], so tenant removal, cleanup and reset wait
+    /// for it and none can place a file or key after them (C20 review F4).
+    fn admit_history_write(&mut self, tenant: &TenantId, workspace: &str, scope: &Scope) -> bool {
+        // The scope's note must be durable before its key may be made:
+        // an unconfirmed note (this save's, or an earlier one still known
+        // only in memory) is confirmed first or nothing is written, so a
+        // crash can never lose the ledger of a key it made (C20 review R2).
+        if self.storage != super::StorageHealth::Ready
+            || self.tenant(tenant).is_none()
+            || !self.note_history_scope(tenant, workspace)
+            || (self.durability_unconfirmed && !self.confirm_durable())
+        {
+            return false;
+        }
+        self.history_writers.push(tenant.clone());
+        self.writes_in_flight.push(scope.key_record.clone());
+        true
+    }
+
+    /// One admitted save settled (written or not).
+    fn history_written(&mut self, tenant: &TenantId, scope: &Scope) {
+        if let Some(at) = self.history_writers.iter().position(|t| t == tenant) {
+            self.history_writers.remove(at);
+        }
+        if let Some(at) = self
+            .writes_in_flight
+            .iter()
+            .position(|r| r == &scope.key_record)
+        {
+            self.writes_in_flight.remove(at);
+        }
+    }
+
+    /// Removes history folders of tenants that no longer exist (a removal
+    /// that could not finish before the app ended). Only with the saved
+    /// document loaded: an unreadable one names no tenant.
+    pub(super) fn sweep_harness_history(&self) {
+        let Some(root) = self.history_root() else {
+            return;
+        };
+        if self.storage != super::StorageHealth::Ready {
+            return;
+        }
+        let kept: Vec<std::path::PathBuf> = self
+            .data
+            .tenants
+            .iter()
+            .map(|t| history::tenant_dir(&root, t.profile.id.as_str()))
+            .collect();
+        let Ok(entries) = std::fs::read_dir(&root) else {
+            return;
+        };
+        for entry in entries.filter_map(Result::ok) {
+            let path = entry.path();
+            if entry.file_type().is_ok_and(|t| t.is_dir()) && !kept.contains(&path) {
+                let _ = std::fs::remove_dir_all(&path);
+            }
+        }
+    }
+
     /// A tenant's history keys (for the cleanup ledger) and directory, as
     /// it is removed.
     pub(super) fn forget_harness_history(
@@ -509,6 +604,7 @@ impl State {
             })
             .collect();
         Some(HarnessHistoryView {
+            local: h.local,
             state,
             full: listed.len() >= history::MAX_CONVERSATIONS,
             conversations,
@@ -583,33 +679,61 @@ pub(super) fn sink(inner: &Arc<Inner>, plan: HistoryPlan) -> HistorySink {
         workspace,
     } = plan;
     Arc::new(move |entries: Vec<HarnessEntry>, usage, export: &Replay| {
-        let noted = lock(&inner)
-            .map(|mut state| state.note_history_scope(&tenant, &workspace))
-            .unwrap_or(false);
-        if !noted {
-            return Err(HistoryFailure::Unavailable);
-        }
-        let title = entries
-            .iter()
-            .find(|e| e.role == HarnessRole::Operator)
-            .map(|e| history::title(&e.text))
-            .unwrap_or_default();
-        let record = Record {
-            schema: history::SCHEMA.to_owned(),
-            id: id.clone(),
-            title,
-            created,
-            updated: now().max(created),
-            binding: binding.clone(),
-            entries,
-            usage,
-            context: export.context.clone(),
-            replay: export.replay.clone(),
+        let hold = lock(&inner)
+            .ok()
+            .and_then(|mut state| {
+                state
+                    .admit_history_write(&tenant, &workspace, &scope)
+                    .then(|| Arc::clone(&state.history_hold))
+            })
+            .ok_or(HistoryFailure::Unavailable)?;
+        let saved = {
+            let _held = hold.blocking_lock();
+            save_record(
+                &inner, &scope, &id, created, &binding, entries, usage, export,
+            )
         };
-        history::save(&*inner.adapters.keychain, &scope, &record)?;
         if let Ok(mut state) = lock(&inner) {
-            state.history_saved(&scope, &record);
+            state.history_written(&tenant, &scope);
+            if let Ok(record) = &saved {
+                state.history_saved(&scope, record);
+            }
         }
-        Ok(record.updated)
+        // A key settled after its tenant was removed is cleaned up now.
+        super::run_effects(&inner, vec![Effect::Cleanup]);
+        saved.map(|record| record.updated)
     })
+}
+
+/// Seals and replaces one conversation's record.
+#[allow(clippy::too_many_arguments)]
+fn save_record(
+    inner: &Arc<Inner>,
+    scope: &Scope,
+    id: &str,
+    created: u64,
+    binding: &SavedBinding,
+    entries: Vec<HarnessEntry>,
+    usage: Option<HarnessUsage>,
+    export: &Replay,
+) -> Result<Record, HistoryFailure> {
+    let title = entries
+        .iter()
+        .find(|e| e.role == HarnessRole::Operator)
+        .map(|e| history::title(&e.text))
+        .unwrap_or_default();
+    let record = Record {
+        schema: history::SCHEMA.to_owned(),
+        id: id.to_owned(),
+        title,
+        created,
+        updated: now().max(created),
+        binding: binding.clone(),
+        entries,
+        usage,
+        context: export.context.clone(),
+        replay: export.replay.clone(),
+    };
+    history::save(&*inner.adapters.keychain, scope, &record)?;
+    Ok(record)
 }

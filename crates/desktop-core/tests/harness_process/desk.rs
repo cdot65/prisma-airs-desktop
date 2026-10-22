@@ -500,6 +500,91 @@ pub async fn desk_with(engine: Option<Engine>, fixture: Option<Pin>) -> Desk {
     desk
 }
 
+/// The same Mac relaunched with its saved document, Keychain, history and
+/// project, on the real engine or the stand-in; with the management and
+/// Gateway origin unreachable when not `online` (T23).
+pub async fn relaunch(old: Desk, online: bool, real: bool) -> Desk {
+    relaunch_from(old, online, real, false).await
+}
+
+/// As [`relaunch`]; after a crash (`crashed`), from the last document whose
+/// durability was confirmed rather than the last one saved.
+pub async fn relaunch_from(old: Desk, online: bool, real: bool, crashed: bool) -> Desk {
+    let Desk {
+        core,
+        adapters: before,
+        gateway,
+        server,
+        _ca,
+        launcher,
+        runtime_root,
+        history_root,
+        ..
+    } = old;
+    drop(core);
+    let saved = if crashed {
+        before.store.durable().expect("durable")
+    } else {
+        before.store.saved().expect("saved")
+    };
+    let (mut adapters, mut handles) =
+        fixtures::adapters_with(fixtures::ScriptedStore::with_state(saved));
+    adapters.keychain = before.vault.clone();
+    handles.vault = before.vault.clone();
+    let (engine, pin) = if real {
+        (real_engine(), None)
+    } else {
+        let (engine, pin) = fixture_engine();
+        (engine, Some(pin))
+    };
+    adapters.harness = HarnessAdapters {
+        launcher: launcher.clone(),
+        engine: Some(engine),
+        runtime_root: Some(runtime_root.clone()),
+        history_root: Some(history_root.clone()),
+        fixture: pin.map(|pin| FixtureEngine {
+            pin,
+            bootstrap_timeout: Duration::from_secs(1),
+        }),
+    };
+    let origin = if online {
+        format!("https://localhost:{}", server.port)
+    } else {
+        "https://localhost:9".to_owned()
+    };
+    let core = Core::new(
+        CoreConfig {
+            management: ManagementEndpoints::at_origin(&origin),
+            ..CoreConfig::default()
+        },
+        adapters,
+    );
+    core.start();
+    if online {
+        core.set_transport_policy(TransportPolicy {
+            revision: 2,
+            proxy: ProxyMode::Direct,
+            extra_roots: vec![_ca.pem.as_bytes().to_vec()],
+        })
+        .expect("policy");
+    }
+    let handle = core.operator();
+    let session = handle.register_delivery_session().expect("session").nonce;
+    Desk {
+        core,
+        handle,
+        session,
+        sequence: 0,
+        adapters: handles,
+        gateway,
+        server,
+        _ca,
+        launcher,
+        runtime_root,
+        history_root,
+    }
+}
+
 pub fn rand_bytes() -> [u8; 8] {
     let mut b = [0u8; 8];
     getrandom::fill(&mut b).expect("fixture");

@@ -68,6 +68,13 @@ LAPSED = "an_approval_for_a_lapsed_sign_in_is_declined_natively"
 SAVED = "a_saved_conversation_continues_only_with_its_mcp_scope"
 FE_LIMIT = "says why a server cannot be used and keeps at most eight on"
 SNAP = "refuses MCP views Rust never issues"
+# P06 (D034 push to 9): C22 review F1-F4 and G1.
+GRANTS = "crates/desktop-core/src/authority/harness_identity.rs"
+EXPIRY = "an_approval_past_its_tokens_expiry_is_declined_and_inference_goes_on"
+UNREADABLE = "a_catalog_that_cannot_be_read_blocks_remote_use_until_read_again"
+SIGNED_OUT = "signing_out_during_a_sign_in_again_never_signs_the_server_back_in"
+SETTLED = "a_written_token_survives_cleanup_until_it_is_settled"
+CUT = "a_call_cut_short_is_recorded_as_interrupted_and_never_replayed"
 
 PROBES = [
     ("another workspace's server is listed",
@@ -83,8 +90,8 @@ PROBES = [
     ("an elicitation for another server is asked",
      [(SESSION, "                m.id == item && Some(m.server.as_str()) == server && !m.asked && !m.done", "                m.id == item && !m.asked && !m.done")], UNIT_T, U_ASK),
     ("a signed-out server's call is asked",
-     [(SESSION, "        let Some(at) = at.filter(|&i| held && signed_in(&self.mcp_items[i].server)) else {",
-       "        let Some(at) = at.filter(|&i| held || signed_in(&self.mcp_items[i].server)) else {")], UNIT_T, U_ASK),
+     [(SESSION, "            held && self.mcp_items[i].reviewable && signed_in(&self.mcp_items[i].server)",
+       "            held && self.mcp_items[i].reviewable || signed_in(&self.mcp_items[i].server)")], UNIT_T, U_ASK),
     ("an MCP approval is answered as a command",
      [(SESSION, "                        json!({\"action\": decision})", "                        json!({\"decision\": decision})")], UNIT_T, U_ASK),
     ("the sign-in leaves out its resource",
@@ -92,11 +99,11 @@ PROBES = [
     ("an access token of any length is accepted",
      [(AUTH, "            .filter(|t| valid_token(t))\n", "")], UNIT_T, U_TOKENS),
     ("a new revision keeps the conversation",
-     [(HMCP, "                        .any(|c| c.id == s.server_id && c.revision == s.revision && c.url == s.url)",
-       "                        .any(|c| c.id == s.server_id && c.url == s.url)")], WS_T, RETIRE),
+     [(HMCP, "                .any(|c| c.id == s.server_id && c.revision == s.revision && c.url == s.url)",
+       "                .any(|c| c.id == s.server_id && c.url == s.url)")], WS_T, RETIRE),
     ("signing in again keeps the conversation",
-     [(HMCP, "            stored.is_some_and(|m| m.enabled && m.grant.as_ref().map(|g| &g.id) == s.grant.as_ref())",
-       "            stored.is_some_and(|m| m.enabled)")], WS_T, RETIRE),
+     [(HMCP, "                .is_some_and(|m| m.enabled && m.grant.as_ref().map(|g| &g.id) == s.grant.as_ref())",
+       "                .is_some_and(|m| m.enabled)")], WS_T, RETIRE),
     ("a scope starts without its catalog",
      [(HMCP, "        let scope = self.mcp_scope_now(tenant, workspace).ok_or(Refusal::Busy)?;",
        "        let scope = self.mcp_scope_now(tenant, workspace).unwrap_or_default();")], WS_T, CATALOG),
@@ -118,6 +125,25 @@ PROBES = [
      [(CLIENT, "        servers.filter((s) => (s as { enabled: boolean }).enabled).length <= MAX_MCP_SERVERS", "        true")], FE_SNAPSHOT, SNAP),
     ("an MCP approval without a server passes the contract",
      [(CLIENT, "        (value.kind === 'mcpTool') === (value.server !== null && value.tool !== null) &&\n", "")], FE_SNAPSHOT, SNAP),
+    # P06 follow-ups (docs/planning/reviews/C22/follow-ups.md).
+    ("a token past its expiry runs a call",
+     [(HMCP, "                .is_some_and(|l| l.usable_now())", "                .is_some_and(|l| l.expired().is_none())")], WS_T, EXPIRY),
+    ("a failed catalog read still authorizes",
+     [(HMCP, "                &c.tenant == tenant && c.workspace == workspace && !c.loading && c.failure.is_none()",
+       "                &c.tenant == tenant && c.workspace == workspace")], WS_T, UNREADABLE),
+    ("an unchecked scope sends",
+     [(DOMAIN, "                    != super::harness_mcp::ScopeCheck::Current", "                    == super::harness_mcp::ScopeCheck::Changed")], WS_T, UNREADABLE),
+    ("signing out leaves a sign-in under way",
+     [(HMCP, "            if flow.tenant == tenant && flow.workspace == workspace.id && flow.server_id == server {",
+       "            if flow.tenant == tenant && flow.workspace == workspace.id && flow.server_id == \"\" {")], WS_T, SIGNED_OUT),
+    ("a write leaves flight before it is settled",
+     [(GRANTS, "    let hold = lock(inner).map(|s| Arc::clone(&s.settle_hold));",
+       "    if let Ok(mut s) = lock(inner) {\n        s.writes_in_flight.retain(|r| r != record);\n    }\n    let hold = lock(inner).map(|s| Arc::clone(&s.settle_hold));")], WS_T, SETTLED),
+    ("an MCP call too large to show whole is asked",
+     [(SESSION, "                let reviewable = whole.len() <= MAX_APPROVAL_COMMAND;", "                let reviewable = true;")], UNIT_T, U_ASK),
+    ("a turn cut short is not saved",
+     [(SESSION, "    if cut && let (Some(sink), Some(export)) = (sink, kept) {", "    if false && let (Some(sink), Some(export)) = (sink, kept) {")], WS_T, CUT),
+
 ]
 
 

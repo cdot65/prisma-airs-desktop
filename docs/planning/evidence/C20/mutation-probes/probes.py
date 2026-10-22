@@ -75,6 +75,15 @@ FE_GIVEN = "gives a message back when its renewal fails and shows the conversati
 FE_LIST = "lists, opens, continues, exports and deletes saved conversations"
 FE_WHY = "says why a saved conversation cannot be continued, names unreadable ones and a full workspace"
 SNAP = "rejects sign-ins, saved conversations and exports Rust never issues"
+# P06 (D034 push to 9): C20 review F1-F5 and its evidence gaps.
+NEVER_OLDER = "a_renewal_never_restores_an_export_older_than_the_conversation"
+NAMED = "refused_or_unanswered_exports_and_refused_restores_are_named"
+OWNED = "sign_in_writes_are_owned_until_they_settle_and_need_a_confirmed_ledger"
+OVERWRITE = "a_renewal_and_a_sign_in_again_never_overwrite_each_other"
+RACING = "history_saves_racing_tenant_removal_or_reset_never_outlive_them"
+OFFLINE = "offline_history_is_read_and_exported_and_nothing_is_replayed_on_reconnect"
+FE_OFFLINE = "reads and exports what is saved on this Mac when no workspace can be chosen (T23)"
+DURABLE = "a_history_key_is_made_only_once_its_scope_is_durably_noted"
 
 PROBES = [
     ("discovery may name another issuer",
@@ -149,14 +158,15 @@ PROBES = [
     ("another binding's conversation is continuable",
      [(HDOMAIN, "        if !same {\n            return Some(NotContinuable::OtherCredential);\n        }\n", "        let _ = same;\n")], HI_T, CONTINUES),
     ("a locked Keychain is not reported",
-     [(SESSION, "            Err(f) => p.save_failure = Some(f),", "            Err(_) => {}")], HI_T, NO_KEY),
+     [(SESSION, "            }\n            Err(f) => p.save_failure = Some(f),", "            }\n            Err(_) => {}")], HI_T, NO_KEY),
     ("a removed tenant's history stays on disk",
-     [(AUTHORITY, "            if let Some(dir) = history_dir {\n                effects.push(Effect::ForgetHarnessHistory(dir));\n            }",
+     [(AUTHORITY, "            if let Some(dir) = history_dir {\n                effects.push(Effect::ForgetHarnessHistory(tenant.clone(), dir));\n            }",
        "            let _ = history_dir;")], HI_T, TENANT),
     ("a message given back is dropped",
      [(VIEW, "            setPrompt((current) => (current === '' ? unsent : current))\n", "")], FE_H, FE_GIVEN),
     ("Continue is offered for a conversation that cannot continue",
-     [(PANEL, "                        {opened.notContinuable === null ? (", "                        {opened.notContinuable !== undefined ? (")], FE_H, FE_WHY),
+     [(PANEL, "                        {opened.notContinuable === null && workspace !== null ? (",
+       "                        {opened.notContinuable !== undefined && workspace !== null ? (")], FE_H, FE_WHY),
     ("Delete does not ask first",
      [(PANEL, "                                onClick={() => setConfirming(opened.id)}",
        "                                onClick={() => void send({ kind: 'deleteHarnessHistory', context, workspace, id: opened.id })}")], FE_H, FE_LIST),
@@ -164,6 +174,44 @@ PROBES = [
      [(CLIENT, "        value.issuer.startsWith('https://') &&\n", "")], FE_SNAPSHOT, SNAP),
     ("more saved conversations than the bound pass the contract",
      [(CLIENT, "        conversations.length + unreadable.length <= MAX_SAVED_CONVERSATIONS &&\n", "")], FE_SNAPSHOT, SNAP),
+    # P06 follow-ups (docs/planning/reviews/C20/follow-ups.md).
+    ("an older export is restored after a refused one",
+     [(SESSION, "        // (C20 review F1).\n        self.latest = None;\n", "        // (C20 review F1).\n")], HI_T, NEVER_OLDER),
+    ("a refused export is not named",
+     [(SESSION, "                    self.set(|p| p.save_failure = Some(HistoryFailure::Unavailable));\n", "")], HI_T, NAMED),
+    ("a refused restore is not named as one",
+     [(SESSION, "                        HarnessFailure::Refused => HarnessFailure::RestoreFailed,", "                        HarnessFailure::Refused => HarnessFailure::Refused,")], HI_T, NAMED),
+    ("a sign-in write needs no confirmed ledger",
+     [(GRANTS, "    if state.save_with(&before).is_err()\n        || (state.durability_unconfirmed && !state.confirm_durable())\n    {",
+       "    if state.save_with(&before).is_err() {")], HI_T, OWNED),
+    ("a Keychain write in flight is not owned",
+     [(GRANTS, "    state.writes_in_flight.push(record.clone());\n    true\n}", "    true\n}")], HI_T, OWNED),
+    ("a sign-in again does not wait for a renewal",
+     [(GRANTS, "        Some(live) => Some(live.auth.lock().await),\n        None => None,\n    };", "        Some(_) => None,\n        None => None,\n    };")], HI_T, OVERWRITE),
+    ("a history save is not fenced",
+     [(HDOMAIN, "        self.history_writers.push(tenant.clone());\n        self.writes_in_flight.push(scope.key_record.clone());\n        true", "        true")], HI_T, RACING),
+    ("reset leaves the history folder",
+     [(AUTHORITY, "                        if let Some(root) = &worker.adapters.harness.history_root {",
+       "                        if let Some(root) = None::<&std::path::PathBuf> {")], HI_T, RACING),
+    ("a removed tenant's stray history survives a launch",
+     [(AUTHORITY, "            state.sweep_harness_history();\n", "            let _ = &state;\n")], HI_T, RACING),
+    ("saved history cannot be read offline",
+     [(HDOMAIN, "                if self.chosen_scope(context).is_some() {\n                    return Err(Refusal::StaleContext);\n                }",
+       "                if self.chosen_scope(context).is_none() {\n                    return Err(Refusal::StaleContext);\n                }")], HI_T, OFFLINE),
+    ("an offline record is continuable",
+     [(HDOMAIN, "        if h.local {\n            return Some(NotContinuable::WorkspaceUnavailable);\n        }\n", "")], HI_T, OFFLINE),
+    ("offline history is not shown",
+     [(VIEW, "            {engine.available && context ? (\n                <HistoryPanel", "            {engine.available && context && selected ? (\n                <HistoryPanel")], FE_H, FE_OFFLINE),
+    ("an online list is shown as this Mac's",
+     [(PANEL, "    if (none || (selected === null && history !== null && !history.local)) return null", "    if (none) return null")], FE_H, FE_OFFLINE),
+    ("an unreadable record is deleted without asking",
+     [(PANEL, "                                <Button type='button' tier='tertiary' size='sm' disabled={busy} onClick={() => setConfirming(id)}>",
+       "                                <Button type='button' tier='tertiary' size='sm' disabled={busy} onClick={() => void send({ kind: 'deleteHarnessHistory', context, workspace, id })}>")], FE_H, FE_WHY),
+    ("a history view without local passes the contract",
+     [(CLIENT, "        typeof value.local === 'boolean' &&\n", "")], FE_SNAPSHOT, SNAP),
+    # Attempt-02 (C20-R2-F1).
+    ("a history key is made under an unconfirmed note",
+     [(HDOMAIN, "            || (self.durability_unconfirmed && !self.confirm_durable())\n", "")], HI_T, DURABLE),
 ]
 
 

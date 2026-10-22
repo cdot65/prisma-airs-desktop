@@ -18,13 +18,20 @@ mod desk;
 
 mod idp;
 
+#[allow(dead_code)]
+#[path = "../workspace_mcp/fixture.rs"]
+mod mcp_fixture;
+
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use desktop_core::fixtures::SaveScript;
+use desktop_core::fixtures::sidecar::ProcessLauncher;
+use desktop_core::fixtures::{self, SaveScript, VaultCall};
+use desktop_core::harness::sidecar::HarnessAdapters;
 use desktop_core::vault::RecordId;
+use desktop_core::{Core, CoreConfig};
 use serde_json::{Value, json};
 
 use crate::desk::*;
@@ -91,9 +98,15 @@ fn sign_in_view(desk: &Desk) -> Value {
 }
 
 async fn configure(desk: &mut Desk, reference: &str, idp: &Shared) {
+    configure_on(desk, reference, idp, None).await;
+}
+
+/// Company sign-in for the Gateway at `mode` (a stand-in mode, or the
+/// synthetic Gateway when none).
+async fn configure_on(desk: &mut Desk, reference: &str, idp: &Shared, mode: Option<&str>) {
     let context = desk.context();
     let issuer = idp.lock().expect("idp").issuer.clone();
-    let endpoint = desk.endpoint(None);
+    let endpoint = desk.endpoint(mode);
     desk.send(
         json!({"kind": "configureHarnessSignIn", "context": context, "workspace": reference,
         "endpoint": endpoint, "issuer": issuer, "clientId": CLIENT, "audience": AUDIENCE}),
@@ -105,6 +118,22 @@ async fn configure(desk: &mut Desk, reference: &str, idp: &Shared) {
 /// Starts a sign-in and plays the browser; returns the sign-in view once it
 /// settles (signed in, or failed).
 async fn sign_in(desk: &mut Desk, idp: &Shared) -> Value {
+    browse(desk, idp).await;
+    assert!(
+        settle_for(15, || {
+            let v = sign_in_view(desk);
+            v["step"].is_null() && (!v["account"].is_null() || !v["failure"].is_null())
+        })
+        .await,
+        "{}",
+        sign_in_view(desk)
+    );
+    sign_in_view(desk)
+}
+
+/// Starts a sign-in and plays the browser, without waiting for it to
+/// complete.
+async fn browse(desk: &mut Desk, idp: &Shared) {
     let opened = desk.adapters.opener.opened().len();
     let context = desk.context();
     desk.send(json!({"kind": "signInHarness", "context": context}))
@@ -134,22 +163,66 @@ async fn sign_in(desk: &mut Desk, idp: &Shared) -> Value {
         );
         assert_eq!(callback(&back), 200);
     }
+}
+
+/// Releases the scripted Keychain's held writes when dropped, so a failed
+/// assertion never leaves writes blocked (the runtime waits for them).
+struct Released(Arc<desktop_core::fixtures::ScriptedVault>);
+
+impl Drop for Released {
+    fn drop(&mut self) {
+        self.0.release();
+    }
+}
+
+/// The refresh-token items in the Keychain.
+fn refresh_items(desk: &Desk) -> Vec<RecordId> {
+    let vault = &desk.adapters.vault;
+    vault
+        .records()
+        .into_iter()
+        .filter(|r| {
+            vault
+                .secret(r)
+                .is_some_and(|s| s.starts_with(b"{\"refresh_token\""))
+        })
+        .collect()
+}
+
+/// The stored grant (ID and refresh-token record), if signed in.
+fn stored_grant(desk: &Desk) -> Option<(String, RecordId)> {
+    let doc = desk.adapters.store.saved()?;
+    let g = doc.harness_sign_ins.first()?.grant.clone()?;
+    Some((g.id, g.record))
+}
+
+/// Exactly one refresh-token item remains, the stored grant's, with the
+/// grant `id`, and nothing is left in the cleanup ledger.
+async fn owned_once(desk: &Desk, id: &str) {
     assert!(
-        settle_for(15, || {
-            let v = sign_in_view(desk);
-            v["step"].is_null() && (!v["account"].is_null() || !v["failure"].is_null())
+        settle(|| {
+            let items = refresh_items(desk);
+            let doc = desk.adapters.store.saved().expect("doc");
+            items.len() == 1
+                && stored_grant(desk).is_some_and(|(g, r)| g == id && r == items[0])
+                && doc.pending_cleanup.is_empty()
         })
         .await,
-        "{}",
-        sign_in_view(desk)
+        "{:?} {:?} {:?}",
+        refresh_items(desk),
+        stored_grant(desk),
+        desk.adapters.store.saved().map(|d| d.pending_cleanup)
     );
-    sign_in_view(desk)
 }
 
 /// A ready conversation with company sign-in in WS_A.
 async fn signed_in_conversation(desk: &mut Desk, idp: &Shared) -> String {
+    signed_in_conversation_on(desk, idp, None).await
+}
+
+async fn signed_in_conversation_on(desk: &mut Desk, idp: &Shared, mode: Option<&str>) -> String {
     let reference = desk.choose(WS_A).await;
-    configure(desk, &reference, idp).await;
+    configure_on(desk, &reference, idp, mode).await;
     let view = sign_in(desk, idp).await;
     assert_eq!(view["account"], format!("{SUBJECT}@example.com"), "{view}");
     let id = desk.start(&reference).await.expect("started");
@@ -524,6 +597,594 @@ async fn a_refused_renewal_gives_the_message_back_and_a_new_sign_in_continues() 
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_renewal_never_restores_an_export_older_than_the_conversation() {
+    // The stand-in exports only the first turn (C20 review F1).
+    let (engine, pin) = fixture_engine();
+    let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+    idp.lock().expect("idp").issue.lifetime = 12;
+    let id = signed_in_conversation_on(&mut desk, &idp, Some("history-refuse-later")).await;
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    desk.say(&id, SECOND).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(
+        settle(|| desk.conversation()["saveFailure"] == "unavailable").await,
+        "{}",
+        desk.conversation()
+    );
+    let pid = desk.last_pid().expect("pid");
+    let launches = desk.launcher.launches().len();
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    // The renewal cannot restore the second turn: the conversation fails
+    // as not restorable, and no engine is started with the first turn's
+    // export in its place, so the third message is never sent.
+    desk.say(&id, "A third message.").await.expect("admitted");
+    assert!(
+        settle_for(30, || desk.conversation()["phase"] == "failed").await,
+        "{}",
+        desk.conversation()
+    );
+    let c = desk.conversation();
+    assert_eq!(c["failure"], "restoreFailed", "{c}");
+    assert_eq!(c["entries"].as_array().map(Vec::len), Some(4), "{c}");
+    assert_eq!(desk.launcher.launches().len(), launches);
+    assert!(gone(pid).await);
+    assert_eq!(idp.lock().expect("idp").refreshes, 1);
+    assert!(settle(|| desk.run_dirs().is_empty()).await);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn refused_or_unanswered_exports_and_refused_restores_are_named() {
+    let (engine, pin) = fixture_engine();
+    let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+    // A refused export: named, nothing written, the conversation goes on.
+    let id = desk.ready(Some("history-refuse")).await;
+    let _ = list(&mut desk).await;
+    for prompt in [FIRST, SECOND] {
+        desk.say(&id, prompt).await.expect("sent");
+        assert_eq!(desk.answered().await["lastTurn"], "completed");
+        assert!(
+            settle(|| desk.conversation()["saveFailure"] == "unavailable").await,
+            "{}",
+            desk.conversation()
+        );
+    }
+    assert!(desk.conversation()["savedAt"].is_null());
+    assert!(history_files(&desk.history_root).is_empty());
+    desk.end(&id).await;
+    desk.send(json!({"kind": "clearHarness", "conversation": id}))
+        .await
+        .expect("cleared");
+    // An export never answered: the conversation fails once its bound
+    // passes, and the engine is reaped.
+    let reference = desk.choose(WS_A).await;
+    desk.store_key(&reference, KEY, Some("history-silent"))
+        .await;
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    desk.say(&id, FIRST).await.expect("sent");
+    let pid = desk.last_pid().expect("pid");
+    assert!(
+        settle_for(40, || desk.conversation()["phase"] == "failed").await,
+        "{}",
+        desk.conversation()
+    );
+    assert_eq!(desk.conversation()["failure"], "timeout");
+    assert!(gone(pid).await);
+    assert!(history_files(&desk.history_root).is_empty());
+    desk.send(json!({"kind": "clearHarness", "conversation": id}))
+        .await
+        .expect("cleared");
+    // A restore the engine refuses: the saved conversation is named as not
+    // restored, never continued as a new thread.
+    desk.store_key(&reference, KEY, Some("restore-refuse"))
+        .await;
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    desk.end(&id).await;
+    desk.send(json!({"kind": "clearHarness", "conversation": id}))
+        .await
+        .expect("cleared");
+    let _ = list(&mut desk).await;
+    open(&mut desk, &history).await;
+    let context = desk.context();
+    let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+    desk.send(
+        json!({"kind": "resumeHarness", "context": context, "workspace": workspace, "id": history}),
+    )
+    .await
+    .expect("resumed");
+    assert!(
+        settle_for(30, || desk.conversation()["phase"] == "failed").await,
+        "{}",
+        desk.conversation()
+    );
+    let c = desk.conversation();
+    assert_eq!(c["failure"], "restoreFailed", "{c}");
+    assert_eq!(c["entries"].as_array().map(Vec::len), Some(2), "{c}");
+    assert!(settle(|| desk.run_dirs().is_empty()).await);
+    // The record itself is kept as it was.
+    assert_eq!(history_files(&desk.history_root).len(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn sign_in_writes_are_owned_until_they_settle_and_need_a_confirmed_ledger() {
+    // C20 review F2.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+    let reference = desk.choose(WS_A).await;
+    configure_on(&mut desk, &reference, &idp, Some("normal")).await;
+    // A sign-in whose ledger entry cannot be confirmed writes nothing.
+    desk.adapters.store.unconfirmed_saves(true);
+    let puts = |desk: &Desk| {
+        desk.adapters
+            .vault
+            .calls()
+            .iter()
+            .filter(|c| matches!(c, VaultCall::Put(_)))
+            .count()
+    };
+    let before = puts(&desk);
+    let view = sign_in(&mut desk, &idp).await;
+    assert_eq!(view["failure"], "storeFailed", "{view}");
+    assert_eq!(puts(&desk), before);
+    desk.adapters.store.unconfirmed_saves(false);
+    assert!(settle(|| refresh_items(&desk).is_empty()).await);
+    // Cancelled while its write is held: cleanup leaves the item alone
+    // until the write settles, then removes it; nothing is signed in.
+    desk.adapters.vault.hold_writes();
+    let _released = Released(Arc::clone(&desk.adapters.vault));
+    browse(&mut desk, &idp).await;
+    assert!(settle(|| desk.adapters.vault.waiting() == 1).await);
+    let context = desk.context();
+    let _ = desk
+        .send(json!({"kind": "cancelHarnessSignIn", "context": context}))
+        .await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    desk.adapters.vault.release();
+    assert!(
+        settle(|| {
+            let doc = desk.adapters.store.saved().expect("doc");
+            refresh_items(&desk).is_empty() && doc.pending_cleanup.is_empty()
+        })
+        .await,
+        "{:?}",
+        refresh_items(&desk)
+    );
+    assert!(stored_grant(&desk).is_none());
+    // Signed in; a renewal's rotated write held while signing out: the
+    // rotated item is never attached and is removed once it settles.
+    idp.lock().expect("idp").issue.lifetime = 12;
+    let view = sign_in(&mut desk, &idp).await;
+    assert!(view["failure"].is_null(), "{view}");
+    let (grant, _) = stored_grant(&desk).expect("grant");
+    owned_once(&desk, &grant).await;
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    desk.adapters.vault.hold_writes();
+    let _released = Released(Arc::clone(&desk.adapters.vault));
+    desk.say(&id, SECOND).await.expect("admitted");
+    assert!(
+        settle(|| desk.adapters.vault.waiting() == 1).await,
+        "{} {} {:?}",
+        desk.conversation(),
+        idp.lock().expect("idp").refreshes,
+        desk.adapters.vault.calls()
+    );
+    let context = desk.context();
+    desk.send(json!({"kind": "signOutHarness", "context": context}))
+        .await
+        .expect("signed out");
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    desk.adapters.vault.release();
+    assert!(
+        settle(|| {
+            let doc = desk.adapters.store.saved().expect("doc");
+            refresh_items(&desk).is_empty() && doc.pending_cleanup.is_empty()
+        })
+        .await,
+        "{:?}",
+        refresh_items(&desk)
+    );
+    assert!(stored_grant(&desk).is_none());
+    // Reset while a sign-in's write is held: the reset waits for it, so the
+    // namespace it purges stays empty.
+    desk.adapters.vault.hold_writes();
+    let _released = Released(Arc::clone(&desk.adapters.vault));
+    browse(&mut desk, &idp).await;
+    assert!(settle(|| desk.adapters.vault.waiting() == 1).await);
+    desk.send(json!({"kind": "resetLocalData"}))
+        .await
+        .expect("reset admitted");
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    desk.adapters.vault.release();
+    assert!(
+        settle_for(15, || desk.snap().tenants.is_empty()
+            && desk.snap().storage == desktop_core::StorageHealth::Ready)
+        .await
+    );
+    assert!(
+        settle(|| desk.adapters.vault.records().is_empty()).await,
+        "{:?}",
+        desk.adapters.vault.records()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_renewal_and_a_sign_in_again_never_overwrite_each_other() {
+    // C20 review F3: a held rotation, then a same-account sign-in.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+    idp.lock().expect("idp").issue.lifetime = 12;
+    let id = signed_in_conversation_on(&mut desk, &idp, Some("normal")).await;
+    let (grant, _) = stored_grant(&desk).expect("grant");
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    desk.adapters.vault.hold_writes();
+    let _released = Released(Arc::clone(&desk.adapters.vault));
+    desk.say(&id, SECOND).await.expect("admitted");
+    assert!(
+        settle(|| desk.adapters.vault.waiting() == 1).await,
+        "{} {} {:?}",
+        desk.conversation(),
+        idp.lock().expect("idp").refreshes,
+        desk.adapters.vault.calls()
+    );
+    browse(&mut desk, &idp).await;
+    // The sign-in waits for the renewal: nothing more is written.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert_eq!(desk.adapters.vault.waiting(), 1);
+    desk.adapters.vault.release();
+    let c = answered_with(&mut desk, 4).await;
+    assert_eq!(c["lastTurn"], "completed", "{c}");
+    assert!(
+        settle_for(15, || {
+            let v = sign_in_view(&desk);
+            v["step"].is_null() && !v["account"].is_null()
+        })
+        .await,
+        "{}",
+        sign_in_view(&desk)
+    );
+    assert!(sign_in_view(&desk)["failure"].is_null());
+    owned_once(&desk, &grant).await;
+    assert_eq!(desk.conversation()["id"], id);
+    desk.end(&id).await;
+
+    // The other order: a sign-in again with its write held, then a renewal.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+    idp.lock().expect("idp").issue.lifetime = 12;
+    let id = signed_in_conversation_on(&mut desk, &idp, Some("normal")).await;
+    let (grant, _) = stored_grant(&desk).expect("grant");
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    desk.adapters.vault.hold_writes();
+    let _released = Released(Arc::clone(&desk.adapters.vault));
+    browse(&mut desk, &idp).await;
+    assert!(settle(|| desk.adapters.vault.waiting() == 1).await);
+    desk.say(&id, SECOND).await.expect("admitted");
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    // The renewal waits for the sign-in and then uses its token: no
+    // refresh with the superseded one.
+    assert_eq!(idp.lock().expect("idp").refreshes, 0);
+    desk.adapters.vault.release();
+    let c = answered_with(&mut desk, 4).await;
+    assert_eq!(c["lastTurn"], "completed", "{c}");
+    assert_eq!(idp.lock().expect("idp").refreshes, 0);
+    owned_once(&desk, &grant).await;
+    desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn history_saves_racing_tenant_removal_or_reset_never_outlive_them() {
+    // C20 review F4: a save held after admission, then the tenant removed.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+    let id = desk.ready(None).await;
+    let held = desk.core.hold_history_writes().await;
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| desk.core.history_writes_under_way() == 1).await);
+    let tenant = desk.json()["tenants"][0]["id"].clone();
+    desk.send(json!({"kind": "deleteTenant", "tenant": tenant}))
+        .await
+        .expect("deleted");
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    drop(held);
+    assert!(settle(|| desk.core.history_writes_under_way() == 0).await);
+    assert!(
+        settle(|| files_under(&desk.history_root).is_empty()
+            && desk.adapters.vault.records().is_empty())
+        .await,
+        "{:?} {:?}",
+        files_under(&desk.history_root),
+        desk.adapters.vault.records()
+    );
+    let doc = desk.adapters.store.saved().expect("doc");
+    assert!(doc.pending_cleanup.is_empty() && doc.harness_history.is_empty());
+    // A folder a removal could not finish is removed at the next launch.
+    let stray = desk.history_root.join("0123456789abcdef0123456789abcdef");
+    std::fs::create_dir_all(stray.join("scope")).expect("stray");
+    std::fs::write(stray.join("scope").join("x.sealed"), b"left").expect("stray");
+    let (mut adapters, _handles) =
+        fixtures::adapters_with(fixtures::ScriptedStore::with_state(doc));
+    adapters.keychain = desk.adapters.vault.clone();
+    adapters.harness = HarnessAdapters {
+        launcher: ProcessLauncher::new(),
+        engine: None,
+        runtime_root: Some(desk.runtime_root.clone()),
+        history_root: Some(desk.history_root.clone()),
+        fixture: None,
+    };
+    let relaunched = Core::new(CoreConfig::default(), adapters);
+    assert!(!stray.exists());
+    drop(relaunched);
+
+    // Reset with a save held after admission.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+    let id = desk.ready(None).await;
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let held = desk.core.hold_history_writes().await;
+    desk.say(&id, SECOND).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| desk.core.history_writes_under_way() == 1).await);
+    desk.send(json!({"kind": "resetLocalData"}))
+        .await
+        .expect("reset admitted");
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    drop(held);
+    assert!(
+        settle_for(15, || desk.snap().tenants.is_empty()
+            && desk.snap().storage == desktop_core::StorageHealth::Ready)
+        .await
+    );
+    assert!(desk.snap().reset_failure.is_none());
+    assert!(
+        !desk.history_root.exists(),
+        "{:?}",
+        files_under(&desk.history_root)
+    );
+    assert!(desk.adapters.vault.records().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn offline_history_is_read_and_exported_and_nothing_is_replayed_on_reconnect() {
+    // T23 for C20: launched with AI Gateway unreachable.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+    let id = desk.ready(None).await;
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    desk.end(&id).await;
+    let launches = desk.launcher.launches().len();
+    let mut desk = relaunch(desk, false, false).await;
+    assert!(desk.json()["gateway"]["selected"].is_null());
+    let context = desk.context();
+    desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+        .await
+        .expect("listed from this Mac");
+    assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+    let view = desk.json()["harness"]["history"].clone();
+    assert_eq!(view["local"], true, "{view}");
+    assert_eq!(view["conversations"][0]["id"], history.as_str(), "{view}");
+    assert_eq!(view["conversations"][0]["title"], FIRST);
+    desk.send(
+        json!({"kind": "openHarnessHistory", "context": context, "workspace": null, "id": history}),
+    )
+    .await
+    .expect("open");
+    assert!(settle(|| desk.json()["harness"]["history"]["opened"]["id"] == history.as_str()).await);
+    let opened = desk.json()["harness"]["history"]["opened"].clone();
+    assert_eq!(opened["entries"].as_array().map(Vec::len), Some(2));
+    assert_eq!(opened["notContinuable"], "workspaceUnavailable");
+    desk.adapters.saver.script(SaveScript::Save);
+    desk.send(
+        json!({"kind": "exportHarnessHistory", "context": context, "workspace": null,
+        "id": history, "format": "markdown"}),
+    )
+    .await
+    .expect("export");
+    assert!(settle(|| desk.json()["harness"]["history"]["export"]["state"] == "saved").await);
+    let saved = desk.adapters.saver.saved();
+    assert!(String::from_utf8_lossy(&saved[0].1).contains("periwinkle"));
+    // Nothing started or sent while offline.
+    assert!(desk.json()["harness"]["conversation"].is_null());
+    assert_eq!(desk.launcher.launches().len(), launches);
+
+    // Reconnected: nothing is resumed or replayed; the history is the
+    // chosen workspace's again, and continuable.
+    let mut desk = relaunch(desk, true, false).await;
+    let reference = desk.choose(WS_A).await;
+    let context = desk.context();
+    assert!(
+        desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+            .await
+            .is_err()
+    );
+    open(&mut desk, &history).await;
+    let view = desk.json()["harness"]["history"].clone();
+    assert_eq!(view["local"], false, "{view}");
+    assert!(view["opened"]["notContinuable"].is_null(), "{view}");
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(desk.json()["harness"]["conversation"].is_null());
+    assert_eq!(desk.launcher.launches().len(), launches);
+    let _ = reference;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn signing_out_during_a_sign_in_again_keeps_nothing() {
+    // The sign-in again's write held, then signing out: neither the old
+    // nor the new token is kept, and the new one is revoked.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+    let reference = desk.choose(WS_A).await;
+    configure_on(&mut desk, &reference, &idp, Some("normal")).await;
+    let view = sign_in(&mut desk, &idp).await;
+    assert!(view["failure"].is_null(), "{view}");
+    desk.adapters.vault.hold_writes();
+    let _released = Released(Arc::clone(&desk.adapters.vault));
+    browse(&mut desk, &idp).await;
+    assert!(settle(|| desk.adapters.vault.waiting() == 1).await);
+    let context = desk.context();
+    desk.send(json!({"kind": "signOutHarness", "context": context}))
+        .await
+        .expect("signed out");
+    desk.adapters.vault.release();
+    assert!(
+        settle(|| {
+            let doc = desk.adapters.store.saved().expect("doc");
+            refresh_items(&desk).is_empty() && doc.pending_cleanup.is_empty()
+        })
+        .await,
+        "{:?}",
+        refresh_items(&desk)
+    );
+    assert!(stored_grant(&desk).is_none());
+    assert!(settle(|| idp.lock().expect("idp").revoked.len() >= 2).await);
+    assert!(sign_in_view(&desk)["account"].is_null());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn after_sleep_an_expired_sign_in_is_renewed_before_anything_is_sent() {
+    let (engine, pin) = fixture_engine();
+    let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+    idp.lock().expect("idp").issue.lifetime = 12;
+    let id = signed_in_conversation_on(&mut desk, &idp, Some("normal")).await;
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    // The Mac sleeps: the conversation ends. It wakes after the token
+    // lapsed and the provider refuses to renew it.
+    desk.core.system_will_sleep();
+    assert!(settle(|| desk.conversation()["stop"] == "sleep").await);
+    // Past the token's own expiry (twelve seconds), not just its margin.
+    tokio::time::sleep(Duration::from_secs(13)).await;
+    idp.lock().expect("idp").refuse_refresh = true;
+    let launches = desk.launcher.launches().len();
+    desk.send(json!({"kind": "clearHarness", "conversation": id}))
+        .await
+        .expect("cleared");
+    let _ = list(&mut desk).await;
+    open(&mut desk, &history).await;
+    let context = desk.context();
+    let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+    let resumed = desk
+        .send(json!({"kind": "resumeHarness", "context": context, "workspace": workspace, "id": history}))
+        .await;
+    // Continuing needs a sign-in again: no engine is started and nothing
+    // is sent with the lapsed token.
+    if resumed.is_ok() {
+        assert!(
+            settle_for(20, || desk.conversation()["phase"] == "failed").await,
+            "{}",
+            desk.conversation()
+        );
+    }
+    assert!(
+        settle(|| sign_in_view(&desk)["failure"] == "sessionExpired").await,
+        "{} {}",
+        sign_in_view(&desk),
+        desk.conversation()
+    );
+    assert_eq!(desk.launcher.launches().len(), launches);
+    // Signing in again continues it.
+    idp.lock().expect("idp").refuse_refresh = false;
+    let view = sign_in(&mut desk, &idp).await;
+    assert!(view["failure"].is_null(), "{view}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_history_key_is_made_only_once_its_scope_is_durably_noted() {
+    // C20 review R2: the scope note's durability is confirmed before its
+    // key or a record is written.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+    let id = desk.ready(None).await;
+    let puts = |desk: &Desk| {
+        desk.adapters
+            .vault
+            .calls()
+            .iter()
+            .filter(|c| matches!(c, VaultCall::Put(_)))
+            .count()
+    };
+    let before = puts(&desk);
+    // Unconfirmed, and confirming fails too: nothing is written, and the
+    // failure is named.
+    desk.adapters.store.unconfirmed_saves(true);
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(
+        settle(|| desk.conversation()["saveFailure"] == "unavailable").await,
+        "{}",
+        desk.conversation()
+    );
+    assert_eq!(puts(&desk), before, "no history key was made");
+    assert!(history_files(&desk.history_root).is_empty());
+    // The note is known in memory now; without confirmation it still
+    // writes nothing (the known-scope branch is not a bypass).
+    desk.say(&id, SECOND).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| desk.conversation()["saveFailure"] == "unavailable").await);
+    assert_eq!(puts(&desk), before);
+    assert!(history_files(&desk.history_root).is_empty());
+    // A crash now leaves the last confirmed document: no scope note, and
+    // nothing on disk or in the Keychain to lose.
+    let durable = desk.adapters.store.durable().expect("durable");
+    assert!(durable.harness_history.is_empty());
+    // Confirmable again: the next save confirms the note, then writes.
+    desk.adapters.store.unconfirmed_saves(false);
+    desk.say(&id, "A third message.").await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    assert_eq!(history_files(&desk.history_root).len(), 1);
+    let durable = desk.adapters.store.durable().expect("durable");
+    assert_eq!(durable.harness_history.len(), 1);
+    desk.end(&id).await;
+    // After a crash, the confirmed document still owns the key: removing
+    // the tenant removes the record and the key.
+    let mut desk = relaunch_from(desk, false, false, true).await;
+    let tenant = desk.json()["tenants"][0]["id"].clone();
+    desk.send(json!({"kind": "deleteTenant", "tenant": tenant}))
+        .await
+        .expect("deleted");
+    assert!(
+        settle(|| files_under(&desk.history_root).is_empty()
+            && desk.adapters.vault.records().is_empty())
+        .await,
+        "{:?} {:?}",
+        files_under(&desk.history_root),
+        desk.adapters.vault.records()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn another_account_or_signing_out_ends_the_grant_and_its_conversation() {
     let (mut desk, idp) = desk().await;
     let id = signed_in_conversation(&mut desk, &idp).await;
@@ -840,4 +1501,117 @@ async fn removing_the_tenant_removes_its_history_its_key_and_its_sign_in() {
     assert!(settle(|| desk.adapters.vault.records().len() + 2 <= before.len()).await);
     let doc = desk.adapters.store.saved().expect("doc");
     assert!(doc.harness_sign_ins.is_empty() && doc.harness_history.is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_due_gateway_and_mcp_renewal_restart_once_after_one_confirmation() {
+    // C22 review G2: company sign-in and a workspace MCP server both due,
+    // with changes allowed in the project.
+    let (mut desk, idp) = desk().await;
+    let origin = format!("https://localhost:{}", desk.server.port);
+    let mcp = Arc::new(Mutex::new(mcp_fixture::Mcp::new(&origin)));
+    {
+        let mut m = mcp.lock().expect("mcp");
+        m.publish("srv-tools-0001", "tools", WS_A);
+        m.lifetime = 12;
+    }
+    idp.lock().expect("idp").issue.lifetime = 12;
+    let (i, m) = (Arc::clone(&idp), Arc::clone(&mcp));
+    desk.gateway.lock().expect("gateway").hook = Some(Arc::new(move |seen| {
+        i.lock()
+            .expect("idp")
+            .route(seen)
+            .or_else(|| m.lock().expect("mcp").route(seen))
+    }));
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .canonicalize()
+        .expect("fixture")
+        .join(format!("airs-c22-combined-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("fixture");
+    desk.adapters.folders.reply(Some(dir.clone()));
+    let context = desk.context();
+    desk.send(json!({"kind": "chooseHarnessProject", "context": context}))
+        .await
+        .expect("choose");
+    assert!(settle(|| !desk.json()["harness"]["project"].is_null()).await);
+    let context = desk.context();
+    desk.send(json!({"kind": "setHarnessWrite", "context": context, "write": true}))
+        .await
+        .expect("write");
+    let reference = desk.choose(WS_A).await;
+    configure(&mut desk, &reference, &idp).await;
+    assert_eq!(
+        sign_in(&mut desk, &idp).await["account"],
+        format!("{SUBJECT}@example.com")
+    );
+    // The server on and signed in to.
+    let context = desk.context();
+    desk.send(json!({"kind": "listMcpServers", "context": context, "workspace": reference}))
+        .await
+        .expect("listed");
+    assert!(settle_for(20, || desk.json()["harness"]["mcp"]["state"] == "ready").await);
+    desk.send(
+        json!({"kind": "enableMcpServer", "context": context, "workspace": reference,
+        "server": "srv-tools-0001", "enabled": true}),
+    )
+    .await
+    .expect("enabled");
+    let opened = desk.adapters.opener.opened().len();
+    desk.send(
+        json!({"kind": "signInMcpServer", "context": context, "workspace": reference,
+        "server": "srv-tools-0001"}),
+    )
+    .await
+    .expect("mcp sign-in");
+    assert!(settle(|| desk.adapters.opener.opened().len() > opened).await);
+    let url = url::Url::parse(&desk.adapters.opener.opened()[opened]).expect("url");
+    let back = mcp.lock().expect("mcp").authorize(&url);
+    assert_eq!(callback(&back), 200);
+    assert!(
+        settle_for(
+            20,
+            || desk.json()["harness"]["mcp"]["servers"][0]["signedIn"] == true
+        )
+        .await,
+        "{}",
+        desk.json()["harness"]["mcp"]
+    );
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    let launches = desk.launcher.launches().len();
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    // Both are due: one confirmation, and nothing renews or restarts yet.
+    desk.say(&id, SECOND).await.expect("sent");
+    assert!(settle(|| desk.conversation()["phase"] == "confirmWrite").await);
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert_eq!(idp.lock().expect("idp").refreshes, 0);
+    assert_eq!(mcp.lock().expect("mcp").refreshes, 0);
+    assert_eq!(desk.launcher.launches().len(), launches);
+    // Not now: the message comes back, nothing is sent.
+    desk.send(json!({"kind": "confirmHarnessWrite", "conversation": id, "allow": false}))
+        .await
+        .expect("declined");
+    assert!(settle(|| desk.conversation()["phase"] == "ready").await);
+    assert_eq!(desk.conversation()["unsent"], SECOND);
+    assert_eq!(bodies(&desk).len(), 1);
+    // Allowed: one restart renews both and restores, then one turn.
+    desk.say(&id, SECOND).await.expect("sent");
+    assert!(settle(|| desk.conversation()["phase"] == "confirmWrite").await);
+    desk.send(json!({"kind": "confirmHarnessWrite", "conversation": id, "allow": true}))
+        .await
+        .expect("allowed");
+    let c = answered_with(&mut desk, 4).await;
+    assert_eq!(c["lastTurn"], "completed", "{c}");
+    assert!(c["approvals"].as_array().is_some_and(Vec::is_empty), "{c}");
+    assert_eq!(desk.launcher.launches().len(), launches + 1);
+    assert_eq!(idp.lock().expect("idp").refreshes, 1);
+    assert_eq!(mcp.lock().expect("mcp").refreshes, 1);
+    let bodies = bodies(&desk);
+    assert_eq!(bodies.len(), 2);
+    assert!(bodies[1].contains("periwinkle") && bodies[1].contains(SECOND));
+    assert!(mcp.lock().expect("mcp").calls.is_empty());
+    desk.end(&id).await;
+    std::fs::remove_dir_all(&dir).expect("cleanup");
 }

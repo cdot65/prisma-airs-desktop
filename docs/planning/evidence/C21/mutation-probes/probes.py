@@ -69,6 +69,11 @@ FE_REVIEW = "opens a proposal only in Administration’s review, and dismisses o
 FE_REFUSED = "says why a proposal could not be opened"
 FE_CONFIRM = "asks again before a restarted engine may change the folder"
 SNAP = "refuses tool, approval and proposal views Rust never issues"
+# P06 (D034 push to 9): C21 review F1-F4 and its evidence gap.
+U_LEASE = "a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_late"
+U_BOUND = "a_replaced_entry_keeps_the_transcript_within_its_bound"
+STOPPED = "a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered"
+OFFLINE = "nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_reconnect"
 
 PROBES = [
     ("a repeated tool call runs again",
@@ -132,6 +137,22 @@ PROBES = [
     ("a file-change approval while read-only passes the contract",
      [(CLIENT, "                return kind === 'mcpTool' || (value.project !== null && (value.write || kind === 'command'))",
        "                return kind === 'mcpTool' || value.project !== null || kind === 'command'")], FE_SNAPSHOT, SNAP),
+    # P06 follow-ups (docs/planning/reviews/C21/follow-ups.md).
+    ("a stale lease's tool result is sent",
+     [(SESSION, ".position(|(r, _, l)| *r == request && *l == lease)", ".position(|(r, _, _)| *r == request)")], UNIT_T, U_LEASE),
+    ("a tool call is admitted while its turn is stopped",
+     [(SESSION, "        let call = call.filter(|_| !self.interrupt_wanted);\n", "")], UNIT_T, U_LEASE),
+    ("a stopped turn's tool calls are not cancelled",
+     [(SESSION, "        self.latest = None;\n        self.turn_cancel.cancel();\n", "        self.latest = None;\n")], UNIT_T, U_LEASE),
+    ("JSON inside a string is not scrubbed",
+     [(TOOLS, "    structured(&mut value, 0);\n    scrub(&mut value);", "    scrub(&mut value);")], UNIT_T, U_RESULT),
+    ("a command too long to show whole is asked",
+     [(SESSION, ".is_some_and(|c| !c.is_empty() && c.len() <= MAX_APPROVAL_COMMAND),", ".is_some_and(|c| !c.is_empty()),")], UNIT_T, U_ASK),
+    ("a file change naming no files is asked",
+     [(SESSION, "            ApprovalKind::FileChange => !files.is_empty(),", "            ApprovalKind::FileChange => true,")], UNIT_T, U_ASK),
+    ("a replaced entry bypasses the transcript bound",
+     [(SESSION, "            while transcript_bytes(p) > MAX_TRANSCRIPT_BYTES && p.entries.len() > 1 {", "            while false && p.entries.len() > 1 {")], UNIT_T, U_BOUND),
+
 ]
 
 

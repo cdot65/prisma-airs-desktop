@@ -87,6 +87,7 @@ pub enum Command {
     /// A typed tool's result, for the engine request that asked for it.
     ToolResult {
         request: RequestId,
+        lease: ToolLease,
         success: bool,
         text: String,
     },
@@ -96,6 +97,19 @@ pub enum Command {
 pub struct ToolRequest {
     pub request: RequestId,
     pub call: super::tools::ToolCall,
+    /// The engine run and turn it belongs to: its result counts only for
+    /// them (P06, C21 review F1).
+    pub lease: ToolLease,
+    /// Cancelled when the turn is interrupted or ends, or the engine
+    /// stops: nothing more is admitted for the call after that.
+    pub cancel: CancellationToken,
+}
+
+/// Which engine run and turn a tool call belongs to.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToolLease {
+    pub run: u64,
+    pub turn: String,
 }
 
 /// Hands a tool call to the authority; its result comes back as
@@ -107,6 +121,9 @@ const MAX_PENDING_DECISIONS: usize = 8;
 /// What a command entry shows of a command and of its output.
 const MAX_COMMAND_TEXT: usize = 2 * 1024;
 const MAX_COMMAND_OUTPUT: usize = 8 * 1024;
+/// The longest command an approval shows whole; a longer one is declined,
+/// never shown cut (C21 F3).
+const MAX_APPROVAL_COMMAND: usize = 8 * 1024;
 /// MCP calls tracked in one turn (the engine's own bound).
 const MAX_MCP_ITEMS: usize = 64;
 const DECLINED_MCP: &str = "An MCP request did not name a running tool call of a signed-in server, or asked for other input; it was declined.";
@@ -118,6 +135,8 @@ struct McpItem {
     server: String,
     tool: String,
     arguments: String,
+    /// Its arguments fit the approval whole (else it is never asked).
+    reviewable: bool,
     /// Its approval was asked (an item is asked once).
     asked: bool,
     done: bool,
@@ -449,6 +468,12 @@ async fn launched(
         tools: shared.tools.clone(),
         approvals: Vec::new(),
         tool_calls: Vec::new(),
+        run: {
+            let mut b = [0u8; 8];
+            let _ = getrandom::fill(&mut b);
+            u64::from_le_bytes(b)
+        },
+        turn_cancel: CancellationToken::new(),
         seen: Vec::new(),
         files: Vec::new(),
         mcp_items: Vec::new(),
@@ -462,6 +487,8 @@ async fn launched(
             .await
     };
     shared.commands = std::mem::replace(&mut conversation.commands, mpsc::channel(1).1);
+    // This engine's tool calls end with it.
+    conversation.turn_cancel.cancel();
     let renewal = conversation.renewal.take();
     let latest = conversation.latest.take();
     // What the next engine keeps of this one's credentials.
@@ -481,6 +508,7 @@ async fn launched(
         }
     });
     let cleanup = stop(&mut *child, conversation.writer.take()).await;
+    let sink = conversation.history.clone();
     drop(conversation);
     if cleanup != Cleanup::Failed {
         // The group is gone, so the reader has its end of file; detached if
@@ -498,6 +526,8 @@ async fn launched(
     // A renewed credential continues in a new engine, restoring what this
     // one last exported; a conversation that had turns but nothing to
     // restore cannot continue (it would silently lose its context).
+    // What a stop may need to save with (a renewal restores it instead).
+    let kept = latest.clone();
     let next = match (renewal, ended.is_ok() && cleanup != Cleanup::Failed) {
         (Some((key, mcp, id, prompt)), true) => {
             let had_turns = progress
@@ -520,6 +550,40 @@ async fn launched(
         }
         _ => None,
     };
+    // A turn the stop cut short is saved as it stood, its unfinished
+    // entries interrupted, with the last export (whose context does not
+    // hold that turn): a call that may have run is never left unrecorded,
+    // and continuing restores only what the engine had (P06, C22 review
+    // G1). Before the phase ends, so quitting waits for it.
+    let cut = next.is_none()
+        && progress
+            .lock()
+            .is_ok_and(|p| p.entries.iter().any(|e| e.state == EntryState::Streaming));
+    if cut && let (Some(sink), Some(export)) = (sink, kept) {
+        let mut taken = None;
+        update(&progress, &pulse, |p| {
+            for e in p
+                .entries
+                .iter_mut()
+                .filter(|e| e.state == EntryState::Streaming)
+            {
+                e.state = EntryState::Interrupted;
+            }
+            taken = Some((p.entries.clone(), p.usage));
+        });
+        if let Some((entries, usage)) = taken {
+            let saved = tokio::task::spawn_blocking(move || sink(entries, usage, &export))
+                .await
+                .unwrap_or(Err(HistoryFailure::Unavailable));
+            update(&progress, &pulse, |p| match saved {
+                Ok(at) => {
+                    p.saved_at = Some(at);
+                    p.save_failure = None;
+                }
+                Err(f) => p.save_failure = Some(f),
+            });
+        }
+    }
     update(&progress, &pulse, |p| {
         p.cleanup = Some(cleanup);
         p.pid = None;
@@ -776,7 +840,8 @@ struct Conversation {
     events: mpsc::Receiver<Event>,
     commands: mpsc::Receiver<Command>,
     history: Option<HistorySink>,
-    /// The last export (or the restored one), for a renewal.
+    /// The export of the conversation as it stands (or the restored one),
+    /// for a renewal; none once a turn ends until that turn is exported.
     latest: Option<Replay>,
     /// Restored instead of starting a new thread.
     restore: Option<Replay>,
@@ -811,7 +876,11 @@ struct Conversation {
     /// Elicitations declined without asking (numbers their notices).
     elicitations_declined: u32,
     /// Tool calls being run: the engine's request and the entry.
-    tool_calls: Vec<(RequestId, String)>,
+    tool_calls: Vec<(RequestId, String, ToolLease)>,
+    /// This engine run, as a tool lease names it.
+    run: u64,
+    /// Cancelled when the turn is interrupted or ends (tool calls).
+    turn_cancel: CancellationToken,
     /// Call and item ids seen in this turn (a repeat is a protocol failure).
     seen: Vec<String>,
     /// Files each file-change item of this turn changes.
@@ -1045,11 +1114,19 @@ impl Conversation {
             }
             Command::ToolResult {
                 request,
+                lease,
                 success,
                 text,
             } => {
-                if let Some(at) = self.tool_calls.iter().position(|(r, _)| *r == request) {
-                    let (_, entry) = self.tool_calls.remove(at);
+                // Only the call this run and turn still waits for: a late
+                // result from an earlier run (whose request id may be
+                // reused) or turn is dropped.
+                if let Some(at) = self
+                    .tool_calls
+                    .iter()
+                    .position(|(r, _, l)| *r == request && *l == lease)
+                {
+                    let (_, entry, _) = self.tool_calls.remove(at);
                     let text = redact(&text, &self.secret);
                     self.send(protocol::reply(
                         &request,
@@ -1089,6 +1166,7 @@ impl Conversation {
                     p.turn_handed = true;
                 });
                 self.turn = Some((id, None));
+                self.turn_cancel = CancellationToken::new();
                 self.interrupt_wanted = false;
                 self.answer_bytes = 0;
                 self.truncating = false;
@@ -1120,6 +1198,7 @@ impl Conversation {
             )?;
             // The engine drops the turn's pending approvals and tool calls
             // when it is interrupted; a later answer to one would be stale.
+            self.turn_cancel.cancel();
             self.approvals.clear();
             self.tool_calls.clear();
             self.mcp_items.clear();
@@ -1212,7 +1291,10 @@ impl Conversation {
                 &params["arguments"],
             )
         });
-        let (Some(Some(call)), Some(sink)) = (call, self.tools.clone()) else {
+        // Once the turn is being stopped, nothing more is admitted.
+        let call = call.filter(|_| !self.interrupt_wanted);
+        let turn = self.turn.as_ref().and_then(|(_, t)| t.clone());
+        let (Some(Some(call)), Some(sink), Some(turn)) = (call, self.tools.clone(), turn) else {
             self.seen.push(call_id);
             let text = super::tools::UNAVAILABLE;
             return self.send(protocol::reply(
@@ -1237,8 +1319,17 @@ impl Conversation {
                 },
             );
         });
-        self.tool_calls.push((id.clone(), entry));
-        sink(ToolRequest { request: id, call });
+        let lease = ToolLease {
+            run: self.run,
+            turn,
+        };
+        self.tool_calls.push((id.clone(), entry, lease.clone()));
+        sink(ToolRequest {
+            request: id,
+            call,
+            lease,
+            cancel: self.turn_cancel.clone(),
+        });
         Ok(())
     }
 
@@ -1257,12 +1348,30 @@ impl Conversation {
             .filter(|i| bounded_id(i))
             .ok_or(HarnessFailure::Protocol)?
             .to_owned();
+        // What would be approved must be shown whole (C21 F3): a command up
+        // to its display bound, and a file change only with the files the
+        // engine named for it; anything else is declined, never shown cut.
+        let command = params["command"].as_str().map(|c| redact(c, &self.secret));
+        let files = self
+            .files
+            .iter()
+            .find(|(i, _)| *i == item)
+            .map(|(_, f)| f.clone())
+            .unwrap_or_default();
+        let reviewable = match kind {
+            ApprovalKind::Command => command
+                .as_deref()
+                .is_some_and(|c| !c.is_empty() && c.len() <= MAX_APPROVAL_COMMAND),
+            ApprovalKind::FileChange => !files.is_empty(),
+            ApprovalKind::McpTool => false,
+        };
         let grantable = self.ours(params)
             && self.binding.project.is_some()
             && (kind == ApprovalKind::Command || self.binding.write)
             && params["additionalPermissions"].is_null()
             && params["networkApprovalContext"].is_null()
             && params["grantRoot"].is_null()
+            && reviewable
             && self.approvals.len() < MAX_PENDING_DECISIONS;
         if !grantable {
             return self.send(protocol::reply(&id, json!({"decision":"decline"}))?);
@@ -1287,15 +1396,10 @@ impl Conversation {
         let approval = HarnessApproval {
             id: token.clone(),
             kind,
-            command: text(&params["command"], MAX_COMMAND_TEXT),
+            command,
             cwd: text(&params["cwd"], 1024),
             reason: text(&params["reason"], 1024),
-            files: self
-                .files
-                .iter()
-                .find(|(i, _)| *i == item)
-                .map(|(_, f)| f.clone())
-                .unwrap_or_default(),
+            files,
             server: None,
             tool: None,
             arguments: None,
@@ -1330,7 +1434,9 @@ impl Conversation {
             && params["mode"] == "form"
             && meta["codex_approval_kind"] == "mcp_tool_call"
             && self.approvals.len() < MAX_PENDING_DECISIONS;
-        let Some(at) = at.filter(|&i| held && signed_in(&self.mcp_items[i].server)) else {
+        let Some(at) = at.filter(|&i| {
+            held && self.mcp_items[i].reviewable && signed_in(&self.mcp_items[i].server)
+        }) else {
             self.elicitations_declined += 1;
             let entry = self.assistant_id(&format!("declined-{}", self.elicitations_declined));
             self.set(|p| {
@@ -1456,7 +1562,13 @@ impl Conversation {
             Some("mcpToolCall") => {
                 let server = cut(item["server"].as_str().unwrap_or_default(), 64);
                 let tool = cut(item["tool"].as_str().unwrap_or_default(), 128);
-                let arguments = cut(&item["arguments"].to_string(), MAX_COMMAND_TEXT);
+                let whole = redact(&item["arguments"].to_string(), &self.secret);
+                let reviewable = whole.len() <= MAX_APPROVAL_COMMAND;
+                let arguments = if reviewable {
+                    whole
+                } else {
+                    cut(&whole, MAX_COMMAND_TEXT)
+                };
                 // Only calls of this conversation's servers are this turn's.
                 if !self.binding.mcp.iter().any(|s| s.name == server) {
                     return Ok(());
@@ -1469,6 +1581,7 @@ impl Conversation {
                         server: server.clone(),
                         tool: tool.clone(),
                         arguments: arguments.clone(),
+                        reviewable,
                         asked: false,
                         done,
                     }),
@@ -1503,12 +1616,8 @@ impl Conversation {
                     }
                     s => s,
                 };
-                self.set(|p| match p.entries.iter_mut().find(|e| e.id == id) {
-                    Some(e) => {
-                        e.text = text;
-                        e.state = state;
-                    }
-                    None => push(
+                self.set(|p| {
+                    upsert(
                         p,
                         HarnessEntry {
                             id,
@@ -1516,18 +1625,14 @@ impl Conversation {
                             text,
                             state,
                         },
-                    ),
+                    )
                 });
                 return Ok(());
             }
             _ => return Ok(()),
         };
-        self.set(|p| match p.entries.iter_mut().find(|e| e.id == id) {
-            Some(e) => {
-                e.text = text;
-                e.state = state;
-            }
-            None => push(
+        self.set(|p| {
+            upsert(
                 p,
                 HarnessEntry {
                     id,
@@ -1535,7 +1640,7 @@ impl Conversation {
                     text,
                     state,
                 },
-            ),
+            )
         });
         Ok(())
     }
@@ -1762,6 +1867,12 @@ impl Conversation {
 
     fn end_turn(&mut self, end: TurnEnd) {
         self.turn = None;
+        // The transcript now holds this turn: an earlier export no longer
+        // matches it, so a renewal restores only this turn's own export
+        // and, if it is refused, fails rather than restoring an older one
+        // (C20 review F1).
+        self.latest = None;
+        self.turn_cancel.cancel();
         self.interrupt_wanted = false;
         // The engine forgets a turn's approvals and tool calls with it; so
         // does the desktop (a late decision or result is never sent).
@@ -1830,7 +1941,23 @@ fn push(p: &mut Progress, entry: HarnessEntry) {
     }
 }
 
-/// Text with any copy of the key replaced.
+/// Replaces an entry's text and state (or adds it) under the same bounds
+/// as a new entry: the transcript's oldest entries give way, never the
+/// bound (C21 F4: a command's completion replaces its shorter start).
+fn upsert(p: &mut Progress, entry: HarnessEntry) {
+    match p.entries.iter().position(|e| e.id == entry.id) {
+        Some(at) => {
+            p.entries[at].text = entry.text;
+            p.entries[at].state = entry.state;
+            while transcript_bytes(p) > MAX_TRANSCRIPT_BYTES && p.entries.len() > 1 {
+                let oldest = usize::from(p.entries[0].id == entry.id);
+                p.entries.remove(oldest);
+            }
+        }
+        None => push(p, entry),
+    }
+}
+
 /// A renewal's new credentials (`None`: kept), entry ID and prompt.
 type Renewal = (
     Option<Zeroizing<String>>,
@@ -1854,6 +1981,7 @@ impl Secrets {
     }
 }
 
+/// Text with any copy of the key or a token replaced.
 fn redact(text: &str, secrets: &Secrets) -> String {
     let mut out = text.to_owned();
     for secret in secrets.all() {
@@ -1951,6 +2079,8 @@ mod tests {
             tools: None,
             approvals: Vec::new(),
             tool_calls: Vec::new(),
+            run: 1,
+            turn_cancel: CancellationToken::new(),
             seen: Vec::new(),
             files: Vec::new(),
             mcp_items: Vec::new(),
@@ -2052,11 +2182,79 @@ mod tests {
     }
 
     #[test]
+    fn a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_late() {
+        // C21 review F1: the run and turn lease of host tool calls.
+        let (writer, reader) = std_mpsc::sync_channel(64);
+        let mut c = conversation(writer);
+        c.turn = Some(("u-1".into(), Some("turn-1".into())));
+        let handed = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let seen = Arc::clone(&handed);
+        c.tools = Some(Arc::new(move |r: ToolRequest| {
+            seen.lock().expect("fixture").push(r);
+        }));
+        let call = |call: &str, turn: &str| json!({"threadId":"t","turnId":turn,"callId":call,"namespace":"airs_desktop","tool":"supplyChain","arguments":{}});
+        c.on_tool_call(RequestId::Number(1), &call("call-1", "turn-1"))
+            .expect("runs");
+        let first = handed.lock().expect("fixture").remove(0);
+        assert_eq!(first.lease.turn, "turn-1");
+        assert!(!first.cancel.is_cancelled());
+        // Being stopped: nothing more is admitted, and the turn's end
+        // cancels what is under way.
+        c.interrupt_wanted = true;
+        c.on_tool_call(RequestId::Number(2), &call("call-2", "turn-1"))
+            .expect("answered");
+        assert!(handed.lock().expect("fixture").is_empty());
+        c.end_turn(TurnEnd::Interrupted);
+        assert!(first.cancel.is_cancelled());
+        // Replies to the engine (the turn's export request aside).
+        let replies = |reader: &std_mpsc::Receiver<Outbound>| -> Vec<String> {
+            reader
+                .try_iter()
+                .map(|o| String::from_utf8_lossy(o.0.as_slice()).into_owned())
+                .filter(|r| !r.contains("\"method\""))
+                .collect()
+        };
+        let refused = replies(&reader);
+        assert_eq!(refused.len(), 1, "{refused:?}");
+        assert!(refused[0].contains(super::super::tools::UNAVAILABLE));
+        // Its late result is never sent.
+        let result = |r: &ToolRequest, lease: &ToolLease| Command::ToolResult {
+            request: r.request.clone(),
+            lease: lease.clone(),
+            success: true,
+            text: "late".into(),
+        };
+        c.on_command(result(&first, &first.lease)).expect("dropped");
+        assert!(replies(&reader).is_empty());
+        // The next turn reuses request ids: only its own lease answers.
+        c.turn = Some(("u-2".into(), Some("turn-2".into())));
+        c.on_tool_call(RequestId::Number(1), &call("call-3", "turn-2"))
+            .expect("runs");
+        let next = handed.lock().expect("fixture").remove(0);
+        assert_eq!(next.request, first.request);
+        assert_ne!(next.lease, first.lease);
+        c.on_command(result(&next, &first.lease)).expect("dropped");
+        assert!(replies(&reader).is_empty());
+        // Another run (a restarted engine) is another lease too.
+        let other_run = ToolLease {
+            run: next.lease.run.wrapping_add(1),
+            turn: next.lease.turn.clone(),
+        };
+        c.on_command(result(&next, &other_run)).expect("dropped");
+        assert!(replies(&reader).is_empty());
+        c.on_command(result(&next, &next.lease)).expect("answered");
+        let answered = replies(&reader);
+        assert_eq!(answered.len(), 1, "{answered:?}");
+        assert!(answered[0].contains("late") && answered[0].contains("\"success\":true"));
+    }
+
+    #[test]
     fn approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed() {
         let (writer, reader) = std_mpsc::sync_channel(64);
         let mut c = conversation(writer);
         c.turn = Some(("u-1".into(), Some("turn-1".into())));
-        let ask = |item: &str| json!({"threadId":"t","turnId":"turn-1","itemId":item});
+        let ask =
+            |item: &str| json!({"threadId":"t","turnId":"turn-1","itemId":item,"command":"ls"});
         let declined = |reader: &std_mpsc::Receiver<Outbound>| {
             reader
                 .try_iter()
@@ -2088,11 +2286,41 @@ mod tests {
             .expect("held");
         assert_eq!(c.approvals.len(), 1);
         assert_eq!(declined(&reader), 0);
-        // Changes allowed: a file change is held too.
+        // Changes allowed: a file change naming its files is held too.
         c.binding.write = true;
+        c.on_item(
+            &json!({"id":"i-6","type":"fileChange","status":"inProgress",
+                "changes":[{"path":"/Users/someone/work/a.txt","kind":"add"}]}),
+            false,
+        )
+        .expect("started");
         c.on_approval(RequestId::Number(6), ApprovalKind::FileChange, &ask("i-6"))
             .expect("held");
         assert_eq!(c.approvals.len(), 2);
+        assert_eq!(declined(&reader), 0);
+        // What cannot be shown whole is declined, never shown cut (C21 F3):
+        // a file change whose files the engine did not name, a command past
+        // the display bound, or none at all.
+        c.on_approval(RequestId::Number(7), ApprovalKind::FileChange, &ask("i-7"))
+            .expect("declined");
+        let mut long = ask("i-8");
+        long["command"] = json!(format!(
+            "echo safe; {}rm -rf ~",
+            " ".repeat(MAX_APPROVAL_COMMAND)
+        ));
+        c.on_approval(RequestId::Number(8), ApprovalKind::Command, &long)
+            .expect("declined");
+        let mut none = ask("i-9");
+        none["command"] = Value::Null;
+        c.on_approval(RequestId::Number(9), ApprovalKind::Command, &none)
+            .expect("declined");
+        assert_eq!(declined(&reader), 3);
+        assert_eq!(c.approvals.len(), 2);
+        // A held command is shown whole.
+        let shown = c.progress.lock().expect("progress").approvals[0]
+            .command
+            .clone();
+        assert_eq!(shown.as_deref(), Some("ls"));
     }
 
     #[test]
@@ -2188,6 +2416,17 @@ mod tests {
             "{}",
             replies[0]
         );
+        // A call whose arguments cannot be shown whole is never asked.
+        let mut big = item("call-4", "tools");
+        big["arguments"] = json!({"query": "q".repeat(MAX_APPROVAL_COMMAND)});
+        c.on_item(&big, false).expect("started");
+        c.on_elicitation(RequestId::Number(60), &ask("call-4", "tools"))
+            .expect("declined");
+        assert_eq!(declined(&reader), 1);
+        assert!(
+            c.approvals.is_empty(),
+            "the decided one is gone; none was added"
+        );
         // Startup is published for scope servers only, never the engine's text.
         c.on_mcp_startup(&json!({"name": "tools", "status": "ready", "error": "airs mcp login"}));
         c.on_mcp_startup(&json!({"name": "docs", "status": "failed"}));
@@ -2196,6 +2435,43 @@ mod tests {
         assert_eq!(mcp.len(), 2);
         assert_eq!(mcp[0].status, McpStartup::Ready);
         assert!(!mcp[0].signed_out && mcp[1].signed_out);
+    }
+
+    #[test]
+    fn a_replaced_entry_keeps_the_transcript_within_its_bound() {
+        let mut p = Progress::default();
+        // Near the bound with short command starts.
+        for n in 0..103 {
+            push(
+                &mut p,
+                HarnessEntry {
+                    id: format!("e-{n}"),
+                    role: HarnessRole::Command,
+                    text: "c".repeat(10 * 1024),
+                    state: EntryState::Streaming,
+                },
+            );
+        }
+        let before = p.entries.len();
+        assert!(transcript_bytes(&p) <= MAX_TRANSCRIPT_BYTES);
+        // A completion with output past the bound: older entries give way,
+        // the completed one stays, and the bound holds.
+        upsert(
+            &mut p,
+            HarnessEntry {
+                id: "e-102".into(),
+                role: HarnessRole::Command,
+                text: "o".repeat(64 * 1024),
+                state: EntryState::Complete,
+            },
+        );
+        assert!(transcript_bytes(&p) <= MAX_TRANSCRIPT_BYTES);
+        assert!(p.entries.len() < before);
+        assert_eq!(
+            p.entries.last().map(|e| e.state),
+            Some(EntryState::Complete)
+        );
+        assert_eq!(p.entries.last().map(|e| e.id.as_str()), Some("e-102"));
     }
 
     fn home(roots: &[Vec<u8>]) -> (Home, PathBuf) {

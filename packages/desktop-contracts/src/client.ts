@@ -967,7 +967,14 @@ export const SIGN_IN_FAILURES: readonly string[] = [
 export const HISTORY_FAILURES: readonly string[] = ['locked', 'denied', 'unavailable', 'full', 'tooLarge', 'unreadable', 'missing']
 const CREDENTIAL_SOURCES: readonly string[] = ['workspaceKey', 'companySignIn']
 const SIGN_IN_STEPS: readonly string[] = ['contacting', 'browser', 'completing']
-const NOT_CONTINUABLE: readonly string[] = ['running', 'otherCredential', 'otherProject', 'otherMcp', 'engineUnavailable']
+const NOT_CONTINUABLE: readonly string[] = [
+    'running',
+    'otherCredential',
+    'otherProject',
+    'otherMcp',
+    'engineUnavailable',
+    'workspaceUnavailable',
+]
 /** Saved conversations per workspace and a title's length (C20). */
 const MAX_SAVED_CONVERSATIONS = 16
 const MAX_TITLE_CHARS = 80
@@ -1003,7 +1010,8 @@ const PROPOSAL_STATES: readonly string[] = ['staged', 'inReview', 'closed', 'dis
 /** Pending approvals, staged proposals and an approval's texts (C21). */
 const MAX_APPROVALS = 8
 const MAX_PROPOSALS = 8
-const MAX_COMMAND_CHARS = 2 * 1024
+/** An approval's command or arguments are shown whole, up to 8 KiB (C21 F3). */
+const MAX_APPROVAL_BYTES = 8 * 1024
 const APPROVAL_ID = /^[0-9a-f]{24}$/
 const PROPOSAL_ID = /^P-[1-8]$/
 const CLEANUPS: readonly string[] = ['graceful', 'forced', 'failed']
@@ -1075,7 +1083,8 @@ function isHarnessApproval(value: unknown): boolean {
         typeof value.id === 'string' &&
         APPROVAL_ID.test(value.id) &&
         oneOf(['command', 'fileChange', 'mcpTool'], value.kind) &&
-        optional(bounded(MAX_COMMAND_CHARS), value.command) &&
+        // Shown whole: never cut (C21 F3).
+        optional((v) => typeof v === 'string' && utf8Bytes(v) <= MAX_APPROVAL_BYTES, value.command) &&
         optional(bounded(1024), value.cwd) &&
         optional(bounded(1024), value.reason) &&
         Array.isArray(value.files) &&
@@ -1085,7 +1094,7 @@ function isHarnessApproval(value: unknown): boolean {
         (value.kind === 'fileChange' || value.files.length === 0) &&
         optional((v) => typeof v === 'string' && MCP_NAME.test(v), value.server) &&
         optional(bounded(128), value.tool) &&
-        optional(bounded(MAX_COMMAND_CHARS), value.arguments) &&
+        optional((v) => typeof v === 'string' && utf8Bytes(v) <= MAX_APPROVAL_BYTES, value.arguments) &&
         // An MCP tool approval names its server and tool, and only it does.
         (value.kind === 'mcpTool') === (value.server !== null && value.tool !== null) &&
         (value.kind === 'mcpTool' || value.arguments === null) &&
@@ -1230,6 +1239,7 @@ function isHarnessHistoryView(value: unknown): boolean {
     const conversations = value.conversations
     const unreadable = value.unreadable
     return (
+        typeof value.local === 'boolean' &&
         oneOf(['loading', 'ready', 'failed'], value.state) &&
         Array.isArray(conversations) &&
         Array.isArray(unreadable) &&

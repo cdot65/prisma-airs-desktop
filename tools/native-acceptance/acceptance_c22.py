@@ -227,7 +227,12 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before, project):
     calls_after_decline = len(rows(mgmt, since, mcpMethod="tools/call"))
     c19.say(app, "Look it up again.")
     app.wait_for(lambda t: fx.App.node(t, "AXButton", "Approve once") is not None, 40)
-    c9.press_exact(app, "Approve once")
+    # Reached and activated by keyboard alone: back from Decline with
+    # Shift-Tab, then Space.
+    app.ax("focus", "AXButton", "Decline")
+    app.keycode(48, "shift down")
+    reached = (app.focused(app.tree()) or {}).get("label")
+    app.keycode(49)
     tree, approved_done = app.wait_for(lambda t: app.has_text(t, RESULT) and fx.App.node(t, "AXButton", "Approve once") is None, 40)
     calls = rows(mgmt, since, mcpMethod="tools/call")
     inference = rows(mgmt, since, path="/rt/v1/responses")
@@ -236,7 +241,8 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before, project):
                        "calls_after_decline": calls_after_decline, "approved_done": approved_done,
                        "calls": len(calls), "issued_bearer": all(r.get("mcpBearer") == "issued" for r in calls),
                        "no_bearer_in_inference": all(not r.get("authorizationHeader") for r in inference),
-                       "approval_tabs": [(o or {}).get("label") for o in approval_tabs]}
+                       "approval_tabs": [(o or {}).get("label") for o in approval_tabs],
+                       "approve_reached_by_keyboard": reached}
     obs["tree_approved"] = save_tree("approved", tree)
     pid = c19.leader()
     app.ax("press", "AXButton", "End conversation")
@@ -401,7 +407,8 @@ def evaluate(prepared, o):
     add("C22-N05", all(v["retired"] and v["reaped"] for v in t.values()) and t["sign_out"]["item_deleted"]
         and t["sign_out"]["revoked"] and t["revision"]["stale"], f"retire {t}", [o["tree_signed_out"], o["tree_retired"]])
     y = o["a11y"]
-    add("C22-N06", y["region"] and y["sign_in_by_tab"] and y["sign_out_by_tab"] and "Decline" in (y["approval_by_tab"] or []),
+    add("C22-N06", y["region"] and y["sign_in_by_tab"] and y["sign_out_by_tab"] and "Decline" in (y["approval_by_tab"] or [])
+        and o["approval"]["approve_reached_by_keyboard"] == "Approve once" and o["approval"]["approved_done"],
         f"keyboard and accessibility {y}", [o["tree_a11y"]])
     add("C22-N07", not o["secret_in_trees"] and not o["secret_in_log"] and o["no_engine_after_quit"] and o["engines_left"] == []
         and o["v1_unchanged"] and o["rotation"]["home_clean"],

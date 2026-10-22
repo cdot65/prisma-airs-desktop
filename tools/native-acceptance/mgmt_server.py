@@ -1138,6 +1138,7 @@ class Handler(BaseHTTPRequestHandler):
             elif grant == "refresh_token":
                 with srv.lock:
                     known = srv.idp_refresh.pop(form.get("refresh_token", ""), None)
+                    srv.keep_idp_refresh()
                 if mode.get("idpRefresh") == "refuse" or known is None:
                     status, payload = 400, {"error": "invalid_grant"}
                 else:
@@ -1152,6 +1153,7 @@ class Handler(BaseHTTPRequestHandler):
                     srv.counter += 1
                     refresh = f"c20-refresh-{srv.counter}"
                     srv.idp_refresh[refresh] = subject
+                    srv.keep_idp_refresh()
                     srv.idp_access.add(access)
                 payload = {"token_type": "Bearer", "access_token": access, "expires_in": lifetime,
                            "refresh_token": refresh}
@@ -1166,6 +1168,7 @@ class Handler(BaseHTTPRequestHandler):
             token = form.get("token", "")
             with srv.lock:
                 srv.idp_refresh.pop(token, None)
+                srv.keep_idp_refresh()
             record["revokedSha256"] = hashlib.sha256(token.encode()).hexdigest()
             status, payload = 200, {}
         record["status"] = status
@@ -1417,11 +1420,19 @@ class Server(ThreadingHTTPServer):
         self.counter = len(self.issued) + 1000 * int(time.time() % 1000)
         # C20: the provider's signing key, made for this run.
         self.idp_codes, self.idp_refresh, self.idp_access = {}, {}, set()
+        # Refresh tokens and the signing key are kept across a restart
+        # (offline and back, T23), like the provider.
+        try:
+            with open(os.path.join(directory, "idp-refresh.json")) as f:
+                self.idp_refresh = dict(json.load(f))
+        except (OSError, ValueError):
+            pass
         # C22: the MCP plane's OAuth clients, codes and tokens.
         self.mcp_clients, self.mcp_codes, self.mcp_access, self.mcp_refresh = {}, {}, {}, {}
         self.idp_key = os.path.join(directory, "idp-key.pem")
-        subprocess.run(["/usr/bin/openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout",
-                        "-out", self.idp_key], check=True, env={}, capture_output=True)
+        if not os.path.exists(self.idp_key):
+            subprocess.run(["/usr/bin/openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout",
+                            "-out", self.idp_key], check=True, env={}, capture_output=True)
         public = subprocess.run(["/usr/bin/openssl", "ec", "-in", self.idp_key, "-pubout", "-outform", "DER"],
                                 check=True, env={}, capture_output=True).stdout[-65:]
         self.jwk = {"kty": "EC", "crv": "P-256", "kid": "native-c20", "use": "sig", "alg": "ES256",
@@ -1457,6 +1468,11 @@ class Server(ThreadingHTTPServer):
         der = subprocess.run(["/usr/bin/openssl", "dgst", "-sha256", "-sign", self.idp_key],
                              input=signing_input, check=True, env={}, capture_output=True).stdout
         return f"{header}.{payload}.{b64url(der_signature_to_raw(der))}"
+
+    def keep_idp_refresh(self):
+        """Writes the provider's live refresh tokens (called under the lock)."""
+        with open(os.path.join(self.directory, "idp-refresh.json"), "w") as f:
+            json.dump(self.idp_refresh, f)
 
     def mode(self):
         try:

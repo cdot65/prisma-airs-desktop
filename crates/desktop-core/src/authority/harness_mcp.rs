@@ -27,7 +27,7 @@ use ts_rs::TS;
 use url::Url;
 use zeroize::Zeroizing;
 
-use super::harness_identity::{SignInStep, now};
+use super::harness_identity::{SignInStep, begin_write, now, settle_write, write};
 use super::{Effect, Inner, Refusal, State, lock};
 use crate::context::{ContextRef, WorkspaceRef};
 use crate::gateway::{GatewayRead, GatewayResult, McpCatalog};
@@ -44,6 +44,14 @@ pub(super) type ScopeGrants = Vec<Option<Arc<McpGrant>>>;
 /// A scope's tokens (`None`: the signed-out placeholder) and the earliest
 /// time one must be renewed.
 pub(super) type ScopeTokens = (Vec<Option<Zeroizing<String>>>, Option<u64>);
+
+/// How a conversation's MCP scope stands (see `mcp_scope_check`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ScopeCheck {
+    Current,
+    Unchecked,
+    Changed,
+}
 
 /// The chosen workspace's catalog, as last read.
 pub(super) struct CatalogState {
@@ -136,6 +144,10 @@ pub(super) struct McpGrant {
     /// When the cached access token should be renewed (0: none cached;
     /// `u64::MAX`: it does not expire).
     renew_at: AtomicU64,
+    /// When the token in use expires (0: not loaded yet; `u64::MAX`: it
+    /// does not expire). Checked against the clock before any call is
+    /// approved (P06, C22 review F1).
+    expires_at: AtomicU64,
     expired: Mutex<Option<McpSignInFailure>>,
 }
 
@@ -170,12 +182,25 @@ impl McpGrant {
                 record: grant.record.clone(),
             }),
             renew_at: AtomicU64::new(0),
+            expires_at: AtomicU64::new(0),
             expired: Mutex::new(None),
         })
     }
 
     pub(super) fn expired(&self) -> Option<McpSignInFailure> {
         self.expired.lock().ok().and_then(|e| *e)
+    }
+
+    /// Whether its token may be used now: not expired by a failure, and
+    /// not past its own expiry by the clock (a call held across expiry,
+    /// sleep included, is never approved with a lapsed token).
+    pub(super) fn usable_now(&self) -> bool {
+        self.expired().is_none() && now() < self.expires_at.load(Ordering::SeqCst)
+    }
+
+    fn set_expiry(&self, expires: Option<u64>) {
+        self.expires_at
+            .store(expires.unwrap_or(u64::MAX), Ordering::SeqCst);
     }
 
     fn expire(&self, failure: McpSignInFailure) {
@@ -227,6 +252,7 @@ impl McpGrant {
                     auth.issued = saved.issued;
                     auth.expires = saved.expires;
                     auth.loaded = true;
+                    self.set_expiry(saved.expires);
                 }
                 Ok(None) | Err(VaultError::NotFound) => {
                     self.expire(McpSignInFailure::SessionExpired);
@@ -280,6 +306,7 @@ impl McpGrant {
                 auth.access = Some(tokens.access.clone());
                 auth.issued = issued;
                 auth.expires = tokens.expires_in.map(|s| issued + s);
+                self.set_expiry(auth.expires);
                 let due = renew_at(issued, auth.expires);
                 self.renew_at.store(due, Ordering::SeqCst);
                 Ok(tokens.access)
@@ -368,34 +395,6 @@ fn auth_client(inner: &Arc<Inner>) -> Option<McpAuthClient> {
     Some(McpAuthClient::new(transport.http().clone()))
 }
 
-/// Reserves `record` for a Keychain write: it joins the cleanup ledger
-/// (confirmed durable) and the in-flight set, while `current` holds.
-fn begin_write(state: &mut State, record: &RecordId) -> bool {
-    let before = state.data.clone();
-    state.data.pending_cleanup.push(record.clone());
-    if state.save_with(&before).is_err()
-        || (state.durability_unconfirmed && !state.confirm_durable())
-    {
-        return false;
-    }
-    state.writes_in_flight.push(record.clone());
-    true
-}
-
-/// Writes a grant's tokens to a new record; `None` if the grant ended
-/// meanwhile or the write failed (the record stays in the ledger).
-async fn write(inner: &Arc<Inner>, record: &RecordId, bytes: Zeroizing<Vec<u8>>) -> bool {
-    let writer = Arc::clone(inner);
-    let written = record.clone();
-    let put = tokio::task::spawn_blocking(move || writer.adapters.keychain.put(&written, &bytes))
-        .await
-        .unwrap_or(Err(VaultError::Unavailable));
-    if let Ok(mut state) = lock(inner) {
-        state.writes_in_flight.retain(|r| r != record);
-    }
-    put.is_ok()
-}
-
 /// Saves a renewed token under write-ahead ownership and swaps the grant's
 /// record; `None` if the grant ended meanwhile or saving failed.
 async fn rotate(
@@ -414,6 +413,7 @@ async fn rotate(
     let written = write(inner, &record, bytes).await;
     let committed = {
         let mut state = lock(inner).ok()?;
+        settle_write(&mut state, &record);
         written && state.mcp_grant_current(grant) && {
             let before = state.data.clone();
             if let Some(g) = state
@@ -505,11 +505,23 @@ impl State {
             .collect()
     }
 
-    /// The loaded catalog of `tenant`'s `workspace`, if it is current.
+    /// The loaded catalog of `tenant`'s `workspace`, as last read (shown,
+    /// and enough to see that a server changed).
     fn mcp_catalog_of(&self, tenant: &TenantId, workspace: &str) -> Option<&McpCatalog> {
         self.mcp_catalog
             .as_ref()
             .filter(|c| &c.tenant == tenant && c.workspace == workspace)
+            .and_then(|c| c.catalog.as_ref())
+    }
+
+    /// The catalog only when its latest read succeeded and none is under
+    /// way: the only one that authorizes remote use (P06, C22 review F2).
+    fn mcp_catalog_checked(&self, tenant: &TenantId, workspace: &str) -> Option<&McpCatalog> {
+        self.mcp_catalog
+            .as_ref()
+            .filter(|c| {
+                &c.tenant == tenant && c.workspace == workspace && !c.loading && c.failure.is_none()
+            })
             .and_then(|c| c.catalog.as_ref())
     }
 
@@ -674,6 +686,16 @@ impl State {
         self.require_storage()?;
         let tenant = self.check_context(context)?;
         let workspace = self.inference_workspace(context, reference)?;
+        // A sign-in to this server under way ends too: a late callback or
+        // token reply can never sign it back in (P06, C22 review F3).
+        if let Some(flow) = self.mcp_flow.take() {
+            if flow.tenant == tenant && flow.workspace == workspace.id && flow.server_id == server {
+                flow.cancel.cancel();
+                self.changed();
+            } else {
+                self.mcp_flow = Some(flow);
+            }
+        }
         let live = self.mcp_grant(&tenant, &workspace.id, server);
         let before = self.data.clone();
         let Some(grant) = self
@@ -795,7 +817,7 @@ impl State {
         if enabled.is_empty() {
             return Some(Vec::new());
         }
-        let catalog = self.mcp_catalog_of(tenant, workspace)?;
+        let catalog = self.mcp_catalog_checked(tenant, workspace)?;
         let mut scope = Vec::new();
         for server in catalog.servers.iter().filter(|s| s.supported) {
             let Some(stored) = enabled.iter().find(|m| m.server_id == server.id) else {
@@ -816,29 +838,45 @@ impl State {
         Some(scope)
     }
 
-    /// Whether a conversation's scope still holds: each server still on,
-    /// with the same sign-in, and (when the catalog is loaded) the same
-    /// revision and URL.
-    pub(super) fn mcp_scope_current(
+    /// How a conversation's scope stands. `Changed`: a server is off, has
+    /// another sign-in, or the catalog last read names another revision
+    /// or URL (the conversation is retired). `Unchecked`: unchanged, but
+    /// the catalog is loading or its last read failed, so nothing remote
+    /// may run until it is read again. `Current`: checked against a fresh
+    /// read.
+    pub(super) fn mcp_scope_check(
         &self,
         tenant: &TenantId,
         workspace: &str,
         scope: &[ScopeServer],
-    ) -> bool {
-        let catalog = self.mcp_catalog_of(tenant, workspace);
-        scope.iter().all(|s| {
+    ) -> ScopeCheck {
+        if scope.is_empty() {
+            return ScopeCheck::Current;
+        }
+        let listed = |c: &McpCatalog, s: &ScopeServer| {
+            c.servers
+                .iter()
+                .any(|c| c.id == s.server_id && c.revision == s.revision && c.url == s.url)
+        };
+        let last = self.mcp_catalog_of(tenant, workspace);
+        let changed = scope.iter().any(|s| {
             let stored = self.stored_mcp(tenant, workspace, &s.server_id);
-            stored.is_some_and(|m| m.enabled && m.grant.as_ref().map(|g| &g.id) == s.grant.as_ref())
-                && catalog.is_none_or(|c| {
-                    c.servers
-                        .iter()
-                        .any(|c| c.id == s.server_id && c.revision == s.revision && c.url == s.url)
-                })
-        })
+            !stored
+                .is_some_and(|m| m.enabled && m.grant.as_ref().map(|g| &g.id) == s.grant.as_ref())
+                || last.is_some_and(|c| !listed(c, s))
+        });
+        if changed {
+            return ScopeCheck::Changed;
+        }
+        match self.mcp_catalog_checked(tenant, workspace) {
+            Some(c) if scope.iter().all(|s| listed(c, s)) => ScopeCheck::Current,
+            _ => ScopeCheck::Unchecked,
+        }
     }
 
     /// Whether the server `name` of a conversation's scope may run a tool
-    /// now: it holds a current, unexpired sign-in.
+    /// now: checked against a fresh catalog, with a current sign-in whose
+    /// token has not expired.
     pub(super) fn mcp_server_usable(
         &self,
         tenant: &TenantId,
@@ -852,7 +890,7 @@ impl State {
         let Some(grant) = s.grant.as_ref() else {
             return false;
         };
-        self.mcp_scope_current(tenant, workspace, std::slice::from_ref(s))
+        self.mcp_scope_check(tenant, workspace, std::slice::from_ref(s)) == ScopeCheck::Current
             && self
                 .mcp_live
                 .iter()
@@ -862,7 +900,7 @@ impl State {
                         && l.server_id == s.server_id
                         && &l.id == grant
                 })
-                .is_some_and(|l| l.expired().is_none())
+                .is_some_and(|l| l.usable_now())
     }
 
     fn mcp_failed(&mut self, flow: u64, failure: McpSignInFailure) {
@@ -1011,6 +1049,7 @@ pub(super) async fn sign_in(inner: Arc<Inner>, job: McpSignInJob) {
     let written = write(&inner, &record, saved).await;
     let committed = (|| {
         let mut state = lock(&inner).ok()?;
+        settle_write(&mut state, &record);
         if !written || !state.mcp_flow.as_ref().is_some_and(|f| f.flow == flow) {
             return None;
         }
@@ -1069,6 +1108,7 @@ pub(super) async fn sign_in(inner: Arc<Inner>, job: McpSignInJob) {
             auth.refresh = tokens.refresh.clone();
             auth.issued = issued;
             auth.expires = tokens.expires_in.map(|s| issued + s);
+            live.set_expiry(auth.expires);
             live.renew_at
                 .store(renew_at(issued, auth.expires), Ordering::SeqCst);
         }
