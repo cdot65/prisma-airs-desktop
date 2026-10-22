@@ -93,6 +93,13 @@ pub(super) struct Conversation {
     proposals: Vec<super::harness_tools::Proposal>,
     /// A renewal waiting for the operator to allow changes again (C21).
     write_confirm: Option<RenewJob>,
+    /// Its workspace MCP scope and the grants it holds (C22).
+    mcp: Vec<crate::harness::mcp::ScopeServer>,
+    mcp_grants: Vec<Option<Arc<super::harness_mcp::McpGrant>>>,
+    /// When one of the MCP tokens must be renewed (wall clock), and what
+    /// the running engine was given.
+    mcp_renew_at: Option<u64>,
+    mcp_fingerprint: Option<String>,
 }
 
 impl Conversation {
@@ -160,7 +167,10 @@ pub(super) struct HistoryPlan {
 /// A message waiting for its sign-in to be renewed.
 pub(super) struct RenewJob {
     pub(super) conversation: OperationId,
-    pub(super) grant: Arc<Grant>,
+    /// The Gateway sign-in to renew (company sign-in), if due.
+    pub(super) grant: Option<Arc<Grant>>,
+    /// The MCP scope's grants, when one of their tokens is due (C22).
+    pub(super) mcp: Option<Vec<Option<Arc<super::harness_mcp::McpGrant>>>>,
     pub(super) id: String,
     pub(super) prompt: Zeroizing<String>,
 }
@@ -172,6 +182,8 @@ pub(super) struct HarnessStart {
     pub(super) cancel: CancellationToken,
     /// Company sign-in: the token is obtained (renewed if needed) first.
     pub(super) grant: Option<Arc<Grant>>,
+    /// The MCP scope's grants: their tokens are obtained first (C22).
+    pub(super) mcp: Vec<Option<Arc<super::harness_mcp::McpGrant>>>,
     pub(super) history: Option<HistoryPlan>,
     /// For the tool sink's results (C21).
     pub(super) commands: mpsc::Sender<Command>,
@@ -224,6 +236,8 @@ pub struct ConversationView {
     pub approvals: Vec<crate::harness::HarnessApproval>,
     /// Changes it proposed for the operator's review.
     pub proposals: Vec<super::harness_tools::ProposalView>,
+    /// Its workspace MCP servers' startup in the running engine (C22).
+    pub mcp: Vec<crate::harness::McpServerStatus>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -239,6 +253,8 @@ pub struct HarnessView {
     pub project: Option<super::harness_tools::HarnessProjectView>,
     /// A folder just refused as its project, and so not chosen.
     pub project_refused: Option<String>,
+    /// The chosen workspace's MCP servers (C22).
+    pub mcp: Option<super::harness_mcp::HarnessMcpView>,
 }
 
 fn key_failure(f: InferenceFailure) -> HarnessFailure {
@@ -333,6 +349,8 @@ impl State {
                 return Err(Refusal::InvalidInput);
             }
         }
+        // The workspace MCP scope, fixed for the conversation (C22).
+        let (mcp_scope, mcp_grants) = self.mcp_scope(&tenant, &workspace.id)?;
         let binding = protocol::Binding {
             tenant: protocol::derived_uuid("tenant", tenant.as_str()),
             workspace: workspace.id.clone(),
@@ -341,6 +359,7 @@ impl State {
             endpoint: endpoint.clone(),
             project: project.as_ref().map(|p| p.path.clone()),
             write: project.as_ref().is_some_and(|p| p.write),
+            mcp: mcp_scope.clone(),
         };
         let saved = SavedBinding {
             tenant: binding.tenant.clone(),
@@ -351,6 +370,7 @@ impl State {
             source,
             project: binding.project.clone(),
             write: binding.write,
+            mcp: mcp_scope.clone(),
         };
         // Only exactly the binding it was saved under continues it.
         if resume.as_ref().is_some_and(|r| r.binding != saved) {
@@ -397,6 +417,8 @@ impl State {
             proxy,
             binding,
             key,
+            // Obtained in the job, off the lock.
+            mcp: vec![None; mcp_grants.len()],
             commands: receiver,
             progress: Arc::clone(&progress),
             pulse: Arc::clone(&self.stream_pulse),
@@ -431,12 +453,17 @@ impl State {
             write: binding_write,
             proposals: Vec::new(),
             write_confirm: None,
+            mcp: mcp_scope,
+            mcp_grants: mcp_grants.clone(),
+            mcp_renew_at: None,
+            mcp_fingerprint: None,
         });
         Ok(HarnessStart {
             id,
             inputs,
             cancel,
             grant,
+            mcp: mcp_grants,
             history: history_plan,
             commands: tool_commands,
         })
@@ -447,6 +474,30 @@ impl State {
         if let Some(c) = self.harness.as_mut().filter(|c| &c.id == id) {
             c.engine_renew_at = Some(renew_at);
         }
+    }
+
+    /// The engine's MCP tokens were obtained (C22): what it was given and
+    /// when one must be renewed.
+    pub(super) fn harness_mcp_keyed(
+        &mut self,
+        id: &OperationId,
+        renew_at: Option<u64>,
+        fingerprint: String,
+    ) {
+        if let Some(c) = self.harness.as_mut().filter(|c| &c.id == id) {
+            c.mcp_renew_at = renew_at;
+            c.mcp_fingerprint = Some(fingerprint);
+        }
+    }
+
+    /// The tenant, workspace and MCP scope of conversation `id` (for an
+    /// MCP tool approval's native check, C22).
+    pub(super) fn harness_mcp_scope(
+        &self,
+        id: &OperationId,
+    ) -> Option<(TenantId, String, Vec<crate::harness::mcp::ScopeServer>)> {
+        let c = self.harness.as_ref().filter(|c| &c.id == id)?;
+        Some((c.tenant.clone(), c.workspace.id.clone(), c.mcp.clone()))
     }
 
     /// The bound, unended conversation `id`.
@@ -508,17 +559,28 @@ impl State {
             (Some(grant), Some(at)) if now() >= at => Some(grant),
             _ => None,
         };
-        if let Some(grant) = renew {
-            conversation.grant = Some(Arc::clone(&grant));
-            // The restart re-grants changes in the project only when the
-            // operator says so again (DESIGN, C21): held until then.
-            if conversation.write {
-                conversation.write_confirm = Some(RenewJob {
-                    conversation: id.clone(),
-                    grant,
-                    id: entry,
-                    prompt,
-                });
+        // The MCP tokens are renewed before a turn too (C22); only if one
+        // changes is the engine restarted.
+        let mcp_due = conversation.mcp_renew_at.is_some_and(|at| now() >= at);
+        if renew.is_some() || mcp_due {
+            if let Some(grant) = &renew {
+                conversation.grant = Some(Arc::clone(grant));
+            }
+            let job = RenewJob {
+                conversation: id.clone(),
+                // A due Gateway renewal renews the MCP tokens with it.
+                mcp: (mcp_due || renew.is_some())
+                    .then(|| conversation.mcp_grants.clone())
+                    .filter(|g| !g.is_empty()),
+                grant: renew,
+                id: entry,
+                prompt,
+            };
+            // A Gateway credential restart re-grants changes in the project
+            // only when the operator says so again (DESIGN, C21); an
+            // MCP-only rotation keeps the confirmed access (C22).
+            if job.grant.is_some() && conversation.write {
+                conversation.write_confirm = Some(job);
                 if let Ok(mut p) = conversation.progress.lock() {
                     p.phase = HarnessPhase::ConfirmWrite;
                 }
@@ -527,12 +589,7 @@ impl State {
             if let Ok(mut p) = conversation.progress.lock() {
                 p.phase = HarnessPhase::Renewing;
             }
-            return Ok(Some(RenewJob {
-                conversation: id.clone(),
-                grant,
-                id: entry,
-                prompt,
-            }));
+            return Ok(Some(job));
         }
         // Ready until the task takes it: nothing else may be queued.
         if let Ok(mut p) = conversation.progress.lock() {
@@ -550,7 +607,8 @@ impl State {
     pub(super) fn harness_renewed(
         &mut self,
         job: RenewJob,
-        renewed: Result<(Zeroizing<String>, u64), SignInFailure>,
+        renewed: Result<Option<(Zeroizing<String>, u64)>, SignInFailure>,
+        mcp: Option<super::harness_mcp::ScopeTokens>,
     ) {
         let bound = self.harness.as_ref().is_some_and(|c| self.harness_bound(c));
         let Some(c) = self
@@ -561,14 +619,38 @@ impl State {
             return;
         };
         match renewed {
-            Ok((key, renew_at)) if bound => {
-                c.engine_renew_at = Some(renew_at);
-                let sent = c.commands.try_send(Command::Renew {
-                    key,
-                    id: job.id,
-                    prompt: job.prompt,
+            Ok(key) if bound => {
+                if let Some((_, renew_at)) = &key {
+                    c.engine_renew_at = Some(*renew_at);
+                }
+                // MCP tokens restart the engine only when what it holds
+                // changed; their next renewal time is kept either way.
+                let mcp = mcp.and_then(|(tokens, renew_at)| {
+                    c.mcp_renew_at = renew_at;
+                    let print = crate::harness::mcp::fingerprint(&c.mcp, &tokens);
+                    (c.mcp_fingerprint.as_deref() != Some(print.as_str())).then(|| {
+                        c.mcp_fingerprint = Some(print);
+                        tokens
+                    })
                 });
-                if sent.is_err() {
+                let command = match (key, mcp) {
+                    (None, None) => {
+                        if let Ok(mut p) = c.progress.lock() {
+                            p.phase = HarnessPhase::Answering;
+                        }
+                        Command::Send {
+                            id: job.id,
+                            prompt: job.prompt,
+                        }
+                    }
+                    (key, mcp) => Command::Renew {
+                        key: key.map(|(k, _)| k),
+                        mcp,
+                        id: job.id,
+                        prompt: job.prompt,
+                    },
+                };
+                if c.commands.try_send(command).is_err() {
                     c.cancel.cancel();
                 }
             }
@@ -671,9 +753,13 @@ impl State {
         let project = tenant.harness_project.as_ref();
         let project_ok = project.map(|p| &p.path) == c.project.as_ref()
             && project.is_some_and(|p| p.write) == c.write;
+        // Its MCP servers: still on, with the same sign-ins and revisions
+        // (C22). An expired sign-in alone keeps it.
+        let mcp_ok = self.mcp_scope_current(&c.tenant, &c.workspace.id, &c.mcp);
         !c.retired
             && credential_ok
             && project_ok
+            && mcp_ok
             && Some(&c.context) == self.active_ref.as_ref()
             && self.workspace_current(Some(&c.reference))
     }
@@ -739,6 +825,7 @@ impl State {
                     project: c.project.clone(),
                     write: c.write,
                     approvals: p.approvals,
+                    mcp: p.mcp,
                     proposals: c
                         .proposals
                         .iter()
@@ -767,6 +854,7 @@ impl State {
             history: self.harness_history_view(),
             project: self.harness_project_view(),
             project_refused: self.harness_project_refused(),
+            mcp: self.harness_mcp_view(),
         }
     }
 

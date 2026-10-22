@@ -86,6 +86,9 @@ pub struct SavedBinding {
     pub project: Option<String>,
     #[serde(default)]
     pub write: bool,
+    /// The workspace MCP scope it ran with (C22; none before).
+    #[serde(default)]
+    pub mcp: Vec<crate::harness::mcp::ScopeServer>,
 }
 
 /// One saved conversation.
@@ -343,6 +346,7 @@ pub mod export {
             HarnessRole::Command => "Command",
             HarnessRole::FileChange => "Files changed",
             HarnessRole::Tool => "Desktop tool",
+            HarnessRole::Mcp => "MCP tool",
         }
     }
 
@@ -406,6 +410,7 @@ mod tests {
                 source: CredentialSource::WorkspaceKey,
                 project: None,
                 write: false,
+                mcp: Vec::new(),
             },
             entries: vec![HarnessEntry {
                 id: "u-1".into(),

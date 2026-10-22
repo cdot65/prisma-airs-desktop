@@ -92,7 +92,7 @@ PROBES = [
     ("a file change is asked while changes are off",
      [(SESSION, "            && (kind == ApprovalKind::Command || self.binding.write)\n", "")], UNIT_T, U_ASK),
     ("a used or stale approval is accepted",
-     [(HTOOLS, "        if !pending {\n            return Err(Refusal::StaleContext);\n        }\n", "")], HT_T, COMMANDS),
+     [(HTOOLS, "            return Err(Refusal::StaleContext);\n        };\n        // An MCP tool", "            return Ok(());\n        };\n        // An MCP tool")], HT_T, COMMANDS),
     ("system folders are a project",
      [(HTOOLS, "    if REFUSED_ROOTS.iter().any(|r| path.starts_with(r)) {", "    if REFUSED_ROOTS.is_empty() {")], HT_T, PROJECT),
     ("the home folder is a project",
@@ -109,11 +109,11 @@ PROBES = [
     ("a reviewed proposal stays in review",
      [(DOMAIN, "                                v.state = super::harness_tools::ProposalState::Closed;\n", "")], HT_T, PROPOSAL),
     ("a renewal restarts with changes unasked",
-     [(DOMAIN, "            if conversation.write {", "            if conversation.write && false {")], HI_T, CONFIRM),
+     [(DOMAIN, "            if job.grant.is_some() && conversation.write {", "            if job.grant.is_some() && conversation.write && false {")], HI_T, CONFIRM),
     ("Not now restarts anyway",
      [(HTOOLS, "        if allow {", "        if allow || !allow {")], HI_T, CONFIRM),
     ("another folder's conversation is continuable",
-     [(HDOMAIN, "        .then_some(NotContinuable::OtherProject)", "        .then_some(NotContinuable::OtherProject)\n        .filter(|_| false)")], HT_T, RESTORE),
+     [(HDOMAIN, "            return Some(NotContinuable::OtherProject);", "            let _ = NotContinuable::OtherProject;")], HT_T, RESTORE),
     ("Allow sends a decline",
      [(DECISIONS, "                                    <Button type='button' tier='primary' size='sm' disabled={busy} onClick={() => void decide(a, true)}>",
        "                                    <Button type='button' tier='primary' size='sm' disabled={busy} onClick={() => void decide(a, false)}>")], FE_H, FE_DECIDE),
@@ -130,8 +130,8 @@ PROBES = [
      [(CLIENT, "const PROPOSAL_KINDS: readonly string[] = CHANGE_KINDS.filter((k) => !k.startsWith('gateway'))",
        "const PROPOSAL_KINDS: readonly string[] = CHANGE_KINDS")], FE_SNAPSHOT, SNAP),
     ("a file-change approval while read-only passes the contract",
-     [(CLIENT, "            (a) => value.project !== null && (value.write || (a as Record<string, unknown>).kind === 'command'),",
-       "            (a) => value.project !== null || (a as Record<string, unknown>).kind === 'command',")], FE_SNAPSHOT, SNAP),
+     [(CLIENT, "                return kind === 'mcpTool' || (value.project !== null && (value.write || kind === 'command'))",
+       "                return kind === 'mcpTool' || value.project !== null || kind === 'command'")], FE_SNAPSHOT, SNAP),
 ]
 
 

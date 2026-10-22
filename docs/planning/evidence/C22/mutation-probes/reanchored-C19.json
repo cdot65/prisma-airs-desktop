@@ -1,0 +1,33 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src-tauri/src/sidecar.rs": "39385bfa0f786135a5b98684f6ff9d5f5d45ab3a147fc611848ba0a47a16d335",
+      "apps/desktop/src/features/harness/harness-view.tsx": "d2cb292da4211ce9530283c16e78940f2bf44709e9a532eb314de1417295a6cd",
+      "crates/desktop-core/src/authority.rs": "1ce53530deca20dfce30cf2caae7b6e56b20a568534b4ebd808936416c3eba85",
+      "crates/desktop-core/src/authority/harness_domain.rs": "1a4ce51c006d52ec62b0b2773650d4fe16115ebb200bdaec333f59d692f6abe5",
+      "crates/desktop-core/src/harness/engine.rs": "00ed563b25fe5c4e4f42703ffa2c50f855a658f971aaf17960a1f569b313ca4a",
+      "crates/desktop-core/src/harness/session.rs": "324d6545906e77d132e2d5d46dc872336967d02a0edcfebeadfa953e1a063972",
+      "packages/desktop-contracts/src/client.ts": "026090c3267e1ad0df64a7133e762f53524238fede5fc215c0a07ffefe54e09a"
+    }
+  },
+  {
+    "mutation": "the key is shown when an answer holds it",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_process"
+    ],
+    "guard": "the_engine_is_given_nothing_but_its_bootstrap",
+    "exit_code": 101,
+    "guard_failed": true
+  }
+]

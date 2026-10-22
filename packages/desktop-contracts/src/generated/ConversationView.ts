@@ -9,6 +9,7 @@ import type { HarnessStop } from "./HarnessStop";
 import type { HarnessUsage } from "./HarnessUsage";
 import type { HistoryFailure } from "./HistoryFailure";
 import type { ListedWorkspace } from "./ListedWorkspace";
+import type { McpServerStatus } from "./McpServerStatus";
 import type { OperationId } from "./OperationId";
 import type { ProposalView } from "./ProposalView";
 import type { SignInFailure } from "./SignInFailure";
@@ -51,4 +52,8 @@ approvals: Array<HarnessApproval>,
 /**
  * Changes it proposed for the operator's review.
  */
-proposals: Array<ProposalView>, };
+proposals: Array<ProposalView>, 
+/**
+ * Its workspace MCP servers' startup in the running engine (C22).
+ */
+mcp: Array<McpServerStatus>, };

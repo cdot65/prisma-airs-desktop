@@ -4,4 +4,4 @@
  * Why a conversation failed or could not start (sanitized: never the
  * engine's own text, which may echo model or tool output).
  */
-export type HarnessFailure = "engineUnavailable" | "credentialMissing" | "credentialLocked" | "credentialDenied" | "startFailed" | "bootstrapRejected" | "timeout" | "protocol" | "bounds" | "exited" | "refused" | "turnFailed" | "cleanupFailed" | "restoreFailed" | "signInNeeded";
+export type HarnessFailure = "engineUnavailable" | "credentialMissing" | "credentialLocked" | "credentialDenied" | "startFailed" | "bootstrapRejected" | "timeout" | "protocol" | "bounds" | "exited" | "refused" | "turnFailed" | "cleanupFailed" | "restoreFailed" | "signInNeeded" | "mcpTooLarge";

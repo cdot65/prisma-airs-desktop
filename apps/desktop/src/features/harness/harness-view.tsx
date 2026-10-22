@@ -8,6 +8,7 @@ import type {
     HarnessFailure,
     HarnessPhase,
     HarnessStop,
+    McpStartup,
     ShellSnapshot,
     TurnEnd,
 } from '@prisma-airs/desktop-contracts'
@@ -15,6 +16,7 @@ import { PageHeading } from '../../shell/feature-view'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
 import { DecisionsPanel } from './decisions-panel'
 import { HISTORY_FAILURE_TEXT, HistoryPanel, savedAt } from './history-panel'
+import { McpPanel } from './mcp-panel'
 import { ProjectPanel } from './project-panel'
 import { SIGN_IN_FAILURE_TEXT, SignInPanel } from './sign-in-panel'
 
@@ -38,6 +40,7 @@ export const HARNESS_FAILURE_TEXT: Record<HarnessFailure, string> = {
     cleanupFailed: 'The engine could not be stopped and removed in time. Quit the app to end it.',
     restoreFailed: 'The saved conversation could not be continued in a new engine. It is still saved; start a new conversation.',
     signInNeeded: 'Your company sign-in must be renewed. Sign in again, then start the conversation.',
+    mcpTooLarge: 'The workspace MCP sign-ins are too large to give the engine together. Turn some servers off and start again.',
 }
 
 const PHASE_TEXT: Record<HarnessPhase, string> = {
@@ -70,6 +73,13 @@ export const TURN_TEXT: Record<TurnEnd, string> = {
     refused: 'The engine did not take that message.',
 }
 
+const MCP_STARTUP_TEXT: Record<McpStartup, string> = {
+    starting: 'starting',
+    ready: 'ready',
+    failed: 'unavailable',
+    cancelled: 'stopped',
+}
+
 const ENTRY_NOTE: Partial<Record<HarnessEntry['state'], string>> = {
     interrupted: '(stopped before it finished)',
     truncated: '(cut at 256 KiB)',
@@ -84,6 +94,7 @@ const SPEAKER: Record<HarnessEntry['role'], string> = {
     command: 'Command',
     fileChange: 'File change',
     tool: 'App tool',
+    mcp: 'MCP tool',
 }
 
 /** What the status line says for a conversation. */
@@ -261,6 +272,14 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                         dispatch={dispatch}
                         onMessage={setMessage}
                     />
+                    <McpPanel
+                        context={context}
+                        selected={selected}
+                        mcp={snapshot.harness.mcp}
+                        running={live}
+                        dispatch={dispatch}
+                        onMessage={setMessage}
+                    />
                 </>
             )}
             {!live ? (
@@ -283,6 +302,13 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                             ? `Folder ${conversation.project} · ${conversation.write ? 'changes allowed, each with your approval' : 'read-only'}`
                             : 'No folder: app tools and proposals only.'}
                     </p>
+                    {conversation.mcp.length > 0 ? (
+                        <p className='text-academy-ink-faint text-[12px]' data-slot='harness-mcp-scope'>
+                            {`MCP servers: ${conversation.mcp
+                                .map((m) => `${m.name} (${m.signedOut ? 'not signed in' : MCP_STARTUP_TEXT[m.status]})`)
+                                .join(', ')}`}
+                        </p>
+                    ) : null}
                     <p ref={statusRef} tabIndex={-1} role='status' aria-live='polite' className='text-[13px]' data-slot='harness-status'>
                         {conversationText(conversation)}
                     </p>

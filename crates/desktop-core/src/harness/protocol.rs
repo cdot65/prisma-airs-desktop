@@ -36,6 +36,10 @@ pub struct Binding {
     pub project: Option<String>,
     /// The operator allowed changes in the project, with approval (C21).
     pub write: bool,
+    /// The workspace MCP servers, in bootstrap order (C22): fixed for the
+    /// conversation. The engine's context holds each one's name, ID and
+    /// URL; its revision and grant are checked by the desktop.
+    pub mcp: Vec<super::mcp::ScopeServer>,
 }
 
 impl Binding {
@@ -83,10 +87,18 @@ pub fn is_uuid(text: &str) -> bool {
 }
 
 /// The bootstrap frame with its newline, in one zeroizing buffer that
-/// never grows past [`FRAME_LIMIT`].
-pub fn bootstrap(binding: &Binding, key: &str) -> Result<Zeroizing<Vec<u8>>, HarnessFailure> {
+/// never grows past [`FRAME_LIMIT`]. Each scope server gets its token, or
+/// the signed-out placeholder (C22).
+pub fn bootstrap(
+    binding: &Binding,
+    key: &str,
+    mcp: &[Option<Zeroizing<String>>],
+) -> Result<Zeroizing<Vec<u8>>, HarnessFailure> {
     if key.is_empty() || key.len() > MAX_KEY_BYTES || key.chars().any(char::is_control) {
         return Err(HarnessFailure::CredentialMissing);
+    }
+    if binding.mcp.len() > super::mcp::MAX_SERVERS || mcp.len() != binding.mcp.len() {
+        return Err(HarnessFailure::Protocol);
     }
     let mut value = json!({"id":0,"method":"desktop/bootstrap","params":{"v":1,
         "tenantId":binding.tenant,"workspaceId":binding.workspace,
@@ -94,10 +106,23 @@ pub fn bootstrap(binding: &Binding, key: &str) -> Result<Zeroizing<Vec<u8>>, Har
         "gatewayEndpoint":binding.endpoint,"apiKey":key,
         "projectPath":binding.project,"localAccess":binding.local_access(),
         "gatewayConfig":null,"model":null}});
+    if !binding.mcp.is_empty() {
+        value["params"]["mcpServers"] = super::mcp::bootstrap_entries(&binding.mcp, mcp);
+    }
     let mut frame = Frame(Zeroizing::new(Vec::with_capacity(FRAME_LIMIT)), false);
     let written = serde_json::to_writer(&mut frame, &value);
     if let Some(Value::String(secret)) = value["params"].get_mut("apiKey") {
         secret.zeroize();
+    }
+    if let Some(Value::Array(servers)) = value["params"].get_mut("mcpServers") {
+        for s in servers {
+            if let Some(Value::String(token)) = s.get_mut("accessToken") {
+                token.zeroize();
+            }
+        }
+    }
+    if frame.1 && !binding.mcp.is_empty() {
+        return Err(HarnessFailure::McpTooLarge);
     }
     if frame.1 || written.is_err() {
         return Err(HarnessFailure::Protocol);
@@ -140,7 +165,7 @@ pub struct Receipt {
 
 impl Receipt {
     /// It names exactly this binding, the pinned protocol and runtime, and
-    /// no MCP server (none is granted before C22).
+    /// the scope's MCP servers in order.
     pub fn matches(&self, binding: &Binding, runtime_version: &str) -> bool {
         self.v == 1
             && self.protocol == PROTOCOL
@@ -149,7 +174,16 @@ impl Receipt {
             && self.workspace_id == binding.workspace
             && self.credential_id == binding.credential
             && self.credential_epoch == binding.credential_epoch
-            && self.mcp_servers.is_empty()
+            && self.mcp_servers.len() == binding.mcp.len()
+            && self
+                .mcp_servers
+                .iter()
+                .zip(&binding.mcp)
+                .all(|(got, want)| {
+                    got.as_object().is_some_and(|o| o.len() == 2)
+                        && got["name"].as_str() == Some(want.name.as_str())
+                        && got["serverId"].as_str() == Some(want.server_id.as_str())
+                })
     }
 }
 
@@ -397,6 +431,68 @@ mod tests {
             endpoint: "https://gateway.example/rt/v1".into(),
             project: None,
             write: false,
+            mcp: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn mcp_servers_are_bootstrapped_in_scope_order_and_echoed_exactly() {
+        let mut b = binding();
+        let server = |name: &str, id: &str| super::super::mcp::ScopeServer {
+            name: name.into(),
+            server_id: id.into(),
+            url: format!("https://gw.example/{name}/mcp"),
+            revision: "r".into(),
+            grant: Some("g".into()),
+        };
+        b.mcp = vec![server("tools", "s1"), server("docs", "s2")];
+        let token = Zeroizing::new("t".repeat(40));
+        let frame = bootstrap(&b, "gw-key", &[Some(token.clone()), None]).expect("frame");
+        let v: Value = serde_json::from_slice(&frame).expect("json");
+        let servers = v["params"]["mcpServers"].as_array().expect("servers");
+        assert_eq!(servers.len(), 2);
+        assert_eq!(servers[0]["name"], "tools");
+        assert_eq!(servers[0]["accessToken"], token.as_str());
+        assert_eq!(
+            servers[1]["accessToken"],
+            super::super::mcp::SIGNED_OUT_TOKEN
+        );
+        // Tokens and scope must agree in length.
+        assert_eq!(
+            bootstrap(&b, "gw-key", &[None]).err(),
+            Some(HarnessFailure::Protocol)
+        );
+        // Too many large tokens for one frame: said, not truncated.
+        let big = Zeroizing::new("t".repeat(16 * 1024));
+        b.mcp = (0..8)
+            .map(|n| server(&format!("s{n}"), &format!("id-{n}")))
+            .collect();
+        let tokens: Vec<_> = (0..8).map(|_| Some(big.clone())).collect();
+        assert_eq!(
+            bootstrap(&b, "gw-key", &tokens).err(),
+            Some(HarnessFailure::McpTooLarge)
+        );
+        b.mcp.truncate(2);
+        let receipt = |mcp: Value| -> Receipt {
+            serde_json::from_value(
+                json!({"v":1,"protocol":PROTOCOL,"runtimeVersion":"0.1.7-desktop.2",
+                "tenantId":b.tenant,"workspaceId":b.workspace,"credentialId":b.credential,
+                "credentialEpoch":1,"mcpServers":mcp}),
+            )
+            .expect("fixture")
+        };
+        let ok = json!([{"name":"s0","serverId":"id-0"},{"name":"s1","serverId":"id-1"}]);
+        assert!(receipt(ok).matches(&b, "0.1.7-desktop.2"));
+        for bad in [
+            json!([]),
+            json!([{"name":"s1","serverId":"id-1"},{"name":"s0","serverId":"id-0"}]),
+            json!([{"name":"s0","serverId":"id-0"}]),
+            json!([{"name":"s0","serverId":"id-0","url":"x"},{"name":"s1","serverId":"id-1"}]),
+        ] {
+            assert!(
+                !receipt(bad.clone()).matches(&b, "0.1.7-desktop.2"),
+                "{bad}"
+            );
         }
     }
 
@@ -407,7 +503,7 @@ mod tests {
         assert_ne!(b.tenant, derived_uuid("credential", "tn-0123456789abcdef"));
         assert!(!is_uuid("00000000-0000-0000-0000-000000000000"));
         assert!(!is_uuid("16F7E90D-382A-4E78-B577-1B01EB5F8297"));
-        let frame = bootstrap(&b, "gw-key").expect("fixture");
+        let frame = bootstrap(&b, "gw-key", &[]).expect("fixture");
         assert_eq!(frame.last(), Some(&b'\n'));
         let v: Value = serde_json::from_slice(&frame).expect("fixture");
         assert_eq!(v["method"], "desktop/bootstrap");
@@ -444,21 +540,24 @@ mod tests {
     fn credentials_and_frames_are_bounded() {
         let b = binding();
         assert_eq!(
-            bootstrap(&b, "").err(),
+            bootstrap(&b, "", &[]).err(),
             Some(HarnessFailure::CredentialMissing)
         );
         assert_eq!(
-            bootstrap(&b, "a\nb").err(),
+            bootstrap(&b, "a\nb", &[]).err(),
             Some(HarnessFailure::CredentialMissing)
         );
         assert_eq!(
-            bootstrap(&b, &"k".repeat(MAX_KEY_BYTES + 1)).err(),
+            bootstrap(&b, &"k".repeat(MAX_KEY_BYTES + 1), &[]).err(),
             Some(HarnessFailure::CredentialMissing)
         );
-        assert!(bootstrap(&b, &"k".repeat(MAX_KEY_BYTES)).is_ok());
+        assert!(bootstrap(&b, &"k".repeat(MAX_KEY_BYTES), &[]).is_ok());
         let mut long = b.clone();
         long.endpoint = format!("https://{}.example/v1", "a".repeat(FRAME_LIMIT));
-        assert_eq!(bootstrap(&long, "k").err(), Some(HarnessFailure::Protocol));
+        assert_eq!(
+            bootstrap(&long, "k", &[]).err(),
+            Some(HarnessFailure::Protocol)
+        );
         assert_eq!(turn_params("t", "  ").err(), Some(HarnessFailure::Bounds));
         assert_eq!(
             turn_params("t", &"x".repeat(MAX_PROMPT_BYTES + 1)).err(),

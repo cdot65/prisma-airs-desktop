@@ -93,7 +93,7 @@ pub struct SsoConfig {
     pub audience: String,
 }
 
-fn https(text: &str) -> Option<Url> {
+pub(super) fn https(text: &str) -> Option<Url> {
     let url = Url::parse(text).ok()?;
     (url.scheme() == "https"
         && url.host_str().is_some_and(|h| !h.is_empty())
@@ -103,7 +103,7 @@ fn https(text: &str) -> Option<Url> {
     .then_some(url)
 }
 
-fn printable(text: &str, max: usize) -> bool {
+pub(super) fn printable(text: &str, max: usize) -> bool {
     !text.is_empty() && text.len() <= max && text.bytes().all(|b| b.is_ascii_graphic())
 }
 
@@ -187,7 +187,7 @@ impl Access {
     }
 }
 
-fn random(bytes: usize) -> Option<Zeroizing<String>> {
+pub(super) fn random(bytes: usize) -> Option<Zeroizing<String>> {
     let mut raw = Zeroizing::new(vec![0u8; bytes]);
     getrandom::fill(&mut raw).ok()?;
     Some(Zeroizing::new(
@@ -228,7 +228,7 @@ pub fn attempt(provider: &Provider, config: &SsoConfig, port: u16) -> Option<Att
 }
 
 /// Reads a whole body up to `limit` bytes.
-async fn bounded_body(response: reqwest::Response, limit: usize) -> Result<Vec<u8>, ()> {
+pub(super) async fn bounded_body(response: reqwest::Response, limit: usize) -> Result<Vec<u8>, ()> {
     use futures_util::StreamExt;
     if response.content_length().is_some_and(|n| n > limit as u64) {
         return Err(());
@@ -245,17 +245,17 @@ async fn bounded_body(response: reqwest::Response, limit: usize) -> Result<Vec<u
     Ok(body)
 }
 
-fn transient(status: u16) -> bool {
+pub(super) fn transient(status: u16) -> bool {
     matches!(status, 500 | 502 | 503 | 504)
 }
 
-fn string(value: Option<&Value>, max: usize) -> Option<&str> {
+pub(super) fn string(value: Option<&Value>, max: usize) -> Option<&str> {
     value
         .and_then(Value::as_str)
         .filter(|s| !s.is_empty() && s.len() <= max)
 }
 
-fn token(value: Option<&Value>) -> Option<Zeroizing<String>> {
+pub(super) fn token(value: Option<&Value>) -> Option<Zeroizing<String>> {
     string(value, TOKEN_LIMIT)
         .filter(|s| s.bytes().all(|b| b.is_ascii_graphic()))
         .map(|s| Zeroizing::new(s.to_owned()))

@@ -1,0 +1,35 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/administration/administration-view.tsx": "f9b752d2086b9ffb9e7e7151be7008701fc71299261849eb600b58f12c480bed",
+      "apps/desktop/src/features/harness/decisions-panel.tsx": "6a713811a6c2fa5bec005eb22d4f1f7cb3934987da727aa2a7c1dc02efa6ffdf",
+      "crates/desktop-core/src/authority/harness_domain.rs": "1a4ce51c006d52ec62b0b2773650d4fe16115ebb200bdaec333f59d692f6abe5",
+      "crates/desktop-core/src/authority/harness_history.rs": "382a0333764022d3b41231a2da9b25c862a93639e32046b14a0b2086c685e4a3",
+      "crates/desktop-core/src/authority/harness_tools.rs": "62f3e9b5f82e3c415fea1f2d08c53d4e6d0e38bb5f3a4ac5a6a2ea6552bdb6f3",
+      "crates/desktop-core/src/harness/protocol.rs": "96ee789ad1476088f0e2d9110935a49f1ee2cbaaca0adbc5ef80fea67529201b",
+      "crates/desktop-core/src/harness/session.rs": "324d6545906e77d132e2d5d46dc872336967d02a0edcfebeadfa953e1a063972",
+      "crates/desktop-core/src/harness/tools.rs": "a0298dbe736bb1f7ebed73f33762388a74ccfbf446e9b79524e35e0d2f8419eb",
+      "packages/desktop-contracts/src/client.ts": "026090c3267e1ad0df64a7133e762f53524238fede5fc215c0a07ffefe54e09a"
+    }
+  },
+  {
+    "mutation": "a used or stale approval is accepted",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "commands_need_a_project_and_the_operators_approval",
+    "exit_code": 101,
+    "guard_failed": true
+  }
+]

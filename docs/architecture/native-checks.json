@@ -1004,6 +1004,36 @@
         "id": "C21-N08",
         "check": "Removing the folder ends the running conversation and reaps its engine; quitting leaves no engine; no secret appears in AX snapshots or the server log; the folder holds only the driver's files and the allowed write; v1 data is unchanged."
       }
+    ],
+    "C22": [
+      {
+        "id": "C22-N01",
+        "check": "The chosen workspace's MCP catalog is read through the management client and lists only its servers (the upstream URL never shown); a server is turned on; signing in opens one authorization URL at the server's own OAuth origin with PKCE S256, state, the server URL as resource, only the tool scopes, a client registered for this attempt and a 127.0.0.1 redirect; a callback with another state is refused; the real callback signs in, adds one Keychain item, and the state document holds no token."
+      },
+      {
+        "id": "C22-N02",
+        "check": "A conversation gives the engine the server with its bearer in memory and its startup reads ready; the model's MCP tool call waits for the operator as 'Run a workspace MCP tool' naming the server, tool and the call's arguments: Decline runs nothing (no tools/call) and the entry reads declined; Approve once runs exactly one tools/call carrying the issued bearer and its result is shown; no inference request carries the bearer."
+      },
+      {
+        "id": "C22-N03",
+        "check": "Once the MCP token is inside its renewal margin, the next message renews it (one refresh), stops the engine and starts a new one that restores the conversation (the Gateway request carries the first turn) without asking again for changes in the folder, and the new engine's server runs with the renewed bearer."
+      },
+      {
+        "id": "C22-N04",
+        "check": "An expired MCP sign-in (its renewal refused) keeps inference: the engine gets the signed-out placeholder, the server reads not signed in, its requests carry no issued bearer, and the conversation still answers."
+      },
+      {
+        "id": "C22-N05",
+        "check": "Signing out of a server retires the running conversation, reaps its engine, deletes its Keychain item and revokes both tokens; signing in again, turning the server off, or a new catalog revision (read again) each retire the conversation too, and after a revision change the sign-in reads stale."
+      },
+      {
+        "id": "C22-N06",
+        "check": "Keyboard and accessibility: the Workspace MCP servers region, each server's checkbox and its sign-in and sign-out buttons are named and reachable by Tab, as are the MCP approval's Approve once and Decline buttons."
+      },
+      {
+        "id": "C22-N07",
+        "check": "No MCP or Gateway token appears in AX snapshots, the server log (a bearer is recorded only as issued, placeholder, other or none) or the engine's runtime home; no engine is left after quitting; v1 data is unchanged."
+      }
     ]
   }
 }

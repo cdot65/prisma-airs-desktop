@@ -1789,6 +1789,63 @@ D048 records the decisions: the tool set, bounds, proposals, project
 rules, approvals, sandbox evidence and the engine's patch-writer
 limitation.
 
+### C22 implementation: workspace MCP servers
+
+Implemented in `crates/desktop-core`:
+- `harness::mcp`:
+  - the catalog projection, revisions and engine namespaces;
+  - the conversation scope (`ScopeServer`) and its bootstrap entries, with
+    the signed-out placeholder;
+  - the fingerprint of what the engine holds.
+- `harness::mcp_auth`: the desktop's OAuth for a server (challenge,
+  protected-resource and server metadata, registration, authorize with
+  PKCE and `resource`, exchange, refresh, revocation).
+- `gateway`: `GatewayRead::McpServers`, which reads the workspace catalog
+  through the management client.
+- `harness::protocol`: the binding carries the MCP scope. The bootstrap
+  sends `mcpServers` (frame overflow is `mcpTooLarge`), and the receipt
+  must echo the scope in order.
+- `harness::session`:
+  - the Gateway key and MCP tokens are held and redacted together
+    (`Secrets`);
+  - `Command::Renew` renews either or both;
+  - `mcpToolCall` items become `mcp` entries;
+  - `mcpServer/elicitation/request` is held as an `mcpTool` approval or
+    declined;
+  - `mcpServer/startupStatus/updated` is published per scope server.
+- `authority/harness_mcp`:
+  - the catalog state, enabling, and the browser sign-in job;
+  - live grants with renewal and Keychain rotation under the write-ahead,
+    durability and in-flight contract;
+  - sign-out and revocation;
+  - the scope a conversation would get, and whether a running one's scope
+    still holds.
+- `authority/harness_domain`:
+  - the scope is fixed at start and its tokens are obtained off the lock;
+  - a conversation retires when its scope no longer holds;
+  - MCP renewal happens before a message (an MCP-only rotation restarts
+    without re-confirming changes).
+- `authority/harness_tools` checks an MCP approval natively before
+  accepting it. `authority/harness_history` adds `otherMcp`.
+- `store`: one entry per tenant, workspace and server, with its grant.
+  Removing a tenant also ends its MCP grants.
+- Intents: `ListMcpServers`, `EnableMcpServer`, `SignInMcpServer`,
+  `CancelMcpSignIn`, `SignOutMcpServer`.
+
+The presentation adds a "Workspace MCP servers" panel to the Harness
+destination. Each server has:
+- a checkbox to use it in new conversations;
+- its standing (signed in, not signed in, stale, expired or unsupported);
+- sign-in, sign-in again, cancel and sign-out.
+
+The panel can also read the servers again. The conversation shows its MCP
+servers' startup. MCP tool approvals read "Run a workspace MCP tool", with
+Approve once and Decline. MCP calls appear in the transcript, and saved
+conversations from another MCP scope say so.
+
+D049 records the decisions: the catalog, the OAuth rules, grants, scope,
+retirement, approval and rotation.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

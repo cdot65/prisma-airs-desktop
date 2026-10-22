@@ -670,11 +670,11 @@ describe('native Harness (C19)', () => {
         ],
         lastTurn: 'completed', usage: { input: 10, output: 6, total: 16 }, cleanup: null, runtimeVersion: '0.1.7-desktop.2',
         source: 'workspaceKey', historyId: '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d', savedAt: 1790000000, saveFailure: null,
-        unsent: null, signInFailure: null, project: null, write: false, approvals: [], proposals: [],
+        unsent: null, signInFailure: null, project: null, write: false, approvals: [], proposals: [], mcp: [],
     }
     const harness = (c: Record<string, unknown> | null, e: Record<string, unknown> = {}) => ({
         ...valid,
-        harness: { engine: { ...engine, ...e }, conversation: c, signIn: null, history: null, project: null, projectRefused: null },
+        harness: { engine: { ...engine, ...e }, conversation: c, signIn: null, history: null, project: null, projectRefused: null, mcp: null },
     })
 
     it('accepts what Rust issues', () => {
@@ -751,7 +751,7 @@ describe('Harness company sign-in and protected history (C20)', () => {
         state: 'ready', conversations: [saved], unreadable: [], failure: null, full: false, opened, busy: false, problem: null,
         export: { kind: 'harnessConversation', state: 'saved', name: 'harness-x.md' },
     }
-    const harness = (s: unknown, h: unknown) => ({ ...valid, harness: { engine, conversation: null, signIn: s, history: h, project: null, projectRefused: null } })
+    const harness = (s: unknown, h: unknown) => ({ ...valid, harness: { engine, conversation: null, signIn: s, history: h, project: null, projectRefused: null, mcp: null } })
 
     it('accepts what Rust issues', () => {
         expect(parseShellSnapshot(harness(signIn, history))).toBeTruthy()
@@ -791,7 +791,7 @@ describe('Harness tools and project (C21)', () => {
     const workspace = { id: '16f7e90d-382a-4e78-b577-1b01eb5f8297', name: 'Team A', slug: 'team-a', scopeName: 'scope-team-a' }
     const engine = { available: true, protocol: 'airs-desktop/1', runtimeVersion: '0.1.7-desktop.2', engineCommit: '9331a5839bc6a763d94dee7584746f58bbbe1181' }
     const PROJECT = '/Users/someone/work/agent-demo'
-    const approval = { id: '0123456789abcdef01234567', kind: 'command', command: "/bin/zsh -c 'ls'", cwd: PROJECT, reason: null, files: [] }
+    const approval = { id: '0123456789abcdef01234567', kind: 'command', command: "/bin/zsh -c 'ls'", cwd: PROJECT, reason: null, files: [], server: null, tool: null, arguments: null }
     const proposal = {
         id: 'P-1',
         summary: 'Block prompt injection in the default profile',
@@ -809,11 +809,11 @@ describe('Harness tools and project (C21)', () => {
         ],
         lastTurn: null, usage: null, cleanup: null, runtimeVersion: '0.1.7-desktop.2',
         source: 'workspaceKey', historyId: '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d', savedAt: null, saveFailure: null,
-        unsent: null, signInFailure: null, project: PROJECT, write: true, approvals: [approval], proposals: [proposal],
+        unsent: null, signInFailure: null, project: PROJECT, write: true, approvals: [approval], proposals: [proposal], mcp: [],
     }
     const harness = (c: Record<string, unknown> | null, project: unknown = { path: PROJECT, write: true }) => ({
         ...valid,
-        harness: { engine, conversation: c, signIn: null, history: null, project, projectRefused: null },
+        harness: { engine, conversation: c, signIn: null, history: null, project, projectRefused: null, mcp: null },
     })
 
     it('accepts the tool, approval and proposal views Rust issues', () => {
@@ -858,6 +858,67 @@ describe('Harness tools and project (C21)', () => {
             harness({ ...conversation, phase: 'confirmWrite', write: false, approvals: [] }),
             harness({ ...conversation, entries: [{ id: 'x', role: 'system', text: 'x', state: 'complete' }] }),
             harness({ ...conversation, approvals: undefined }),
+        ]) {
+            expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
+        }
+    })
+})
+
+describe('workspace MCP servers (C22)', () => {
+    const workspace = { id: '16f7e90d-382a-4e78-b577-1b01eb5f8297', name: 'Team A', slug: 'team-a', scopeName: 'scope-team-a' }
+    const engine = { available: true, protocol: 'airs-desktop/1', runtimeVersion: '0.1.7-desktop.2', engineCommit: '9331a5839bc6a763d94dee7584746f58bbbe1181' }
+    const server = {
+        id: 'srv-tools-0001', name: 'Tools', namespace: 'tools', url: 'https://gw.example/tools/mcp', status: 'active',
+        supported: true, enabled: true, signedIn: true, stale: false, expired: null, step: null, failure: null,
+    }
+    const mcp = { workspace: workspace.id, state: 'ready', failure: null, complete: true, servers: [server] }
+    const approval = {
+        id: '0123456789abcdef01234567', kind: 'mcpTool', command: null, cwd: null, reason: null, files: [],
+        server: 'tools', tool: 'lookup', arguments: '{"query":"record-1"}',
+    }
+    const conversation = {
+        id: 'op-7', workspace, endpoint: 'https://gateway.example/rt/v1', phase: 'answering', failure: null, stop: null,
+        entries: [{ id: 'u-1/c1', role: 'mcp', text: 'tools · lookup', state: 'streaming' }],
+        lastTurn: null, usage: null, cleanup: null, runtimeVersion: '0.1.7-desktop.2',
+        source: 'workspaceKey', historyId: '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d', savedAt: null, saveFailure: null,
+        unsent: null, signInFailure: null, project: null, write: false, approvals: [approval], proposals: [],
+        mcp: [{ name: 'tools', status: 'ready', signedOut: false }],
+    }
+    const harness = (c: Record<string, unknown> | null, m: unknown = mcp) => ({
+        ...valid,
+        harness: { engine, conversation: c, signIn: null, history: null, project: null, projectRefused: null, mcp: m },
+    })
+
+    it('accepts the MCP views Rust issues', () => {
+        expect(parseShellSnapshot(harness(null, null))).toBeTruthy()
+        expect(parseShellSnapshot(harness(conversation))).toBeTruthy()
+        expect(parseShellSnapshot(harness(null, { ...mcp, state: 'failed', failure: 'unavailable', servers: [] }))).toBeTruthy()
+        const odd = { ...server, id: 'odd id!', namespace: 'odd', supported: false, enabled: false, signedIn: false }
+        expect(parseShellSnapshot(harness(null, { ...mcp, servers: [server, odd] }))).toBeTruthy()
+        const eight = Array.from({ length: 8 }, (_, i) => ({ ...server, id: `srv-${i}`, namespace: `s${i}` }))
+        expect(parseShellSnapshot(harness(null, { ...mcp, servers: eight }))).toBeTruthy()
+    })
+
+    it('refuses MCP views Rust never issues', () => {
+        const nine = Array.from({ length: 9 }, (_, i) => ({ ...server, id: `srv-${i}`, namespace: `s${i}` }))
+        for (const broken of [
+            harness(null, { ...mcp, servers: nine }),
+            harness(null, { ...mcp, servers: [{ ...server, namespace: 'Bad-Name' }] }),
+            harness(null, { ...mcp, servers: [{ ...server, url: 'http://gw.example/tools/mcp' }] }),
+            harness(null, { ...mcp, servers: [{ ...server, supported: false }] }),
+            harness(null, { ...mcp, servers: [{ ...server, stale: true }] }),
+            harness(null, { ...mcp, servers: [{ ...server, id: 'odd id!' }] }),
+            harness(null, { ...mcp, servers: [server, server] }),
+            harness(null, { ...mcp, servers: [{ ...server, expired: 'gone' }] }),
+            harness(null, { ...mcp, state: 'failed', failure: null }),
+            harness({ ...conversation, approvals: [{ ...approval, server: null }] }),
+            harness({ ...conversation, approvals: [{ ...approval, kind: 'command', command: 'ls' }] }),
+            harness({ ...conversation, approvals: [{ ...approval, command: 'ls' }] }),
+            harness({ ...conversation, approvals: [{ ...approval, server: 'Not A Name' }] }),
+            harness({ ...conversation, mcp: [{ name: 'tools', status: 'connected', signedOut: false }] }),
+            harness({ ...conversation, mcp: [{ name: 'tools', status: 'ready', signedOut: false, error: 'x' }] }),
+            harness({ ...conversation, entries: [{ id: 'x', role: 'mcpServer', text: 'x', state: 'complete' }] }),
+            harness({ ...conversation, mcp: undefined }),
         ]) {
             expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
         }

@@ -1,0 +1,121 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C19",
+  "recorded_utc": "2026-10-22T03:35:09Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) and the bundled engine's processes (ps, pgrep) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c19.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "bbd066733ee0e93273fde15b245425789ba8dce78ef262b89d606ed40740cccb",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C19-N01",
+      "description": "The bundle's engine resource is the pinned engine (its SHA-256 and sealed inventory match the compiled pin) and the bundle holds no Node, Bun, npm or managed CLI. The Harness is an available destination naming the engine's version, commit and protocol, and offers no conversation without a tenant, a chosen Gateway workspace and the inference key stored for it; once those exist it shows the workspace and the only endpoint the engine is given.",
+      "result": "pass",
+      "observation": "bundle {'engine_sha': True, 'manifest_pin': True, 'js_runtime': [], 'files': 1621}; offer {'heading': True, 'engine_line': True, 'needs_tenant': True, 'start_disabled': True, 'needs_key': True, 'bound': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-offer.json"
+      ]
+    },
+    {
+      "id": "C19-N02",
+      "description": "Start conversation launches exactly one engine as a child of the app, leading its own process group, with `desktop-server` as its only argument, a fixed PATH, its own runtime home under the app's data and no credential in its environment or arguments; the conversation becomes ready and focus moves to the message box.",
+      "result": "pass",
+      "observation": "start {'ready': True, 'none_before': True, 'leader': True, 'own_group': True, 'args': True, 'key_in_environment': False, 'path': True, 'home': True, 'homes': 1, 'focus_message': True, 'processes': 2}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-ready.json"
+      ]
+    },
+    {
+      "id": "C19-N03",
+      "description": "A message sent with Command-Return is answered through the engine: exactly one streamed Responses request reaches the Gateway with the workspace key and a read-only sandbox, and the operator's message, the streamed answer, its end and the token counts are shown.",
+      "result": "pass",
+      "observation": "answer {'answered': True, 'done': True, 'sent': 1, 'key': True, 'sandbox': 'read-only', 'stream': True, 'you': True, 'tokens': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-answer.json"
+      ]
+    },
+    {
+      "id": "C19-N04",
+      "description": "Stop answer interrupts only the answer being streamed: the Gateway stream is closed by the client, the answer is marked as stopped, and the same conversation then answers another message.",
+      "result": "pass",
+      "observation": "interrupt {'streaming': True, 'stop_offered': True, 'stopped': True, 'note': True, 'closed_by_client': True, 'continued': True, 'sent': 3}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-interrupt.json"
+      ]
+    },
+    {
+      "id": "C19-N05",
+      "description": "End conversation stops and reaps the engine (no engine process remains) and removes its runtime home; the status says the conversation ended and takes focus, and a new conversation is offered.",
+      "result": "pass",
+      "observation": "end {'ended': True, 'reaped': True, 'homes': [], 'focus': {'role': 'AXGroup', 'subrole': 'AXApplicationStatus', 'label': ''}, 'status_focused': True, 'new_offered': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-ended.json"
+      ]
+    },
+    {
+      "id": "C19-N06",
+      "description": "Choosing another Gateway workspace retires the conversation at once (its engine is reaped, its view withdrawn and its home removed), and the system will-sleep notification ends a conversation the same way and says so.",
+      "result": "pass",
+      "observation": "retire {'workspace_engine_gone': True, 'had_engine': True, 'view_withdrawn': True, 'homes_after_workspace': [], 'sleep_shown': True, 'sleep_engine_gone': True, 'had_sleep_engine': True, 'homes_after_sleep': []}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-retired.json",
+        "docs/planning/evidence/C22/native-C19/tree-sleep.json"
+      ]
+    },
+    {
+      "id": "C19-N07",
+      "description": "Quitting with a conversation open leaves no engine process and no runtime home; no prompt, answer or key is found anywhere in the app's data on disk; a relaunch restores no conversation and starts a new one.",
+      "result": "pass",
+      "observation": "quit {'had_engine': True, 'engine_gone': True, 'homes': [], 'plaintext_on_disk': [], 'nothing_restored': True, 'start_offered': True, 'new_conversation': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-relaunch.json"
+      ]
+    },
+    {
+      "id": "C19-N08",
+      "description": "The transcript is a list named Messages, the message box is labelled, the status is an accessible status, a message is sent by keyboard, and End conversation is reached by Tab and pressed with Space, reaping the engine.",
+      "result": "pass",
+      "observation": "keyboard and accessibility {'transcript_named': True, 'message_labelled': True, 'status_role': True, 'send_keyboard': True, 'end_reached_by_tab': True, 'ended_by_space': True, 'engine_gone': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-a11y.json"
+      ]
+    },
+    {
+      "id": "C19-N09",
+      "description": "No secret appears in any captured accessibility tree, the Gateway log holds neither prompt nor key, the engine reached only the Responses endpoint, no engine process outlives the run, and v1 data is unchanged.",
+      "result": "pass",
+      "observation": "engine requests: 5 to ['/rt/v1/responses']; secrets in AX snapshots: []; prompt or key in the server log: False; engines left: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json"
+      ]
+    },
+    {
+      "id": "C19-N10",
+      "description": "An engine killed from outside is named as having stopped unexpectedly, its processes and runtime home are gone, and a new conversation starts a new engine.",
+      "result": "pass",
+      "observation": "crash {'killed': True, 'named': True, 'gone': True, 'homes': [], 'restarted': True, 'new_engine': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C19/observations.json",
+        "docs/planning/evidence/C22/native-C19/tree-crash.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The engine is the pinned build (9331a58) from the sealed archive; its inference goes to a synthetic local TLS Gateway, so no product endpoint is called before C25 and no live inference budget is used.",
+    "Sleep is exercised by posting NSWorkspace's will-sleep notification in the app (a fixture menu item), which runs the production observer; the Mac does not actually sleep.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

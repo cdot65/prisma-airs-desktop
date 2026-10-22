@@ -18,6 +18,8 @@ pub mod callback;
 pub mod engine;
 pub mod history;
 pub mod identity;
+pub mod mcp;
+pub mod mcp_auth;
 pub mod protocol;
 pub mod session;
 pub mod sidecar;
@@ -75,6 +77,10 @@ pub enum HarnessFailure {
     /// Company sign-in must be renewed before anything is sent (C20).
     #[error("sign-in needed")]
     SignInNeeded,
+    /// The workspace MCP sign-ins do not fit in the engine's bootstrap
+    /// together (C22): fewer servers must be on.
+    #[error("MCP scope too large")]
+    McpTooLarge,
 }
 
 /// Where a conversation stands.
@@ -114,6 +120,9 @@ pub enum HarnessRole {
     /// A typed desktop tool the engine called (C21): its text is the
     /// desktop's own description, never the model's.
     Tool,
+    /// A workspace MCP server's tool call (C22): the server, tool,
+    /// arguments and its result or error, bounded and redacted.
+    Mcp,
 }
 
 /// How an entry stands.
@@ -139,6 +148,8 @@ pub enum ApprovalKind {
     Command,
     /// Change files in the project.
     FileChange,
+    /// Call one tool of a workspace MCP server, once (C22).
+    McpTool,
 }
 
 /// A pending approval, as the operator sees it (C21). Its id is the
@@ -156,6 +167,32 @@ pub struct HarnessApproval {
     pub reason: Option<String>,
     /// The files it changes (file changes).
     pub files: Vec<String>,
+    /// The workspace MCP server (its namespace) and tool, and the call's
+    /// arguments as JSON, from the engine's running call (MCP tools, C22).
+    pub server: Option<String>,
+    pub tool: Option<String>,
+    pub arguments: Option<String>,
+}
+
+/// How a workspace MCP server started in the running engine (C22).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum McpStartup {
+    Starting,
+    Ready,
+    Failed,
+    Cancelled,
+}
+
+/// One scope server's startup in the running engine (C22).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerStatus {
+    /// Its namespace.
+    pub name: String,
+    pub status: McpStartup,
+    /// It was given the signed-out placeholder: its tools are unavailable.
+    pub signed_out: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS, Deserialize)]

@@ -292,9 +292,9 @@ pub struct Workload {
 /// bodies and downloads workload (registered by C15 before it implemented
 /// API Client execution, measured in C15), the Harness native-engine
 /// startup and memory workload (C19), the protected Harness history
-/// workload (C20) and the Harness tool workload (C21, each registered
-/// before its chunk was built); each also in the phases containing its
-/// measuring chunk.
+/// workload (C20), the Harness tool workload (C21) and the MCP server
+/// session workload (C22, each registered before its chunk was built);
+/// each also in the phases containing its measuring chunk.
 pub const WORKLOADS: &[Workload] = &[
     Workload {
         registered_by: "C04",
@@ -336,6 +336,12 @@ pub const WORKLOADS: &[Workload] = &[
         registered_by: "C21",
         registration: "docs/planning/evidence/C21/workload-budget-registration.json",
         measured_by: "C21",
+        evidence: "workload-perf.json",
+    },
+    Workload {
+        registered_by: "C22",
+        registration: "docs/planning/evidence/C22/workload-budget-registration.json",
+        measured_by: "C22",
         evidence: "workload-perf.json",
     },
 ];

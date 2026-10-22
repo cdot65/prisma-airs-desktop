@@ -3,9 +3,10 @@ import type { GatewayDetail } from "./GatewayDetail";
 import type { GatewayList } from "./GatewayList";
 import type { GatewayModels } from "./GatewayModels";
 import type { GatewayPrerequisites } from "./GatewayPrerequisites";
+import type { McpCatalog } from "./McpCatalog";
 import type { ObserveResult } from "./ObserveResult";
 
 /**
  * What a Gateway read produced.
  */
-export type GatewayResult = { "kind": "list", list: GatewayList, } | { "kind": "detail", detail: GatewayDetail, } | { "kind": "models", models: GatewayModels, } | { "kind": "prerequisites", prerequisites: GatewayPrerequisites, } | { "kind": "observed", observed: ObserveResult, };
+export type GatewayResult = { "kind": "list", list: GatewayList, } | { "kind": "detail", detail: GatewayDetail, } | { "kind": "models", models: GatewayModels, } | { "kind": "prerequisites", prerequisites: GatewayPrerequisites, } | { "kind": "observed", observed: ObserveResult, } | { "kind": "mcpServers", catalog: McpCatalog, };

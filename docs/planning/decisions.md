@@ -1764,6 +1764,129 @@ restarted, restored or sent.
 imported history (C23); live management, Gateway and model qualification
 (C25).
 
+## D049 — Workspace MCP servers for the Harness: catalog, desktop OAuth, grants and approval
+
+Decided in C22 (implementer decision for the C22 milestones, recorded for
+review).
+
+**Catalog.** The chosen Gateway workspace's MCP servers are read through
+the tenant's management client, as one more scoped Gateway read:
+- `GET /mcp-servers?workspace_id`, zero-based pages of 100, at most five.
+- Only the workspace's own servers are kept.
+- A server's URL must be HTTPS with a host and no credentials, query or
+  fragment. It is kept as the `url` crate canonicalizes it, which is what
+  the engine stores.
+- Repeated IDs are dropped, and the upstream (`mcp_integration_url`) is
+  never kept.
+
+A server's revision is SHA-256 over a versioned domain and the
+length-prefixed ID, slug, URL, status and update time. Its engine namespace
+is derived from its slug, as v1 derived it. A shared or reserved name gets a
+suffix from the server's ID hash, wide enough to tell the group apart, so
+the result does not depend on catalog order. An ID the engine cannot take
+is shown and never granted.
+
+**Sign-in is the desktop's, never the engine's.**
+- The server must answer an unauthenticated `initialize` with `401` and a
+  `resource_metadata` challenge on its own origin.
+- The protected-resource metadata (RFC 9728) must name exactly the URL.
+- Its authorization server must be on the same HTTPS origin, and that
+  server's metadata (RFC 8414) must name itself. It must offer the code
+  flow with S256 and a public client (`none`) and client registration, and
+  keep every endpoint on that origin.
+- A client is registered for each attempt (RFC 7591).
+- The browser goes to authorize with:
+  - PKCE S256 and a 256-bit `state`;
+  - `resource` set to the URL (RFC 8707);
+  - the shared one-attempt `127.0.0.1` loopback (D047);
+  - only `mcp:servers:read`, `mcp:tools:list` and `mcp:tools:call`, as
+    offered (never a wildcard).
+- The code is exchanged, and later refreshed, with `resource`.
+- Replies are at most 64 KiB and redirects are refused.
+- An access token must be a bearer of 16-16384 visible ASCII bytes, as the
+  engine requires.
+- These requests are written by hand over the app's own client, like
+  D047's: `oauth2`/`openidconnect` do not cover RFC 9728/8414/7591 discovery
+  and registration, and D028's reasons hold.
+
+**Grants.** A sign-in is a grant: a new UUID bound to the server's URL and
+revision at that moment. Its tokens, issue time and expiry are a Keychain
+item.
+- Writing it, and each rotation, follows the full credential-store
+  contract. The record joins the cleanup ledger, confirmed durable, and is
+  reserved as in flight before it is written. It leaves the ledger only in
+  the save that names it, so a stale or failed write is never left
+  untracked.
+- A refresh renews inside `min(120 s, lifetime/2)` and rotates the item.
+  One renewal runs at a time per grant, and it completes even if its caller
+  goes away.
+- Signing out, removing the tenant or resetting deletes the item through
+  the ledger, then revokes both tokens at the server (best effort).
+
+**A conversation's scope** is fixed at its start:
+- the servers turned on (at most eight per workspace) that are in the
+  loaded catalog, in catalog order;
+- each with its grant only if that grant was made for the server's current
+  URL and revision.
+
+With any server on, the catalog must be loaded, or nothing starts (`Busy`).
+The bootstrap carries `mcpServers` in scope order. Each server gets its
+token, or the 32-byte placeholder `airs-desktop-mcp-sign-in-expired` when
+there is no current sign-in, so the scope stays the same and that server
+fails to start while inference goes on. The receipt must echo exactly the
+scope's `{name, serverId}` in order. Tokens that do not fit the 64 KiB frame
+fail the start with `mcpTooLarge` and are never truncated.
+
+**What retires a conversation.** Any of these retires a conversation whose
+scope holds the server:
+- signing out;
+- signing in again (a new grant, even for the same URL);
+- turning the server off;
+- a new catalog revision or URL;
+- removing the tenant.
+
+An expired sign-in does not. Grants and revisions are not in the engine's
+context, so the desktop checks them, as D048 checks the folder.
+
+**Approval.** An elicitation from the engine is held for the operator only
+when all of these hold:
+- it is form mode, with `codex_approval_kind: mcp_tool_call`;
+- its `airs_desktop_item_id` names an `mcpToolCall` the engine started in
+  this turn, on the same server, for a server in the scope;
+- that call has not been asked before;
+- the server holds a current token;
+- fewer than eight decisions are waiting.
+
+The card shows the server, the tool and the arguments of the call as the
+engine started it, never the request's own `_meta`. Anything else is
+declined at once with a transcript notice; the engine's reserved-key
+forgeries never arrive. The operator's Approve once or Decline is sent as
+exactly `{"action":"accept"}` or `{"action":"decline"}`. When an approval
+is decided, the desktop checks again that the server's grant is the scope's
+and is unexpired; if not, it declines whatever the operator chose. Pending
+approvals end with the turn or an interrupt, and no late reply is sent.
+Calls, results and errors are bounded, and every token is redacted.
+
+**Rotation.** Before a message, the scope's tokens are renewed when one is
+inside its margin. Only if what the engine holds changed (a fingerprint
+over the server IDs and tokens) is it restarted, restoring the last export
+and then sending. An MCP-only rotation keeps the conversation's confirmed
+access to its folder (D048). When the Gateway credential is renewed too,
+one restart does both and D048's re-confirmation applies.
+
+**History.** A saved conversation records its scope. One whose scope
+differs from what a new conversation would get now, or cannot be checked
+because the catalog is not loaded, reads `otherMcp` and cannot be
+continued.
+
+**Fixtures.** The integration tests and the native driver serve the MCP
+plane over loopback HTTPS that the engine trusts through the app's own
+roots (`CODEX_CA_CERTIFICATE`). The engine's `--allow-http-loopback` is
+never passed.
+
+**Out of scope here:** v1 history and MCP-state import (C23); live
+Gateway MCP sign-in, denial, refresh and revocation qualification (C25).
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

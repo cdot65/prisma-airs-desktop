@@ -29,6 +29,7 @@ use super::sidecar::{LaunchSpec, Sidecar, SidecarLauncher};
 use super::{
     ApprovalKind, Cleanup, EntryState, HarnessApproval, HarnessEntry, HarnessFailure, HarnessPhase,
     HarnessRole, HarnessUsage, MAX_ANSWER_BYTES, MAX_ENTRIES, MAX_TRANSCRIPT_BYTES,
+    McpServerStatus, McpStartup,
 };
 use crate::runtime::Outcome;
 
@@ -66,11 +67,14 @@ pub enum Command {
         prompt: Zeroizing<String>,
     },
     Interrupt,
-    /// The Gateway credential was renewed (C20): the engine is restarted
-    /// with it, the conversation restored from its last export, and then
-    /// `prompt` is sent.
+    /// A credential the engine holds was renewed: the Gateway credential
+    /// (C20), the workspace MCP tokens (C22) or both. The engine is
+    /// restarted with them (what is `None` stays as it was), the
+    /// conversation restored from its last export, and then `prompt` is
+    /// sent.
     Renew {
-        key: Zeroizing<String>,
+        key: Option<Zeroizing<String>>,
+        mcp: Option<Vec<Option<Zeroizing<String>>>>,
         id: String,
         prompt: Zeroizing<String>,
     },
@@ -103,6 +107,21 @@ const MAX_PENDING_DECISIONS: usize = 8;
 /// What a command entry shows of a command and of its output.
 const MAX_COMMAND_TEXT: usize = 2 * 1024;
 const MAX_COMMAND_OUTPUT: usize = 8 * 1024;
+/// MCP calls tracked in one turn (the engine's own bound).
+const MAX_MCP_ITEMS: usize = 64;
+const DECLINED_MCP: &str = "An MCP request did not name a running tool call of a signed-in server, or asked for other input; it was declined.";
+
+/// One workspace MCP call the engine started this turn (C22).
+#[derive(Clone)]
+struct McpItem {
+    id: String,
+    server: String,
+    tool: String,
+    arguments: String,
+    /// Its approval was asked (an item is asked once).
+    asked: bool,
+    done: bool,
+}
 
 /// What the engine exported after a turn, with the engine context it was
 /// exported under (user work: kept in memory and in the sealed store only).
@@ -163,6 +182,8 @@ pub struct Progress {
     pub save_failure: Option<HistoryFailure>,
     /// Approvals the engine is waiting for (C21).
     pub approvals: Vec<HarnessApproval>,
+    /// The scope servers' startup in the running engine (C22).
+    pub mcp: Vec<McpServerStatus>,
 }
 
 pub type ProgressSlot = Arc<Mutex<Progress>>;
@@ -178,6 +199,9 @@ pub struct Inputs {
     pub proxy: ProxyEnv,
     pub binding: Binding,
     pub key: KeyReader,
+    /// Each scope server's token, or `None` for the signed-out
+    /// placeholder (C22).
+    pub mcp: Vec<Option<Zeroizing<String>>>,
     pub commands: mpsc::Receiver<Command>,
     pub progress: ProgressSlot,
     pub pulse: Arc<Notify>,
@@ -230,6 +254,7 @@ pub async fn run(inputs: Inputs, cancel: CancellationToken, deadline: Instant) -
         proxy,
         binding,
         key,
+        mcp,
         commands,
         progress,
         pulse: notify,
@@ -255,6 +280,7 @@ pub async fn run(inputs: Inputs, cancel: CancellationToken, deadline: Instant) -
     };
     let mut next = Launch {
         key: Key::Reader(key),
+        mcp,
         restore,
         then: None,
     };
@@ -312,6 +338,7 @@ enum Key {
 /// ready.
 pub(crate) struct Launch {
     key: Key,
+    mcp: Vec<Option<Zeroizing<String>>>,
     restore: Option<Replay>,
     then: Option<(String, Zeroizing<String>)>,
 }
@@ -333,7 +360,12 @@ async fn launched(
             p.failure = Some(f);
         })
     };
-    let Launch { key, restore, then } = launch;
+    let Launch {
+        key,
+        mcp,
+        restore,
+        then,
+    } = launch;
     let key = match key {
         Key::Renewed(key) => key,
         Key::Reader(read) => match tokio::task::spawn_blocking(read)
@@ -347,7 +379,7 @@ async fn launched(
             }
         },
     };
-    let frame = match protocol::bootstrap(&shared.binding, &key) {
+    let frame = match protocol::bootstrap(&shared.binding, &key, &mcp) {
         Ok(frame) => frame,
         Err(f) => {
             fail(f);
@@ -393,7 +425,7 @@ async fn launched(
         binding: shared.binding.clone(),
         runtime_version: shared.pin.runtime_version.clone(),
         client_version: shared.client_version.clone(),
-        secret: key,
+        secret: Secrets { key, mcp },
         writer: Some(writer_tx),
         events,
         commands: std::mem::replace(&mut shared.commands, mpsc::channel(1).1),
@@ -419,6 +451,8 @@ async fn launched(
         tool_calls: Vec::new(),
         seen: Vec::new(),
         files: Vec::new(),
+        mcp_items: Vec::new(),
+        elicitations_declined: 0,
     };
     let ended = if reader.is_none() || writer.is_none() {
         Err(HarnessFailure::StartFailed)
@@ -430,6 +464,11 @@ async fn launched(
     shared.commands = std::mem::replace(&mut conversation.commands, mpsc::channel(1).1);
     let renewal = conversation.renewal.take();
     let latest = conversation.latest.take();
+    // What the next engine keeps of this one's credentials.
+    let held = Secrets {
+        key: conversation.secret.key.clone(),
+        mcp: conversation.secret.mcp.clone(),
+    };
     let handed = progress.lock().map(|p| p.turn_handed).unwrap_or(true);
     update(&progress, &pulse, |p| {
         p.phase = if renewal.is_some() {
@@ -460,7 +499,7 @@ async fn launched(
     // one last exported; a conversation that had turns but nothing to
     // restore cannot continue (it would silently lose its context).
     let next = match (renewal, ended.is_ok() && cleanup != Cleanup::Failed) {
-        (Some((key, id, prompt)), true) => {
+        (Some((key, mcp, id, prompt)), true) => {
             let had_turns = progress
                 .lock()
                 .map(|p| !p.entries.is_empty())
@@ -472,7 +511,8 @@ async fn launched(
                 None
             } else {
                 Some(Launch {
-                    key: Key::Renewed(key),
+                    key: Key::Renewed(key.unwrap_or(held.key)),
+                    mcp: mcp.unwrap_or(held.mcp),
                     restore: latest,
                     then: Some((id, prompt)),
                 })
@@ -731,7 +771,7 @@ struct Conversation {
     runtime_version: String,
     client_version: String,
     /// Kept only to keep it out of anything shown.
-    secret: Zeroizing<String>,
+    secret: Secrets,
     writer: Option<std_mpsc::SyncSender<Outbound>>,
     events: mpsc::Receiver<Event>,
     commands: mpsc::Receiver<Command>,
@@ -746,7 +786,7 @@ struct Conversation {
     /// An export to save once the frame is handled.
     exported: Option<Replay>,
     /// The conversation continues in a new engine with this credential.
-    renewal: Option<(Zeroizing<String>, String, Zeroizing<String>)>,
+    renewal: Option<Renewal>,
     progress: ProgressSlot,
     pulse: Arc<Notify>,
     next_id: u64,
@@ -765,7 +805,11 @@ struct Conversation {
     tools: Option<ToolSink>,
     /// Approvals waiting for the operator: the desktop's id and the
     /// engine's request (C21).
-    approvals: Vec<(String, RequestId)>,
+    approvals: Vec<(String, RequestId, ApprovalKind)>,
+    /// This turn's workspace MCP calls (C22), as the engine started them.
+    mcp_items: Vec<McpItem>,
+    /// Elicitations declined without asking (numbers their notices).
+    elicitations_declined: u32,
     /// Tool calls being run: the engine's request and the entry.
     tool_calls: Vec<(RequestId, String)>,
     /// Call and item ids seen in this turn (a repeat is a protocol failure).
@@ -973,18 +1017,29 @@ impl Conversation {
             return Ok(());
         }
         match command {
-            Command::Renew { key, id, prompt } => {
+            Command::Renew {
+                key,
+                mcp,
+                id,
+                prompt,
+            } => {
                 if self.turn.is_none() {
-                    self.renewal = Some((key, id, prompt));
+                    self.renewal = Some((key, mcp, id, prompt));
                 }
             }
             Command::Decide { approval, allow } => {
                 // Only an approval still pending in this run and turn: the
                 // engine forgets them when a turn ends or is interrupted.
-                if let Some(at) = self.approvals.iter().position(|(a, _)| *a == approval) {
-                    let (_, request) = self.approvals.remove(at);
+                if let Some(at) = self.approvals.iter().position(|(a, _, _)| *a == approval) {
+                    let (_, request, kind) = self.approvals.remove(at);
                     let decision = if allow { "accept" } else { "decline" };
-                    self.send(protocol::reply(&request, json!({"decision": decision}))?)?;
+                    // MCP approvals are elicitations: `action`, nothing else.
+                    let reply = if kind == ApprovalKind::McpTool {
+                        json!({"action": decision})
+                    } else {
+                        json!({"decision": decision})
+                    };
+                    self.send(protocol::reply(&request, reply)?)?;
                     self.set(|p| p.approvals.retain(|a| a.id != approval));
                 }
             }
@@ -1067,6 +1122,7 @@ impl Conversation {
             // when it is interrupted; a later answer to one would be stale.
             self.approvals.clear();
             self.tool_calls.clear();
+            self.mcp_items.clear();
             self.set(|p| p.approvals.clear());
         }
         Ok(())
@@ -1129,10 +1185,7 @@ impl Conversation {
                 "item/fileChange/requestApproval" => {
                     self.on_approval(id, ApprovalKind::FileChange, &params)?;
                 }
-                // Workspace MCP servers are C22: nothing is granted here.
-                "mcpServer/elicitation/request" => {
-                    self.send(protocol::reply(&id, json!({"action":"decline"}))?)?;
-                }
+                "mcpServer/elicitation/request" => self.on_elicitation(id, &params)?,
                 _ => self.send(protocol::refuse(&id, -32601)?)?,
             },
             Incoming::Notification { method, params } => self.on_notification(&method, &params)?,
@@ -1243,10 +1296,102 @@ impl Conversation {
                 .find(|(i, _)| *i == item)
                 .map(|(_, f)| f.clone())
                 .unwrap_or_default(),
+            server: None,
+            tool: None,
+            arguments: None,
         };
-        self.approvals.push((token, id));
+        self.approvals.push((token, id, kind));
         self.set(|p| p.approvals.push(approval));
         Ok(())
+    }
+
+    /// An elicitation from the engine (C22). Only an MCP tool approval
+    /// naming this turn's running call, on the in-scope server that started
+    /// it, not yet asked, whose server holds a current sign-in, is held for
+    /// the operator, with the server, tool and arguments of the call as
+    /// the engine started it; anything else is declined at once.
+    fn on_elicitation(&mut self, id: RequestId, params: &Value) -> Result<(), HarnessFailure> {
+        let meta = &params["_meta"];
+        let server = params["serverName"].as_str();
+        let at = meta["airs_desktop_item_id"].as_str().and_then(|item| {
+            self.mcp_items.iter().position(|m| {
+                m.id == item && Some(m.server.as_str()) == server && !m.asked && !m.done
+            })
+        });
+        let signed_in = |name: &str| {
+            self.binding
+                .mcp
+                .iter()
+                .position(|s| s.name == name)
+                .and_then(|i| self.secret.mcp.get(i))
+                .is_some_and(Option::is_some)
+        };
+        let held = self.ours(params)
+            && params["mode"] == "form"
+            && meta["codex_approval_kind"] == "mcp_tool_call"
+            && self.approvals.len() < MAX_PENDING_DECISIONS;
+        let Some(at) = at.filter(|&i| held && signed_in(&self.mcp_items[i].server)) else {
+            self.elicitations_declined += 1;
+            let entry = self.assistant_id(&format!("declined-{}", self.elicitations_declined));
+            self.set(|p| {
+                push(
+                    p,
+                    HarnessEntry {
+                        id: entry,
+                        role: HarnessRole::Mcp,
+                        text: DECLINED_MCP.into(),
+                        state: EntryState::Declined,
+                    },
+                );
+            });
+            return self.send(protocol::reply(&id, json!({"action":"decline"}))?);
+        };
+        self.mcp_items[at].asked = true;
+        let item = self.mcp_items[at].clone();
+        let mut token = [0u8; 12];
+        getrandom::fill(&mut token).map_err(|_| HarnessFailure::Protocol)?;
+        let token = hex::encode(token);
+        let approval = HarnessApproval {
+            id: token.clone(),
+            kind: ApprovalKind::McpTool,
+            command: None,
+            cwd: None,
+            reason: None,
+            files: Vec::new(),
+            server: Some(item.server),
+            tool: Some(item.tool),
+            arguments: Some(item.arguments),
+        };
+        self.approvals.push((token, id, ApprovalKind::McpTool));
+        self.set(|p| p.approvals.push(approval));
+        Ok(())
+    }
+
+    /// A workspace MCP server's startup (C22): only scope servers, and
+    /// never the engine's error text.
+    fn on_mcp_startup(&mut self, params: &Value) {
+        let Some(name) = params["name"].as_str() else {
+            return;
+        };
+        let Some(i) = self.binding.mcp.iter().position(|s| s.name == name) else {
+            return;
+        };
+        let status = match params["status"].as_str() {
+            Some("starting") => McpStartup::Starting,
+            Some("ready") => McpStartup::Ready,
+            Some("cancelled") => McpStartup::Cancelled,
+            _ => McpStartup::Failed,
+        };
+        let signed_out = self.secret.mcp.get(i).is_none_or(Option::is_none);
+        let name = name.to_owned();
+        self.set(|p| match p.mcp.iter_mut().find(|s| s.name == name) {
+            Some(s) => s.status = status,
+            None => p.mcp.push(McpServerStatus {
+                name,
+                status,
+                signed_out,
+            }),
+        });
     }
 
     /// A command, file-change or tool item, as an entry of its turn.
@@ -1308,6 +1453,73 @@ impl Conversation {
             }
             // The tool's own entry was made from its typed call.
             Some("dynamicToolCall") => return Ok(()),
+            Some("mcpToolCall") => {
+                let server = cut(item["server"].as_str().unwrap_or_default(), 64);
+                let tool = cut(item["tool"].as_str().unwrap_or_default(), 128);
+                let arguments = cut(&item["arguments"].to_string(), MAX_COMMAND_TEXT);
+                // Only calls of this conversation's servers are this turn's.
+                if !self.binding.mcp.iter().any(|s| s.name == server) {
+                    return Ok(());
+                }
+                let known = self.mcp_items.iter().position(|m| m.id == item_id);
+                match known {
+                    Some(i) => self.mcp_items[i].done |= done,
+                    None if self.mcp_items.len() < MAX_MCP_ITEMS => self.mcp_items.push(McpItem {
+                        id: item_id.to_owned(),
+                        server: server.clone(),
+                        tool: tool.clone(),
+                        arguments: arguments.clone(),
+                        asked: false,
+                        done,
+                    }),
+                    None => return Err(HarnessFailure::Bounds),
+                }
+                let mut text = format!("{server} · {tool}\n{arguments}");
+                if done {
+                    let outcome = if item["status"] == "completed" {
+                        item["result"]["content"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|c| c["text"].as_str())
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    } else {
+                        item["error"]["message"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned()
+                    };
+                    if !outcome.is_empty() {
+                        text.push('\n');
+                        text.push_str(&cut(&outcome, MAX_COMMAND_OUTPUT));
+                    }
+                }
+                let state = match state {
+                    EntryState::Failed
+                        if item["error"]["message"] == "user rejected MCP tool call" =>
+                    {
+                        EntryState::Declined
+                    }
+                    s => s,
+                };
+                self.set(|p| match p.entries.iter_mut().find(|e| e.id == id) {
+                    Some(e) => {
+                        e.text = text;
+                        e.state = state;
+                    }
+                    None => push(
+                        p,
+                        HarnessEntry {
+                            id,
+                            role: HarnessRole::Mcp,
+                            text,
+                            state,
+                        },
+                    ),
+                });
+                return Ok(());
+            }
             _ => return Ok(()),
         };
         self.set(|p| match p.entries.iter_mut().find(|e| e.id == id) {
@@ -1339,6 +1551,7 @@ impl Conversation {
 
     fn on_notification(&mut self, method: &str, params: &Value) -> Result<(), HarnessFailure> {
         match method {
+            "mcpServer/startupStatus/updated" => self.on_mcp_startup(params),
             "turn/started" if params["threadId"].as_str() == self.thread.as_deref() => {
                 // The engine's turn id, if its response has not come yet.
                 if let (Some((_, known @ None)), Some(t)) = (
@@ -1399,7 +1612,7 @@ impl Conversation {
                 if self.ours(params)
                     && matches!(
                         params["item"]["type"].as_str(),
-                        Some("commandExecution" | "fileChange" | "dynamicToolCall")
+                        Some("commandExecution" | "fileChange" | "dynamicToolCall" | "mcpToolCall")
                     ) =>
             {
                 self.on_item(&params["item"], method == "item/completed")?;
@@ -1534,13 +1747,13 @@ impl Conversation {
         }
         self.answer_bytes += delta.len();
         let id = id.to_owned();
-        let secret: &str = &self.secret;
+        let secrets = &self.secret;
         update(&self.progress, &self.pulse, |p| {
             if let Some(e) = p.entries.iter_mut().find(|e| e.id == id) {
                 e.text.push_str(&delta);
                 // A key split across deltas is whole only once joined.
-                if !secret.is_empty() && e.text.contains(secret) {
-                    e.text = redact(&e.text, secret);
+                if secrets.all().any(|s| e.text.contains(s)) {
+                    e.text = redact(&e.text, secrets);
                 }
             }
         });
@@ -1556,6 +1769,7 @@ impl Conversation {
         self.tool_calls.clear();
         self.seen.clear();
         self.files.clear();
+        self.mcp_items.clear();
         let state = match end {
             TurnEnd::Completed => EntryState::Complete,
             TurnEnd::Interrupted => EntryState::Interrupted,
@@ -1617,11 +1831,37 @@ fn push(p: &mut Progress, entry: HarnessEntry) {
 }
 
 /// Text with any copy of the key replaced.
-fn redact(text: &str, secret: &str) -> String {
-    if secret.is_empty() || !text.contains(secret) {
-        return text.to_owned();
+/// A renewal's new credentials (`None`: kept), entry ID and prompt.
+type Renewal = (
+    Option<Zeroizing<String>>,
+    Option<Vec<Option<Zeroizing<String>>>>,
+    String,
+    Zeroizing<String>,
+);
+
+/// What the engine was given that must never be shown: the Gateway key
+/// and the workspace MCP tokens (C22).
+pub(crate) struct Secrets {
+    pub key: Zeroizing<String>,
+    pub mcp: Vec<Option<Zeroizing<String>>>,
+}
+
+impl Secrets {
+    fn all(&self) -> impl Iterator<Item = &str> {
+        std::iter::once(self.key.as_str())
+            .chain(self.mcp.iter().flatten().map(|t| t.as_str()))
+            .filter(|s| !s.is_empty())
     }
-    text.replace(secret, "[redacted]")
+}
+
+fn redact(text: &str, secrets: &Secrets) -> String {
+    let mut out = text.to_owned();
+    for secret in secrets.all() {
+        if out.contains(secret) {
+            out = out.replace(secret, "[redacted]");
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -1680,10 +1920,14 @@ mod tests {
                 endpoint: String::new(),
                 project: None,
                 write: false,
+                mcp: Vec::new(),
             },
             runtime_version: String::new(),
             client_version: String::new(),
-            secret: Zeroizing::new("k".into()),
+            secret: Secrets {
+                key: Zeroizing::new("k".into()),
+                mcp: Vec::new(),
+            },
             writer: Some(writer),
             events,
             commands,
@@ -1709,6 +1953,8 @@ mod tests {
             tool_calls: Vec::new(),
             seen: Vec::new(),
             files: Vec::new(),
+            mcp_items: Vec::new(),
+            elicitations_declined: 0,
         }
     }
 
@@ -1847,6 +2093,109 @@ mod tests {
         c.on_approval(RequestId::Number(6), ApprovalKind::FileChange, &ask("i-6"))
             .expect("held");
         assert_eq!(c.approvals.len(), 2);
+    }
+
+    #[test]
+    fn only_an_mcp_approval_naming_this_turns_running_call_is_asked() {
+        let (writer, reader) = std_mpsc::sync_channel(64);
+        let mut c = conversation(writer);
+        c.turn = Some(("u-1".into(), Some("turn-1".into())));
+        let server = |name: &str| super::super::mcp::ScopeServer {
+            name: name.into(),
+            server_id: format!("id-{name}"),
+            url: format!("https://gw.example/{name}/mcp"),
+            revision: "r".into(),
+            grant: Some("g".into()),
+        };
+        c.binding.mcp = vec![server("tools"), server("docs")];
+        c.secret.key = Zeroizing::new("gw-key-of-a-realistic-length".into());
+        c.secret.mcp = vec![Some(Zeroizing::new("t".repeat(32))), None];
+        let item = |id: &str, server: &str| {
+            json!({"id": id, "type": "mcpToolCall", "server": server, "tool": "lookup",
+                "status": "inProgress", "arguments": {"query": "record-1"}})
+        };
+        c.on_item(&item("call-1", "tools"), false).expect("started");
+        c.on_item(&item("call-2", "docs"), false).expect("started");
+        // A server outside the scope is not this conversation's call.
+        c.on_item(&item("call-3", "other"), false).expect("ignored");
+        let ask = |item: &str, server: &str| {
+            json!({"threadId": "t", "turnId": "turn-1", "serverName": server, "mode": "form",
+                "message": "Allow?", "requestedSchema": {"type": "object", "properties": {}},
+                "_meta": {"codex_approval_kind": "mcp_tool_call", "airs_desktop_item_id": item,
+                    "tool_params": {"query": "forged"}}})
+        };
+        let declined = |reader: &std_mpsc::Receiver<Outbound>| {
+            reader
+                .try_iter()
+                .map(|o| String::from_utf8_lossy(o.0.as_slice()).into_owned())
+                .filter(|r| r.contains("\"action\":\"decline\""))
+                .count()
+        };
+        let mut forged = vec![
+            ask("call-9", "tools"),
+            ask("call-1", "docs"),
+            ask("call-3", "other"),
+            ask("call-2", "docs"),
+        ];
+        let mut other_turn = ask("call-1", "tools");
+        other_turn["turnId"] = json!("turn-0");
+        forged.push(other_turn);
+        let mut url_mode = ask("call-1", "tools");
+        url_mode["mode"] = json!("url");
+        forged.push(url_mode);
+        let mut server_owned = ask("call-1", "tools");
+        server_owned["_meta"] = json!({"note": "server-owned"});
+        forged.push(server_owned);
+        for (n, params) in forged.iter().enumerate() {
+            c.on_elicitation(RequestId::Number(n as u64), params)
+                .expect("declined");
+        }
+        // Unknown item, wrong server, outside the scope, a signed-out
+        // server, another turn, another mode and a server's own request.
+        assert_eq!(declined(&reader), forged.len());
+        assert!(c.approvals.is_empty());
+        // The running call on its signed-in server is asked, once, with the
+        // call's own arguments (never the request's).
+        c.on_elicitation(RequestId::Number(50), &ask("call-1", "tools"))
+            .expect("asked");
+        assert_eq!(c.approvals.len(), 1);
+        let shown = c.progress.lock().expect("progress").approvals[0].clone();
+        assert_eq!(shown.kind, ApprovalKind::McpTool);
+        assert_eq!(shown.server.as_deref(), Some("tools"));
+        assert_eq!(shown.tool.as_deref(), Some("lookup"));
+        assert!(
+            shown
+                .arguments
+                .as_deref()
+                .is_some_and(|a| a.contains("record-1") && !a.contains("forged"))
+        );
+        c.on_elicitation(RequestId::Number(51), &ask("call-1", "tools"))
+            .expect("declined");
+        assert_eq!(declined(&reader), 1);
+        // Allowed once: exactly `{"action":"accept"}`.
+        c.on_command(Command::Decide {
+            approval: shown.id.clone(),
+            allow: true,
+        })
+        .expect("decided");
+        let replies: Vec<String> = reader
+            .try_iter()
+            .map(|o| String::from_utf8_lossy(o.0.as_slice()).into_owned())
+            .collect();
+        assert_eq!(replies.len(), 1);
+        assert!(
+            replies[0].contains("\"id\":50") && replies[0].contains("{\"action\":\"accept\"}"),
+            "{}",
+            replies[0]
+        );
+        // Startup is published for scope servers only, never the engine's text.
+        c.on_mcp_startup(&json!({"name": "tools", "status": "ready", "error": "airs mcp login"}));
+        c.on_mcp_startup(&json!({"name": "docs", "status": "failed"}));
+        c.on_mcp_startup(&json!({"name": "other", "status": "ready"}));
+        let mcp = c.progress.lock().expect("progress").mcp.clone();
+        assert_eq!(mcp.len(), 2);
+        assert_eq!(mcp[0].status, McpStartup::Ready);
+        assert!(!mcp[0].signed_out && mcp[1].signed_out);
     }
 
     fn home(roots: &[Vec<u8>]) -> (Home, PathBuf) {

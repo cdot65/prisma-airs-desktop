@@ -5,4 +5,4 @@ import type { ObserveRead } from "./ObserveRead";
 /**
  * One Gateway read the presentation asks for.
  */
-export type GatewayRead = { "kind": "inventory", resource: GatewayResource, } | { "kind": "detail", resource: GatewayResource, id: string, } | { "kind": "integrationModels", id: string, } | { "kind": "prerequisites" } | { "kind": "observe", read: ObserveRead, };
+export type GatewayRead = { "kind": "inventory", resource: GatewayResource, } | { "kind": "detail", resource: GatewayResource, id: string, } | { "kind": "integrationModels", id: string, } | { "kind": "prerequisites" } | { "kind": "observe", read: ObserveRead, } | { "kind": "mcpServers" };

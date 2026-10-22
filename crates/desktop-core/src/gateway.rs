@@ -74,12 +74,14 @@ pub enum GatewayRead {
     Observe {
         read: crate::gateway_observe::ObserveRead,
     },
+    /// The selected workspace's MCP server catalog (C22).
+    McpServers,
 }
 
 impl GatewayRead {
     pub fn is_valid(&self) -> bool {
         match self {
-            Self::Inventory { .. } | Self::Prerequisites => true,
+            Self::Inventory { .. } | Self::Prerequisites | Self::McpServers => true,
             Self::Detail { id, .. } | Self::IntegrationModels { id } => is_id(id),
             Self::Observe { read } => read.is_valid(),
         }
@@ -90,7 +92,7 @@ impl GatewayRead {
         match self {
             Self::Inventory { resource } | Self::Detail { resource, .. } => resource.scoped(),
             Self::IntegrationModels { .. } => false,
-            Self::Prerequisites | Self::Observe { .. } => true,
+            Self::Prerequisites | Self::Observe { .. } | Self::McpServers => true,
         }
     }
 }
@@ -225,6 +227,19 @@ pub enum GatewayResult {
     Observed {
         observed: crate::gateway_observe::ObserveResult,
     },
+    McpServers {
+        catalog: McpCatalog,
+    },
+}
+
+/// A workspace's MCP servers as the desktop reads them (C22).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct McpCatalog {
+    pub workspace: String,
+    pub servers: Vec<crate::harness::mcp::CatalogServer>,
+    /// Every page was read (otherwise servers past the bound are missing).
+    pub complete: bool,
 }
 
 /// The selected workspace's listed identity and the scope it reads under.
@@ -966,7 +981,53 @@ pub(crate) async fn read(
                 .await
                 .map(|observed| GatewayResult::Observed { observed })
         }
+        GatewayRead::McpServers => {
+            let scope = scope.ok_or(PageError::Invalid)?;
+            mcp_catalog(gw, scope, options)
+                .await
+                .map(|catalog| GatewayResult::McpServers { catalog })
+        }
     }
+}
+
+/// The workspace's MCP servers: zero-based pages of 100, at most five.
+async fn mcp_catalog(
+    gw: &AIGatewayClient,
+    scope: &WorkspaceScope,
+    options: Option<&RequestOptions>,
+) -> Result<McpCatalog, PageError> {
+    use crate::harness::mcp::{self, MAX_PAGES, PAGE_SIZE};
+    use scm_sdk::airs::gateway::models::GatewayMcpServersClientListOptions;
+    use scm_sdk::data::{FiniteNumber, Optional};
+    let mut servers: Vec<mcp::CatalogServer> = Vec::new();
+    let mut complete = false;
+    for page in 0..MAX_PAGES {
+        let query = GatewayMcpServersClientListOptions::builder()
+            .workspace_id(Optional::Value(scope.id.clone()))
+            .current_page(Optional::Value(FiniteNumber::from(page)))
+            .page_size(Optional::Value(FiniteNumber::from(PAGE_SIZE)))
+            .build()?;
+        let reply = json(&gw.mcp_servers().list(&query, options).await?)?;
+        let rows = reply["data"].as_array().map_or(0, Vec::len);
+        let projected = mcp::project(&reply, &scope.id).ok_or(PageError::Invalid)?;
+        for (server, _) in projected {
+            if !servers.iter().any(|s| s.id == server.id) {
+                servers.push(server);
+            }
+        }
+        let total = reply["total"].as_u64();
+        let read = u64::from(page + 1) * u64::from(PAGE_SIZE);
+        if rows < PAGE_SIZE as usize || total.is_some_and(|t| t <= read) {
+            complete = true;
+            break;
+        }
+    }
+    mcp::name_all(&mut servers);
+    Ok(McpCatalog {
+        workspace: scope.id.clone(),
+        servers,
+        complete,
+    })
 }
 
 #[cfg(test)]

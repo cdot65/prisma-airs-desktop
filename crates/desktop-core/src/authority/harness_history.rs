@@ -46,6 +46,9 @@ pub enum NotContinuable {
     /// It ran with another project folder, or with changes allowed or not
     /// (C21): continuing it needs a new conversation.
     OtherProject,
+    /// It ran with other workspace MCP servers or sign-ins (C22), or they
+    /// cannot be checked because the catalog is not loaded.
+    OtherMcp,
     /// The bundled engine is not available.
     EngineUnavailable,
 }
@@ -354,9 +357,13 @@ impl State {
             return Some(NotContinuable::OtherCredential);
         }
         let project = tenant.harness_project.as_ref();
-        (b.project.as_ref() != project.map(|p| &p.path)
-            || b.write != project.is_some_and(|p| p.write))
-        .then_some(NotContinuable::OtherProject)
+        if b.project.as_ref() != project.map(|p| &p.path)
+            || b.write != project.is_some_and(|p| p.write)
+        {
+            return Some(NotContinuable::OtherProject);
+        }
+        (self.mcp_scope_now(&h.tenant, &h.workspace).as_ref() != Some(&b.mcp))
+            .then_some(NotContinuable::OtherMcp)
     }
 
     /// A job's result, applied while it is still current.

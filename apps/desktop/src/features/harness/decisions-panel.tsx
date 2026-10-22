@@ -5,6 +5,12 @@ import type { ConversationView, FeatureId, HarnessApproval, ProposalView } from 
 import { CHANGE_NOUN, verbOf } from '../administration/runtime-changes'
 import type { Dispatch } from '../tenants/dispatch'
 
+const APPROVAL_TITLE: Record<HarnessApproval['kind'], string> = {
+    command: 'Run a command',
+    fileChange: 'Change files',
+    mcpTool: 'Run a workspace MCP tool',
+}
+
 interface Props {
     conversation: ConversationView
     dispatch: Dispatch
@@ -85,7 +91,15 @@ export function DecisionsPanel({ conversation, dispatch, onNavigate, onMessage }
                     <ul role='list' className='flex flex-col gap-2'>
                         {conversation.approvals.map((a) => (
                             <li key={a.id} className='border-academy-accent-warn rounded-[12px] border p-3' data-slot='harness-approval'>
-                                <p className='text-[13px] font-semibold'>{a.kind === 'command' ? 'Run a command' : 'Change files'}</p>
+                                <p className='text-[13px] font-semibold'>{APPROVAL_TITLE[a.kind]}</p>
+                                {a.kind === 'mcpTool' ? (
+                                    <p className='font-mono text-[12px] break-all'>{`${a.server} · ${a.tool}`}</p>
+                                ) : null}
+                                {a.arguments ? (
+                                    <pre aria-label='Arguments' className='font-mono text-[12px] break-all whitespace-pre-wrap'>
+                                        {a.arguments}
+                                    </pre>
+                                ) : null}
                                 {a.command ? <pre className='font-mono text-[12px] break-all whitespace-pre-wrap'>{a.command}</pre> : null}
                                 {a.files.length > 0 ? (
                                     <ul role='list' aria-label='Files' className='font-mono text-[12px] break-all'>
@@ -98,7 +112,7 @@ export function DecisionsPanel({ conversation, dispatch, onNavigate, onMessage }
                                 {a.reason ? <p className='text-[12px]'>{`Reason given: ${a.reason}`}</p> : null}
                                 <div className='mt-2 flex gap-2'>
                                     <Button type='button' tier='primary' size='sm' disabled={busy} onClick={() => void decide(a, true)}>
-                                        Allow
+                                        {a.kind === 'mcpTool' ? 'Approve once' : 'Allow'}
                                     </Button>
                                     <Button type='button' tier='secondary' size='sm' disabled={busy} onClick={() => void decide(a, false)}>
                                         Decline

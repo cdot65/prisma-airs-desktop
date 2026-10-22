@@ -71,6 +71,22 @@ metadata. /rt/v1/files lists, uploads
 "status:<code>" or "lost"); the log records an upload's file name, purpose,
 size and SHA-256, never its content.
 
+Workspace MCP (C22): GET /ai_gw/v2/mcp-servers lists Team A's two servers
+(Tools, Docs; mode "mcpCatalog": "down" answers 500, "mcpUpdated" changes
+their update time and so their revision, "mcpTag" tags their names). Each
+server's Streamable HTTP endpoint /mcp/<slug>/mcp requires a bearer the
+plane issued for its URL, else answers 401 with a resource_metadata
+challenge; initialize, tools/list (one tool, lookup) and tools/call. The
+OAuth surface: protected-resource metadata, authorization-server metadata
+at /.well-known/oauth-authorization-server/mcp-oauth, /mcp-oauth/register,
+/mcp-oauth/authorize (302 to the loopback with a code bound to the PKCE
+challenge, client, redirect and resource), /mcp-oauth/token (code and
+refresh with rotation; mode "mcpLifetime", "mcpRefresh": "refuse") and
+/mcp-oauth/revoke. Mode "harnessMcp" ({server, tool, arguments}) makes the
+Gateway ask for that server's tool by the engine's own name for it. Tokens
+are never logged; an MCP request's bearer is logged as issued, placeholder,
+other or none.
+
 Company sign-in (C20): a synthetic OpenID provider under /idp: discovery,
 JWKS (one P-256 key made at start with the system openssl), /idp/authorize
 (the browser step: it answers 302 to the app's loopback redirect with a
@@ -183,6 +199,10 @@ class Handler(BaseHTTPRequestHandler):
         }
         if url.path.startswith("/idp/"):
             self.idp(method, url.path[4:], query, body, record, mode)
+            return
+        if (url.path.startswith(("/mcp/", "/mcp-oauth/", "/.well-known/oauth-"))
+                or (method == "GET" and url.path == "/ai_gw/v2/mcp-servers")):
+            self.mcp(method, url.path, query, body, record, mode)
             return
         if method == "POST" and url.path in ("/rt/v1/chat/completions", "/rt/v1/responses"):
             self.inference(body, record, mode, responses=url.path.endswith("/responses"))
@@ -840,6 +860,18 @@ class Handler(BaseHTTPRequestHandler):
             f.write(json.dumps(record) + "\n")
         cid = f"chatcmpl-{serial}"
         tool = mode.get("harnessTool")
+        wanted = mode.get("harnessMcp")
+        if responses and record.get("harness") and isinstance(wanted, dict) and "toolOutput" not in record:
+            # C22: the model calls a workspace MCP tool as the engine offers it.
+            for t in sent.get("tools") or []:
+                name = t.get("name") or ""
+                if wanted["server"] not in name:
+                    continue
+                if t.get("type") == "function" and name.endswith(wanted["tool"]):
+                    tool = {"name": name, "arguments": wanted["arguments"]}
+                elif t.get("type") == "namespace" and any(c.get("name") == wanted["tool"] for c in t.get("tools") or []):
+                    tool = {"namespace": name, "name": wanted["tool"], "arguments": wanted["arguments"]}
+            record["mcpOffered"] = isinstance(tool, dict) and tool is not mode.get("harnessTool")
         if responses and record.get("harness") and isinstance(tool, dict) and "toolOutput" not in record:
             self.harness_tool(f"resp_{serial}", tool)
             return
@@ -1149,6 +1181,165 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.respond(status, json.dumps(payload).encode())
 
+    MCP_SERVERS = (("srv-tools-0001", "tools"), ("srv-docs-0001", "docs"))
+
+    def mcp(self, method, path, query, body, record, mode):
+        """C22: the Gateway's MCP plane (see the module docstring). Tokens
+        are never logged: a request's bearer is recorded as issued,
+        placeholder, other or none."""
+        srv = self.server
+        origin = f"https://localhost:{srv.server_address[1]}"
+        issuer = f"{origin}/mcp-oauth"
+        url_of = lambda slug: f"{origin}/mcp/{slug}/mcp"  # noqa: E731
+        status, payload, location, headers = 404, {"error": "not_found"}, None, {}
+        record["mcpPlane"] = path
+        if path == "/ai_gw/v2/mcp-servers":
+            if mode.get("mcpCatalog") == "down":
+                status, payload = 500, {"error": {"message": "down"}}
+            else:
+                updated = mode.get("mcpUpdated") or "2026-10-01T00:00:00Z"
+                tag = f" {mode['mcpTag']}" if mode.get("mcpTag") else ""
+                rows = [{"id": sid, "name": f"{slug.title()} tools{tag}", "slug": slug, "url": url_of(slug),
+                         "status": "active", "workspace_id": GW_A, "last_updated_at": updated,
+                         "mcp_integration_url": "https://upstream.example/never-kept", "object": "mcp_server"}
+                        for sid, slug in self.MCP_SERVERS if query.get("workspace_id") == GW_A]
+                status, payload = 200, {"object": "list", "total": len(rows), "data": rows}
+        elif path.startswith("/.well-known/oauth-protected-resource/mcp/") and path.endswith("/mcp"):
+            slug = path[len("/.well-known/oauth-protected-resource/mcp/"):-len("/mcp")]
+            status, payload = 200, {"resource": url_of(slug), "authorization_servers": [issuer],
+                                    "bearer_methods_supported": ["header"]}
+        elif path == "/.well-known/oauth-authorization-server/mcp-oauth":
+            status, payload = 200, {
+                "issuer": issuer, "authorization_endpoint": f"{issuer}/authorize",
+                "token_endpoint": f"{issuer}/token", "registration_endpoint": f"{issuer}/register",
+                "revocation_endpoint": f"{issuer}/revoke", "response_types_supported": ["code"],
+                "grant_types_supported": ["authorization_code", "refresh_token"],
+                "code_challenge_methods_supported": ["S256"], "token_endpoint_auth_methods_supported": ["none"],
+                "scopes_supported": ["mcp:servers:read", "mcp:tools:list", "mcp:tools:call", "mcp:*"]}
+        elif path == "/mcp-oauth/register" and method == "POST":
+            sent = json.loads(body or b"{}")
+            with srv.lock:
+                srv.counter += 1
+                client = f"c22-client-{srv.counter}"
+                srv.mcp_clients[client] = (sent.get("redirect_uris") or [""])[0]
+            record["registered"] = sent.get("token_endpoint_auth_method") == "none"
+            status, payload = 201, {"client_id": client}
+        elif path == "/mcp-oauth/authorize" and method == "GET":
+            redirect = query.get("redirect_uri", "")
+            with srv.lock:
+                known = srv.mcp_clients.get(query.get("client_id", "")) == redirect
+            record["scope"] = query.get("scope")
+            record["resource"] = query.get("resource")
+            if known and query.get("code_challenge_method") == "S256" and query.get("state"):
+                with srv.lock:
+                    srv.counter += 1
+                    code = f"c22-code-{srv.counter}"
+                    srv.mcp_codes[code] = (query.get("code_challenge"), redirect, query.get("client_id"),
+                                           query.get("resource"))
+                location = redirect + "?" + urlencode({"code": code, "state": query["state"]})
+                status, payload = 302, None
+            else:
+                status, payload = 400, {"error": "invalid_request"}
+        elif path == "/mcp-oauth/token" and method == "POST":
+            form = {k: v[0] for k, v in parse_qs(body.decode("utf-8", "replace")).items()}
+            grant = form.get("grant_type")
+            record["grantType"] = grant
+            bound = None
+            if grant == "authorization_code":
+                with srv.lock:
+                    code = srv.mcp_codes.pop(form.get("code", ""), None)
+                challenge = b64url(hashlib.sha256(form.get("code_verifier", "").encode()).digest())
+                if code and code[0] == challenge and code[1] == form.get("redirect_uri") \
+                        and code[2] == form.get("client_id") and code[3] == form.get("resource"):
+                    bound = (code[3], code[2])
+            elif grant == "refresh_token":
+                with srv.lock:
+                    known = srv.mcp_refresh.pop(form.get("refresh_token", ""), None)
+                if known and mode.get("mcpRefresh") != "refuse" and known == (form.get("resource"), form.get("client_id")):
+                    bound = known
+            if bound is None:
+                status, payload = 400, {"error": "invalid_grant"}
+            else:
+                lifetime = int(mode.get("mcpLifetime") or 3600)
+                with srv.lock:
+                    srv.counter += 1
+                    access = f"c22-mcp-access-{srv.counter}-{secrets_token()}"
+                    refresh = f"c22-mcp-refresh-{srv.counter}-{secrets_token()}"
+                    srv.mcp_access[access] = bound
+                    srv.mcp_refresh[refresh] = bound
+                status, payload = 200, {"token_type": "Bearer", "access_token": access, "expires_in": lifetime,
+                                        "refresh_token": refresh}
+        elif path == "/mcp-oauth/revoke" and method == "POST":
+            form = {k: v[0] for k, v in parse_qs(body.decode("utf-8", "replace")).items()}
+            with srv.lock:
+                srv.mcp_access.pop(form.get("token", ""), None)
+                srv.mcp_refresh.pop(form.get("token", ""), None)
+            record["revokedHint"] = form.get("token_type_hint")
+            status, payload = 200, {}
+        elif path.startswith("/mcp/") and path.endswith("/mcp"):
+            slug = path[len("/mcp/"):-len("/mcp")]
+            header = self.headers.get("authorization") or ""
+            token = header[7:] if header.startswith("Bearer ") else None
+            with srv.lock:
+                granted = token is not None and srv.mcp_access.get(token, (None,))[0] == url_of(slug)
+            record["mcp"] = slug
+            record["mcpBearer"] = ("issued" if granted else "placeholder" if token == "airs-desktop-mcp-sign-in-expired"
+                                   else "other" if token else "none")
+            if not granted:
+                headers["www-authenticate"] = (f'Bearer error="invalid_token", resource_metadata='
+                                               f'"{origin}/.well-known/oauth-protected-resource/mcp/{slug}/mcp"')
+                status, payload = 401, {"error": "unauthorized"}
+            elif method != "POST":
+                status, payload = 405, {}
+            else:
+                sent = json.loads(body or b"{}")
+                if "id" not in sent:
+                    status, payload = 202, None
+                else:
+                    name = sent.get("method")
+                    record["mcpMethod"] = name
+                    if name == "initialize":
+                        result = {"protocolVersion": (sent.get("params") or {}).get("protocolVersion"),
+                                  "capabilities": {"tools": {}}, "serverInfo": {"name": slug, "version": "1.0.0"}}
+                    elif name == "tools/list":
+                        result = {"tools": [{"name": "lookup", "description": "Look up a workspace record",
+                                             "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}},
+                                                             "required": ["query"]}}]}
+                    elif name == "tools/call":
+                        record["mcpCall"] = (sent.get("params") or {}).get("name")
+                        result = {"content": [{"type": "text", "text": "C22-NATIVE-MCP-RESULT"}], "isError": False}
+                    else:
+                        result = {}
+                    status, payload = 200, {"jsonrpc": "2.0", "id": sent["id"], "result": result}
+        record["status"] = status
+        with srv.lock, open(srv.log, "a") as f:
+            f.write(json.dumps(record) + "\n")
+        if location is not None:
+            self.send_response(302)
+            self.send_header("location", location)
+            self.send_header("content-length", "0")
+            self.send_header("connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            return
+        if payload is None:
+            self.send_response(status)
+            self.send_header("content-length", "0")
+            self.send_header("connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            return
+        data = json.dumps(payload).encode()
+        self.send_response(status)
+        for k, v in headers.items():
+            self.send_header(k, v)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(data)))
+        self.send_header("connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        self.wfile.write(data)
+
     def respond(self, status, payload):
         if status == 204:
             self.send_response(204)
@@ -1226,6 +1417,8 @@ class Server(ThreadingHTTPServer):
         self.counter = len(self.issued) + 1000 * int(time.time() % 1000)
         # C20: the provider's signing key, made for this run.
         self.idp_codes, self.idp_refresh, self.idp_access = {}, {}, set()
+        # C22: the MCP plane's OAuth clients, codes and tokens.
+        self.mcp_clients, self.mcp_codes, self.mcp_access, self.mcp_refresh = {}, {}, {}, {}
         self.idp_key = os.path.join(directory, "idp-key.pem")
         subprocess.run(["/usr/bin/openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout",
                         "-out", self.idp_key], check=True, env={}, capture_output=True)
@@ -1271,6 +1464,10 @@ class Server(ThreadingHTTPServer):
                 return json.load(f)
         except (OSError, ValueError):
             return {}
+
+
+def secrets_token():
+    return base64.urlsafe_b64encode(os.urandom(12)).decode().rstrip("=")
 
 
 def main():

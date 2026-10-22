@@ -134,7 +134,7 @@ PROBES = [
     ("an answer is not bounded",
      [(SESSION, "        if over {\n            // Keep what fits", "        if over && false {\n            // Keep what fits")], HP_T, APPROVAL),
     ("the key is shown when an answer holds it",
-     [(SESSION, "                if !secret.is_empty() && e.text.contains(secret) {", "                if secret.is_empty() && e.text.contains(secret) {")],
+     [(SESSION, "                if secrets.all().any(|s| e.text.contains(s)) {", "                if false && secrets.all().any(|s| e.text.contains(s)) {")],
      HP_T, GIVEN),
     ("the engine's retries go on",
      [(SESSION, '            "error" if self.ours(params) && params["willRetry"] == true && !self.retry_refused => {',

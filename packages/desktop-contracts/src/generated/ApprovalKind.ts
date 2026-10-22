@@ -3,4 +3,4 @@
 /**
  * What an engine request for approval asks (C21).
  */
-export type ApprovalKind = "command" | "fileChange";
+export type ApprovalKind = "command" | "fileChange" | "mcpTool";

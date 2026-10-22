@@ -1,0 +1,490 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/harness/mcp-panel.tsx": "036a8349fc09a73fcf5a3b2751cd9704f89a41603450bba0d4e6d5e67d1c4f20",
+      "crates/desktop-core/src/authority/harness_domain.rs": "1a4ce51c006d52ec62b0b2773650d4fe16115ebb200bdaec333f59d692f6abe5",
+      "crates/desktop-core/src/authority/harness_history.rs": "382a0333764022d3b41231a2da9b25c862a93639e32046b14a0b2086c685e4a3",
+      "crates/desktop-core/src/authority/harness_mcp.rs": "0fb8e7a7422b836352865f0c7995684a6f55c10f562eac4ef62e49cd905a93a1",
+      "crates/desktop-core/src/authority/harness_tools.rs": "62f3e9b5f82e3c415fea1f2d08c53d4e6d0e38bb5f3a4ac5a6a2ea6552bdb6f3",
+      "crates/desktop-core/src/harness/mcp.rs": "006a050df6e364978bab8fe19914f2f3d148485a979972d1712155b5516cd421",
+      "crates/desktop-core/src/harness/mcp_auth.rs": "8d18c4aa754a2bba594bbabc039867d966ed89d0586017d991f92548b5c1cc2e",
+      "crates/desktop-core/src/harness/protocol.rs": "96ee789ad1476088f0e2d9110935a49f1ee2cbaaca0adbc5ef80fea67529201b",
+      "crates/desktop-core/src/harness/session.rs": "324d6545906e77d132e2d5d46dc872336967d02a0edcfebeadfa953e1a063972",
+      "packages/desktop-contracts/src/client.ts": "026090c3267e1ad0df64a7133e762f53524238fede5fc215c0a07ffefe54e09a"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "another workspace's server is listed",
+    "files": [
+      "crates/desktop-core/src/harness/mcp.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "the_catalog_keeps_only_the_workspaces_usable_servers",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a plain-HTTP server URL is kept",
+    "files": [
+      "crates/desktop-core/src/harness/mcp.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "urls_are_https_canonical_and_never_carry_credentials",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "colliding namespaces are not told apart",
+    "files": [
+      "crates/desktop-core/src/harness/mcp.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "namespaces_are_engine_names_and_independent_of_order",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a short token is given to the engine",
+    "files": [
+      "crates/desktop-core/src/harness/mcp.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_scope_is_bootstrapped_with_tokens_or_the_signed_out_placeholder",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the receipt's MCP servers are not counted",
+    "files": [
+      "crates/desktop-core/src/harness/protocol.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "mcp_servers_are_bootstrapped_in_scope_order_and_echoed_exactly",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an elicitation for another server is asked",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "only_an_mcp_approval_naming_this_turns_running_call_is_asked",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a signed-out server's call is asked",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "only_an_mcp_approval_naming_this_turns_running_call_is_asked",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an MCP approval is answered as a command",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "only_an_mcp_approval_naming_this_turns_running_call_is_asked",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the sign-in leaves out its resource",
+    "files": [
+      "crates/desktop-core/src/harness/mcp_auth.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "an_attempt_carries_pkce_state_resource_and_only_the_tool_scopes",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an access token of any length is accepted",
+    "files": [
+      "crates/desktop-core/src/harness/mcp_auth.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "tokens_must_be_bearer_and_fit_the_engine",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a new revision keeps the conversation",
+    "files": [
+      "crates/desktop-core/src/authority/harness_mcp.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "guard": "signing_out_again_or_off_or_a_new_revision_retires_the_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "signing in again keeps the conversation",
+    "files": [
+      "crates/desktop-core/src/authority/harness_mcp.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "guard": "signing_out_again_or_off_or_a_new_revision_retires_the_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a scope starts without its catalog",
+    "files": [
+      "crates/desktop-core/src/authority/harness_mcp.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "guard": "without_its_catalog_a_scope_cannot_start_or_continue",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "sign-out keeps the token item",
+    "files": [
+      "crates/desktop-core/src/authority/harness_mcp.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "guard": "signing_out_again_or_off_or_a_new_revision_retires_the_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a lapsed sign-in's tool is run",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "guard": "an_approval_for_a_lapsed_sign_in_is_declined_natively",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an MCP-only rotation asks for changes again",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "guard": "mcp_token_rotation_restarts_and_restores_without_asking_for_changes_again",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a changed token does not restart the engine",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "guard": "mcp_token_rotation_restarts_and_restores_without_asking_for_changes_again",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another scope's conversation is continuable",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "workspace_mcp"
+    ],
+    "guard": "a_saved_conversation_continues_only_with_its_mcp_scope",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "more than eight servers can be turned on",
+    "files": [
+      "apps/desktop/src/features/harness/mcp-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "says why a server cannot be used and keeps at most eight on",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "nine servers on pass the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "refuses MCP views Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an MCP approval without a server passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "refuses MCP views Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

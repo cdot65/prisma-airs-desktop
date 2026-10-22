@@ -24,6 +24,7 @@ mod gateway_local_domain;
 mod harness_domain;
 mod harness_history;
 mod harness_identity;
+mod harness_mcp;
 mod harness_tools;
 mod inference_domain;
 mod learner_domain;
@@ -299,6 +300,33 @@ pub enum Intent {
     ConfirmHarnessWrite {
         conversation: OperationId,
         allow: bool,
+    },
+    /// Read the chosen workspace's MCP server catalog (C22).
+    ListMcpServers {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+    },
+    /// Turn a workspace MCP server on or off for new conversations.
+    EnableMcpServer {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        server: String,
+        enabled: bool,
+    },
+    /// Sign in to a workspace MCP server in the browser.
+    SignInMcpServer {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        server: String,
+    },
+    CancelMcpSignIn {
+        context: ContextRef,
+    },
+    /// Sign out of a workspace MCP server (its tokens are revoked).
+    SignOutMcpServer {
+        context: ContextRef,
+        workspace: WorkspaceRef,
+        server: String,
     },
     /// List the chosen workspace's saved conversations (C20).
     ListHarnessHistory {
@@ -1098,6 +1126,8 @@ struct Tenant {
     harness_sign_in: Option<crate::store::StoredSignIn>,
     /// The Harness project folder (C21).
     harness_project: Option<crate::store::StoredProject>,
+    /// Its workspace MCP servers and sign-ins (C22).
+    harness_mcp: Vec<crate::store::StoredMcpServer>,
 }
 
 impl Tenant {
@@ -1112,6 +1142,7 @@ impl Tenant {
             inference_target: None,
             harness_sign_in: None,
             harness_project: None,
+            harness_mcp: Vec::new(),
         }
     }
 
@@ -1283,6 +1314,11 @@ struct State {
     harness_data_root: Option<std::path::PathBuf>,
     /// The folder last refused as a tenant's project, until the next choice.
     harness_project_refused: Option<(TenantId, String)>,
+    /// The chosen workspace's MCP catalog, a sign-in to one of its
+    /// servers, and the live grants (C22).
+    mcp_catalog: Option<harness_mcp::CatalogState>,
+    mcp_flow: Option<harness_mcp::McpFlow>,
+    mcp_live: Vec<Arc<harness_mcp::McpGrant>>,
 }
 
 impl State {
@@ -1432,6 +1468,12 @@ impl State {
                 .tenants
                 .iter()
                 .filter_map(|t| t.harness_project.clone())
+                .collect(),
+            harness_mcp: self
+                .data
+                .tenants
+                .iter()
+                .flat_map(|t| t.harness_mcp.iter().cloned())
                 .collect(),
             ..PersistedState::default()
         }
@@ -1964,6 +2006,14 @@ enum Effect {
     ForgetHarnessHistory(std::path::PathBuf),
     /// Choose the Harness project in the native folder sheet (C21).
     ChooseHarnessProject(ContextRef),
+    /// Reads the chosen workspace's MCP catalog (C22).
+    McpCatalog {
+        context: ContextRef,
+        reference: WorkspaceRef,
+        lease: u64,
+    },
+    McpSignIn(Box<harness_mcp::McpSignInJob>),
+    McpSignedOut(Arc<harness_mcp::McpGrant>),
 }
 
 struct Inner {
@@ -2082,6 +2132,9 @@ impl Core {
                 .and_then(|r| r.parent())
                 .map(std::path::Path::to_path_buf),
             harness_project_refused: None,
+            mcp_catalog: None,
+            mcp_flow: None,
+            mcp_live: Vec::new(),
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -2242,6 +2295,15 @@ impl Core {
         lock(&self.inner).ok()?.harness_pid()
     }
 
+    /// Marks every live workspace MCP sign-in expired, as a refused renewal
+    /// would (fixture builds only).
+    #[cfg(feature = "test-fixtures")]
+    pub fn expire_mcp_grants_for_tests(&self) {
+        if let Ok(state) = lock(&self.inner) {
+            state.mcp_live.iter().for_each(|g| g.expire_for_tests());
+        }
+    }
+
     /// Resumes durable work after launch (pending Keychain cleanup). Call on
     /// the application runtime.
     pub fn start(&self) {
@@ -2390,6 +2452,12 @@ fn data_from(doc: PersistedState) -> Data {
                 .iter()
                 .find(|p| p.tenant == tenant.profile.id)
                 .cloned();
+            tenant.harness_mcp = doc
+                .harness_mcp
+                .iter()
+                .filter(|m| m.tenant == tenant.profile.id)
+                .cloned()
+                .collect();
             if let Some(c) = management {
                 tenant.management = ScanCapability::Ready {
                     record: c.record.clone(),
@@ -2685,6 +2753,23 @@ fn admit(
             {
                 state.data.pending_cleanup.push(record);
             }
+            // Its workspace MCP sign-ins end too: their token items are
+            // deleted through the ledger and revoked at each server.
+            let mcp_signed_in = state.mcp_grants_of(&tenant);
+            let mcp_records: Vec<_> = state
+                .tenant(&tenant)
+                .map(|t| {
+                    t.harness_mcp
+                        .iter()
+                        .filter_map(|m| m.grant.as_ref().map(|g| g.record.clone()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            for record in mcp_records {
+                if !state.data.pending_cleanup.contains(&record) {
+                    state.data.pending_cleanup.push(record);
+                }
+            }
             // Its protected history keys go through the ledger too (the
             // sealed records are removed with its directory below).
             let (history_keys, history_dir) = state.forget_harness_history(&tenant);
@@ -2721,6 +2806,10 @@ fn admit(
             state.harness_grants.retain(|g| g.tenant != tenant);
             if let Some(grant) = signed_in {
                 effects.push(Effect::HarnessSignedOut(grant));
+            }
+            state.mcp_live.retain(|g| g.tenant != tenant);
+            for grant in mcp_signed_in {
+                effects.push(Effect::McpSignedOut(grant));
             }
             for record in [retired_session, retired_management, retired_inference]
                 .into_iter()
@@ -3055,6 +3144,42 @@ fn admit(
             if let Some(job) = state.confirm_harness_write(&conversation, allow)? {
                 effects.push(Effect::HarnessRenew(Box::new(job)));
             }
+            state.changed();
+        }
+        Intent::ListMcpServers { context, workspace } => {
+            effects.push(state.list_mcp_servers(&context, &workspace)?);
+            state.changed();
+        }
+        Intent::EnableMcpServer {
+            context,
+            workspace,
+            server,
+            enabled,
+        } => {
+            state.enable_mcp_server(&context, &workspace, &server, enabled)?;
+            state.changed();
+        }
+        Intent::SignInMcpServer {
+            context,
+            workspace,
+            server,
+        } => {
+            effects.push(state.begin_mcp_sign_in(&context, &workspace, &server)?);
+            state.changed();
+        }
+        Intent::CancelMcpSignIn { context } => {
+            state.cancel_mcp_sign_in(&context)?;
+            state.changed();
+        }
+        Intent::SignOutMcpServer {
+            context,
+            workspace,
+            server,
+        } => {
+            if let Some(grant) = state.sign_out_mcp_server(&context, &workspace, &server)? {
+                effects.push(Effect::McpSignedOut(grant));
+            }
+            effects.push(Effect::Cleanup);
             state.changed();
         }
         Intent::ListHarnessHistory { context, workspace } => {
@@ -3713,6 +3838,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     mut inputs,
                     cancel,
                     grant,
+                    mcp,
                     history,
                     commands,
                 } = *start;
@@ -3736,6 +3862,16 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                                     Box::new(|| Err(crate::harness::HarnessFailure::SignInNeeded))
                             }
                         }
+                    }
+                    // Workspace MCP tokens (C22): a server without a current
+                    // sign-in gets the signed-out placeholder.
+                    if !mcp.is_empty() {
+                        let (tokens, renew_at) = harness_mcp::scope_tokens(&inner, &mcp).await;
+                        let print = crate::harness::mcp::fingerprint(&inputs.binding.mcp, &tokens);
+                        if let Ok(mut state) = lock(&inner) {
+                            state.harness_mcp_keyed(&id, renew_at, print);
+                        }
+                        inputs.mcp = tokens;
                     }
                     let outcome = crate::harness::session::run(inputs, cancel, deadline).await;
                     if let Ok(mut state) = lock(&inner) {
@@ -3795,9 +3931,18 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
             Effect::HarnessRenew(job) => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
-                    let renewed = job.grant.access(&inner).await;
+                    let renewed = match &job.grant {
+                        Some(grant) => grant.access(&inner).await.map(Some),
+                        None => Ok(None),
+                    };
+                    let mcp = match (&renewed, &job.mcp) {
+                        (Ok(_), Some(grants)) => {
+                            Some(harness_mcp::scope_tokens(&inner, grants).await)
+                        }
+                        _ => None,
+                    };
                     if let Ok(mut state) = lock(&inner) {
-                        state.harness_renewed(*job, renewed);
+                        state.harness_renewed(*job, renewed, mcp);
                         state.changed();
                     }
                 });
@@ -3814,6 +3959,24 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                         state.changed();
                     }
                 });
+            }
+            Effect::McpCatalog {
+                context,
+                reference,
+                lease,
+            } => {
+                tokio::spawn(harness_mcp::read_catalog(
+                    Arc::clone(inner),
+                    context,
+                    reference,
+                    lease,
+                ));
+            }
+            Effect::McpSignIn(job) => {
+                tokio::spawn(harness_mcp::sign_in(Arc::clone(inner), *job));
+            }
+            Effect::McpSignedOut(grant) => {
+                tokio::spawn(harness_mcp::signed_out(Arc::clone(inner), grant));
             }
             Effect::ForgetHarnessHistory(dir) => {
                 tokio::task::spawn_blocking(move || {

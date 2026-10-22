@@ -2,6 +2,7 @@
 import type { ConversationView } from "./ConversationView";
 import type { HarnessEngineView } from "./HarnessEngineView";
 import type { HarnessHistoryView } from "./HarnessHistoryView";
+import type { HarnessMcpView } from "./HarnessMcpView";
 import type { HarnessProjectView } from "./HarnessProjectView";
 import type { HarnessSignInView } from "./HarnessSignInView";
 
@@ -21,4 +22,8 @@ project: HarnessProjectView | null,
 /**
  * A folder just refused as its project, and so not chosen.
  */
-projectRefused: string | null, };
+projectRefused: string | null, 
+/**
+ * The chosen workspace's MCP servers (C22).
+ */
+mcp: HarnessMcpView | null, };

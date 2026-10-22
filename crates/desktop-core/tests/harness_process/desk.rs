@@ -152,6 +152,13 @@ pub enum Answer {
         name: String,
         arguments: String,
     },
+    /// A call of a workspace MCP server's tool (C22), as the engine
+    /// offers it (flat or namespaced, found in the request's tools).
+    McpTool {
+        server: String,
+        tool: String,
+        arguments: String,
+    },
     /// One 32-byte delta every 50 ms until the client goes away.
     Paced,
     /// An error status (JSON body), every time.
@@ -199,6 +206,26 @@ pub fn tool_call(namespace: Option<&str>, name: &str, arguments: &str) -> Reply 
     }
 }
 
+/// The engine's name for `server`'s `tool` in a request's tools: a flat
+/// function, or a namespace holding it.
+pub fn mcp_tool(tools: &Value, server: &str, tool: &str) -> Option<(Option<String>, String)> {
+    tools.as_array()?.iter().find_map(|t| {
+        let name = t["name"].as_str()?;
+        if !name.contains(server) {
+            return None;
+        }
+        match t["type"].as_str()? {
+            "function" if name.ends_with(tool) => Some((None, name.to_owned())),
+            "namespace" => t["tools"]
+                .as_array()?
+                .iter()
+                .any(|c| c["name"] == tool)
+                .then(|| (Some(name.to_owned()), tool.to_owned())),
+            _ => None,
+        }
+    })
+}
+
 pub fn responses(answer: &Answer) -> Reply {
     let head = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncache-control: no-cache\r\nconnection: close"
         .to_owned();
@@ -213,7 +240,7 @@ pub fn responses(answer: &Answer) -> Reply {
         )
     };
     match answer {
-        Answer::Short => {
+        Answer::Short | Answer::McpTool { .. } => {
             let item = json!({"id": "msg_1", "type": "message", "role": "assistant", "status": "completed",
                 "content": [{"type": "output_text", "text": ANSWER, "annotations": []}]});
             let parts = vec![
@@ -332,6 +359,24 @@ impl Gateway {
             ) = (&self.answer, carries_output)
             {
                 return tool_call(namespace.as_deref(), name, arguments);
+            }
+            if let (
+                Answer::McpTool {
+                    server,
+                    tool,
+                    arguments,
+                },
+                false,
+            ) = (&self.answer, carries_output)
+            {
+                let tools = serde_json::from_slice::<Value>(&seen.body)
+                    .ok()
+                    .map(|b| b["tools"].clone())
+                    .unwrap_or_default();
+                return match mcp_tool(&tools, server, tool) {
+                    Some((namespace, name)) => tool_call(namespace.as_deref(), &name, arguments),
+                    None => responses(&Answer::Short),
+                };
             }
             if carries_output {
                 return responses(&Answer::Short);

@@ -127,6 +127,35 @@ pub struct StoredProject {
     pub write: bool,
 }
 
+/// A workspace MCP server a tenant uses with the Harness (C22; nonsecret).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredMcpServer {
+    pub tenant: TenantId,
+    /// The Gateway workspace it is published in.
+    pub workspace: String,
+    pub server_id: String,
+    /// On for new conversations (at most eight per workspace).
+    pub enabled: bool,
+    pub grant: Option<StoredMcpGrant>,
+}
+
+/// A sign-in to a workspace MCP server: bound to the server's URL and
+/// catalog revision when it was made. Its tokens are a Keychain item.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredMcpGrant {
+    /// A UUID made for this sign-in (a new sign-in is a new grant).
+    pub id: String,
+    pub url: String,
+    pub revision: String,
+    /// The client registered for this sign-in (public).
+    pub client_id: String,
+    pub token_endpoint: String,
+    pub revocation_endpoint: Option<String>,
+    pub record: RecordId,
+}
+
 /// The persisted document.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -158,6 +187,9 @@ pub struct PersistedState {
     /// Each tenant's Harness project (C21; absent before).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub harness_projects: Vec<StoredProject>,
+    /// Workspace MCP servers and their sign-ins (C22; absent before).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub harness_mcp: Vec<StoredMcpServer>,
 }
 
 impl Default for PersistedState {
@@ -175,6 +207,7 @@ impl Default for PersistedState {
             harness_sign_ins: Vec::new(),
             harness_history: Vec::new(),
             harness_projects: Vec::new(),
+            harness_mcp: Vec::new(),
         }
     }
 }
@@ -278,7 +311,49 @@ impl PersistedState {
                 && p.path.len() <= 4096
                 && !p.path.chars().any(char::is_control)
         });
+        // One entry per tenant, workspace and server; at most eight on per
+        // workspace; a grant names its URL, endpoints and record exactly.
+        let mut servers = BTreeSet::new();
+        let mut grant_records = BTreeSet::new();
+        let mcp_ok = self.harness_mcp.iter().all(|m| {
+            ids.contains(&m.tenant)
+                && crate::gateway::is_id(&m.workspace)
+                && crate::harness::mcp::supported_id(&m.server_id)
+                && servers.insert((m.tenant.clone(), m.workspace.clone(), m.server_id.clone()))
+                && m.grant.as_ref().is_none_or(|g| {
+                    let origin = |u: &str| {
+                        url::Url::parse(u)
+                            .ok()
+                            .map(|u| u.origin().ascii_serialization())
+                    };
+                    crate::harness::protocol::is_uuid(&g.id)
+                        && crate::harness::mcp::canonical_url(&g.url).as_deref()
+                            == Some(g.url.as_str())
+                        && g.revision.len() == 64
+                        && g.revision.bytes().all(|b| b.is_ascii_hexdigit())
+                        && !g.client_id.is_empty()
+                        && g.client_id.len() <= 256
+                        && g.client_id.bytes().all(|b| b.is_ascii_graphic())
+                        && origin(&g.token_endpoint).is_some()
+                        && origin(&g.token_endpoint) == origin(&g.url)
+                        && g.revocation_endpoint
+                            .as_deref()
+                            .is_none_or(|r| origin(r) == origin(&g.url))
+                        && grant_records.insert(g.record.clone())
+                })
+        }) && {
+            let mut per_workspace = std::collections::BTreeMap::new();
+            self.harness_mcp.iter().filter(|m| m.enabled).for_each(|m| {
+                *per_workspace
+                    .entry((&m.tenant, &m.workspace))
+                    .or_insert(0usize) += 1
+            });
+            per_workspace
+                .values()
+                .all(|&n| n <= crate::harness::mcp::MAX_SERVERS)
+        };
         self.schema == STATE_SCHEMA
+            && mcp_ok
             && projects_ok
             && sign_ins_ok
             && history_ok

@@ -946,6 +946,7 @@ export const HARNESS_FAILURES: readonly string[] = [
     'cleanupFailed',
     'restoreFailed',
     'signInNeeded',
+    'mcpTooLarge',
 ]
 export const SIGN_IN_FAILURES: readonly string[] = [
     'invalidConfig',
@@ -966,14 +967,36 @@ export const SIGN_IN_FAILURES: readonly string[] = [
 export const HISTORY_FAILURES: readonly string[] = ['locked', 'denied', 'unavailable', 'full', 'tooLarge', 'unreadable', 'missing']
 const CREDENTIAL_SOURCES: readonly string[] = ['workspaceKey', 'companySignIn']
 const SIGN_IN_STEPS: readonly string[] = ['contacting', 'browser', 'completing']
-const NOT_CONTINUABLE: readonly string[] = ['running', 'otherCredential', 'otherProject', 'engineUnavailable']
+const NOT_CONTINUABLE: readonly string[] = ['running', 'otherCredential', 'otherProject', 'otherMcp', 'engineUnavailable']
 /** Saved conversations per workspace and a title's length (C20). */
 const MAX_SAVED_CONVERSATIONS = 16
 const MAX_TITLE_CHARS = 80
 const HARNESS_STOPS: readonly string[] = ['ended', 'sleep', 'quit', 'deadline']
 const TURN_ENDS: readonly string[] = ['completed', 'interrupted', 'truncated', 'failed', 'refused']
 const ENTRY_STATES: readonly string[] = ['streaming', 'complete', 'interrupted', 'truncated', 'failed', 'declined']
-const HARNESS_ROLES: readonly string[] = ['operator', 'assistant', 'command', 'fileChange', 'tool']
+const HARNESS_ROLES: readonly string[] = ['operator', 'assistant', 'command', 'fileChange', 'tool', 'mcp']
+/** Workspace MCP servers (C22): the engine's bounds and the desktop's states. */
+const MAX_MCP_SERVERS = 8
+const MCP_NAME = /^[a-z][a-z0-9_]{0,31}$/
+const MCP_SERVER_ID = /^[A-Za-z0-9-]{1,64}$/
+const MCP_STARTUPS: readonly string[] = ['starting', 'ready', 'failed', 'cancelled']
+const MCP_LIST_STATES: readonly string[] = ['loading', 'ready', 'failed']
+export const MCP_SIGN_IN_FAILURES: readonly string[] = [
+    'notOffered',
+    'denied',
+    'notFound',
+    'unavailable',
+    'invalidMetadata',
+    'registrationNotOffered',
+    'network',
+    'invalidResponse',
+    'timedOut',
+    'cancelled',
+    'browserUnavailable',
+    'callbackUnavailable',
+    'sessionExpired',
+    'storeFailed',
+]
 /** What the Harness may propose (C21): Runtime and DLP changes only. */
 const PROPOSAL_KINDS: readonly string[] = CHANGE_KINDS.filter((k) => !k.startsWith('gateway'))
 const PROPOSAL_STATES: readonly string[] = ['staged', 'inReview', 'closed', 'dismissed']
@@ -1024,6 +1047,7 @@ function isHarnessView(value: unknown): boolean {
         optional(isHarnessSignInView, value.signIn) &&
         optional(isHarnessHistoryView, value.history) &&
         optional(isHarnessProjectView, value.project) &&
+        optional(isHarnessMcpView, value.mcp) &&
         optional((p) => typeof p === 'string' && p.length > 0 && p.length <= 4096, value.projectRefused)
     )
 }
@@ -1050,7 +1074,7 @@ function isHarnessApproval(value: unknown): boolean {
         isRecord(value) &&
         typeof value.id === 'string' &&
         APPROVAL_ID.test(value.id) &&
-        oneOf(['command', 'fileChange'], value.kind) &&
+        oneOf(['command', 'fileChange', 'mcpTool'], value.kind) &&
         optional(bounded(MAX_COMMAND_CHARS), value.command) &&
         optional(bounded(1024), value.cwd) &&
         optional(bounded(1024), value.reason) &&
@@ -1058,7 +1082,73 @@ function isHarnessApproval(value: unknown): boolean {
         value.files.length <= 64 &&
         value.files.every((f) => typeof f === 'string' && f.length > 0) &&
         // Only a file change names files.
-        (value.kind === 'fileChange' || value.files.length === 0)
+        (value.kind === 'fileChange' || value.files.length === 0) &&
+        optional((v) => typeof v === 'string' && MCP_NAME.test(v), value.server) &&
+        optional(bounded(128), value.tool) &&
+        optional(bounded(MAX_COMMAND_CHARS), value.arguments) &&
+        // An MCP tool approval names its server and tool, and only it does.
+        (value.kind === 'mcpTool') === (value.server !== null && value.tool !== null) &&
+        (value.kind === 'mcpTool' || value.arguments === null) &&
+        (value.kind !== 'mcpTool' || (value.command === null && value.cwd === null))
+    )
+}
+
+/** One workspace MCP server's startup in the running engine (C22). */
+function isMcpServerStatus(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.name === 'string' &&
+        MCP_NAME.test(value.name) &&
+        oneOf(MCP_STARTUPS, value.status) &&
+        typeof value.signedOut === 'boolean' &&
+        Object.keys(value).length === 3
+    )
+}
+
+/** One catalog server, as the desktop reads and holds it (C22). */
+function isMcpServerView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        value.id.length > 0 &&
+        value.id.length <= 256 &&
+        isString(value.name) &&
+        typeof value.namespace === 'string' &&
+        MCP_NAME.test(value.namespace) &&
+        typeof value.url === 'string' &&
+        value.url.startsWith('https://') &&
+        typeof value.status === 'string' &&
+        typeof value.supported === 'boolean' &&
+        typeof value.enabled === 'boolean' &&
+        typeof value.signedIn === 'boolean' &&
+        typeof value.stale === 'boolean' &&
+        optional((v) => oneOf(MCP_SIGN_IN_FAILURES, v), value.expired) &&
+        optional((v) => oneOf(SIGN_IN_STEPS, v), value.step) &&
+        optional((v) => oneOf(MCP_SIGN_IN_FAILURES, v), value.failure) &&
+        // Only a server the engine can take is on, and a sign-in is current
+        // or stale, never both.
+        (value.supported || !value.enabled) &&
+        !(value.signedIn && value.stale) &&
+        // A server ID the engine cannot take is shown, never granted.
+        (MCP_SERVER_ID.test(value.id) || !value.supported)
+    )
+}
+
+/** The chosen workspace's MCP servers (C22). */
+function isHarnessMcpView(value: unknown): boolean {
+    if (!isRecord(value) || !Array.isArray(value.servers)) return false
+    const servers = value.servers
+    return (
+        typeof value.workspace === 'string' &&
+        oneOf(MCP_LIST_STATES, value.state) &&
+        optional((f) => oneOf(MANAGEMENT_FAILURES, f), value.failure) &&
+        (value.state !== 'failed' || value.failure !== null) &&
+        typeof value.complete === 'boolean' &&
+        servers.length <= 5 * 100 &&
+        servers.every(isMcpServerView) &&
+        new Set(servers.map((s) => (s as { id: string }).id)).size === servers.length &&
+        new Set(servers.map((s) => (s as { namespace: string }).namespace)).size === servers.length &&
+        servers.filter((s) => (s as { enabled: boolean }).enabled).length <= MAX_MCP_SERVERS
     )
 }
 
@@ -1195,14 +1285,22 @@ function isConversationView(value: unknown): boolean {
         Array.isArray(value.approvals) &&
         value.approvals.length <= MAX_APPROVALS &&
         value.approvals.every(isHarnessApproval) &&
-        // Approvals need a project, and file changes the right to change it.
+        // Commands need a project, and file changes the right to change it.
         value.approvals.every(
-            (a) => value.project !== null && (value.write || (a as Record<string, unknown>).kind === 'command'),
+            (a) => {
+                const kind = (a as Record<string, unknown>).kind
+                // MCP tools need no folder; commands and file changes do.
+                return kind === 'mcpTool' || (value.project !== null && (value.write || kind === 'command'))
+            },
         ) &&
         Array.isArray(value.proposals) &&
         value.proposals.length <= MAX_PROPOSALS &&
         value.proposals.every(isProposalView) &&
         new Set(value.proposals.map((p) => (p as { id: string }).id)).size === value.proposals.length &&
+        Array.isArray(value.mcp) &&
+        value.mcp.length <= MAX_MCP_SERVERS &&
+        value.mcp.every(isMcpServerStatus) &&
+        new Set(value.mcp.map((m) => (m as { name: string }).name)).size === value.mcp.length &&
         // The write confirmation is only asked when changes are allowed.
         (value.phase !== 'confirmWrite' || value.write === true)
     )

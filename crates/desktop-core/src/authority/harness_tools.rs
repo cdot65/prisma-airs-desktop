@@ -224,14 +224,32 @@ impl State {
         allow: bool,
     ) -> Result<(), Refusal> {
         let c = self.harness_live(conversation)?;
-        let pending = c.progress_approvals().iter().any(|a| a.id == approval);
-        if !pending {
+        let Some(pending) = c
+            .progress_approvals()
+            .into_iter()
+            .find(|a| a.id == approval)
+        else {
             return Err(Refusal::StaleContext);
-        }
+        };
+        // An MCP tool runs only while its server's sign-in is the one the
+        // conversation holds and is not expired (C22): otherwise it is
+        // declined, whatever the operator chose.
+        let usable = pending.kind != crate::harness::ApprovalKind::McpTool
+            || self
+                .harness_mcp_scope(conversation)
+                .zip(pending.server.as_ref())
+                .is_some_and(|((tenant, workspace, scope), server)| {
+                    self.mcp_server_usable(&tenant, &workspace, &scope, server)
+                });
+        let c = self.harness_live(conversation)?;
         c.command(Command::Decide {
             approval: approval.to_owned(),
-            allow,
-        })
+            allow: allow && usable,
+        })?;
+        if allow && !usable {
+            return Err(Refusal::StaleContext);
+        }
+        Ok(())
     }
 
     /// Stages a proposal from a typed tool call (never applied here).

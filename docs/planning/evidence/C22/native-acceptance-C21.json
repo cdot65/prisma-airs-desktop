@@ -1,0 +1,106 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C21",
+  "recorded_utc": "2026-10-22T03:37:59Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) and the production NSOpenPanel, with the synthetic Gateway playing the model's tool calls, and inspecting the engine's processes, the project folder and the management log, against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c21.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "bbd066733ee0e93273fde15b245425789ba8dce78ef262b89d606ed40740cccb",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C21-N01",
+      "description": "The project folder is chosen in the native 'Choose project folder' sheet (the production NSOpenPanel) and shown with its path, read-only; a system folder (/usr) chosen there is refused with the reason and the earlier folder is kept. No Accessibility tree is saved while the panel lists folders.",
+      "result": "pass",
+      "observation": "folder {'offered': True, 'sheet': True, 'titled': True, 'opened': True, 'chosen': True, 'read_only': True, 'read_only_text': True, 'system_refused': True, 'kept': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C21/observations.json",
+        "docs/planning/evidence/C22/native-C21/tree-no-folder.json",
+        "docs/planning/evidence/C22/native-C21/tree-folder.json",
+        "docs/planning/evidence/C22/native-C21/tree-refused.json"
+      ]
+    },
+    {
+      "id": "C21-N02",
+      "description": "A desktop read tool the model asks for (the tenant's security profiles) runs through the tenant's management client: the transcript shows an App tool entry, the turn is answered, and the output the engine returned to the Gateway names the tenant's profiles and carries no management secret.",
+      "result": "pass",
+      "observation": "read {'ready': True, 'answered': True, 'approval': None, 'output': {'bytes': 739, 'sha256': '60ab181fc509ff7d9157cf5f2d4199dd306bcc280cb87e3a95572609b269fc5e', 'carriesSecret': False, 'markers': ['Profile 0']}, 'requests': 2, 'management_reads': 1, 'tool_entry': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C21/observations.json",
+        "docs/planning/evidence/C22/native-C21/tree-read.json"
+      ]
+    },
+    {
+      "id": "C21-N03",
+      "description": "In a read-only folder, a command the engine asks to run waits for the operator with its command and folder: Decline declines it (the entry reads declined and nothing ran); an allowed write still cannot change the folder.",
+      "result": "pass",
+      "observation": "declined {'answered': True, 'approval': {'shown': True, 'texts': [\"Run a command /bin/zsh -c 'echo kept > kept.txt && echo WROTE' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo', \"Run a command /bin/zsh -c 'echo kept > kept.txt && echo WROTE' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo']}, 'output': {'bytes': 80, 'sha256': '90b2c948f0c2f397bfe696f011101b379e598ca6fc2ff9144277263607b8866a', 'carriesSecret': False, 'markers': []}, 'requests': 2, 'entry_declined': True, 'nothing_written': True}; read-only {'answered': True, 'approval': {'shown': True, 'texts': [\"Run a command /bin/zsh -c 'echo kept > kept.txt && echo WROTE' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo', \"Run a command /bin/zsh -c 'echo kept > kept.txt && echo WROTE' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo']}, 'output': {'bytes': 144, 'sha256': 'f2bd01f62e303a05f311254814f7fa4e2d1b3b1e53bd95d18bf72da6cece7db4', 'carriesSecret': False, 'markers': []}, 'requests': 2, 'nothing_written': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C21/observations.json",
+        "docs/planning/evidence/C22/native-C21/tree-declined.json"
+      ]
+    },
+    {
+      "id": "C21-N04",
+      "description": "Allowing changes is a new binding: the running conversation ends and its engine is reaped. In the next conversation an allowed command writes inside the folder; a file outside it cannot be read and a child process cannot be started; the engine's own patch writer asks for a file-change approval and its result is shown as the engine reports it.",
+      "result": "pass",
+      "observation": "write {'retired': True, 'engine_reaped': True, 'ready': True, 'inside': {'answered': True, 'approval': {'shown': True, 'texts': [\"Run a command /bin/zsh -c 'echo kept > kept.txt && echo WROTE' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo', \"Run a command /bin/zsh -c 'echo kept > kept.txt && echo WROTE' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo']}, 'output': {'bytes': 108, 'sha256': '29935ff25f5ef761771231016a0cceb42c76df41e675a13bd69e5e9979db8aeb', 'carriesSecret': False, 'markers': ['WROTE']}, 'requests': 2, 'file': 'kept\\n'}, 'outside': {'answered': True, 'approval': {'shown': True, 'texts': [\"Run a command /bin/zsh -c 'cat /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/outside.txt' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo', \"Run a command /bin/zsh -c 'cat /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/outside.txt' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo']}, 'output': {'bytes': 231, 'sha256': 'c62590e3237bde094828613edfa2080a9dac0b6e1e44abdfc397785602db07b4', 'carriesSecret': False, 'markers': ['Operation not permitted']}, 'requests': 2}, 'child': {'answered': True, 'approval': {'shown': True, 'texts': [\"Run a command /bin/zsh -c 'sleep 1 & wait' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo', \"Run a command /bin/zsh -c 'sleep 1 & wait' In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo\", 'Run a command', 'In /Users/cdot/development/redtail/prisma-airs-desktop-v2/target/native-c21-71477dce8b7a/agent-demo']}, 'output': {'bytes': 147, 'sha256': '2f72ed5e44c2a34c539f2be5b57f4baee2c09ab08445dfc4ea297dce300a4bda', 'carriesSecret': False, 'markers': ['fork']}, 'requests': 2}, 'patch': {'answered': True, 'approval': {'shown': True, 'texts': ['Change files', 'Change files', 'Change files', 'Change files']}, 'output': {'bytes': 172, 'sha256': '73fe47005f768b46a278b56c64732daa5b3adc41bb66fb88cc2eb80345485d04', 'carriesSecret': False, 'markers': ['Failed to write file']}, 'requests': 2, 'file_change_shown': True, 'file': False, 'entry_failed': True}}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C21/observations.json",
+        "docs/planning/evidence/C22/native-C21/tree-write.json"
+      ]
+    },
+    {
+      "id": "C21-N05",
+      "description": "A proposed change is staged, never applied: it is listed under Proposed changes and no management write is sent; Review opens it in Administration's own review with the proposal's exact draft, and only the operator's Apply through the native confirmation writes it (one PUT, read back); the proposal then reads closed.",
+      "result": "pass",
+      "observation": "proposal {'answered': True, 'approval': None, 'output': {'bytes': 125, 'sha256': 'e176f016327daf2312a242e4c9b9685eba6989d430209aa33a8f42bca3bc41bf', 'carriesSecret': False, 'markers': []}, 'requests': 2, 'listed': True, 'writes_after_staging': 0, 'in_admin': True, 'exact_draft': True, 'writes_after_review': 0, 'sheet': True, 'applied': True, 'puts': 1, 'put_description': True, 'closed': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C21/observations.json",
+        "docs/planning/evidence/C22/native-C21/tree-proposal.json",
+        "docs/planning/evidence/C22/native-C21/tree-review.json",
+        "docs/planning/evidence/C22/native-C21/tree-applied.json"
+      ]
+    },
+    {
+      "id": "C21-N06",
+      "description": "Forged or unknown tool calls run nothing: an unknown tool, a credential-bearing argument and a Gateway change proposal are each answered as unavailable, with no management request and no proposal.",
+      "result": "pass",
+      "observation": "forged {'unknown': {'answered': True, 'approval': None, 'output': {'bytes': 46, 'sha256': '5c8a811e551c3ead8d9bd4d5a6090818934cbb8f000e15d845ae058978bdfb5d', 'carriesSecret': False, 'markers': ['unsupported']}, 'requests': 2, 'management': 0}, 'credential': {'answered': True, 'approval': None, 'output': {'bytes': 43, 'sha256': '47501fec7e6cf5122fe4b31e29277a247f0f746a442c798cbcf383d6b932cf01', 'carriesSecret': False, 'markers': ['unavailable']}, 'requests': 2, 'management': 0}, 'gateway': {'answered': True, 'approval': None, 'output': {'bytes': 43, 'sha256': '47501fec7e6cf5122fe4b31e29277a247f0f746a442c798cbcf383d6b932cf01', 'carriesSecret': False, 'markers': ['unavailable']}, 'requests': 2, 'management': 0}, 'no_proposal': True}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C21/observations.json",
+        "docs/planning/evidence/C22/native-C21/tree-forged.json"
+      ]
+    },
+    {
+      "id": "C21-N07",
+      "description": "Keyboard and accessibility: the project folder, its change checkbox, the approval Allow and Decline buttons and the proposal's Review button are named and reachable by Tab; the waiting approvals and proposals are labelled regions.",
+      "result": "pass",
+      "observation": "keyboard and accessibility {'waiting': True, 'checkbox': True, 'regions': ['Project folder', 'Waiting for your approval', 'Proposed changes'], 'tab_order': [{'role': 'AXButton', 'subrole': None, 'label': 'Choose another folder\u2026'}, {'role': 'AXButton', 'subrole': None, 'label': 'Remove folder'}, {'role': 'AXCheckBox', 'subrole': None, 'label': 'Use Tools tools in new conversations'}, {'role': 'AXButton', 'subrole': None, 'label': 'Sign in to Tools tools'}, {'role': 'AXCheckBox', 'subrole': None, 'label': 'Use Docs tools in new conversations'}, {'role': 'AXButton', 'subrole': None, 'label': 'Sign in to Docs tools'}, {'role': 'AXButton', 'subrole': None, 'label': 'Read the servers again'}, {'role': 'AXButton', 'subrole': None, 'label': 'Allow'}, {'role': 'AXButton', 'subrole': None, 'label': 'Decline'}, {'role': 'AXButton', 'subrole': None, 'label': 'Review'}, {'role': 'AXButton', 'subrole': None, 'label': 'Dismiss'}, {'role': 'AXTextArea', 'subrole': None, 'label': 'Message'}, {'role': 'AXButton', 'subrole': None, 'label': 'Stop answer'}, {'role': 'AXButton', 'subrole': None, 'label': 'End conversation'}, {'role': 'AXButton', 'subrole': None, 'label': 'Open Write a file.'}, {'role': 'AXButton', 'subrole': None, 'label': 'Open Which security profiles does this tenant have?'}], 'reached': ['Choose another folder\u2026', 'Remove folder', 'Allow', 'Decline', 'Review']}",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C21/observations.json",
+        "docs/planning/evidence/C22/native-C21/tree-a11y.json"
+      ]
+    },
+    {
+      "id": "C21-N08",
+      "description": "Removing the folder ends the running conversation and reaps its engine; quitting leaves no engine; no secret appears in AX snapshots or the server log; the folder holds only the driver's files and the allowed write; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "removed {'removed': True, 'engine_reaped': True, 'no_engine_after_quit': True}; secrets in AX snapshots: []; secret in the server log: False; secret in a tool output: False; folder: ['file-0.txt', 'file-1.txt', 'file-2.txt', 'kept.txt']; engines left: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C22/native-C21/observations.json",
+        "docs/planning/evidence/C22/native-C21/tree-removed.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The model is played by the synthetic Gateway (one scripted tool call per turn); no product model, Gateway or management endpoint is called before C25.",
+    "The pinned engine's own patch writer (apply_patch) fails inside its narrower helper sandbox; the app shows the engine's result as reported, and allowed shell commands are what changed the folder. The engine is pinned and unchanged.",
+    "The re-confirmation of changes after a company sign-in renewal is exercised by the core integration test (harness_identity_history) rather than this driver.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

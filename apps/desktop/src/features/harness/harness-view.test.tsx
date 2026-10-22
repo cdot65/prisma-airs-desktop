@@ -14,6 +14,8 @@ import {
     DesktopClient,
     type GatewayView,
     type HarnessHistoryView,
+    type HarnessMcpView,
+    type McpServerView,
     type HarnessProjectView,
     type HarnessSignInView,
     type ListedWorkspace,
@@ -53,6 +55,7 @@ function snapshot(
         history?: HarnessHistoryView | null
         project?: HarnessProjectView | null
         projectRefused?: string | null
+        mcp?: HarnessMcpView | null
     } = {}
 ): ShellSnapshot {
     const s = withTenant(baseSnapshot, tenant({ inference: options.key ?? keyFor(A) }), CONTEXT)
@@ -66,6 +69,7 @@ function snapshot(
             history: options.history ?? null,
             project: options.project ?? null,
             projectRefused: options.projectRefused ?? null,
+            mcp: options.mcp ?? null,
         },
     }
 }
@@ -120,6 +124,7 @@ const conversation = (overrides: Partial<ConversationView> = {}): ConversationVi
     write: false,
     approvals: [],
     proposals: [],
+    mcp: [],
     ...overrides,
 })
 
@@ -480,8 +485,9 @@ describe('Harness tools, project and approvals (C21)', () => {
     })
 
     it('shows what the engine asks to do and sends the operator’s decision', async () => {
-        const command = { id: '0123456789abcdef01234567', kind: 'command' as const, command: "/bin/zsh -c 'ls'", cwd: PROJECT, reason: 'List the files', files: [] }
-        const change = { id: '89abcdef0123456789abcdef', kind: 'fileChange' as const, command: null, cwd: null, reason: null, files: [`${PROJECT}/notes.txt`] }
+        const none = { server: null, tool: null, arguments: null }
+        const command = { id: '0123456789abcdef01234567', kind: 'command' as const, command: "/bin/zsh -c 'ls'", cwd: PROJECT, reason: 'List the files', files: [], ...none }
+        const change = { id: '89abcdef0123456789abcdef', kind: 'fileChange' as const, command: null, cwd: null, reason: null, files: [`${PROJECT}/notes.txt`], ...none }
         const native = scriptedNative(
             snapshot({
                 project: project(true),
@@ -617,5 +623,131 @@ describe('Harness tools, project and approvals (C21)', () => {
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'confirmHarnessWrite', conversation: 'op-7', allow: false }))
         await user.click(screen.getByRole('button', { name: 'Allow changes and continue' }))
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'confirmHarnessWrite', conversation: 'op-7', allow: true }))
+    })
+})
+
+describe('workspace MCP servers (C22)', () => {
+    const server = (overrides: Partial<McpServerView> = {}): McpServerView => ({
+        id: 'srv-tools-0001',
+        name: 'Tools',
+        namespace: 'tools',
+        url: 'https://gw.example/tools/mcp',
+        status: 'active',
+        supported: true,
+        enabled: false,
+        signedIn: false,
+        stale: false,
+        expired: null,
+        step: null,
+        failure: null,
+        ...overrides,
+    })
+    const mcp = (servers: McpServerView[], overrides: Partial<HarnessMcpView> = {}): HarnessMcpView => ({
+        workspace: A.id,
+        state: 'ready',
+        failure: null,
+        complete: true,
+        servers,
+        ...overrides,
+    })
+
+    it('reads the catalog, turns servers on, signs in and out', async () => {
+        const native = scriptedNative(snapshot())
+        const user = await open(native)
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'listMcpServers', context: CONTEXT, workspace: REF_A }))
+        const panel = screen.getByRole('region', { name: 'Workspace MCP servers' })
+        expect(within(panel).getByText('Reading the workspace’s MCP servers…')).toBeInTheDocument()
+
+        await native.push(snapshot({ mcp: mcp([server(), server({ id: 'odd id', name: 'Odd', namespace: 'odd', supported: false })]) }))
+        const use = await within(panel).findByRole('checkbox', { name: 'Use Tools in new conversations' })
+        expect(use).toHaveAccessibleDescription('Not signed in: its tools will be unavailable until you sign in.')
+        expect(within(panel).getByRole('checkbox', { name: 'Use Odd in new conversations' })).toBeDisabled()
+        await user.click(use)
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'enableMcpServer', context: CONTEXT, workspace: REF_A, server: 'srv-tools-0001', enabled: true }),
+        )
+        await user.click(within(panel).getByRole('button', { name: 'Sign in to Tools' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'signInMcpServer', context: CONTEXT, workspace: REF_A, server: 'srv-tools-0001' }),
+        )
+        await native.push(snapshot({ mcp: mcp([server({ enabled: true, step: 'browser' })]) }))
+        expect(await within(panel).findByText('Continue in your browser. This app is waiting for it to come back.')).toBeInTheDocument()
+        await user.click(within(panel).getByRole('button', { name: 'Cancel sign-in' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'cancelMcpSignIn', context: CONTEXT }))
+
+        await native.push(snapshot({ mcp: mcp([server({ enabled: true, signedIn: true })]) }))
+        expect(await within(panel).findByText('Signed in.')).toBeInTheDocument()
+        await user.click(within(panel).getByRole('button', { name: 'Sign out of Tools' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'signOutMcpServer', context: CONTEXT, workspace: REF_A, server: 'srv-tools-0001' }),
+        )
+    })
+
+    it('says why a server cannot be used and keeps at most eight on', async () => {
+        const many = Array.from({ length: 9 }, (_, i) =>
+            server({ id: `srv-${i}`, name: `S${i}`, namespace: `s${i}`, enabled: i < 8, signedIn: i === 0 }),
+        )
+        many[1] = { ...many[1]!, stale: true }
+        many[2] = { ...many[2]!, expired: 'sessionExpired' }
+        many[3] = { ...many[3]!, failure: 'registrationNotOffered' }
+        const native = scriptedNative(snapshot({ mcp: mcp(many, { failure: 'unavailable', complete: false }) }))
+        await open(native)
+        const panel = screen.getByRole('region', { name: 'Workspace MCP servers' })
+        expect(within(panel).getByRole('checkbox', { name: 'Use S8 in new conversations' })).toBeDisabled()
+        expect(within(panel).getByRole('checkbox', { name: 'Use S7 in new conversations' })).toBeEnabled()
+        expect(within(panel).getByText('Signed in for an earlier version of this server. Sign in again to use it.')).toBeInTheDocument()
+        expect(within(panel).getByText('The sign-in has expired. Sign in again to use its tools.')).toBeInTheDocument()
+        expect(within(panel).getByText('The server does not let this app register for a sign-in.')).toBeInTheDocument()
+        expect(within(panel).getByText(/^The MCP servers could not be read:/)).toBeInTheDocument()
+        expect(within(panel).getByText('Only the first 500 servers are shown.')).toBeInTheDocument()
+        expect(within(panel).getByRole('button', { name: 'Sign in to S1 again' })).toBeInTheDocument()
+    })
+
+    it('asks before an MCP tool runs and shows its call in the transcript', async () => {
+        const native = scriptedNative(
+            snapshot({
+                conversation: conversation({
+                    phase: 'answering',
+                    mcp: [
+                        { name: 'tools', status: 'ready', signedOut: false },
+                        { name: 'docs', status: 'failed', signedOut: true },
+                    ],
+                    entries: [
+                        { id: 'u-1', role: 'operator', text: 'Look it up', state: 'complete' },
+                        { id: 'u-1/c1', role: 'mcp', text: 'tools · lookup\n{"query":"record-1"}', state: 'streaming' },
+                    ],
+                    approvals: [
+                        {
+                            id: '0123456789abcdef01234567',
+                            kind: 'mcpTool',
+                            command: null,
+                            cwd: null,
+                            reason: null,
+                            files: [],
+                            server: 'tools',
+                            tool: 'lookup',
+                            arguments: '{"query":"record-1"}',
+                        },
+                    ],
+                }),
+            }),
+        )
+        const user = await open(native)
+        expect(screen.getByText('MCP servers: tools (ready), docs (not signed in)')).toBeInTheDocument()
+        const transcript = screen.getByRole('list', { name: 'Messages' })
+        expect(within(transcript).getAllByRole('listitem')[1]).toHaveTextContent('MCP tooltools · lookup')
+        const waiting = screen.getByRole('region', { name: 'Waiting for your approval' })
+        expect(within(waiting).getByText('Run a workspace MCP tool')).toBeInTheDocument()
+        expect(within(waiting).getByText('tools · lookup')).toBeInTheDocument()
+        expect(within(waiting).getByLabelText('Arguments')).toHaveTextContent('{"query":"record-1"}')
+        await user.click(within(waiting).getByRole('button', { name: 'Approve once' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({
+                kind: 'decideHarnessApproval',
+                conversation: 'op-7',
+                approval: '0123456789abcdef01234567',
+                allow: true,
+            }),
+        )
     })
 })

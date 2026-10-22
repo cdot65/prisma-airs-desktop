@@ -21,4 +21,9 @@ reason: string | null,
 /**
  * The files it changes (file changes).
  */
-files: Array<string>, };
+files: Array<string>, 
+/**
+ * The workspace MCP server (its namespace) and tool, and the call's
+ * arguments as JSON, from the engine's running call (MCP tools, C22).
+ */
+server: string | null, tool: string | null, arguments: string | null, };
