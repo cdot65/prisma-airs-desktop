@@ -1,0 +1,463 @@
+{
+ "schema": "airs-v2-workload-perf/1",
+ "label": "acceptance",
+ "registration_sha256": "ae2159b74906bc62b8c7890d80e0639983f1d89bfa37a98a278220828e764031",
+ "started_utc": "2026-10-21T23:25:52Z",
+ "finished_utc": "2026-10-21T23:28:09Z",
+ "executable_sha256": "94f79dd4970d0a5eddf12aaacf8b59291e2be57fcce9719be05cc77803278323",
+ "host": "Mac17,3",
+ "metrics": {
+  "harness-tool-read-answer": {
+   "unit": "ms",
+   "samples": [
+    424.994583,
+    324.931667,
+    228.137791,
+    244.862417,
+    222.520291,
+    213.57825,
+    224.035167,
+    214.251916,
+    251.1705,
+    212.382708
+   ]
+  },
+  "harness-approval-shown": {
+   "unit": "ms",
+   "samples": [
+    163.069083,
+    163.170958,
+    171.780166,
+    171.937417,
+    179.70825,
+    183.778792,
+    193.832792,
+    172.192583,
+    167.810958,
+    168.864
+   ]
+  },
+  "harness-approved-command-done": {
+   "unit": "ms",
+   "samples": [
+    160.753917,
+    157.039625,
+    186.757291,
+    193.561291,
+    209.972792,
+    203.114708,
+    218.177959,
+    214.454125,
+    174.190458,
+    181.721
+   ]
+  },
+  "harness-proposal-staged": {
+   "unit": "ms",
+   "samples": [
+    139.0065,
+    111.441834,
+    111.215625,
+    118.173708,
+    176.517459,
+    129.860208,
+    111.858416,
+    114.123709,
+    112.019333,
+    143.552875
+   ]
+  },
+  "harness-proposal-review-ready": {
+   "unit": "ms",
+   "samples": [
+    19.772584,
+    15.401542,
+    12.552542,
+    15.465083,
+    25.041166,
+    13.706458,
+    12.0675,
+    11.65125,
+    13.633875,
+    14.690542
+   ]
+  },
+  "harness-tools-process-tree-resident": {
+   "unit": "MiB",
+   "samples": [
+    365.7,
+    371.6,
+    394.0,
+    399.1,
+    403.2,
+    406.8,
+    402.7,
+    407.4,
+    410.1,
+    420.7,
+    421.8,
+    435.8,
+    439.5,
+    439.7,
+    437.6,
+    437.1,
+    437.0,
+    436.4,
+    436.2,
+    436.0
+   ]
+  }
+ },
+ "details": {
+  "read": [
+   {
+    "sample": 1,
+    "answered": true,
+    "polls": 33,
+    "ms": 424.994583
+   },
+   {
+    "sample": 2,
+    "answered": true,
+    "ms": 324.931667,
+    "polls": 24
+   },
+   {
+    "sample": 3,
+    "answered": true,
+    "ms": 228.137791,
+    "polls": 20
+   },
+   {
+    "sample": 4,
+    "answered": true,
+    "polls": 18,
+    "ms": 244.862417
+   },
+   {
+    "sample": 5,
+    "answered": true,
+    "polls": 18,
+    "ms": 222.520291
+   },
+   {
+    "sample": 6,
+    "answered": true,
+    "polls": 17,
+    "ms": 213.57825
+   },
+   {
+    "sample": 7,
+    "answered": true,
+    "ms": 224.035167,
+    "polls": 17
+   },
+   {
+    "sample": 8,
+    "answered": true,
+    "polls": 17,
+    "ms": 214.251916
+   },
+   {
+    "sample": 9,
+    "answered": true,
+    "polls": 15,
+    "ms": 251.1705
+   },
+   {
+    "sample": 10,
+    "answered": true,
+    "ms": 212.382708,
+    "polls": 15
+   }
+  ],
+  "command": [
+   {
+    "sample": 1,
+    "answered": true,
+    "shown": {
+     "ms": 163.069083,
+     "polls": 10
+    },
+    "done": {
+     "polls": 11,
+     "ms": 160.753917
+    }
+   },
+   {
+    "sample": 2,
+    "answered": true,
+    "shown": {
+     "ms": 163.170958,
+     "polls": 11
+    },
+    "done": {
+     "polls": 9,
+     "ms": 157.039625
+    }
+   },
+   {
+    "sample": 3,
+    "answered": true,
+    "shown": {
+     "ms": 171.780166,
+     "polls": 10
+    },
+    "done": {
+     "polls": 10,
+     "ms": 186.757291
+    }
+   },
+   {
+    "sample": 4,
+    "answered": true,
+    "shown": {
+     "polls": 9,
+     "ms": 171.937417
+    },
+    "done": {
+     "polls": 10,
+     "ms": 193.561291
+    }
+   },
+   {
+    "sample": 5,
+    "answered": true,
+    "shown": {
+     "ms": 179.70825,
+     "polls": 9
+    },
+    "done": {
+     "ms": 209.972792,
+     "polls": 10
+    }
+   },
+   {
+    "sample": 6,
+    "answered": true,
+    "shown": {
+     "ms": 183.778792,
+     "polls": 9
+    },
+    "done": {
+     "ms": 203.114708,
+     "polls": 9
+    }
+   },
+   {
+    "sample": 7,
+    "answered": true,
+    "shown": {
+     "polls": 9,
+     "ms": 193.832792
+    },
+    "done": {
+     "ms": 218.177959,
+     "polls": 9
+    }
+   },
+   {
+    "sample": 8,
+    "answered": true,
+    "shown": {
+     "polls": 8,
+     "ms": 172.192583
+    },
+    "done": {
+     "ms": 214.454125,
+     "polls": 9
+    }
+   },
+   {
+    "sample": 9,
+    "answered": true,
+    "shown": {
+     "ms": 167.810958,
+     "polls": 8
+    },
+    "done": {
+     "ms": 174.190458,
+     "polls": 9
+    }
+   },
+   {
+    "sample": 10,
+    "answered": true,
+    "shown": {
+     "polls": 8,
+     "ms": 168.864
+    },
+    "done": {
+     "ms": 181.721,
+     "polls": 8
+    }
+   }
+  ],
+  "proposal": [
+   {
+    "sample": 1,
+    "answered": true,
+    "staged": {
+     "ms": 139.0065,
+     "polls": 15
+    },
+    "review": {
+     "ms": 19.772584,
+     "polls": 1
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 2,
+    "answered": true,
+    "staged": {
+     "polls": 10,
+     "ms": 111.441834
+    },
+    "review": {
+     "ms": 15.401542,
+     "polls": 1
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 3,
+    "answered": true,
+    "staged": {
+     "ms": 111.215625,
+     "polls": 10
+    },
+    "review": {
+     "ms": 12.552542,
+     "polls": 1
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 4,
+    "answered": true,
+    "staged": {
+     "polls": 9,
+     "ms": 118.173708
+    },
+    "review": {
+     "polls": 1,
+     "ms": 15.465083
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 5,
+    "answered": true,
+    "staged": {
+     "polls": 8,
+     "ms": 176.517459
+    },
+    "review": {
+     "polls": 1,
+     "ms": 25.041166
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 6,
+    "answered": true,
+    "staged": {
+     "ms": 129.860208,
+     "polls": 15
+    },
+    "review": {
+     "ms": 13.706458,
+     "polls": 1
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 7,
+    "answered": true,
+    "staged": {
+     "ms": 111.858416,
+     "polls": 10
+    },
+    "review": {
+     "polls": 1,
+     "ms": 12.0675
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 8,
+    "answered": true,
+    "staged": {
+     "ms": 114.123709,
+     "polls": 9
+    },
+    "review": {
+     "ms": 11.65125,
+     "polls": 1
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 9,
+    "answered": true,
+    "staged": {
+     "polls": 9,
+     "ms": 112.019333
+    },
+    "review": {
+     "polls": 1,
+     "ms": 13.633875
+    },
+    "reviews_listed": 1
+   },
+   {
+    "sample": 10,
+    "answered": true,
+    "staged": {
+     "ms": 143.552875,
+     "polls": 9
+    },
+    "review": {
+     "ms": 14.690542,
+     "polls": 1
+    },
+    "reviews_listed": 1
+   }
+  ],
+  "process_tree": {
+   "app": 49678,
+   "webkit": [
+    49680,
+    49681,
+    49682
+   ]
+  },
+  "resident_steps": [
+   [
+    "read",
+    true
+   ],
+   [
+    "read",
+    true
+   ],
+   [
+    "read",
+    true
+   ],
+   [
+    "command",
+    true
+   ],
+   [
+    "proposal",
+    true
+   ],
+   [
+    "review",
+    true
+   ]
+  ]
+ }
+}

@@ -1,0 +1,16 @@
+an unrecognized action reads as allowed 101 True
+a content-level error with false global flags reads as complete 101 True
+Unknown text claims the request was sent 1 True
+an incomplete scan reads as allowed 101 True
+cancellation does not reach the in-flight request 101 True
+a late reply for a retired context is shown 101 True
+an earlier context's scan can be cancelled 101 True
+drafts admitted without validation 101 True
+history kept without bound 101 True
+the presentation sends a prompt over 2 MiB 1 True
+an unknown verdict is labelled allowed 1 True
+an unconfirmed scan delivery is resubmitted 1 True
+the validator accepts a result on an unfinished scan 1 True
+baseline sync_scan 0
+baseline --lib 0
+baseline src/contracts/snapshot-validation.test.ts 0

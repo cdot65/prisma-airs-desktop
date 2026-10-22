@@ -925,6 +925,7 @@ export const HARNESS_PHASES: readonly string[] = [
     'answering',
     'interrupting',
     'renewing',
+    'confirmWrite',
     'ending',
     'ended',
     'failed',
@@ -965,13 +966,23 @@ export const SIGN_IN_FAILURES: readonly string[] = [
 export const HISTORY_FAILURES: readonly string[] = ['locked', 'denied', 'unavailable', 'full', 'tooLarge', 'unreadable', 'missing']
 const CREDENTIAL_SOURCES: readonly string[] = ['workspaceKey', 'companySignIn']
 const SIGN_IN_STEPS: readonly string[] = ['contacting', 'browser', 'completing']
-const NOT_CONTINUABLE: readonly string[] = ['running', 'otherCredential', 'engineUnavailable']
+const NOT_CONTINUABLE: readonly string[] = ['running', 'otherCredential', 'otherProject', 'engineUnavailable']
 /** Saved conversations per workspace and a title's length (C20). */
 const MAX_SAVED_CONVERSATIONS = 16
 const MAX_TITLE_CHARS = 80
 const HARNESS_STOPS: readonly string[] = ['ended', 'sleep', 'quit', 'deadline']
 const TURN_ENDS: readonly string[] = ['completed', 'interrupted', 'truncated', 'failed', 'refused']
-const ENTRY_STATES: readonly string[] = ['streaming', 'complete', 'interrupted', 'truncated', 'failed']
+const ENTRY_STATES: readonly string[] = ['streaming', 'complete', 'interrupted', 'truncated', 'failed', 'declined']
+const HARNESS_ROLES: readonly string[] = ['operator', 'assistant', 'command', 'fileChange', 'tool']
+/** What the Harness may propose (C21): Runtime and DLP changes only. */
+const PROPOSAL_KINDS: readonly string[] = CHANGE_KINDS.filter((k) => !k.startsWith('gateway'))
+const PROPOSAL_STATES: readonly string[] = ['staged', 'inReview', 'closed', 'dismissed']
+/** Pending approvals, staged proposals and an approval's texts (C21). */
+const MAX_APPROVALS = 8
+const MAX_PROPOSALS = 8
+const MAX_COMMAND_CHARS = 2 * 1024
+const APPROVAL_ID = /^[0-9a-f]{24}$/
+const PROPOSAL_ID = /^P-[1-8]$/
 const CLEANUPS: readonly string[] = ['graceful', 'forced', 'failed']
 /** The Harness's bounds (C19): entries, a conversation's text and one answer. */
 const MAX_HARNESS_ENTRIES = 200
@@ -989,7 +1000,7 @@ function isHarnessEntry(value: unknown): boolean {
         typeof value.id === 'string' &&
         value.id.length > 0 &&
         value.id.length <= 300 &&
-        oneOf(['operator', 'assistant'], value.role) &&
+        oneOf(HARNESS_ROLES, value.role) &&
         typeof value.text === 'string' &&
         utf8Bytes(value.text) <= (value.role === 'operator' ? 32 * 1024 : MAX_ANSWER_BYTES) &&
         oneOf(ENTRY_STATES, value.state) &&
@@ -1011,7 +1022,66 @@ function isHarnessView(value: unknown): boolean {
         engineOk &&
         optional(isConversationView, value.conversation) &&
         optional(isHarnessSignInView, value.signIn) &&
-        optional(isHarnessHistoryView, value.history)
+        optional(isHarnessHistoryView, value.history) &&
+        optional(isHarnessProjectView, value.project) &&
+        optional((p) => typeof p === 'string' && p.length > 0 && p.length <= 4096, value.projectRefused)
+    )
+}
+
+/** The project the Harness works in, and whether it may change it (C21). */
+function isHarnessProjectView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.path === 'string' &&
+        value.path.startsWith('/') &&
+        value.path.length <= 1024 &&
+        typeof value.write === 'boolean' &&
+        Object.keys(value).length === 2
+    )
+}
+
+function bounded(max: number) {
+    return (v: unknown) => typeof v === 'string' && utf8Bytes(v) <= max + 3
+}
+
+/** An engine request for the operator's approval (C21). */
+function isHarnessApproval(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        APPROVAL_ID.test(value.id) &&
+        oneOf(['command', 'fileChange'], value.kind) &&
+        optional(bounded(MAX_COMMAND_CHARS), value.command) &&
+        optional(bounded(1024), value.cwd) &&
+        optional(bounded(1024), value.reason) &&
+        Array.isArray(value.files) &&
+        value.files.length <= 64 &&
+        value.files.every((f) => typeof f === 'string' && f.length > 0) &&
+        // Only a file change names files.
+        (value.kind === 'fileChange' || value.files.length === 0)
+    )
+}
+
+/** A change the Harness proposed for the operator's own review (C21). */
+function isProposalView(value: unknown): boolean {
+    if (!isRecord(value) || !isRecord(value.draft)) return false
+    const d = value.draft
+    return (
+        typeof value.id === 'string' &&
+        PROPOSAL_ID.test(value.id) &&
+        typeof value.summary === 'string' &&
+        value.summary.trim().length > 0 &&
+        [...value.summary].length <= 512 &&
+        oneOf(PROPOSAL_KINDS, d.kind) &&
+        oneOf(['create', 'update', 'delete'], d.action) &&
+        typeof d.target === 'string' &&
+        d.target.length <= 256 &&
+        isJsonObjectText(d.body) &&
+        d.workspace === undefined &&
+        oneOf(PROPOSAL_STATES, value.state) &&
+        optional((r) => typeof r === 'string' && REVIEW_ID.test(r), value.review) &&
+        // Only a proposal opened into a review names it.
+        (value.state === 'inReview' || value.state === 'closed') === (value.review !== null)
     )
 }
 
@@ -1117,7 +1187,24 @@ function isConversationView(value: unknown): boolean {
         optional(isCount, value.savedAt) &&
         optional((v) => oneOf(HISTORY_FAILURES, v), value.saveFailure) &&
         optional((v) => typeof v === 'string' && utf8Bytes(v) <= 32 * 1024, value.unsent) &&
-        optional((v) => oneOf(SIGN_IN_FAILURES, v), value.signInFailure)
+        optional((v) => oneOf(SIGN_IN_FAILURES, v), value.signInFailure) &&
+        optional((p) => typeof p === 'string' && p.startsWith('/'), value.project) &&
+        typeof value.write === 'boolean' &&
+        // Changes are only ever allowed in a project.
+        (!value.write || value.project !== null) &&
+        Array.isArray(value.approvals) &&
+        value.approvals.length <= MAX_APPROVALS &&
+        value.approvals.every(isHarnessApproval) &&
+        // Approvals need a project, and file changes the right to change it.
+        value.approvals.every(
+            (a) => value.project !== null && (value.write || (a as Record<string, unknown>).kind === 'command'),
+        ) &&
+        Array.isArray(value.proposals) &&
+        value.proposals.length <= MAX_PROPOSALS &&
+        value.proposals.every(isProposalView) &&
+        new Set(value.proposals.map((p) => (p as { id: string }).id)).size === value.proposals.length &&
+        // The write confirmation is only asked when changes are allowed.
+        (value.phase !== 'confirmWrite' || value.write === true)
     )
 }
 

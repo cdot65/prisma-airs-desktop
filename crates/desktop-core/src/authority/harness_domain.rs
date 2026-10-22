@@ -86,6 +86,55 @@ pub(super) struct Conversation {
     renew_failure: Option<SignInFailure>,
     /// Its protected history record.
     pub(super) history_id: String,
+    /// The project and access it runs with (C21).
+    project: Option<String>,
+    write: bool,
+    /// Changes the Harness proposed for the operator's review (C21).
+    proposals: Vec<super::harness_tools::Proposal>,
+    /// A renewal waiting for the operator to allow changes again (C21).
+    write_confirm: Option<RenewJob>,
+}
+
+impl Conversation {
+    pub(super) fn context_ref(&self) -> &ContextRef {
+        &self.context
+    }
+
+    pub(super) fn tenant_id(&self) -> &TenantId {
+        &self.tenant
+    }
+
+    pub(super) fn progress_approvals(&self) -> Vec<crate::harness::HarnessApproval> {
+        self.progress
+            .lock()
+            .map(|p| p.approvals.clone())
+            .unwrap_or_default()
+    }
+
+    pub(super) fn command(&self, command: Command) -> Result<(), Refusal> {
+        self.commands.try_send(command).map_err(|_| Refusal::Busy)
+    }
+
+    pub(super) fn proposals_mut(&mut self) -> &mut Vec<super::harness_tools::Proposal> {
+        &mut self.proposals
+    }
+
+    pub(super) fn take_write_confirmation(&mut self) -> Option<RenewJob> {
+        self.write_confirm.take()
+    }
+
+    pub(super) fn set_phase(&self, phase: HarnessPhase) {
+        if let Ok(mut p) = self.progress.lock() {
+            p.phase = phase;
+        }
+    }
+
+    /// A message that will not be sent goes back to the box.
+    pub(super) fn give_back(&mut self, job: RenewJob) {
+        self.entries -= 1;
+        self.unsent = Some(job.prompt.to_string());
+        self.set_phase(HarnessPhase::Ready);
+    }
 }
 
 /// A saved conversation to continue.
@@ -124,6 +173,8 @@ pub(super) struct HarnessStart {
     /// Company sign-in: the token is obtained (renewed if needed) first.
     pub(super) grant: Option<Arc<Grant>>,
     pub(super) history: Option<HistoryPlan>,
+    /// For the tool sink's results (C21).
+    pub(super) commands: mpsc::Sender<Command>,
 }
 
 /// The bundled engine, as the presentation sees it.
@@ -166,6 +217,13 @@ pub struct ConversationView {
     /// A message given back because renewing the sign-in failed.
     pub unsent: Option<String>,
     pub sign_in_failure: Option<SignInFailure>,
+    /// The project and access it runs with (C21).
+    pub project: Option<String>,
+    pub write: bool,
+    /// Approvals the engine is waiting for.
+    pub approvals: Vec<crate::harness::HarnessApproval>,
+    /// Changes it proposed for the operator's review.
+    pub proposals: Vec<super::harness_tools::ProposalView>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -177,6 +235,10 @@ pub struct HarnessView {
     pub sign_in: Option<super::harness_identity::HarnessSignInView>,
     /// The chosen workspace's protected history (C20).
     pub history: Option<super::harness_history::HarnessHistoryView>,
+    /// The active tenant's project for the Harness (C21).
+    pub project: Option<super::harness_tools::HarnessProjectView>,
+    /// A folder just refused as its project, and so not chosen.
+    pub project_refused: Option<String>,
 }
 
 fn key_failure(f: InferenceFailure) -> HarnessFailure {
@@ -263,12 +325,22 @@ impl State {
                     )
                 }
             };
+        // The selected project (checked again: it may have moved since).
+        let project = self.harness_project(&tenant);
+        if let Some(p) = &project {
+            let path = std::path::Path::new(&p.path);
+            if path.canonicalize().ok().as_deref() != Some(path) || !path.is_dir() {
+                return Err(Refusal::InvalidInput);
+            }
+        }
         let binding = protocol::Binding {
             tenant: protocol::derived_uuid("tenant", tenant.as_str()),
             workspace: workspace.id.clone(),
             credential,
             credential_epoch: 1,
             endpoint: endpoint.clone(),
+            project: project.as_ref().map(|p| p.path.clone()),
+            write: project.as_ref().is_some_and(|p| p.write),
         };
         let saved = SavedBinding {
             tenant: binding.tenant.clone(),
@@ -277,6 +349,8 @@ impl State {
             credential_epoch: binding.credential_epoch,
             endpoint: binding.endpoint.clone(),
             source,
+            project: binding.project.clone(),
+            write: binding.write,
         };
         // Only exactly the binding it was saved under continues it.
         if resume.as_ref().is_some_and(|r| r.binding != saved) {
@@ -304,8 +378,10 @@ impl State {
             .iter()
             .filter(|e| e.role == crate::harness::HarnessRole::Operator)
             .count() as u64;
+        let (binding_project, binding_write) = (binding.project.clone(), binding.write);
         let id = self.operations.reserve();
         let (commands, receiver) = mpsc::channel(4);
+        let tool_commands = commands.clone();
         let cancel = CancellationToken::new();
         let progress = ProgressSlot::default();
         if let Ok(mut p) = progress.lock() {
@@ -328,6 +404,7 @@ impl State {
             bootstrap_timeout: adapters.bootstrap_timeout(),
             history: None,
             restore,
+            tools: None,
         };
         self.harness = Some(Conversation {
             id: id.clone(),
@@ -350,6 +427,10 @@ impl State {
             unsent: None,
             renew_failure: None,
             history_id,
+            project: binding_project,
+            write: binding_write,
+            proposals: Vec::new(),
+            write_confirm: None,
         });
         Ok(HarnessStart {
             id,
@@ -357,6 +438,7 @@ impl State {
             cancel,
             grant,
             history: history_plan,
+            commands: tool_commands,
         })
     }
 
@@ -368,6 +450,11 @@ impl State {
     }
 
     /// The bound, unended conversation `id`.
+    /// The bound, unended conversation `id` (for C21's tools and decisions).
+    pub(super) fn harness_live(&mut self, id: &OperationId) -> Result<&mut Conversation, Refusal> {
+        self.live_harness(id)
+    }
+
     fn live_harness(&mut self, id: &OperationId) -> Result<&mut Conversation, Refusal> {
         let bound = self.harness.as_ref().is_some_and(|c| self.harness_bound(c));
         let conversation = self
@@ -423,6 +510,20 @@ impl State {
         };
         if let Some(grant) = renew {
             conversation.grant = Some(Arc::clone(&grant));
+            // The restart re-grants changes in the project only when the
+            // operator says so again (DESIGN, C21): held until then.
+            if conversation.write {
+                conversation.write_confirm = Some(RenewJob {
+                    conversation: id.clone(),
+                    grant,
+                    id: entry,
+                    prompt,
+                });
+                if let Ok(mut p) = conversation.progress.lock() {
+                    p.phase = HarnessPhase::ConfirmWrite;
+                }
+                return Ok(None);
+            }
             if let Ok(mut p) = conversation.progress.lock() {
                 p.phase = HarnessPhase::Renewing;
             }
@@ -566,8 +667,13 @@ impl State {
             ),
             _ => false,
         };
+        // The project and its access as selected now (C21).
+        let project = tenant.harness_project.as_ref();
+        let project_ok = project.map(|p| &p.path) == c.project.as_ref()
+            && project.is_some_and(|p| p.write) == c.write;
         !c.retired
             && credential_ok
+            && project_ok
             && Some(&c.context) == self.active_ref.as_ref()
             && self.workspace_current(Some(&c.reference))
     }
@@ -599,6 +705,7 @@ impl State {
 
     pub(super) fn harness_view(&self, adapters_engine: bool) -> HarnessView {
         let pin = engine::pin();
+        let current_review = self.change_review_id();
         let conversation = self
             .harness
             .as_ref()
@@ -629,6 +736,23 @@ impl State {
                     save_failure: p.save_failure,
                     unsent: c.unsent.clone(),
                     sign_in_failure: c.renew_failure,
+                    project: c.project.clone(),
+                    write: c.write,
+                    approvals: p.approvals,
+                    proposals: c
+                        .proposals
+                        .iter()
+                        .map(|x| {
+                            let mut v = x.view.clone();
+                            // In review only while that review is the open one.
+                            if v.state == super::harness_tools::ProposalState::InReview
+                                && v.review != current_review
+                            {
+                                v.state = super::harness_tools::ProposalState::Closed;
+                            }
+                            v
+                        })
+                        .collect(),
                 })
             });
         HarnessView {
@@ -641,6 +765,8 @@ impl State {
             conversation,
             sign_in: self.harness_sign_in_view(),
             history: self.harness_history_view(),
+            project: self.harness_project_view(),
+            project_refused: self.harness_project_refused(),
         }
     }
 

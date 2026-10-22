@@ -24,6 +24,7 @@ mod gateway_local_domain;
 mod harness_domain;
 mod harness_history;
 mod harness_identity;
+mod harness_tools;
 mod inference_domain;
 mod learner_domain;
 mod library_domain;
@@ -266,6 +267,38 @@ pub enum Intent {
     /// Sign out: the grant ends and its conversation is retired.
     SignOutHarness {
         context: ContextRef,
+    },
+    /// Choose the Harness project folder in the native folder sheet (C21).
+    ChooseHarnessProject {
+        context: ContextRef,
+    },
+    ClearHarnessProject {
+        context: ContextRef,
+    },
+    /// Allow (or stop allowing) changes in the project, each with approval.
+    SetHarnessWrite {
+        context: ContextRef,
+        write: bool,
+    },
+    /// Decide one pending approval, by its desktop id.
+    DecideHarnessApproval {
+        conversation: OperationId,
+        approval: String,
+        allow: bool,
+    },
+    /// Open a staged proposal into the change review.
+    ReviewHarnessProposal {
+        conversation: OperationId,
+        proposal: String,
+    },
+    DismissHarnessProposal {
+        conversation: OperationId,
+        proposal: String,
+    },
+    /// Allow changes again before a renewal restart, or keep the message.
+    ConfirmHarnessWrite {
+        conversation: OperationId,
+        allow: bool,
     },
     /// List the chosen workspace's saved conversations (C20).
     ListHarnessHistory {
@@ -969,6 +1002,11 @@ pub trait FolderPicker: Send + Sync + 'static {
     /// A new folder's location and name from the save sheet (`None`:
     /// cancelled). Nothing exists there yet.
     fn choose_new(&self) -> futures_util::future::BoxFuture<'static, Option<std::path::PathBuf>>;
+    /// An existing folder for the Harness to work in, from its own open
+    /// sheet (`None`: cancelled) (C21).
+    fn choose_project(
+        &self,
+    ) -> futures_util::future::BoxFuture<'static, Option<std::path::PathBuf>>;
     /// Where to save a response body, from the save sheet with `suggested`
     /// as its name (`None`: cancelled). The sheet confirms replacing.
     fn choose_save(
@@ -1058,6 +1096,8 @@ struct Tenant {
     inference_target: Option<crate::gateway_inference::InferenceTarget>,
     /// Company sign-in for the Harness Gateway credential (C20).
     harness_sign_in: Option<crate::store::StoredSignIn>,
+    /// The Harness project folder (C21).
+    harness_project: Option<crate::store::StoredProject>,
 }
 
 impl Tenant {
@@ -1071,6 +1111,7 @@ impl Tenant {
             inference: ScanCapability::Missing,
             inference_target: None,
             harness_sign_in: None,
+            harness_project: None,
         }
     }
 
@@ -1238,6 +1279,10 @@ struct State {
     /// The chosen workspace's protected history (C20).
     harness_history: Option<harness_history::HistoryState>,
     harness_history_root: Option<std::path::PathBuf>,
+    /// The app's data folder, never a Harness project (C21).
+    harness_data_root: Option<std::path::PathBuf>,
+    /// The folder last refused as a tenant's project, until the next choice.
+    harness_project_refused: Option<(TenantId, String)>,
 }
 
 impl State {
@@ -1382,6 +1427,12 @@ impl State {
                 .filter_map(|t| t.harness_sign_in.clone())
                 .collect(),
             harness_history: self.data.harness_history.clone(),
+            harness_projects: self
+                .data
+                .tenants
+                .iter()
+                .filter_map(|t| t.harness_project.clone())
+                .collect(),
             ..PersistedState::default()
         }
     }
@@ -1458,6 +1509,92 @@ impl State {
 
     /// Moves settled operations' payloads into their records. A reply for a
     /// context that is no longer current is discarded, never shown.
+    /// Admits one scan of the active tenant with its scan key (the operator's
+    /// Scan, and the Harness's typed scan tool, C21).
+    fn admit_scan(
+        &mut self,
+        context: ContextRef,
+        draft: crate::scanning::ScanDraft,
+        keychain: Arc<dyn CredentialStore>,
+        session: Arc<SessionVault>,
+    ) -> Result<(OperationId, Vec<runtime::Start>), Refusal> {
+        let state = self;
+        let tenant = state.check_context(&context)?;
+        let draft = draft.validate().ok_or(Refusal::InvalidInput)?;
+        let (record, mode, origin) = match &state.tenant(&tenant).ok_or(Refusal::StaleContext)?.scan
+        {
+            ScanCapability::Ready {
+                record,
+                mode,
+                destination,
+            } => (record.clone(), *mode, destination.clone()),
+            _ => return Err(Refusal::CapabilityMissing),
+        };
+        // System proxy mode builds its client here, per admission.
+        let transport = state
+            .transport
+            .clone()
+            .ok_or(Refusal::CapabilityMissing)?
+            .for_admission()
+            .map_err(|_| Refusal::CapabilityMissing)?;
+        let slot: PayloadSlot = Arc::default();
+        let bytes = draft.queued_bytes();
+        let job = ScanJob {
+            keychain,
+            session_vault: session,
+            record,
+            mode,
+            origin,
+            transport,
+            session: state.scan_session(&context),
+            draft,
+            slot: Arc::clone(&slot),
+        };
+        let (operation, starts) =
+            state
+                .operations
+                .admit(context.as_str(), bytes, job.into_work(), Instant::now())?;
+        state.scans.push(ScanRecord {
+            operation: operation.clone(),
+            tenant,
+            context,
+            slot,
+            payload: None,
+            discarded: false,
+            settlement: None,
+        });
+        Ok((operation, starts))
+    }
+
+    /// Collects settled scans now (C21's scan tool waits on them).
+    fn sync_scans_now(&mut self) {
+        self.sync_scans();
+    }
+
+    /// A settled scan's result as the presentation sees it (C21's scan
+    /// tool waits for it).
+    fn scan_settled(&self, operation: &OperationId) -> Option<ScanRecordView> {
+        let r = self
+            .scans
+            .iter()
+            .find(|r| &r.operation == operation && r.settlement.is_some())?;
+        let s = r.settlement?;
+        let (result, failure) = match &r.payload {
+            Some(ScanPayload::Result(view)) => (Some((**view).clone()), None),
+            Some(ScanPayload::Failure(failure)) => (None, Some(*failure)),
+            None => (None, None),
+        };
+        Some(ScanRecordView {
+            operation: r.operation.clone(),
+            progress: ScanProgress::Settled,
+            outcome: Some(s.outcome),
+            stop: s.stop,
+            result,
+            failure,
+            discarded: r.discarded,
+        })
+    }
+
     fn sync_scans(&mut self) {
         let current = self.active_ref.clone();
         for record in self.scans.iter_mut().filter(|r| r.settlement.is_none()) {
@@ -1825,6 +1962,8 @@ enum Effect {
     HarnessHistory(harness_history::HistoryJob),
     /// Remove a removed tenant's history directory (C20).
     ForgetHarnessHistory(std::path::PathBuf),
+    /// Choose the Harness project in the native folder sheet (C21).
+    ChooseHarnessProject(ContextRef),
 }
 
 struct Inner {
@@ -1936,6 +2075,13 @@ impl Core {
             harness_grants: Vec::new(),
             harness_history: None,
             harness_history_root: adapters.harness.history_root.clone(),
+            harness_data_root: adapters
+                .harness
+                .runtime_root
+                .as_ref()
+                .and_then(|r| r.parent())
+                .map(std::path::Path::to_path_buf),
+            harness_project_refused: None,
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
@@ -2239,6 +2385,11 @@ fn data_from(doc: PersistedState) -> Data {
             tenant.scan = scan;
             tenant.gateway_workspace = gateway_workspace;
             tenant.harness_sign_in = harness_sign_in;
+            tenant.harness_project = doc
+                .harness_projects
+                .iter()
+                .find(|p| p.tenant == tenant.profile.id)
+                .cloned();
             if let Some(c) = management {
                 tenant.management = ScanCapability::Ready {
                     record: c.record.clone(),
@@ -2855,6 +3006,57 @@ fn admit(
             effects.push(Effect::Harness(Box::new(start)));
             state.changed();
         }
+        Intent::ChooseHarnessProject { context } => {
+            state.check_context(&context)?;
+            state.harness_project_refused = None;
+            effects.push(Effect::ChooseHarnessProject(context));
+        }
+        Intent::ClearHarnessProject { context } => {
+            state.clear_harness_project(&context)?;
+            state.changed();
+        }
+        Intent::SetHarnessWrite { context, write } => {
+            state.set_harness_write(&context, write)?;
+            state.changed();
+        }
+        Intent::DecideHarnessApproval {
+            conversation,
+            approval,
+            allow,
+        } => {
+            state.decide_harness_approval(&conversation, &approval, allow)?;
+            state.changed();
+        }
+        Intent::ReviewHarnessProposal {
+            conversation,
+            proposal,
+        } => {
+            let (operation, starts) = state.review_harness_proposal(
+                &conversation,
+                &proposal,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = operation;
+            effects.push(Effect::Start(starts));
+            state.changed();
+        }
+        Intent::DismissHarnessProposal {
+            conversation,
+            proposal,
+        } => {
+            state.dismiss_harness_proposal(&conversation, &proposal)?;
+            state.changed();
+        }
+        Intent::ConfirmHarnessWrite {
+            conversation,
+            allow,
+        } => {
+            if let Some(job) = state.confirm_harness_write(&conversation, allow)? {
+                effects.push(Effect::HarnessRenew(Box::new(job)));
+            }
+            state.changed();
+        }
         Intent::ListHarnessHistory { context, workspace } => {
             effects.push(state.list_harness_history(&context, &workspace)?);
             state.changed();
@@ -3454,50 +3656,12 @@ fn admit(
             effects.push(Effect::Start(starts));
         }
         Intent::Scan { context, draft } => {
-            let tenant = state.check_context(&context)?;
-            let draft = draft.validate().ok_or(Refusal::InvalidInput)?;
-            let (record, mode, origin) =
-                match &state.tenant(&tenant).ok_or(Refusal::StaleContext)?.scan {
-                    ScanCapability::Ready {
-                        record,
-                        mode,
-                        destination,
-                    } => (record.clone(), *mode, destination.clone()),
-                    _ => return Err(Refusal::CapabilityMissing),
-                };
-            // System proxy mode builds its client here, per admission.
-            let transport = state
-                .transport
-                .clone()
-                .ok_or(Refusal::CapabilityMissing)?
-                .for_admission()
-                .map_err(|_| Refusal::CapabilityMissing)?;
-            let slot: PayloadSlot = Arc::default();
-            let bytes = draft.queued_bytes();
-            let job = ScanJob {
-                keychain: Arc::clone(&adapters.keychain),
-                session_vault: Arc::clone(session),
-                record,
-                mode,
-                origin,
-                transport,
-                session: state.scan_session(&context),
-                draft,
-                slot: Arc::clone(&slot),
-            };
-            let (operation, starts) =
-                state
-                    .operations
-                    .admit(context.as_str(), bytes, job.into_work(), Instant::now())?;
-            state.scans.push(ScanRecord {
-                operation: operation.clone(),
-                tenant,
+            let (operation, starts) = state.admit_scan(
                 context,
-                slot,
-                payload: None,
-                discarded: false,
-                settlement: None,
-            });
+                draft,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
             operation_ref = Some(operation);
             effects.push(Effect::Start(starts));
             state.changed();
@@ -3550,8 +3714,10 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     cancel,
                     grant,
                     history,
+                    commands,
                 } = *start;
                 inputs.history = history.map(|plan| harness_history::sink(&inner, plan));
+                inputs.tools = Some(harness_tools::sink(&inner, id.clone(), commands));
                 tokio::spawn(async move {
                     let deadline =
                         tokio::time::Instant::now() + crate::harness::session::SESSION_DEADLINE;
@@ -3638,6 +3804,16 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
             }
             Effect::HarnessHistory(job) => {
                 tokio::spawn(harness_history::run_job(Arc::clone(inner), job));
+            }
+            Effect::ChooseHarnessProject(context) => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let chosen = inner.adapters.folders.choose_project().await;
+                    if let (Some(path), Ok(mut state)) = (chosen, lock(&inner)) {
+                        let _ = state.set_harness_project(&context, path);
+                        state.changed();
+                    }
+                });
             }
             Effect::ForgetHarnessHistory(dir) => {
                 tokio::task::spawn_blocking(move || {

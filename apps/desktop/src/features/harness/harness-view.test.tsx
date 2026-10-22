@@ -14,6 +14,7 @@ import {
     DesktopClient,
     type GatewayView,
     type HarnessHistoryView,
+    type HarnessProjectView,
     type HarnessSignInView,
     type ListedWorkspace,
     type ShellSnapshot,
@@ -50,6 +51,8 @@ function snapshot(
         conversation?: ConversationView | null
         signIn?: HarnessSignInView | null
         history?: HarnessHistoryView | null
+        project?: HarnessProjectView | null
+        projectRefused?: string | null
     } = {}
 ): ShellSnapshot {
     const s = withTenant(baseSnapshot, tenant({ inference: options.key ?? keyFor(A) }), CONTEXT)
@@ -61,6 +64,8 @@ function snapshot(
             conversation: options.conversation ?? null,
             signIn: options.signIn ?? null,
             history: options.history ?? null,
+            project: options.project ?? null,
+            projectRefused: options.projectRefused ?? null,
         },
     }
 }
@@ -111,6 +116,10 @@ const conversation = (overrides: Partial<ConversationView> = {}): ConversationVi
     saveFailure: null,
     unsent: null,
     signInFailure: null,
+    project: null,
+    write: false,
+    approvals: [],
+    proposals: [],
     ...overrides,
 })
 
@@ -433,5 +442,180 @@ describe('company sign-in and protected history (C20)', () => {
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'deleteHarnessHistory', context: CONTEXT, workspace: REF_A, id: unreadable }))
         await native.push(snapshot({ history: history({ state: 'failed', failure: 'locked', conversations: [] }) }))
         expect(await screen.findByRole('alert')).toHaveTextContent('The Keychain is locked, so saved conversations cannot be read or saved.')
+    })
+})
+
+describe('Harness tools, project and approvals (C21)', () => {
+    const PROJECT = '/Users/someone/work/agent-demo'
+    const project = (write = false): HarnessProjectView => ({ path: PROJECT, write })
+
+    it('chooses a folder, allows changes in it and removes it', async () => {
+        const native = scriptedNative(snapshot())
+        const user = await open(native)
+        const panel = screen.getByRole('region', { name: 'Project folder' })
+        expect(within(panel).getByText(/cannot run commands/)).toBeInTheDocument()
+        await user.click(within(panel).getByRole('button', { name: 'Choose a folder…' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'chooseHarnessProject', context: CONTEXT }))
+
+        // A refused folder is named with the reason; the sheet has closed.
+        await native.push(snapshot({ projectRefused: '/usr' }))
+        expect(await within(panel).findByRole('alert')).toHaveTextContent(
+            '/usr cannot be used. Folders that hold system files, credentials or this app’s own data cannot be used.'
+        )
+        await native.push(snapshot({ project: project() }))
+        expect(await within(panel).findByText(PROJECT)).toBeInTheDocument()
+        expect(within(panel).queryByRole('alert')).toBeNull()
+        const write = within(panel).getByRole('checkbox', { name: 'Allow changes in this folder' })
+        expect(write).not.toBeChecked()
+        expect(write).toHaveAccessibleDescription(/Read-only/)
+        await user.click(write)
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'setHarnessWrite', context: CONTEXT, write: true }))
+
+        await native.push(snapshot({ project: project(true), conversation: conversation({ phase: 'ready', project: PROJECT, write: true }) }))
+        await waitFor(() => expect(write).toBeChecked())
+        expect(within(panel).getByText('Changing the folder or its access ends the running conversation.')).toBeInTheDocument()
+        expect(screen.getByText(`Folder ${PROJECT} · changes allowed, each with your approval`)).toBeInTheDocument()
+        await user.click(within(panel).getByRole('button', { name: 'Remove folder' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'clearHarnessProject', context: CONTEXT }))
+    })
+
+    it('shows what the engine asks to do and sends the operator’s decision', async () => {
+        const command = { id: '0123456789abcdef01234567', kind: 'command' as const, command: "/bin/zsh -c 'ls'", cwd: PROJECT, reason: 'List the files', files: [] }
+        const change = { id: '89abcdef0123456789abcdef', kind: 'fileChange' as const, command: null, cwd: null, reason: null, files: [`${PROJECT}/notes.txt`] }
+        const native = scriptedNative(
+            snapshot({
+                project: project(true),
+                conversation: conversation({
+                    phase: 'answering',
+                    project: PROJECT,
+                    write: true,
+                    entries: [
+                        { id: 'u-1', role: 'operator', text: 'Tidy up', state: 'complete' },
+                        { id: 'u-1/c1', role: 'command', text: "/bin/zsh -c 'ls'", state: 'streaming' },
+                        { id: 'u-1/c2', role: 'tool', text: 'Read the security profiles', state: 'complete' },
+                        { id: 'u-1/c3', role: 'fileChange', text: `${PROJECT}/old.txt`, state: 'declined' },
+                    ],
+                    approvals: [command, change],
+                }),
+            })
+        )
+        const user = await open(native)
+        const transcript = screen.getByRole('list', { name: 'Messages' })
+        expect(within(transcript).getAllByRole('listitem').map((i) => i.textContent)).toEqual([
+            'YouTidy up',
+            "Command/bin/zsh -c 'ls'",
+            'App toolRead the security profiles',
+            `File change${PROJECT}/old.txt(declined)`,
+        ])
+        const waiting = screen.getByRole('region', { name: 'Waiting for your approval' })
+        const [run, write] = within(waiting).getAllByRole('listitem').filter((li) => li.parentElement?.getAttribute('aria-label') !== 'Files')
+        expect(run).toHaveTextContent('Run a command')
+        expect(run).toHaveTextContent('Reason given: List the files')
+        expect(write).toHaveTextContent(`Change files${PROJECT}/notes.txt`)
+        await user.click(within(run!).getByRole('button', { name: 'Allow' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'decideHarnessApproval', conversation: 'op-7', approval: command.id, allow: true })
+        )
+        await user.click(within(write!).getByRole('button', { name: 'Decline' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'decideHarnessApproval', conversation: 'op-7', approval: change.id, allow: false })
+        )
+    })
+
+    it('opens a proposal only in Administration’s review, and dismisses one', async () => {
+        const proposal = (id: string, state: 'staged' | 'inReview' | 'dismissed', review: string | null = null) => ({
+            id,
+            summary: `Proposal ${id}`,
+            draft: { kind: 'profiles' as const, action: 'update' as const, target: 'default', body: '{"name":"default"}' },
+            state,
+            review,
+        })
+        const native = scriptedNative(
+            snapshot({
+                conversation: conversation({ phase: 'ready', proposals: [proposal('P-1', 'staged'), proposal('P-2', 'staged'), proposal('P-3', 'dismissed')] }),
+            })
+        )
+        const user = await open(native)
+        const list = screen.getByRole('region', { name: 'Proposed changes' })
+        const items = within(list).getAllByRole('listitem')
+        // Dismissed proposals are not shown.
+        expect(items).toHaveLength(2)
+        expect(items[0]).toHaveTextContent('Update security profile default')
+        await user.click(within(items[1]!).getByRole('button', { name: 'Dismiss' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'dismissHarnessProposal', conversation: 'op-7', proposal: 'P-2' }))
+        await user.click(within(items[0]!).getByRole('button', { name: 'Review' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'reviewHarnessProposal', conversation: 'op-7', proposal: 'P-1' }))
+        expect(await screen.findByRole('heading', { level: 1, name: 'Tenant inventories' })).toBeInTheDocument()
+
+        // Administration shows the opened review with the proposal's exact draft.
+        const opened = snapshot({ conversation: conversation({ phase: 'ready', proposals: [proposal('P-1', 'inReview', 'rv-h1')] }) })
+        await native.push({
+            ...opened,
+            tenants: opened.tenants.map((t) => ({
+                ...t,
+                management: { state: 'ready', mode: 'keychain', failure: null, clientId: 'svc@1.iam.panserviceaccount.com', tokenOrigin: 'https://auth.example' },
+            })),
+            changes: {
+                ...opened.changes,
+                review: {
+                    review: 'rv-h1',
+                    kind: 'profiles',
+                    action: 'update',
+                    target: 'default',
+                    state: 'ready',
+                    failure: null,
+                    before: '{"name":"default"}',
+                    after: '{"name":"default"}',
+                    sourceKey: null,
+                    impact: 'Applies only to this tenant.',
+                    confirmation: 'default',
+                    workspace: null,
+                    references: [],
+                },
+            },
+        })
+        expect(await screen.findByRole('heading', { name: 'Proposed by the Harness: update security profile default' })).toBeInTheDocument()
+        expect(screen.getByLabelText('security profile draft (JSON)')).toHaveValue('{"name":"default"}')
+    })
+
+    it('says why a proposal could not be opened', async () => {
+        const native = scriptedNative(
+            snapshot({
+                conversation: conversation({
+                    phase: 'ready',
+                    proposals: [
+                        {
+                            id: 'P-1',
+                            summary: 'Add a topic',
+                            draft: { kind: 'topics', action: 'create', target: '', body: '{}' },
+                            state: 'staged',
+                            review: null,
+                        },
+                    ],
+                }),
+            })
+        )
+        native.respond = (intent) =>
+            intent.kind === 'reviewHarnessProposal'
+                ? { outcome: 'refusal', refusal: 'busy' }
+                : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-x', operation: null } }
+        const user = await open(native)
+        await user.click(screen.getByRole('button', { name: 'Review' }))
+        expect(await screen.findByRole('alert')).toHaveTextContent('Finish or discard the change already in review in Administration first.')
+        expect(screen.getByRole('heading', { level: 1, name: 'Harness' })).toBeInTheDocument()
+    })
+
+    it('asks again before a restarted engine may change the folder', async () => {
+        const native = scriptedNative(
+            snapshot({ project: project(true), conversation: conversation({ phase: 'confirmWrite', project: PROJECT, write: true }) })
+        )
+        const user = await open(native)
+        expect(screen.getByText('Waiting for you to allow changes in the folder again.')).toHaveAttribute('role', 'status')
+        const ask = screen.getByText(new RegExp(`Allow it to change files in ${PROJECT} again\\?`))
+        expect(ask).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Not now' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'confirmHarnessWrite', conversation: 'op-7', allow: false }))
+        await user.click(screen.getByRole('button', { name: 'Allow changes and continue' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'confirmHarnessWrite', conversation: 'op-7', allow: true }))
     })
 })

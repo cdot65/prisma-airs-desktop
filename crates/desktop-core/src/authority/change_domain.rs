@@ -468,6 +468,17 @@ impl State {
     /// client. A draft that fails v1's checks yields a failed review the
     /// operator can read (no operation); otherwise the baseline read is
     /// admitted as an operation.
+    /// A change review exists (prepared, confirming or failed): a Harness
+    /// proposal never replaces it (C21).
+    pub(super) fn change_review_open(&self) -> bool {
+        self.change_review.is_some()
+    }
+
+    /// The open review's id.
+    pub(super) fn change_review_id(&self) -> Option<ReviewId> {
+        self.change_review.as_ref().map(|r| r.id.clone())
+    }
+
     pub(super) fn review_change(
         &mut self,
         context: ContextRef,

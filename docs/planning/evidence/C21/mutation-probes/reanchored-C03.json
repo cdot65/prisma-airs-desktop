@@ -1,0 +1,310 @@
+[
+  {
+    "mutation": "an unrecognized action reads as allowed",
+    "files": [
+      "crates/desktop-core/src/scanning.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "unknown_actions_categories_and_incomplete_scans_are_never_allow",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a content-level error with false global flags reads as complete",
+    "files": [
+      "crates/desktop-core/src/scanning.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "a_content_error_is_incomplete_whatever_the_global_flags_say",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Unknown text claims the request was sent",
+    "files": [
+      "apps/desktop/src/features/runtime/scan-text.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/scan-submit.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "reports a denied key and a lost response truthfully and never resubmits",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an incomplete scan reads as allowed",
+    "files": [
+      "crates/desktop-core/src/scanning.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "unknown_actions_categories_and_incomplete_scans_are_never_allow",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "cancellation does not reach the in-flight request",
+    "files": [
+      "crates/desktop-core/src/scanning.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "cancelling_a_running_scan_is_unknown_and_a_queued_one_is_not_sent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a late reply for a retired context is shown",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "a_tenant_switch_mid_request_discards_the_late_reply",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an earlier context's scan can be cancelled",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "a_tenant_switch_mid_request_discards_the_late_reply",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "drafts admitted without validation",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "admission_requires_a_current_context_a_ready_key_and_a_valid_draft",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "history kept without bound",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "guard": "history_keeps_the_newest_five_settled_scans_per_tenant",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the presentation sends a prompt over 2 MiB",
+    "files": [
+      "apps/desktop/src/features/runtime/scan-text.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/scan-submit.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "sends working v1 inputs and the largest accepted request",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unknown verdict is labelled allowed",
+    "files": [
+      "apps/desktop/src/features/runtime/scan-text.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/scan-submit.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "never presents",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unconfirmed scan delivery is resubmitted",
+    "files": [
+      "apps/desktop/src/features/runtime/runtime-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/scan-submit.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "reports an unconfirmed scan delivery without resending it",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the validator accepts a result on an unfinished scan",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/scan-submit.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a result on a scan that did not complete",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "sync_scan"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib"
+    ],
+    "exit_code": 0,
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/runtime/scan-submit.test.tsx",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_code": 0,
+    "passes": true
+  }
+]

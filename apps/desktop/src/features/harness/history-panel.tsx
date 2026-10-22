@@ -25,6 +25,8 @@ const NOT_CONTINUABLE_TEXT: Record<NotContinuable, string> = {
     running: 'This is the conversation running now.',
     otherCredential:
         'It ran with another key, sign-in or endpoint than this workspace uses now, so it can be read and exported but not continued.',
+    otherProject:
+        'It ran with another project folder, or with changes allowed differently, than the Harness uses now. Choose that folder and access again to continue it, or start a new conversation.',
     engineUnavailable: 'The Harness engine is not bundled with this build.',
 }
 

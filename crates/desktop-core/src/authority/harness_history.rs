@@ -43,6 +43,9 @@ pub enum NotContinuable {
     Running,
     /// It ran with another key, sign-in, endpoint or credential choice.
     OtherCredential,
+    /// It ran with another project folder, or with changes allowed or not
+    /// (C21): continuing it needs a new conversation.
+    OtherProject,
     /// The bundled engine is not available.
     EngineUnavailable,
 }
@@ -347,7 +350,13 @@ impl State {
                 && b.endpoint == endpoint
                 && b.source == source
         });
-        (!same).then_some(NotContinuable::OtherCredential)
+        if !same {
+            return Some(NotContinuable::OtherCredential);
+        }
+        let project = tenant.harness_project.as_ref();
+        (b.project.as_ref() != project.map(|p| &p.path)
+            || b.write != project.is_some_and(|p| p.write))
+        .then_some(NotContinuable::OtherProject)
     }
 
     /// A job's result, applied while it is still current.

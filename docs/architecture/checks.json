@@ -1767,7 +1767,47 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only"
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/features/harness/harness-view.test.tsx",
+          "src/features/administration/administration-view.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/contracts/invoke.test.ts"
+        ]
+      ],
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "harness_identity_history"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ]
+      ]
     },
     "C22": {
       "rust_target": "workspace_mcp",

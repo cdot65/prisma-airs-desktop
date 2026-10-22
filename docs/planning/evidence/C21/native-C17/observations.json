@@ -1,0 +1,348 @@
+{
+ "observations": {
+  "tree_edit_sheet": "docs/planning/evidence/C21/native-C17/tree-edit-sheet.json",
+  "edit": {
+   "heading_focused": true,
+   "reviewed": true,
+   "nothing_before_confirm": true,
+   "sheet_scope": true,
+   "sheet_title": true,
+   "applied": true,
+   "puts": [
+    {
+     "path": "/ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000001",
+     "tsg": "1234567890",
+     "fields": [
+      "name"
+     ],
+     "auth": "bearer-issued"
+    }
+   ],
+   "leaks": []
+  },
+  "tree_edit": "docs/planning/evidence/C21/native-C17/tree-edit-applied.json",
+  "switch": {
+   "ready": true,
+   "switched": true,
+   "closed": true,
+   "still_closed": true,
+   "writes": 1
+  },
+  "tree_switch": "docs/planning/evidence/C21/native-C17/tree-switch.json",
+  "tree_blocked": "docs/planning/evidence/C21/native-C17/tree-delete-blocked.json",
+  "delete": {
+   "listed": true,
+   "route": true,
+   "apply_disabled": true,
+   "delete_sheet": true,
+   "return_cancelled": true,
+   "deleted": true,
+   "deletes": [
+    "DELETE /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000002"
+   ]
+  },
+  "tree_deleted": "docs/planning/evidence/C21/native-C17/tree-deleted.json",
+  "tree_key_held": "docs/planning/evidence/C21/native-C17/tree-key-held.json",
+  "key": {
+   "held": true,
+   "body": {
+    "description": "",
+    "name": "native-key",
+    "organisation_id": "1234567890",
+    "scopes": [
+     "completions.write"
+    ],
+    "type": "service",
+    "workspace_id": "16f7e90d-382a-4e78-b577-1b01eb5f8297"
+   },
+   "revealed_matches_issued": true,
+   "shown_once": true,
+   "focus_returned": true,
+   "leaks": []
+  },
+  "provision": {
+   "heading_focused": true,
+   "reviewed": true,
+   "sheet_scope": true,
+   "done": true,
+   "steps": true,
+   "relisted": true,
+   "writes": [
+    "POST /iam/v1/scopes",
+    "POST /ai_gw/admin/v2/workspaces",
+    "PUT /iam/v1/scopes/scope-team-c"
+   ]
+  },
+  "tree_provision": "docs/planning/evidence/C21/native-C17/tree-provisioned.json",
+  "lost": {
+   "unknown": true,
+   "workspace_unknown": true,
+   "found_by_readback": true,
+   "writes": [
+    "POST /iam/v1/scopes",
+    "POST /ai_gw/admin/v2/workspaces"
+   ],
+   "no_cleanup": true
+  },
+  "tree_lost": "docs/planning/evidence/C21/native-C17/tree-lost-reply.json",
+  "stop": {
+   "offered": true,
+   "stopped": true,
+   "nothing_undone": true,
+   "scope_reported": true,
+   "writes": [
+    "POST /iam/v1/scopes",
+    "POST /ai_gw/admin/v2/workspaces"
+   ],
+   "no_cleanup": true
+  },
+  "tree_stop": "docs/planning/evidence/C21/native-C17/tree-stopped.json",
+  "workspace": {
+   "shown": true,
+   "limits": true,
+   "defaults": true,
+   "actions": true,
+   "read": 1,
+   "leaks": []
+  },
+  "tree_workspace": "docs/planning/evidence/C21/native-C17/tree-workspace.json",
+  "zoom_provision": {
+   "zoom": 2,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     1280,
+     820
+    ]
+   },
+   "found": {
+    "label": "Provision workspace\u2026",
+    "pos": [
+     607,
+     617
+    ],
+    "size": [
+     324,
+     88
+    ]
+   },
+   "clear": true
+  },
+  "min_edit_workspace": {
+   "zoom": 1,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     900,
+     600
+    ]
+   },
+   "found": {
+    "label": "Edit workspace\u2026",
+    "pos": [
+     363,
+     517
+    ],
+    "size": [
+     130,
+     44
+    ]
+   },
+   "clear": true
+  },
+  "tree_offline_kept": "docs/planning/evidence/C21/native-C17/tree-offline-kept.json",
+  "tree_offline_draft": "docs/planning/evidence/C21/native-C17/tree-offline-draft.json",
+  "offline": {
+   "kept_before_quit": true,
+   "listing_failed": true,
+   "kept": true,
+   "draft_listed": true,
+   "records": 2,
+   "stale_said": true,
+   "nothing_reviewed": true,
+   "heading_focused": true,
+   "text_restored": true,
+   "review_blocked": true,
+   "focus_returned": true,
+   "requests": 0
+  },
+  "reconnect": {
+   "listed": true,
+   "writes_after_reconnect": [],
+   "draft_listed": true,
+   "records": 2,
+   "reach_open_draft": {
+    "zoom": 1,
+    "window": {
+     "pos": [
+      95,
+      37
+     ],
+     "size": [
+      1280,
+      820
+     ]
+    },
+    "found": {
+     "label": "Open draft: Update provider 7e3a0000-0000-4000-8000-829700000001 in Team A",
+     "pos": [
+      1057,
+      737
+     ],
+     "size": [
+      70,
+      44
+     ]
+    },
+    "clear": true
+   },
+   "edit_kept": true,
+   "dismissed_one": true,
+   "team_d_gone": true,
+   "writes_total": []
+  },
+  "tree_reconnect": "docs/planning/evidence/C21/native-C17/tree-reconnect.json",
+  "gateway_writes": [
+   "PUT /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000001",
+   "DELETE /ai_gw/v2/providers/7e3a0000-0000-4000-8000-829700000002",
+   "POST /ai_gw/v2/api-keys/service",
+   "POST /iam/v1/scopes",
+   "POST /ai_gw/admin/v2/workspaces",
+   "PUT /iam/v1/scopes/scope-team-c",
+   "POST /iam/v1/scopes",
+   "POST /ai_gw/admin/v2/workspaces",
+   "POST /iam/v1/scopes",
+   "POST /ai_gw/admin/v2/workspaces"
+  ],
+  "secret_in_trees": [],
+  "v1_unchanged": true
+ },
+ "log": [
+  {
+   "t": "19:30:51",
+   "step": "typed",
+   "field": "TSG ID (optional)",
+   "attempts": 1
+  },
+  {
+   "t": "19:30:53",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "19:30:55",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  },
+  {
+   "t": "19:30:58",
+   "step": "typed",
+   "field": "AIRS API key",
+   "attempts": 1
+  },
+  {
+   "t": "19:31:00",
+   "step": "typed",
+   "field": "Client ID",
+   "attempts": 1
+  },
+  {
+   "t": "19:31:02",
+   "step": "typed",
+   "field": "Client secret",
+   "attempts": 1
+  },
+  {
+   "t": "19:31:09",
+   "step": "typed",
+   "field": "provider draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "19:31:11",
+   "step": "typed",
+   "field": "Type team-a-provider-1 to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "19:31:19",
+   "step": "typed",
+   "field": "provider draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "19:31:22",
+   "step": "typed",
+   "field": "Type team-a-provider-2 to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "19:31:31",
+   "step": "typed",
+   "field": "service key draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "19:31:33",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "19:31:43",
+   "step": "typed",
+   "field": "workspace draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "19:31:45",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "19:31:52",
+   "step": "typed",
+   "field": "workspace draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "19:31:54",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "19:32:03",
+   "step": "typed",
+   "field": "workspace draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "19:32:05",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "19:33:15",
+   "step": "typed",
+   "field": "provider draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "19:33:25",
+   "step": "typed",
+   "field": "provider draft (JSON)",
+   "attempts": 2
+  }
+ ]
+}

@@ -1653,6 +1653,117 @@ Operations:
 (C21); MCP and its token rotation (C22); v1 history import (C23); live
 identity-provider and Gateway qualification (C25).
 
+## D048 — Harness desktop tools, project folder, approvals and proposals
+
+Decided in C21 (implementer decision for the C21 milestones, recorded for
+review).
+
+**Desktop tools.** The engine is given one dynamic-tool namespace,
+`airs_desktop`, and nothing else of the desktop. Its tools are typed:
+- `inventory`, `detail`: the Runtime Security inventories C08 reads.
+  The DLP catalog is not offered.
+- `session`, `search`: C11's investigation reads. Session content is
+  already stripped by the management layer.
+- `redTeam`, `supplyChain`: C13's observation reads.
+- `scan`: one C03 scan with a profile named by the model, through the
+  tenant's own scan key.
+- `cases`: the C12 library's names and expectations.
+- `proposeChange`: stages a change for the operator to review (below).
+
+Every call goes through the same admission as the operator's own reads:
+`admit_management`, `admit_scan` and the library. The call runs under the
+conversation's context and is refused once that context is stale. The
+desktop holds the credentials. Results are JSON:
+- field names that carry credentials are removed at any depth (14
+  names, case- and dash-insensitive);
+- the conversation's key is redacted;
+- the result is cut to 24 KiB, with a note.
+
+A call is parsed into a closed set:
+- `deny_unknown_fields`;
+- arguments of at most 40 KiB, pages of at most 50 and scan text of at
+  most 16 KiB;
+- any credential-like argument name is refused.
+
+The desktop runs a call only when it belongs to the turn being answered,
+and only once per call ID; a repeat is a protocol failure. Anything else
+is answered "This tool or its arguments are unavailable." and nothing
+runs. At most 8 calls or approvals wait at a time. A call has 60 s, and
+the engine's pending tool calls are dropped with the turn (interrupt or
+end). This follows C19's rule that a reply to a request the engine forgot
+is fatal.
+
+**Proposals, never Apply.** `proposeChange` accepts Runtime and DLP kinds
+only, with create, update or delete. Gateway changes need the operator's
+own workspace review (C17). Before staging, the proposal passes the same
+static checks a review makes, through the tenant's management client
+(`changes::normalize`). Nothing is read or sent at that point.
+- A conversation holds at most 8 proposals, numbered `P-1`… The model is
+  told that nothing was applied.
+- Review opens the proposal with the operator's existing
+  `review_change`. It is refused (`Busy`) while any change review is
+  open, so the operator's own draft or review is never replaced.
+- Administration shows the opened review with the proposal's exact
+  draft, so Apply sends what was reviewed. Only the operator's
+  `RequestApply` and the native confirmation (C09) write.
+- A proposal reads `inReview` only while its review is the open one, then
+  `closed`. Dismissed proposals are hidden.
+
+**Project folder and access.** The operator chooses one folder per tenant
+in the native "Choose project folder" sheet. The folder is stored as
+nonsecret state with a write flag that is off by default. These folders
+are refused:
+- the home folder itself, and `.ssh`, `.aws`, `.gnupg`, `.config`, `.kube`,
+  `.docker`, `Library`, `.azure` and `.netrc` under it;
+- `/System`, `/usr`, `/bin`, `/sbin`, `/private/etc`, `/private/var/db`,
+  `/private/var/root`, `/Library`, `/Applications`, `/dev` and `/cores`;
+- this app's data root, and any folder containing it.
+
+The folder and its access are part of the engine binding:
+- The bootstrap carries `projectPath` and `localAccess`
+  (`readOnly`/`workspaceWrite`).
+- The thread carries `cwd` and the `read-only` or `workspace-write`
+  sandbox.
+- Without a folder, the thread has no local environment.
+
+Changing the folder or its access retires the running conversation. A
+saved conversation whose folder or access differs reads `otherProject` and
+cannot be continued: a new conversation is needed. Restoring a compatible
+one restores no approval, and no command is run again.
+
+**Approvals.** The engine's command and file-change requests wait for the
+operator under the desktop's own token, 12 random bytes. A token is valid
+only for that run and turn and is cleared at interrupt and at turn end, so
+a stale or repeated decision is refused. A request is declined at once,
+without asking, when any of these holds:
+- there is no folder;
+- it is a file change while changes are off;
+- it asks for added permissions, network access or another root;
+- it belongs to another turn;
+- 8 decisions are already waiting.
+
+The pinned engine's own desktop sandbox enforces the rest. The negative
+probes are recorded:
+- one process, with exec replacement only, so children and pipelines fail
+  with "fork: Operation not permitted";
+- no network;
+- reads outside the folder fail with "Operation not permitted";
+- writes only inside the folder, and only with `workspaceWrite`.
+
+The engine's own patch writer (`apply_patch`) runs in its narrower helper
+sandbox and fails to write in this build. The app shows the engine's
+result as reported, and the engine is not changed.
+
+**Renewal with changes allowed.** When a company sign-in renewal
+(D047) would restart an engine that may change the folder, the message is
+held (`confirmWrite`). Allow renews, restarts and restores with the same
+access, then sends. Not now gives the message back, and nothing is
+restarted, restored or sent.
+
+**Out of scope here:** MCP servers and their token rotation (C22);
+imported history (C23); live management, Gateway and model qualification
+(C25).
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

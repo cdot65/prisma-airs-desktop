@@ -27,8 +27,8 @@ use super::protocol::{
 };
 use super::sidecar::{LaunchSpec, Sidecar, SidecarLauncher};
 use super::{
-    Cleanup, EntryState, HarnessEntry, HarnessFailure, HarnessPhase, HarnessRole, HarnessUsage,
-    MAX_ANSWER_BYTES, MAX_ENTRIES, MAX_TRANSCRIPT_BYTES,
+    ApprovalKind, Cleanup, EntryState, HarnessApproval, HarnessEntry, HarnessFailure, HarnessPhase,
+    HarnessRole, HarnessUsage, MAX_ANSWER_BYTES, MAX_ENTRIES, MAX_TRANSCRIPT_BYTES,
 };
 use crate::runtime::Outcome;
 
@@ -74,7 +74,35 @@ pub enum Command {
         id: String,
         prompt: Zeroizing<String>,
     },
+    /// The operator's decision on a pending approval, by the desktop's own
+    /// approval id (C21).
+    Decide {
+        approval: String,
+        allow: bool,
+    },
+    /// A typed tool's result, for the engine request that asked for it.
+    ToolResult {
+        request: RequestId,
+        success: bool,
+        text: String,
+    },
 }
+
+/// A typed tool the engine called, for the authority to run (C21).
+pub struct ToolRequest {
+    pub request: RequestId,
+    pub call: super::tools::ToolCall,
+}
+
+/// Hands a tool call to the authority; its result comes back as
+/// [`Command::ToolResult`].
+pub type ToolSink = Arc<dyn Fn(ToolRequest) + Send + Sync>;
+
+/// Pending engine requests a turn may hold (approvals, tool calls).
+const MAX_PENDING_DECISIONS: usize = 8;
+/// What a command entry shows of a command and of its output.
+const MAX_COMMAND_TEXT: usize = 2 * 1024;
+const MAX_COMMAND_OUTPUT: usize = 8 * 1024;
 
 /// What the engine exported after a turn, with the engine context it was
 /// exported under (user work: kept in memory and in the sealed store only).
@@ -133,6 +161,8 @@ pub struct Progress {
     pub saved_at: Option<u64>,
     /// Why the last save did not happen.
     pub save_failure: Option<HistoryFailure>,
+    /// Approvals the engine is waiting for (C21).
+    pub approvals: Vec<HarnessApproval>,
 }
 
 pub type ProgressSlot = Arc<Mutex<Progress>>;
@@ -158,6 +188,8 @@ pub struct Inputs {
     /// A saved conversation to continue (its transcript is already in
     /// `progress`).
     pub restore: Option<Replay>,
+    /// Runs typed tool calls (C21); `None` refuses them.
+    pub tools: Option<ToolSink>,
 }
 
 fn update(slot: &ProgressSlot, pulse: &Notify, f: impl FnOnce(&mut Progress)) {
@@ -205,6 +237,7 @@ pub async fn run(inputs: Inputs, cancel: CancellationToken, deadline: Instant) -
         bootstrap_timeout,
         history,
         restore,
+        tools,
     } = inputs;
     let mut shared = Shared {
         engine,
@@ -218,6 +251,7 @@ pub async fn run(inputs: Inputs, cancel: CancellationToken, deadline: Instant) -
         client_version,
         bootstrap_timeout,
         history,
+        tools,
     };
     let mut next = Launch {
         key: Key::Reader(key),
@@ -265,6 +299,7 @@ struct Shared {
     client_version: String,
     bootstrap_timeout: Duration,
     history: Option<HistorySink>,
+    tools: Option<ToolSink>,
 }
 
 enum Key {
@@ -379,6 +414,11 @@ async fn launched(
         deferred: None,
         exported: None,
         renewal: None,
+        tools: shared.tools.clone(),
+        approvals: Vec::new(),
+        tool_calls: Vec::new(),
+        seen: Vec::new(),
+        files: Vec::new(),
     };
     let ended = if reader.is_none() || writer.is_none() {
         Err(HarnessFailure::StartFailed)
@@ -722,6 +762,16 @@ struct Conversation {
     /// The engine said it would retry the Gateway: the turn is stopped
     /// instead (D046), and ends as failed.
     retry_refused: bool,
+    tools: Option<ToolSink>,
+    /// Approvals waiting for the operator: the desktop's id and the
+    /// engine's request (C21).
+    approvals: Vec<(String, RequestId)>,
+    /// Tool calls being run: the engine's request and the entry.
+    tool_calls: Vec<(RequestId, String)>,
+    /// Call and item ids seen in this turn (a repeat is a protocol failure).
+    seen: Vec<String>,
+    /// Files each file-change item of this turn changes.
+    files: Vec<(String, Vec<String>)>,
 }
 
 impl Conversation {
@@ -864,7 +914,7 @@ impl Conversation {
                     })?
             }
             None => {
-                self.request(Method::ThreadStart, protocol::thread_params())?;
+                self.request(Method::ThreadStart, protocol::thread_params(&self.binding))?;
                 self.answer(Method::ThreadStart).await?
             }
         };
@@ -915,7 +965,8 @@ impl Conversation {
     }
 
     fn on_command(&mut self, command: Command) -> Result<(), HarnessFailure> {
-        if self.reading.is_some() && !matches!(command, Command::Interrupt) {
+        if self.reading.is_some() && matches!(command, Command::Send { .. } | Command::Renew { .. })
+        {
             // The engine exports only an idle thread: the next turn (or a
             // restart) waits for the read.
             self.deferred = Some(command);
@@ -925,6 +976,40 @@ impl Conversation {
             Command::Renew { key, id, prompt } => {
                 if self.turn.is_none() {
                     self.renewal = Some((key, id, prompt));
+                }
+            }
+            Command::Decide { approval, allow } => {
+                // Only an approval still pending in this run and turn: the
+                // engine forgets them when a turn ends or is interrupted.
+                if let Some(at) = self.approvals.iter().position(|(a, _)| *a == approval) {
+                    let (_, request) = self.approvals.remove(at);
+                    let decision = if allow { "accept" } else { "decline" };
+                    self.send(protocol::reply(&request, json!({"decision": decision}))?)?;
+                    self.set(|p| p.approvals.retain(|a| a.id != approval));
+                }
+            }
+            Command::ToolResult {
+                request,
+                success,
+                text,
+            } => {
+                if let Some(at) = self.tool_calls.iter().position(|(r, _)| *r == request) {
+                    let (_, entry) = self.tool_calls.remove(at);
+                    let text = redact(&text, &self.secret);
+                    self.send(protocol::reply(
+                        &request,
+                        json!({"contentItems":[{"type":"inputText","text":text}],"success":success}),
+                    )?)?;
+                    let state = if success {
+                        EntryState::Complete
+                    } else {
+                        EntryState::Declined
+                    };
+                    self.set(|p| {
+                        if let Some(e) = p.entries.iter_mut().find(|e| e.id == entry) {
+                            e.state = state;
+                        }
+                    });
                 }
             }
             Command::Send { id, prompt } => {
@@ -978,6 +1063,11 @@ impl Conversation {
                 Method::TurnInterrupt,
                 json!({"threadId":thread,"turnId":turn}),
             )?;
+            // The engine drops the turn's pending approvals and tool calls
+            // when it is interrupted; a later answer to one would be stale.
+            self.approvals.clear();
+            self.tool_calls.clear();
+            self.set(|p| p.approvals.clear());
         }
         Ok(())
     }
@@ -1031,22 +1121,210 @@ impl Conversation {
                     return Err(HarnessFailure::Refused);
                 }
             },
-            Incoming::Request { id, method, .. } => {
-                // Nothing that needs a decision is offered before C21: every
-                // approval or elicitation is declined, anything else refused.
-                let reply = match method.as_str() {
-                    "item/commandExecution/requestApproval" | "item/fileChange/requestApproval" => {
-                        protocol::reply(&id, json!({"decision":"decline"}))
-                    }
-                    "mcpServer/elicitation/request" => {
-                        protocol::reply(&id, json!({"action":"decline"}))
-                    }
-                    _ => protocol::refuse(&id, -32601),
-                }?;
-                self.send(reply)?;
-            }
+            Incoming::Request { id, method, params } => match method.as_str() {
+                "item/tool/call" => self.on_tool_call(id, &params)?,
+                "item/commandExecution/requestApproval" => {
+                    self.on_approval(id, ApprovalKind::Command, &params)?;
+                }
+                "item/fileChange/requestApproval" => {
+                    self.on_approval(id, ApprovalKind::FileChange, &params)?;
+                }
+                // Workspace MCP servers are C22: nothing is granted here.
+                "mcpServer/elicitation/request" => {
+                    self.send(protocol::reply(&id, json!({"action":"decline"}))?)?;
+                }
+                _ => self.send(protocol::refuse(&id, -32601)?)?,
+            },
             Incoming::Notification { method, params } => self.on_notification(&method, &params)?,
         }
+        Ok(())
+    }
+
+    /// A typed tool call: only for the turn being answered, once per call
+    /// id, parsed into a closed set; anything else is answered as
+    /// unavailable without running anything.
+    fn on_tool_call(&mut self, id: RequestId, params: &Value) -> Result<(), HarnessFailure> {
+        let call_id = params["callId"]
+            .as_str()
+            .filter(|c| bounded_id(c))
+            .ok_or(HarnessFailure::Protocol)?
+            .to_owned();
+        if self.seen.contains(&call_id) {
+            return Err(HarnessFailure::Protocol);
+        }
+        let call = self.ours(params).then(|| {
+            super::tools::ToolCall::parse(
+                params["namespace"].as_str(),
+                params["tool"].as_str().unwrap_or_default(),
+                &params["arguments"],
+            )
+        });
+        let (Some(Some(call)), Some(sink)) = (call, self.tools.clone()) else {
+            self.seen.push(call_id);
+            let text = super::tools::UNAVAILABLE;
+            return self.send(protocol::reply(
+                &id,
+                json!({"contentItems":[{"type":"inputText","text":text}],"success":false}),
+            )?);
+        };
+        if self.tool_calls.len() >= MAX_PENDING_DECISIONS {
+            return Err(HarnessFailure::Bounds);
+        }
+        self.seen.push(call_id.clone());
+        let entry = self.assistant_id(&call_id);
+        let title = call.title();
+        self.set(|p| {
+            push(
+                p,
+                HarnessEntry {
+                    id: entry.clone(),
+                    role: HarnessRole::Tool,
+                    text: title,
+                    state: EntryState::Streaming,
+                },
+            );
+        });
+        self.tool_calls.push((id.clone(), entry));
+        sink(ToolRequest { request: id, call });
+        Ok(())
+    }
+
+    /// An engine request to run a command or change files: held for the
+    /// operator under an id of the desktop's own, unless it cannot be
+    /// granted at all (no project, changes in a read-only conversation,
+    /// added permissions, network or roots), which is declined at once.
+    fn on_approval(
+        &mut self,
+        id: RequestId,
+        kind: ApprovalKind,
+        params: &Value,
+    ) -> Result<(), HarnessFailure> {
+        let item = params["itemId"]
+            .as_str()
+            .filter(|i| bounded_id(i))
+            .ok_or(HarnessFailure::Protocol)?
+            .to_owned();
+        let grantable = self.ours(params)
+            && self.binding.project.is_some()
+            && (kind == ApprovalKind::Command || self.binding.write)
+            && params["additionalPermissions"].is_null()
+            && params["networkApprovalContext"].is_null()
+            && params["grantRoot"].is_null()
+            && self.approvals.len() < MAX_PENDING_DECISIONS;
+        if !grantable {
+            return self.send(protocol::reply(&id, json!({"decision":"decline"}))?);
+        }
+        let mut token = [0u8; 12];
+        getrandom::fill(&mut token).map_err(|_| HarnessFailure::Protocol)?;
+        let token = hex::encode(token);
+        let text = |v: &Value, max: usize| {
+            v.as_str().map(|t| {
+                let mut t = redact(t, &self.secret);
+                if t.len() > max {
+                    let mut end = max;
+                    while !t.is_char_boundary(end) {
+                        end -= 1;
+                    }
+                    t.truncate(end);
+                    t.push('…');
+                }
+                t
+            })
+        };
+        let approval = HarnessApproval {
+            id: token.clone(),
+            kind,
+            command: text(&params["command"], MAX_COMMAND_TEXT),
+            cwd: text(&params["cwd"], 1024),
+            reason: text(&params["reason"], 1024),
+            files: self
+                .files
+                .iter()
+                .find(|(i, _)| *i == item)
+                .map(|(_, f)| f.clone())
+                .unwrap_or_default(),
+        };
+        self.approvals.push((token, id));
+        self.set(|p| p.approvals.push(approval));
+        Ok(())
+    }
+
+    /// A command, file-change or tool item, as an entry of its turn.
+    fn on_item(&mut self, item: &Value, done: bool) -> Result<(), HarnessFailure> {
+        let Some(item_id) = item["id"].as_str().filter(|i| bounded_id(i)) else {
+            return Err(HarnessFailure::Protocol);
+        };
+        let id = self.assistant_id(item_id);
+        let state = match (done, item["status"].as_str()) {
+            (false, _) => EntryState::Streaming,
+            (true, Some("completed")) => EntryState::Complete,
+            (true, Some("declined")) => EntryState::Declined,
+            _ => EntryState::Failed,
+        };
+        let cut = |t: &str, max: usize| {
+            let mut t = redact(t, &self.secret);
+            if t.len() > max {
+                let mut end = max;
+                while !t.is_char_boundary(end) {
+                    end -= 1;
+                }
+                t.truncate(end);
+                t.push('…');
+            }
+            t
+        };
+        let (role, text) = match item["type"].as_str() {
+            Some("commandExecution") => {
+                let mut text = cut(
+                    item["command"].as_str().unwrap_or_default(),
+                    MAX_COMMAND_TEXT,
+                );
+                if done {
+                    if let Some(output) =
+                        item["aggregatedOutput"].as_str().filter(|o| !o.is_empty())
+                    {
+                        text.push('\n');
+                        text.push_str(&cut(output, MAX_COMMAND_OUTPUT));
+                    }
+                    if let Some(code) = item["exitCode"].as_i64() {
+                        text.push_str(&format!("\n(exit code {code})"));
+                    }
+                }
+                (HarnessRole::Command, text)
+            }
+            Some("fileChange") => {
+                let paths: Vec<String> = item["changes"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|c| c["path"].as_str())
+                    .take(64)
+                    .map(|p| cut(p, 1024))
+                    .collect();
+                if !done && !self.files.iter().any(|(i, _)| i == item_id) {
+                    self.files.push((item_id.to_owned(), paths.clone()));
+                }
+                (HarnessRole::FileChange, paths.join("\n"))
+            }
+            // The tool's own entry was made from its typed call.
+            Some("dynamicToolCall") => return Ok(()),
+            _ => return Ok(()),
+        };
+        self.set(|p| match p.entries.iter_mut().find(|e| e.id == id) {
+            Some(e) => {
+                e.text = text;
+                e.state = state;
+            }
+            None => push(
+                p,
+                HarnessEntry {
+                    id,
+                    role,
+                    text,
+                    state,
+                },
+            ),
+        });
         Ok(())
     }
 
@@ -1116,6 +1394,15 @@ impl Conversation {
                     let text = redact(text, &self.secret);
                     self.complete(&id, text)?;
                 }
+            }
+            "item/started" | "item/completed"
+                if self.ours(params)
+                    && matches!(
+                        params["item"]["type"].as_str(),
+                        Some("commandExecution" | "fileChange" | "dynamicToolCall")
+                    ) =>
+            {
+                self.on_item(&params["item"], method == "item/completed")?;
             }
             "thread/tokenUsage/updated"
                 if params["threadId"].as_str() == self.thread.as_deref() =>
@@ -1263,6 +1550,12 @@ impl Conversation {
     fn end_turn(&mut self, end: TurnEnd) {
         self.turn = None;
         self.interrupt_wanted = false;
+        // The engine forgets a turn's approvals and tool calls with it; so
+        // does the desktop (a late decision or result is never sent).
+        self.approvals.clear();
+        self.tool_calls.clear();
+        self.seen.clear();
+        self.files.clear();
         let state = match end {
             TurnEnd::Completed => EntryState::Complete,
             TurnEnd::Interrupted => EntryState::Interrupted,
@@ -1277,6 +1570,14 @@ impl Conversation {
             {
                 e.state = state;
             }
+            for e in p
+                .entries
+                .iter_mut()
+                .filter(|e| e.role != HarnessRole::Assistant && e.state == EntryState::Streaming)
+            {
+                e.state = EntryState::Interrupted;
+            }
+            p.approvals.clear();
             p.last_turn = Some(end);
             p.phase = HarnessPhase::Ready;
         });
@@ -1377,6 +1678,8 @@ mod tests {
                 credential: String::new(),
                 credential_epoch: 1,
                 endpoint: String::new(),
+                project: None,
+                write: false,
             },
             runtime_version: String::new(),
             client_version: String::new(),
@@ -1401,6 +1704,11 @@ mod tests {
             deferred: None,
             exported: None,
             renewal: None,
+            tools: None,
+            approvals: Vec::new(),
+            tool_calls: Vec::new(),
+            seen: Vec::new(),
+            files: Vec::new(),
         }
     }
 
@@ -1438,6 +1746,107 @@ mod tests {
             c.take_pending(&RequestId::Number(99)),
             Err(HarnessFailure::Protocol)
         );
+    }
+
+    #[test]
+    fn a_tool_call_runs_once_and_only_for_the_turn_being_answered() {
+        let (writer, reader) = std_mpsc::sync_channel(64);
+        let mut c = conversation(writer);
+        c.turn = Some(("u-1".into(), Some("turn-1".into())));
+        let ran = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let seen = Arc::clone(&ran);
+        c.tools = Some(Arc::new(move |r: ToolRequest| {
+            seen.lock().expect("fixture").push(r.call);
+        }));
+        let call = |call: &str, turn: &str, tool: &str| json!({"threadId":"t","turnId":turn,"callId":call,"namespace":"airs_desktop","tool":tool,"arguments":{}});
+        c.on_tool_call(
+            RequestId::Number(1),
+            &call("call-1", "turn-1", "supplyChain"),
+        )
+        .expect("runs");
+        assert_eq!(ran.lock().expect("fixture").len(), 1);
+        // The same call again is a protocol failure; nothing runs twice.
+        assert_eq!(
+            c.on_tool_call(
+                RequestId::Number(2),
+                &call("call-1", "turn-1", "supplyChain")
+            ),
+            Err(HarnessFailure::Protocol)
+        );
+        // Another turn's call, or an unknown tool, is answered as
+        // unavailable without running anything, and cannot be repeated.
+        c.on_tool_call(
+            RequestId::Number(3),
+            &call("call-2", "turn-0", "supplyChain"),
+        )
+        .expect("answered");
+        c.on_tool_call(
+            RequestId::Number(4),
+            &call("call-3", "turn-1", "applyChange"),
+        )
+        .expect("answered");
+        assert_eq!(
+            c.on_tool_call(
+                RequestId::Number(5),
+                &call("call-3", "turn-1", "supplyChain")
+            ),
+            Err(HarnessFailure::Protocol)
+        );
+        assert_eq!(ran.lock().expect("fixture").len(), 1);
+        let replies: Vec<String> = reader
+            .try_iter()
+            .map(|o| String::from_utf8_lossy(o.0.as_slice()).into_owned())
+            .collect();
+        assert_eq!(replies.len(), 2, "{replies:?}");
+        assert!(replies.iter().all(
+            |r| r.contains(super::super::tools::UNAVAILABLE) && r.contains("\"success\":false")
+        ));
+        // Only the one that ran waits for its result.
+        assert_eq!(c.tool_calls.len(), 1);
+    }
+
+    #[test]
+    fn approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed() {
+        let (writer, reader) = std_mpsc::sync_channel(64);
+        let mut c = conversation(writer);
+        c.turn = Some(("u-1".into(), Some("turn-1".into())));
+        let ask = |item: &str| json!({"threadId":"t","turnId":"turn-1","itemId":item});
+        let declined = |reader: &std_mpsc::Receiver<Outbound>| {
+            reader
+                .try_iter()
+                .map(|o| String::from_utf8_lossy(o.0.as_slice()).into_owned())
+                .filter(|r| r.contains("\"decline\""))
+                .count()
+        };
+        // No folder: declined at once, nothing held.
+        c.on_approval(RequestId::Number(1), ApprovalKind::Command, &ask("i-1"))
+            .expect("declined");
+        assert_eq!(declined(&reader), 1);
+        assert!(c.approvals.is_empty());
+        // A read-only folder: a command is held; a file change, added
+        // permissions or another turn's request is declined at once.
+        c.binding.project = Some("/Users/someone/work".into());
+        c.on_approval(RequestId::Number(2), ApprovalKind::FileChange, &ask("i-2"))
+            .expect("declined");
+        let mut extra = ask("i-3");
+        extra["additionalPermissions"] = json!({"network": true});
+        c.on_approval(RequestId::Number(3), ApprovalKind::Command, &extra)
+            .expect("declined");
+        let mut other = ask("i-4");
+        other["turnId"] = json!("turn-0");
+        c.on_approval(RequestId::Number(4), ApprovalKind::Command, &other)
+            .expect("declined");
+        assert_eq!(declined(&reader), 3);
+        assert!(c.approvals.is_empty());
+        c.on_approval(RequestId::Number(5), ApprovalKind::Command, &ask("i-5"))
+            .expect("held");
+        assert_eq!(c.approvals.len(), 1);
+        assert_eq!(declined(&reader), 0);
+        // Changes allowed: a file change is held too.
+        c.binding.write = true;
+        c.on_approval(RequestId::Number(6), ApprovalKind::FileChange, &ask("i-6"))
+            .expect("held");
+        assert_eq!(c.approvals.len(), 2);
     }
 
     fn home(roots: &[Vec<u8>]) -> (Home, PathBuf) {

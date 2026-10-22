@@ -21,6 +21,7 @@ pub mod identity;
 pub mod protocol;
 pub mod session;
 pub mod sidecar;
+pub mod tools;
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -91,6 +92,9 @@ pub enum HarnessPhase {
     /// Renewing the Gateway sign-in, then restarting the engine and
     /// restoring the conversation before the message is sent (C20).
     Renewing,
+    /// The sign-in must be renewed, and the engine restarted: the operator
+    /// is asked to allow changes in the project again first (C21).
+    ConfirmWrite,
     /// Stopping the engine.
     Ending,
     Ended,
@@ -103,6 +107,13 @@ pub enum HarnessPhase {
 pub enum HarnessRole {
     Operator,
     Assistant,
+    /// A command the engine ran in the project's sandbox (C21).
+    Command,
+    /// Files the engine changed in the project (C21).
+    FileChange,
+    /// A typed desktop tool the engine called (C21): its text is the
+    /// desktop's own description, never the model's.
+    Tool,
 }
 
 /// How an entry stands.
@@ -116,6 +127,35 @@ pub enum EntryState {
     /// The answer reached its bound; the rest was not kept.
     Truncated,
     Failed,
+    /// The operator declined it, or it was refused (C21).
+    Declined,
+}
+
+/// What an engine request for approval asks (C21).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ApprovalKind {
+    /// Run one command in the project's sandbox.
+    Command,
+    /// Change files in the project.
+    FileChange,
+}
+
+/// A pending approval, as the operator sees it (C21). Its id is the
+/// desktop's own, issued for this run and turn; it never outlives them.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct HarnessApproval {
+    pub id: String,
+    pub kind: ApprovalKind,
+    /// The command to run (commands).
+    pub command: Option<String>,
+    /// Where it runs, inside the project.
+    pub cwd: Option<String>,
+    /// The engine's stated reason, if any.
+    pub reason: Option<String>,
+    /// The files it changes (file changes).
+    pub files: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS, Deserialize)]

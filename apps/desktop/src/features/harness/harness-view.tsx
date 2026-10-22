@@ -13,7 +13,9 @@ import type {
 } from '@prisma-airs/desktop-contracts'
 import { PageHeading } from '../../shell/feature-view'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
+import { DecisionsPanel } from './decisions-panel'
 import { HISTORY_FAILURE_TEXT, HistoryPanel, savedAt } from './history-panel'
+import { ProjectPanel } from './project-panel'
 import { SIGN_IN_FAILURE_TEXT, SignInPanel } from './sign-in-panel'
 
 /** The engine's prompt bound (eight 8 KiB text items). */
@@ -44,6 +46,7 @@ const PHASE_TEXT: Record<HarnessPhase, string> = {
     answering: 'Answering…',
     interrupting: 'Stopping the answer…',
     renewing: 'Renewing your sign-in and restarting the engine with the conversation…',
+    confirmWrite: 'Waiting for you to allow changes in the folder again.',
     ending: 'Ending the conversation…',
     ended: 'Ended.',
     failed: 'Failed.',
@@ -71,6 +74,16 @@ const ENTRY_NOTE: Partial<Record<HarnessEntry['state'], string>> = {
     interrupted: '(stopped before it finished)',
     truncated: '(cut at 256 KiB)',
     failed: '(failed)',
+    declined: '(declined)',
+}
+
+/** Who an entry is from, as the transcript names it. */
+const SPEAKER: Record<HarnessEntry['role'], string> = {
+    operator: 'You',
+    assistant: 'Harness',
+    command: 'Command',
+    fileChange: 'File change',
+    tool: 'App tool',
 }
 
 /** What the status line says for a conversation. */
@@ -190,7 +203,8 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                     The Prisma AIRS Harness engine runs on this Mac. Every answer comes from your AI Gateway workspace, with its inference key or
                     your company sign-in, and nothing else. Each conversation is saved on this Mac after every answer, encrypted, and can be
                     continued later with the same credential. Changing the tenant, the workspace or its credential, sleep or quitting ends the
-                    running conversation. Tools, files and project access are not offered yet.
+                    running conversation. It can read this tenant through the app’s own tools, propose changes you review in Administration,
+                    and, in a folder you choose, run commands and change files only with your approval.
                 </p>
                 <p className='text-academy-ink-faint mt-2 font-mono text-[11px]'>
                     {`Engine ${engine.runtimeVersion} · ${engine.engineCommit.slice(0, 12)} · ${engine.protocol}`}
@@ -239,6 +253,14 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                         dispatch={dispatch}
                         onMessage={setMessage}
                     />
+                    <ProjectPanel
+                        context={context}
+                        project={snapshot.harness.project}
+                        refused={snapshot.harness.projectRefused}
+                        running={live}
+                        dispatch={dispatch}
+                        onMessage={setMessage}
+                    />
                 </>
             )}
             {!live ? (
@@ -256,6 +278,11 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                     <h2 id={`${ids}-conversation`} className='text-[15px] font-semibold'>
                         {`Conversation in ${conversation.workspace.name}`}
                     </h2>
+                    <p className='text-academy-ink-faint text-[12px] break-all' data-slot='harness-scope'>
+                        {conversation.project
+                            ? `Folder ${conversation.project} · ${conversation.write ? 'changes allowed, each with your approval' : 'read-only'}`
+                            : 'No folder: app tools and proposals only.'}
+                    </p>
                     <p ref={statusRef} tabIndex={-1} role='status' aria-live='polite' className='text-[13px]' data-slot='harness-status'>
                         {conversationText(conversation)}
                     </p>
@@ -268,12 +295,21 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                     <ol role='list' aria-label='Messages' aria-busy={phase === 'answering'} className='flex flex-col gap-3' data-slot='harness-transcript'>
                         {conversation.entries.map((e) => (
                             <li key={e.id} className='border-academy-rule rounded-[12px] border p-3'>
-                                <p className='text-academy-ink-faint text-[12px] font-semibold'>{e.role === 'operator' ? 'You' : 'Harness'}</p>
-                                <p className='text-[14px] whitespace-pre-wrap'>{e.text || (e.state === 'streaming' ? '…' : '')}</p>
+                                <p className='text-academy-ink-faint text-[12px] font-semibold'>{SPEAKER[e.role]}</p>
+                                <p
+                                    className={
+                                        e.role === 'command' || e.role === 'fileChange'
+                                            ? 'font-mono text-[12px] break-all whitespace-pre-wrap'
+                                            : 'text-[14px] whitespace-pre-wrap'
+                                    }
+                                >
+                                    {e.text || (e.state === 'streaming' ? '…' : '')}
+                                </p>
                                 {ENTRY_NOTE[e.state] ? <p className='text-academy-ink-faint text-[12px]'>{ENTRY_NOTE[e.state]}</p> : null}
                             </li>
                         ))}
                     </ol>
+                    {live ? <DecisionsPanel conversation={conversation} dispatch={dispatch} onNavigate={onNavigate} onMessage={setMessage} /> : null}
                     {conversation.usage ? (
                         <p className='text-academy-ink-faint text-[12px]'>{`Tokens so far: ${conversation.usage.input} in, ${conversation.usage.output} out.`}</p>
                     ) : null}

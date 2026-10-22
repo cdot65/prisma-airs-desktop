@@ -145,6 +145,13 @@ pub fn files_under(dir: &Path) -> Vec<PathBuf> {
 #[derive(Clone)]
 pub enum Answer {
     Short,
+    /// A call of one tool (C21): the first request of a turn gets it; the
+    /// request carrying its output gets the short answer.
+    Tool {
+        namespace: Option<String>,
+        name: String,
+        arguments: String,
+    },
     /// One 32-byte delta every 50 ms until the client goes away.
     Paced,
     /// An error status (JSON body), every time.
@@ -157,6 +164,39 @@ pub fn sse(value: &Value) -> Vec<u8> {
         value["type"].as_str().unwrap_or("message")
     )
     .into_bytes()
+}
+
+/// A Responses stream holding one function call (C21).
+pub fn tool_call(namespace: Option<&str>, name: &str, arguments: &str) -> Reply {
+    let head = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncache-control: no-cache\r\nconnection: close"
+        .to_owned();
+    let mut item = json!({"type": "function_call", "call_id": "call-c21", "name": name, "arguments": arguments});
+    if let Some(ns) = namespace {
+        item["namespace"] = json!(ns);
+    }
+    let parts = vec![
+        (
+            0,
+            sse(&json!({"type": "response.created", "response": {"id": "resp_tool"}})),
+        ),
+        (
+            0,
+            sse(&json!({"type": "response.output_item.done", "item": item})),
+        ),
+        (
+            0,
+            sse(
+                &json!({"type": "response.completed", "response": {"id": "resp_tool",
+                "usage": {"input_tokens": 1, "input_tokens_details": null, "output_tokens": 1,
+                    "output_tokens_details": null, "total_tokens": 2}}}),
+            ),
+        ),
+    ];
+    Reply::Stream {
+        head,
+        parts,
+        hang: false,
+    }
 }
 
 pub fn responses(answer: &Answer) -> Reply {
@@ -207,6 +247,7 @@ pub fn responses(answer: &Answer) -> Reply {
         Answer::Status(status) => {
             json_reply(*status, &json!({"error": {"message": "synthetic failure"}}))
         }
+        Answer::Tool { .. } => responses(&Answer::Short),
         Answer::Paced => {
             let mut parts = vec![(0, sse(&created)), (0, sse(&added))];
             parts.extend((0..400).map(|_| (50, delta("thirty-two bytes of paced text."))));
@@ -274,6 +315,27 @@ impl Gateway {
             );
         }
         if method == "POST" && path == format!("{RUNTIME}/responses") {
+            // A tool's output came back: the turn is answered (C21).
+            // The turn's tool call was answered when the request's last
+            // input item is its output (earlier turns' outputs are history).
+            let carries_output = serde_json::from_slice::<Value>(&seen.body)
+                .ok()
+                .and_then(|b| b["input"].as_array().and_then(|i| i.last().cloned()))
+                .is_some_and(|last| last["type"] == "function_call_output");
+            if let (
+                Answer::Tool {
+                    namespace,
+                    name,
+                    arguments,
+                },
+                false,
+            ) = (&self.answer, carries_output)
+            {
+                return tool_call(namespace.as_deref(), name, arguments);
+            }
+            if carries_output {
+                return responses(&Answer::Short);
+            }
             return responses(&self.answer);
         }
         json_reply(404, &json!({"error": {"message": "not here"}}))
@@ -333,8 +395,10 @@ pub async fn desk_with(engine: Option<Engine>, fixture: Option<Pin>) -> Desk {
     let runtime_root = std::env::temp_dir()
         .canonicalize()
         .expect("fixture")
-        .join(format!("airs-c19-runtime-{}", hex::encode(rand_bytes())));
-    let history_root = runtime_root.with_extension("history");
+        // The desk's own data folder (the app's data root is its parent).
+        .join(format!("airs-c19-desk-{}", hex::encode(rand_bytes())))
+        .join("harness-runtime");
+    let history_root = runtime_root.with_file_name("harness-history");
     adapters.harness = HarnessAdapters {
         launcher: launcher.clone(),
         engine,

@@ -177,6 +177,10 @@ pub const FIXTURE_OPEN_FOLDER: &str = "fixture-open-folder";
 /// answers.
 #[cfg(feature = "test-fixtures")]
 pub const FIXTURE_NEW_FOLDER: &str = "fixture-new-folder";
+/// Where the fixture driver names the folder the Harness project sheet
+/// answers (C21).
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_PROJECT_FOLDER: &str = "fixture-project-folder";
 /// Where the fixture driver names the file the save-response sheet answers.
 #[cfg(feature = "test-fixtures")]
 pub const FIXTURE_SAVE_RESPONSE: &str = "fixture-save-response";
@@ -219,6 +223,13 @@ fn staged_folders<R: Runtime>(
                 self.staged(FIXTURE_NEW_FOLDER)
             }
         }
+        fn choose_project(&self) -> BoxFuture<'static, Option<PathBuf>> {
+            if self.native() {
+                self.1.choose_project()
+            } else {
+                self.staged(FIXTURE_PROJECT_FOLDER)
+            }
+        }
         fn choose_save(&self, suggested: String) -> BoxFuture<'static, Option<PathBuf>> {
             if self.native() {
                 self.1.choose_save(suggested)
@@ -238,6 +249,8 @@ pub struct NativeFolders<R: Runtime> {
 enum Sheet {
     Open,
     New,
+    /// The Harness's project folder (C21).
+    Project,
     /// Save a response body under a suggested name (the panel confirms
     /// replacing an existing file).
     Save(String),
@@ -257,6 +270,7 @@ impl<R: Runtime> NativeFolders<R> {
                         .set_file_name("New collection")
                         .save_file(),
                     Sheet::Open => dialog.set_title("Open collection").pick_folder(),
+                    Sheet::Project => dialog.set_title("Choose project folder").pick_folder(),
                     Sheet::Save(name) => dialog
                         .set_title("Save response")
                         .set_file_name(name)
@@ -276,6 +290,9 @@ impl<R: Runtime> FolderPicker for NativeFolders<R> {
     }
     fn choose_new(&self) -> BoxFuture<'static, Option<PathBuf>> {
         self.sheet(Sheet::New)
+    }
+    fn choose_project(&self) -> BoxFuture<'static, Option<PathBuf>> {
+        self.sheet(Sheet::Project)
     }
     fn choose_save(&self, suggested: String) -> BoxFuture<'static, Option<PathBuf>> {
         self.sheet(Sheet::Save(suggested))

@@ -1,0 +1,37 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/harness/harness-view.tsx": "2526a80764c07d4ff0d6c8de5422dbb3767c9168f9d3eba94c4dd62c2b5fda18",
+      "apps/desktop/src/features/harness/history-panel.tsx": "925cbe0e0bd0927d7c3169f5854a57a243777629d4e42937bea4c50fa388412b",
+      "crates/desktop-core/src/authority.rs": "1d92df25c91040074a5c4753e318e4fa36fa3b42230740a6b1b25d4cf07d6245",
+      "crates/desktop-core/src/authority/harness_domain.rs": "1ed906cf29abdf144a35a83f33598d5f7fa5969b3d5bc8dc51ecf6d09d269f24",
+      "crates/desktop-core/src/authority/harness_history.rs": "e342c991857b5f95162d74611a8afffb37759a92f76651e76211ea5f229f45fc",
+      "crates/desktop-core/src/authority/harness_identity.rs": "72b984198cd719b902c30edad9a5241273e1cdd08a017a67e863cad5d8027a14",
+      "crates/desktop-core/src/harness/callback.rs": "174fa761a72545013eca3413adff9ec5944eeea26dd83a8591b90c925ff9c368",
+      "crates/desktop-core/src/harness/history.rs": "dbb593e027c55f56bd7cb4374f514a6fbb0b0641aafaa3abd896441025bde620",
+      "crates/desktop-core/src/harness/identity.rs": "b06d68ca79ac5182139bd19e2e663db633b0bce774fd3fc5c4404fbf2cd4ade7",
+      "crates/desktop-core/src/harness/session.rs": "283d638102ca42b7097506c283e117856fec961df5940a3ec253119d8f16b8d9",
+      "packages/desktop-contracts/src/client.ts": "6c36f29ff634c39d0f77ea96ed4a470ec89305d86a985fb4bb665432b043141c"
+    }
+  },
+  {
+    "mutation": "another binding's conversation is continuable",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_saved_conversation_continues_only_with_its_binding",
+    "exit_code": 101,
+    "guard_failed": true
+  }
+]

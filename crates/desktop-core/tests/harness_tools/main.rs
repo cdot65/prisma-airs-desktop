@@ -1,0 +1,707 @@
+//! C21 Harness tools, approvals, proposals and project access through the
+//! production authority interface.
+//!
+//! The real pinned engine runs against the synthetic TLS Gateway, which
+//! answers a turn with the tool call a test names (a typed desktop tool or
+//! the engine's own `exec_command`) and the request carrying its output
+//! with a short answer; the management reads the tools make go to the same
+//! synthetic tenant. Commands run in the engine's own sandbox, in a
+//! disposable project folder.
+
+#[allow(dead_code)]
+#[path = "../context_credentials/support.rs"]
+mod support;
+
+#[allow(dead_code, unused_imports)]
+#[path = "../harness_process/desk.rs"]
+mod desk;
+
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
+
+use serde_json::{Value, json};
+
+use crate::desk::*;
+
+const API_KEY_VALUE: &str = "SYNTHETIC-C21-ISSUED-KEY-VALUE";
+const AUTH_CODE: &str = "SYNTHETIC-C21-AUTH-CODE";
+
+/// A desk whose tenant has topics and API keys, with the real engine.
+async fn desk() -> Desk {
+    let desk = desk_with(Some(real_engine()), None).await;
+    desk.gateway.lock().expect("gateway").hook = Some(Arc::new(|seen| {
+        let target = seen.request_line.split(' ').nth(1)?;
+        let path = target.split_once('?').map_or(target, |(p, _)| p);
+        let body = match path {
+            p if p.starts_with("/aisec/v1/mgmt/topics/tsg/") => json!({"custom_topics": [
+                {"topic_id": "11111111-1111-4111-8111-111111111111", "topic_name": "Finance",
+                 "revision": 1, "description": "Money talk"}]}),
+            p if p.starts_with("/aisec/v1/mgmt/apikeys/tsg/") => json!({"api_keys": [
+                {"api_key_id": "key-1", "api_key_name": "Runtime", "api_key_last8": "abcd1234",
+                 "api_key": API_KEY_VALUE, "auth_code": AUTH_CODE, "cust_app": "Support bot",
+                 "expiration": "2027-01-01T00:00:00Z", "revoked": false, "status": "ACTIVE"}]}),
+            _ => return None,
+        };
+        Some(json_reply(200, &body))
+    }));
+    desk
+}
+
+fn tool(desk: &Desk, namespace: Option<&str>, name: &str, arguments: Value) {
+    desk.gateway.lock().expect("gateway").answer = Answer::Tool {
+        namespace: namespace.map(str::to_owned),
+        name: name.to_owned(),
+        arguments: arguments.to_string(),
+    };
+}
+
+/// The bodies of the Gateway requests that carried a tool's output.
+fn outputs(desk: &Desk) -> Vec<String> {
+    desk.requests(&format!("{RUNTIME}/responses"))
+        .into_iter()
+        .filter_map(|s| {
+            let body: Value = serde_json::from_slice(&s.body).ok()?;
+            let last = body["input"].as_array()?.last()?.clone();
+            (last["type"] == "function_call_output").then(|| last["output"].to_string())
+        })
+        .collect()
+}
+
+fn management_reads(desk: &Desk) -> usize {
+    desk.requests("/aisec/v1/mgmt/").len()
+}
+
+/// A disposable project folder in the build's own scratch space (the
+/// engine's sandbox never lets it write in the system's temporary folders).
+fn project() -> PathBuf {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .canonicalize()
+        .expect("fixture")
+        .join(format!("airs-c21-project-{}", hex::encode(rand_bytes())));
+    std::fs::create_dir_all(&dir).expect("fixture");
+    for n in 0..3 {
+        std::fs::write(dir.join(format!("file-{n}.txt")), format!("content {n}\n"))
+            .expect("fixture");
+    }
+    dir
+}
+
+async fn choose_project(desk: &mut Desk, dir: &Path) {
+    desk.adapters.folders.reply(Some(dir.to_path_buf()));
+    let context = desk.context();
+    desk.send(json!({"kind": "chooseHarnessProject", "context": context}))
+        .await
+        .expect("choose");
+    let want = dir.to_str().expect("utf8").to_owned();
+    assert!(
+        settle(|| desk.json()["harness"]["project"]["path"] == want.as_str()).await,
+        "{}",
+        desk.json()["harness"]["project"]
+    );
+}
+
+/// A ready conversation with the workspace key (and the project if chosen).
+async fn ready(desk: &mut Desk) -> String {
+    desk.ready(None).await
+}
+
+async fn answered_with(desk: &mut Desk, predicate: impl Fn(&Value) -> bool) -> Value {
+    assert!(
+        settle_for(40, || predicate(&desk.conversation())).await,
+        "{}",
+        desk.conversation()
+    );
+    desk.conversation()
+}
+
+/// Waits for the turn's one approval of `kind`, allows it and waits for the
+/// turn to end.
+async fn approve(desk: &mut Desk, id: &str, kind: &str) -> Value {
+    let turns = desk.conversation()["entries"]
+        .as_array()
+        .map_or(0, Vec::len);
+    let c = answered_with(desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    assert_eq!(c["approvals"][0]["kind"], kind, "{c}");
+    let token = c["approvals"][0]["id"]
+        .as_str()
+        .expect("an approval")
+        .to_owned();
+    desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": token, "allow": true}))
+        .await
+        .expect("decided");
+    answered_with(desk, |c| {
+        c["phase"] == "ready"
+            && c["approvals"].as_array().is_some_and(Vec::is_empty)
+            && c["entries"].as_array().is_some_and(|e| e.len() > turns + 1)
+    })
+    .await
+}
+
+fn entry<'a>(c: &'a Value, role: &str) -> Option<&'a Value> {
+    c["entries"]
+        .as_array()?
+        .iter()
+        .rev()
+        .find(|e| e["role"] == role)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_typed_read_answers_from_the_desktop_without_any_secret() {
+    let mut desk = desk().await;
+    let id = ready(&mut desk).await;
+    tool(
+        &desk,
+        Some("airs_desktop"),
+        "inventory",
+        json!({"resource": "apiKeys", "limit": 5}),
+    );
+    desk.say(&id, "Which API keys exist?").await.expect("sent");
+    let c = answered_with(&mut desk, |c| c["lastTurn"] == "completed").await;
+    let t = entry(&c, "tool").expect("tool entry");
+    assert_eq!(t["text"], "Read the API keys inventory");
+    assert_eq!(t["state"], "complete");
+    let out = outputs(&desk);
+    assert_eq!(out.len(), 1);
+    assert!(
+        out[0].contains("Runtime") && out[0].contains("abcd1234"),
+        "{}",
+        out[0]
+    );
+    for secret in [API_KEY_VALUE, AUTH_CODE, KEY] {
+        assert!(!out[0].contains(secret), "{secret}");
+        assert!(!desk.json().to_string().contains(secret), "{secret}");
+    }
+    desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn forged_unknown_or_credential_bearing_calls_run_nothing() {
+    let mut desk = desk().await;
+    let id = ready(&mut desk).await;
+    let before = management_reads(&desk);
+    let cases = [
+        (Some("other"), "inventory", json!({"resource": "topics"})),
+        (Some("airs_desktop"), "apply", json!({"review": "rv-1"})),
+        (
+            Some("airs_desktop"),
+            "content",
+            json!({"scanId": "1", "subRequest": 0}),
+        ),
+        (
+            Some("airs_desktop"),
+            "inventory",
+            json!({"resource": "topics", "token": "x"}),
+        ),
+        (
+            Some("airs_desktop"),
+            "inventory",
+            json!({"resource": "dlpCatalog"}),
+        ),
+        (
+            Some("airs_desktop"),
+            "proposeChange",
+            json!({"kind": "topics", "action": "update", "summary": "s", "body": {"api_key": "k"}}),
+        ),
+    ];
+    for (n, (namespace, name, arguments)) in cases.into_iter().enumerate() {
+        tool(&desk, namespace, name, arguments);
+        desk.say(&id, &format!("Try {n}")).await.expect("sent");
+        answered_with(&mut desk, |c| {
+            c["phase"] == "ready" && c["entries"].as_array().map(Vec::len) == Some(2 * (n + 1))
+        })
+        .await;
+        // Refused by the desktop, or (another namespace) by the engine
+        // before the desktop is asked.
+        let out = outputs(&desk);
+        let last = out.last().expect("an output");
+        assert!(
+            last.contains("This tool or its arguments are unavailable.")
+                || last.contains("unsupported call"),
+            "{name}: {last}"
+        );
+    }
+    assert_eq!(management_reads(&desk), before, "nothing was read");
+    assert!(
+        desk.conversation()["proposals"]
+            .as_array()
+            .is_some_and(Vec::is_empty)
+    );
+    desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_proposal_is_staged_never_applied_and_never_replaces_a_review() {
+    let mut desk = desk().await;
+    let id = ready(&mut desk).await;
+    tool(
+        &desk,
+        Some("airs_desktop"),
+        "proposeChange",
+        json!({"kind": "topics", "action": "update", "target": "11111111-1111-4111-8111-111111111111",
+            "body": {"topic_name": "Finance", "description": "Money talk, reviewed"},
+            "summary": "Clarify the Finance topic"}),
+    );
+    desk.say(&id, "Propose a clearer Finance topic.")
+        .await
+        .expect("sent");
+    let c = answered_with(&mut desk, |c| c["lastTurn"] == "completed").await;
+    assert_eq!(c["proposals"][0]["state"], "staged", "{c}");
+    assert_eq!(c["proposals"][0]["summary"], "Clarify the Finance topic");
+    let out = outputs(&desk);
+    assert!(out[0].contains("has not been applied"), "{}", out[0]);
+    // Nothing was written: the tool never reaches the service's writes.
+    assert!(
+        desk.requests("/aisec/v1/mgmt/topic")
+            .iter()
+            .all(|s| s.request_line.starts_with("GET"))
+    );
+    // Opened into the change review, by the operator.
+    let review = desk
+        .send(json!({"kind": "reviewHarnessProposal", "conversation": id, "proposal": "P-1"}))
+        .await;
+    assert!(review.is_ok(), "{review:?}");
+    assert!(settle(|| desk.conversation()["proposals"][0]["state"] == "inReview").await);
+    assert!(
+        settle(|| !desk.json()["changes"]["review"].is_null()).await,
+        "{}",
+        desk.json()["changes"]
+    );
+    // A second proposal cannot replace the open review.
+    desk.say(&id, "Propose it again.").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["proposals"].as_array().map(Vec::len) == Some(2) && c["phase"] == "ready"
+    })
+    .await;
+    let again = desk
+        .send(json!({"kind": "reviewHarnessProposal", "conversation": id, "proposal": "P-2"}))
+        .await;
+    assert!(
+        matches!(again, Err(desktop_core::Refusal::Busy)),
+        "{again:?}"
+    );
+    // Once the operator discards that review, the proposal reads closed and
+    // the next one may be opened.
+    let opened = desk.json()["changes"]["review"]["review"].clone();
+    desk.send(json!({"kind": "discardChange", "review": opened}))
+        .await
+        .expect("discarded");
+    assert!(settle(|| desk.conversation()["proposals"][0]["state"] == "closed").await);
+    assert_eq!(desk.conversation()["proposals"][0]["review"], opened);
+    let next = desk
+        .send(json!({"kind": "reviewHarnessProposal", "conversation": id, "proposal": "P-2"}))
+        .await;
+    assert!(next.is_ok(), "{next:?}");
+    assert!(settle(|| desk.conversation()["proposals"][1]["state"] == "inReview").await);
+    desk.end(&id).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn commands_need_a_project_and_the_operators_approval() {
+    let mut desk = desk().await;
+    // Without a project, the engine's request is declined at once.
+    let id = ready(&mut desk).await;
+    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.").await.expect("sent");
+    let c = answered_with(&mut desk, |c| {
+        c["lastTurn"].is_string() && c["phase"] == "ready"
+    })
+    .await;
+    assert!(c["approvals"].as_array().is_some_and(Vec::is_empty));
+    desk.end(&id).await;
+    desk.send(json!({"kind": "clearHarness", "conversation": id}))
+        .await
+        .expect("cleared");
+
+    // With a project, the operator decides.
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let reference = desk.json()["gateway"]["selected"]["reference"]
+        .as_str()
+        .expect("ref")
+        .to_owned();
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    assert_eq!(desk.conversation()["project"], dir.to_str().expect("utf8"));
+    desk.say(&id, "List the files.").await.expect("sent");
+    let c = answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let approval = c["approvals"][0].clone();
+    assert_eq!(approval["kind"], "command", "{approval}");
+    assert!(
+        approval["command"]
+            .as_str()
+            .is_some_and(|t| t.contains("ls")),
+        "{approval}"
+    );
+    let token = approval["id"].as_str().expect("id").to_owned();
+    // A forged id is refused.
+    assert!(desk
+        .send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": "forged", "allow": true}))
+        .await
+        .is_err());
+    desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": token, "allow": true}))
+        .await
+        .expect("decided");
+    let c = answered_with(&mut desk, |c| c["lastTurn"] == "completed").await;
+    let command = entry(&c, "command").expect("command entry");
+    assert!(
+        command["text"]
+            .as_str()
+            .is_some_and(|t| t.contains("file-0.txt")),
+        "{command}"
+    );
+    // The same id is stale once used, and after the turn.
+    assert!(desk
+        .send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": token, "allow": true}))
+        .await
+        .is_err());
+    // Declined: nothing runs.
+    desk.say(&id, "List them again.").await.expect("sent");
+    let c = answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let token = c["approvals"][0]["id"].as_str().expect("id").to_owned();
+    desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": token, "allow": false}))
+        .await
+        .expect("decided");
+    let c = answered_with(&mut desk, |c| {
+        c["lastTurn"].is_string()
+            && c["phase"] == "ready"
+            && c["entries"].as_array().map(Vec::len).unwrap_or(0) >= 6
+    })
+    .await;
+    let declined = entry(&c, "command").expect("command entry");
+    assert_ne!(declined["state"], "complete", "{declined}");
+    desk.end(&id).await;
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_sandbox_refuses_children_pipelines_and_other_paths() {
+    let mut desk = desk().await;
+    let dir = project();
+    let outside = project();
+    std::fs::write(outside.join("secret.txt"), "OUTSIDE-CANARY").expect("fixture");
+    let reference = desk.choose(WS_A).await;
+    choose_project(&mut desk, &dir).await;
+    desk.store_key(&reference, KEY, None).await;
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    let commands = [
+        format!("cat {}", outside.join("secret.txt").display()),
+        "sh -c 'sleep 3141 & echo started'".to_owned(),
+        "ls | wc -l".to_owned(),
+    ];
+    for (n, cmd) in commands.iter().enumerate() {
+        tool(&desk, None, "exec_command", json!({"cmd": cmd}));
+        desk.say(&id, &format!("Run {n}")).await.expect("sent");
+        // Approved (the operator's approval never widens the sandbox).
+        let c = answered_with(&mut desk, |c| {
+            c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+                || (c["phase"] == "ready" && c["lastTurn"].is_string())
+        })
+        .await;
+        if let Some(token) = c["approvals"][0]["id"].as_str() {
+            let token = token.to_owned();
+            desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": token, "allow": true}))
+                .await
+                .expect("decided");
+        }
+        answered_with(&mut desk, |c| {
+            c["phase"] == "ready" && c["approvals"].as_array().is_some_and(Vec::is_empty)
+        })
+        .await;
+    }
+    // The engine's sandbox refused each, with the operator's approval.
+    let out = outputs(&desk);
+    assert_eq!(out.len(), 3, "{out:?}");
+    assert!(out[0].contains("Operation not permitted"), "{}", out[0]);
+    assert!(out[1].contains("fork"), "{}", out[1]);
+    assert!(out[2].contains("fork"), "{}", out[2]);
+    let text = desk.json().to_string();
+    assert!(
+        !text.contains("OUTSIDE-CANARY"),
+        "a path outside the project was read"
+    );
+    assert!(!outputs(&desk).iter().any(|o| o.contains("OUTSIDE-CANARY")));
+    let pid = desk.last_pid().expect("pid");
+    desk.end(&id).await;
+    assert!(gone(pid).await);
+    // No sleeper outlived the conversation (killed with the engine's
+    // process group; given a moment to exit).
+    let sleeper = || {
+        let left = std::process::Command::new("/usr/bin/pgrep")
+            .args(["-xf", "sleep 3141"])
+            .output()
+            .expect("pgrep");
+        String::from_utf8_lossy(&left.stdout).trim().is_empty()
+    };
+    let listed = || {
+        String::from_utf8_lossy(
+            &std::process::Command::new("/usr/bin/pgrep")
+                .args(["-lxf", "sleep 3141"])
+                .output()
+                .expect("pgrep")
+                .stdout,
+        )
+        .into_owned()
+    };
+    assert!(
+        settle_for(5, sleeper).await,
+        "a descendant survived: {}",
+        listed()
+    );
+    eprintln!("sandbox outputs: {:?}", outputs(&desk));
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+    std::fs::remove_dir_all(&outside).expect("cleanup");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused() {
+    let mut desk = desk().await;
+    let dir = project();
+    let reference = desk.choose(WS_A).await;
+    choose_project(&mut desk, &dir).await;
+    desk.store_key(&reference, KEY, None).await;
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    assert_eq!(desk.conversation()["write"], false);
+    // Read-only: even an approved command cannot change the project.
+    tool(
+        &desk,
+        None,
+        "exec_command",
+        json!({"cmd": "echo kept > kept.txt && echo WROTE"}),
+    );
+    desk.say(&id, "Write a file.").await.expect("sent");
+    let c = approve(&mut desk, &id, "command").await;
+    assert!(!dir.join("kept.txt").exists(), "{c}");
+    assert!(!outputs(&desk).last().expect("output").contains("WROTE"));
+    // A file change is declined at once: the operator is never asked.
+    let patch = "*** Begin Patch\n*** Add File: added.txt\n+added by the engine\n*** End Patch";
+    tool(
+        &desk,
+        None,
+        "exec_command",
+        json!({"cmd": format!("apply_patch <<'EOF'\n{patch}\nEOF\n")}),
+    );
+    desk.say(&id, "Add a file.").await.expect("sent");
+    let c = answered_with(&mut desk, |c| {
+        c["phase"] == "ready"
+            && c["approvals"].as_array().is_some_and(Vec::is_empty)
+            && c["entries"].as_array().map(Vec::len).unwrap_or(0) >= 6
+    })
+    .await;
+    assert_eq!(
+        entry(&c, "fileChange").expect("shown")["state"],
+        "declined",
+        "{c}"
+    );
+    assert!(!dir.join("added.txt").exists());
+    let pid = desk.last_pid().expect("pid");
+    // Allowing changes is a new binding: the conversation is retired.
+    let context = desk.context();
+    desk.send(json!({"kind": "setHarnessWrite", "context": context, "write": true}))
+        .await
+        .expect("write");
+    assert!(settle(|| desk.conversation().is_null()).await);
+    assert!(gone(pid).await);
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    assert_eq!(desk.conversation()["write"], true);
+    // With it, an approved command changes the project, and only it.
+    tool(
+        &desk,
+        None,
+        "exec_command",
+        json!({"cmd": "echo kept > kept.txt && echo WROTE"}),
+    );
+    desk.say(&id, "Write a file.").await.expect("sent");
+    approve(&mut desk, &id, "command").await;
+    assert_eq!(
+        std::fs::read_to_string(dir.join("kept.txt"))
+            .ok()
+            .as_deref(),
+        Some("kept\n")
+    );
+    // The pinned engine asks before its own patch writer, which then fails
+    // in its narrower helper sandbox; the result is shown as it is.
+    let patch = "*** Begin Patch\n*** Add File: added.txt\n+added by the engine\n*** End Patch";
+    tool(
+        &desk,
+        None,
+        "exec_command",
+        json!({"cmd": format!("apply_patch <<'EOF'\n{patch}\nEOF\n")}),
+    );
+    desk.say(&id, "Add a file.").await.expect("sent");
+    let c = approve(&mut desk, &id, "fileChange").await;
+    assert_eq!(
+        entry(&c, "fileChange").expect("shown")["state"],
+        "failed",
+        "{c}"
+    );
+    assert!(
+        outputs(&desk)
+            .last()
+            .expect("output")
+            .contains("Failed to write file")
+    );
+    assert!(!dir.join("added.txt").exists());
+    desk.end(&id).await;
+    // Unsafe folders are never a project.
+    let home = PathBuf::from(std::env::var("HOME").expect("home"));
+    for refused in [
+        home.clone(),
+        PathBuf::from("/"),
+        PathBuf::from("/usr"),
+        desk.runtime_root.clone(),
+    ] {
+        if !refused.exists() {
+            continue;
+        }
+        desk.adapters.folders.reply(Some(refused.clone()));
+        let context = desk.context();
+        desk.send(json!({"kind": "chooseHarnessProject", "context": context}))
+            .await
+            .expect("choose");
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert_eq!(
+            desk.json()["harness"]["project"]["path"],
+            dir.to_str().expect("utf8"),
+            "{}",
+            refused.display()
+        );
+        // Named in the view, since the sheet has closed.
+        assert_eq!(
+            desk.json()["harness"]["projectRefused"],
+            refused.display().to_string()
+        );
+    }
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+async fn history_open(desk: &mut Desk, id: &str) -> Value {
+    let context = desk.context();
+    let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+    desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": workspace}))
+        .await
+        .expect("list");
+    assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+    let context = desk.context();
+    desk.send(
+        json!({"kind": "openHarnessHistory", "context": context, "workspace": workspace, "id": id}),
+    )
+    .await
+    .expect("open");
+    assert!(settle(|| desk.json()["harness"]["history"]["opened"]["id"] == id).await);
+    desk.json()["harness"]["history"]["opened"].clone()
+}
+
+async fn set_write(desk: &mut Desk, write: bool) {
+    let context = desk.context();
+    desk.send(json!({"kind": "setHarnessWrite", "context": context, "write": write}))
+        .await
+        .expect("write");
+    assert!(settle(|| desk.json()["harness"]["project"]["write"] == write).await);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_saved_conversation_needs_its_project_binding_and_replays_no_authority() {
+    let mut desk = desk().await;
+    let dir = project();
+    let reference = desk.choose(WS_A).await;
+    choose_project(&mut desk, &dir).await;
+    set_write(&mut desk, true).await;
+    desk.store_key(&reference, KEY, None).await;
+    let id = desk.start(&reference).await.expect("started");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    // An allowed command writes once.
+    tool(
+        &desk,
+        None,
+        "exec_command",
+        json!({"cmd": "echo once >> once.txt && echo WROTE"}),
+    );
+    desk.say(&id, "Write once.").await.expect("sent");
+    approve(&mut desk, &id, "command").await;
+    assert_eq!(
+        std::fs::read_to_string(dir.join("once.txt"))
+            .ok()
+            .as_deref(),
+        Some("once\n")
+    );
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    desk.end(&id).await;
+    // With other access it cannot be continued: a new conversation is needed.
+    set_write(&mut desk, false).await;
+    let opened = history_open(&mut desk, &history).await;
+    assert_eq!(opened["notContinuable"], "otherProject", "{opened}");
+    let context = desk.context();
+    let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+    assert!(
+        desk.send(json!({"kind": "resumeHarness", "context": context, "workspace": workspace, "id": history}))
+            .await
+            .is_err()
+    );
+    // The same access again: it continues, and restoring runs nothing.
+    set_write(&mut desk, true).await;
+    let opened = history_open(&mut desk, &history).await;
+    assert!(opened["notContinuable"].is_null(), "{opened}");
+    let before = desk.requests(&format!("{RUNTIME}/responses")).len();
+    let context = desk.context();
+    desk.send(
+        json!({"kind": "resumeHarness", "context": context, "workspace": workspace, "id": history}),
+    )
+    .await
+    .expect("resumed");
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let c = desk.conversation();
+    assert!(c["approvals"].as_array().is_some_and(Vec::is_empty), "{c}");
+    assert_eq!(c["project"], dir.to_str().expect("utf8"));
+    assert_eq!(desk.requests(&format!("{RUNTIME}/responses")).len(), before);
+    assert_eq!(
+        std::fs::read_to_string(dir.join("once.txt"))
+            .ok()
+            .as_deref(),
+        Some("once\n")
+    );
+    // The next turn carries the earlier one as context, and re-runs nothing.
+    desk.gateway.lock().expect("gateway").answer = Answer::Short;
+    let id = c["id"].as_str().expect("id").to_owned();
+    desk.say(&id, "And now?").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["phase"] == "ready" && c["lastTurn"].is_string()
+    })
+    .await;
+    let bodies = desk.requests(&format!("{RUNTIME}/responses"));
+    let last = String::from_utf8_lossy(&bodies.last().expect("request").body).to_string();
+    assert!(
+        last.contains("Write once.") && last.contains("And now?"),
+        "{last}"
+    );
+    assert!(
+        desk.conversation()["approvals"]
+            .as_array()
+            .is_some_and(Vec::is_empty)
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("once.txt"))
+            .ok()
+            .as_deref(),
+        Some("once\n")
+    );
+    desk.end(&id).await;
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}

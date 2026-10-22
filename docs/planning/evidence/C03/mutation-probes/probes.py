@@ -61,7 +61,7 @@ PROBES = [
      [(AUTH, "            state.check_context(&record.context)?;\n", "")],
      SCAN, "a_tenant_switch_mid_request_discards_the_late_reply"),
     ("drafts admitted without validation",
-     [(AUTH, "            let draft = draft.validate().ok_or(Refusal::InvalidInput)?;", "            let draft = draft;")],
+     [(AUTH, "        let draft = draft.validate().ok_or(Refusal::InvalidInput)?;", "        let draft = draft;")],
      SCAN, "admission_requires_a_current_context_a_ready_key_and_a_valid_draft"),
     ("history kept without bound",
      [(AUTH, "            keep[i] = count <= HISTORY_PER_TENANT;", "            keep[i] = count > 0;")],

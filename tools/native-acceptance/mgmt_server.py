@@ -61,7 +61,10 @@ output_item.added, text deltas "Answer <n>: Hello from the synthetic
 Gateway.", output_item.done, completed with usage;
 mode "harness": "short", the default, "paced", one 32-byte delta every
 50 ms for about 20 s, until the client goes away, or "kib", a 1 KiB answer
-at full speed); its log row says
+at full speed). C21: mode "harnessTool" ({namespace, name, arguments})
+makes it ask for that tool call instead, until the request carries the
+call's output (logged as "toolOutput": size, SHA-256, whether it carries
+the management secret, and which "toolMarkers" it names); its log row says
 "harness": true and records the engine's sandbox mode from its turn
 metadata. /rt/v1/files lists, uploads
 (multipart) and deletes the workspace's files (mode "files": "ok",
@@ -804,6 +807,17 @@ class Handler(BaseHTTPRequestHandler):
         with srv.lock:
             record["keyIssuedByIdp"] = key in srv.idp_access
         record["carriesCanary"] = b"C20-CANARY" in body
+        # C21: what the engine sent back for a tool call (its last input
+        # item): never the text, only its size, digest, whether it carries
+        # the management secret and which of mode "toolMarkers" it names.
+        items = sent.get("input") if isinstance(sent, dict) and isinstance(sent.get("input"), list) else []
+        last = items[-1] if items and isinstance(items[-1], dict) else {}
+        if last.get("type") == "function_call_output":
+            output = last.get("output")
+            text = output if isinstance(output, str) else json.dumps(output)
+            record["toolOutput"] = {"bytes": len(text.encode()), "sha256": hashlib.sha256(text.encode()).hexdigest(),
+                                    "carriesSecret": srv.secret in text or srv.client_id in text,
+                                    "markers": [m for m in mode.get("toolMarkers") or [] if m in text]}
         meta = self.headers.get("x-codex-turn-metadata")
         if responses and meta is not None and isinstance(sent, dict) and "instructions" in sent and "tools" in sent:
             record["harness"] = True
@@ -825,6 +839,10 @@ class Handler(BaseHTTPRequestHandler):
         with srv.lock, open(srv.log, "a") as f:
             f.write(json.dumps(record) + "\n")
         cid = f"chatcmpl-{serial}"
+        tool = mode.get("harnessTool")
+        if responses and record.get("harness") and isinstance(tool, dict) and "toolOutput" not in record:
+            self.harness_tool(f"resp_{serial}", tool)
+            return
         if responses and record.get("harness"):
             self.harness_stream(f"resp_{serial}", record, mode.get("harness") or "short", serial)
             return
@@ -954,6 +972,31 @@ class Handler(BaseHTTPRequestHandler):
             with srv.lock, open(srv.log, "a") as f:
                 f.write(json.dumps({"t": time.time(), "method": "POST", "path": "/rt/v1/responses",
                                     "closedByClient": True, "harness": True}) + "\n")
+
+    def harness_tool(self, rid, tool):
+        """C21: the model asks for one tool call (mode "harnessTool":
+        namespace, name and arguments as JSON text); the follow-up request
+        that carries its output is answered as text."""
+        def event(obj):
+            return f"event: {obj['type']}\ndata: {json.dumps(obj)}\n\n".encode()
+        item = {"type": "function_call", "call_id": f"call-{rid}", "name": tool["name"], "arguments": tool["arguments"]}
+        if tool.get("namespace"):
+            item["namespace"] = tool["namespace"]
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        try:
+            self.wfile.write(event({"type": "response.created", "response": {"id": rid}}))
+            self.wfile.write(event({"type": "response.output_item.done", "output_index": 0, "item": item}))
+            self.wfile.write(event({"type": "response.completed", "response": {"id": rid,
+                "usage": {"input_tokens": 1, "input_tokens_details": None, "output_tokens": 1,
+                          "output_tokens_details": None, "total_tokens": 2}}}))
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def files(self, method, path, body, record, mode):
         """C18: the workspace's files with the inference key: list, one

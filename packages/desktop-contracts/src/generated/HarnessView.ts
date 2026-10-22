@@ -2,6 +2,7 @@
 import type { ConversationView } from "./ConversationView";
 import type { HarnessEngineView } from "./HarnessEngineView";
 import type { HarnessHistoryView } from "./HarnessHistoryView";
+import type { HarnessProjectView } from "./HarnessProjectView";
 import type { HarnessSignInView } from "./HarnessSignInView";
 
 export type HarnessView = { engine: HarnessEngineView, conversation: ConversationView | null, 
@@ -12,4 +13,12 @@ signIn: HarnessSignInView | null,
 /**
  * The chosen workspace's protected history (C20).
  */
-history: HarnessHistoryView | null, };
+history: HarnessHistoryView | null, 
+/**
+ * The active tenant's project for the Harness (C21).
+ */
+project: HarnessProjectView | null, 
+/**
+ * A folder just refused as its project, and so not chosen.
+ */
+projectRefused: string | null, };

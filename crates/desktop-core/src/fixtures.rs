@@ -443,6 +443,10 @@ impl crate::FolderPicker for ScriptedFolders {
         self.next(&self.created)
     }
 
+    fn choose_project(&self) -> BoxFuture<'static, Option<std::path::PathBuf>> {
+        self.next(&self.folders)
+    }
+
     fn choose_save(&self, suggested: String) -> BoxFuture<'static, Option<std::path::PathBuf>> {
         if let Ok(mut s) = self.suggested.lock() {
             s.push(suggested);

@@ -147,7 +147,7 @@ PROBES = [
     ("the running conversation can be deleted",
      [(HDOMAIN, "        if self.harness_history_live() == Some(id) {\n            return Err(Refusal::Busy);\n        }\n", "")], HI_T, SEALED),
     ("another binding's conversation is continuable",
-     [(HDOMAIN, "        (!same).then_some(NotContinuable::OtherCredential)", "        let _ = same;\n        None")], HI_T, CONTINUES),
+     [(HDOMAIN, "        if !same {\n            return Some(NotContinuable::OtherCredential);\n        }\n", "        let _ = same;\n")], HI_T, CONTINUES),
     ("a locked Keychain is not reported",
      [(SESSION, "            Err(f) => p.save_failure = Some(f),", "            Err(_) => {}")], HI_T, NO_KEY),
     ("a removed tenant's history stays on disk",

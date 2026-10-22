@@ -3,4 +3,4 @@
 /**
  * Who wrote an entry.
  */
-export type HarnessRole = "operator" | "assistant";
+export type HarnessRole = "operator" | "assistant" | "command" | "fileChange" | "tool";

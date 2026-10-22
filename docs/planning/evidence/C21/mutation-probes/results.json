@@ -1,0 +1,650 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/administration/administration-view.tsx": "f9b752d2086b9ffb9e7e7151be7008701fc71299261849eb600b58f12c480bed",
+      "apps/desktop/src/features/harness/decisions-panel.tsx": "30d569cad4c502a0d5340589b0b32bed22bfa6138e1450247979637910b6e8f3",
+      "crates/desktop-core/src/authority/harness_domain.rs": "1ed906cf29abdf144a35a83f33598d5f7fa5969b3d5bc8dc51ecf6d09d269f24",
+      "crates/desktop-core/src/authority/harness_history.rs": "e342c991857b5f95162d74611a8afffb37759a92f76651e76211ea5f229f45fc",
+      "crates/desktop-core/src/authority/harness_tools.rs": "80e17440bd1d8e5719f330c563b3d83cfb88bf27a702b927d84c73becc4d25ee",
+      "crates/desktop-core/src/harness/protocol.rs": "67d1dace0989165177b4e37070f26c4464d7eb0d3cfb8ebadc1e9d73214e6c95",
+      "crates/desktop-core/src/harness/session.rs": "283d638102ca42b7097506c283e117856fec961df5940a3ec253119d8f16b8d9",
+      "crates/desktop-core/src/harness/tools.rs": "a0298dbe736bb1f7ebed73f33762388a74ccfbf446e9b79524e35e0d2f8419eb",
+      "packages/desktop-contracts/src/client.ts": "6c36f29ff634c39d0f77ea96ed4a470ec89305d86a985fb4bb665432b043141c"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "a repeated tool call runs again",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_tool_call_runs_once_and_only_for_the_turn_being_answered",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another turn's tool call runs",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "a_tool_call_runs_once_and_only_for_the_turn_being_answered",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "credential-bearing arguments are accepted",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "calls_are_typed_bounded_and_never_credential_bearing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "oversized arguments are accepted",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "calls_are_typed_bounded_and_never_credential_bearing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the DLP catalog is offered",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "forged_unknown_or_credential_bearing_calls_run_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "credential fields reach the model",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "results_are_scrubbed_redacted_and_bounded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "results are not cut",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "results_are_scrubbed_redacted_and_bounded",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the catalog allows unknown fields",
+    "files": [
+      "crates/desktop-core/src/harness/tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "the_catalog_fits_the_engine_and_forbids_unknown_fields",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a command is asked without a folder",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a file change is asked while changes are off",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "harness"
+    ],
+    "guard": "approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a used or stale approval is accepted",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "commands_need_a_project_and_the_operators_approval",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "system folders are a project",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the home folder is a project",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the app's data is a project",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "changing access keeps the conversation",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a read-only thread may write",
+    "files": [
+      "crates/desktop-core/src/harness/protocol.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a proposal replaces the open review",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "a_proposal_is_staged_never_applied_and_never_replaces_a_review",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a reviewed proposal stays in review",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "a_proposal_is_staged_never_applied_and_never_replaces_a_review",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a renewal restarts with changes unasked",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_restarts_with_changes_only_once_the_operator_allows_them_again",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Not now restarts anyway",
+    "files": [
+      "crates/desktop-core/src/authority/harness_tools.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_restarts_with_changes_only_once_the_operator_allows_them_again",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another folder's conversation is continuable",
+    "files": [
+      "crates/desktop-core/src/authority/harness_history.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_tools"
+    ],
+    "guard": "a_saved_conversation_needs_its_project_binding_and_replays_no_authority",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Allow sends a decline",
+    "files": [
+      "apps/desktop/src/features/harness/decisions-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "shows what the engine asks to do and sends the operator\u2019s decision",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused review still leaves the Harness",
+    "files": [
+      "apps/desktop/src/features/harness/decisions-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "says why a proposal could not be opened",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Administration shows a reformatted draft",
+    "files": [
+      "apps/desktop/src/features/administration/administration-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "opens a proposal only in Administration\u2019s review, and dismisses one",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Not now allows changes",
+    "files": [
+      "apps/desktop/src/features/harness/decisions-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/harness/harness-view.test.tsx"
+    ],
+    "guard": "asks again before a restarted engine may change the folder",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "changes without a folder pass the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "refuses tool, approval and proposal views Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a Gateway proposal passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "refuses tool, approval and proposal views Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a file-change approval while read-only passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "refuses tool, approval and proposal views Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

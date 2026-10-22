@@ -1,0 +1,137 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C04",
+  "recorded_utc": "2026-10-21T23:56:41Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic Academy + Clerk endpoint tools/native-acceptance/academy_server.py; tools/native-acceptance/acceptance_c04.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "94f79dd4970d0a5eddf12aaacf8b59291e2be57fcce9719be05cc77803278323",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C04-N01",
+      "description": "Settings shows a labelled 'Academy account' group, separate from Tenants, stating the learner account is independent of AIRS tenants; signed out it offers 'Sign in to Academy', reachable by Tab.",
+      "result": "pass",
+      "observation": "'Academy account' group with the tenant-independence text and 'Not signed in to Academy.': True; Tab reached 'Sign in to Academy': True",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json",
+        "docs/planning/evidence/C21/native-C04/tree-signed-out.json"
+      ]
+    },
+    {
+      "id": "C04-N02",
+      "description": "Starting sign-in shows the device code (accessible name 'Sign-in code \u2026') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL.",
+      "result": "pass",
+      "observation": "code shown: True; accessible name 'Sign-in code W D J B \u2026': True; issuer page shown: True; pages handed to the browser: ['https://localhost:61214/activate?user_code=WDJB-MJHT']",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json",
+        "docs/planning/evidence/C21/native-C04/tree-awaiting.json"
+      ]
+    },
+    {
+      "id": "C04-N03",
+      "description": "After approval in the browser the window shows 'Signed in to Academy as <name>'; the endpoint saw a public-client device flow (client_id, no client secret, no Authorization on identity requests); the learner Keychain namespace holds exactly one item and the scan namespace none; no token appears in the data root or any AX snapshot.",
+      "result": "pass",
+      "observation": "'Signed in to Academy as Ada Lovelace': True; public-client device flow (device fields ['client_id', 'scope'], 6 polls, no secret or Authorization on identity requests, desktop.me with Authorization): True; learner namespace items ['cr-ab6735f8c6db90e7']; scan namespace items []; token in AX snapshots []; in data root []",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json",
+        "docs/planning/evidence/C21/native-C04/tree-signed-in.json"
+      ]
+    },
+    {
+      "id": "C04-N04",
+      "description": "After quit and relaunch the Academy account is still signed in (from the Keychain) under the same name.",
+      "result": "pass",
+      "observation": "after quit and relaunch 'Signed in to Academy as Ada Lovelace': True",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json",
+        "docs/planning/evidence/C21/native-C04/tree-restored.json"
+      ]
+    },
+    {
+      "id": "C04-N05",
+      "description": "Creating and switching AIRS tenants leaves the Academy account signed in under the same name.",
+      "result": "pass",
+      "observation": "Tenant B active: True; Academy still signed in as Ada Lovelace: True",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C04-N06",
+      "description": "Signing out shows 'Not signed in to Academy', empties the learner Keychain namespace and revokes the refresh token at the issuer.",
+      "result": "pass",
+      "observation": "'Not signed in to Academy.': True; learner namespace items []; refresh-token revocations 1",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C04-N07",
+      "description": "A sign-in declined in the browser shows 'Sign-in was declined in the browser.' with 'Sign in again', and saves nothing.",
+      "result": "pass",
+      "observation": "'Sign-in was declined in the browser.' with 'Sign in again': True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json",
+        "docs/planning/evidence/C21/native-C04/tree-denied.json"
+      ]
+    },
+    {
+      "id": "C04-N08",
+      "description": "With the Academy endpoint unreachable, sign-in reports that Academy could not be reached, and nothing is saved.",
+      "result": "pass",
+      "observation": "'Academy could not be reached' with the endpoint stopped: True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json",
+        "docs/planning/evidence/C21/native-C04/tree-offline.json"
+      ]
+    },
+    {
+      "id": "C04-N09",
+      "description": "Cancelling a sign-in that is waiting for approval returns to 'Not signed in to Academy'; a grant issued afterwards does not sign in and nothing is saved.",
+      "result": "pass",
+      "observation": "cancelled to 'Not signed in to Academy.': True; still signed out 3 s after a grant became available: True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C04-N10",
+      "description": "Keyboard only: Tab reaches 'Sign in to Academy', Space starts sign-in, Tab reaches 'Open sign-in page' and 'Cancel sign-in'; state changes are exposed through a live status region.",
+      "result": "pass",
+      "observation": "Tab reached 'Sign in to Academy' and Space started sign-in: True; Tab reached 'Open sign-in page' and 'Cancel sign-in': True; live status regions in the group: 1",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json",
+        "docs/planning/evidence/C21/native-C04/tree-awaiting.json"
+      ]
+    },
+    {
+      "id": "C04-N11",
+      "description": "At 200% zoom and at the minimum window size, the Academy sign-in control is reachable by Tab and lies inside the window clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Sign in again', 'pos': [649, 617], 'size': [225, 88]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Sign in again', 'pos': [384, 490], 'size': [113, 45]} in window {'pos': [95, 37], 'size': [900, 600]}, clear: True",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json"
+      ]
+    },
+    {
+      "id": "C04-N12",
+      "description": "Reset local data signs the Academy account out and empties the learner Keychain namespace.",
+      "result": "pass",
+      "observation": "signed in before reset with 1 learner item(s); after reset 'Not signed in to Academy.': True; learner namespace items []",
+      "evidence": [
+        "docs/planning/evidence/C21/native-C04/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The identity provider and Academy are a local synthetic fixture with a disposable test CA trusted only by the fixture build; the hosted Academy/Clerk registration is qualified in C25 (L11).",
+    "Browser approval is simulated by switching the synthetic token endpoint from pending to granted or denied; the fixture build records the verification page instead of launching a browser. Production opens it with /usr/bin/open.",
+    "Keychain items are inspected by attributes only (security dump-keychain without -d); stored secrets are never read back.",
+    "Spoken VoiceOver output was not recorded; AX roles, names, focus and live status regions are inspected."
+  ]
+}

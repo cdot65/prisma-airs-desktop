@@ -1735,6 +1735,60 @@ whose renewal failed returns to the box with the reason.
 D047 records the decisions: verification, grants and epochs, renewal,
 storage, limits and the crypto provider.
 
+### C21 implementation: desktop tools, project folder, approvals and proposals
+
+Implemented in `crates/desktop-core`:
+- `harness::tools`: the `airs_desktop` catalog given to the engine as
+  dynamic tools, `ToolCall::parse` (closed, bounded, never
+  credential-bearing), and the scrubbed, redacted and bounded result text.
+- `harness::protocol`: the binding carries the project and its access. The
+  bootstrap sends `projectPath` and `localAccess`; the thread sends `cwd`,
+  the sandbox and the catalog; restore sends the catalog too.
+- `harness::session` adds:
+  - `item/tool/call` handed to the authority's tool sink and answered
+    with its result (`Command::ToolResult`);
+  - command and file-change approvals held under desktop tokens
+    (`Command::Decide`), or declined at once;
+  - command, file-change and tool entries in the transcript;
+  - everything pending cleared at interrupt and at turn end.
+- `authority/harness_tools`:
+  - project choice and checks, and the write flag;
+  - approval decisions;
+  - staged proposals and their review;
+  - the write confirmation;
+  - the tool runner, through `admit_management`, `admit_scan` and the
+    library.
+- `authority/harness_domain`: the conversation is bound to the project and
+  its access. A renewal is held for `confirmWrite` while changes are
+  allowed. The view shows approvals and proposals, and a proposal reads
+  `closed` once its review has ended.
+- `authority/harness_history`: saved bindings include the project and
+  access; a mismatch reads `otherProject`.
+- `store`: one project per tenant (path and write flag), checked for
+  consistency.
+- Intents: `ChooseHarnessProject`, `ClearHarnessProject`,
+  `SetHarnessWrite`, `DecideHarnessApproval`, `ReviewHarnessProposal`,
+  `DismissHarnessProposal`, `ConfirmHarnessWrite`.
+
+The host adds the "Choose project folder" sheet (`FolderPicker::choose_project`;
+the fixture build answers it from `fixture-project-folder` or the real
+panel).
+
+The presentation adds:
+- the project folder panel (choose, remove, allow changes);
+- the conversation's folder and access line;
+- a "Waiting for your approval" region (Allow or Decline, with the command,
+  folder, reason and files);
+- "Proposed changes" (Review, Dismiss);
+- the write re-confirmation (Allow changes and continue, Not now).
+
+Administration opens a review the Harness proposed with its exact draft.
+Saved conversations from another folder or access say so.
+
+D048 records the decisions: the tool set, bounds, proposals, project
+rules, approvals, sandbox evidence and the engine's patch-writer
+limitation.
+
 ## 3. Native Harness, identity and protected storage
 
 Retain engine 9331a5839bc6a763d94dee7584746f58bbbe1181 and protocol airs-desktop/1

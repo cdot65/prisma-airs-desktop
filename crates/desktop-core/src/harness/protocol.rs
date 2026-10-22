@@ -32,6 +32,20 @@ pub struct Binding {
     pub credential: String,
     pub credential_epoch: u64,
     pub endpoint: String,
+    /// The selected project (canonical absolute path), if any (C21).
+    pub project: Option<String>,
+    /// The operator allowed changes in the project, with approval (C21).
+    pub write: bool,
+}
+
+impl Binding {
+    fn local_access(&self) -> &'static str {
+        if self.write {
+            "workspaceWrite"
+        } else {
+            "readOnly"
+        }
+    }
 }
 
 /// A UUID derived from a native identifier for one purpose (the engine
@@ -78,7 +92,8 @@ pub fn bootstrap(binding: &Binding, key: &str) -> Result<Zeroizing<Vec<u8>>, Har
         "tenantId":binding.tenant,"workspaceId":binding.workspace,
         "credentialId":binding.credential,"credentialEpoch":binding.credential_epoch,
         "gatewayEndpoint":binding.endpoint,"apiKey":key,
-        "projectPath":null,"localAccess":"readOnly","gatewayConfig":null,"model":null}});
+        "projectPath":binding.project,"localAccess":binding.local_access(),
+        "gatewayConfig":null,"model":null}});
     let mut frame = Frame(Zeroizing::new(Vec::with_capacity(FRAME_LIMIT)), false);
     let written = serde_json::to_writer(&mut frame, &value);
     if let Some(Value::String(secret)) = value["params"].get_mut("apiKey") {
@@ -200,10 +215,10 @@ pub fn request(id: u64, method: Method, params: Value) -> Result<Outbound, Harne
     )
 }
 
-/// A saved replay with the context it was exported under, and no tools
-/// (the conversation has none before C21).
+/// A saved replay with the context it was exported under, and the
+/// desktop's current tool catalog (C21).
 pub fn restore_params(context: &Value, replay: &Value) -> Value {
-    json!({"context":context,"replay":replay,"dynamicTools":[]})
+    json!({"context":context,"replay":replay,"dynamicTools":super::tools::catalog()})
 }
 
 pub fn initialized() -> Outbound {
@@ -227,11 +242,23 @@ pub fn initialize_params(version: &str) -> Value {
         "capabilities":{"experimentalApi":true}})
 }
 
-/// A read-only conversation with no project, no tools and no local
-/// environment (C19). Tools and project access arrive with C21.
-pub fn thread_params() -> Value {
-    json!({"ephemeral":true,"approvalPolicy":"on-request","approvalsReviewer":"user",
-        "sandbox":"read-only","dynamicTools":[],"cwd":null,"environments":[]})
+/// The thread: the desktop's typed tools, and the selected project (if
+/// any) as its working directory, read-only unless the operator allowed
+/// changes (C21). Without a project there is no local environment. The
+/// engine forces its own sandbox profile (one process, no network) and asks
+/// for approval before anything it does not consider safe.
+pub fn thread_params(binding: &Binding) -> Value {
+    let sandbox = if binding.write {
+        "workspace-write"
+    } else {
+        "read-only"
+    };
+    let mut params = json!({"ephemeral":true,"approvalPolicy":"on-request","approvalsReviewer":"user",
+        "sandbox":sandbox,"dynamicTools":super::tools::catalog(),"cwd":binding.project});
+    if binding.project.is_none() {
+        params["environments"] = json!([]);
+    }
+    params
 }
 
 /// The prompt as at most eight 8 KiB text items, split on UTF-8 boundaries.
@@ -368,6 +395,8 @@ mod tests {
             credential: derived_uuid("credential", "cr-0011223344556677"),
             credential_epoch: 1,
             endpoint: "https://gateway.example/rt/v1".into(),
+            project: None,
+            write: false,
         }
     }
 

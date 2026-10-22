@@ -3,4 +3,4 @@
 /**
  * Why a saved conversation can be read but not continued.
  */
-export type NotContinuable = "running" | "otherCredential" | "engineUnavailable";
+export type NotContinuable = "running" | "otherCredential" | "otherProject" | "engineUnavailable";

@@ -10,7 +10,7 @@ import type {
     ShellSnapshot,
 } from '@prisma-airs/desktop-contracts'
 import { PageHeading } from '../../shell/feature-view'
-import { type ChangeTarget, ChangeResults, ChangeWorkbench, TEMPLATES, isGatewayKind, pretty } from './runtime-changes'
+import { CHANGE_NOUN, type ChangeTarget, ChangeResults, ChangeWorkbench, TEMPLATES, isGatewayKind, pretty, verbOf } from './runtime-changes'
 import type { Dispatch } from '../tenants/dispatch'
 import {
     MANAGEMENT_FAILURE_TEXT,
@@ -80,6 +80,26 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
     const [filter, setFilter] = useState('')
     const [detail, setDetail] = useState<DetailState | null>(null)
     const [change, setChange] = useState<ChangeTarget | null>(null)
+    // A Harness proposal the operator opened into the review (C21) is shown
+    // here with its exact draft, so Apply sends what was reviewed; it opens
+    // once per review.
+    const review = snapshot.changes.review
+    const proposed =
+        snapshot.harness.conversation?.proposals.find((p) => p.state === 'inReview' && review !== null && p.review === review.review) ?? null
+    const shownProposal = useRef<string | null>(null)
+    useEffect(() => {
+        if (!proposed || shownProposal.current === proposed.review) return
+        shownProposal.current = proposed.review
+        const d = proposed.draft
+        setDetail(null)
+        setChange({
+            kind: d.kind,
+            action: d.action,
+            target: d.target,
+            title: `Proposed by the Harness: ${verbOf(d.kind, d.action).toLowerCase()} ${CHANGE_NOUN[d.kind]}${d.target ? ` ${d.target}` : ''}`,
+            body: d.body,
+        })
+    }, [proposed])
     // Each page and detail read carries a token; a reply for a superseded
     // tenant, credential, inventory or newer read is dropped.
     const token = useRef(0)

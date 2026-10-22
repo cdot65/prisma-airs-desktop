@@ -388,14 +388,15 @@ fn symmetric() -> String {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_renewal_restarts_the_engine_and_restores_the_conversation() {
     let (mut desk, idp) = desk().await;
-    // A six-second token is renewed three seconds in.
-    idp.lock().expect("idp").issue.lifetime = 6;
+    // A twelve-second token is renewed six seconds in (room for a loaded
+    // host to answer the first message before its margin).
+    idp.lock().expect("idp").issue.lifetime = 12;
     let id = signed_in_conversation(&mut desk, &idp).await;
     desk.say(&id, FIRST).await.expect("sent");
     assert_eq!(desk.answered().await["lastTurn"], "completed");
     let first_pid = desk.last_pid().expect("pid");
     let history = desk.conversation()["historyId"].clone();
-    tokio::time::sleep(Duration::from_secs(4)).await;
+    tokio::time::sleep(Duration::from_secs(7)).await;
     desk.say(&id, SECOND).await.expect("sent");
     let c = answered_with(&mut desk, 4).await;
     assert_eq!(c["lastTurn"], "completed", "{c}");
@@ -420,14 +421,79 @@ async fn a_renewal_restarts_the_engine_and_restores_the_conversation() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_renewal_restarts_with_changes_only_once_the_operator_allows_them_again() {
+    let (mut desk, idp) = desk().await;
+    idp.lock().expect("idp").issue.lifetime = 12;
+    // A project the Harness may change (C21).
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .canonicalize()
+        .expect("fixture")
+        .join(format!("airs-c21-renew-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("fixture");
+    desk.adapters.folders.reply(Some(dir.clone()));
+    let context = desk.context();
+    desk.send(json!({"kind": "chooseHarnessProject", "context": context}))
+        .await
+        .expect("choose");
+    assert!(settle(|| !desk.json()["harness"]["project"].is_null()).await);
+    let context = desk.context();
+    desk.send(json!({"kind": "setHarnessWrite", "context": context, "write": true}))
+        .await
+        .expect("write");
+    let id = signed_in_conversation(&mut desk, &idp).await;
+    assert_eq!(desk.conversation()["write"], true);
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    let first_pid = desk.last_pid().expect("pid");
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    // The renewal waits for the operator: nothing restarts or is sent.
+    desk.say(&id, SECOND).await.expect("sent");
+    assert!(settle(|| desk.conversation()["phase"] == "confirmWrite").await);
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert_eq!(desk.last_pid(), Some(first_pid));
+    assert_eq!(gateway_keys(&desk).len(), 1);
+    assert_eq!(idp.lock().expect("idp").refreshes, 0);
+    // Not now: the message comes back and the conversation stays.
+    desk.send(json!({"kind": "confirmHarnessWrite", "conversation": id, "allow": false}))
+        .await
+        .expect("declined");
+    assert!(settle(|| desk.conversation()["phase"] == "ready").await);
+    let c = desk.conversation();
+    assert_eq!(c["unsent"], SECOND, "{c}");
+    assert_eq!(c["entries"].as_array().map(Vec::len), Some(2));
+    // A confirmation that is not asked for is refused.
+    assert!(
+        desk.send(json!({"kind": "confirmHarnessWrite", "conversation": id, "allow": true}))
+            .await
+            .is_err()
+    );
+    // Allowed: the engine restarts with changes and the conversation.
+    desk.say(&id, SECOND).await.expect("sent");
+    assert!(settle(|| desk.conversation()["phase"] == "confirmWrite").await);
+    desk.send(json!({"kind": "confirmHarnessWrite", "conversation": id, "allow": true}))
+        .await
+        .expect("allowed");
+    let c = answered_with(&mut desk, 4).await;
+    assert_eq!(c["lastTurn"], "completed", "{c}");
+    assert_eq!(c["write"], true);
+    assert_eq!(c["project"], dir.to_str().expect("utf8"));
+    assert_ne!(desk.last_pid(), Some(first_pid));
+    assert!(gone(first_pid).await);
+    assert_eq!(idp.lock().expect("idp").refreshes, 1);
+    assert!(bodies(&desk)[1].contains("periwinkle"));
+    desk.end(&id).await;
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_refused_renewal_gives_the_message_back_and_a_new_sign_in_continues() {
     let (mut desk, idp) = desk().await;
-    idp.lock().expect("idp").issue.lifetime = 6;
+    idp.lock().expect("idp").issue.lifetime = 12;
     let id = signed_in_conversation(&mut desk, &idp).await;
     desk.say(&id, FIRST).await.expect("sent");
     assert_eq!(desk.answered().await["lastTurn"], "completed");
     idp.lock().expect("idp").refuse_refresh = true;
-    tokio::time::sleep(Duration::from_secs(4)).await;
+    tokio::time::sleep(Duration::from_secs(7)).await;
     desk.say(&id, SECOND).await.expect("admitted");
     assert!(
         settle(|| desk.conversation()["signInFailure"] == "sessionExpired").await,

@@ -970,6 +970,40 @@
         "id": "C20-N10",
         "check": "No key, token or refresh token appears in any accessibility snapshot, the synthetic servers' logs hold only hashes and no prompt, v1 data is unchanged, and no engine process is left."
       }
+    ],
+    "C21": [
+      {
+        "id": "C21-N01",
+        "check": "The project folder is chosen in the native 'Choose project folder' sheet (the production NSOpenPanel) and shown with its path, read-only; a system folder (/usr) chosen there is refused with the reason and the earlier folder is kept. No Accessibility tree is saved while the panel lists folders."
+      },
+      {
+        "id": "C21-N02",
+        "check": "A desktop read tool the model asks for (the tenant's security profiles) runs through the tenant's management client: the transcript shows an App tool entry, the turn is answered, and the output the engine returned to the Gateway names the tenant's profiles and carries no management secret."
+      },
+      {
+        "id": "C21-N03",
+        "check": "In a read-only folder, a command the engine asks to run waits for the operator with its command and folder: Decline declines it (the entry reads declined and nothing ran); an allowed write still cannot change the folder."
+      },
+      {
+        "id": "C21-N04",
+        "check": "Allowing changes is a new binding: the running conversation ends and its engine is reaped. In the next conversation an allowed command writes inside the folder; a file outside it cannot be read and a child process cannot be started; the engine's own patch writer asks for a file-change approval and its result is shown as the engine reports it."
+      },
+      {
+        "id": "C21-N05",
+        "check": "A proposed change is staged, never applied: it is listed under Proposed changes and no management write is sent; Review opens it in Administration's own review with the proposal's exact draft, and only the operator's Apply through the native confirmation writes it (one PUT, read back); the proposal then reads closed."
+      },
+      {
+        "id": "C21-N06",
+        "check": "Forged or unknown tool calls run nothing: an unknown tool, a credential-bearing argument and a Gateway change proposal are each answered as unavailable, with no management request and no proposal."
+      },
+      {
+        "id": "C21-N07",
+        "check": "Keyboard and accessibility: the project folder, its change checkbox, the approval Allow and Decline buttons and the proposal's Review button are named and reachable by Tab; the waiting approvals and proposals are labelled regions."
+      },
+      {
+        "id": "C21-N08",
+        "check": "Removing the folder ends the running conversation and reaps its engine; quitting leaves no engine; no secret appears in AX snapshots or the server log; the folder holds only the driver's files and the allowed write; v1 data is unchanged."
+      }
     ]
   }
 }

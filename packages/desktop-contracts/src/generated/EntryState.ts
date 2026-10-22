@@ -3,4 +3,4 @@
 /**
  * How an entry stands.
  */
-export type EntryState = "streaming" | "complete" | "interrupted" | "truncated" | "failed";
+export type EntryState = "streaming" | "complete" | "interrupted" | "truncated" | "failed" | "declined";

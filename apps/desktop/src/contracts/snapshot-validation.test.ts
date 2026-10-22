@@ -670,11 +670,11 @@ describe('native Harness (C19)', () => {
         ],
         lastTurn: 'completed', usage: { input: 10, output: 6, total: 16 }, cleanup: null, runtimeVersion: '0.1.7-desktop.2',
         source: 'workspaceKey', historyId: '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d', savedAt: 1790000000, saveFailure: null,
-        unsent: null, signInFailure: null,
+        unsent: null, signInFailure: null, project: null, write: false, approvals: [], proposals: [],
     }
     const harness = (c: Record<string, unknown> | null, e: Record<string, unknown> = {}) => ({
         ...valid,
-        harness: { engine: { ...engine, ...e }, conversation: c, signIn: null, history: null },
+        harness: { engine: { ...engine, ...e }, conversation: c, signIn: null, history: null, project: null, projectRefused: null },
     })
 
     it('accepts what Rust issues', () => {
@@ -751,7 +751,7 @@ describe('Harness company sign-in and protected history (C20)', () => {
         state: 'ready', conversations: [saved], unreadable: [], failure: null, full: false, opened, busy: false, problem: null,
         export: { kind: 'harnessConversation', state: 'saved', name: 'harness-x.md' },
     }
-    const harness = (s: unknown, h: unknown) => ({ ...valid, harness: { engine, conversation: null, signIn: s, history: h } })
+    const harness = (s: unknown, h: unknown) => ({ ...valid, harness: { engine, conversation: null, signIn: s, history: h, project: null, projectRefused: null } })
 
     it('accepts what Rust issues', () => {
         expect(parseShellSnapshot(harness(signIn, history))).toBeTruthy()
@@ -781,6 +781,83 @@ describe('Harness company sign-in and protected history (C20)', () => {
             harness(null, { ...history, opened: { ...opened, entries: [{ ...opened.entries[0], role: 'system' }] } }),
             harness(null, { ...history, export: { kind: 'cases', state: 'saved', name: 'x' } }),
             { ...valid, harness: { engine, conversation: null, signIn: null } },
+        ]) {
+            expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
+        }
+    })
+})
+
+describe('Harness tools and project (C21)', () => {
+    const workspace = { id: '16f7e90d-382a-4e78-b577-1b01eb5f8297', name: 'Team A', slug: 'team-a', scopeName: 'scope-team-a' }
+    const engine = { available: true, protocol: 'airs-desktop/1', runtimeVersion: '0.1.7-desktop.2', engineCommit: '9331a5839bc6a763d94dee7584746f58bbbe1181' }
+    const PROJECT = '/Users/someone/work/agent-demo'
+    const approval = { id: '0123456789abcdef01234567', kind: 'command', command: "/bin/zsh -c 'ls'", cwd: PROJECT, reason: null, files: [] }
+    const proposal = {
+        id: 'P-1',
+        summary: 'Block prompt injection in the default profile',
+        draft: { kind: 'profiles', action: 'update', target: 'default', body: '{"name":"default"}' },
+        state: 'staged',
+        review: null,
+    }
+    const conversation = {
+        id: 'op-7', workspace, endpoint: 'https://gateway.example/rt/v1', phase: 'answering', failure: null, stop: null,
+        entries: [
+            { id: 'u-1', role: 'operator', text: 'List the folder', state: 'complete' },
+            { id: 'u-1/call-1', role: 'command', text: "/bin/zsh -c 'ls'", state: 'streaming' },
+            { id: 'u-1/call-2', role: 'tool', text: 'Read the security profiles', state: 'complete' },
+            { id: 'u-1/call-3', role: 'fileChange', text: `${PROJECT}/notes.txt`, state: 'declined' },
+        ],
+        lastTurn: null, usage: null, cleanup: null, runtimeVersion: '0.1.7-desktop.2',
+        source: 'workspaceKey', historyId: '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d', savedAt: null, saveFailure: null,
+        unsent: null, signInFailure: null, project: PROJECT, write: true, approvals: [approval], proposals: [proposal],
+    }
+    const harness = (c: Record<string, unknown> | null, project: unknown = { path: PROJECT, write: true }) => ({
+        ...valid,
+        harness: { engine, conversation: c, signIn: null, history: null, project, projectRefused: null },
+    })
+
+    it('accepts the tool, approval and proposal views Rust issues', () => {
+        expect(parseShellSnapshot(harness(null, null))).toBeTruthy()
+        expect(parseShellSnapshot(harness(conversation))).toBeTruthy()
+        expect(parseShellSnapshot(harness({ ...conversation, approvals: [{ ...approval, kind: 'fileChange', command: null, files: [`${PROJECT}/a.txt`] }] }))).toBeTruthy()
+        expect(parseShellSnapshot(harness({ ...conversation, phase: 'confirmWrite', approvals: [] }))).toBeTruthy()
+        expect(parseShellSnapshot(harness({ ...conversation, proposals: [{ ...proposal, state: 'inReview', review: 'rv-1' }] }))).toBeTruthy()
+        expect(parseShellSnapshot(harness({ ...conversation, proposals: [{ ...proposal, state: 'closed', review: 'rv-1' }] }))).toBeTruthy()
+        // Without a folder: tools and proposals only.
+        expect(parseShellSnapshot(harness({ ...conversation, project: null, write: false, approvals: [] }, null))).toBeTruthy()
+        const eight = Array.from({ length: 8 }, (_, i) => ({ ...approval, id: `${i}`.repeat(24) }))
+        expect(parseShellSnapshot(harness({ ...conversation, approvals: eight }))).toBeTruthy()
+    })
+
+    it('refuses tool, approval and proposal views Rust never issues', () => {
+        for (const broken of [
+            harness(conversation, { path: 'relative/path', write: false }),
+            harness(conversation, { path: PROJECT, write: 'yes' }),
+            harness(conversation, { path: PROJECT, write: true, extra: 1 }),
+            { ...harness(conversation), harness: { ...harness(conversation).harness, projectRefused: '' } },
+            // Changes are only ever allowed in a folder.
+            harness({ ...conversation, project: null, approvals: [] }),
+            // Approvals need a folder; file changes need changes allowed.
+            harness({ ...conversation, project: null, write: false }),
+            harness({ ...conversation, write: false, approvals: [{ ...approval, kind: 'fileChange', files: ['x'] }] }),
+            harness({ ...conversation, approvals: [{ ...approval, id: 'not-a-token' }] }),
+            harness({ ...conversation, approvals: [{ ...approval, kind: 'network' }] }),
+            harness({ ...conversation, approvals: [{ ...approval, files: ['x'] }] }),
+            harness({ ...conversation, approvals: [{ ...approval, command: 'x'.repeat(4096) }] }),
+            harness({ ...conversation, approvals: Array.from({ length: 9 }, () => approval) }),
+            // Gateway changes are never proposed, nor anything but create, update or delete.
+            harness({ ...conversation, proposals: [{ ...proposal, draft: { ...proposal.draft, kind: 'gatewayRoutes' } }] }),
+            harness({ ...conversation, proposals: [{ ...proposal, draft: { ...proposal.draft, action: 'rotate' } }] }),
+            harness({ ...conversation, proposals: [{ ...proposal, draft: { ...proposal.draft, body: '[1]' } }] }),
+            harness({ ...conversation, proposals: [{ ...proposal, summary: ' ' }] }),
+            harness({ ...conversation, proposals: [{ ...proposal, state: 'inReview' }] }),
+            harness({ ...conversation, proposals: [{ ...proposal, review: 'rv-1' }] }),
+            harness({ ...conversation, proposals: [{ ...proposal, state: 'closed' }] }),
+            harness({ ...conversation, proposals: [proposal, proposal] }),
+            harness({ ...conversation, proposals: [{ ...proposal, id: 'P-9' }] }),
+            harness({ ...conversation, phase: 'confirmWrite', write: false, approvals: [] }),
+            harness({ ...conversation, entries: [{ id: 'x', role: 'system', text: 'x', state: 'complete' }] }),
+            harness({ ...conversation, approvals: undefined }),
         ]) {
             expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
         }

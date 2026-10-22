@@ -116,6 +116,17 @@ pub struct StoredGrant {
     pub record: RecordId,
 }
 
+/// A tenant's Harness project folder (C21; nonsecret).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredProject {
+    pub tenant: TenantId,
+    /// Canonical absolute path.
+    pub path: String,
+    /// Changes in it are allowed, each with the operator's approval.
+    pub write: bool,
+}
+
 /// The persisted document.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -144,6 +155,9 @@ pub struct PersistedState {
     /// tenant's removal also removes their keys.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub harness_history: Vec<GatewayPreference>,
+    /// Each tenant's Harness project (C21; absent before).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub harness_projects: Vec<StoredProject>,
 }
 
 impl Default for PersistedState {
@@ -160,6 +174,7 @@ impl Default for PersistedState {
             gateway_workspaces: Vec::new(),
             harness_sign_ins: Vec::new(),
             harness_history: Vec::new(),
+            harness_projects: Vec::new(),
         }
     }
 }
@@ -255,7 +270,16 @@ impl PersistedState {
             .harness_history
             .iter()
             .all(|p| ids.contains(&p.tenant) && crate::gateway::is_id(&p.workspace));
+        let mut projected = BTreeSet::new();
+        let projects_ok = self.harness_projects.iter().all(|p| {
+            ids.contains(&p.tenant)
+                && projected.insert(p.tenant.clone())
+                && p.path.starts_with('/')
+                && p.path.len() <= 4096
+                && !p.path.chars().any(char::is_control)
+        });
         self.schema == STATE_SCHEMA
+            && projects_ok
             && sign_ins_ok
             && history_ok
             && learner_ok

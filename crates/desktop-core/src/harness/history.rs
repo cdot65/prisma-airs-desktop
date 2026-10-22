@@ -81,6 +81,11 @@ pub struct SavedBinding {
     pub credential_epoch: u64,
     pub endpoint: String,
     pub source: CredentialSource,
+    /// The project and access it ran with (C21; none before).
+    #[serde(default)]
+    pub project: Option<String>,
+    #[serde(default)]
+    pub write: bool,
 }
 
 /// One saved conversation.
@@ -335,6 +340,9 @@ pub mod export {
         match role {
             HarnessRole::Operator => "You",
             HarnessRole::Assistant => "Harness",
+            HarnessRole::Command => "Command",
+            HarnessRole::FileChange => "Files changed",
+            HarnessRole::Tool => "Desktop tool",
         }
     }
 
@@ -396,6 +404,8 @@ mod tests {
                 credential_epoch: 1,
                 endpoint: "https://gateway.example".into(),
                 source: CredentialSource::WorkspaceKey,
+                project: None,
+                write: false,
             },
             entries: vec![HarnessEntry {
                 id: "u-1".into(),
