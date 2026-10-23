@@ -38,6 +38,8 @@ use crate::runtime::Outcome;
 pub const BOOTSTRAP_TIMEOUT: Duration = Duration::from_secs(15);
 /// Initialize and thread/start, each.
 pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
+/// How long a stop waits for a finished turn's export (P06 review F1).
+const EXPORT_GRACE: Duration = Duration::from_secs(3);
 /// DESIGN §3: 2 s graceful, then 2 s forced and reaped.
 pub const GRACE: Duration = Duration::from_secs(2);
 pub const FORCED: Duration = Duration::from_secs(2);
@@ -312,6 +314,7 @@ pub async fn run(inputs: Inputs, cancel: CancellationToken, deadline: Instant) -
         let home = match Home::make(&runtime_root, &roots) {
             Ok(home) => home,
             Err(_) => {
+                keep_unsent(&shared, unsent_entry(&next), next.restore.as_ref()).await;
                 fail(HarnessFailure::StartFailed);
                 return Outcome::NotSent;
             }
@@ -329,8 +332,18 @@ pub async fn run(inputs: Inputs, cancel: CancellationToken, deadline: Instant) -
         });
         match renewal {
             Some(launch) if removed => next = launch,
-            _ if handed_any && outcome == Outcome::NotSent => return Outcome::Unknown,
-            _ => return outcome,
+            other => {
+                // The old home stayed: the renewal does not continue, and
+                // its message is kept (P06 review R4-F1).
+                if let Some(launch) = other {
+                    keep_unsent(&shared, unsent_entry(&launch), launch.restore.as_ref()).await;
+                }
+                return if handed_any && outcome == Outcome::NotSent {
+                    Outcome::Unknown
+                } else {
+                    outcome
+                };
+            }
         }
     }
 }
@@ -377,18 +390,21 @@ async fn launched(
 ) -> (Outcome, Option<Launch>) {
     let progress = Arc::clone(&shared.progress);
     let pulse = Arc::clone(&shared.pulse);
-    let fail = |f: HarnessFailure| {
-        update(&progress, &pulse, |p| {
-            p.phase = HarnessPhase::Failed;
-            p.failure = Some(f);
-        })
-    };
+    // A renewal's message is never sent by an engine that did not start:
+    // it is kept, failed, and saved (P06 review R3-F1, R4-F1).
+    let unsent = unsent_entry(&launch);
     let Launch {
         key,
         mcp,
         restore,
         then,
     } = launch;
+    let fail = |f: HarnessFailure| {
+        update(&progress, &pulse, |p| {
+            p.phase = HarnessPhase::Failed;
+            p.failure = Some(f);
+        })
+    };
     let key = match key {
         Key::Renewed(key) => key,
         Key::Reader(read) => match tokio::task::spawn_blocking(read)
@@ -397,6 +413,7 @@ async fn launched(
         {
             Ok(key) => key,
             Err(f) => {
+                keep_unsent(shared, unsent, restore.as_ref()).await;
                 fail(f);
                 return (Outcome::NotSent, None);
             }
@@ -405,6 +422,7 @@ async fn launched(
     let frame = match protocol::bootstrap(&shared.binding, &key, &mcp) {
         Ok(frame) => frame,
         Err(f) => {
+            keep_unsent(shared, unsent, restore.as_ref()).await;
             fail(f);
             return (Outcome::NotSent, None);
         }
@@ -418,6 +436,7 @@ async fn launched(
     let launcher = Arc::clone(&shared.launcher);
     let launch = tokio::task::spawn_blocking(move || launcher.launch(&spec)).await;
     let Ok(Ok(mut child)) = launch else {
+        keep_unsent(shared, unsent, restore.as_ref()).await;
         fail(HarnessFailure::StartFailed);
         return (Outcome::NotSent, None);
     };
@@ -428,6 +447,7 @@ async fn launched(
             p.cleanup = Some(cleanup);
             p.pid = None;
         });
+        keep_unsent(shared, unsent, restore.as_ref()).await;
         fail(HarnessFailure::StartFailed);
         return (Outcome::NotSent, None);
     };
@@ -466,8 +486,12 @@ async fn launched(
         latest: restore.clone(),
         restore,
         reading: None,
-        deferred: None,
+        // A renewal's message waits for the new engine; a stop or failure
+        // before it is ready leaves it unsent (P06 review R3-F1, R4-F1).
+        deferred: then.map(|(id, prompt)| Command::Send { id, prompt }),
         exported: None,
+        unsaved: false,
+        stopping: false,
         renewal: None,
         tools: shared.tools.clone(),
         approvals: Vec::new(),
@@ -487,7 +511,7 @@ async fn launched(
         Err(HarnessFailure::StartFailed)
     } else {
         conversation
-            .drive(cancel, deadline, shared.bootstrap_timeout, then)
+            .drive(cancel, deadline, shared.bootstrap_timeout)
             .await
     };
     shared.commands = std::mem::replace(&mut conversation.commands, mpsc::channel(1).1);
@@ -514,8 +538,15 @@ async fn launched(
     let cleanup = stop(&mut *child, conversation.writer.take()).await;
     let sink = conversation.history.clone();
     // A turn was under way (asked, and not ended), whatever its entries
-    // show: a finished call may be waiting for the model's next answer.
-    let turn_open = conversation.turn.is_some();
+    // show: a finished call may be waiting for the model's next answer. Or
+    // a finished turn was never saved: its export never came, was refused
+    // or was malformed (P06 review F1, R2-F2).
+    let turn_open = conversation.turn.is_some() || conversation.unsaved;
+    let deferred = conversation.deferred.take();
+    let redaction = Secrets {
+        key: held.key.clone(),
+        mcp: held.mcp.clone(),
+    };
     drop(conversation);
     if cleanup != Cleanup::Failed {
         // The group is gone, so the reader has its end of file; detached if
@@ -535,6 +566,14 @@ async fn launched(
     // restore cannot continue (it would silently lose its context).
     // What a stop may need to save with (a renewal restores it instead).
     let kept = latest.clone();
+    // Once stopping (ended, slept, quit, retired or past its deadline), a
+    // renewal never starts another engine; its message is not sent (P06
+    // review R3-F2).
+    let stopped = cancel.is_cancelled() || Instant::now() >= deadline;
+    let (renewal, mut abandoned) = match renewal {
+        Some((_, _, id, prompt)) if stopped => (None, Some((id, prompt))),
+        other => (other, None),
+    };
     let next = match (renewal, ended.is_ok() && cleanup != Cleanup::Failed) {
         (Some((key, mcp, id, prompt)), true) => {
             let had_turns = progress
@@ -545,6 +584,7 @@ async fn launched(
                 update(&progress, &pulse, |p| {
                     p.failure = Some(HarnessFailure::RestoreFailed)
                 });
+                abandoned = Some((id, prompt));
                 None
             } else {
                 Some(Launch {
@@ -555,7 +595,12 @@ async fn launched(
                 })
             }
         }
-        _ => None,
+        // The engine failed or was not cleaned up: no renewal continues.
+        (Some((_, _, id, prompt)), false) => {
+            abandoned = Some((id, prompt));
+            None
+        }
+        (None, _) => None,
     };
     // A turn the stop cut short is saved as it stood, its unfinished
     // entries interrupted, with the last export (whose context does not
@@ -566,8 +611,42 @@ async fn launched(
     // Before the phase ends, so quitting waits for it.
     // An open turn is unsaved even when none of its entries is streaming
     // (C22 review R3-F1); calls already settled keep their outcomes.
+    //
+    // Operator messages admitted but never sent are kept as failed, in the
+    // view and in the saved record, and never sent later (P06 review
+    // R3-F1): the one waiting for an export, a renewal's that does not
+    // continue (a stop, a failed engine or nothing to restore), and any
+    // still queued when the conversation ends.
+    let mut unsent: Vec<(String, Zeroizing<String>)> = Vec::new();
+    if let Some(Command::Send { id, prompt } | Command::Renew { id, prompt, .. }) = deferred {
+        unsent.push((id, prompt));
+    }
+    unsent.extend(abandoned);
+    if next.is_none() {
+        while let Ok(command) = shared.commands.try_recv() {
+            if let Command::Send { id, prompt } | Command::Renew { id, prompt, .. } = command {
+                unsent.push((id, prompt));
+            }
+        }
+    }
+    let had_unsent = !unsent.is_empty();
+    for (id, prompt) in unsent {
+        let text = redact(&prompt, &redaction);
+        update(&progress, &pulse, |p| {
+            push(
+                p,
+                HarnessEntry {
+                    id,
+                    role: HarnessRole::Operator,
+                    text,
+                    state: EntryState::Failed,
+                },
+            );
+        });
+    }
     let cut = next.is_none()
         && (turn_open
+            || had_unsent
             || progress
                 .lock()
                 .is_ok_and(|p| p.entries.iter().any(|e| e.state == EntryState::Streaming)));
@@ -628,6 +707,60 @@ async fn launched(
         Err(_) => Outcome::NotSent,
     };
     (outcome, next)
+}
+
+/// A renewal's message as a failed operator entry (redacted with the
+/// renewed credentials).
+fn unsent_entry(launch: &Launch) -> Option<HarnessEntry> {
+    let (id, prompt) = launch.then.as_ref()?;
+    let text = match &launch.key {
+        Key::Renewed(key) => redact(
+            prompt,
+            &Secrets {
+                key: key.clone(),
+                mcp: launch.mcp.clone(),
+            },
+        ),
+        Key::Reader(_) => String::new(),
+    };
+    Some(HarnessEntry {
+        id: id.clone(),
+        role: HarnessRole::Operator,
+        text,
+        state: EntryState::Failed,
+    })
+}
+
+/// A renewal's message that no engine was started for (its home, key,
+/// bootstrap, launch or pipes failed) is kept, failed, in the view and in
+/// the saved record, with the last export as its restore point, and the
+/// save's outcome is shown (P06 review R4-F1).
+async fn keep_unsent(shared: &Shared, entry: Option<HarnessEntry>, restore: Option<&Replay>) {
+    let Some(entry) = entry else {
+        return;
+    };
+    let mut taken = None;
+    update(&shared.progress, &shared.pulse, |p| {
+        push(p, entry);
+        taken = Some((p.entries.clone(), p.usage));
+    });
+    let (Some(sink), Some((entries, usage))) = (shared.history.clone(), taken) else {
+        return;
+    };
+    let export = restore.cloned().unwrap_or(Replay {
+        context: Value::Null,
+        replay: Value::Null,
+    });
+    let saved = tokio::task::spawn_blocking(move || sink(entries, usage, &export))
+        .await
+        .unwrap_or(Err(HistoryFailure::Unavailable));
+    update(&shared.progress, &shared.pulse, |p| match saved {
+        Ok(at) => {
+            p.saved_at = Some(at);
+            p.save_failure = None;
+        }
+        Err(f) => p.save_failure = Some(f),
+    });
 }
 
 /// The bounded stop: close input, wait, kill the group, wait, reap.
@@ -704,6 +837,10 @@ impl Home {
         use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
         if !root.is_absolute() {
             return Err(std::io::ErrorKind::InvalidInput.into());
+        }
+        #[cfg(feature = "test-fixtures")]
+        if crate::fixtures::sidecar::home_refused(root) {
+            return Err(std::io::Error::other("fixture"));
         }
         std::fs::DirBuilder::new()
             .recursive(true)
@@ -866,6 +1003,12 @@ struct Conversation {
     deferred: Option<Command>,
     /// An export to save once the frame is handled.
     exported: Option<Replay>,
+    /// The transcript changed since it was last saved (a turn ended and
+    /// its save has not succeeded): a stop saves it (P06 review R2-F2).
+    unsaved: bool,
+    /// The conversation is stopping: a pending export is drained, and no
+    /// deferred command is released (P06 review R2-F1).
+    stopping: bool,
     /// The conversation continues in a new engine with this credential.
     renewal: Option<Renewal>,
     progress: ProgressSlot,
@@ -939,7 +1082,6 @@ impl Conversation {
         cancel: &CancellationToken,
         deadline: Instant,
         bootstrap: Duration,
-        then: Option<(String, Zeroizing<String>)>,
     ) -> Result<(), HarnessFailure> {
         tokio::select! {
             biased;
@@ -948,32 +1090,71 @@ impl Conversation {
             started = self.start(bootstrap) => started?,
         }
         self.set(|p| p.phase = HarnessPhase::Ready);
-        if let Some((id, prompt)) = then {
-            self.on_command(Command::Send { id, prompt })?;
+        if let Some(command) = self.deferred.take() {
+            self.on_command(command)?;
         }
         loop {
             let read_by = self.reading.unwrap_or(deadline);
             tokio::select! {
                 biased;
-                _ = cancel.cancelled() => return Ok(()),
-                _ = tokio::time::sleep_until(deadline) => return Ok(()),
+                _ = cancel.cancelled() => {
+                    self.finish_export().await;
+                    return Ok(());
+                }
+                _ = tokio::time::sleep_until(deadline) => {
+                    self.finish_export().await;
+                    return Ok(());
+                }
                 _ = tokio::time::sleep_until(read_by), if self.reading.is_some() => {
                     return Err(HarnessFailure::Timeout);
                 }
                 event = self.events.recv() => self.on_frame(frame_of(event)?)?,
                 command = self.commands.recv() => match command {
                     Some(command) => self.on_command(command)?,
-                    None => return Ok(()),
+                    None => {
+                        self.finish_export().await;
+                        return Ok(());
+                    }
                 },
             }
             if let Some(export) = self.exported.take() {
                 self.save(export).await;
+                // The save awaited: a stop that came meanwhile wins, and
+                // nothing deferred is released (P06 review R3-F2).
+                if cancel.is_cancelled() || Instant::now() >= deadline {
+                    self.stopping = true;
+                    return Ok(());
+                }
                 if let Some(command) = self.deferred.take() {
                     self.on_command(command)?;
                 }
             }
             if self.renewal.is_some() {
                 return Ok(());
+            }
+        }
+    }
+
+    /// A finished turn's export still under way when the conversation is
+    /// stopped is waited for briefly, so the turn is saved with it and stays
+    /// continuable (P06 review F1). Nothing else is handled meanwhile; if it
+    /// does not come, the stop saves the transcript without a restore point.
+    async fn finish_export(&mut self) {
+        self.stopping = true;
+        let until = Instant::now() + EXPORT_GRACE;
+        while self.reading.is_some() {
+            let event = tokio::select! {
+                () = tokio::time::sleep_until(until) => return,
+                event = self.events.recv() => event,
+            };
+            let Ok(frame) = frame_of(event) else {
+                return;
+            };
+            if self.on_frame(frame).is_err() {
+                return;
+            }
+            if let Some(export) = self.exported.take() {
+                self.save(export).await;
             }
         }
     }
@@ -991,6 +1172,7 @@ impl Conversation {
         let saved = tokio::task::spawn_blocking(move || sink(entries, usage, &export))
             .await
             .unwrap_or(Err(HistoryFailure::Unavailable));
+        self.unsaved &= saved.is_err();
         self.set(|p| match saved {
             Ok(at) => {
                 p.saved_at = Some(at);
@@ -1264,7 +1446,11 @@ impl Conversation {
                 Method::HistoryRead => {
                     self.reading = None;
                     self.set(|p| p.save_failure = Some(HistoryFailure::Unavailable));
-                    if let Some(command) = self.deferred.take() {
+                    // Never while stopping: a deferred message is not sent
+                    // once the conversation is being stopped.
+                    if !self.stopping
+                        && let Some(command) = self.deferred.take()
+                    {
                         self.on_command(command)?;
                     }
                 }
@@ -1898,6 +2084,7 @@ impl Conversation {
         // and, if it is refused, fails rather than restoring an older one
         // (C20 review F1).
         self.latest = None;
+        self.unsaved = true;
         self.turn_cancel.cancel();
         self.interrupt_wanted = false;
         // The engine forgets a turn's approvals and tool calls with it; so
@@ -2101,6 +2288,8 @@ mod tests {
             reading: None,
             deferred: None,
             exported: None,
+            unsaved: false,
+            stopping: false,
             renewal: None,
             tools: None,
             approvals: Vec::new(),

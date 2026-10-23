@@ -144,7 +144,7 @@ PROBES = [
     ("a tool call is admitted while its turn is stopped",
      [(SESSION, "        let call = call.filter(|_| !self.interrupt_wanted);\n", "")], UNIT_T, U_LEASE),
     ("a stopped turn's tool calls are not cancelled",
-     [(SESSION, "        self.latest = None;\n        self.turn_cancel.cancel();\n", "        self.latest = None;\n")], UNIT_T, U_LEASE),
+     [(SESSION, "        self.unsaved = true;\n        self.turn_cancel.cancel();\n", "        self.unsaved = true;\n")], UNIT_T, U_LEASE),
     ("JSON inside a string is not scrubbed",
      [(TOOLS, "    structured(&mut value, 0);\n    scrub(&mut value);", "    scrub(&mut value);")], UNIT_T, U_RESULT),
     ("a command too long to show whole is asked",

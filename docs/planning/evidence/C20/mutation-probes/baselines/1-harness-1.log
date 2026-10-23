@@ -2,40 +2,40 @@
 running 33 tests
 test harness::identity::tests::a_token_is_renewed_inside_its_margin ... ok
 test harness::engine::tests::the_compiled_pin_names_the_reviewed_engine ... ok
-test harness::callback::tests::only_this_attempts_callback_is_taken ... ok
 test harness::identity::tests::configurations_are_https_and_printable ... ok
-test harness::mcp::tests::a_scope_is_bootstrapped_with_tokens_or_the_signed_out_placeholder ... ok
 test harness::mcp::tests::urls_are_https_canonical_and_never_carry_credentials ... ok
-test harness::mcp_auth::tests::the_challenge_names_its_metadata ... ok
+test harness::mcp::tests::a_scope_is_bootstrapped_with_tokens_or_the_signed_out_placeholder ... ok
+test harness::callback::tests::only_this_attempts_callback_is_taken ... ok
 test harness::mcp_auth::tests::the_metadata_path_is_inserted_before_the_issuers ... ok
-test harness::mcp_auth::tests::an_attempt_carries_pkce_state_resource_and_only_the_tool_scopes ... ok
-test harness::identity::tests::an_attempt_carries_pkce_state_nonce_and_the_loopback ... ok
-test harness::mcp_auth::tests::tokens_must_be_bearer_and_fit_the_engine ... ok
 test harness::mcp::tests::namespaces_are_engine_names_and_independent_of_order ... ok
-test harness::mcp::tests::the_catalog_keeps_only_the_workspaces_usable_servers ... ok
+test harness::identity::tests::an_attempt_carries_pkce_state_nonce_and_the_loopback ... ok
+test harness::mcp_auth::tests::an_attempt_carries_pkce_state_resource_and_only_the_tool_scopes ... ok
+test harness::mcp_auth::tests::the_challenge_names_its_metadata ... ok
+test harness::mcp_auth::tests::tokens_must_be_bearer_and_fit_the_engine ... ok
 test harness::history::tests::exports_carry_the_transcript_only ... ok
+test harness::mcp::tests::the_catalog_keeps_only_the_workspaces_usable_servers ... ok
 test harness::engine::tests::only_the_pinned_bytes_at_a_real_path_verify ... ok
 test harness::session::tests::a_replaced_entry_keeps_the_transcript_within_its_bound ... ok
-test harness::protocol::tests::incoming_frames_have_one_shape_each ... ok
 test harness::session::tests::a_full_queue_or_too_many_pending_requests_is_a_bound_never_a_wait ... ok
-test harness::session::tests::a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_late ... ok
 test harness::protocol::tests::bootstrap_and_receipt_name_the_same_binding ... ok
 test harness::session::tests::a_tool_call_runs_once_and_only_for_the_turn_being_answered ... ok
+test harness::session::tests::a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_late ... ok
+test harness::protocol::tests::incoming_frames_have_one_shape_each ... ok
 test harness::session::tests::approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed ... ok
 test harness::session::tests::only_an_mcp_approval_naming_this_turns_running_call_is_asked ... ok
 test harness::tools::tests::the_catalog_fits_the_engine_and_forbids_unknown_fields ... ok
 test harness::protocol::tests::credentials_and_frames_are_bounded ... ok
-test harness::tools::tests::results_are_scrubbed_redacted_and_bounded ... ok
-test harness::protocol::tests::mcp_servers_are_bootstrapped_in_scope_order_and_echoed_exactly ... ok
 test harness::tools::tests::calls_are_typed_bounded_and_never_credential_bearing ... ok
+test harness::protocol::tests::mcp_servers_are_bootstrapped_in_scope_order_and_echoed_exactly ... ok
 test harness::session::tests::a_process_that_cannot_be_reaped_is_a_cleanup_failure_never_success ... ok
-test harness::session::tests::runtime_homes_are_private_ephemeral_and_only_ours_are_removed ... ok
 test harness::session::tests::the_engine_environment_names_no_credential_and_follows_the_transport_policy ... ok
+test harness::session::tests::runtime_homes_are_private_ephemeral_and_only_ours_are_removed ... ok
 test harness::history::tests::a_record_is_sealed_and_opens_only_in_its_own_scope_and_name ... ok
+test harness::tools::tests::results_are_scrubbed_redacted_and_bounded ... ok
 test harness::history::tests::a_full_scope_refuses_new_records_and_ids_are_uuids ... ok
 
 test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 178 filtered out; finished in 0.39s
 
    Compiling desktop-core v0.1.0 (/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/mut/repo/crates/desktop-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.74s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 24.64s
      Running unittests src/lib.rs (target/debug/deps/desktop_core-354b4dcfaa55f56d)

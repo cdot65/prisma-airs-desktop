@@ -2,16 +2,16 @@
   {
     "inputs": {
       "apps/desktop/src/features/harness/harness-view.tsx": "23267c2ff204e43f3e3b5141ce28586853692d39c545b1109d957750373f9484",
-      "apps/desktop/src/features/harness/history-panel.tsx": "ccd569d74983f7f4bc208f459f8afb973af00a126f1362792dc8e1cf5ff9ab75",
+      "apps/desktop/src/features/harness/history-panel.tsx": "71cabe5c1fe12409b047af23b515620dcaedb12114c9addb943ec6550e8d75f2",
       "crates/desktop-core/src/authority.rs": "9b926433e3334c34459522f232ed993b0f4b9bb9ccb47b60beee1706f9047ac3",
-      "crates/desktop-core/src/authority/harness_domain.rs": "533e15decdf37146cf7e14dda69cd8d8c27dca29c23210d7742328f4e7a20391",
-      "crates/desktop-core/src/authority/harness_history.rs": "1a55e7512300963b090a9731ac4e7d08da2b56f86ae76e8ebc67b730aec1ca83",
+      "crates/desktop-core/src/authority/harness_domain.rs": "f97021e6f885f2b4e9aef5a668f7187846c630d938ac9b2274df505881d0353f",
+      "crates/desktop-core/src/authority/harness_history.rs": "30b7f78821859279b761873050e135944f505cb16e502259a1091d2c32bd7405",
       "crates/desktop-core/src/authority/harness_identity.rs": "a6a3cc641e9ee71f68f87f0fadd98ea3b45daf99d6287873186c82c8cd43546d",
       "crates/desktop-core/src/harness/callback.rs": "174fa761a72545013eca3413adff9ec5944eeea26dd83a8591b90c925ff9c368",
       "crates/desktop-core/src/harness/history.rs": "73fc0561b16059a1e0543a8130e67a29a972d467e20a5fbcc69c20263fc041e9",
       "crates/desktop-core/src/harness/identity.rs": "076462415b1fab4db90ad69f37257bb65922770967b6a85972feec86fd41219f",
-      "crates/desktop-core/src/harness/session.rs": "ea0481e42181c0ff6d8b60b0d05e2b2c902d9c5234d5f9cb1e65544c418113eb",
-      "packages/desktop-contracts/src/client.ts": "2685e430c03fe632e988cc0d6b8adcf887b48b70ba0a0da2d8732beebe402507"
+      "crates/desktop-core/src/harness/session.rs": "59691f3f0a3d6067d71dfe24ea2783d68963aa0d4a42cf34f265dc74ca292177",
+      "packages/desktop-contracts/src/client.ts": "524884d9efb630f6fc6e1236ad2e9e9a2086bbbfeb25b5ce67985a727de1a1fa"
     }
   },
   {
@@ -1133,6 +1133,346 @@
       "harness_identity_history"
     ],
     "guard": "a_history_key_is_made_only_once_its_scope_is_durably_noted",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a waiting message is sent while stopping",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_stop_while_an_export_fails_keeps_the_turn_and_sends_nothing_waiting",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unsaved transcript is dropped at a stop",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_finished_turn_whose_export_is_pending_is_kept_when_stopped",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a waiting message vanishes at a stop",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_message_waiting_for_an_export_that_comes_at_a_stop_is_kept_unsent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a waiting renewal vanishes at a stop",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_waiting_for_an_export_at_a_stop_never_restarts_or_sends",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a stop during a save releases what waits",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_stop_during_a_held_save_sends_nothing_waiting_or_queued",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a queued message vanishes at a stop",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_stop_during_a_held_save_sends_nothing_waiting_or_queued",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unsent message is not saved",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_message_waiting_for_an_export_that_comes_at_a_stop_is_kept_unsent",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a renewal restarts after a stop",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_under_way_when_the_mac_sleeps_never_restarts_or_loses_the_message",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a renewal that cannot restore loses its message",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_never_restores_an_export_older_than_the_conversation",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a renewal's message vanishes while its engine starts",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_under_way_when_the_mac_sleeps_never_restarts_or_loses_the_message",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a renewal overtaken by a stop loses its message",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_under_way_when_the_mac_sleeps_never_restarts_or_loses_the_message",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a renewal whose engine never runs is not saved",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_whose_engine_cannot_start_keeps_and_saves_its_message",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refused launch loses the renewal's message",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_whose_engine_cannot_start_keeps_and_saves_its_message",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a pipeless engine loses the renewal's message",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_whose_engine_cannot_start_keeps_and_saves_its_message",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a home not made loses the renewal's message",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_whose_engine_cannot_start_keeps_and_saves_its_message",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an old home kept loses the renewal's message",
+    "files": [
+      "crates/desktop-core/src/harness/session.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_whose_engine_cannot_start_keeps_and_saves_its_message",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a confirmation pending at a stop loses its message",
+    "files": [
+      "crates/desktop-core/src/authority/harness_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "harness_identity_history"
+    ],
+    "guard": "a_renewal_restarts_with_changes_only_once_the_operator_allows_them_again",
     "exit_code": 101,
     "guard_failed": true
   }

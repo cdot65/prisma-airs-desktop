@@ -1,0 +1,22 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+ ✓ src/contracts/snapshot-validation.test.ts (118 tests) 41ms
+ ✓ src/features/runtime/review-apply.test.tsx (5 tests) 1378ms
+   ✓ review and apply > reviews exactly the editor text and applies the text present when Apply is pressed  446ms
+   ✓ review and apply > holds the editor while the native confirmation is open  323ms
+   ✓ review and apply > reviews a delete without a draft and reveals a new key only through the native sheet  372ms
+ ✓ src/features/administration/administration-view.test.tsx (9 tests) 1521ms
+   ✓ administration inventories > reads later pages, reports partial inventories and claims completeness only from the service  314ms
+   ✓ administration inventories > restarts from the first page when the credential is replaced mid-pagination  329ms
+ ✓ src/features/administration/dlp-authoring.test.tsx (6 tests) 1732ms
+   ✓ DLP authoring > offers exactly v1’s actions per inventory  530ms
+   ✓ DLP authoring > keeps typed keywords in use when a file choice is cancelled or fails  316ms
+
+ Test Files  4 passed (4)
+      Tests  138 passed (138)
+   Start at  23:09:36
+   Duration  4.89s (transform 1.63s, setup 712ms, collect 7.31s, tests 4.67s, environment 1.45s, prepare 239ms)
+
+
+--- stderr ---

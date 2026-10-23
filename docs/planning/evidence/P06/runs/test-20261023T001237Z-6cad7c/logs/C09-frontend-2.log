@@ -1,0 +1,28 @@
+
+running 19 tests
+test changes::tests::only_v1_actions_are_supported ... ok
+test changes::tests::deletes_carry_only_the_desktops_author ... ok
+test gateway_changes::tests::catalog_parameters_are_checked_and_fail_closed ... ok
+test gateway_changes::tests::deletes_carry_nothing_and_targets_are_identifiers ... ok
+test changes::tests::write_responses_give_up_their_one_time_secret ... ok
+test gateway_changes::tests::a_one_time_key_is_taken_before_anything_is_shown ... ok
+test gateway_changes::tests::only_the_v1_gateway_matrix_is_accepted ... ok
+test gateway_changes::tests::references_match_ids_and_at_paths_only ... ok
+test gateway_changes::tests::drafts_never_carry_credentials ... ok
+test gateway_changes::tests::counters_never_make_a_review_conflict ... ok
+test gateway_changes::tests::a_models_readback_needs_every_requested_model_and_the_all_models_setting ... ok
+test changes::tests::data_profiles_follow_v1s_structure_rules ... ok
+test changes::tests::digests_are_canonical_and_previews_label_server_fields ... ok
+test harness::session::tests::approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed ... ok
+test changes::tests::topics_are_authored_stripped_and_bounded ... ok
+test changes::tests::key_rotation_is_reduced_and_bounded ... ok
+test changes::tests::key_creation_needs_its_fields_and_one_deployment_profiles_code ... ok
+test gateway_changes::tests::provisioning_names_its_exact_scope ... ok
+test gateway_changes::tests::scoped_creates_are_placed_in_the_chosen_workspace_only ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 192 filtered out; finished in 0.06s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-354b4dcfaa55f56d)

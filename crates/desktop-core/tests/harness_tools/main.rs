@@ -123,20 +123,6 @@ async fn choose_project(desk: &mut Desk, dir: &Path) {
     );
 }
 
-/// Starts a conversation once the previous one has finished ending.
-async fn start_when_free(desk: &mut Desk, reference: &str) -> String {
-    for _ in 0..100 {
-        match desk.start(reference).await {
-            Ok(id) => return id,
-            Err(desktop_core::Refusal::Busy) => {
-                tokio::time::sleep(Duration::from_millis(100)).await;
-            }
-            Err(other) => panic!("start refused: {other:?}"),
-        }
-    }
-    panic!("the previous conversation never finished ending");
-}
-
 /// A ready conversation with the workspace key (and the project if chosen).
 async fn ready(desk: &mut Desk) -> String {
     desk.ready(None).await

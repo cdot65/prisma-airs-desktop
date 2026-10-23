@@ -301,7 +301,8 @@ fn records_with(desk: &Desk, needle: &str) -> usize {
 }
 
 async fn start_one(desk: &mut Desk, reference: &str) -> (String, u32) {
-    let id = desk.start(reference).await.expect("started");
+    // Called right after a retirement: wait for it to finish ending.
+    let id = start_when_free(desk, reference).await;
     assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
     (id, desk.last_pid().expect("pid"))
 }

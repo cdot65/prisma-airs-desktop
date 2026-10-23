@@ -103,6 +103,8 @@ pub struct Idp {
     /// Discovery document overrides (null removes a field).
     pub metadata: Value,
     pub refuse_refresh: bool,
+    /// Answers each refresh this long after it is seen.
+    pub refresh_delay_ms: u64,
     codes: HashMap<String, Code>,
     refresh: HashMap<String, String>,
     /// Refresh tokens issued (each name is new, even after revocations).
@@ -152,6 +154,7 @@ impl Idp {
             issue: Issue::default(),
             metadata: json!({}),
             refuse_refresh: false,
+            refresh_delay_ms: 0,
             codes: HashMap::new(),
             refresh: HashMap::new(),
             issued: 0,
@@ -278,7 +281,13 @@ impl Idp {
                             return Some(reply(400, &json!({"error": "invalid_grant"})));
                         }
                         let body = self.tokens(None);
-                        reply(200, &body)
+                        match self.refresh_delay_ms {
+                            0 => reply(200, &body),
+                            millis => Reply::Delayed {
+                                millis,
+                                then: Box::new(reply(200, &body)),
+                            },
+                        }
                     }
                     _ => reply(400, &json!({"error": "unsupported_grant_type"})),
                 }

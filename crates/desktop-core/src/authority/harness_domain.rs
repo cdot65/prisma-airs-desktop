@@ -138,9 +138,15 @@ impl Conversation {
 
     /// A message that will not be sent goes back to the box.
     pub(super) fn give_back(&mut self, job: RenewJob) {
+        self.keep_unsent(job);
+        self.set_phase(HarnessPhase::Ready);
+    }
+
+    /// A message whose renewal a stop overtook goes back to the box; the
+    /// stopping task sets the phase (P06 review R3-F1).
+    fn keep_unsent(&mut self, job: RenewJob) {
         self.entries -= 1;
         self.unsent = Some(job.prompt.to_string());
-        self.set_phase(HarnessPhase::Ready);
     }
 }
 
@@ -625,13 +631,15 @@ impl State {
         mcp: Option<super::harness_mcp::ScopeTokens>,
     ) {
         let bound = self.harness.as_ref().is_some_and(|c| self.harness_bound(c));
-        let Some(c) = self
-            .harness
-            .as_mut()
-            .filter(|c| c.id == job.conversation && c.ended.is_none() && c.stop.is_none())
-        else {
+        let Some(c) = self.harness.as_mut().filter(|c| c.id == job.conversation) else {
             return;
         };
+        // Stopped or ended while renewing: nothing is sent or restarted,
+        // and the message is not lost (P06 review R3-F1).
+        if c.ended.is_some() || c.stop.is_some() {
+            c.keep_unsent(job);
+            return;
+        }
         match renewed {
             Ok(key) if bound => {
                 if let Some((_, renew_at)) = &key {
@@ -691,6 +699,9 @@ impl State {
     /// Ends the conversation: the engine is stopped and reaped.
     pub(super) fn end_harness(&mut self, id: &OperationId) -> Result<(), Refusal> {
         let conversation = self.live_harness(id)?;
+        if let Some(job) = conversation.write_confirm.take() {
+            conversation.keep_unsent(job);
+        }
         conversation.stop = Some(HarnessStop::Ended);
         conversation.cancel.cancel();
         Ok(())
@@ -700,6 +711,11 @@ impl State {
     pub(super) fn stop_harness(&mut self, why: HarnessStop) -> bool {
         match self.harness.as_mut().filter(|c| c.ended.is_none()) {
             Some(c) => {
+                // A renewal waiting for changes to be allowed again is not
+                // sent; its message goes back to the box (P06 review R3-F1).
+                if let Some(job) = c.write_confirm.take() {
+                    c.keep_unsent(job);
+                }
                 c.stop.get_or_insert(why);
                 c.cancel.cancel();
                 true

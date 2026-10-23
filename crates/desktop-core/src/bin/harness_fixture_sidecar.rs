@@ -109,6 +109,10 @@ fn main() {
         let id = message["id"].clone();
         match message["method"].as_str().unwrap_or_default() {
             "initialize" => {
+                // Every start takes 2 s (P06 review R3-F1).
+                if mode == "slow-start" {
+                    std::thread::sleep(Duration::from_secs(2));
+                }
                 send(&json!({"id": id, "result": {"userAgent": "fixture"}}));
                 if mode == "duplicate" {
                     send(&json!({"id": id, "result": {"userAgent": "fixture"}}));
@@ -355,6 +359,23 @@ fn main() {
             // its turns), and a restore of one.
             "desktop/history/read" => match mode.as_str() {
                 "history-silent" => {}
+                // Only the first turn's export is answered (P06 review F1).
+                "history-silent-later" if turns > 1 => {}
+                // Answered after 2 s with a refusal, a malformed result or
+                // the export (on later turns only with `-later`): inside a
+                // stop's grace (P06 review R2, R3).
+                m if m.starts_with("history-slow-") && (!m.ends_with("-later") || turns > 1) => {
+                    std::thread::sleep(Duration::from_secs(2));
+                    if m.starts_with("history-slow-ok") {
+                        send(&json!({"id": id, "result": {
+                            "context": {"fixture": true, "credentialId": p["credentialId"]},
+                            "replay": {"schemaVersion": 1, "turns": turns}}}));
+                    } else if m.contains("malformed") {
+                        send(&json!({"id": id, "result": {}}));
+                    } else {
+                        send(&json!({"id": id, "error": {"code": -32600, "message": "busy"}}));
+                    }
+                }
                 "history-refuse" => {
                     send(&json!({"id": id, "error": {"code": -32600, "message": "busy"}}))
                 }

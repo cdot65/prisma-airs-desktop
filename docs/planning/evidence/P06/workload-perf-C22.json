@@ -1,0 +1,438 @@
+{
+ "schema": "airs-v2-workload-perf/1",
+ "label": "acceptance",
+ "registration_sha256": "732cfff62042bef445876964b11c5e5484a79ec16ee0977ceb6e71fb8beae87a",
+ "started_utc": "2026-10-23T04:38:40Z",
+ "finished_utc": "2026-10-23T04:41:21Z",
+ "executable_sha256": "904dba6c99d1cae53b3e89db2bcc6c4dece70d7a7ff01ee2b269163ae81d1387",
+ "host": "Mac17,3",
+ "metrics": {
+  "harness-mcp-catalog-listed": {
+   "unit": "ms",
+   "samples": [
+    10.727625,
+    9.838667,
+    8.942125,
+    9.609,
+    10.134959,
+    12.114333,
+    12.015209,
+    12.429041,
+    18.49575,
+    13.780042
+   ]
+  },
+  "harness-mcp-session-ready": {
+   "unit": "ms",
+   "samples": [
+    1827.800583,
+    934.769375,
+    1008.190708,
+    1618.617959,
+    1016.560166,
+    976.536958,
+    1179.117583,
+    1063.044709,
+    979.030167,
+    1014.327958
+   ]
+  },
+  "harness-mcp-approval-shown": {
+   "unit": "ms",
+   "samples": [
+    144.096791,
+    143.645083,
+    154.350625,
+    167.000416,
+    157.65775,
+    158.428792,
+    169.004583,
+    200.189666,
+    205.457375,
+    175.761209
+   ]
+  },
+  "harness-mcp-call-answered": {
+   "unit": "ms",
+   "samples": [
+    124.704541,
+    118.459959,
+    134.517334,
+    154.238459,
+    151.225125,
+    159.367875,
+    160.074459,
+    185.116792,
+    194.618208,
+    190.296292
+   ]
+  },
+  "harness-mcp-rotation-first-output": {
+   "unit": "ms",
+   "samples": [
+    376.707084,
+    439.697209,
+    357.474792,
+    340.666834,
+    390.087041,
+    348.328417,
+    370.964,
+    347.593708,
+    388.83575,
+    358.774708
+   ]
+  },
+  "harness-mcp-process-tree-resident": {
+   "unit": "MiB",
+   "samples": [
+    280.3,
+    371.1,
+    384.5,
+    391.5,
+    406.8,
+    415.5,
+    417.2,
+    417.8,
+    421.5,
+    421.5,
+    421.5,
+    421.5,
+    421.3,
+    422.1,
+    421.3,
+    421.3,
+    421.2,
+    421.2,
+    421.2,
+    420.9
+   ]
+  }
+ },
+ "details": {
+  "catalog": [
+   {
+    "sample": 1,
+    "tag": "R1",
+    "polls": 1,
+    "ms": 10.727625
+   },
+   {
+    "sample": 2,
+    "tag": "R2",
+    "ms": 9.838667,
+    "polls": 1
+   },
+   {
+    "sample": 3,
+    "tag": "R3",
+    "polls": 1,
+    "ms": 8.942125
+   },
+   {
+    "sample": 4,
+    "tag": "R4",
+    "ms": 9.609,
+    "polls": 1
+   },
+   {
+    "sample": 5,
+    "tag": "R5",
+    "ms": 10.134959,
+    "polls": 1
+   },
+   {
+    "sample": 6,
+    "tag": "R6",
+    "polls": 1,
+    "ms": 12.114333
+   },
+   {
+    "sample": 7,
+    "tag": "R7",
+    "ms": 12.015209,
+    "polls": 1
+   },
+   {
+    "sample": 8,
+    "tag": "R8",
+    "ms": 12.429041,
+    "polls": 1
+   },
+   {
+    "sample": 9,
+    "tag": "R9",
+    "ms": 18.49575,
+    "polls": 1
+   },
+   {
+    "sample": 10,
+    "tag": "R10",
+    "polls": 1,
+    "ms": 13.780042
+   }
+  ],
+  "ready": [
+   {
+    "sample": 1,
+    "ms": 1827.800583,
+    "polls": 102
+   },
+   {
+    "sample": 2,
+    "ms": 934.769375,
+    "polls": 102
+   },
+   {
+    "sample": 3,
+    "polls": 99,
+    "ms": 1008.190708
+   },
+   {
+    "sample": 4,
+    "polls": 108,
+    "ms": 1618.617959
+   },
+   {
+    "sample": 5,
+    "ms": 1016.560166,
+    "polls": 102
+   },
+   {
+    "sample": 6,
+    "ms": 976.536958,
+    "polls": 100
+   },
+   {
+    "sample": 7,
+    "ms": 1179.117583,
+    "polls": 104
+   },
+   {
+    "sample": 8,
+    "ms": 1063.044709,
+    "polls": 114
+   },
+   {
+    "sample": 9,
+    "polls": 102,
+    "ms": 979.030167
+   },
+   {
+    "sample": 10,
+    "polls": 113,
+    "ms": 1014.327958
+   }
+  ],
+  "calls": [
+   {
+    "sample": 1,
+    "answered": true,
+    "shown": {
+     "polls": 16,
+     "ms": 144.096791
+    },
+    "done": {
+     "polls": 14,
+     "ms": 124.704541
+    }
+   },
+   {
+    "sample": 2,
+    "answered": true,
+    "shown": {
+     "ms": 143.645083,
+     "polls": 14
+    },
+    "done": {
+     "ms": 118.459959,
+     "polls": 10
+    }
+   },
+   {
+    "sample": 3,
+    "answered": true,
+    "shown": {
+     "ms": 154.350625,
+     "polls": 12
+    },
+    "done": {
+     "polls": 10,
+     "ms": 134.517334
+    }
+   },
+   {
+    "sample": 4,
+    "answered": true,
+    "shown": {
+     "polls": 12,
+     "ms": 167.000416
+    },
+    "done": {
+     "ms": 154.238459,
+     "polls": 9
+    }
+   },
+   {
+    "sample": 5,
+    "answered": true,
+    "shown": {
+     "ms": 157.65775,
+     "polls": 12
+    },
+    "done": {
+     "ms": 151.225125,
+     "polls": 10
+    }
+   },
+   {
+    "sample": 6,
+    "answered": true,
+    "shown": {
+     "polls": 11,
+     "ms": 158.428792
+    },
+    "done": {
+     "ms": 159.367875,
+     "polls": 9
+    }
+   },
+   {
+    "sample": 7,
+    "answered": true,
+    "shown": {
+     "ms": 169.004583,
+     "polls": 10
+    },
+    "done": {
+     "ms": 160.074459,
+     "polls": 9
+    }
+   },
+   {
+    "sample": 8,
+    "answered": true,
+    "shown": {
+     "polls": 11,
+     "ms": 200.189666
+    },
+    "done": {
+     "ms": 185.116792,
+     "polls": 7
+    }
+   },
+   {
+    "sample": 9,
+    "answered": true,
+    "shown": {
+     "ms": 205.457375,
+     "polls": 10
+    },
+    "done": {
+     "ms": 194.618208,
+     "polls": 9
+    }
+   },
+   {
+    "sample": 10,
+    "answered": true,
+    "shown": {
+     "ms": 175.761209,
+     "polls": 10
+    },
+    "done": {
+     "polls": 8,
+     "ms": 190.296292
+    }
+   }
+  ],
+  "refreshes": 10,
+  "rotation": [
+   {
+    "sample": 1,
+    "answered": true,
+    "polls": 36,
+    "ms": 376.707084
+   },
+   {
+    "sample": 2,
+    "answered": true,
+    "ms": 439.697209,
+    "polls": 32
+   },
+   {
+    "sample": 3,
+    "answered": true,
+    "ms": 357.474792,
+    "polls": 37
+   },
+   {
+    "sample": 4,
+    "answered": true,
+    "ms": 340.666834,
+    "polls": 30
+   },
+   {
+    "sample": 5,
+    "answered": true,
+    "ms": 390.087041,
+    "polls": 33
+   },
+   {
+    "sample": 6,
+    "answered": true,
+    "ms": 348.328417,
+    "polls": 28
+   },
+   {
+    "sample": 7,
+    "answered": true,
+    "ms": 370.964,
+    "polls": 27
+   },
+   {
+    "sample": 8,
+    "answered": true,
+    "ms": 347.593708,
+    "polls": 26
+   },
+   {
+    "sample": 9,
+    "answered": true,
+    "ms": 388.83575,
+    "polls": 26
+   },
+   {
+    "sample": 10,
+    "answered": true,
+    "ms": 358.774708,
+    "polls": 24
+   }
+  ],
+  "process_tree": {
+   "app": 4001,
+   "webkit": [
+    4003,
+    4004,
+    4005
+   ]
+  },
+  "resident_steps": [
+   [
+    "ready",
+    true
+   ],
+   [
+    "call",
+    true
+   ],
+   [
+    "call",
+    true
+   ],
+   [
+    "rotation",
+    true
+   ]
+  ]
+ }
+}

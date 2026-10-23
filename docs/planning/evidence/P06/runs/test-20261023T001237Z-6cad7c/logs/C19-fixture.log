@@ -1,0 +1,22 @@
+
+running 13 tests
+test only_one_conversation_and_only_bounded_prompts_are_admitted ... ok
+test approvals_are_declined_and_an_answer_past_its_bound_is_truncated ... ok
+test the_engine_is_given_nothing_but_its_bootstrap ... ok
+test completed_answers_and_token_counts_are_held_to_their_bounds ... ok
+test a_changed_or_missing_engine_is_never_started_and_no_key_is_read ... ok
+test an_engine_that_ignores_its_input_closing_is_killed_with_its_descendants ... ok
+test the_sealed_engine_ships_without_node_bun_or_a_managed_cli ... ok
+test stopping_an_answer_interrupts_only_that_turn ... ok
+test sleep_and_quit_end_the_conversation_and_reap_the_engine ... ok
+test a_conversation_streams_through_the_pinned_engine_with_only_the_workspace_key ... ok
+test a_changed_key_workspace_or_context_retires_the_conversation_at_once ... ok
+test a_failed_answer_is_named_and_only_server_failures_are_retried_by_the_engine ... ok
+test malformed_oversized_duplicate_or_foreign_frames_fail_the_conversation_and_reap_it ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.09s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running tests/harness_process/main.rs (target/debug/deps/harness_process-784712dee7cede18)

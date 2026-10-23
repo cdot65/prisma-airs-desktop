@@ -1,0 +1,25 @@
+
+running 16 tests
+test a_saved_conversation_continues_only_with_its_mcp_scope ... ok
+test an_approval_for_a_lapsed_sign_in_is_declined_natively ... ok
+test an_approved_tool_call_runs_once_with_the_memory_only_bearer ... ok
+test a_catalog_that_cannot_be_read_blocks_remote_use_until_read_again ... ok
+test a_pending_mcp_call_never_survives_going_offline_or_runs_on_reconnect ... ok
+test the_catalog_is_read_per_workspace_and_signing_in_is_the_desktops_own_oauth ... ok
+test an_expired_sign_in_keeps_inference_and_its_tools_are_unavailable ... ok
+test without_its_catalog_a_scope_cannot_start_or_continue ... ok
+test signing_out_again_or_off_or_a_new_revision_retires_the_conversation ... ok
+test a_written_token_survives_cleanup_until_it_is_settled ... ok
+test a_first_turns_call_cut_short_is_kept_without_a_restore_point ... ok
+test a_finished_call_waiting_for_the_model_is_kept_when_the_turn_is_cut_short ... ok
+test a_call_cut_short_is_recorded_as_interrupted_and_never_replayed ... ok
+test mcp_token_rotation_restarts_and_restores_without_asking_for_changes_again ... ok
+test signing_out_during_a_sign_in_again_never_signs_the_server_back_in ... ok
+test an_approval_past_its_tokens_expiry_is_declined_and_inference_goes_on ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.83s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.20s
+     Running tests/workspace_mcp/main.rs (target/debug/deps/workspace_mcp-4c9610c094950de3)

@@ -1,0 +1,94 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C22",
+  "recorded_utc": "2026-10-23T04:24:34Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes), playing the browser against the app's loopback callback, with the synthetic Gateway playing the model's MCP tool calls, and inspecting the engine's processes, the fixture keychain and the server log, against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c22.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "904dba6c99d1cae53b3e89db2bcc6c4dece70d7a7ff01ee2b269163ae81d1387",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C22-N01",
+      "description": "The chosen workspace's MCP catalog is read through the management client and lists only its servers (the upstream URL never shown); a server is turned on; signing in opens one authorization URL at the server's own OAuth origin with PKCE S256, state, the server URL as resource, only the tool scopes, a client registered for this attempt and a 127.0.0.1 redirect; a callback with another state is refused; the real callback signs in, adds one Keychain item, and the state document holds no token.",
+      "result": "pass",
+      "observation": "catalog {'listed': True, 'docs_listed': True, 'management_read': True, 'upstream_hidden': True, 'not_signed_in': True}; sign-in {'authorize': True, 'pkce': True, 'state': True, 'resource': True, 'scope': 'mcp:servers:read mcp:tools:list mcp:tools:call', 'client': True, 'loopback': True, 'status': 200, 'forged': 400, 'signed_in': True, 'registered': True, 'challenge': True, 'keychain_item_added': True, 'no_token_in_state': True}",
+      "evidence": [
+        "docs/planning/evidence/P06/native-C22/observations.json",
+        "docs/planning/evidence/P06/native-C22/tree-catalog.json",
+        "docs/planning/evidence/P06/native-C22/tree-signed-in.json"
+      ]
+    },
+    {
+      "id": "C22-N02",
+      "description": "A conversation gives the engine the server with its bearer in memory and its startup reads ready; the model's MCP tool call waits for the operator as 'Run a workspace MCP tool' naming the server, tool and the call's arguments: Decline runs nothing (no tools/call) and the entry reads declined; Approve once runs exactly one tools/call carrying the issued bearer and its result is shown; no inference request carries the bearer.",
+      "result": "pass",
+      "observation": "approval {'ready': True, 'started': True, 'asked': True, 'title': True, 'server_tool': True, 'arguments': True, 'declined_entry': True, 'declined_done': True, 'calls_after_decline': 0, 'approved_done': True, 'calls': 1, 'issued_bearer': True, 'no_bearer_in_inference': True, 'approval_tabs': ['Decline', 'Message'], 'approve_reached_by_keyboard': 'Approve once'}",
+      "evidence": [
+        "docs/planning/evidence/P06/native-C22/observations.json",
+        "docs/planning/evidence/P06/native-C22/tree-approval.json",
+        "docs/planning/evidence/P06/native-C22/tree-approved.json"
+      ]
+    },
+    {
+      "id": "C22-N03",
+      "description": "Once the MCP token is inside its renewal margin, the next message renews it (one refresh), stops the engine and starts a new one that restores the conversation (the Gateway request carries the first turn) without asking again for changes in the folder, and the new engine's server runs with the renewed bearer.",
+      "result": "pass",
+      "observation": "rotation {'signed_in': True, 'ready': True, 'restored': True, 'asked_again': False, 'refreshes': 1, 'new_engine': True, 'old_gone': True, 'carries_first_turn': True, 'renewed_bearer': True, 'home_clean': True}",
+      "evidence": [
+        "docs/planning/evidence/P06/native-C22/observations.json",
+        "docs/planning/evidence/P06/native-C22/tree-rotation.json"
+      ]
+    },
+    {
+      "id": "C22-N04",
+      "description": "An expired MCP sign-in (its renewal refused) keeps inference: the engine gets the signed-out placeholder, the server reads not signed in, its requests carry no issued bearer, and the conversation still answers.",
+      "result": "pass",
+      "observation": "expired {'ready': True, 'shown_signed_out': True, 'answered': True, 'no_issued_bearer': True, 'expired_text': True}",
+      "evidence": [
+        "docs/planning/evidence/P06/native-C22/observations.json",
+        "docs/planning/evidence/P06/native-C22/tree-expired.json"
+      ]
+    },
+    {
+      "id": "C22-N05",
+      "description": "Signing out of a server retires the running conversation, reaps its engine, deletes its Keychain item and revokes both tokens; signing in again, turning the server off, or a new catalog revision (read again) each retire the conversation too, and after a revision change the sign-in reads stale.",
+      "result": "pass",
+      "observation": "retire {'sign_out': {'retired': True, 'reaped': True, 'item_deleted': True, 'revoked': True}, 'sign_in_again': {'retired': True, 'reaped': True}, 'off': {'retired': True, 'reaped': True}, 'revision': {'retired': True, 'reaped': True, 'stale': True}}",
+      "evidence": [
+        "docs/planning/evidence/P06/native-C22/observations.json",
+        "docs/planning/evidence/P06/native-C22/tree-signed-out.json",
+        "docs/planning/evidence/P06/native-C22/tree-retired.json"
+      ]
+    },
+    {
+      "id": "C22-N06",
+      "description": "Keyboard and accessibility: the Workspace MCP servers region, each server's checkbox and its sign-in and sign-out buttons are named and reachable by Tab, as are the MCP approval's Approve once and Decline buttons; Approve once is reached with Shift-Tab from Decline and activated with Space, and the call then runs once.",
+      "result": "pass",
+      "observation": "keyboard and accessibility {'region': True, 'tab_order': [{'role': 'AXButton', 'subrole': None, 'label': 'Sign in to Tools tools again'}, {'role': 'AXButton', 'subrole': None, 'label': 'Sign out of Tools tools'}, {'role': 'AXCheckBox', 'subrole': None, 'label': 'Use Docs tools in new conversations'}, {'role': 'AXButton', 'subrole': None, 'label': 'Sign in to Docs tools'}, {'role': 'AXButton', 'subrole': None, 'label': 'Read the servers again'}, {'role': 'AXButton', 'subrole': None, 'label': 'Start conversation'}], 'sign_in_by_tab': True, 'sign_out_by_tab': True, 'approval_by_tab': ['Decline', 'Message']}",
+      "evidence": [
+        "docs/planning/evidence/P06/native-C22/observations.json",
+        "docs/planning/evidence/P06/native-C22/tree-a11y.json"
+      ]
+    },
+    {
+      "id": "C22-N07",
+      "description": "No MCP or Gateway token appears in AX snapshots, the server log (a bearer is recorded only as issued, placeholder, other or none) or the engine's runtime home; no engine is left after quitting; v1 data is unchanged.",
+      "result": "pass",
+      "observation": "secrets in AX snapshots: []; token in the server log: False; runtime home clean: True; engines left: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/P06/native-C22/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The Gateway's MCP catalog, its OAuth authorization server and the MCP servers are synthetic local TLS services; no product MCP server, Gateway or model is called before C25.",
+    "The browser is played by the driver (an HTTPS request to the authorization endpoint and an HTTP request to the app's loopback callback); the fixture build records the URL instead of opening it.",
+    "The model is played by the synthetic Gateway: it asks for the server's tool by the engine's own name for it, once per turn.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

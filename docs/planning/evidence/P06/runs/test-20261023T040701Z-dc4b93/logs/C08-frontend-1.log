@@ -1,0 +1,73 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+ ✓ src/contracts/snapshot-validation.test.ts (118 tests) 36ms
+ ✓ src/features/tenants/management-credential.test.tsx (5 tests) 901ms
+   ✓ management client onboarding > saves a separate client, clearing the secret before awaiting and keeping it out of storage  424ms
+ ✓ src/features/administration/administration-view.test.tsx (9 tests) 1490ms
+   ✓ administration inventories > reads later pages, reports partial inventories and claims completeness only from the service  380ms
+   ✓ administration inventories > restarts from the first page when the credential is replaced mid-pagination  331ms
+ ✓ src/features/tenants/credential-entry.test.tsx (9 tests) 1550ms
+   ✓ scan-key entry > captures the key typed at submission time and clears the field before awaiting  411ms
+ ✓ src/features/runtime/scan-submit.test.tsx (15 tests) 1955ms
+   ✓ runtime scan submission > captures the values present at click time and sends one literal scan intent  462ms
+   ✓ runtime scan submission > sends working v1 inputs and the largest accepted request, and refuses past the 2 MiB and 8 MiB ceilings  455ms
+ ✓ src/shell/desktop-shell.test.tsx (11 tests) 2177ms
+   ✓ desktop shell > lists every native feature and shows unavailable destinations explicitly  582ms
+   ✓ desktop shell > hands focus to the Academy page heading once the page renders  1082ms
+
+ Test Files  6 passed (6)
+      Tests  167 passed (167)
+   Start at  23:09:19
+   Duration  5.07s (transform 1.62s, setup 835ms, collect 11.60s, tests 8.11s, environment 1.72s, prepare 264ms)
+
+
+--- stderr ---
+stderr | src/features/tenants/management-credential.test.tsx > management client onboarding > saves a separate client, clearing the secret before awaiting and keeping it out of storage
+An update to ManagementCredentialForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ManagementCredentialForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/shell/desktop-shell.test.tsx > desktop shell > lists every native feature and shows unavailable destinations explicitly
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+react-router@1.170.16_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | src/shell/desktop-shell.test.tsx > desktop shell > hands focus to the Academy page heading once the page renders
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+react-router@1.170.16_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+

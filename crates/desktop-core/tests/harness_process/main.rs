@@ -308,7 +308,7 @@ async fn a_changed_key_workspace_or_context_retires_the_conversation_at_once() {
     assert!(settle(|| desk.run_dirs().is_empty()).await);
 
     // The key removed.
-    let id = desk.start(&reference).await.expect("started");
+    let id = start_when_free(&mut desk, &reference).await;
     assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
     let pid = desk.last_pid().expect("fixture");
     let context = desk.context();

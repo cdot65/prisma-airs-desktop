@@ -1,0 +1,350 @@
+{
+  "schema": "airs-v2/review-request/1",
+  "request_id": "rq-P06-20261023T044452Z-9b12772b",
+  "attempt_id": "attempt-05",
+  "subject": "P06",
+  "kind": "phase",
+  "created_utc": "2026-10-23T04:45:03Z",
+  "repository": "/Users/cdot/development/redtail/prisma-airs-desktop-v2",
+  "base_commit": "5ce089b0b9bf28ccaf8edf60566503ca46b156a6",
+  "scope": "cumulative phase review of P06 and the earlier features it affects",
+  "instructions": [
+    "docs/planning/chunks/C19.md",
+    "docs/planning/chunks/C20.md",
+    "docs/planning/chunks/C21.md",
+    "docs/planning/chunks/C22.md"
+  ],
+  "predecessors": [
+    {
+      "subject": "C19",
+      "receipt": {
+        "path": "docs/planning/reviews/C19/attempt-06/receipt.json",
+        "sha256": "3ce7f1d41f927a22574493575552e56816aa8d6b3f7011706db56450636334eb"
+      }
+    },
+    {
+      "subject": "C20",
+      "receipt": {
+        "path": "docs/planning/reviews/C20/attempt-03/receipt.json",
+        "sha256": "3be9e5e9f2c95e6c3164b7e6ff10717034ad3957671d1f42a79042c1fb4d9230"
+      }
+    },
+    {
+      "subject": "C21",
+      "receipt": {
+        "path": "docs/planning/reviews/C21/attempt-03/receipt.json",
+        "sha256": "ffc5ee9daa9751dfa4cd51ff6d2ca84eca36b7d1e0bea2b898a40674411bc8d0"
+      }
+    },
+    {
+      "subject": "C22",
+      "receipt": {
+        "path": "docs/planning/reviews/C22/attempt-04/receipt.json",
+        "sha256": "b4c56a28f83a27aaf976efdcabbf492ce25cee34f85f585d893c0ce6e8d26dfc"
+      }
+    }
+  ],
+  "fingerprints": {
+    "source": "9995c4157a2368e90d1f9d2d4fa217185528ffe4d2a8fd7b6d13290e45208503",
+    "dependencies": "64674f44e6690b9582c04d802d5062c3e3bbfeef4c1f83b3db2b8453d262da23",
+    "build_flags": "81a401a67eb69ed42c7fbc71348e3a2b4bb0f7e0b43e8ef9e1bcbb116dfb7498",
+    "evidence": "8d3ec69251c27b9313af857d81e7f7c79694cb68bf5ec71a5b7b84756e3294a7"
+  },
+  "source_inventory": {
+    "path": "docs/planning/reviews/P06/attempt-05/source-inventory.json",
+    "sha256": "ce770307dfeee629d3b8e2fb9e3ada0524fb69bfe87fdc64a401878f194736e4"
+  },
+  "runs": [
+    {
+      "kind": "check",
+      "run_id": "check-20261023T040305Z-054d56",
+      "path": "docs/planning/evidence/P06/runs/check-20261023T040305Z-054d56/run.json",
+      "sha256": "448ba9893ba1a2ec7061ee269d9533276f1b6b99725683cf358565b143ac7f21"
+    },
+    {
+      "kind": "test",
+      "run_id": "test-20261023T040701Z-dc4b93",
+      "path": "docs/planning/evidence/P06/runs/test-20261023T040701Z-dc4b93/run.json",
+      "sha256": "8c2c42567d80ed6a69eb061191759c3f336fd7d4210525b04fa1e6dee0bbb149"
+    },
+    {
+      "kind": "native-prepare",
+      "run_id": "native-prepare-20261023T044124Z-d755e2",
+      "path": "docs/planning/evidence/P06/runs/native-prepare-20261023T044124Z-d755e2/run.json",
+      "sha256": "491ffda2e1d9c402fc30ded06155ad7508fbaad593ad63c3946a808c4ec56bda"
+    }
+  ],
+  "evidence_files": [
+    {
+      "path": "docs/planning/evidence/P06/native-C19/observations.json",
+      "sha256": "6654e06a76225c36b1f0194ee11b447d0a2c25cd4383a78a353795c2ca58ec43"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-a11y.json",
+      "sha256": "ef9acc411ed5f7913a10776ce58118a88ecb7f28ea79ef2e46d007c2b29b4393"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-answer.json",
+      "sha256": "530f0359a8bc4a3b225e1daf141100830439f3525832f0be5e55df32b4a30845"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-crash.json",
+      "sha256": "63b04860ed4cb74eeea2571464cf2dba008510314ea989115c6a78e8092149d9"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-ended.json",
+      "sha256": "52b7f6c6b4eb35015ef7b237e9acdf1e5f6eeb97f0c348fc8be55fc8d93aafd0"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-interrupt.json",
+      "sha256": "0a5a88b49022e40793f45153536bbf7cf984e5d3e62b30a046a22ae6e80f2d21"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-offer.json",
+      "sha256": "55553dcf8a9e0f0f8f3a748819f70d124070241c7af63dd952ce5c1001211a49"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-ready.json",
+      "sha256": "090ecd5224f744ce1bb05a6ef817c024cc51453c9e857ddec4eda8fe4c77d565"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-relaunch.json",
+      "sha256": "4c835cb3deaa7f538f03ac8095c4bf535ce2078de11c9b290b95c2f385cb599b"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-retired.json",
+      "sha256": "100dd11de47589050ed6aff66159cc72255d29921f1b7b05c3ac56a2ab373636"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C19/tree-sleep.json",
+      "sha256": "ba7029e6012bf07f1ceb2e02e85b9701aa4d2ea502448b01fad870f733ac8934"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/observations.json",
+      "sha256": "98808d0015fb234d4127e0a32c15acff011cb3c5d8fd374ddd92a1671c7f89c7"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-a11y.json",
+      "sha256": "0a8157e6704b34ada5e4aacb74a7b1b57b858109ad9f4b599982c64d6911d57b"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-configured.json",
+      "sha256": "b4a2a189397995579b1f231338cebbd9f07bf16a0787e65e6ba2a514aebf053b"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-continued.json",
+      "sha256": "84387a1b94a277a36bd69b5f3d9afcb27746fabc50ef7e007feb644676801af4"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-conversation.json",
+      "sha256": "0f3671f09f5b23878ea07149bbf5ffa2dedb8df8f2948a6f7015432ddf6bde6d"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-deleted.json",
+      "sha256": "02bdd26713c68279aa3665a03e57a09ffaa427a143c0d108501997fe8960c413"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-offline-history.json",
+      "sha256": "737429ced03a5862ad6850ee81ec2e0fbab64f54ebfdbdd6063ce8398698b403"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-opened.json",
+      "sha256": "9f83287d685ac30e78f4bbd5bbff3998637073dfceece8058d6fbc8ea32a2605"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-refused-renewal.json",
+      "sha256": "9026f195ddf0a6cfe70f59a03ac3afaaab6766bf9f571a788c6c88bf71a65337"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-relisted.json",
+      "sha256": "0c2e0b014d088dfbfe4f0f1a9dbafb78bceec1ec112f8cc20a626382d084c21b"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-renewed.json",
+      "sha256": "60db6ca0cb2668d4df8fc10d069268f4f4e53f2dc4f56bac52a554180a4f9224"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-signed-in.json",
+      "sha256": "83d9a8a91e0bab9deac78d9669497e4efc1024c901116928ce079665b2e2e1fa"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-signed-out.json",
+      "sha256": "a3d68b94032f6d187895c998d1e0be7e4d2f67bbdfc98e4d6450db289e342436"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C20/tree-unreadable-deleted.json",
+      "sha256": "d672236486ebe965009a49f71a18ada15a03680a40d572852a530f76b3191198"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/observations.json",
+      "sha256": "07ba4d33acdf2fd0d3a83eee41ce8765920ce1557ac49d196d72a21a14927a7f"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-a11y.json",
+      "sha256": "50cab817037544172b17b73f14f863b1784efb50f86ee42305df2d4740f8710c"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-applied.json",
+      "sha256": "aa8cc318bb8e7b6a493bbcf03f03893b7200eb2c24160125e1d92733bc79b512"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-declined.json",
+      "sha256": "9ff816b7f43502b23cc9d35f6d8e2f345050eb7a97cf9555de98e8b76397415b"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-folder.json",
+      "sha256": "ed73c16cd5b36aabc3dba83ed7d71016029be10ecd8849027fa13fd462303c08"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-forged.json",
+      "sha256": "c417da111b63770eaab8913f9556fad253377b8771af726e61b433cef55e5498"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-no-folder.json",
+      "sha256": "f143071f44110d4a44df24764751ab2072df460fac82d51fca2d1d82c4099307"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-offline.json",
+      "sha256": "a28c67b97e9955190b947b5a4f2e4d52e8531b78ffdd270152f62e89810c73d3"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-patch-approval.json",
+      "sha256": "c3f7cf6ce404ca65e8c6b2a6ef1be583c56b168c3189b5c65814326dc763a418"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-proposal.json",
+      "sha256": "10fb7ccf4b552c037beb24f58a6e28703cfc501f633eaacf089c88ae64610a20"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-read.json",
+      "sha256": "e67fc49665ecbee6c857aaf33fd24edfa2a97a2b5b96f197f7028763c39fbebf"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-reconnected.json",
+      "sha256": "03005e20cf096b3c7e6b4bf1e7c624d21d926d6bdda6ba5b8f0a5e3eaa45ceda"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-refused.json",
+      "sha256": "17a97248f300123a8a4f44de5a2c6c5a685c0d83aa78ce5444bdf0a7f441aa2f"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-removed.json",
+      "sha256": "46cfb140e257e48014ef3155a68a0112b0a8650eeff0f555e4ab1b7901727bfd"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-review.json",
+      "sha256": "cccf4d87f495d5b5e6a4cb8f7deb556eb6dae153f1a4fa1c161ec7a6dd5b14ea"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C21/tree-write.json",
+      "sha256": "d99c9893e530ba05efe4fff7b7c18b09a402dd4b14a29b6fd689660e6dfcb914"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/observations.json",
+      "sha256": "92a7117f5e6297ae43afe258168bfe2a17c6bc2a9df27675f4098c24344341f1"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-a11y.json",
+      "sha256": "855f95761fcdd8bc3c49093c0ed4785c93b22323a588f65be12b7f412a4024a6"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-approval.json",
+      "sha256": "fe67df52e058e4d79d5235464689b614731145a35f7d04ada15c0f58b841e1ef"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-approved.json",
+      "sha256": "25de893a8c69a2a6cc48b0915b421d429de2a7365bb2bf5c6a5fc4e3fab15354"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-catalog.json",
+      "sha256": "38f25174633216cce953edb085285cb569c01dd656c30ea608b56596babc33a1"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-expired.json",
+      "sha256": "3da3124142758aaf9ee7cadbd79c0b3ffa3b4e298714bd66615d709ebaef7bcd"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-retired.json",
+      "sha256": "07b1eaa38643a9c476647cf47283679c039e81d8bfdb3e790275886c4ddfbbf3"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-rotation.json",
+      "sha256": "6d1ec014b0c5761cb70537d4c2fac26298db11f411ac94ecdcef4f057f9953ac"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-signed-in.json",
+      "sha256": "fd9c33c9e48cc18deec0ebab4f5945ff49338c76ffd02647d63f0ca8b7669c17"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-C22/tree-signed-out.json",
+      "sha256": "da0f619485da6ff10ada21ef76b78ec0f81adc4a28a97df79f29de41d2c43dfd"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-acceptance-C19.json",
+      "sha256": "7cfdb5f8216bf4fda0ee0b8f21becd64e7ad92fc6192b7cecec2c91bb9c034be"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-acceptance-C20.json",
+      "sha256": "28ee89cc771b5c966366c71661c16550ef91f8191e9257b316ad433c5a630789"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-acceptance-C21.json",
+      "sha256": "91a0eea665d59e09f4f34eed42c16b67a27665ac372815fb1ba76082d2f02a7e"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-acceptance-C22.json",
+      "sha256": "16548fa47764e95574188728434d1fbd4b81f71ec0287c433305ec17e38568f1"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-acceptance.json",
+      "sha256": "793fc025a359c9210177d052c20c1772a8495ee162dd2403ddfecfa049367df2"
+    },
+    {
+      "path": "docs/planning/evidence/P06/native-prepare.json",
+      "sha256": "0d8870c118ae4770b3c7410281f6012a062a04f5d94fb0dae1a594517a895d2b"
+    },
+    {
+      "path": "docs/planning/evidence/P06/workload-perf-C19.json",
+      "sha256": "71b41487824e35c00acea07e21cb07b347c1c62cd89742cb30192291a730997d"
+    },
+    {
+      "path": "docs/planning/evidence/P06/workload-perf-C20.json",
+      "sha256": "076a4163116435996b14a1c9a8b0ced288758182d757b6a0926faf210bd96721"
+    },
+    {
+      "path": "docs/planning/evidence/P06/workload-perf-C21.json",
+      "sha256": "a94d7d9178c8e3b8c876b4f8c7642ebf6991f355f1bf0f491e7d652e30a0efd5"
+    },
+    {
+      "path": "docs/planning/evidence/P06/workload-perf-C22.json",
+      "sha256": "bd0a7759dabed31630abc623e4c0d26ba14a7ce470c790fbf42571f40fd86d98"
+    }
+  ],
+  "native_acceptance": {
+    "path": "docs/planning/evidence/P06/native-acceptance.json",
+    "sha256": "793fc025a359c9210177d052c20c1772a8495ee162dd2403ddfecfa049367df2"
+  },
+  "native_executable_sha256": "904dba6c99d1cae53b3e89db2bcc6c4dece70d7a7ff01ee2b269163ae81d1387",
+  "diff": {
+    "path": "docs/planning/reviews/P06/attempt-05/diff.patch",
+    "sha256": "436cb8e4b24df8307bf040b100a2db22817a3c4a791e5ca67fc7cf54acea2bb4"
+  },
+  "limitations": [
+    "P06 integrated native evidence: the C19, C20, C21 and C22 drivers ran against the single P06-prepared fixture bundle with AIRS_NATIVE_SUBJECT=P06 (native-<chunk>/, native-acceptance-<chunk>.json), merged by tools/native-acceptance/merge_phase.py into native-acceptance.json. The phase's registered workloads (C19 Harness session, C20 sign-in and history, C21 tools and approvals, C22 MCP servers) were re-measured on that bundle and recorded under their own names (workload-perf-<chunk>.json).",
+    "D034: C20, C21 and C22 first completed on 8/10 reviews under the owner rule and were each raised to a passing 9/10 review on the integrated tree before this phase review. Their follow-ups and remediation are in docs/planning/reviews/<chunk>/follow-ups.md. C19 completed on a passing 9/10 review.",
+    "Mutation probes: the C19-C22 probe sets were re-run with the hardened harness on this phase tree; results.json 'inputs' bind each run to the SHA-256 of every mutated source, and each mutation is credited only when its named test fails. Counts are in each chunk's mutation-probes/probes.log.",
+    "This packet's diff is measured from the P05 completion commit (5ce089b).",
+    "No real product endpoint, identity provider or MCP server is called before C25. The Gateway (management, runtime and MCP planes), the OpenID provider and the MCP OAuth servers are synthetic loopback TLS services: tools/native-acceptance/mgmt_server.py (native and workloads) and the fixtures in crates/desktop-core/tests/harness_process, harness_identity_history (idp.rs), harness_tools and workspace_mcp (fixture.rs). The real pinned engine (9331a58, airs-desktop/1) runs in the integration tests and the native bundle; a scripted stand-in covers the failure modes the engine cannot be made to produce. Fixture builds only; signed packages are C26.",
+    "Recorded scope decisions: D046 (the native Harness engine: sealed resource, lifecycle and conversation), D047 (company sign-in, renewal and protected history, including offline reading of the last chosen workspace's history), D048 (desktop tools, project folder, approvals and proposals) and D049 (workspace MCP servers: catalog, desktop OAuth, grants and approval).",
+    "Offline (T23) is modelled by an unreachable management and Gateway origin after a relaunch (integration) and by stopping the synthetic services (native C20-N12, C21-N09); the Mac's own network is not disabled. Sleep is the system-will-sleep notification the shell forwards; hardware sleep and wake are not exercised.",
+    "Folder selection and transcript export in native checks use the fixture sheet adapters; drivers never save an Accessibility tree while an NSOpenPanel or NSSavePanel is shown. Spoken VoiceOver output is not recorded; AX roles, names and focus are inspected.",
+    "One C19 probe was widened on the phase tree: 'a replaced key leaves the conversation bound' now mutates the credential binding check as a whole (any key, stored or being stored). A key replacement first passes through the Storing state, which alone retires the conversation, so the earlier record-only mutation was not observable through the production interface and was the one probe its guard did not catch on this tree. Its guard (harness_process a_changed_key_workspace_or_context_retires_the_conversation_at_once) catches the widened mutation.",
+    "Phase attempts 01-04 are remediated as described in docs/planning/reviews/P06/remediation-attempt-01.md to -04.md (a finished turn's transcript is kept across any stop, whatever happens to its export; once a stop has begun nothing operator-sent is released after any await, and every message not sent is kept failed in the saved record or, for a renewal overtaken during its sign-in or confirmation, given back to the box; a renewal whose new engine never runs keeps and saves its message); the C19-C22 probes and the phase native and workload evidence were recorded again on this tree."
+  ],
+  "verdict_schema": {
+    "path": "docs/architecture/review-verdict.schema.json",
+    "sha256": "446db12c809cbe91ea6af7ac622c3e029dbe5792828e1361d2b1f2af830375b4"
+  },
+  "verdict_path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/docs/planning/reviews/P06/attempt-05/verdict.json",
+  "review_instructions": "Independently review phase P06 (chunks C19, C20, C21, C22) of Prisma AIRS Desktop\nv2 as an integrated whole. Read AGENTS.md, GLOSSARY.md, decisions, ADRs, the\nimplementation plan, each phase chunk instruction, review-protocol.md, and the\npacket's receipts and evidence. Assess how the phase's features compose with\neach other and with earlier phases they affect: authority boundaries across\nfeatures, shared state, regressions, outcome truthfulness, and whether the\nintegrated tests and native evidence exercise the combined behavior.\n\nHistorical chunk scores are evidence to assess, not a substitute for this\nreview. A defect visible only across chunks is a required fix even if every\nchunk passed alone. Do not edit application files, call endpoints, read\nsecrets, or implement fixes.\n\nScore architecture, behavior, authority_security, validation and overall 1-10.\nReturn the same verdict schema as chunk reviews with the phase as subject. A\npass requires every score >=9 and empty required_fixes/blockers/evidence_gaps.\nDo not inflate scores to meet the target."
+}

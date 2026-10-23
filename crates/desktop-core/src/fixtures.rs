@@ -817,10 +817,40 @@ pub mod sidecar {
 
     use crate::harness::sidecar::{LaunchSpec, Sidecar, SidecarLauncher};
 
+    /// Runtime roots whose next homes cannot be made (P06 review R4-F1).
+    static REFUSED_HOMES: Mutex<Vec<std::path::PathBuf>> = Mutex::new(Vec::new());
+
+    /// Refuses (or allows again) making homes under `root`.
+    pub fn refuse_homes(root: &std::path::Path, refuse: bool) {
+        if let Ok(mut r) = REFUSED_HOMES.lock() {
+            r.retain(|p| p != root);
+            if refuse {
+                r.push(root.to_owned());
+            }
+        }
+    }
+
+    pub(crate) fn home_refused(root: &std::path::Path) -> bool {
+        REFUSED_HOMES
+            .lock()
+            .is_ok_and(|r| r.iter().any(|p| p == root))
+    }
+
+    /// How later launches fail (P06 review R4-F1).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum LaunchFault {
+        /// The process cannot be spawned.
+        Refused,
+        /// It runs without its output pipe.
+        Pipeless,
+    }
+
     /// Launches processes and records every spec it was given.
     #[derive(Default)]
     pub struct ProcessLauncher {
         pub launched: Mutex<Vec<LaunchSpec>>,
+        /// From the `n`th launch on (counting from 0), each fails this way.
+        pub fault: Mutex<Option<(usize, LaunchFault)>>,
     }
 
     impl ProcessLauncher {
@@ -834,8 +864,23 @@ pub mod sidecar {
 
     impl SidecarLauncher for ProcessLauncher {
         fn launch(&self, spec: &LaunchSpec) -> std::io::Result<Box<dyn Sidecar>> {
-            if let Ok(mut l) = self.launched.lock() {
-                l.push(spec.clone());
+            let count = self
+                .launched
+                .lock()
+                .map(|mut l| {
+                    l.push(spec.clone());
+                    l.len() - 1
+                })
+                .unwrap_or(0);
+            let fault = self
+                .fault
+                .lock()
+                .ok()
+                .and_then(|f| *f)
+                .filter(|(from, _)| count >= *from)
+                .map(|(_, fault)| fault);
+            if fault == Some(LaunchFault::Refused) {
+                return Err(std::io::Error::other("fixture"));
             }
             let child = Command::new(&spec.executable)
                 .args(&spec.args)
@@ -843,7 +888,11 @@ pub mod sidecar {
                 .envs(spec.env.iter().map(|(k, v)| (k, v)))
                 .current_dir(&spec.cwd)
                 .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
+                .stdout(if fault == Some(LaunchFault::Pipeless) {
+                    Stdio::null()
+                } else {
+                    Stdio::piped()
+                })
                 .stderr(Stdio::null())
                 .process_group(0)
                 .spawn()?;

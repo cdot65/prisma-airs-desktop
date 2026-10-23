@@ -1,0 +1,26 @@
+
+running 16 tests
+test output_is_bounded_and_a_malformed_chunk_ends_the_run ... ok
+test another_key_or_workspace_withdraws_the_files_and_their_attachments ... ok
+test stopping_ends_the_stream_and_never_claims_nothing_was_charged ... ok
+test the_overview_reports_the_chosen_workspaces_gateway_day_with_its_source_state ... ok
+test the_inference_key_is_bound_to_its_workspace_and_endpoint_and_never_leaves_the_core ... ok
+test gateway_files_are_read_uploaded_attached_and_deleted_once_with_the_workspace_key ... ok
+test a_run_streams_its_output_once_with_its_route_and_trace_and_is_never_retried ... ok
+test usage_logs_and_limits_read_only_the_chosen_workspace_and_keep_each_sources_failure ... ok
+test a_responses_run_streams_once_and_reports_how_it_ended ... ok
+test file_lists_keep_their_bound_deletes_their_identity_and_times_their_range ... ok
+test playground_drafts_and_uncertain_runs_survive_an_offline_restart_and_nothing_is_replayed ... ok
+test uncertain_file_changes_are_kept_with_their_trace_and_never_resent ... ok
+test a_gateway_hold_ends_only_from_a_known_day_of_its_own_workspace ... ok
+test uncertain_openings_keep_their_trace_across_a_restart_and_are_never_replayed ... ok
+test a_replaced_or_removed_key_withdraws_its_run_from_every_snapshot_at_once ... ok
+test another_workspace_tenant_or_key_stops_the_run_and_its_late_output_is_dropped ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.48s
+
+
+--- stderr ---
+   Compiling desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.40s
+     Running tests/gateway_inference/main.rs (target/debug/deps/gateway_inference-74ec38d4979d9d57)

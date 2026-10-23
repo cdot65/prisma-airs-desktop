@@ -1,0 +1,15 @@
+
+running 5 tests
+test only_absolute_paths_are_launched ... ok
+test dropping_an_unreaped_sidecar_kills_and_reaps_its_group ... ok
+test closing_input_ends_a_reader_and_exit_is_seen_before_reaping ... ok
+test killing_the_group_takes_descendants_with_it ... ok
+test nothing_is_inherited_and_stderr_is_discarded ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+--- stderr ---
+   Compiling desktop-host v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.57s
+     Running tests/sidecar_supervision.rs (target/debug/deps/sidecar_supervision-f029d1c7db291d11)

@@ -1,0 +1,25 @@
+
+running 15 tests
+test a_case_copied_to_another_tenant_is_a_new_case_there ... ok
+test exports_and_imports_are_explicit_bounded_and_tenant_bound ... ok
+test imported_runtime_cases_with_a_payload_and_inconsistent_charts_stay_in_contract ... ok
+test a_deleted_tenant_or_reset_takes_its_sealed_library_and_key ... ok
+test limits_payloads_and_unknown_types_are_refused ... ok
+test the_overview_summarizes_sources_without_fabricating_zeros_or_completeness ... ok
+test freshness_and_snooze_deadlines_are_published_without_any_event ... ok
+test cases_are_authored_sealed_and_survive_a_restart ... ok
+test a_locked_keychain_or_unreadable_library_is_reported_and_kept ... ok
+test queued_saves_and_copies_report_their_real_outcome ... ok
+test the_library_works_offline_survives_restart_and_retries_a_failed_save ... ok
+test delayed_library_completions_stay_with_their_tenant ... ok
+test a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence ... ok
+test a_failed_library_cleanup_stays_ledgered_and_finishes_later ... ok
+test catalogs_import_examples_once_and_report_unusable_catalogs ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.27s
+
+
+--- stderr ---
+   Compiling desktop-core v0.1.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.08s
+     Running tests/library_observation/main.rs (target/debug/deps/library_observation-4fa2db6c27699ce1)

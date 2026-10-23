@@ -119,9 +119,13 @@ PROBES = [
        "                .and_then(|n| n.to_str())\n                .is_some_and(|_| true);\n        ours &&")], UNIT_T, U_HOME),
     ("an unbound conversation keeps running",
      [(DOMAIN, "            c.retired = true;\n            c.cancel.cancel();", "            c.retired = true;")], HP_T, RETIRE),
+    # A replacement first passes through Storing, which alone retires the
+    # conversation, so the binding check is mutated as a whole: any key,
+    # stored or being stored (P06 re-anchor; a record-only mutation is not
+    # observable through the production interface).
     ("a replaced key leaves the conversation bound",
      [(DOMAIN, "                ScanCapability::Ready { record, .. } if Some(record) == c.record.as_ref()",
-       "                ScanCapability::Ready { .. }")],
+       "                ScanCapability::Ready { .. } | ScanCapability::Storing { .. }")],
      HP_T, RETIRE),
     ("sleep leaves the conversation running",
      [(AUTHORITY, "            && state.stop_harness(harness_domain::HarnessStop::Sleep)", "            && state.harness_running() && false")], HP_T, SLEEP),

@@ -84,6 +84,14 @@ RACING = "history_saves_racing_tenant_removal_or_reset_never_outlive_them"
 OFFLINE = "offline_history_is_read_and_exported_and_nothing_is_replayed_on_reconnect"
 FE_OFFLINE = "reads and exports what is saved on this Mac when no workspace can be chosen (T23)"
 DURABLE = "a_history_key_is_made_only_once_its_scope_is_durably_noted"
+PENDING = "a_finished_turn_whose_export_is_pending_is_kept_when_stopped"
+FAILING = "a_stop_while_an_export_fails_keeps_the_turn_and_sends_nothing_waiting"
+WAITING_OK = "a_message_waiting_for_an_export_that_comes_at_a_stop_is_kept_unsent"
+HELD = "a_stop_during_a_held_save_sends_nothing_waiting_or_queued"
+RENEW_WAITING = "a_renewal_waiting_for_an_export_at_a_stop_never_restarts_or_sends"
+RENEWING = "a_renewal_under_way_when_the_mac_sleeps_never_restarts_or_loses_the_message"
+CONFIRM = "a_renewal_restarts_with_changes_only_once_the_operator_allows_them_again"
+NO_START = "a_renewal_whose_engine_cannot_start_keeps_and_saves_its_message"
 
 PROBES = [
     ("discovery may name another issuer",
@@ -212,6 +220,60 @@ PROBES = [
     # Attempt-02 (C20-R2-F1).
     ("a history key is made under an unconfirmed note",
      [(HDOMAIN, "            || (self.durability_unconfirmed && !self.confirm_durable())\n", "")], HI_T, DURABLE),
+    # P06 phase review R2.
+    ("a waiting message is sent while stopping",
+     [(SESSION, "                    if !self.stopping\n", "                    if true\n")], HI_T, FAILING),
+    # P06 phase review F1 and R2: a finished turn's transcript is unsaved
+    # until a save succeeds, whatever happened to its export (pending,
+    # refused or malformed). Guarded by the pending case, which queues no
+    # message: since R3 a queued unsent message forces the save by itself.
+    ("an unsaved transcript is dropped at a stop",
+     [(SESSION, "    let turn_open = conversation.turn.is_some() || conversation.unsaved;",
+       "    let turn_open = conversation.turn.is_some();")], HI_T, PENDING),
+    # P06 phase review R3: operator work pending at a stop (deferred,
+    # queued, or a renewal's) is never sent and never lost.
+    ("a waiting message vanishes at a stop",
+     [(SESSION, "    if let Some(Command::Send { id, prompt } | Command::Renew { id, prompt, .. }) = deferred {",
+       "    if let Some(Command::Send { id, prompt } | Command::Renew { id, prompt, .. }) = None::<Command> {")], HI_T, WAITING_OK),
+    ("a waiting renewal vanishes at a stop",
+     [(SESSION, "    if let Some(Command::Send { id, prompt } | Command::Renew { id, prompt, .. }) = deferred {",
+       "    if let Some(Command::Send { id, prompt }) = deferred {")], HI_T, RENEW_WAITING),
+    ("a stop during a save releases what waits",
+     [(SESSION, "                if cancel.is_cancelled() || Instant::now() >= deadline {\n                    self.stopping = true;\n                    return Ok(());\n                }\n", "")], HI_T, HELD),
+    ("a queued message vanishes at a stop",
+     [(SESSION, "        while let Ok(command) = shared.commands.try_recv() {",
+       "        while let Some(command) = None::<Command> {")], HI_T, HELD),
+    ("an unsent message is not saved",
+     [(SESSION, "    let had_unsent = !unsent.is_empty();", "    let had_unsent = false;")], HI_T, WAITING_OK),
+    ("a renewal restarts after a stop",
+     [(SESSION, "        Some((_, _, id, prompt)) if stopped => (None, Some((id, prompt))),",
+       "        Some((_, _, id, prompt)) if false => (None, Some((id, prompt))),")], HI_T, RENEWING),
+    ("a renewal that cannot restore loses its message",
+     [(SESSION, "                abandoned = Some((id, prompt));\n                None\n            } else {",
+       "                None\n            } else {")], HI_T, NEVER_OLDER),
+    ("a renewal's message vanishes while its engine starts",
+     [(SESSION, "            _ = cancel.cancelled() => return Ok(()),\n",
+       "            _ = cancel.cancelled() => { self.deferred = None; return Ok(()); }\n")], HI_T, RENEWING),
+    ("a renewal overtaken by a stop loses its message",
+     [(DOMAIN, "        if c.ended.is_some() || c.stop.is_some() {\n            c.keep_unsent(job);\n            return;",
+       "        if c.ended.is_some() || c.stop.is_some() {\n            return;")], HI_T, RENEWING),
+    # P06 phase review R4: a renewal whose engine never runs keeps and saves
+    # its message.
+    ("a renewal whose engine never runs is not saved",
+     [(SESSION, "    let (Some(sink), Some((entries, usage))) = (shared.history.clone(), taken) else {",
+       "    let (Some(sink), Some((entries, usage))) = (None::<HistorySink>, taken) else {")], HI_T, NO_START),
+    ("a refused launch loses the renewal's message",
+     [(SESSION, "        keep_unsent(shared, unsent, restore.as_ref()).await;\n        fail(HarnessFailure::StartFailed);\n        return (Outcome::NotSent, None);\n    };\n    update(",
+       "        fail(HarnessFailure::StartFailed);\n        return (Outcome::NotSent, None);\n    };\n    update(")], HI_T, NO_START),
+    ("a pipeless engine loses the renewal's message",
+     [(SESSION, "        keep_unsent(shared, unsent, restore.as_ref()).await;\n        fail(HarnessFailure::StartFailed);\n        return (Outcome::NotSent, None);\n    };\n    let (events_tx",
+       "        fail(HarnessFailure::StartFailed);\n        return (Outcome::NotSent, None);\n    };\n    let (events_tx")], HI_T, NO_START),
+    ("a home not made loses the renewal's message",
+     [(SESSION, "                keep_unsent(&shared, unsent_entry(&next), next.restore.as_ref()).await;\n", "")], HI_T, NO_START),
+    ("an old home kept loses the renewal's message",
+     [(SESSION, "                if let Some(launch) = other {\n                    keep_unsent(&shared, unsent_entry(&launch), launch.restore.as_ref()).await;\n                }\n", "")], HI_T, NO_START),
+    ("a confirmation pending at a stop loses its message",
+     [(DOMAIN, "                if let Some(job) = c.write_confirm.take() {\n                    c.keep_unsent(job);\n                }\n", "")], HI_T, CONFIRM),
 ]
 
 

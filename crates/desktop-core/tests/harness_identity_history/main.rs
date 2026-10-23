@@ -42,6 +42,7 @@ type Break = Box<dyn Fn(&mut Idp)>;
 
 const FIRST: &str = "Remember the C20 canary word: periwinkle.";
 const SECOND: &str = "What word did I ask you to remember?";
+const THIRD: &str = "A third message.";
 
 /// A desk with the real engine and the identity provider on its server.
 async fn desk() -> (Desk, Shared) {
@@ -554,7 +555,21 @@ async fn a_renewal_restarts_with_changes_only_once_the_operator_allows_them_agai
     assert!(gone(first_pid).await);
     assert_eq!(idp.lock().expect("idp").refreshes, 1);
     assert!(bodies(&desk)[1].contains("periwinkle"));
-    desk.end(&id).await;
+    // Due again, and the Mac sleeps while the confirmation is asked: the
+    // message goes back to the box, and nothing restarts or is sent (P06
+    // review R3-F1).
+    let launches = desk.launcher.launches().len();
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    desk.say(&id, THIRD).await.expect("sent");
+    assert!(settle(|| desk.conversation()["phase"] == "confirmWrite").await);
+    desk.core.system_will_sleep();
+    assert!(settle_for(15, || desk.conversation()["phase"] == "ended").await);
+    let c = desk.conversation();
+    assert_eq!(c["unsent"], THIRD, "{c}");
+    assert_eq!(c["entries"].as_array().map(Vec::len), Some(4), "{c}");
+    assert_eq!(idp.lock().expect("idp").refreshes, 1);
+    assert_eq!(gateway_keys(&desk).len(), 2);
+    assert_eq!(desk.launcher.launches().len(), launches);
     std::fs::remove_dir_all(&dir).expect("cleanup");
 }
 
@@ -618,16 +633,16 @@ async fn a_renewal_never_restores_an_export_older_than_the_conversation() {
     tokio::time::sleep(Duration::from_secs(7)).await;
     // The renewal cannot restore the second turn: the conversation fails
     // as not restorable, and no engine is started with the first turn's
-    // export in its place, so the third message is never sent.
-    desk.say(&id, "A third message.").await.expect("admitted");
+    // export in its place, so the third message is never sent: it is kept,
+    // failed (P06 review R3-F1).
+    desk.say(&id, THIRD).await.expect("admitted");
     assert!(
         settle_for(30, || desk.conversation()["phase"] == "failed").await,
         "{}",
         desk.conversation()
     );
-    let c = desk.conversation();
+    let c = ends_unsent(&desk, THIRD, 5);
     assert_eq!(c["failure"], "restoreFailed", "{c}");
-    assert_eq!(c["entries"].as_array().map(Vec::len), Some(4), "{c}");
     assert_eq!(desk.launcher.launches().len(), launches);
     assert!(gone(pid).await);
     assert_eq!(idp.lock().expect("idp").refreshes, 1);
@@ -652,7 +667,10 @@ async fn refused_or_unanswered_exports_and_refused_restores_are_named() {
     }
     assert!(desk.conversation()["savedAt"].is_null());
     assert!(history_files(&desk.history_root).is_empty());
+    // Ended unsaved: its turns are kept, inspect-only (P06 review R2-F2).
     desk.end(&id).await;
+    assert!(settle(|| history_files(&desk.history_root).len() == 1).await);
+    assert!(!desk.conversation()["savedAt"].is_null());
     desk.send(json!({"kind": "clearHarness", "conversation": id}))
         .await
         .expect("cleared");
@@ -672,10 +690,22 @@ async fn refused_or_unanswered_exports_and_refused_restores_are_named() {
     );
     assert_eq!(desk.conversation()["failure"], "timeout");
     assert!(gone(pid).await);
-    assert!(history_files(&desk.history_root).is_empty());
+    // Its finished turn is still kept, inspect-only: no export means no
+    // restore point (P06 review F1).
+    assert!(settle(|| history_files(&desk.history_root).len() == 2).await);
+    let silent = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
     desk.send(json!({"kind": "clearHarness", "conversation": id}))
         .await
         .expect("cleared");
+    let _ = list(&mut desk).await;
+    open(&mut desk, &silent).await;
+    assert_eq!(
+        desk.json()["harness"]["history"]["opened"]["notContinuable"],
+        "notRestorable"
+    );
     // A restore the engine refuses: the saved conversation is named as not
     // restored, never continued as a new thread.
     desk.store_key(&reference, KEY, Some("restore-refuse"))
@@ -711,8 +741,8 @@ async fn refused_or_unanswered_exports_and_refused_restores_are_named() {
     assert_eq!(c["failure"], "restoreFailed", "{c}");
     assert_eq!(c["entries"].as_array().map(Vec::len), Some(2), "{c}");
     assert!(settle(|| desk.run_dirs().is_empty()).await);
-    // The record itself is kept as it was.
-    assert_eq!(history_files(&desk.history_root).len(), 1);
+    // The record itself is kept as it was (beside the two kept above).
+    assert_eq!(history_files(&desk.history_root).len(), 3);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -1233,6 +1263,558 @@ async fn a_turn_cut_short_after_a_refused_export_is_kept_without_a_restore_point
         .send(json!({"kind": "resumeHarness", "context": context, "workspace": workspace, "id": history}))
         .await
         .is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_finished_turn_whose_export_is_pending_is_kept_when_stopped() {
+    // P06 review F1: the turn has ended and is shown, its export never
+    // comes, and the Mac sleeps. On a first turn, and on a conversation
+    // already saved.
+    for (mode, earlier) in [("history-silent", false), ("history-silent-later", true)] {
+        let (engine, pin) = fixture_engine();
+        let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+        let id = desk.ready(Some(mode)).await;
+        let history = desk.conversation()["historyId"]
+            .as_str()
+            .expect("id")
+            .to_owned();
+        if earlier {
+            desk.say(&id, FIRST).await.expect("sent");
+            assert_eq!(desk.answered().await["lastTurn"], "completed");
+            assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+        }
+        let saved_before = desk.conversation()["savedAt"].clone();
+        desk.say(&id, SECOND).await.expect("sent");
+        assert_eq!(desk.answered().await["lastTurn"], "completed");
+        let shown = desk.conversation()["entries"].clone();
+        desk.core.system_will_sleep();
+        assert!(
+            settle_for(15, || desk.conversation()["phase"] == "ended").await,
+            "{mode:?}: {}",
+            desk.conversation()
+        );
+        let c = desk.conversation();
+        assert!(
+            !c["savedAt"].is_null() && c["savedAt"] != saved_before,
+            "{mode:?}: {c}"
+        );
+        assert_eq!(history_files(&desk.history_root).len(), 1, "{mode}");
+        let launches = desk.launcher.launches().len();
+        // Offline: the latest messages are on this Mac, inspect-only.
+        let mut desk = relaunch(desk, false, false).await;
+        let context = desk.context();
+        desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+            .await
+            .expect("listed");
+        assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+        desk.send(json!({"kind": "openHarnessHistory", "context": context, "workspace": null, "id": history}))
+            .await
+            .expect("opened");
+        assert!(
+            settle(|| desk.json()["harness"]["history"]["opened"]["id"] == history.as_str()).await
+        );
+        let opened = desk.json()["harness"]["history"]["opened"].clone();
+        assert_eq!(opened["entries"], shown, "{mode:?}: {opened}");
+        assert_eq!(
+            opened["notContinuable"], "notRestorable",
+            "{mode:?}: {opened}"
+        );
+        // Reconnected: never continued, nothing replayed.
+        let mut desk = relaunch(desk, true, false).await;
+        let reference = desk.choose(WS_A).await;
+        open(&mut desk, &history).await;
+        assert_eq!(
+            desk.json()["harness"]["history"]["opened"]["notContinuable"],
+            "notRestorable"
+        );
+        let context = desk.context();
+        assert!(desk
+            .send(json!({"kind": "resumeHarness", "context": context, "workspace": reference, "id": history}))
+            .await
+            .is_err());
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        assert!(desk.json()["harness"]["conversation"].is_null());
+        assert_eq!(desk.launcher.launches().len(), launches, "{mode}");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_stop_while_an_export_fails_keeps_the_turn_and_sends_nothing_waiting() {
+    // P06 review R2: the turn has ended, its export answers inside the
+    // stop's grace with a refusal or a malformed result, and the next
+    // message waits for it. On a first turn and on a saved conversation.
+    for (mode, earlier) in [
+        ("history-slow-refuse", false),
+        ("history-slow-refuse-later", true),
+        ("history-slow-malformed", false),
+        ("history-slow-malformed-later", true),
+    ] {
+        let (engine, pin) = fixture_engine();
+        let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+        let id = desk.ready(Some(mode)).await;
+        let history = desk.conversation()["historyId"]
+            .as_str()
+            .expect("id")
+            .to_owned();
+        if earlier {
+            desk.say(&id, FIRST).await.expect("sent");
+            assert_eq!(desk.answered().await["lastTurn"], "completed");
+            assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+        }
+        let saved_before = desk.conversation()["savedAt"].clone();
+        desk.say(&id, SECOND).await.expect("sent");
+        assert_eq!(desk.answered().await["lastTurn"], "completed");
+        // The next message waits for that export.
+        desk.say(&id, "A third message.").await.expect("admitted");
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        desk.core.system_will_sleep();
+        assert!(
+            settle_for(15, || desk.conversation()["phase"] == "ended").await,
+            "{mode:?}: {}",
+            desk.conversation()
+        );
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        let c = desk.conversation();
+        let entries = c["entries"].as_array().cloned().unwrap_or_default();
+        // The waiting message was never sent: it is kept, failed, and
+        // nothing answered it.
+        let last = entries.last().expect("entries");
+        assert_eq!(last["text"], "A third message.", "{mode:?}: {c}");
+        assert_eq!(last["role"], "operator", "{mode:?}: {c}");
+        assert_eq!(last["state"], "failed", "{mode:?}: {c}");
+        assert_eq!(entries.len(), if earlier { 5 } else { 3 }, "{mode:?}: {c}");
+        // The turn is saved, inspect-only.
+        assert!(
+            !c["savedAt"].is_null() && c["savedAt"] != saved_before,
+            "{mode:?}: {c}"
+        );
+        let launches = desk.launcher.launches().len();
+        let mut desk = relaunch(desk, false, false).await;
+        let context = desk.context();
+        desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+            .await
+            .expect("listed");
+        assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+        desk.send(json!({"kind": "openHarnessHistory", "context": context, "workspace": null, "id": history}))
+            .await
+            .expect("opened");
+        assert!(
+            settle(|| desk.json()["harness"]["history"]["opened"]["id"] == history.as_str()).await
+        );
+        let opened = desk.json()["harness"]["history"]["opened"].clone();
+        assert_eq!(opened["entries"], c["entries"], "{mode:?}: {opened}");
+        assert_eq!(
+            opened["notContinuable"], "notRestorable",
+            "{mode:?}: {opened}"
+        );
+        // Reconnected: never continued, nothing sent.
+        let mut desk = relaunch(desk, true, false).await;
+        let reference = desk.choose(WS_A).await;
+        open(&mut desk, &history).await;
+        let context = desk.context();
+        assert!(desk
+            .send(json!({"kind": "resumeHarness", "context": context, "workspace": reference, "id": history}))
+            .await
+            .is_err());
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        assert_eq!(desk.launcher.launches().len(), launches, "{mode}");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_finished_turn_stopped_before_its_export_is_saved_with_it() {
+    // P06 review F1: with the real engine the export arrives within the
+    // stop's grace, so the turn is saved with it and stays continuable.
+    let (mut desk, _idp) = desk().await;
+    let id = desk.ready(None).await;
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    desk.core.system_will_sleep();
+    assert!(settle_for(15, || desk.conversation()["phase"] == "ended").await);
+    assert!(
+        !desk.conversation()["savedAt"].is_null(),
+        "{}",
+        desk.conversation()
+    );
+    desk.send(json!({"kind": "clearHarness", "conversation": id}))
+        .await
+        .expect("cleared");
+    let _ = list(&mut desk).await;
+    open(&mut desk, &history).await;
+    let opened = desk.json()["harness"]["history"]["opened"].clone();
+    assert_eq!(
+        opened["entries"].as_array().map(Vec::len),
+        Some(2),
+        "{opened}"
+    );
+    assert!(opened["notContinuable"].is_null(), "{opened}");
+}
+
+/// The entries shown, the last one the operator's `text`, failed and never
+/// answered.
+fn ends_unsent(desk: &Desk, text: &str, entries: usize) -> Value {
+    let c = desk.conversation();
+    let shown = c["entries"].as_array().cloned().unwrap_or_default();
+    assert_eq!(shown.len(), entries, "{c}");
+    let last = shown.last().expect("entries");
+    assert_eq!(last["text"], text, "{c}");
+    assert_eq!(last["role"], "operator", "{c}");
+    assert_eq!(last["state"], "failed", "{c}");
+    assert!(
+        shown
+            .iter()
+            .all(|e| e["state"] != "streaming" && e["state"] != "interrupted"),
+        "{c}"
+    );
+    c
+}
+
+/// Relaunches offline and opens `history` from this Mac.
+async fn opened_offline(desk: Desk, history: &str) -> (Desk, Value) {
+    let mut desk = relaunch(desk, false, false).await;
+    let context = desk.context();
+    desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": null}))
+        .await
+        .expect("listed");
+    assert!(settle(|| desk.json()["harness"]["history"]["state"] == "ready").await);
+    desk.send(
+        json!({"kind": "openHarnessHistory", "context": context, "workspace": null, "id": history}),
+    )
+    .await
+    .expect("opened");
+    assert!(settle(|| desk.json()["harness"]["history"]["opened"]["id"] == history).await);
+    let opened = desk.json()["harness"]["history"]["opened"].clone();
+    (desk, opened)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_message_waiting_for_an_export_that_comes_at_a_stop_is_kept_unsent() {
+    // P06 review R3-F1: the next message waits for a finished turn's
+    // export, the Mac sleeps, and the export comes inside the stop's grace
+    // and is saved. The waiting message is kept, failed, in the view and in
+    // the record, which stays continuable and never sends it.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, _idp) = desk_on(Some(engine), Some(pin)).await;
+    let id = desk.ready(Some("history-slow-ok-later")).await;
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    desk.say(&id, SECOND).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    desk.say(&id, THIRD).await.expect("admitted");
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    desk.core.system_will_sleep();
+    assert!(
+        settle_for(15, || desk.conversation()["phase"] == "ended").await,
+        "{}",
+        desk.conversation()
+    );
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let c = ends_unsent(&desk, THIRD, 5);
+    assert!(c["saveFailure"].is_null(), "{c}");
+    let launches = desk.launcher.launches().len();
+    // Offline, exactly what was shown.
+    let (desk, opened) = opened_offline(desk, &history).await;
+    assert_eq!(opened["entries"], c["entries"], "{opened}");
+    // Reconnected, it continues from the second turn's export, and the
+    // unsent message stays unsent.
+    let mut desk = relaunch(desk, true, false).await;
+    let reference = desk.choose(WS_A).await;
+    open(&mut desk, &history).await;
+    assert!(desk.json()["harness"]["history"]["opened"]["notContinuable"].is_null());
+    let context = desk.context();
+    desk.send(
+        json!({"kind": "resumeHarness", "context": context, "workspace": reference, "id": history}),
+    )
+    .await
+    .expect("resumed");
+    assert!(
+        settle_for(30, || desk.conversation()["phase"] == "ready").await,
+        "{}",
+        desk.conversation()
+    );
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    let resumed = desk.conversation();
+    assert_eq!(resumed["entries"], c["entries"], "{resumed}");
+    assert!(resumed["lastTurn"].is_null(), "{resumed}");
+    assert_eq!(desk.launcher.launches().len(), launches + 1);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_stop_during_a_held_save_sends_nothing_waiting_or_queued() {
+    // P06 review R3-F2: the save after a turn's export is held, and the Mac
+    // sleeps meanwhile. A message deferred for that export, or one still
+    // queued behind the save, is never sent once the save returns: it is
+    // kept, failed, and saved. With the real engine, no further Gateway
+    // request is made.
+    for (mode, deferred, real) in [
+        (Some("history-slow-ok-later"), true, false),
+        (None, false, false),
+        (None, false, true),
+    ] {
+        let (mut desk, _idp) = if real {
+            desk().await
+        } else {
+            let (engine, pin) = fixture_engine();
+            desk_on(Some(engine), Some(pin)).await
+        };
+        let id = desk.ready(mode).await;
+        let history = desk.conversation()["historyId"]
+            .as_str()
+            .expect("id")
+            .to_owned();
+        desk.say(&id, FIRST).await.expect("sent");
+        assert_eq!(desk.answered().await["lastTurn"], "completed");
+        assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+        let held = desk.core.hold_history_writes().await;
+        desk.say(&id, SECOND).await.expect("sent");
+        assert_eq!(desk.answered().await["lastTurn"], "completed");
+        if deferred {
+            // Deferred while the export is read, then the export comes and
+            // its save is held.
+            desk.say(&id, THIRD).await.expect("admitted");
+            assert!(settle_for(10, || desk.core.history_writes_under_way() == 1).await);
+        } else {
+            // The save is held first; the message queues behind it.
+            assert!(settle_for(10, || desk.core.history_writes_under_way() == 1).await);
+            desk.say(&id, THIRD).await.expect("admitted");
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        desk.core.system_will_sleep();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        drop(held);
+        assert!(
+            settle_for(15, || desk.conversation()["phase"] == "ended").await,
+            "{mode:?}: {}",
+            desk.conversation()
+        );
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        let c = ends_unsent(&desk, THIRD, 5);
+        // Saved (the offline record below holds the unsent message; the
+        // second-resolution time may equal the earlier save's).
+        assert!(
+            !c["savedAt"].is_null() && c["saveFailure"].is_null(),
+            "{mode:?}: {c}"
+        );
+        if real {
+            assert_eq!(bodies(&desk).len(), 2, "no third turn reached the Gateway");
+        }
+        let (_desk, opened) = opened_offline(desk, &history).await;
+        assert_eq!(opened["entries"], c["entries"], "{mode:?}: {opened}");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_renewal_waiting_for_an_export_at_a_stop_never_restarts_or_sends() {
+    // P06 review R3-F1: the next message needs a renewed sign-in and waits
+    // for a finished turn's export that never comes; the Mac sleeps. No
+    // engine is started for the renewal, and the message is kept, failed.
+    let (engine, pin) = fixture_engine();
+    let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+    idp.lock().expect("idp").issue.lifetime = 12;
+    let id = signed_in_conversation_on(&mut desk, &idp, Some("history-silent-later")).await;
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("id")
+        .to_owned();
+    desk.say(&id, FIRST).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    desk.say(&id, SECOND).await.expect("sent");
+    assert_eq!(desk.answered().await["lastTurn"], "completed");
+    let launches = desk.launcher.launches().len();
+    // Past the renewal margin, inside the export's read timeout.
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    desk.say(&id, THIRD).await.expect("admitted");
+    assert!(settle(|| idp.lock().expect("idp").refreshes == 1).await);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    desk.core.system_will_sleep();
+    assert!(
+        settle_for(15, || desk.conversation()["phase"] == "ended").await,
+        "{}",
+        desk.conversation()
+    );
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let c = ends_unsent(&desk, THIRD, 5);
+    assert_eq!(desk.launcher.launches().len(), launches, "no restart");
+    let (_desk, opened) = opened_offline(desk, &history).await;
+    assert_eq!(opened["entries"], c["entries"], "{opened}");
+    assert_eq!(opened["notContinuable"], "notRestorable", "{opened}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_renewal_under_way_when_the_mac_sleeps_never_restarts_or_loses_the_message() {
+    // P06 review R3-F1, R3-F2: the message needs a renewed sign-in, and
+    // the Mac sleeps
+    // - while the sign-in is renewed: the message goes back to the box;
+    // - while the old engine is stopped for the restart (slowly: it ignores
+    //   the end of its input): no engine starts, and the message is kept,
+    //   failed, in the record;
+    // - while the new engine starts (slowly): it is never sent the message,
+    //   which is kept, failed, in the record.
+    for (while_, mode) in [
+        ("renewing", "normal"),
+        ("stopping", "hang-on-eof"),
+        ("starting", "slow-start"),
+    ] {
+        let (engine, pin) = fixture_engine();
+        let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+        idp.lock().expect("idp").issue.lifetime = 12;
+        if while_ == "renewing" {
+            idp.lock().expect("idp").refresh_delay_ms = 2000;
+        }
+        let id = signed_in_conversation_on(&mut desk, &idp, Some(mode)).await;
+        let history = desk.conversation()["historyId"]
+            .as_str()
+            .expect("id")
+            .to_owned();
+        desk.say(&id, FIRST).await.expect("sent");
+        assert_eq!(desk.answered().await["lastTurn"], "completed");
+        assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+        let saved = desk.conversation()["savedAt"].clone();
+        let launches = desk.launcher.launches().len();
+        tokio::time::sleep(Duration::from_secs(7)).await;
+        desk.say(&id, SECOND).await.expect("admitted");
+        assert!(settle(|| idp.lock().expect("idp").refreshes == 1).await);
+        match while_ {
+            // Inside the delayed refresh.
+            "renewing" => tokio::time::sleep(Duration::from_millis(300)).await,
+            // Inside the engine's two-second stop that follows it.
+            "stopping" => tokio::time::sleep(Duration::from_millis(1000)).await,
+            // Once the new engine is launched, inside its two-second start.
+            _ => assert!(settle_for(10, || desk.launcher.launches().len() == launches + 1).await),
+        }
+        desk.core.system_will_sleep();
+        assert!(
+            settle_for(15, || desk.conversation()["phase"] == "ended").await,
+            "{while_}: {}",
+            desk.conversation()
+        );
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        let started = usize::from(while_ == "starting");
+        assert_eq!(
+            desk.launcher.launches().len(),
+            launches + started,
+            "{while_}: no further engine"
+        );
+        let c = if while_ == "renewing" {
+            let c = desk.conversation();
+            assert_eq!(c["unsent"], SECOND, "{c}");
+            assert_eq!(c["entries"].as_array().map(Vec::len), Some(2), "{c}");
+            assert_eq!(c["savedAt"], saved, "{c}");
+            c
+        } else {
+            ends_unsent(&desk, SECOND, 3)
+        };
+        let (_desk, opened) = opened_offline(desk, &history).await;
+        assert_eq!(opened["entries"], c["entries"], "{while_}: {opened}");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_renewal_whose_engine_cannot_start_keeps_and_saves_its_message() {
+    // P06 review R4-F1: the message needs a renewed sign-in, and the
+    // replacement engine never runs: its launch is refused, it has no
+    // output pipe, its home cannot be made, or the old engine's home cannot
+    // be removed. The message is kept, failed, in the view and in the
+    // record (with the first turn's export as its restore point), the save
+    // is shown truthfully, and nothing is sent or replayed.
+    use desktop_core::fixtures::sidecar::{LaunchFault, refuse_homes};
+    use std::os::unix::fs::PermissionsExt;
+    for case in ["refused", "pipeless", "home", "stale home"] {
+        let (engine, pin) = fixture_engine();
+        let (mut desk, idp) = desk_on(Some(engine), Some(pin)).await;
+        idp.lock().expect("idp").issue.lifetime = 12;
+        let id = signed_in_conversation_on(&mut desk, &idp, None).await;
+        let history = desk.conversation()["historyId"]
+            .as_str()
+            .expect("id")
+            .to_owned();
+        desk.say(&id, FIRST).await.expect("sent");
+        assert_eq!(desk.answered().await["lastTurn"], "completed");
+        assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+        let launches = desk.launcher.launches().len();
+        let locked = desk.run_dirs().first().map(|home| home.join("locked"));
+        match case {
+            "refused" => {
+                *desk.launcher.fault.lock().expect("fault") = Some((launches, LaunchFault::Refused))
+            }
+            "pipeless" => {
+                *desk.launcher.fault.lock().expect("fault") =
+                    Some((launches, LaunchFault::Pipeless))
+            }
+            "home" => refuse_homes(&desk.runtime_root, true),
+            _ => {
+                let locked = locked.clone().expect("home");
+                std::fs::create_dir(&locked).expect("fixture");
+                std::fs::write(locked.join("kept"), b"x").expect("fixture");
+                std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o500))
+                    .expect("fixture");
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(7)).await;
+        desk.say(&id, SECOND).await.expect("admitted");
+        assert!(
+            settle_for(20, || desk.conversation()["phase"] == "failed").await,
+            "{case}: {}",
+            desk.conversation()
+        );
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        let c = ends_unsent(&desk, SECOND, 3);
+        assert!(
+            c["saveFailure"].is_null() && !c["savedAt"].is_null(),
+            "{case}: {c}"
+        );
+        assert_eq!(idp.lock().expect("idp").refreshes, 1, "{case}");
+        // Only the replacement launch that was attempted, and nothing else.
+        let attempted = usize::from(matches!(case, "refused" | "pipeless"));
+        assert_eq!(
+            desk.launcher.launches().len(),
+            launches + attempted,
+            "{case}"
+        );
+        // The faults end before the app is opened again.
+        *desk.launcher.fault.lock().expect("fault") = None;
+        refuse_homes(&desk.runtime_root, false);
+        if let Some(locked) = locked.filter(|_| case == "stale home") {
+            std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o700))
+                .expect("fixture");
+        }
+        // Offline, exactly what was shown.
+        let (desk, opened) = opened_offline(desk, &history).await;
+        assert_eq!(opened["entries"], c["entries"], "{case}: {opened}");
+        // Reconnected and continued from the first turn's export: the
+        // failed message stays as it was, and nothing answers it.
+        let mut desk = relaunch(desk, true, false).await;
+        let reference = desk.choose(WS_A).await;
+        open(&mut desk, &history).await;
+        assert!(
+            desk.json()["harness"]["history"]["opened"]["notContinuable"].is_null(),
+            "{case}"
+        );
+        let launches = desk.launcher.launches().len();
+        let context = desk.context();
+        desk.send(json!({"kind": "resumeHarness", "context": context, "workspace": reference, "id": history}))
+            .await
+            .expect("resumed");
+        assert!(
+            settle_for(30, || desk.conversation()["phase"] == "ready").await,
+            "{case}: {}",
+            desk.conversation()
+        );
+        tokio::time::sleep(Duration::from_millis(1500)).await;
+        let resumed = desk.conversation();
+        assert_eq!(resumed["entries"], c["entries"], "{case}: {resumed}");
+        assert_eq!(desk.launcher.launches().len(), launches + 1, "{case}");
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

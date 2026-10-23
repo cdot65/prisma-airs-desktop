@@ -788,6 +788,20 @@ impl Desk {
 }
 
 /// The pid recorded while the engine runs, checked gone afterwards.
+/// Starts a conversation once a retired one has finished ending: it leaves
+/// the view at once, but until its engine is reaped and its transcript
+/// saved, a start is refused as busy.
+pub async fn start_when_free(desk: &mut Desk, reference: &str) -> String {
+    for _ in 0..100 {
+        match desk.start(reference).await {
+            Ok(id) => return id,
+            Err(Refusal::Busy) => tokio::time::sleep(Duration::from_millis(100)).await,
+            Err(other) => panic!("start refused: {other:?}"),
+        }
+    }
+    panic!("the previous conversation never finished ending");
+}
+
 pub async fn gone(pid: u32) -> bool {
     settle_for(10, || !exists(pid)).await
 }

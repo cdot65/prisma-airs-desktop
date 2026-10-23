@@ -1627,8 +1627,25 @@ compares the wall clock with the engine token's renewal time,
 failed) the host asks the idle engine for `desktop/history/read`. A turn
 cut short when the engine itself is stopped is saved with the last export,
 or without one when none exists (`notRestorable`: read and exported, never
-continued), and its unfinished entries `interrupted` (D049, P06). Messages
-wait for the read, which is bounded by the 15 s request timeout. The
+continued), and its unfinished entries `interrupted` (D049, P06).
+A stop that comes after a turn finished, while its export is still under
+way, waits for it for up to 3 s. The turn is then saved with its export
+and stays continuable. A finished turn's transcript counts as unsaved
+until a save succeeds. If its export does not come, is refused or is
+malformed, or never answers within its 15 s bound, a stop saves the
+transcript without a restore point: read-only, and never paired with an
+older export (P06 phase review F1, R2-F2). Once a stop has begun, nothing
+operator-sent is released, after any await: not a message waiting for an
+export, not one still queued, and not a renewal's (no engine is started
+for it). Each such message is kept in the transcript as `failed`, saved
+with it (the last export stays the restore point for the turns it holds),
+and never sent or replayed later; so is a renewal's message whose new
+engine never runs (its home, launch or pipes fail, or the old home cannot
+be removed), saved with the last export (P06 phase review R4-F1). A
+renewal a stop overtakes while its
+sign-in is renewed, or while changes wait to be allowed again, gives its
+message back to the box instead (P06 phase review R2-F1, R3-F1, R3-F2).
+Messages wait for the read, which is bounded by the 15 s request timeout. The
 conversation is saved as one sealed record:
 - the transcript;
 - the binding it ran under;
