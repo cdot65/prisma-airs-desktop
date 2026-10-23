@@ -4,7 +4,8 @@ G00 and G01 passed (historical Claude reviews). C01–C04 and the P01 cumulative
 2026-10-17; C05–C07 and the P02 cumulative review completed on 2026-10-18;
 C08–C12 and the P03 cumulative review completed on 2026-10-19; C13–C15 and
 the P04 cumulative review completed on 2026-10-20; C16–C18 and the P05
-cumulative review completed on 2026-10-21; implementation is at **C19** (P06). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+cumulative review completed on 2026-10-21; C19–C22 and the P06 cumulative
+review completed on 2026-10-23; implementation is at **C23** (P07). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no
 blockers; each phase review still needs 9/10, after every chunk accepted below
@@ -37,7 +38,12 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C17 | **Complete** (generation 1): Codex attempt-03 scored 9 in all five dimensions; committed as 250a8ce and verified against the reviewed source fingerprint | Attempts 01–02 remediated (`reviews/C17/remediation-attempt-0{1,2}.md`); D043 recorded |
 | C18 | **Complete** (generation 1): Codex attempt-04 scored 9 in all five dimensions; committed as 9b5f2ac and verified against the reviewed source fingerprint | Attempts 01–03 remediated (`reviews/C18/remediation-attempt-0{1..3}.md`); D044 and D045 recorded; T20 workload registered |
 | P05 | **Complete**: Codex phase attempt-01 scored 9 in all five dimensions; committed as 5ce089b and verified against the reviewed source fingerprint | Integrated native checks for C16–C18, the C18 workload and 133/133 mutation probes on the P05 bundle |
-| C19–C26 | Planned | Ordered predecessors required; C19 opens P06 |
+| C19 | **Complete** (generation 1): Codex attempt-06 scored 9 in all five dimensions; committed as 7fee9f9 and verified | D046 recorded; Harness engine startup and memory workloads registered |
+| C20 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-03 passed; committed as aa4d4cf and verified | Follow-ups remediated (`reviews/C20/follow-ups.md`) |
+| C21 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-03 passed; committed as 702cc54 and verified | Follow-ups remediated (`reviews/C21/follow-ups.md`) |
+| C22 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-04 passed; committed as 8985a00 and verified | Follow-ups remediated (`reviews/C22/follow-ups.md`) |
+| P06 | **Complete**: Codex phase attempt-05 scored 9/9/9/9/9; committed as 3dbb2ce and verified against the reviewed source fingerprint | Integrated native checks and workloads for C19–C22 and 182 mutation probes on the P06 bundle; attempts remediated (`reviews/P06/remediation-attempt-0*.md`) |
+| C23–C26 | Planned | Ordered predecessors required; C23 opens P07 |
 
 ## C01 evidence (docs/planning/evidence/C01)
 
