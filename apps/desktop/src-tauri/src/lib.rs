@@ -416,6 +416,12 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
                 core.set_transport_policy(policy)
                     .map_err(|e| std::io::Error::other(e.to_string()))?;
             }
+            // The acceptance driver's crash point for the next v1 import
+            // (C23): the import stops there, and the driver ends the app.
+            #[cfg(feature = "test-fixtures")]
+            if let Some(point) = adapters::fixture_import_crash(app.handle()) {
+                core.interrupt_v1_import(point);
+            }
             #[cfg(target_os = "macos")]
             power::observe_sleep(core.clone());
             app.manage(Host::new(&core));

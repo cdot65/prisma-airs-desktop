@@ -1,0 +1,23 @@
+
+running 14 tests
+test a_running_v1_or_a_locked_keychain_blocks_without_fallback ... ok
+test damaged_unsupported_linked_and_oversized_sources_block_only_their_category ... ok
+test a_declined_rollback_changes_nothing ... ok
+test a_source_changed_after_review_is_not_imported ... ok
+test conflicts_are_reported_and_never_overwritten ... ok
+test inspection_reads_files_only_and_the_keychain_only_for_selected_categories ... ok
+test api_client_collections_join_the_recent_list_and_leave_it_on_rollback ... ok
+test imported_conversations_are_inspect_only ... ok
+test academy_drafts_go_only_to_the_same_signed_in_account ... ok
+test reset_waits_for_an_import_and_removes_its_receipts ... ok
+test an_import_brings_work_without_credentials_and_a_rollback_removes_only_it ... ok
+test importing_twice_finds_everything_already_present_and_owns_nothing ... ok
+test an_interrupted_rollback_finishes_after_relaunch ... ok
+test an_import_interrupted_at_any_commit_point_resumes_or_rolls_back_after_relaunch ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.36s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running tests/imports_rollback/main.rs (target/debug/deps/imports_rollback-21168c9c682c3bbc)

@@ -117,11 +117,11 @@ describe('desktop shell', () => {
         expect(nav().queryByRole('button', { name: /^Harness.*Not available in this build/ })).toBeNull()
         expect(screen.getByRole('heading', { level: 1, name: 'Harness' })).toBeInTheDocument()
         expect(screen.getByText('The Harness engine is not bundled with this build.')).toBeInTheDocument()
-        // A planned destination still says so explicitly.
+        // Import from v1 is available (C23): nothing is read until asked.
         await user.click(nav().getByRole('button', { name: /^Import from v1/ }))
-        expect(nav().getByRole('button', { name: /^Import from v1.*Not available in this build/ })).toBeInTheDocument()
-        expect(screen.getByText(/is not available in this build/)).toBeInTheDocument()
-        expect(screen.getByText('Planned in C23')).toBeInTheDocument()
+        expect(nav().queryByRole('button', { name: /^Import from v1.*Not available in this build/ })).toBeNull()
+        expect(screen.getByRole('heading', { level: 1, name: 'Import from v1' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Look for v1 data' })).toBeInTheDocument()
         expect(screen.getByText('Fixture build')).toBeInTheDocument()
         // Academy learning is available (C05) and opens its learner region.
         await user.click(nav().getByRole('button', { name: /^Academy/ }))

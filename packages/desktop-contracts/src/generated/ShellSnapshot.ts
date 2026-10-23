@@ -17,6 +17,7 @@ import type { SessionsView } from "./SessionsView";
 import type { StorageHealth } from "./StorageHealth";
 import type { TenantView } from "./TenantView";
 import type { Theme } from "./Theme";
+import type { V1ImportView } from "./V1ImportView";
 import type { WorkbenchView } from "./WorkbenchView";
 
 /**
@@ -87,4 +88,8 @@ workbench: WorkbenchView,
 /**
  * The active context's Gateway workspaces and choice (C16).
  */
-gateway: GatewayView, harness: HarnessView, };
+gateway: GatewayView, harness: HarnessView, 
+/**
+ * Reviewed import of v1 work (C23).
+ */
+v1Import: V1ImportView, };

@@ -560,7 +560,7 @@ impl OfflineGen {
         self.observed.fetch_max(persisted, Ordering::SeqCst);
     }
 
-    fn refresh(&self) {
+    pub(super) fn refresh(&self) {
         if let Some(store) = self.store()
             && let Some(_writer) = self.enter()
         {
@@ -1265,7 +1265,11 @@ pub(super) fn save_draft(
 pub(super) fn load_draft(
     generation: &OfflineGen,
     attempt_id: &str,
+    hidden: bool,
 ) -> Result<CallReply, CallFailure> {
+    if hidden {
+        return Ok(CallReply::Data(json!({ "json": null }).to_string()));
+    }
     let _writer = generation.enter().ok_or(CallFailure::OfflineUnavailable)?;
     // Joins an opening in progress: an account whose kept work is still
     // opening is never answered as having none.

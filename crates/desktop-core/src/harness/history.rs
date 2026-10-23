@@ -109,6 +109,17 @@ pub struct Record {
     pub context: Value,
     /// The engine's replay, exactly as exported.
     pub replay: Value,
+    /// Where it came from, when not from this app's own conversation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<Origin>,
+}
+
+/// A record's provenance (C23).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Origin {
+    /// Imported from v1: a transcript only, never continued.
+    ImportedV1,
 }
 
 /// What the list shows of a record.
@@ -154,7 +165,7 @@ impl Scope {
     }
 
     /// The IDs of the records present, oldest name first.
-    fn ids(&self) -> Result<Vec<String>, HistoryFailure> {
+    pub(crate) fn ids(&self) -> Result<Vec<String>, HistoryFailure> {
         let entries = match std::fs::read_dir(&self.dir) {
             Ok(entries) => entries,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
@@ -412,6 +423,7 @@ mod tests {
                 write: false,
                 mcp: Vec::new(),
             },
+            origin: None,
             entries: vec![HarnessEntry {
                 id: "u-1".into(),
                 role: HarnessRole::Operator,

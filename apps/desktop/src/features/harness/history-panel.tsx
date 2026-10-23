@@ -33,6 +33,7 @@ const NOT_CONTINUABLE_TEXT: Record<NotContinuable, string> = {
     workspaceUnavailable: 'AI Gateway’s workspaces could not be read, so it can be read and exported here but not continued.',
     notRestorable:
         'It was cut short before the engine saved anything to restore, so it can be read and exported but not continued. A call it shows as interrupted may have run.',
+    imported: 'It was imported from v1, so it can be read and exported but not continued.',
 }
 
 const FORMATS: readonly [HistoryFormat, string][] = [

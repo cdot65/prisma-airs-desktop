@@ -537,6 +537,21 @@ pub fn load(
     keychain: &dyn Vault,
     tenant: &str,
 ) -> Result<CaseLibrary, LibraryFailure> {
+    let read = read(root, keychain, tenant);
+    if read == Err(LibraryFailure::Unreadable) {
+        let path = library_path(root, tenant);
+        let _ = std::fs::rename(&path, path.with_extension("unreadable"));
+    }
+    read
+}
+
+/// Opens a tenant's sealed library without changing anything (an import's
+/// review reads it this way; C23).
+pub fn read(
+    root: &Path,
+    keychain: &dyn Vault,
+    tenant: &str,
+) -> Result<CaseLibrary, LibraryFailure> {
     use std::io::Read;
     let path = library_path(root, tenant);
     let mut sealed = Vec::new();
@@ -553,13 +568,7 @@ pub fn load(
         .and_then(|key| crate::sessions::open(&key, &aad(tenant), &sealed))
         .and_then(|plain| serde_json::from_slice::<Vec<TestCase>>(&plain).ok())
         .and_then(|cases| CaseLibrary::from_cases(cases, tenant));
-    match opened {
-        Some(library) => Ok(library),
-        None => {
-            let _ = std::fs::rename(&path, path.with_extension("unreadable"));
-            Err(LibraryFailure::Unreadable)
-        }
-    }
+    opened.ok_or(LibraryFailure::Unreadable)
 }
 
 /// Seals and replaces a tenant's library (0600, atomic) under the placement

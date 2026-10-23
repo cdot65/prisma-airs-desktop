@@ -368,6 +368,64 @@ impl State {
         }
     }
 
+    /// A tenant's reports as its open book holds them (C23).
+    pub(super) fn open_report_book(
+        &self,
+        tenant: &TenantId,
+    ) -> Option<Vec<crate::sessions::Report>> {
+        self.reports
+            .iter()
+            .find(|r| &r.tenant == tenant && r.state == ReportsState::Ready)
+            .map(|r| r.book.reports.clone())
+    }
+
+    /// Applies an import's change to a tenant's open book (C23): what it
+    /// returned and, when it changed the book, the generation to write.
+    pub(super) fn change_open_reports<R>(
+        &mut self,
+        tenant: &TenantId,
+        change: impl FnOnce(&mut ReportBook) -> (R, bool),
+    ) -> Option<(R, Option<u64>)> {
+        let reports = self
+            .reports
+            .iter_mut()
+            .find(|r| &r.tenant == tenant && r.state == ReportsState::Ready)?;
+        let (result, changed) = change(&mut reports.book);
+        if !changed {
+            return Some((result, None));
+        }
+        // An Undo from before the import would restore over it.
+        reports.undo = None;
+        reports.generation += 1;
+        Some((result, Some(reports.generation)))
+    }
+
+    /// The newest generation of a tenant's open report book (C23).
+    pub(super) fn report_generation(&self, tenant: &TenantId) -> Option<u64> {
+        self.reports
+            .iter()
+            .find(|r| &r.tenant == tenant && r.state == ReportsState::Ready)
+            .map(|r| r.generation)
+    }
+
+    /// A book that was loading (or failed) while an import wrote its file
+    /// reads again (C23); the lease of the new read.
+    pub(super) fn reread_reports(&mut self, tenant: &TenantId) -> Option<u64> {
+        let stale = self
+            .reports
+            .iter()
+            .any(|r| &r.tenant == tenant && !matches!(r.state, ReportsState::Ready));
+        if !stale {
+            return None;
+        }
+        let lease = self.lease();
+        let reports = self.reports.iter_mut().find(|r| &r.tenant == tenant)?;
+        reports.lease = lease;
+        reports.state = ReportsState::Loading;
+        reports.failure = None;
+        Some(lease)
+    }
+
     /// Drops a deleted tenant's reports from memory; returns the file to
     /// remove.
     pub(super) fn forget_reports(&mut self, tenant: &TenantId) -> Option<std::path::PathBuf> {
@@ -483,7 +541,14 @@ impl State {
             Some(r) => ReportsView {
                 state: r.state,
                 failure: r.failure,
-                items: r.book.reports.clone(),
+                // An import's reports show once it commits (D050).
+                items: r
+                    .book
+                    .reports
+                    .iter()
+                    .filter(|x| !self.v1_hides_report(&r.tenant, &x.scan_id, x.scan_sub_req_id))
+                    .cloned()
+                    .collect(),
                 undo: r.undo.as_ref().map(|d| ReportUndoView {
                     scan_id: d.report.scan_id.clone(),
                     sub_request: d.report.scan_sub_req_id,

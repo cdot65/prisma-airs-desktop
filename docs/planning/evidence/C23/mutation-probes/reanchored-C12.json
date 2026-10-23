@@ -1,0 +1,35 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/library/library-view.tsx": "32b6ca6990fa46dec38977b971656eb209eb7226d260d88497c5e077bd0d3a50",
+      "apps/desktop/src/features/runtime/overview-inbox.tsx": "8e42f72f90e85e41b12aca5d75d2e5a8414409bdf491bd99e9b5ad9d1b2fcc19",
+      "apps/desktop/src/shell/desktop-shell.tsx": "94ae5505a59c327e3da73b7ed128537a7c4d5281f11c2e36b6b2e20ba9229fe8",
+      "crates/desktop-core/src/authority.rs": "565e288e686c42e53711ebcd7c3135023689c512f17065aa95ef26087a697ef3",
+      "crates/desktop-core/src/authority/library_domain.rs": "6d939203574f7f039e5b25681ff4b2d50712347b527d3b37884745fd5eefb87f",
+      "crates/desktop-core/src/authority/observation_domain.rs": "b646fb789a24c89c7dbe7565cc1252998963db42f20583cfdb4f5d16e1e75b2f",
+      "crates/desktop-core/src/library.rs": "f8ab4b787f47c9bcd759a409b8608fed79bbd0f29f51de8dae2341980555df79",
+      "crates/desktop-core/src/observation.rs": "8fd6b283bb55b68fd24551bb5e69d1494a63245eac413ce113ffbe7aa421e090",
+      "packages/desktop-contracts/src/client.ts": "23d585e4c6211e754d9729a4550b8f92c446b80ec733c824b063c9d6ab2579e4"
+    }
+  },
+  {
+    "mutation": "an unreadable library is deleted",
+    "files": [
+      "crates/desktop-core/src/library.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "library_observation"
+    ],
+    "guard": "a_locked_keychain_or_unreadable_library_is_reported_and_kept",
+    "exit_code": 101,
+    "guard_failed": true
+  }
+]

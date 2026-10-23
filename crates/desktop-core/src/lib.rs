@@ -23,6 +23,7 @@ pub mod gateway_local;
 pub mod gateway_observe;
 pub mod harness;
 pub mod import;
+pub mod import_v1;
 pub mod learner;
 pub mod library;
 pub mod management;

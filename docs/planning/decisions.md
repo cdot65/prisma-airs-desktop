@@ -1993,6 +1993,178 @@ never passed.
 **Out of scope here:** v1 history and MCP-state import (C23); live
 Gateway MCP sign-in, denial, refresh and revocation qualification (C25).
 
+## D050 — Reviewed v1 import: source contract, mapping, receipts and rollback
+
+Decided in C23 (implementer decision for the C23 milestones, recorded for
+review).
+
+**Source.** v1 (74754c02) has no whole-application export, so the import
+reads v1's own storage, read only:
+- **Files** under v1's folder: `~/Library/Application Support/Prisma AIRS
+  Desktop/` in production builds; fixture builds use `fixture-v1/` under
+  their data root and never a real v1.
+- **Keychain items** in v1's service `io.cdot.prisma-airs-desktop`,
+  through a type that can only read (no add, change or delete exists). In
+  production builds it is the login Keychain, and macOS asks before each
+  item is read; that prompt is the platform grant for a protected read.
+  Fixture builds read a staged file keychain without prompting and never
+  the login Keychain.
+- Every path component is checked without following links, files are
+  opened `O_NOFOLLOW`, and only exact names are read: digest-named Academy
+  folders and `attempt-<digest>.bin` records. Nothing is created in v1's
+  folder; v1's Academy `.lock` files are never opened.
+
+**Source lock.** v1 holds `.desktop-instance.lock` exclusively while it
+runs. The import takes it shared, never creating it, from the review until
+the import settles. v1 running is `sourceLocked`, and v1 cannot start
+during a review. Each item records the SHA-256 of what it was read from.
+Before an item is written, a file it came from is read again, and changed
+bytes are `sourceChanged`: nothing of it is written.
+
+**Limits.**
+
+| Source | Limit |
+|---|---|
+| `tenants.json` | 128 KiB, version 1, at most 64 tenants |
+| `fpfn-reports.json` | 4 MiB, version 1 |
+| `appearance.json` | 4 KiB |
+| A credentials item | 64 KiB |
+| A cases item | 256 KiB, at most 32 cases |
+| A history item | 8 MiB, archive and snapshots version 1 |
+| An Academy record | 16 MiB, at most 4,096 entries per account |
+
+Over a limit is `tooLarge`, another version is `unsupportedVersion`, and
+unreadable or unauthenticated data is `corrupt`. A selected category that
+is missing, unreadable or denied is shown blocked with its reason: nothing
+is silently skipped.
+
+**Two steps.**
+- Inspecting reads files only and counts what they show. What only a
+  Keychain read could tell is shown as not yet counted.
+- Planning reads protected items only for the selected categories, and
+  only for v1 tenants given a target.
+
+**Mapping.**
+
+| v1 | Imported | Not imported |
+|---|---|---|
+| `tenants.json` tenant | A new keyless tenant (label and TSG ID, C02's validation), or the operator's choice of an existing tenant with the same TSG ID | Environment, storage mode, credential reference, Gateway key references and preferences |
+| `credentials-{ref}` | Only the scan endpoint, as a destination: a region's origin, or a plain HTTPS origin | Every secret field (decoded only into a one-field structure), other endpoints. An unmappable or unreadable endpoint leaves the default region, and the item says why |
+| `appearance.json` | Light, dark or system | Theme family, time zone |
+| `navigation.json` | — | Not read (no v2 equivalent; shown) |
+| `cases-{tenant}` | Cases, rebound to the v2 tenant and validated (D038) | Session-only tenants (none stored), accounts v1 was retiring |
+| `fpfn-reports.json` | Reports | A sub-request beyond v2's range (counted) |
+| `academy-local/…` with its key | Unsaved drafts of the signed-in account, with v1's draft version as base | Downloads (Academy gives them again), saved or conflicting attempts |
+| `api-client/` | Recent collections, as C14's adoption adds them | Private environments: adopted through the API Client (C14). Secrets, drafts, history |
+| `harness-history-{ref}` | Each conversation's transcript, inspect-only | v1's engine replay, options, credential references. Approvals are shown declined, "not transferred" |
+
+No credential, session, sign-in or approval is ever transferred:
+- imported tenants start with every capability missing;
+- Academy drafts need the same account signed in (its digest equals v1's
+  folder name; signed out is `signInRequired`, another account is
+  `accountMismatch`);
+- an existing tenant can be a target only when its TSG ID equals v1's.
+
+**Imported conversations.**
+- Each is saved with `origin: importedV1`, no restore point, and a binding
+  that can never equal a live one.
+- It reads `imported`: it can be read and exported, never continued.
+- Its scope is noted before its first write like any history save, and the
+  16-conversation cap holds (`destinationFull`; nothing is evicted).
+
+**Review.**
+- Each item is `ready`, `alreadyPresent` (v2 holds exactly v1's content
+  under the same identity), `conflict` (v2 holds different content; it is
+  never overwritten) or `blocked` with its reason.
+- Items show how many entries are new, present, in conflict or not
+  imported.
+- A review is used once. New tenants get their identity at review, so the
+  review, the receipt and a resumed import name the same tenant.
+
+**Receipts: the import's commit record.**
+- An import writes a receipt, `<data root>/imports/<id>.json`: 0600,
+  replaced atomically, and synced with its directory. A note is recorded
+  only when the file and its directory are synced; anything less is
+  `notRecorded`, and nothing is written on it.
+- Inside the section that makes each owner write (the local-data writer
+  with the placement lock for cases and reports, the API Client's lane, the
+  saved document for tenants and appearance, the account's offline store
+  for drafts), the item is first noted `writing` with exactly the entries
+  it is about to add: only what that owner does not hold at that moment.
+  No other writer comes between the note and the write. The item is then
+  noted `applied` with the entries its owner confirms it added (`written`,
+  each with its content hash), kept apart from what it intended.
+- What an import adds is marked as its own where the owner allows: a new
+  tenant's identity is issued at review; a conversation is saved with
+  `origin: importedV1` and only while its scope holds no record of that
+  ID; a draft only while its attempt has no draft, with the receipt's ID
+  in it. A matching hash alone never makes an entry the import's.
+- Until the receipt is noted `applied`, every entry it names is hidden
+  from every view (tenants, appearance, the case library, reports, the
+  Harness history list, the API Client's recent list, Academy's kept
+  drafts and their reads) and the views show the previous generation. The
+  `applied` note is the commit: the receipt and its entries are published
+  together, in one step. While an import or its rollback writes, intents
+  that write or export what it writes wait (`busy`).
+- An import is whole or nothing. An item that cannot be written (its
+  source changed, its owner refused, its note was not recorded) rolls the
+  whole import back at once, without asking.
+- An import the app ended during is rolled back at the next launch, before
+  any intent is admitted: what it wrote, and what an item noted `writing`
+  may have written, is removed where v2 holds exactly that. The receipt
+  then reads undone (`interrupted`), and Import Again (`resumeV1Import`)
+  reads v1 again, requires the same bytes, and writes every item anew,
+  again only what v2 does not hold.
+- At most eight receipts are kept. A new import waits while one is
+  unsettled or eight are kept, so the ability to roll back is never
+  dropped silently.
+- Reset waits for an import or rollback under way, then removes receipts
+  with the data they describe.
+
+How this meets the import contract of DESIGN §3 ("reencrypt selected work
+into a new v2 generation … atomically commit … preserve the previous
+generation for rollback … an interrupted import cannot expose a partially
+committed generation"): v2 has no single store to swap, so each owner keeps
+its own sealed files and the receipt is the import's manifest. The staged
+entries are written through each owner but are not part of any view until
+the receipt commits, and commit publication is one step; the previous
+generation is everything v2 held, which the import never overwrites (a
+different entry under the same identity is a conflict); and an interrupted
+import is rolled back before anything can see or build on it.
+
+**Writes go through each owner.**
+- Tenants and appearance: the saved document.
+- Cases and reports: the local-data writer that library and report
+  writes, tenant deletion and reset take, under the placement lock. An
+  open library or book is changed in memory and written as its newest
+  generation; one that opened during the write gets the same change in
+  memory, and one still loading reads again.
+- Drafts: the planned account's own offline store, only while that
+  account is signed in (another account, or none, is `accountMismatch` or
+  `signInRequired`, at review, at write and at rollback).
+- Collections: the API Client's lane.
+- Conversations: an admitted history save.
+
+**Rollback** (after the native confirmation for an applied import; at
+once for one that failed or that the app ended during):
+- Its entries are hidden while it runs and go together.
+- Removes each entry only while v2 still holds exactly what the receipt
+  wrote, checked inside the owner's own section (a draft only for its
+  account, with the receipt's mark; a conversation only with its import
+  origin). One changed since is kept (`keptChanged`), one already removed
+  is `gone`.
+- Tenants go last, through Delete Tenant, and only while nothing else of
+  them exists: no credential, sign-in, project, server, case, report or
+  conversation.
+- A rollback that cannot finish (its note not recorded, or an entry it
+  cannot check now, such as a draft while another account is signed in)
+  stays unsettled and hidden; it finishes when asked again or at the next
+  launch.
+
+**Out of scope here:** private API Client environments (C14's adoption
+keeps them); v1 settings with no v2 equivalent; live qualification against
+a real v1 profile (C25).
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

@@ -26,6 +26,7 @@ mod harness_history;
 mod harness_identity;
 mod harness_mcp;
 mod harness_tools;
+mod import_v1_domain;
 mod inference_domain;
 mod learner_domain;
 mod library_domain;
@@ -522,6 +523,34 @@ pub enum Intent {
     },
     /// Remove all v2 local data and v2 credentials.
     ResetLocalData,
+    /// Read v1's folder, without its Keychain, to show what could be
+    /// imported (C23).
+    InspectV1Import,
+    /// Read the selected categories of v1 (its protected items only for
+    /// selected categories and tenants) and review each item against v2.
+    PlanV1Import {
+        categories: Vec<crate::import_v1::Category>,
+        targets: Vec<import_v1_domain::TenantTarget>,
+    },
+    /// Import the chosen ready items of the reviewed plan.
+    ConfirmV1Import {
+        review: ReviewId,
+        items: Vec<u32>,
+    },
+    /// Finish an interrupted import (its source is read again).
+    ResumeV1Import {
+        receipt: String,
+    },
+    /// Remove what an import added and nobody changed since (asks first).
+    RollBackV1Import {
+        receipt: String,
+    },
+    /// Forget a settled import's receipt (it can no longer be rolled back).
+    ForgetV1ImportReceipt {
+        receipt: String,
+    },
+    /// Close the import review.
+    DismissV1Import,
     /// Run a Runtime Security synchronous scan for the active tenant.
     Scan {
         context: ContextRef,
@@ -846,6 +875,8 @@ pub struct ShellSnapshot {
     /// The active context's Gateway workspaces and choice (C16).
     pub gateway: GatewayView,
     pub harness: harness_domain::HarnessView,
+    /// Reviewed import of v1 work (C23).
+    pub v1_import: import_v1_domain::V1ImportView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -1089,6 +1120,10 @@ pub struct Adapters {
     pub workbench_root: Option<std::path::PathBuf>,
     /// The native Harness engine, its launcher and runtime homes (C19).
     pub harness: crate::harness::sidecar::HarnessAdapters,
+    /// v1's folder and Keychain service, read only (C23; None: no import).
+    pub v1_source: Option<crate::import_v1::V1Source>,
+    /// Where import receipts are kept (C23).
+    pub import_root: Option<std::path::PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1315,6 +1350,10 @@ struct State {
     /// The chosen workspace's protected history (C20).
     harness_history: Option<harness_history::HistoryState>,
     harness_history_root: Option<std::path::PathBuf>,
+    /// The reviewed v1 import (C23).
+    v1_import: import_v1_domain::V1Import,
+    v1_source: Option<crate::import_v1::V1Source>,
+    import_root: Option<std::path::PathBuf>,
     /// Tenants with a Harness history save under way (one entry each):
     /// removing a tenant waits for its saves before removing its folder,
     /// and reset waits for all of them (C20 review F4).
@@ -1345,11 +1384,18 @@ impl State {
     fn snapshot(&self) -> ShellSnapshot {
         ShellSnapshot {
             revision: self.revision.to_string(),
-            appearance: self.appearance(),
+            appearance: self.shown_appearance(),
             features: features::catalogue(),
             fixture_build: cfg!(feature = "test-fixtures"),
             storage: self.storage,
-            tenants: self.data.tenants.iter().map(tenant_view).collect(),
+            // An import's tenants show once it commits (D050).
+            tenants: self
+                .data
+                .tenants
+                .iter()
+                .filter(|t| !self.v1_hides_tenant(&t.profile.id))
+                .map(tenant_view)
+                .collect(),
             active: match (&self.data.active, &self.active_ref) {
                 (Some(tenant), Some(context)) => Some(ActiveContext {
                     tenant: tenant.clone(),
@@ -1390,10 +1436,16 @@ impl State {
             academy: self.academy_view(),
             learner: self.learner_ref.clone(),
             academy_origin: self.academy_origin.clone(),
-            academy_offline: self
-                .offline
-                .as_ref()
-                .map_or_else(offline_domain::OfflineView::signed_out, |o| o.view()),
+            academy_offline: self.offline.as_ref().map_or_else(
+                offline_domain::OfflineView::signed_out,
+                |o| {
+                    let mut view = o.view();
+                    // An import's drafts show once it commits (D050).
+                    view.local_drafts
+                        .retain(|d| !self.v1_hides_draft(&d.attempt_id));
+                    view
+                },
+            ),
             changes: self.changes_view(),
             sessions: self.sessions_view(),
             library: self.library_view(),
@@ -1401,6 +1453,7 @@ impl State {
             workbench: self.workbench_view(),
             gateway: self.gateway_view(),
             harness: self.harness_view(self.harness_engine),
+            v1_import: self.v1_import_view(),
         }
     }
 
@@ -1926,6 +1979,8 @@ fn store_refusal(error: StoreError) -> Refusal {
 
 /// Adapter work started after admission, outside the lock.
 enum Effect {
+    /// Reviewed v1 import work (C23).
+    V1Import(import_v1_domain::Job),
     Store {
         tenant: TenantId,
         class: CredentialClass,
@@ -2143,6 +2198,9 @@ impl Core {
             harness_grants: Vec::new(),
             harness_history: None,
             harness_history_root: adapters.harness.history_root.clone(),
+            v1_import: import_v1_domain::V1Import::default(),
+            v1_source: adapters.v1_source.clone(),
+            import_root: adapters.import_root.clone(),
             history_writers: Vec::new(),
             history_hold: Arc::default(),
             settle_hold: Arc::default(),
@@ -2167,6 +2225,9 @@ impl Core {
             state.sweep_harness_history();
         }
         if let Ok(mut state) = lock(&inner) {
+            state.load_v1_receipts();
+        }
+        if let Ok(mut state) = lock(&inner) {
             // A saved learner resumes signed in; its session renews the
             // access token from the Keychain on first use.
             if state.data.learner.is_some() {
@@ -2189,6 +2250,22 @@ impl Core {
         lock(&self.inner)
             .map(|s| s.workbench_unprotected())
             .unwrap_or(false)
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// Stops the next v1 import, resume or rollback at `point` as if the
+    /// app ended there: nothing after it is written (fixture builds only).
+    pub fn interrupt_v1_import(&self, point: crate::import_v1::CommitPoint) {
+        self.interrupt_v1_import_at(point, 0);
+    }
+
+    #[cfg(feature = "test-fixtures")]
+    /// As [`Core::interrupt_v1_import`], after `point` has passed `skip`
+    /// times (a later item's commit point).
+    pub fn interrupt_v1_import_at(&self, point: crate::import_v1::CommitPoint, skip: u32) {
+        if let Ok(mut state) = lock(&self.inner) {
+            state.v1_import.interrupt_at = Some((point, skip));
+        }
     }
 
     #[cfg(feature = "test-fixtures")]
@@ -2374,9 +2451,14 @@ impl Core {
     /// Resumes durable work after launch (pending Keychain cleanup). Call on
     /// the application runtime.
     pub fn start(&self) {
-        let offline = lock(&self.inner).ok().and_then(|s| s.offline.clone());
+        let (offline, recovery) = lock(&self.inner)
+            .ok()
+            .map(|mut s| (s.offline.clone(), s.take_v1_recovery()))
+            .unwrap_or_default();
         let mut effects = vec![Effect::Cleanup];
         effects.extend(offline.map(Effect::OpenOffline));
+        // An import the app ended during is rolled back first (D050).
+        effects.extend(recovery);
         run_effects(&self.inner, effects);
         // Deadlines pass without any event (a read going stale, a snooze
         // ending, sleep and wake): re-evaluate them and publish a change.
@@ -2592,13 +2674,20 @@ impl AuthorityHandle {
                 Admit::Duplicate(result) => return result,
                 Admit::Fresh => {
                     let mut effects = Vec::new();
-                    let result = admit(
-                        &mut state,
-                        &self.inner.session,
-                        &self.inner.adapters,
-                        intent,
-                        &mut effects,
-                    );
+                    // What an import writes waits while it (or its
+                    // rollback) runs (D050).
+                    let result =
+                        if state.v1_import_busy() && import_v1_domain::waits_for_import(&intent) {
+                            Err(Refusal::Busy)
+                        } else {
+                            admit(
+                                &mut state,
+                                &self.inner.session,
+                                &self.inner.adapters,
+                                intent,
+                                &mut effects,
+                            )
+                        };
                     if result.is_err() {
                         effects.clear();
                     }
@@ -3662,7 +3751,19 @@ fn admit(
             state.consumed_reviews.push(review);
             state.changed();
         }
+        intent @ (Intent::InspectV1Import
+        | Intent::PlanV1Import { .. }
+        | Intent::ConfirmV1Import { .. }
+        | Intent::ResumeV1Import { .. }
+        | Intent::RollBackV1Import { .. }
+        | Intent::ForgetV1ImportReceipt { .. }
+        | Intent::DismissV1Import) => import_v1_domain::admit(state, intent, effects)?,
         Intent::ResetLocalData => {
+            // An import or rollback under way settles first: its receipt
+            // must never outlive (or be written after) the reset.
+            if state.v1_import_busy() {
+                return Err(Refusal::Busy);
+            }
             match state.storage {
                 StorageHealth::Resetting => return Err(Refusal::Busy),
                 // Another instance may own this data root and namespace.
@@ -3804,8 +3905,11 @@ fn admit(
             learner,
             attempt_id,
         } => {
-            let (operation, starts) =
-                state.admit_offline(learner, learner_domain::OfflineOp::LoadDraft(attempt_id))?;
+            let hidden = state.v1_hides_draft(&attempt_id);
+            let (operation, starts) = state.admit_offline(
+                learner,
+                learner_domain::OfflineOp::LoadDraft(attempt_id, hidden),
+            )?;
             operation_ref = Some(operation);
             effects.push(Effect::Start(starts));
         }
@@ -3985,6 +4089,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     settle_store(&inner, &tenant, class, lease, record, mode, result);
                 });
             }
+            Effect::V1Import(job) => import_v1_domain::run(inner, job),
             Effect::Cleanup => {
                 drain_cleanup(inner);
                 learner_domain::drain_learner_cleanup(inner);
@@ -4483,6 +4588,15 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                                 }
                             }
                         }
+                        // Import receipts go with the work they describe.
+                        if let Some(root) = &worker.adapters.import_root
+                            && !crate::import_v1::receipt::purge(root)
+                        {
+                            return Err(ResetFailure {
+                                stage: ResetStage::Document,
+                                reason: VaultError::Unavailable,
+                            });
+                        }
                         // Offline work goes with its keys (purged above).
                         if let Some(root) = &worker.adapters.offline_root {
                             crate::offline::purge(root).map_err(|_| ResetFailure {
@@ -4910,6 +5024,8 @@ fn settle_reset(inner: &Arc<Inner>, result: Result<bool, ResetFailure>) {
             Ok(unconfirmed) => {
                 inner.session.clear();
                 state.data = Data::default();
+                // Receipts were purged with the data they describe.
+                state.v1_import = import_v1_domain::V1Import::default();
                 state.storage = StorageHealth::Ready;
                 state.reset_failure = None;
                 state.durability_unconfirmed = unconfirmed;

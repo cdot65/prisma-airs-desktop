@@ -677,6 +677,50 @@ impl OfflineStore {
         !pending || self.sync_directory().is_ok()
     }
 
+    /// Writes a record only if none exists, checked and written under one
+    /// commit (C23): whether it was written.
+    pub fn put_if_absent(
+        &self,
+        kind: RecordKind,
+        id: &str,
+        value: &Value,
+    ) -> Result<bool, OfflineError> {
+        let mut written = false;
+        self.update(kind, id, |current| {
+            current.is_none().then(|| {
+                written = true;
+                value.clone()
+            })
+        })?;
+        Ok(written)
+    }
+
+    /// Removes a record only while `expected` accepts it, checked and
+    /// removed under one commit (C23): whether it was removed. A record that
+    /// does not open is left as it is.
+    pub fn delete_if(
+        &self,
+        kind: RecordKind,
+        id: &str,
+        expected: impl FnOnce(&Value) -> bool,
+    ) -> Result<bool, OfflineError> {
+        let name = Self::name(kind, id)?;
+        let path = self.dir.join(&name);
+        let _commit = self.committing()?;
+        let current = match Self::read_bounded(&path)? {
+            None => return Ok(false),
+            Some(bytes) => self.decode(kind, id, &name, &bytes),
+        };
+        if !current.is_some_and(|v| expected(&v)) {
+            return Ok(false);
+        }
+        match fs::remove_file(&path) {
+            Ok(()) => Ok(true),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(_) => Err(OfflineError::Unavailable),
+        }
+    }
+
     /// Removes a record (a missing record is not an error).
     pub fn delete(&self, kind: RecordKind, id: &str) -> Result<(), OfflineError> {
         let name = Self::name(kind, id)?;

@@ -78,7 +78,7 @@ PROBES = [
      [(LIBRARY, "        crate::sessions::seal(&key, &aad(tenant), &plain).ok_or(LibraryFailure::Unavailable)?;", "        { let _ = key; plain.clone() };")],
      LO_T, "cases_are_authored_sealed_and_survive_a_restart"),
     ("an unreadable library is deleted",
-     [(LIBRARY, '            let _ = std::fs::rename(&path, path.with_extension("unreadable"));', "            let _ = std::fs::remove_file(&path);")],
+     [(LIBRARY, '        let _ = std::fs::rename(&path, path.with_extension("unreadable"));', "        let _ = std::fs::remove_file(&path);")],
      LO_T, "a_locked_keychain_or_unreadable_library_is_reported_and_kept"),
     ("reset leaves case libraries",
      [(AUTHORITY, "                        if let Some(root) = &worker.adapters.library_root {", "                        if let Some(root) = None::<&std::path::PathBuf> {")],

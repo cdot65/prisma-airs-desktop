@@ -1046,6 +1046,40 @@
         "id": "C22-N07",
         "check": "No MCP or Gateway token appears in AX snapshots, the server log (a bearer is recorded only as issued, placeholder, other or none) or the engine's runtime home; no engine is left after quitting; v1 data is unchanged."
       }
+    ],
+    "C23": [
+      {
+        "id": "C23-N01",
+        "check": "Import from v1 is available in the shell. Look for v1 data finds the staged fixture v1 folder without reading its Keychain (the fixture keychain's read log stays empty), names what it will not import (navigation), lists both v1 tenants with the session-only one marked, and offers each category as a checkbox with its count or reason."
+      },
+      {
+        "id": "C23-N02",
+        "check": "Choosing the protected categories shows the Allow-not-Always-Allow note; Review what would be imported reads exactly the selected protected items of the targeted tenants (the read log) and states each item's status and counts as text: ready items and Academy drafts blocked until the same account signs in. A second review after the import shows the imported cases and reports as already here. No secret from v1's credential appears in any Accessibility tree."
+      },
+      {
+        "id": "C23-N03",
+        "check": "After the import, the new tenant carries v1's TSG ID with no key (Settings asks for its scan key), its cases are in the Case Library and its report in Sessions & Reports, and the Imports list shows the receipt as imported."
+      },
+      {
+        "id": "C23-N04",
+        "check": "An import stopped by the fixture's crash hook after its first item (the new tenant) was written shows nothing of it while it is stopped: Settings does not list the tenant although it is in the app's data. On relaunch the import reads as not finished and undone, the tenant is gone from the app's data, and Import again writes everything anew with every entry present exactly once."
+      },
+      {
+        "id": "C23-N05",
+        "check": "Roll back asks in a native sheet; Cancel keeps the import and returns focus to Roll back; confirming rolls the import back: the tenant it created is removed while the operator's own tenant created before the import stays, and the receipt reads rolled back."
+      },
+      {
+        "id": "C23-N06",
+        "check": "v1 is preserved: every file of the fixture v1 folder has the same bytes, modification time and mode after inspection, review, import, relaunch and rollback, no file was created in it, the fixture v1 keychain's items have the same data, and the real v1 folder and login Keychain were never touched."
+      },
+      {
+        "id": "C23-N07",
+        "check": "No credential or sign-in is carried over: the imported tenant has no scan, management or inference key and the synthetic scan and management services receive no request during the import; Academy drafts are blocked with a sign-in reason while no account is signed in."
+      },
+      {
+        "id": "C23-N08",
+        "check": "The import view works by keyboard alone in tab order (category checkboxes, tenant targets, Review, item checkboxes, Import, Import again, Roll back), every control and status has an Accessibility name, progress is announced as a status, and the view stays usable at 200% text size and the minimum window size with reduced motion."
+      }
     ]
   }
 }

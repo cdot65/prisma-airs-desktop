@@ -1,0 +1,667 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/import-v1/import-view.tsx": "867d8866ba608bc1dd468e268c75c8b9d436b4d2cabb62de78de70bdef879073",
+      "crates/desktop-core/src/authority.rs": "565e288e686c42e53711ebcd7c3135023689c512f17065aa95ef26087a697ef3",
+      "crates/desktop-core/src/authority/import_v1_domain.rs": "e6207043407c4a052568fb819ad7c66d50f6818111799ab266dfdc4fb218f6f5",
+      "crates/desktop-core/src/authority/import_v1_domain/owners.rs": "aff13ded3febf3299c09e3632506c53268ca90809fc713fdb175b2a8374875d4",
+      "crates/desktop-core/src/authority/library_domain.rs": "6d939203574f7f039e5b25681ff4b2d50712347b527d3b37884745fd5eefb87f",
+      "crates/desktop-core/src/import_v1/parse.rs": "f9d473ab4cd7c0f0fb11f9da2d5fbb731da2d9ce95246912d1adfdc65cb71d32",
+      "crates/desktop-core/src/import_v1/plan.rs": "d6a972857e8ee31ff41db67bc31d7ee8575dbdb17cbe4479d1c564b5bcbd5bb2",
+      "crates/desktop-core/src/import_v1/source.rs": "d05e1877cf98e186a7cda5a7eff7e2d93a80dc7726a2ae721fb4eca5dbf4448d",
+      "packages/desktop-contracts/src/client.ts": "23d585e4c6211e754d9729a4550b8f92c446b80ec733c824b063c9d6ab2579e4"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "import_v1"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/import-v1/import-view.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "a link is followed",
+    "files": [
+      "crates/desktop-core/src/import_v1/source.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "damaged_unsupported_linked_and_oversized_sources_block_only_their_category",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a running v1 is read",
+    "files": [
+      "crates/desktop-core/src/import_v1/source.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "a_running_v1_or_a_locked_keychain_blocks_without_fallback",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an oversized item is read",
+    "files": [
+      "crates/desktop-core/src/import_v1/source.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "damaged_unsupported_linked_and_oversized_sources_block_only_their_category",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unknown reports version is read",
+    "files": [
+      "crates/desktop-core/src/import_v1/parse.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "damaged_unsupported_linked_and_oversized_sources_block_only_their_category",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "conversations are read unselected",
+    "files": [
+      "crates/desktop-core/src/import_v1/plan.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "inspection_reads_files_only_and_the_keychain_only_for_selected_categories",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an endpoint is not mapped to its region",
+    "files": [
+      "crates/desktop-core/src/import_v1/plan.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_import_brings_work_without_credentials_and_a_rollback_removes_only_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another account's drafts are read",
+    "files": [
+      "crates/desktop-core/src/import_v1/plan.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "academy_drafts_go_only_to_the_same_signed_in_account",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another TSG's tenant is a target",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "conflicts_are_reported_and_never_overwritten",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a conflicting report is overwritten",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain/owners.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "conflicts_are_reported_and_never_overwritten",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an edited case is rolled back",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain/owners.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_import_brings_work_without_credentials_and_a_rollback_removes_only_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a tenant still holding work is removed",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain/owners.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_import_brings_work_without_credentials_and_a_rollback_removes_only_it",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a write is not noted before it is made",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain/owners.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_import_interrupted_anywhere_shows_nothing_and_is_undone_at_the_next_launch",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unconfirmed receipt authorizes writes",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "a_receipt_that_is_not_durably_recorded_authorizes_no_write",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an uncommitted tenant is shown",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_import_interrupted_anywhere_shows_nothing_and_is_undone_at_the_next_launch",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an uncommitted case is shown",
+    "files": [
+      "crates/desktop-core/src/authority/library_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_open_library_shows_the_previous_generation_until_the_import_commits",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "what an import writes does not wait",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_import_interrupted_anywhere_shows_nothing_and_is_undone_at_the_next_launch",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an import the app ended during waits for the operator",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_import_interrupted_anywhere_shows_nothing_and_is_undone_at_the_next_launch",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed import is left partly written",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "a_source_changed_after_review_is_not_imported",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "identical work added by the operator is claimed",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain/owners.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "an_identical_case_added_after_an_interruption_is_never_claimed",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "another account's draft is rolled back",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain/owners.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "drafts_belong_to_the_planned_account_through_import_and_rollback",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an edited draft is rolled back",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain/owners.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "drafts_belong_to_the_planned_account_through_import_and_rollback",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a changed source is imported",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "a_source_changed_after_review_is_not_imported",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a rollback is not asked for",
+    "files": [
+      "crates/desktop-core/src/authority/import_v1_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "a_declined_rollback_changes_nothing",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset leaves receipts",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "imports_rollback"
+    ],
+    "guard": "reset_waits_for_an_import_and_removes_its_receipts",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a linked file is read (unit)",
+    "files": [
+      "crates/desktop-core/src/import_v1/source.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "import_v1"
+    ],
+    "guard": "reads_are_bounded_and_never_follow_symlinks",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the Keychain note is never shown",
+    "files": [
+      "apps/desktop/src/features/import-v1/import-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/import-v1/import-view.test.tsx"
+    ],
+    "guard": "reads nothing until asked, then reviews the chosen categories and tenants",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a blocked item can be chosen",
+    "files": [
+      "apps/desktop/src/features/import-v1/import-view.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/import-v1/import-view.test.tsx"
+    ],
+    "guard": "imports only ready items, states every status as text and focuses the result",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a receipt with an unknown state passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects categories, statuses, receipts and bounds Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unrecorded receipt's reason fails the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/import-v1/import-view.test.tsx"
+    ],
+    "guard": "offers Roll back for an unsettled import and blocks a new review meanwhile",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

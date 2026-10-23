@@ -58,6 +58,14 @@ def set_clipboard(text):
     subprocess.run(["pbcopy"], input=text, text=True)
 
 
+def clipboard_change_count():
+    """The general pasteboard's change count (never its contents)."""
+    out = subprocess.run(["osascript", "-l", "JavaScript", "-e",
+                          'ObjC.import("AppKit"); String($.NSPasteboard.generalPasteboard.changeCount)'],
+                         capture_output=True, text=True).stdout.strip()
+    return int(out) if out.isdigit() else None
+
+
 def writes(mgmt, method=None, prefix=""):
     return [r for r in mgmt.requests()
             if r["method"] != "GET" and r["path"] != "/oauth2/access_token"
@@ -349,17 +357,32 @@ def run():
     app.ax("press", "AXButton", "Clear key")
     tree, cleared = c8.text(app, "The new key was cleared from memory.")
     obs["key_cleared"] = cleared and fx.App.node(tree, "AXButton", "Show new key…") is None
-    create_key("Native key 3", "Native app 3")
-    app.ax("press", "AXButton", "Show new key…")
-    tree, _ = wait_sheet(app)
-    secret = secret_in(sheet(app, tree))
-    if secret:
-        SEEN_SECRETS.append(secret)
-    press_exact(app, "Copy and Close")
-    wait_no_sheet(app)
-    set_clipboard("operator text c09")
-    time.sleep(62)
-    obs["foreign_clipboard_kept"] = clipboard() == "operator text c09"
+    # Another writer (such as Universal Clipboard from another device) can
+    # replace the operator's text during the window, which says nothing
+    # about the app; such a window is repeated with a newly issued key, and
+    # only a window no other writer touched decides the check.
+    obs["foreign_clipboard_kept"] = False
+    obs["clipboard_windows_disturbed"] = 0
+    for n in range(3):
+        create_key(f"Native key {3 + n}", f"Native app {3 + n}")
+        app.ax("press", "AXButton", "Show new key…")
+        tree, _ = wait_sheet(app)
+        secret = secret_in(sheet(app, tree))
+        if secret:
+            SEEN_SECRETS.append(secret)
+        press_exact(app, "Copy and Close")
+        wait_no_sheet(app)
+        set_clipboard("operator text c09")
+        written = clipboard_change_count()
+        time.sleep(62)
+        kept = clipboard() == "operator text c09"
+        if kept or clipboard_change_count() == written + 1 and not clipboard():
+            # Kept, or cleared by the only write after ours: decided.
+            obs["foreign_clipboard_kept"] = kept and clipboard_change_count() == written
+            break
+        if clipboard_change_count() == written:
+            break  # unchanged count yet not our text: decided (fails)
+        obs["clipboard_windows_disturbed"] += 1
 
     # ---- N08: T23 offline review, return, explicit retry ----
     close_workbench(app)
@@ -595,7 +618,7 @@ def evaluate(prepared, o):
         f"from the clipboard after 60 s: {o['clipboard_cleared']}", [])
     add("C09-N07", o["return_cancelled_rotate"] and o["rotated"] and o["foreign_clipboard_kept"] and o["key_cleared"],
         f"Return cancelled the destructive rotation: {o['return_cancelled_rotate']}; one regenerate with the reduced body: {o['rotated']}; operator's later "
-        f"clipboard text kept after 60 s: {o['foreign_clipboard_kept']}; Clear key forgot the held key: {o['key_cleared']}", [])
+        f"clipboard text kept after 60 s: {o['foreign_clipboard_kept']} (windows another writer disturbed and repeated: {o['clipboard_windows_disturbed']}); Clear key forgot the held key: {o['key_cleared']}", [])
     add("C09-N08", o["offline_review"] and o["offline_auto"] == 0 and o["offline_retry"],
         f"offline apply reported unreachable and not applied: {o['offline_review']} ({o['offline_texts']}); requests within 6 s of return: "
         f"{o['offline_auto']}; explicit Review prepared it again with nothing sent: {o['offline_retry']}", [o["tree_offline_review"], o["tree_offline"]])

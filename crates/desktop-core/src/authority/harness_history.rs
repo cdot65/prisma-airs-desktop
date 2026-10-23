@@ -59,6 +59,9 @@ pub enum NotContinuable {
     /// Cut short before the engine exported anything to restore: it can be
     /// read and exported, never continued (C22 review R2-F1).
     NotRestorable,
+    /// Imported from v1 (C23): its transcript can be read and exported; it
+    /// never continues (another engine's replay is never restored).
+    Imported,
 }
 
 /// A saved conversation opened for reading.
@@ -150,7 +153,7 @@ pub(super) enum HistoryJob {
 }
 
 impl State {
-    fn history_root(&self) -> Option<std::path::PathBuf> {
+    pub(super) fn history_root(&self) -> Option<std::path::PathBuf> {
         self.harness_history_root.clone()
     }
 
@@ -346,6 +349,9 @@ impl State {
         if self.harness_history_live() == Some(record.id.as_str()) {
             return Some(NotContinuable::Running);
         }
+        if record.origin.is_some() {
+            return Some(NotContinuable::Imported);
+        }
         if !self.harness_engine {
             return Some(NotContinuable::EngineUnavailable);
         }
@@ -484,7 +490,12 @@ impl State {
     /// tenant counts as writing and the scope's key stays in flight until
     /// [`State::history_written`], so tenant removal, cleanup and reset wait
     /// for it and none can place a file or key after them (C20 review F4).
-    fn admit_history_write(&mut self, tenant: &TenantId, workspace: &str, scope: &Scope) -> bool {
+    pub(super) fn admit_history_write(
+        &mut self,
+        tenant: &TenantId,
+        workspace: &str,
+        scope: &Scope,
+    ) -> bool {
         // The scope's note must be durable before its key may be made:
         // an unconfirmed note (this save's, or an earlier one still known
         // only in memory) is confirmed first or nothing is written, so a
@@ -502,7 +513,7 @@ impl State {
     }
 
     /// One admitted save settled (written or not).
-    fn history_written(&mut self, tenant: &TenantId, scope: &Scope) {
+    pub(super) fn history_written(&mut self, tenant: &TenantId, scope: &Scope) {
         if let Some(at) = self.history_writers.iter().position(|t| t == tenant) {
             self.history_writers.remove(at);
         }
@@ -586,6 +597,12 @@ impl State {
         let conversations = listed
             .iter()
             .filter_map(|l| match l {
+                // An import's conversations show once it commits (D050).
+                Listed::Saved { id, .. }
+                    if self.v1_hides_conversation(&h.tenant, &h.workspace, id) =>
+                {
+                    None
+                }
                 Listed::Saved {
                     id,
                     title,
@@ -739,6 +756,7 @@ fn save_record(
         usage,
         context: export.context.clone(),
         replay: export.replay.clone(),
+        origin: None,
     };
     history::save(&*inner.adapters.keychain, scope, &record)?;
     Ok(record)

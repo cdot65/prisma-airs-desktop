@@ -826,7 +826,7 @@ impl State {
         let valid = match &op {
             OfflineOp::Download(id)
             | OfflineOp::Remove(id)
-            | OfflineOp::LoadDraft(id)
+            | OfflineOp::LoadDraft(id, _)
             | OfflineOp::ClearDraft(id) => id_ok(id),
             OfflineOp::SaveDraft {
                 attempt_id, draft, ..
@@ -1285,7 +1285,9 @@ pub(super) enum OfflineOp {
         base_version: u32,
         draft: String,
     },
-    LoadDraft(String),
+    /// An attempt's kept draft; `true`: one an import has not committed yet
+    /// is answered as none (D050).
+    LoadDraft(String, bool),
     ClearDraft(String),
 }
 
@@ -1314,7 +1316,9 @@ impl OfflineJob {
                             base_version,
                             draft,
                         } => off::save_draft(&generation, &attempt_id, base_version, &draft),
-                        OfflineOp::LoadDraft(attempt) => off::load_draft(&generation, &attempt),
+                        OfflineOp::LoadDraft(attempt, hidden) => {
+                            off::load_draft(&generation, &attempt, hidden)
+                        }
                         OfflineOp::ClearDraft(attempt) => off::clear_draft(&generation, &attempt),
                         OfflineOp::Download(_) => Err(CallFailure::Cancelled),
                     })

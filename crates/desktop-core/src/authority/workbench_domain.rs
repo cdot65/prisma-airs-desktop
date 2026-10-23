@@ -792,9 +792,11 @@ impl State {
                 .profile
                 .as_ref()
                 .map(|p| {
+                    // An import's collections show once it commits (D050).
                     p.recent
                         .iter()
                         .enumerate()
+                        .filter(|(_, r)| !self.v1_hides_recent(&r.root))
                         .map(|(i, r)| RecentView {
                             index: u32::try_from(i).unwrap_or(u32::MAX),
                             name: r.name.clone(),
@@ -2625,4 +2627,77 @@ async fn adopt(
         },
         Err(f) => refused(WorkbenchProblem::Private(f)),
     }
+}
+
+// ------------------------------------------------- v1 import (C23, D050)
+
+/// The API Client's recent collection roots, on its lane (the profile is
+/// read if it was not yet).
+pub(super) async fn v1_recent_roots(inner: &Arc<Inner>) -> Option<Vec<std::path::PathBuf>> {
+    let (lane, root) = lock(inner)
+        .ok()
+        .and_then(|s| Some((Arc::clone(&s.workbench.lane), s.workbench_root.clone()?)))?;
+    let _turn = lane.lock().await;
+    let profile = ensure_profile(inner, &root).await.ok()?;
+    Some(profile.recent.iter().map(|r| r.root.clone()).collect())
+}
+
+/// Adds v1 collections to the recent list as Adopt from v1 does (C14),
+/// on the API Client's lane. `note` is told what is about to be added, on
+/// the lane, before the profile is written: when it refuses (`Err(Some)`),
+/// nothing is. `Err(None)`: the profile could not be read or written.
+/// Private environments are adopted through the API Client itself.
+pub(super) async fn add_v1_recents<E>(
+    inner: &Arc<Inner>,
+    candidates: Vec<adoption::Candidate>,
+    note: impl FnOnce(&[(std::path::PathBuf, String)]) -> Result<(), E>,
+) -> Result<Vec<(std::path::PathBuf, String)>, Option<E>> {
+    let (lane, root) = lock(inner)
+        .ok()
+        .and_then(|s| Some((Arc::clone(&s.workbench.lane), s.workbench_root.clone()?)))
+        .ok_or(None)?;
+    let _turn = lane.lock().await;
+    let mut next = ensure_profile(inner, &root).await.map_err(|_| None)?;
+    let mut added = Vec::new();
+    for c in candidates {
+        if next.recent.iter().any(|r| r.root == c.root) || next.recent.len() >= profile::RECENT {
+            continue;
+        }
+        added.push((c.root.clone(), c.id.clone()));
+        next.recent.push(Recent {
+            root: c.root,
+            id: c.id,
+            name: c.name,
+        });
+    }
+    if !added.is_empty() {
+        note(&added).map_err(Some)?;
+        store_profile(inner, &root, next).await.map_err(|_| None)?;
+    }
+    Ok(added)
+}
+
+/// Removes an imported collection from the recent list while it is still
+/// listed under the same identity (C23 rollback).
+pub(super) async fn remove_v1_recent(
+    inner: &Arc<Inner>,
+    collection: &std::path::Path,
+    id: &str,
+) -> Result<bool, PrivateFailure> {
+    let (lane, root) = lock(inner)
+        .ok()
+        .and_then(|s| Some((Arc::clone(&s.workbench.lane), s.workbench_root.clone()?)))
+        .ok_or(PrivateFailure::Unavailable)?;
+    let _turn = lane.lock().await;
+    let mut next = ensure_profile(inner, &root)
+        .await
+        .map_err(|_| PrivateFailure::Unavailable)?;
+    let before = next.recent.len();
+    next.recent
+        .retain(|r| !(r.root == collection && r.id == id));
+    if next.recent.len() == before {
+        return Ok(false);
+    }
+    store_profile(inner, &root, next).await?;
+    Ok(true)
 }

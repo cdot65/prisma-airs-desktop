@@ -191,6 +191,95 @@ impl KeychainStore {
     }
 }
 
+/// v1's Keychain service, read only (C23, D050). It can only find
+/// generic passwords in v1's service: there is no way to add, change or
+/// delete one of v1's items through it, and it never changes the keychain
+/// search list.
+pub struct V1KeychainSource {
+    keychain: SecKeychain,
+    interaction: Interaction,
+    /// Fixture builds: the accounts read, one per line (no data).
+    #[cfg(feature = "test-fixtures")]
+    log: Option<std::path::PathBuf>,
+}
+
+// SAFETY (Send/Sync): as for `KeychainStore`; every call is serialized.
+unsafe impl Send for V1KeychainSource {}
+unsafe impl Sync for V1KeychainSource {}
+
+impl V1KeychainSource {
+    /// The login Keychain. macOS asks the operator before an item of v1's is
+    /// read (the platform's grant for a protected read).
+    pub fn login() -> Result<Self, VaultError> {
+        Ok(Self {
+            keychain: SecKeychain::default().map_err(|e| map(e.code(), None))?,
+            interaction: Interaction::Allowed,
+            #[cfg(feature = "test-fixtures")]
+            log: None,
+        })
+    }
+
+    /// A staged fixture keychain (fixture builds): opened only if it exists,
+    /// never created, and never prompting.
+    #[cfg(feature = "test-fixtures")]
+    pub fn file(path: &Path, password: &str, log: &Path) -> Result<Self, VaultError> {
+        if !path.is_file() {
+            return Err(VaultError::Unavailable);
+        }
+        let mut keychain = SecKeychain::open(path).map_err(|e| map(e.code(), None))?;
+        keychain
+            .unlock(Some(password))
+            .map_err(|e| map(e.code(), None))?;
+        Ok(Self {
+            keychain,
+            interaction: Interaction::Disallowed,
+            log: Some(log.to_path_buf()),
+        })
+    }
+
+    fn is_locked(&self) -> bool {
+        let mut status = 0u32;
+        // SAFETY: as in `KeychainStore::is_locked`.
+        let code =
+            unsafe { SecKeychainGetStatus(self.keychain.as_concrete_TypeRef(), &mut status) };
+        code == 0 && status & K_SEC_UNLOCK_STATE_STATUS == 0
+    }
+}
+
+impl desktop_core::import_v1::V1Keychain for V1KeychainSource {
+    fn read(&self, account: &str) -> Result<Option<Zeroizing<Vec<u8>>>, VaultError> {
+        #[cfg(feature = "test-fixtures")]
+        if let Some(log) = &self.log {
+            use std::io::Write;
+            if let Ok(mut f) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(log)
+            {
+                let _ = writeln!(f, "{account}");
+            }
+        }
+        let _serial = KEYCHAIN_CALLS.lock().map_err(|_| VaultError::Unavailable)?;
+        let found = {
+            let _guard = match self.interaction {
+                Interaction::Allowed => None,
+                Interaction::Disallowed => Some(
+                    SecKeychain::disable_user_interaction().map_err(|_| VaultError::Unavailable)?,
+                ),
+            };
+            self.keychain
+                .find_generic_password(desktop_core::import_v1::V1_SERVICE, account)
+                .map(|(password, _)| Zeroizing::new(password.to_vec()))
+                .map_err(|e| e.code())
+        };
+        match found {
+            Ok(bytes) => Ok(Some(bytes)),
+            Err(ERR_SEC_ITEM_NOT_FOUND) => Ok(None),
+            Err(code) => Err(map(code, Some(self.is_locked()))),
+        }
+    }
+}
+
 fn delete_item(item: &SecKeychainItem) -> Result<(), OSStatus> {
     // SAFETY: the item reference is valid while `item` is alive.
     let code = unsafe {

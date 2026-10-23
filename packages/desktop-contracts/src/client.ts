@@ -975,6 +975,7 @@ const NOT_CONTINUABLE: readonly string[] = [
     'engineUnavailable',
     'workspaceUnavailable',
     'notRestorable',
+    'imported',
 ]
 /** Saved conversations per workspace and a title's length (C20). */
 const MAX_SAVED_CONVERSATIONS = 16
@@ -1037,6 +1038,149 @@ function isHarnessEntry(value: unknown): boolean {
         utf8Bytes(value.text) <= (value.role === 'operator' ? 32 * 1024 : MAX_ANSWER_BYTES) &&
         oneOf(ENTRY_STATES, value.state) &&
         Object.keys(value).length === 4
+    )
+}
+
+const IMPORT_CATEGORIES: readonly string[] = [
+    'tenants',
+    'endpoints',
+    'settings',
+    'cases',
+    'reports',
+    'academyDrafts',
+    'apiClient',
+    'conversations',
+]
+const IMPORT_PROBLEMS: readonly string[] = [
+    'missing',
+    'sourceLocked',
+    'accessDenied',
+    'keychainLocked',
+    'corrupt',
+    'unsupportedVersion',
+    'tooLarge',
+    'pathRejected',
+    'sourceRetired',
+    'noStoredWork',
+    'accountMismatch',
+    'signInRequired',
+    'endpointNotMappable',
+    'noV2Equivalent',
+    'destinationFull',
+    'sourceChanged',
+    'noTarget',
+    'notRecorded',
+]
+const IMPORT_SOURCES: readonly string[] = ['notFound', 'locked', 'unavailable', 'ready']
+const IMPORT_ACTIVITIES: readonly string[] = ['inspecting', 'planning', 'importing', 'confirming', 'rollingBack']
+const RECEIPT_STATES: readonly string[] = ['applying', 'applied', 'rollingBack', 'rolledBack']
+const RECEIPT_ITEM_STATES: readonly string[] = [
+    'planned',
+    'writing',
+    'applied',
+    'failed',
+    'reverting',
+    'reverted',
+    'keptChanged',
+    'gone',
+]
+const RECEIPT_ID = /^imp-[0-9a-f]{16}$/
+/** Bounds of the import view (C23): v1 tenants, plan items and receipts. */
+const MAX_IMPORT_TENANTS = 64
+const MAX_IMPORT_ITEMS = 256
+const MAX_RECEIPTS = 8
+
+const isU32 = (v: unknown): boolean => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 0xffffffff
+
+function isItemStatus(value: unknown): boolean {
+    if (!isRecord(value)) return false
+    if (value.kind === 'blocked') return oneOf(IMPORT_PROBLEMS, value.problem) && Object.keys(value).length === 2
+    return oneOf(['ready', 'alreadyPresent', 'conflict'], value.kind) && Object.keys(value).length === 1
+}
+
+function isPlanItem(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isU32(value.index) &&
+        oneOf(IMPORT_CATEGORIES, value.category) &&
+        bounded(1024)(value.label) &&
+        optional(bounded(1024), value.target) &&
+        isItemStatus(value.status) &&
+        isRecord(value.counts) &&
+        ['new', 'present', 'conflict', 'skipped'].every((k) => isU32((value.counts as Record<string, unknown>)[k])) &&
+        Object.keys(value.counts).length === 4 &&
+        optional((p) => oneOf(IMPORT_PROBLEMS, p), value.partial)
+    )
+}
+
+function isReceiptView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        RECEIPT_ID.test(value.id) &&
+        isCount(value.created) &&
+        oneOf(RECEIPT_STATES, value.state) &&
+        typeof value.interrupted === 'boolean' &&
+        Array.isArray(value.items) &&
+        value.items.length <= MAX_IMPORT_ITEMS &&
+        value.items.every(
+            (i) =>
+                isRecord(i) &&
+                oneOf(IMPORT_CATEGORIES, i.category) &&
+                bounded(1024)(i.label) &&
+                oneOf(RECEIPT_ITEM_STATES, i.state) &&
+                isU32(i.written) &&
+                isU32(i.kept)
+        ) &&
+        typeof value.canResume === 'boolean' &&
+        typeof value.canRollBack === 'boolean'
+    )
+}
+
+/** The reviewed v1 import (C23): what v1 has, the review and receipts. */
+function isV1ImportView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.available === 'boolean' &&
+        optional((v) => oneOf(IMPORT_SOURCES, v), value.source) &&
+        Array.isArray(value.tenants) &&
+        value.tenants.length <= MAX_IMPORT_TENANTS &&
+        value.tenants.every(
+            (t) =>
+                isRecord(t) &&
+                isU32(t.index) &&
+                bounded(1024)(t.label) &&
+                optional((v) => typeof v === 'string' && /^[0-9]{1,20}$/.test(v), t.tsgId) &&
+                typeof t.sessionOnly === 'boolean' &&
+                Array.isArray(t.matches) &&
+                t.matches.every((m) => typeof m === 'string' && TENANT_ID.test(m))
+        ) &&
+        Array.isArray(value.categories) &&
+        value.categories.every(
+            (c) =>
+                isRecord(c) &&
+                oneOf(IMPORT_CATEGORIES, c.category) &&
+                optional(isU32, c.found) &&
+                optional((p) => oneOf(IMPORT_PROBLEMS, p), c.problem)
+        ) &&
+        Array.isArray(value.notMapped) &&
+        value.notMapped.every(bounded(64)) &&
+        optional(
+            (p) =>
+                isRecord(p) &&
+                typeof p.review === 'string' &&
+                REVIEW_ID.test(p.review) &&
+                Array.isArray(p.items) &&
+                p.items.length <= MAX_IMPORT_ITEMS &&
+                p.items.every(isPlanItem),
+            value.plan
+        ) &&
+        optional((a) => oneOf(IMPORT_ACTIVITIES, a), value.activity) &&
+        Array.isArray(value.receipts) &&
+        value.receipts.length <= MAX_RECEIPTS &&
+        value.receipts.every(isReceiptView) &&
+        isU32(value.damagedReceipts) &&
+        optional((p) => oneOf(IMPORT_PROBLEMS, p), value.problem)
     )
 }
 
@@ -2401,6 +2545,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isWorkbenchView(value.workbench) ||
         !isGatewayView(value.gateway) ||
         !isHarnessView(value.harness) ||
+        !isV1ImportView(value.v1Import) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')

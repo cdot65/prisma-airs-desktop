@@ -32,6 +32,12 @@ pub const FIXTURE_KEYCHAIN: &str = "fixture-credentials.keychain-db";
 /// The fixture test keychain's password. It protects only synthetic fixture
 /// credentials in a keychain that exists solely for acceptance runs.
 pub const FIXTURE_KEYCHAIN_PASSWORD: &str = "prisma-airs-desktop-v2-fixture-keychain";
+/// The staged fixture v1 keychain (C23) and its password: synthetic v1
+/// items only, created by the acceptance driver.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_V1_KEYCHAIN: &str = "fixture-v1.keychain-db";
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_V1_KEYCHAIN_PASSWORD: &str = "prisma-airs-desktop-v2-fixture-v1-keychain";
 
 /// Builds the production adapters for the app's data root.
 pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
@@ -82,7 +88,40 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
             Arc::new(NativeUploadPicker { app: app.clone() }),
         ),
         harness: harness(app, root.as_deref()),
+        v1_source: v1_source(app),
+        import_root: root.as_ref().map(|r| r.join("imports")),
     }
+}
+
+/// v1's folder and Keychain service, read only (C23). Fixture builds read a
+/// staged copy under their data root and a staged file keychain, never a
+/// real v1 or the login Keychain.
+#[cfg(not(feature = "test-fixtures"))]
+fn v1_source<R: Runtime>(app: &AppHandle<R>) -> Option<desktop_core::import_v1::V1Source> {
+    let root = app.path().data_dir().ok()?.join("Prisma AIRS Desktop");
+    let keychain = crate::keychain::V1KeychainSource::login().ok()?;
+    Some(desktop_core::import_v1::V1Source {
+        root,
+        keychain: Arc::new(keychain),
+    })
+}
+
+#[cfg(feature = "test-fixtures")]
+fn v1_source<R: Runtime>(app: &AppHandle<R>) -> Option<desktop_core::import_v1::V1Source> {
+    let data = app.path().app_data_dir().ok()?;
+    let keychain: Arc<dyn desktop_core::import_v1::V1Keychain> =
+        match crate::keychain::V1KeychainSource::file(
+            &data.join(FIXTURE_V1_KEYCHAIN),
+            FIXTURE_V1_KEYCHAIN_PASSWORD,
+            &data.join("fixture-v1-reads.log"),
+        ) {
+            Ok(k) => Arc::new(k),
+            Err(_) => Arc::new(desktop_core::import_v1::source::UnavailableKeychain),
+        };
+    Some(desktop_core::import_v1::V1Source {
+        root: data.join("fixture-v1"),
+        keychain,
+    })
 }
 
 /// The bundled Harness engine (`Contents/Resources/harness/airs-harness`),
@@ -1189,6 +1228,29 @@ impl<R: Runtime> ImportPicker for NativeTextPicker<R> {
                     .ok()?;
             Some(read.map(|bytes| ImportFile { name, bytes }))
         })
+    }
+}
+
+/// The commit point at which the next v1 import or rollback stops (C23),
+/// named in `fixture-import-crash` under the fixture data root.
+#[cfg(feature = "test-fixtures")]
+pub const FIXTURE_IMPORT_CRASH: &str = "fixture-import-crash";
+
+#[cfg(feature = "test-fixtures")]
+pub fn fixture_import_crash<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Option<desktop_core::import_v1::CommitPoint> {
+    use desktop_core::import_v1::CommitPoint;
+    let named =
+        std::fs::read_to_string(app.path().app_data_dir().ok()?.join(FIXTURE_IMPORT_CRASH)).ok()?;
+    match named.trim() {
+        "created" => Some(CommitPoint::Created),
+        "writing" => Some(CommitPoint::Writing),
+        "written" => Some(CommitPoint::Written),
+        "applied" => Some(CommitPoint::Applied),
+        "reverting" => Some(CommitPoint::Reverting),
+        "reverted" => Some(CommitPoint::Reverted),
+        _ => None,
     }
 }
 

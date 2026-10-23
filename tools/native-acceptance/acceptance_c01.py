@@ -268,16 +268,16 @@ def evaluate_flows(run):
     # Runtime Security is available since C03, Academy since C05,
     # Administration since C08, Sessions & Reports since C11, the Case
     # Library since C12, Red Team & Models since C13, the API Client since
-    # C14, AI Gateway since C16 and the Harness since C19 (their views'
-    # headings are shown); every other product destination is still
-    # unavailable.
-    expected = {"Import from v1": "C23"}
+    # C14, AI Gateway since C16, the Harness since C19 and Import from v1
+    # since C23 (their views' headings are shown); no product destination
+    # is unavailable any more.
     available = {"Scan a prompt or response", ACADEMY_HEADING, "Tenant inventories", "Investigate sessions", "Test case library",
-                 "Red Teaming and model observation", "API Client", "Gateway workspaces and configuration", "Harness"}
+                 "Red Teaming and model observation", "API Client", "Gateway workspaces and configuration", "Harness",
+                 "Import from v1"}
     dests = step(run, "destinations")["observation"]
     unavailable = [d for d in dests if d["heading"] not in available]
-    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 9
-          and len(unavailable) == 1 and all(d["heading"] in expected and d["unavailableText"] and d["planned"] == [f"PLANNED IN {expected[d['heading']]}"] for d in unavailable))
+    ok = (len(dests) == 10 and sum(d["heading"] in available and not d["unavailableText"] and not d["planned"] for d in dests) == 10
+          and not unavailable)
     results["C01-N06"] = (ok, "; ".join(f"{d['shortcut']}: {d['heading']} ({', '.join(d['planned'])})" for d in dests))
     dark = step(run, "appearance-view-dark")["observation"]
     light = step(run, "appearance-view-light")["observation"]
@@ -292,7 +292,7 @@ def evaluate_flows(run):
     buttons = [n for n in snap if n["role"] == "AXButton" and n["depth"] > 3]
     named = [b for b in buttons if b["label"]]
     heads = [n for n in snap if n["role"] == "AXHeading"]
-    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 1 and len(heads) == 1
+    ok = bool(nav) and len(named) == len(buttons) and sum("Not available in this build" in (b["label"] or "") for b in buttons) == 0 and len(heads) == 1
     results["C01-N08"] = (ok, f"inspected AXRole, AXSubrole, AXTitle/AXDescription/AXValue, AXARIACurrent, AXFocused and tree order: 'Features' navigation landmark present={bool(nav)}; {len(named)}/{len(buttons)} buttons named; {sum('Not available in this build' in (b['label'] or '') for b in buttons)} destinations announce 'Not available in this build'; headings {[h['label'] for h in heads]}. Spoken VoiceOver output was not recorded.")
     mn = step(run, "min-size")["observation"]
     last = mn["lastDestination"]

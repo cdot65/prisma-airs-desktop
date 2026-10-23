@@ -1,0 +1,97 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C13",
+  "recorded_utc": "2026-10-23T10:13:34Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c13.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "8be1b95f41b4331bfc4e0dc026b428574a772821a2d68126a494605f0b1db99b",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C13-N01",
+      "description": "Red Team & Models opens on Red Teaming and reads the last 30 days' scan statistics and the first 100 scans: summary tiles, scans by status, targets by type and risk profile, source coverage, attack results offered only for finished scans; no tenant header on the Red Teaming plane and no scan, target or error text from the service in the window.",
+      "result": "pass",
+      "observation": "Red Teaming {'read': True, 'statistics': True, 'tiles': True, 'lists': True, 'rows_with_attacks': 95, 'window_query': ['LAST_30_DAYS'], 'list_query': [('0', '100')], 'tsg_header': [None, None], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C23/native-C13/observations.json",
+        "docs/planning/evidence/C23/native-C13/tree-red-team.json"
+      ]
+    },
+    {
+      "id": "C13-N02",
+      "description": "Choosing another statistics window reads that window (LAST_7_DAYS) and says which window is shown.",
+      "result": "pass",
+      "observation": "window {'shown': True, 'query': 'LAST_7_DAYS'}",
+      "evidence": [
+        "docs/planning/evidence/C23/native-C13/observations.json"
+      ]
+    },
+    {
+      "id": "C13-N03",
+      "description": "A finished scan's attack results open with focus on their heading, are read 100 per page until the service's total is covered (at most ten pages), count only reported successes, and never show attack prompts or the target's replies.",
+      "result": "pass",
+      "observation": "attack results {'opened': True, 'heading_focused': True, 'complete': True, 'rows_in_snapshot': 100, 'first_row': True, 'skips': ['0', '100', '200'], 'prompts_kept_out': True, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C23/native-C13/observations.json",
+        "docs/planning/evidence/C23/native-C13/tree-attacks.json"
+      ]
+    },
+    {
+      "id": "C13-N04",
+      "description": "Models & skills reads Model Security scans (a partial sample shown as such), AgentGuard 30-day skill statistics and skill scans named by per-read pseudonyms; v1's queries, the tenant header only on AgentGuard, and no model URI, security group, skill name or finding in the window.",
+      "result": "pass",
+      "observation": "models and skills {'read': True, 'skills': True, 'statistics': True, 'pseudonyms': 100, 'background': ['false'], 'period': ['30_DAYS'], 'agentguard_tsg': ['1234567890'], 'model_tsg': ['None'], 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C23/native-C13/observations.json",
+        "docs/planning/evidence/C23/native-C13/tree-models.json"
+      ]
+    },
+    {
+      "id": "C13-N05",
+      "description": "A refused source is stated while the others are shown; a refresh where every source fails keeps the last read with its time; absent statistics while scans exist are stated as unavailable, never zero.",
+      "result": "pass",
+      "observation": "failures {'one_source': {'denied': True, 'others': True, 'tile': True}, 'all_sources': {'failed': True, 'kept': True}, 'statistics_absent_with_scans': True, 'leaks': []}",
+      "evidence": [
+        "docs/planning/evidence/C23/native-C13/observations.json",
+        "docs/planning/evidence/C23/native-C13/tree-models-failed.json"
+      ]
+    },
+    {
+      "id": "C13-N06",
+      "description": "No control starts a Red Teaming or Model Security workflow (scan, ASR verification, target, adapter, channel, prompt set, model scan, security group); both tabs disclose that these are not available, and only GET requests reach the services.",
+      "result": "pass",
+      "observation": "Red Teaming {'disclosed': True, 'controls': []}; models {'disclosed': True, 'controls': []}; non-read requests: []",
+      "evidence": [
+        "docs/planning/evidence/C23/native-C13/observations.json"
+      ]
+    },
+    {
+      "id": "C13-N07",
+      "description": "Refresh and the first attack-results action are reachable by keyboard and clear of the bottom fade at 200% zoom and at the minimum window size.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Refresh Red Teaming', 'pos': [575, 404], 'size': [350, 88]}; minimum size: {'label': 'Open attack results for scan 00000000', 'pos': [706, 517], 'size': [261, 44]}",
+      "evidence": [
+        "docs/planning/evidence/C23/native-C13/observations.json"
+      ]
+    },
+    {
+      "id": "C13-N08",
+      "description": "Without a management client the page asks for one and nothing is read; no secret or private service marker appears in any saved Accessibility snapshot, and v1 data is unchanged.",
+      "result": "pass",
+      "observation": "without a management client: {'asked': True, 'requests': 0}; secrets or private markers in AX snapshots: []; v1 unchanged: True",
+      "evidence": [
+        "docs/planning/evidence/C23/native-C13/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The AI Red Teaming, Model Security and AgentGuard services are synthetic local TLS endpoints at the production paths; no product endpoint is called before C25.",
+    "The local status filter is covered by the production App tests; the driver checks the window, attack paging, source states and privacy natively.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

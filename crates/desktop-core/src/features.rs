@@ -47,15 +47,14 @@ pub struct FeatureEntry {
     pub availability: Availability,
 }
 
-const PLANNED: [(FeatureId, &str, &str); 1] = [(FeatureId::Import, "Import from v1", "C23")];
-
 /// The catalogue shipped by this build, in navigation order.
 pub fn catalogue() -> Vec<FeatureEntry> {
     // Runtime Security shipped in C03, Academy learning in C05, management
     // reads (Administration) in C08, Sessions & Reports in C11, the Case
     // Library in C12, Red Team and Model/skill observation in C13, API
     // Client projects and documents in C14, AI Gateway workspace and
-    // configuration reads in C16, and the native Harness in C19.
+    // configuration reads in C16, the native Harness in C19, and the
+    // reviewed import of v1 work in C23.
     let mut entries = vec![
         FeatureEntry {
             id: FeatureId::Runtime,
@@ -103,14 +102,11 @@ pub fn catalogue() -> Vec<FeatureEntry> {
             availability: Availability::Available,
         },
     ];
-    entries.extend(PLANNED.iter().map(|(id, label, chunk)| FeatureEntry {
-        id: *id,
-        label: (*label).to_owned(),
-        availability: Availability::Unavailable {
-            reason: "Not available in this build".to_owned(),
-            planned_chunk: (*chunk).to_owned(),
-        },
-    }));
+    entries.push(FeatureEntry {
+        id: FeatureId::Import,
+        label: "Import from v1".to_owned(),
+        availability: Availability::Available,
+    });
     entries.push(FeatureEntry {
         id: FeatureId::Settings,
         label: "Settings".to_owned(),

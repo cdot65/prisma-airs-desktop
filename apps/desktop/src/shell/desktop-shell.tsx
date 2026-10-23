@@ -8,6 +8,7 @@ import { type CasePrefill, LibraryView } from '../features/library/library-view'
 import { RedTeamView } from '../features/red-team/red-team-view'
 import { GatewayView } from '../features/gateway/gateway-view'
 import { HarnessView } from '../features/harness/harness-view'
+import { ImportView } from '../features/import-v1/import-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
 import { WorkbenchView } from '../features/workbench/workbench-view'
 import type { Dispatch } from '../features/tenants/dispatch'
@@ -229,6 +230,8 @@ export function DesktopShell(props: DesktopShellProps) {
             ) : feature.id === 'harness' && feature.availability.state === 'available' ? (
                 // Keyed by context: a new tenant starts with nothing held.
                 <HarnessView key={context ?? 'none'} ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
+            ) : feature.id === 'import' && feature.availability.state === 'available' ? (
+                <ImportView ref={heading} snapshot={snapshot} dispatch={props.dispatch} />
             ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
                 // Not keyed by tenant: API Client documents are on this Mac,
                 // independent of the selected tenant.
