@@ -1,0 +1,524 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "check-20261023T143454Z-0422e9",
+  "subject": "C24",
+  "kind": "check",
+  "started_utc": "2026-10-23T14:34:54Z",
+  "finished_utc": "2026-10-23T14:37:06Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/cdot/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/cdot/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "node",
+      "path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/",
+    "npm_package_version": "0.176.0"
+  },
+  "inputs_before": {
+    "source": "8cafc0e256e80eb46949db7335c221220a86d81453017df2c3670b97e10e554b",
+    "dependencies": "cea9d27552c7b2de630103988d2e6dbb02cb1290b890c45826440683ddc63db7",
+    "build_flags": "108c7f4214bae954ea65e8c37b56be2105770034ba7b49f47f83795d832aed8c"
+  },
+  "inputs_after": {
+    "source": "8cafc0e256e80eb46949db7335c221220a86d81453017df2c3670b97e10e554b",
+    "dependencies": "cea9d27552c7b2de630103988d2e6dbb02cb1290b890c45826440683ddc63db7",
+    "build_flags": "108c7f4214bae954ea65e8c37b56be2105770034ba7b49f47f83795d832aed8c"
+  },
+  "commands": [
+    {
+      "label": "setup/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 4564,
+      "output_sha256": "63607de41681afb19bae268b84a230bcb4869c74ece044f027a0864f6a7ef0de",
+      "log": "logs/setup-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "setup/2",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 316,
+      "output_sha256": "48b12cf81e68496b55eabd19a3763a1b069ee0eaacff02a76be0067fc01b7bcb",
+      "log": "logs/setup-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "bindings",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1911,
+      "output_sha256": "057e52b56e4da597f6ff11901ddce2c162213455250a8a70fb830c36ed34a2b4",
+      "log": "logs/common-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/2",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "ledger",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 413,
+      "output_sha256": "6a378560caf2f5c94a3e9df705f035c4f2fd48ee75585b6201b5aebe2fb675b3",
+      "log": "logs/common-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/3",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "notices",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1466,
+      "output_sha256": "8a04a2568eaa27306b3ad05dadd1da3fba9ba6cf99a4586b9e4c520743b2f7c7",
+      "log": "logs/common-3.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/4",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop-contracts",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 484,
+      "output_sha256": "1840d3fb1a408567ced31a9d454f3d787bd453947614907ca6ff686d04380da7",
+      "log": "logs/common-4.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/5",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2307,
+      "output_sha256": "9c9a4f7ebf72e49f89fadd1232849e1c87de368c6e9b65e676fafdb99259ef56",
+      "log": "logs/common-5.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/6",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 14465,
+      "output_sha256": "0a4cbc6a131179e0e4c318502e3635abbe0f0770bd872728ae182a8f96e95c6f",
+      "log": "logs/common-6.log",
+      "tests": {
+        "passed": 418,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/7",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "build"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 5413,
+      "output_sha256": "e0df8d8838d4fdadfa5049155082782252424bc0206da7665c567c81266e1318",
+      "log": "logs/common-7.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/8",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 683,
+      "output_sha256": "d8760763be63067f00789fcf42648cb7e89259b37690e733415676ec0b8b6596",
+      "log": "logs/common-8.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/9",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--locked",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2364,
+      "output_sha256": "f94e89472bd41ad7db4f08aa801446c969a99c1a1d74b782ed0abb13e5c378fa",
+      "log": "logs/common-9.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/10",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--locked",
+        "--all-targets",
+        "--features",
+        "desktop-core/test-fixtures,desktop-host/test-fixtures,xtask/test-fixtures",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1118,
+      "output_sha256": "a6445f69d9abbff0d3baad8e963d0e20c65e4731f70e7382812e061abca606f6",
+      "log": "logs/common-10.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "common/11",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--lib"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 19216,
+      "output_sha256": "94a8121907d966fc9cfdf937a19057510257ce4053ea71bb218a47ea9aeda7fd",
+      "log": "logs/common-11.log",
+      "tests": {
+        "passed": 221,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 4079,
+      "output_sha256": "f2bef0f513f68ebf3898514fde2b759ac017fe0d0cc78fc0ed17cd90ce6dbae3",
+      "log": "logs/shared-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/2",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 995,
+      "output_sha256": "e5f568f47b456429e974e064b23863eb4f2379531a2167fd73e4a84fb4324002",
+      "log": "logs/shared-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/3",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-lifecycle",
+        "--allowlist",
+        "docs/architecture/shared-lifecycle.json",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 1042,
+      "output_sha256": "46725d759a5394a2a63d7112ff1ad2263a968ff1cf9a2e62eafbed1a0d31f27f",
+      "log": "logs/shared-3.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/4",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "tsc",
+        "-p",
+        "tsconfig.typecheck.json",
+        "--noEmit"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 12460,
+      "output_sha256": "d8760763be63067f00789fcf42648cb7e89259b37690e733415676ec0b8b6596",
+      "log": "logs/shared-4.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/5",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "-r",
+        "--fail-if-no-match",
+        "--filter",
+        "@ai-security-academy/cli",
+        "--filter",
+        "@ai-security-academy/presentation",
+        "--filter",
+        "@ai-security-academy/rag-svc",
+        "--filter",
+        "@ai-security-academy/shared",
+        "--filter",
+        "@ai-security-academy/ui",
+        "--filter",
+        "@ai-security-academy/video",
+        "run",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 6432,
+      "output_sha256": "2be2cca8f3e7f6836b3cab93634a327bddb49aea96d9953fe114bbd8671575e6",
+      "log": "logs/shared-5.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/6",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.presentation.config.ts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 17862,
+      "output_sha256": "cf563fe30cbfe0d51badafca1e1f19474cec809c0c2bfd2209d14e0dfe6e61cf",
+      "log": "logs/shared-6.log",
+      "tests": {
+        "passed": 1362,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/7",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "tsx",
+        "scripts/copy-excalidraw-assets.ts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 315,
+      "output_sha256": "69155acfdb183e679161ee0ab561ef5cab066edc2fe25f13c933f8ec77aaf219",
+      "log": "logs/shared-7.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "shared/8",
+      "argv": [
+        "pnpm",
+        "--dir",
+        ".work/academy",
+        "exec",
+        "vite",
+        "build"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 28583,
+      "output_sha256": "ed45114afd083fd8cc39c85a5ce213a4cbf8c160f42fa974ba9a2d41c0ed57c1",
+      "log": "logs/shared-8.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "artifacts": []
+}

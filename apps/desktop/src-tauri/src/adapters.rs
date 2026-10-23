@@ -90,7 +90,21 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
         harness: harness(app, root.as_deref()),
         v1_source: v1_source(app),
         import_root: root.as_ref().map(|r| r.join("imports")),
+        logs_root: logs_root(app, root.as_deref()),
     }
+}
+
+/// macOS's own logs folder for this app (D051), apart from the work in the
+/// data folder. Fixture builds keep it under their data root, which the
+/// acceptance drivers remove after each run.
+#[cfg(not(feature = "test-fixtures"))]
+fn logs_root<R: Runtime>(app: &AppHandle<R>, _: Option<&Path>) -> Option<PathBuf> {
+    app.path().app_log_dir().ok()
+}
+
+#[cfg(feature = "test-fixtures")]
+fn logs_root<R: Runtime>(_: &AppHandle<R>, root: Option<&Path>) -> Option<PathBuf> {
+    root.map(|r| r.join("fixture-logs"))
 }
 
 /// v1's folder and Keychain service, read only (C23). Fixture builds read a

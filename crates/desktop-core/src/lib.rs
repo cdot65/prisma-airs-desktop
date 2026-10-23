@@ -12,6 +12,7 @@ pub mod avatar;
 pub mod changes;
 pub mod context;
 mod delivery;
+pub mod diagnostics;
 pub mod features;
 #[cfg(any(test, feature = "test-fixtures"))]
 pub mod fixtures;

@@ -1,6 +1,6 @@
 [package]
 name = "desktop-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Prisma AIRS Desktop v2 application core: native authority, context and outcomes"
 edition.workspace = true
 rust-version.workspace = true
@@ -163,6 +163,11 @@ required-features = ["test-fixtures"]
 [[test]]
 name = "workspace_mcp"
 path = "tests/workspace_mcp/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "native_quality"
+path = "tests/native_quality/main.rs"
 required-features = ["test-fixtures"]
 
 [[test]]

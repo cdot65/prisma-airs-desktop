@@ -328,13 +328,15 @@ async fn tool_work_still_queued_when_its_turn_is_stopped_is_never_sent() {
             id.clone()
         };
         let context = desk.context();
+        // Counted before the reads are sent: one can reach the server
+        // before its send returns.
+        let profiles = desk.requests("/aisec/").len();
         for _ in 0..4 {
             desk.send(json!({"kind": "management", "context": context,
                 "request": {"kind": "page", "resource": "topics", "offset": 0, "limit": 25}}))
                 .await
                 .expect("operator read");
         }
-        let profiles = desk.requests("/aisec/").len();
         tokio::time::sleep(Duration::from_millis(500)).await;
         let before_keys = desk.requests("/aisec/v1/mgmt/apikeys").len();
         let before_scans = desk.requests("/v1/scan").len();

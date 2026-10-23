@@ -2084,7 +2084,67 @@
         "test-fixtures"
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
-      "live_requirement": "no product endpoint calls; fixtures only"
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "diagnostics"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
+        ]
+      ]
     },
     "C25": {
       "rust_target": "controlled_live",
@@ -2421,7 +2481,8 @@
     "C01",
     "C05",
     "C06",
-    "C07"
+    "C07",
+    "C24"
   ],
   "shared_source_requirement": "Run shared_source_commands at C01/C05/C06 and every chunk changing Academy consumed bytes/revision. C05/C06 extend vitest.presentation.config.ts to learner export and both consumer regressions.",
   "environment_contract": {

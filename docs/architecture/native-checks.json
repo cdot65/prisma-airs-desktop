@@ -1080,6 +1080,32 @@
         "id": "C23-N08",
         "check": "The import view works by keyboard alone in tab order (category checkboxes, tenant targets, Review, item checkboxes, Import, Import again, Roll back), every control and status has an Accessibility name, progress is announced as a status, and the view stays usable at 200% text size and the minimum window size with reduced motion."
       }
+    ],
+    "C24": [
+      {
+        "id": "C24-N01",
+        "check": "Settings › Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only) through the save sheet, and Clear diagnostics leaves only the record of clearing."
+      },
+      {
+        "id": "C24-N02",
+        "check": "Seeded canaries put through the real window (a scan key, and a prompt scanned against the synthetic endpoint) never appear as the secret in any file the app keeps (data folder, diagnostics, exports) or in any Accessibility tree, and neither the secret nor the prompt appears in the diagnostics or their export."
+      },
+      {
+        "id": "C24-N03",
+        "check": "Startup and reconnect network inventory: across 15 s of startup with a configured tenant the app and its WebKit processes open no internet socket (sampled lsof), and after an offline launch the synthetic services receive no request once they are reachable again until the operator acts."
+      },
+      {
+        "id": "C24-N04",
+        "check": "T23 across local categories: with imported cases, FP/FN reports and a receipt kept, an offline launch (no synthetic service reachable) shows the cases in the Case Library, the reports in Sessions & Reports, the import receipt and the diagnostics count, and nothing is sent or replayed on reconnect."
+      },
+      {
+        "id": "C24-N05",
+        "check": "The prepared bundle is Node-free: no node, bun, npm, npx or airs-cli executable, no node_modules, .mjs or .cjs file, and no JavaScript source map anywhere in it."
+      },
+      {
+        "id": "C24-N06",
+        "check": "The cumulative T09 matrix: every earlier chunk's native acceptance (C01–C23) passes again on this bundle (their records under this chunk's evidence), covering menus, shortcuts, keyboard and focus, Accessibility roles and names, zoom, minimum window size, themes and reduced motion for every workflow."
+      }
     ]
   }
 }

@@ -2,6 +2,7 @@
 import type { AcademyView } from "./AcademyView";
 import type { ActiveContext } from "./ActiveContext";
 import type { ChangesView } from "./ChangesView";
+import type { DiagnosticsView } from "./DiagnosticsView";
 import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
 import type { GatewayView } from "./GatewayView";
@@ -92,4 +93,8 @@ gateway: GatewayView, harness: HarnessView,
 /**
  * Reviewed import of v1 work (C23).
  */
-v1Import: V1ImportView, };
+v1Import: V1ImportView, 
+/**
+ * Local redacted diagnostics (C24).
+ */
+diagnostics: DiagnosticsView, };

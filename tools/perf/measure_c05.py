@@ -193,7 +193,10 @@ def main():
         "metrics": metrics,
         "details": details,
     }
-    name = "workload-perf.json" if label == "acceptance" else f"workload-perf-calibration-{started.replace(':', '')}.json"
+    # Recorded for another subject (a phase, or C24's cumulative closure)
+    # under this chunk's name.
+    own = "workload-perf.json" if SUBJECT == "C05" else "workload-perf-C05.json"
+    name = own if label == "acceptance" else f"workload-perf-calibration-{started.replace(':', '')}.json"
     path = os.path.join(EVIDENCE, name)
     with open(path, "w") as f:
         json.dump(record, f, indent=1)

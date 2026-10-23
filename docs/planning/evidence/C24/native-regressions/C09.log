@@ -1,0 +1,12 @@
+PASS C09-N01 editor prefilled with the item: True; review shows current and expected JSON with the impact and 'Type Finance to confirm': True; writes while reviewing: 0
+PASS C09-N02 AppKit sheet shown: True (title from Rust's summary: True, tenant named: True, no web area inside: True); Escape cancelled with no write: True; Return applied and read back: True; writes [{'path': '/aisec/v1/mgmt/topic/u
+PASS C09-N03 changed elsewhere → 'changed since it was reviewed' and no second PUT: True; draft edited after Review refused without a sheet: True
+PASS C09-N04 destructive delete sheet: True; Return chose Cancel (no DELETE): True; Delete pressed: True; one DELETE and 'no longer in the inventory': True
+PASS C09-N05 'held in memory only': True; POST [{'author': 'c08-native@1234567890.iam.panserviceaccount.com', 'authCodeMatches': True, 'fields': ['api_key_name', 'auth_code', 'created_by', 'cust_app', 'cust_cloud_provider', 'cust_env
+PASS C09-N06 sheet showed the issued key (hash): True; Copy and Close put it on the clipboard: True; then shown once and no longer offered: True; another key's sheet left open ended after 60 s: True; the copied key cleared from the c
+PASS C09-N07 Return cancelled the destructive rotation: True; one regenerate with the reduced body: True; operator's later clipboard text kept after 60 s: True (windows another writer disturbed and repeated: 0); Clear key forgot the 
+PASS C09-N08 offline apply reported unreachable and not applied: True (['The service reports no custom topics in this tenant.', 'The management service could not be reached. The change may or may not have been applied. Refresh the in
+PASS C09-N09 after relaunch no review or result: True; topic POSTs in flight before quitting: 1; after relaunch + 6 s: 1
+PASS C09-N10 200% zoom: {'label': 'Review again', 'pos': [649, 617], 'size': [232, 88]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Review again', 'pos': [384, 516], 'size': [116, 45]} in w
+PASS C09-N12 a second key revealed 40 s after the first was closed stays shown past the first reveal's 60 s expiry: {'second_shown': True, 'survives_older_expiry': True, 'closed_by_operator': True}
+PASS C09-N11 confirmation sheet retired by a tenant switch: {'shown': True, 'ended': True, 'no_write': True, 'tenant_b_active': True}; secret sheet retired: {'shown': True, 'ended': True, 'clipboard_untouched': True, 'not_offered_aga

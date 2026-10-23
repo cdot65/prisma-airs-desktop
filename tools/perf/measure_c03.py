@@ -143,6 +143,7 @@ def main():
         "details": result["details"],
         "limitations": [
             "Cold launches use fresh bundle copies and no fixture data root, but the OS file cache is not purged (purge needs root).",
+            "Each copy is launched once before its timed cold launch, so macOS's one-time assessment of a never-seen bundle (XProtect, which since C19 scans the bundled Harness engine) is not counted; that first launch is reported per run as details.cold[].first_launch_of_copy_ms.",
             "Input-to-paint is the key-event-to-accessible-value time plus one 60 Hz frame; the compositor frame itself is not captured.",
             "Resident memory is ps RSS summed over the app and the WebKit processes that appeared with its launch; shared pages are counted per process.",
             "The fixture build adds only the Fixture menu and fixture trust roots to production code; footprint is measured on the production build by xtask footprint.",
@@ -190,12 +191,26 @@ def measure(app, endpoint, probe, exe, bundle, work, partial):
             shutil.rmtree(d, ignore_errors=True)
         copy = os.path.join(work, f"cold-{i}", os.path.basename(bundle))
         fx.sh(["ditto", bundle, copy])
+        copy_exe = os.path.join(copy, "Contents/MacOS/prisma-airs-desktop-v2")
+        # The copy's first launch includes macOS's one-time assessment of a
+        # bundle it has never seen (budgets.json version 4): reported, then
+        # the copy is quit and its data and WebKit data removed again.
         before = webkit_pids()
-        data = launch_probe(probe, os.path.join(copy, "Contents/MacOS/prisma-airs-desktop-v2"))
+        first = launch_probe(probe, copy_exe)
+        time.sleep(1)
+        primed = sorted(webkit_pids() - before)
+        stop_app(app)
+        wait_gone(primed)
+        fx.clean_fixture_root()
+        for d in WEBKIT_DIRS:
+            shutil.rmtree(d, ignore_errors=True)
+        before = webkit_pids()
+        data = launch_probe(probe, copy_exe)
         cold.append(data["ms"])
         time.sleep(1)
         spawned = sorted(webkit_pids() - before)
-        cold_runs.append({"ms": data["ms"], "polls": data["polls"], "webkit": len(spawned)})
+        cold_runs.append({"ms": data["ms"], "polls": data["polls"], "webkit": len(spawned),
+                          "first_launch_of_copy_ms": first["ms"]})
         stop_app(app)
         wait_gone(spawned)
         shutil.rmtree(os.path.dirname(copy), ignore_errors=True)

@@ -1,0 +1,104 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C24",
+  "recorded_utc": "2026-10-23T12:49:07Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes); tools/native-acceptance/acceptance_c24.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "b58c2d0e926f4f51031f411de413fe82942d66878c96dc8c23693ed072de8cad",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C24-N01",
+      "description": "Settings \u203a Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only) through the save sheet, and Clear diagnostics leaves only the record of clearing.",
+      "result": "pass",
+      "observation": "diagnostics {'stated': True, 'counted': True, 'saved': True, 'schema': 'prisma-airs-desktop-v2/diagnostics/1', 'events': 8, 'kinds_only': True, 'cleared': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native/observations.json",
+        "docs/planning/evidence/C24/native/tree-diagnostics.json"
+      ]
+    },
+    {
+      "id": "C24-N02",
+      "description": "Seeded canaries put through the real window (a scan key, and a prompt scanned against the synthetic endpoint) never appear as the secret in any file the app keeps (data folder, diagnostics, exports) or in any Accessibility tree, and neither the secret nor the prompt appears in the diagnostics or their export.",
+      "result": "pass",
+      "observation": "seeded {'stored': True, 'scanned': True}; found {'secret_in_files': [], 'secret_in_trees': [], 'content_in_diagnostics': [], 'secret_in_diagnostics': []}",
+      "evidence": [
+        "docs/planning/evidence/C24/native/observations.json",
+        "docs/planning/evidence/C24/native/tree-scan.json"
+      ]
+    },
+    {
+      "id": "C24-N03",
+      "description": "Startup and reconnect network inventory: across 15 s of startup with a configured tenant the app and its WebKit processes open no internet socket (sampled lsof), and after an offline launch the synthetic services receive no request once they are reachable again until the operator acts.",
+      "result": "pass",
+      "observation": "startup internet sockets over 15 s: 0; requests on reconnect: 0",
+      "evidence": [
+        "docs/planning/evidence/C24/native/observations.json",
+        "docs/planning/evidence/C24/native/startup-network-samples.log"
+      ]
+    },
+    {
+      "id": "C24-N04",
+      "description": "T23 across local categories: with imported cases, FP/FN reports and a receipt kept, an offline launch (no synthetic service reachable) shows the cases in the Case Library, the reports in Sessions & Reports, the import receipt and the diagnostics count, and nothing is sent or replayed on reconnect.",
+      "result": "pass",
+      "observation": "offline {'cases': True, 'reports': True, 'receipt': True, 'diagnostics': True, 'sent_on_reconnect': 0}",
+      "evidence": [
+        "docs/planning/evidence/C24/native/observations.json",
+        "docs/planning/evidence/C24/native/tree-offline-library.json",
+        "docs/planning/evidence/C24/native/tree-offline-settings.json"
+      ]
+    },
+    {
+      "id": "C24-N05",
+      "description": "The prepared bundle is Node-free: no node, bun, npm, npx or airs-cli executable, no node_modules, .mjs or .cjs file, and no JavaScript source map anywhere in it.",
+      "result": "pass",
+      "observation": "Node or JavaScript runtime files in the bundle: []",
+      "evidence": [
+        "docs/planning/evidence/C24/native/observations.json"
+      ]
+    },
+    {
+      "id": "C24-N06",
+      "description": "The cumulative T09 matrix: every earlier chunk's native acceptance (C01\u2013C23) passes again on this bundle (their records under this chunk's evidence), covering menus, shortcuts, keyboard and focus, Accessibility roles and names, zoom, minimum window size, themes and reduced motion for every workflow.",
+      "result": "pass",
+      "observation": "earlier chunks passing on this bundle: ['C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'C07', 'C08', 'C09', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15', 'C16', 'C17', 'C18', 'C19', 'C20', 'C21', 'C22', 'C23']; not: []",
+      "evidence": [
+        "docs/planning/evidence/C24/native/observations.json",
+        "docs/planning/evidence/C24/native-acceptance-C01.json",
+        "docs/planning/evidence/C24/native-acceptance-C02.json",
+        "docs/planning/evidence/C24/native-acceptance-C03.json",
+        "docs/planning/evidence/C24/native-acceptance-C04.json",
+        "docs/planning/evidence/C24/native-acceptance-C05.json",
+        "docs/planning/evidence/C24/native-acceptance-C06.json",
+        "docs/planning/evidence/C24/native-acceptance-C07.json",
+        "docs/planning/evidence/C24/native-acceptance-C08.json",
+        "docs/planning/evidence/C24/native-acceptance-C09.json",
+        "docs/planning/evidence/C24/native-acceptance-C10.json",
+        "docs/planning/evidence/C24/native-acceptance-C11.json",
+        "docs/planning/evidence/C24/native-acceptance-C12.json",
+        "docs/planning/evidence/C24/native-acceptance-C13.json",
+        "docs/planning/evidence/C24/native-acceptance-C14.json",
+        "docs/planning/evidence/C24/native-acceptance-C15.json",
+        "docs/planning/evidence/C24/native-acceptance-C16.json",
+        "docs/planning/evidence/C24/native-acceptance-C17.json",
+        "docs/planning/evidence/C24/native-acceptance-C18.json",
+        "docs/planning/evidence/C24/native-acceptance-C19.json",
+        "docs/planning/evidence/C24/native-acceptance-C20.json",
+        "docs/planning/evidence/C24/native-acceptance-C21.json",
+        "docs/planning/evidence/C24/native-acceptance-C22.json",
+        "docs/planning/evidence/C24/native-acceptance-C23.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "Spoken VoiceOver output is not recorded (no operator listened); Accessibility roles, names, order and focus are inspected by every earlier chunk's driver on this bundle.",
+    "Network evidence is sampled lsof output (0.5 s), not a packet capture; DNS through mDNSResponder is not attributed. Reconnect is the synthetic services becoming reachable again.",
+    "The offline launch covers the categories this driver stages (imported cases, FP/FN reports, an import receipt, diagnostics); Academy, API Client, Gateway and Harness offline work is covered by C07, C14, C15, C17, C18, C20 and C21's drivers on this bundle (C24-N06).",
+    "The fixture build keeps diagnostics under its data root (fixture-logs/); production builds keep them in macOS's logs folder for the app (D051)."
+  ]
+}

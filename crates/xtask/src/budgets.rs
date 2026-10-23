@@ -239,6 +239,15 @@ pub fn statistic(name: &str, samples: &[f64]) -> Option<f64> {
     }
 }
 
+/// The chunk that re-measures every registered budget on its own build
+/// (C24's cumulative closure, T20): the core budgets and every workload,
+/// each recorded under its measuring chunk's name.
+pub const CUMULATIVE: u8 = 24;
+
+fn cumulative(subject: Subject) -> bool {
+    subject == Subject::Chunk(CUMULATIVE)
+}
+
 /// Whether this subject must carry budget evidence.
 pub fn required(repo: &Repo, manifest: &Manifest, subject: Subject) -> Result<Option<String>> {
     let path = repo.join(BUDGETS);
@@ -246,10 +255,11 @@ pub fn required(repo: &Repo, manifest: &Manifest, subject: Subject) -> Result<Op
         return Ok(None);
     }
     let budgets: Budgets = read_json(&path)?;
-    Ok(manifest
-        .native_members(subject)?
-        .contains(&budgets.registered_by_chunk)
-        .then_some(budgets.registered_by_chunk))
+    Ok((cumulative(subject)
+        || manifest
+            .native_members(subject)?
+            .contains(&budgets.registered_by_chunk))
+    .then_some(budgets.registered_by_chunk))
 }
 
 /// Reasons the subject's budget evidence does not pass (empty when it does).
@@ -262,7 +272,7 @@ pub fn status(repo: &Repo, manifest: &Manifest, subject: Subject) -> Vec<String>
     match manifest.native_members(subject) {
         Ok(members) => {
             for workload in WORKLOADS {
-                if members.iter().any(|m| m == workload.measured_by) {
+                if cumulative(subject) || members.iter().any(|m| m == workload.measured_by) {
                     failures.extend(
                         evaluate_workload(repo, subject, workload)
                             .unwrap_or_else(|e| vec![e.to_string()]),
@@ -320,6 +330,15 @@ pub const WORKLOADS: &[Workload] = &[
         measured_by: "C15",
         evidence: "workload-perf.json",
     },
+    // Registered and measured by C18; listed here from C24, whose
+    // cumulative closure found it missing (C18 and P05 did not evaluate
+    // it; their recorded measurement passes its table).
+    Workload {
+        registered_by: "C18",
+        registration: "docs/planning/evidence/C18/workload-budget-registration.json",
+        measured_by: "C18",
+        evidence: "workload-perf.json",
+    },
     Workload {
         registered_by: "C19",
         registration: "docs/planning/evidence/C19/workload-budget-registration.json",
@@ -342,6 +361,14 @@ pub const WORKLOADS: &[Workload] = &[
         registered_by: "C22",
         registration: "docs/planning/evidence/C22/workload-budget-registration.json",
         measured_by: "C22",
+        evidence: "workload-perf.json",
+    },
+    // Long typed input under an active assistive client (C03's open
+    // observation), registered by C24 before it measured it.
+    Workload {
+        registered_by: "C24",
+        registration: "docs/planning/evidence/C24/workload-budget-registration.json",
+        measured_by: "C24",
         evidence: "workload-perf.json",
     },
 ];
@@ -398,6 +425,11 @@ pub struct WorkloadPerf {
 /// phases with a single workload used.
 fn workload_evidence(dir: &std::path::Path, subject: Subject, workload: &Workload) -> String {
     match subject {
+        // The cumulative chunk records every other chunk's workload under
+        // that chunk's name.
+        Subject::Chunk(c) if cumulative(subject) && format!("C{c:02}") != workload.measured_by => {
+            format!("workload-perf-{}.json", workload.measured_by)
+        }
         Subject::Chunk(_) => workload.evidence.to_owned(),
         Subject::Phase(_) => {
             let named = format!("workload-perf-{}.json", workload.measured_by);
@@ -549,7 +581,35 @@ fn evaluate(repo: &Repo, subject: Subject, chunk: &str) -> Result<Vec<String>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Budget, Metric, judge, statistic, workload_budgets};
+    use super::{
+        Budget, CUMULATIVE, Metric, WORKLOADS, cumulative, judge, statistic, workload_budgets,
+        workload_evidence,
+    };
+    use crate::subject::Subject;
+
+    #[test]
+    fn the_cumulative_chunk_carries_every_workload_under_its_measuring_chunk() {
+        let c24 = Subject::Chunk(CUMULATIVE);
+        assert!(cumulative(c24));
+        assert!(!cumulative(Subject::Chunk(22)) && !cumulative(Subject::Phase(7)));
+        // Every registered workload's owner is listed, C18 included.
+        for owner in [
+            "C05", "C11", "C13", "C15", "C18", "C19", "C20", "C21", "C22", "C24",
+        ] {
+            assert!(WORKLOADS.iter().any(|w| w.measured_by == owner), "{owner}");
+        }
+        let dir = std::path::Path::new("/nonexistent");
+        for w in WORKLOADS {
+            let named = workload_evidence(dir, c24, w);
+            if w.measured_by == "C24" {
+                assert_eq!(named, "workload-perf.json");
+            } else {
+                assert_eq!(named, format!("workload-perf-{}.json", w.measured_by));
+            }
+            // Another chunk keeps its own name.
+            assert_eq!(workload_evidence(dir, Subject::Chunk(22), w), w.evidence);
+        }
+    }
 
     #[test]
     fn a_budget_fails_over_its_limit_short_of_samples_or_in_another_unit() {

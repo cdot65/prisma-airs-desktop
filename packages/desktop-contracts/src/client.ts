@@ -1137,6 +1137,18 @@ function isReceiptView(value: unknown): boolean {
     )
 }
 
+/** Local redacted diagnostics (C24): a count, the retention and an export. */
+function isDiagnosticsView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.available === 'boolean' &&
+        isU32(value.events) &&
+        value.retentionDays === 14 &&
+        optional((e) => oneOf(['saving', 'saved', 'cancelled', 'failed'], e), value.export) &&
+        Object.keys(value).length === 4
+    )
+}
+
 /** The reviewed v1 import (C23): what v1 has, the review and receipts. */
 function isV1ImportView(value: unknown): boolean {
     return (
@@ -2546,6 +2558,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isGatewayView(value.gateway) ||
         !isHarnessView(value.harness) ||
         !isV1ImportView(value.v1Import) ||
+        !isDiagnosticsView(value.diagnostics) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {
         throw new ContractViolation('shell snapshot')

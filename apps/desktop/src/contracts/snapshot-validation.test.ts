@@ -1138,3 +1138,25 @@ describe('reviewed v1 import (C23)', () => {
         }
     })
 })
+
+describe('local diagnostics (C24)', () => {
+    const view = { available: true, events: 12, retentionDays: 14, export: 'saved' }
+    const snapshot = (v: unknown) => ({ ...valid, diagnostics: v })
+
+    it('accepts what Rust issues', () => {
+        expect(parseShellSnapshot(snapshot(view))).toBeTruthy()
+        expect(parseShellSnapshot(snapshot({ ...view, available: false, events: 0, export: null }))).toBeTruthy()
+    })
+
+    it('rejects a view Rust never issues', () => {
+        for (const broken of [
+            { ...valid, diagnostics: undefined },
+            snapshot({ ...view, events: -1 }),
+            snapshot({ ...view, retentionDays: 365 }),
+            snapshot({ ...view, export: 'uploaded' }),
+            snapshot({ ...view, path: '/Users/someone/Library/Logs' }),
+        ]) {
+            expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
+        }
+    })
+})

@@ -1,0 +1,15 @@
+PASS C05-N01 guest catalog with the guest note: True; learner calls ['library.list', 'paths.list'] all public and without Authorization: True; identity or other requests: 0
+PASS C05-N02 signed in: True; catalog re-read under the account without the guest note: True; calls (procedure, Authorization): [['paths.list', True], ['library.list', True]]
+PASS C05-N03 lesson heading: True; first paragraph exposed: True; 22 section headings in a 51968 byte lesson; trail links ['Learn', 'Runtime Security Foundations']; trail back to the course: True
+PASS C05-N04 pre-rendered diagram image 'Lesson diagram': {'role': 'AXGroup', 'size': [460, 91]}; source disclosure: True; artifact-less diagram shows its source: True; diagram video requests: 0; external link notice: True, window st
+PASS C05-N05 'You scored 100%': True; '1 of 1 correct': True; start body is the literal fixture: True; submit body is the literal fixture: True; both with Authorization: True; answer keys or canaries in AX snapshots: []
+PASS C05-N06 guest 'Start knowledge check' shows 'Sign in to take this knowledge check.': True; learner calls sent for it: []
+PASS C05-N07 lab unit previewed with its brief and 'no lab sandbox was started': True; learner calls ['units.get', 'labs.get', 'desktop.attempt.list']; lab start/step/submit calls: []
+PASS C05-N08 signed out from a lesson: True; Academy back at the catalog as a guest: True; guest calls (procedure, Authorization) [['paths.list', False], ['library.list', False]]; signed in again: True; account catalog: True; calls [
+PASS C05-N09 learner markers in Runtime Security: []; in Harness: []; learner calls while away from Academy: []
+PASS C05-N10 Tab reached the Courses filter: True; Tab reached the course link: True; Return opened the course with focus on its heading: True; Tab reached the lesson link: True; Return opened the lesson with focus on its heading: Tr
+PASS C05-N11 lesson paragraph ink in Dark #c9bba4 (luminance 0.7384933333333333), in Light #4b4b57 (luminance 0.29751529411764704)
+PASS C05-N12 200% zoom: {'label': 'Complete & continue', 'pos': [889, 617], 'size': [374, 89]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Complete & continue', 'pos': [740, 516], 'size': [
+PASS C05-N13 after reset 'Not signed in to Academy.': True; Academy shows the guest catalog: True; learner namespace items []
+PASS C05-N14 guest at members-only and locked content: sign-in gate True/True, endpoint replies (status, Authorization) [[401, False]]/[[401, False]]; signed in, locked content shows 'This content is locked' with the progression reas
+PASS C05-N15 guest 'Complete & continue' asks to sign in and stays on the lesson: True; learner calls sent: []; a submission the server failed after receiving shows 'Academy may have recorded this submission': True, answer kept: True

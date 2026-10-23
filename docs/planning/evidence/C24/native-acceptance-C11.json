@@ -1,0 +1,134 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C11",
+  "recorded_utc": "2026-10-23T12:21:02Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c11.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "b58c2d0e926f4f51031f411de413fe82942d66878c96dc8c23693ed072de8cad",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C11-N01",
+      "description": "Sessions lists the last 24 hours in pages of 25 ('Sessions 1\u201325 of 60', Next page 'Sessions 26\u201350 of 60'); every inventory read asks for time_interval=1, time_unit=day, limit=25; the Malicious filter shows only this page's malicious sessions.",
+      "result": "pass",
+      "observation": "pages 1\u201325 and 26\u201350 of 60: True; Malicious on page 2: ['Open session ses-00028', 'Open session ses-00035', 'Open session ses-00042', 'Open session ses-00049']; inventory queries [{'time_interval': '1', 'time_unit': 'day', 'limit': '25', 'offset': '0'}, {'time_interval': '1', 'time_unit': 'day', 'limit': '25', 'offset': '25'}]",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-filter.json"
+      ]
+    },
+    {
+      "id": "C11-N02",
+      "description": "Opening a session lists its scans without reading content: no scancontent request and no prompt text in the AX tree until Show content; then exactly one content read and the prompt is shown; Hide removes it from the AX tree, and leaving Sessions and returning shows none.",
+      "result": "pass",
+      "observation": "scans listed: True; no content read or shown before reveal: True; one read and shown on reveal: True; Hide removed it: True; none after leaving and returning: True",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-session.json",
+        "docs/planning/evidence/C24/native-C11/tree-revealed.json",
+        "docs/planning/evidence/C24/native-C11/tree-returned.json"
+      ]
+    },
+    {
+      "id": "C11-N03",
+      "description": "Searches say what they covered: a detector search over a 60-session day reports its matches among every session of the last 24 hours; an unknown session ID reports none among the 60 sessions of 30 days read (time_interval=30); a scan ID shows the scan's metadata with no prompt or response in the AX tree.",
+      "result": "pass",
+      "observation": "detector coverage statement: True; session ID absent among 60 over 30 days: True; scan metadata only: True (1 lookup read)",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-search-detector.json",
+        "docs/planning/evidence/C24/native-C11/tree-search-scan.json"
+      ]
+    },
+    {
+      "id": "C11-N04",
+      "description": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV\u2026 saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response.",
+      "result": "pass",
+      "observation": "listed with metadata: True; remove/undo: True; CSV {'saved': True, 'file': 'fpfn-reports-tenant-a-20261023-1218.csv', 'mode': '0o600', 'header': 'tenant,tsg_id,kind,scan_id,scan_sub_req_id,session_id,application,application_id,verdict,action,detectors,profile,reason_category,reason,reported_at,exported_at', 'rows': 1, 'crlf': True, 'content': False}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-reports.json",
+        "docs/planning/evidence/C24/native-C11/tree-reports-exported.json"
+      ]
+    },
+    {
+      "id": "C11-N05",
+      "description": "With a Keychain management client the investigation is sealed in the data root (no prompt or session ID in plaintext); after relaunch a revealed scan is shown again without a new content read; removing the management client removes the sealed file.",
+      "result": "pass",
+      "observation": "sealed {'files': 1, 'plaintext': False, 'mode': '0o600'}; shown after relaunch without a content read: True; removed with the client: True",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-relaunch-revealed.json"
+      ]
+    },
+    {
+      "id": "C11-N06",
+      "description": "Export metadata\u2026 saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again.",
+      "result": "pass",
+      "observation": "metadata export {'saved': True, 'file': 'investigation-tenant-a-20261023-1219.json', 'sessions': True, 'content': False, 'mode': '0o600'}; cleared with the seal removed: True; read again after clearing: True (resealed: True)",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-cleared.json"
+      ]
+    },
+    {
+      "id": "C11-N07",
+      "description": "Reports write nothing to the tenant: over the whole run the management endpoint receives only GET reads and token grants.",
+      "result": "pass",
+      "observation": "19 requests; non-read requests: []; secrets in AX snapshots: []",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json"
+      ]
+    },
+    {
+      "id": "C11-N08",
+      "description": "Exception patterns is labelled 'Synthetic data \u00b7 Memory only \u00b7 No live integrations' and opening it sends no request.",
+      "result": "pass",
+      "observation": "synthetic label shown and no request sent: True",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-exceptions.json"
+      ]
+    },
+    {
+      "id": "C11-N10",
+      "description": "The production NSSavePanel (rfd) opens from Export CSV\u2026: saving writes an owner-only file; a second export into the same folder is confirmed with Replace and the file is replaced owner-only; Cancel saves nothing and says so; focus returns to the window.",
+      "result": "pass",
+      "observation": "production save panel: {'panel_shown': True, 'saved': True, 'mode': '0o600', 'replaced': True, 'replaced_mode': '0o600', 'cancelled': True, 'focus_in_window': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-panel-export-cancelled.json"
+      ]
+    },
+    {
+      "id": "C11-N11",
+      "description": "Context switch: with A's scan content revealed and a report saved, switching to tenant B through Settings and reopening Sessions shows none of A's sessions or content (B has no client) and an empty FP/FN reports list; switching back to A shows A's report again and no revealed content.",
+      "result": "pass",
+      "observation": "switch to tenant B and back: {'a_content_shown': True, 'b_active': True, 'needs_client': True, 'no_content': True, 'no_rows': True, 'empty': True, 'no_a_report': True, 'a_report_back': True, 'a_content_not_restored': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json",
+        "docs/planning/evidence/C24/native-C11/tree-tenant-b-sessions.json",
+        "docs/planning/evidence/C24/native-C11/tree-tenant-b-reports.json"
+      ]
+    },
+    {
+      "id": "C11-N09",
+      "description": "At 200% zoom and at the minimum window size, Tab reaches the Sessions Refresh and Next page buttons inside the window and clear of the bottom fade.",
+      "result": "pass",
+      "observation": "200% zoom: {'label': 'Refresh', 'pos': [1114, 617], 'size': [165, 88]} / {'label': 'Next page', 'pos': [815, 617], 'size': [196, 88]}; minimum size: {'label': 'Refresh', 'pos': [363, 344], 'size': [82, 44]} / {'label': 'Next page', 'pos': [467, 517], 'size': [99, 44]}; all clear: True",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C11/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "N04/N06 save exports into the fixture data root without a sheet (never replacing a file); N10 drives the production rfd/NSSavePanel sheet (the fixture switch fixture-native-sheets) into a driver-owned temporary folder, including a confirmed Replace and Cancel. No Accessibility tree is saved while a panel lists folders.",
+    "The dashboard endpoint is a local synthetic fixture; live sessions reads are qualified in C25.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

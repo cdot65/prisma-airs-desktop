@@ -129,6 +129,14 @@ fn shell_observation_matches_the_literal_snapshot() {
     );
     response["snapshot"]["learner"] =
         fixture("observe-shell-response.json")["snapshot"]["learner"].clone();
+    // How many diagnostics this run has kept varies with its requests.
+    assert!(
+        response["snapshot"]["diagnostics"]["events"]
+            .as_u64()
+            .is_some()
+    );
+    response["snapshot"]["diagnostics"]["events"] =
+        fixture("observe-shell-response.json")["snapshot"]["diagnostics"]["events"].clone();
     assert_eq!(response, fixture("observe-shell-response.json"));
     let text = response.to_string();
     for forbidden in ["secret", "token", "password", "apiKey", "credential"] {

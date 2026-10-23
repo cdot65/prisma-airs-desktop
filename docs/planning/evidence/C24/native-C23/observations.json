@@ -1,0 +1,161 @@
+{
+ "observations": {
+  "available": true,
+  "inspect": {
+   "found": true,
+   "no_keychain_read": true,
+   "navigation": true,
+   "tenants": [
+    "Prod (TSG 1234567890)",
+    "Scratch \u00b7 session only in v1"
+   ],
+   "session_only": true,
+   "categories": [
+    "Tenants (names and TSG IDs) 2 found",
+    "Scan endpoints Read from v1\u2019s Keychain only if selected",
+    "Appearance 1 found",
+    "Saved cases Read from v1\u2019s Keychain only if selected",
+    "FP/FN reports 1 found",
+    "Academy lab drafts v1 has none on this Mac",
+    "API Client collections v1 has none on this Mac",
+    "Harness conversations Read from v1\u2019s Keychain only if selected"
+   ]
+  },
+  "tree_inspect": "docs/planning/evidence/C24/native-C23/tree-inspect.json",
+  "review": {
+   "reviewed": true,
+   "keychain_note": true,
+   "reads": [
+    "credentials-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    "cases-11111111-2222-4333-8444-555555555555",
+    "harness-history-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+   ],
+   "ready": [
+    "Tenants (names and TSG IDs) : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Saved cases : Prod \u2192 Prod (new tenant) Ready \u00b7 2 new",
+    "Harness conversations : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Tenants (names and TSG IDs) : Scratch \u2192 Scratch (new tenant) Ready \u00b7 1 new",
+    "FP/FN reports : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Appearance : Appearance Ready \u00b7 1 new"
+   ],
+   "blocked_drafts": true,
+   "items": [
+    "Tenants (names and TSG IDs) : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Saved cases : Prod \u2192 Prod (new tenant) Ready \u00b7 2 new",
+    "Harness conversations : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Tenants (names and TSG IDs) : Scratch \u2192 Scratch (new tenant) Ready \u00b7 1 new",
+    "Saved cases : Scratch \u2192 Scratch (new tenant) Cannot import: this v1 tenant kept nothing on this Mac (session only) \u00b7 0 new",
+    "Harness conversations : Scratch \u2192 Scratch (new tenant) Cannot import: this v1 tenant kept nothing on this Mac (session only) \u00b7 0 new",
+    "FP/FN reports : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Appearance : Appearance Ready \u00b7 1 new",
+    "Academy lab drafts : Academy lab drafts Cannot import: sign in to the same Academy account first \u00b7 0 new"
+   ],
+   "already_present": true
+  },
+  "tree_review": "docs/planning/evidence/C24/native-C23/tree-review.json",
+  "interrupted": {
+   "written": true,
+   "hidden_while_stopped": true,
+   "undone": true,
+   "import_again": true,
+   "gone_after_relaunch": true,
+   "imported_again": true
+  },
+  "tree_stopped": "docs/planning/evidence/C24/native-C23/tree-stopped.json",
+  "tree_interrupted": "docs/planning/evidence/C24/native-C23/tree-interrupted.json",
+  "import": {
+   "receipt": true,
+   "focus": "Imports",
+   "tenant_tsg": true,
+   "needs_key": true,
+   "cases": true,
+   "reports": true
+  },
+  "tree_imported": "docs/planning/evidence/C24/native-C23/tree-imported.json",
+  "tree_review_again": "docs/planning/evidence/C24/native-C23/tree-review-again.json",
+  "rollback": {
+   "asked": true,
+   "cancel_focus": "Roll back\u2026",
+   "kept_after_cancel": true,
+   "rolled_back": true,
+   "mine_kept": true,
+   "prod_removed": true
+  },
+  "tree_rolled_back": "docs/planning/evidence/C24/native-C23/tree-rolled-back.json",
+  "keyboard": {
+   "look": true,
+   "forget": true
+  },
+  "zoom": {
+   "zoom": 2,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     1280,
+     820
+    ]
+   },
+   "found": {
+    "label": "Forget this record",
+    "pos": [
+     607,
+     617
+    ],
+    "size": [
+     284,
+     88
+    ]
+   },
+   "clear": true
+  },
+  "min": {
+   "zoom": 1,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     900,
+     600
+    ]
+   },
+   "found": {
+    "label": "Forget this record",
+    "pos": [
+     363,
+     516
+    ],
+    "size": [
+     142,
+     45
+    ]
+   },
+   "clear": true
+  },
+  "canary_in_trees": [],
+  "preserved": {
+   "v1": true,
+   "real_v1": true,
+   "search_list": true
+  },
+  "network": 0
+ },
+ "log": [
+  {
+   "t": "07:43:06",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "07:43:08",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  }
+ ]
+}

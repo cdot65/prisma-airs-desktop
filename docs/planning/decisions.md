@@ -2165,6 +2165,54 @@ once for one that failed or that the app ended during):
 keeps them); v1 settings with no v2 equivalent; live qualification against
 a real v1 profile (C25).
 
+## D051 — Local redacted diagnostics: typed events, retention, export and reset
+
+Decided in C24 (implementer decision for C24 milestone 3, recorded for
+review; it implements D021).
+
+**What is kept.** Typed events only, each a fixed name, a code or a number:
+- the app started (its version, whether it is a fixture build);
+- a request was admitted, or refused with its refusal code (the request's
+  kind, never its contents: `Intent::kind` names the variant without
+  formatting it);
+- the saved document could not be read (its health);
+- a reset finished or failed at a stage;
+- the app panicked, with its source location only (a repository-relative
+  path and line; any other path is recorded as `external`, since a
+  dependency's absolute path names the build machine's folders). Never the
+  panic message: it may hold anything;
+- the operator cleared the diagnostics.
+
+Every name and code is checked when it is recorded and again when it is
+exported: ASCII letters, digits, `-`, `_`, `.` and `/`, at most 48 bytes.
+Anything else is not written, so no prompt, response, key, token, tenant
+name, file path or other customer text can enter the log, whatever a caller
+passes.
+
+**Where and how long.**
+- In macOS's logs folder for the app (`~/Library/Logs/<identifier>`), apart
+  from the work in the data folder; 0700 folder, 0600 files, never through
+  a link. Fixture builds keep it under their data root (`fixture-logs/`),
+  which acceptance runs remove.
+- Two files of at most 256 KiB each: the current file is rotated once full
+  and replaces the previous one.
+- Lines older than 14 days are dropped when the app opens the log.
+- Writing never stops the app: a failure to write is ignored.
+
+**Export and clearing.**
+- Nothing leaves the Mac by itself. There is no network sink, crash
+  reporter or analytics anywhere in the app (D021).
+- Settings › Diagnostics states what is kept and for how long, with the
+  count. Export saves a JSON document (schema, app version, fixture flag,
+  export time, events) through the native save sheet, re-checking every
+  line; an edited or foreign line is not exported.
+- Clear removes every line, keeping only the record of clearing.
+- Local-data reset removes the folder with the rest of the data; the reset's
+  own outcome is the first new line.
+
+**Out of scope here:** diagnostics from the presentation (it logs nothing),
+system logs macOS keeps on its own, and uploading anything (never).
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

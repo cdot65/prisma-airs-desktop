@@ -793,6 +793,8 @@ pub struct Handles {
     pub v1_keychain: Arc<ScriptedV1Keychain>,
     /// This instance's import receipts.
     pub import_root: std::path::PathBuf,
+    /// This instance's diagnostics folder.
+    pub logs_root: std::path::PathBuf,
 }
 
 /// Fresh scripted adapters with empty storage.
@@ -824,6 +826,7 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         v1_root: fresh_offline_root().with_extension("v1"),
         v1_keychain: Arc::new(ScriptedV1Keychain::default()),
         import_root: fresh_offline_root().with_extension("imports"),
+        logs_root: fresh_offline_root().with_extension("logs"),
     };
     (
         Adapters {
@@ -852,6 +855,7 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
                 keychain: handles.v1_keychain.clone(),
             }),
             import_root: Some(handles.import_root.clone()),
+            logs_root: Some(handles.logs_root.clone()),
         },
         handles,
     )

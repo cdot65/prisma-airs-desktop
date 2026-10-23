@@ -422,6 +422,16 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             if let Some(point) = adapters::fixture_import_crash(app.handle()) {
                 core.interrupt_v1_import(point);
             }
+            // A panic is recorded locally by where it happened, never by its
+            // message (D051); the default report still follows.
+            let recorder = core.clone();
+            let previous = std::panic::take_hook();
+            std::panic::set_hook(Box::new(move |info| {
+                if let Some(location) = info.location() {
+                    recorder.record_panic(location.file(), location.line());
+                }
+                previous(info);
+            }));
             #[cfg(target_os = "macos")]
             power::observe_sleep(core.clone());
             app.manage(Host::new(&core));

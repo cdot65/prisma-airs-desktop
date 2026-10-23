@@ -1,6 +1,6 @@
 {
   "schema": "airs-v2-budgets/1",
-  "version": 3,
+  "version": 4,
   "registered_by_chunk": "C03",
   "status": "registered before any acceptance measurement; changes need a new version with rationale, the prior results and owner or independent reviewer acknowledgement (test-catalogue: Performance budget governance)",
   "host": {
@@ -28,6 +28,13 @@
       "change": "scan-peak-process-tree-resident method: the 100 KiB prompt is inserted paste-like (four key events of at most 30,000 characters) instead of typed as about 5,000 20-character key events. Limits, statistics and sample counts are unchanged.",
       "rationale": "Under version 2 the per-keystroke typing method itself, not scanning, drove the UI process to 1.5-1.9 GiB: WebKit editing state from thousands of edits to a 100 KiB textarea, compounded by accessibility reads while typing. Scans added about 30 MiB once and nothing afterwards. Paste-like insertion keeps the tree below 300 MiB. See docs/planning/evidence/C03/perf-diagnosis/README.md. The typed-input growth stays an open observation owned by C24, which must register its own budget.",
       "prior_results": "docs/planning/evidence/C03/perf-v2-over-budget-20261017.json (failed: scan peak median 1494 MiB, p95 1916 MiB; the other four budgets passed)"
+    },
+    {
+      "version": 4,
+      "from_sha256": "aa268af3e8660f1165719f9938eef010bf8434ef9cda75da7d5f3e136756ae76",
+      "change": "cold-usable-shell method: each fresh copy at a new path is launched once and quit, its fixture data root and WebKit data are removed again, and only its second launch is timed; the first launch of each copy is reported alongside (details.cold[].first_launch_of_copy_ms). The limit, statistic and sample count are unchanged.",
+      "rationale": "Since C19 the fixture bundle carries the sealed Harness engine (Contents/Resources/harness/airs-harness, 321 MB, D046). On the first launch of a bundle macOS has never seen, XProtect scans the executables in it before the app runs, about 6 ms per MB on this host: 2.3 s of XprotectService CPU for the C24 bundle against 0.1 s for the P01 bundle (16 MiB, rebuilt from 80d6c513 and measured on the same host and XProtect version the same day). Swapping executables showed the bundle, not the app's executable, carries the cost; the C24 bundle without harness/ launched fresh in 684-715 ms, and a copy launched a second time with no data root starts in 380-430 ms. The version 3 method therefore timed the one-time install assessment of a resource the app does not touch at launch, not a cold start of the app; version 4 times the cold launch an installed copy makes and reports the first launch separately. Diagnosis: docs/planning/evidence/C24/perf-diagnosis.md.",
+      "prior_results": "docs/planning/evidence/C24/perf-v3-over-budget-20261023.json (failed: cold-usable-shell p95 2608.9 ms, every sample 2503-2616 ms; the other core budgets passed). C03 and P01 measured under version 3 (cold p95 614 and 609 ms) before the engine was bundled."
     }
   ],
   "budgets": [
@@ -37,7 +44,7 @@
       "limit": 2000,
       "unit": "ms",
       "samples": 20,
-      "method": "Executable spawned directly from a fresh copy of the bundle at a new path, with no instance or fixture data root present (the app's earlier WebKit processes have exited); elapsed from spawn until the main window's accessibility tree contains the landing heading 'Scan a prompt or response', polled in-process every 5 ms. The OS file cache is not purged (that needs root); this limitation is recorded with the results.",
+      "method": "Executable spawned directly from a fresh copy of the bundle at a new path, after that copy was launched once and quit (macOS's one-time assessment of a never-seen bundle is reported separately, not counted), with no instance or fixture data root present again (the app's earlier WebKit processes have exited and its WebKit data is removed); elapsed from spawn until the main window's accessibility tree contains the landing heading 'Scan a prompt or response', polled in-process every 5 ms. The OS file cache is not purged (that needs root); this limitation is recorded with the results.",
       "rationale": "A native desktop tool should be usable within two seconds of launch."
     },
     {

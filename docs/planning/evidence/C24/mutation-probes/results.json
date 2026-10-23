@@ -1,0 +1,358 @@
+[
+  {
+    "inputs": {
+      "apps/desktop/src/features/diagnostics/diagnostics-panel.tsx": "3ae7077adcf7830ef4e5ad8d0c790118aa0f21fe0964f8839bf406d2471f74cb",
+      "crates/desktop-core/src/authority.rs": "c930617fcfbfa9f5a5e84ab765545ad59612799c2120296ee14f76b03a454edc",
+      "crates/desktop-core/src/diagnostics.rs": "ca2dcaa82ecfbcdfe919cb92b4e94a3e5b2bee570abbd32eae4bb70ec2e59cb6",
+      "crates/xtask/src/budgets.rs": "3471528e9d5751f64c5b2789fbf0c6826826c2fb0fe7932c0082453c4f811fe3",
+      "packages/desktop-contracts/src/client.ts": "8caef701a24126e99999338f67744e55a734b7eaaaf1ec2f858347cfb6eed98d"
+    }
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "diagnostics"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--lib",
+      "budgets"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/diagnostics/diagnostics-panel.test.tsx"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "baseline": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "passes": true
+  },
+  {
+    "mutation": "free text is written",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "diagnostics"
+    ],
+    "guard": "only_names_and_codes_are_written",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an edited line is exported",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "diagnostics"
+    ],
+    "guard": "only_names_and_codes_are_written",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "lines past retention are kept",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib",
+      "diagnostics"
+    ],
+    "guard": "the_log_is_bounded_kept_fourteen_days_and_purged",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the log is never rotated",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "diagnostics_are_bounded_and_survive_a_relaunch",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "clearing keeps the lines",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "clearing_and_reset_remove_the_diagnostics",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "reset leaves the diagnostics",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "clearing_and_reset_remove_the_diagnostics",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an absolute panic path is recorded",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "a_panic_is_recorded_by_where_never_by_what",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a refusal is not recorded",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "diagnostics_keep_kinds_and_codes_and_never_a_secret_or_content",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the export is not saved",
+    "files": [
+      "crates/desktop-core/src/authority.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "diagnostics_are_exported_only_when_asked_and_redacted",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "C24 evaluates no workloads",
+    "files": [
+      "crates/xtask/src/budgets.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--lib",
+      "budgets"
+    ],
+    "guard": "the_cumulative_chunk_carries_every_workload_under_its_measuring_chunk",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "C18's workload is unlisted",
+    "files": [
+      "crates/xtask/src/budgets.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "xtask",
+      "--features",
+      "test-fixtures",
+      "--lib",
+      "budgets"
+    ],
+    "guard": "the_cumulative_chunk_carries_every_workload_under_its_measuring_chunk",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "the retention is not stated",
+    "files": [
+      "apps/desktop/src/features/diagnostics/diagnostics-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/diagnostics/diagnostics-panel.test.tsx"
+    ],
+    "guard": "states what is kept, exports and clears only when asked, and announces the export",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an uploaded export passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a view Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  }
+]

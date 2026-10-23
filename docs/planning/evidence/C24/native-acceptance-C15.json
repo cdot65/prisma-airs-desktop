@@ -1,0 +1,108 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C15",
+  "recorded_utc": "2026-10-23T12:30:08Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes); tools/native-acceptance/acceptance_c15.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "b58c2d0e926f4f51031f411de413fe82942d66878c96dc8c23693ed072de8cad",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C15-N01",
+      "description": "Typing into a request's URL and sending at once from the keyboard (the Send button focused and activated with Space) sends exactly the typed, unsaved input to the loopback endpoint and shows the response status, size, time and body in a region named Response; the request file is unchanged and the window says the fixture build sends to loopback addresses only.",
+      "result": "pass",
+      "observation": "fresh input {'send_focusable': True, 'ran': True, 'body_shown': True, 'sent_as_typed': True, 'file_unchanged': True, 'response_region': True}; loopback note True",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json",
+        "docs/planning/evidence/C24/native-C15/tree-fresh.json"
+      ]
+    },
+    {
+      "id": "C15-N02",
+      "description": "A cookie set by one response is sent with the collection's next request to the same host.",
+      "result": "pass",
+      "observation": "cookies {'returned': True, 'header': 'sid=synthetic-c15'}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json"
+      ]
+    },
+    {
+      "id": "C15-N03",
+      "description": "A 64 MiB response streams to private storage with only its first 256 KiB held for display (shown as not text), is saved through the save sheet (fixture: the staged path) byte-for-byte, and is never stored in the clear in the private folder.",
+      "result": "pass",
+      "observation": "64 MiB {'ran': True, 'seconds': 0.6, 'not_text': True, 'saved': True, 'exact': True, 'sealed': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json",
+        "docs/planning/evidence/C24/native-C15/tree-big.json"
+      ]
+    },
+    {
+      "id": "C15-N04",
+      "description": "A running request shows its progress and a Cancel request control; cancelling ends it as Cancelled and nothing is sent again.",
+      "result": "pass",
+      "observation": "cancel {'running': True, 'progress': True, 'cancelled': True, 'sent_once': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json"
+      ]
+    },
+    {
+      "id": "C15-N05",
+      "description": "A POST whose response is lost is reported as possibly having reached the server, is sent exactly once and offers no resend control.",
+      "result": "pass",
+      "observation": "lost response {'uncertain': True, 'sent_once': True, 'no_resend_control': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json"
+      ]
+    },
+    {
+      "id": "C15-N06",
+      "description": "With the tenant's management credential: an unknown operation and an edited token URL are refused before anything is sent; a known read mints the token from the tenant credential (Basic client auth, the tenant's TSG scope, the secret never in the body) and sends the read with that bearer token.",
+      "result": "pass",
+      "observation": "tenant credentials {'unknown_denied': True, 'token_url_refused': True, 'nothing_sent_before': True, 'read': True, 'token': True, 'bearer': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json",
+        "docs/planning/evidence/C24/native-C15/tree-managed.json"
+      ]
+    },
+    {
+      "id": "C15-N07",
+      "description": "A known tenant change shows its masked review (role alert); Send to tenant opens the native AppKit confirmation sheet titled with the method; Escape sends nothing; Return sends it exactly once and the review is gone.",
+      "result": "pass",
+      "observation": "review {'shown': True, 'none_before': True, 'masked_url': True, 'sheet': True, 'sheet_title': True, 'escape_declined': True, 'applied_once': True, 'review_gone': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json",
+        "docs/planning/evidence/C24/native-C15/tree-review.json",
+        "docs/planning/evidence/C24/native-C15/tree-sheet.json"
+      ]
+    },
+    {
+      "id": "C15-N08",
+      "description": "After quitting while a request runs and relaunching, the collection's history lists earlier runs and the in-flight one as Interrupted (not sent again); nothing is replayed.",
+      "result": "pass",
+      "observation": "history {'interrupted': True, 'earlier': True, 'nothing_replayed': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json",
+        "docs/planning/evidence/C24/native-C15/tree-history.json"
+      ]
+    },
+    {
+      "id": "C15-N09",
+      "description": "No Node, Bun or Deno process runs beside the app while requests are sent, and v1 data is unchanged.",
+      "result": "pass",
+      "observation": "descendants []; v1 unchanged True",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C15/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "Fixture builds send API Client requests to loopback only (literal loopback addresses and localhost pinned to 127.0.0.1); no product endpoint is called.",
+    "The fixture build answers the collection folder sheet and the save-response sheet with staged paths; the production rfd sheets are the same adapter's native branch (flag fixture-native-sheets) and are not driven here.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

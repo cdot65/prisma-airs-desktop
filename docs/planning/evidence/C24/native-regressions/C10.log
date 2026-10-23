@@ -1,0 +1,10 @@
+PASS C10-N01 applied and read back: True; writes [{'path': '/dlp/v2/api/data-patterns/pattern-1', 'dlpBody': {'detection_config': {'technique': 'regex'}, 'name': 'Card numbers v2', 'type': 'custom'}}]
+PASS C10-N02 applied: True; upload [{'contentType': 'multipart/form-data', 'boundaryPrefix': True, 'parts': [{'name': 'json', 'filename': 'metadata.json', 'contentType': 'application/json', 'sha256': '5a2b8550923f088d566593f5c8f47819
+PASS C10-N03 chosen file shown with its line count: True; applied: True; upload [{'contentType': 'multipart/form-data', 'parts': [{'name': 'json', 'filename': 'metadata.json', 'contentType': 'application/json', 'sha256': '5a2b8550923
+PASS C10-N04 non-UTF-8 file reported and nothing sent: True; cancelled sheet staged nothing: True
+PASS C10-N05 data profiles Edit but no Delete (and New offered): True; filtering profiles without New: True; deployment profiles read only: True
+PASS C10-N06 changed elsewhere → 'changed since it was reviewed' and no second PUT: True
+PASS C10-N07 403 upload reported as not allowed, nothing changed, no server text: True
+PASS C10-N08 offline create reported unreachable with an unknown outcome: True; requests within 6 s of return: 0
+PASS C10-N10 production open panel: {'panel_shown': True, 'chosen': True, 'focus_in_window': True, 'applied': True, 'uploaded_exact_bytes': True, 'source_unchanged': True}; upload [{'contentType': 'multipart/form-data', 'parts': [{'n
+PASS C10-N09 200% zoom: {'label': 'Choose keyword file…', 'pos': [649, 616], 'size': [346, 89]} / {'label': 'Review change', 'pos': [649, 616], 'size': [257, 89]}; minimum size: {'label': 'Choose keyword file…', 'pos': [384, 517], 's

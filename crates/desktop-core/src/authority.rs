@@ -18,6 +18,7 @@ use ts_rs::TS;
 use zeroize::Zeroizing;
 
 mod change_domain;
+mod diagnostics_domain;
 mod gateway_domain;
 mod gateway_files_domain;
 mod gateway_local_domain;
@@ -551,6 +552,10 @@ pub enum Intent {
     },
     /// Close the import review.
     DismissV1Import,
+    /// Save the redacted diagnostics through the native save sheet (C24).
+    ExportDiagnostics,
+    /// Remove the diagnostics kept on this Mac (C24).
+    ClearDiagnostics,
     /// Run a Runtime Security synchronous scan for the active tenant.
     Scan {
         context: ContextRef,
@@ -643,6 +648,135 @@ pub enum Intent {
         procedure_kind: ProcedureKind,
         input: Option<String>,
     },
+}
+
+impl Intent {
+    /// The request's kind, as its `kind` tag names it (diagnostics record
+    /// this name and never the request's contents).
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Intent::SetAppearance { .. } => "setAppearance",
+            Intent::CreateTenant { .. } => "createTenant",
+            Intent::SelectTenant { .. } => "selectTenant",
+            Intent::DeleteTenant { .. } => "deleteTenant",
+            Intent::ConfigureScanCredential { .. } => "configureScanCredential",
+            Intent::RemoveScanCredential { .. } => "removeScanCredential",
+            Intent::ConfigureManagementCredential { .. } => "configureManagementCredential",
+            Intent::RemoveManagementCredential { .. } => "removeManagementCredential",
+            Intent::Management { .. } => "management",
+            Intent::SelectGatewayWorkspace { .. } => "selectGatewayWorkspace",
+            Intent::ReviewChange { .. } => "reviewChange",
+            Intent::RequestApply { .. } => "requestApply",
+            Intent::DiscardChange { .. } => "discardChange",
+            Intent::ChooseDictionaryFile { .. } => "chooseDictionaryFile",
+            Intent::RevealSecret { .. } => "revealSecret",
+            Intent::ForgetSecret { .. } => "forgetSecret",
+            Intent::CancelChange { .. } => "cancelChange",
+            Intent::OpenGatewayLocal { .. } => "openGatewayLocal",
+            Intent::SaveGatewayDraft { .. } => "saveGatewayDraft",
+            Intent::DiscardGatewayLocal { .. } => "discardGatewayLocal",
+            Intent::ConfigureInferenceCredential { .. } => "configureInferenceCredential",
+            Intent::RemoveInferenceCredential { .. } => "removeInferenceCredential",
+            Intent::RunInference { .. } => "runInference",
+            Intent::StopInference { .. } => "stopInference",
+            Intent::ClearInference { .. } => "clearInference",
+            Intent::StartHarness { .. } => "startHarness",
+            Intent::ConfigureHarnessSignIn { .. } => "configureHarnessSignIn",
+            Intent::RemoveHarnessSignIn { .. } => "removeHarnessSignIn",
+            Intent::ChooseHarnessCredential { .. } => "chooseHarnessCredential",
+            Intent::SignInHarness { .. } => "signInHarness",
+            Intent::CancelHarnessSignIn { .. } => "cancelHarnessSignIn",
+            Intent::SignOutHarness { .. } => "signOutHarness",
+            Intent::ChooseHarnessProject { .. } => "chooseHarnessProject",
+            Intent::ClearHarnessProject { .. } => "clearHarnessProject",
+            Intent::SetHarnessWrite { .. } => "setHarnessWrite",
+            Intent::DecideHarnessApproval { .. } => "decideHarnessApproval",
+            Intent::ReviewHarnessProposal { .. } => "reviewHarnessProposal",
+            Intent::DismissHarnessProposal { .. } => "dismissHarnessProposal",
+            Intent::ConfirmHarnessWrite { .. } => "confirmHarnessWrite",
+            Intent::ListMcpServers { .. } => "listMcpServers",
+            Intent::EnableMcpServer { .. } => "enableMcpServer",
+            Intent::SignInMcpServer { .. } => "signInMcpServer",
+            Intent::CancelMcpSignIn { .. } => "cancelMcpSignIn",
+            Intent::SignOutMcpServer { .. } => "signOutMcpServer",
+            Intent::ListHarnessHistory { .. } => "listHarnessHistory",
+            Intent::OpenHarnessHistory { .. } => "openHarnessHistory",
+            Intent::CloseHarnessHistory { .. } => "closeHarnessHistory",
+            Intent::DeleteHarnessHistory { .. } => "deleteHarnessHistory",
+            Intent::ExportHarnessHistory { .. } => "exportHarnessHistory",
+            Intent::ResumeHarness { .. } => "resumeHarness",
+            Intent::SendHarness { .. } => "sendHarness",
+            Intent::InterruptHarness { .. } => "interruptHarness",
+            Intent::EndHarness { .. } => "endHarness",
+            Intent::ClearHarness { .. } => "clearHarness",
+            Intent::ReadGatewayFiles { .. } => "readGatewayFiles",
+            Intent::ChooseGatewayFile { .. } => "chooseGatewayFile",
+            Intent::UploadGatewayFile { .. } => "uploadGatewayFile",
+            Intent::DeleteGatewayFile { .. } => "deleteGatewayFile",
+            Intent::SavePlaygroundDraft { .. } => "savePlaygroundDraft",
+            Intent::OpenReports { .. } => "openReports",
+            Intent::SaveReport { .. } => "saveReport",
+            Intent::RemoveReport { .. } => "removeReport",
+            Intent::UndoReport { .. } => "undoReport",
+            Intent::ExportReports { .. } => "exportReports",
+            Intent::ClearInvestigation { .. } => "clearInvestigation",
+            Intent::ExportInvestigation { .. } => "exportInvestigation",
+            Intent::OpenLibrary { .. } => "openLibrary",
+            Intent::SaveCase { .. } => "saveCase",
+            Intent::DeleteCase { .. } => "deleteCase",
+            Intent::ImportCases { .. } => "importCases",
+            Intent::ImportExamples { .. } => "importExamples",
+            Intent::CopyCase { .. } => "copyCase",
+            Intent::ExportCases { .. } => "exportCases",
+            Intent::SaveLibraryAgain { .. } => "saveLibraryAgain",
+            Intent::Workbench { .. } => "workbench",
+            Intent::HoldInsight { .. } => "holdInsight",
+            Intent::RestoreInsight { .. } => "restoreInsight",
+            Intent::ReviewEndpointChange { .. } => "reviewEndpointChange",
+            Intent::ConfirmEndpointChange { .. } => "confirmEndpointChange",
+            Intent::DiscardReview { .. } => "discardReview",
+            Intent::ChooseProfileImport => "chooseProfileImport",
+            Intent::ConfirmProfileImport { .. } => "confirmProfileImport",
+            Intent::ResetLocalData => "resetLocalData",
+            Intent::InspectV1Import => "inspectV1Import",
+            Intent::PlanV1Import { .. } => "planV1Import",
+            Intent::ConfirmV1Import { .. } => "confirmV1Import",
+            Intent::ResumeV1Import { .. } => "resumeV1Import",
+            Intent::RollBackV1Import { .. } => "rollBackV1Import",
+            Intent::ForgetV1ImportReceipt { .. } => "forgetV1ImportReceipt",
+            Intent::DismissV1Import => "dismissV1Import",
+            Intent::Scan { .. } => "scan",
+            Intent::CancelScan { .. } => "cancelScan",
+            Intent::StartAcademySignIn => "startAcademySignIn",
+            Intent::CancelAcademySignIn => "cancelAcademySignIn",
+            Intent::OpenAcademyVerification => "openAcademyVerification",
+            Intent::SignOutAcademy => "signOutAcademy",
+            Intent::PrintPage { .. } => "printPage",
+            Intent::UploadAvatar { .. } => "uploadAvatar",
+            Intent::LoadAcademyImage { .. } => "loadAcademyImage",
+            Intent::DownloadCourse { .. } => "downloadCourse",
+            Intent::RemoveDownload { .. } => "removeDownload",
+            Intent::SaveLocalDraft { .. } => "saveLocalDraft",
+            Intent::LoadLocalDraft { .. } => "loadLocalDraft",
+            Intent::ClearLocalDraft { .. } => "clearLocalDraft",
+            Intent::AcademyCall { .. } => "academyCall",
+            Intent::ExportDiagnostics => "exportDiagnostics",
+            Intent::ClearDiagnostics => "clearDiagnostics",
+        }
+    }
+}
+
+/// A serializable value's name (an enum's tag), for diagnostics.
+fn refusal_code_of(value: &impl Serialize) -> String {
+    serde_json::to_value(value)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_owned))
+        .unwrap_or_else(|| "unknown".to_owned())
+}
+
+/// A refusal's code (its serialized name), for diagnostics.
+fn refusal_code(refusal: &Refusal) -> String {
+    refusal_code_of(refusal)
 }
 
 /// Native acknowledgement that an Intent was admitted. It is not evidence of
@@ -877,6 +1011,8 @@ pub struct ShellSnapshot {
     pub harness: harness_domain::HarnessView,
     /// Reviewed import of v1 work (C23).
     pub v1_import: import_v1_domain::V1ImportView,
+    /// Local redacted diagnostics (C24).
+    pub diagnostics: diagnostics_domain::DiagnosticsView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -1124,6 +1260,8 @@ pub struct Adapters {
     pub v1_source: Option<crate::import_v1::V1Source>,
     /// Where import receipts are kept (C23).
     pub import_root: Option<std::path::PathBuf>,
+    /// Where local redacted diagnostics are kept (C24; None: not kept).
+    pub logs_root: Option<std::path::PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1352,6 +1490,9 @@ struct State {
     harness_history_root: Option<std::path::PathBuf>,
     /// The reviewed v1 import (C23).
     v1_import: import_v1_domain::V1Import,
+    /// Local redacted diagnostics and their export (C24).
+    diagnostics: diagnostics_domain::DiagnosticsState,
+    diagnostics_log: Arc<crate::diagnostics::Diagnostics>,
     v1_source: Option<crate::import_v1::V1Source>,
     import_root: Option<std::path::PathBuf>,
     /// Tenants with a Harness history save under way (one entry each):
@@ -1454,6 +1595,10 @@ impl State {
             gateway: self.gateway_view(),
             harness: self.harness_view(self.harness_engine),
             v1_import: self.v1_import_view(),
+            diagnostics: self.diagnostics_view(
+                self.diagnostics_log.count(),
+                self.diagnostics_log.available(),
+            ),
         }
     }
 
@@ -1979,6 +2124,10 @@ fn store_refusal(error: StoreError) -> Refusal {
 
 /// Adapter work started after admission, outside the lock.
 enum Effect {
+    /// Builds and saves the diagnostics export (C24).
+    ExportDiagnostics {
+        lease: u64,
+    },
     /// Reviewed v1 import work (C23).
     V1Import(import_v1_domain::Job),
     Store {
@@ -2092,6 +2241,7 @@ struct Inner {
     state: Mutex<State>,
     adapters: Adapters,
     session: Arc<SessionVault>,
+    diagnostics: Arc<crate::diagnostics::Diagnostics>,
 }
 
 /// The application core. The native host creates exactly one.
@@ -2113,6 +2263,18 @@ impl Core {
                 (StorageHealth::Unavailable, Data::default())
             }
         };
+        let diagnostics = Arc::new(crate::diagnostics::Diagnostics::open(
+            adapters.logs_root.clone(),
+        ));
+        diagnostics.record(crate::diagnostics::Event::Started {
+            version: env!("CARGO_PKG_VERSION").to_owned(),
+            fixture: cfg!(feature = "test-fixtures"),
+        });
+        if storage != StorageHealth::Ready {
+            diagnostics.record(crate::diagnostics::Event::Storage {
+                health: refusal_code_of(&storage),
+            });
+        }
         let mut salt = [0u8; 16];
         // Without entropy every reference would still be unique per epoch;
         // the salt only makes them unguessable across launches.
@@ -2199,6 +2361,8 @@ impl Core {
             harness_history: None,
             harness_history_root: adapters.harness.history_root.clone(),
             v1_import: import_v1_domain::V1Import::default(),
+            diagnostics: diagnostics_domain::DiagnosticsState::default(),
+            diagnostics_log: Arc::clone(&diagnostics),
             v1_source: adapters.v1_source.clone(),
             import_root: adapters.import_root.clone(),
             history_writers: Vec::new(),
@@ -2220,6 +2384,7 @@ impl Core {
             state: Mutex::new(state),
             adapters,
             session: Arc::new(SessionVault::new()),
+            diagnostics,
         });
         if let Ok(state) = lock(&inner) {
             state.sweep_harness_history();
@@ -2250,6 +2415,20 @@ impl Core {
         lock(&self.inner)
             .map(|s| s.workbench_unprotected())
             .unwrap_or(false)
+    }
+
+    /// Records where the app panicked (never the panic's message: it may
+    /// hold anything) in the local diagnostics (C24, D051).
+    pub fn record_panic(&self, file: &str, line: u32) {
+        // A source path of this repository; anything else (a dependency's
+        // absolute path names the build machine's folders) is "external".
+        let relative = !file.starts_with('/') && !file.split('/').any(|c| c == "..");
+        self.inner
+            .diagnostics
+            .record(crate::diagnostics::Event::Panicked {
+                file: if relative { file } else { "external" }.to_owned(),
+                line,
+            });
     }
 
     #[cfg(feature = "test-fixtures")]
@@ -2666,6 +2845,7 @@ impl AuthorityHandle {
     /// Admits or refuses one delivered Intent. Admission never awaits remote
     /// IO, Keychain calls or an operator answer while holding the state.
     pub async fn dispatch(&self, delivery: Delivery, intent: Intent) -> Result<Receipt, Refusal> {
+        let kind = intent.kind();
         let (result, effects) = {
             let mut state = lock(&self.inner)?;
             let digest = intent_digest(&state.salt, &intent);
@@ -2707,6 +2887,13 @@ impl AuthorityHandle {
             }
         };
         run_effects(&self.inner, effects);
+        // Only the request's kind and the refusal's code (D051).
+        self.inner
+            .diagnostics
+            .record(crate::diagnostics::Event::Intent {
+                kind: kind.to_owned(),
+                refusal: result.as_ref().err().map(refusal_code),
+            });
         result
     }
 
@@ -3751,6 +3938,11 @@ fn admit(
             state.consumed_reviews.push(review);
             state.changed();
         }
+        Intent::ExportDiagnostics => diagnostics_domain::admit_export(state, effects)?,
+        Intent::ClearDiagnostics => {
+            state.diagnostics_log.clear();
+            state.changed();
+        }
         intent @ (Intent::InspectV1Import
         | Intent::PlanV1Import { .. }
         | Intent::ConfirmV1Import { .. }
@@ -4090,6 +4282,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                 });
             }
             Effect::V1Import(job) => import_v1_domain::run(inner, job),
+            Effect::ExportDiagnostics { lease } => diagnostics_domain::export(inner, lease),
             Effect::Cleanup => {
                 drain_cleanup(inner);
                 learner_domain::drain_learner_cleanup(inner);
@@ -4588,6 +4781,13 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                                 }
                             }
                         }
+                        // Diagnostics go with the data (D051).
+                        if !worker.diagnostics.purge() {
+                            return Err(ResetFailure {
+                                stage: ResetStage::Document,
+                                reason: VaultError::Unavailable,
+                            });
+                        }
                         // Import receipts go with the work they describe.
                         if let Some(root) = &worker.adapters.import_root
                             && !crate::import_v1::receipt::purge(root)
@@ -5016,6 +5216,12 @@ fn display_name(name: &str) -> String {
 /// `Ok(unconfirmed)` when the reset completed (the document removal's
 /// durability may be unconfirmed); otherwise the step that stopped it.
 fn settle_reset(inner: &Arc<Inner>, result: Result<bool, ResetFailure>) {
+    inner.diagnostics.record(crate::diagnostics::Event::Reset {
+        outcome: match &result {
+            Ok(_) => "done".to_owned(),
+            Err(failure) => format!("failed-{}", refusal_code_of(&failure.stage)),
+        },
+    });
     let (starts, cleanup) = {
         let Ok(mut state) = lock(inner) else {
             return;
@@ -5024,8 +5230,9 @@ fn settle_reset(inner: &Arc<Inner>, result: Result<bool, ResetFailure>) {
             Ok(unconfirmed) => {
                 inner.session.clear();
                 state.data = Data::default();
-                // Receipts were purged with the data they describe.
+                // Receipts and diagnostics were purged with the data.
                 state.v1_import = import_v1_domain::V1Import::default();
+                state.diagnostics = diagnostics_domain::DiagnosticsState::default();
                 state.storage = StorageHealth::Ready;
                 state.reset_failure = None;
                 state.durability_unconfirmed = unconfirmed;

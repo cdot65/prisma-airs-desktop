@@ -1,0 +1,100 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C23",
+  "recorded_utc": "2026-10-23T12:44:42Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes); tools/native-acceptance/acceptance_c23.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "b58c2d0e926f4f51031f411de413fe82942d66878c96dc8c23693ed072de8cad",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C23-N01",
+      "description": "Import from v1 is available in the shell. Look for v1 data finds the staged fixture v1 folder without reading its Keychain (the fixture keychain's read log stays empty), names what it will not import (navigation), lists both v1 tenants with the session-only one marked, and offers each category as a checkbox with its count or reason.",
+      "result": "pass",
+      "observation": "inspect {'found': True, 'no_keychain_read': True, 'navigation': True, 'tenants': ['Prod (TSG 1234567890)', 'Scratch \u00b7 session only in v1'], 'session_only': True, 'categories': ['Tenants (names and TSG IDs) 2 found', 'Scan endpoints Read from v1\u2019s Keychain only if selected', 'Appearance 1 found', 'Saved cases Read from v1\u2019s Keychain only if selected', 'FP/FN reports 1 found', 'Academy lab drafts v1 has none on this Mac', 'API Client collections v1 has none on this Mac', 'Harness conversations Read from v1\u2019s Keychain only if selected']}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C23/observations.json",
+        "docs/planning/evidence/C24/native-C23/tree-inspect.json"
+      ]
+    },
+    {
+      "id": "C23-N02",
+      "description": "Choosing the protected categories shows the Allow-not-Always-Allow note; Review what would be imported reads exactly the selected protected items of the targeted tenants (the read log) and states each item's status and counts as text: ready items and Academy drafts blocked until the same account signs in. A second review after the import shows the imported cases and reports as already here. No secret from v1's credential appears in any Accessibility tree.",
+      "result": "pass",
+      "observation": "reads ['credentials-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', 'cases-11111111-2222-4333-8444-555555555555', 'harness-history-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee']; ready ['Tenants (names and TSG IDs) : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new', 'Saved cases : Prod \u2192 Prod (new tenant) Ready \u00b7 2 new', 'Harness conversations : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new', 'Tenants (names and TSG IDs) : Scratch \u2192 Scratch (new tenant) Ready \u00b7 1 new', 'FP/FN reports : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new', 'Appearance : Appearance Ready \u00b7 1 new']; drafts blocked True; already present True; secret in AX: []",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C23/observations.json",
+        "docs/planning/evidence/C24/native-C23/tree-review.json",
+        "docs/planning/evidence/C24/native-C23/tree-review-again.json"
+      ]
+    },
+    {
+      "id": "C23-N03",
+      "description": "After the import, the new tenant carries v1's TSG ID with no key (Settings asks for its scan key), its cases are in the Case Library and its report in Sessions & Reports, and the Imports list shows the receipt as imported.",
+      "result": "pass",
+      "observation": "import {'receipt': True, 'focus': 'Imports', 'tenant_tsg': True, 'needs_key': True, 'cases': True, 'reports': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C23/observations.json",
+        "docs/planning/evidence/C24/native-C23/tree-imported.json"
+      ]
+    },
+    {
+      "id": "C23-N04",
+      "description": "An import stopped by the fixture's crash hook after its first item (the new tenant) was written shows nothing of it while it is stopped: Settings does not list the tenant although it is in the app's data. On relaunch the import reads as not finished and undone, the tenant is gone from the app's data, and Import again writes everything anew with every entry present exactly once.",
+      "result": "pass",
+      "observation": "interrupted {'written': True, 'hidden_while_stopped': True, 'undone': True, 'import_again': True, 'gone_after_relaunch': True, 'imported_again': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C23/observations.json",
+        "docs/planning/evidence/C24/native-C23/tree-stopped.json",
+        "docs/planning/evidence/C24/native-C23/tree-interrupted.json"
+      ]
+    },
+    {
+      "id": "C23-N05",
+      "description": "Roll back asks in a native sheet; Cancel keeps the import and returns focus to Roll back; confirming rolls the import back: the tenant it created is removed while the operator's own tenant created before the import stays, and the receipt reads rolled back.",
+      "result": "pass",
+      "observation": "rollback {'asked': True, 'cancel_focus': 'Roll back\u2026', 'kept_after_cancel': True, 'rolled_back': True, 'mine_kept': True, 'prod_removed': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C23/observations.json",
+        "docs/planning/evidence/C24/native-C23/tree-rolled-back.json"
+      ]
+    },
+    {
+      "id": "C23-N06",
+      "description": "v1 is preserved: every file of the fixture v1 folder has the same bytes, modification time and mode after inspection, review, import, relaunch and rollback, no file was created in it, the fixture v1 keychain's items have the same data, and the real v1 folder and login Keychain were never touched.",
+      "result": "pass",
+      "observation": "preserved {'v1': True, 'real_v1': True, 'search_list': True}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C23/observations.json"
+      ]
+    },
+    {
+      "id": "C23-N07",
+      "description": "No credential or sign-in is carried over: the imported tenant has no scan, management or inference key and the synthetic scan and management services receive no request during the import; Academy drafts are blocked with a sign-in reason while no account is signed in.",
+      "result": "pass",
+      "observation": "requests to the synthetic services: 0; imported tenant asks for a key: True; drafts need sign-in: True",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C23/observations.json"
+      ]
+    },
+    {
+      "id": "C23-N08",
+      "description": "The import view works by keyboard alone in tab order (category checkboxes, tenant targets, Review, item checkboxes, Import, Import again, Roll back), every control and status has an Accessibility name, progress is announced as a status, and the view stays usable at 200% text size and the minimum window size with reduced motion.",
+      "result": "pass",
+      "observation": "Tab reached {'look': True, 'forget': True}; 200% zoom: {'label': 'Forget this record', 'pos': [607, 617], 'size': [284, 88]}; minimum size: {'label': 'Forget this record', 'pos': [363, 516], 'size': [142, 45]}",
+      "evidence": [
+        "docs/planning/evidence/C24/native-C23/observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The v1 source is a synthetic fixture folder and a staged file keychain read without prompting; the production source (v1's folder and the login Keychain, where macOS asks before each item is read) is the same read-only adapter's other branch and is not driven here.",
+    "The interruption is the fixture crash hook (the import stops after an item is noted writing) followed by ending the app; every other commit point and rollback interruption is exercised by the imports_rollback suite.",
+    "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

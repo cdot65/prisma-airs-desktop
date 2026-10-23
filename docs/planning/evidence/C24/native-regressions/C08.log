@@ -1,0 +1,12 @@
+PASS C08-N01 Administration available without 'Not available': True; no-tenant guidance: True; scan-only tenant shows the no-management-client guidance with Open Settings: True; scan-only scan allowed with the sca
+PASS C08-N02 status before: no management client (scans do not need one): True; client typed and saved with Return, status and Client ID shown: True; secret field empty after saving: True; fixture credential items
+PASS C08-N03 'can read this tenant' shown: True; token requests [('POST', 'basic-ok', 'client_credentials', 'tsg_id:1234567890', False)]; reads [('/aisec/v1/mgmt/profiles/tsg/1234567890', {'offset': '0', 'limit': 
+PASS C08-N04 page 1 rows 00–24 with 'Items 1–25 of 25+': True; partial note: True; page 2 rows to 29 with 'Items 26–30 of 30': True; Next page disabled: True; partial note gone: True; profile reads (offset, limit,
+PASS C08-N05 profile detail with fields and the local-preview classification: True; API key detail with the unknown status 'FUTURE_STATUS' and last8: True; secret field values in the tree: []; deployment profiles 
+PASS C08-N06 403 shown as not allowed, without server text and not as empty: True; the service's empty list shown as reported empty: True
+PASS C08-N07 a denied refresh shows the denial and keeps the earlier rows marked with their read time: True
+PASS C08-N08 client replaced while page 2 was in flight: True; Administration restarted at 'Items 1–25 of 25+' and still there after the late reply: True; no alert from the retired read: True; new token grants: 1
+PASS C08-N09 refused grant shown as not accepted without server text: True; management requests [('/oauth2/access_token', 401)]; scan afterwards allowed with the scan key: True
+PASS C08-N10 after relaunch the Keychain client reads page 1: True; removal shows no management client and keeps the scan key: True; fixture credential items after removal equal the scan key's alone: True; Adminis
+PASS C08-N11 200% zoom: {'label': 'Next page', 'pos': [815, 616], 'size': [196, 89]} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'label': 'Next page', 'pos': [467, 516], 'size': [
+PASS C08-N12 data root files ['~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/.fl8C9901EB', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/fixture-logs/diagnostics.json
