@@ -114,6 +114,12 @@ PROBES = [
      [(PANEL, "{view.clear === 'failed' ? (", "{false ? (")], FE_D, FE_CLEAR),
     ("an unknown clearing passes the contract",
      [(CLIENT, "optional((c) => oneOf(['cleared', 'failed'], c), value.clear)", "true")], FE_SNAPSHOT, SNAP),
+    # ---- P07 raise (native run of C24-N07) ----
+    ("Export drops keyboard focus while its dialog is open",
+     [(PANEL, "<Button type='button' tier='secondary' aria-disabled={busy} onClick={() => !busy && void run({ kind: 'exportDiagnostics' })}>",
+       "<Button type='button' tier='secondary' disabled={busy} onClick={() => void run({ kind: 'exportDiagnostics' })}>")], FE_D, FE_PANEL),
+    ("a held Export asks again",
+     [(PANEL, "onClick={() => !busy && void run({ kind: 'exportDiagnostics' })}", "onClick={() => void run({ kind: 'exportDiagnostics' })}")], FE_D, FE_PANEL),
 ]
 
 

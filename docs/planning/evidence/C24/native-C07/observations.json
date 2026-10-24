@@ -1,6 +1,6 @@
 {
  "observations": {
-  "origin": "https://localhost:61108",
+  "origin": "https://localhost:54942",
   "signed_in": true,
   "account_nav": [
    "Home",
@@ -34,11 +34,11 @@
     ]
    ],
    "items_before": [
-    "cr-dfcf8296538057c3"
+    "cr-232454bb0e1ed5ab"
    ],
    "items_after": [
-    "cr-58ba6fd014506ab8",
-    "cr-dfcf8296538057c3"
+    "cr-232454bb0e1ed5ab",
+    "cr-58ba6fd014506ab8"
    ]
   },
   "inventory_downloaded": {
@@ -54,13 +54,13 @@
      "path": "e49c345bc95ec6d70aa80f820ea6e56bef7f2d660dd646a0e53021fee234fe50/course-d622c4a41e8864a163dfc319f594580c5a32ec1ea76c6b4719f241fc6ae4a22c.bin",
      "mode": "0o600",
      "bytes": 1351154,
-     "sha256": "3fcda42569e72c37c2dadc49cd84cda26afdf83e14a34febdf3426e78a79c05d"
+     "sha256": "1a906ed586ec1314585a2f3cdbb310a82b7c15fddc5e8141d9edddba2950a86e"
     },
     {
      "path": "e49c345bc95ec6d70aa80f820ea6e56bef7f2d660dd646a0e53021fee234fe50/key.check",
      "mode": "0o600",
      "bytes": 88,
-     "sha256": "0708b667f988ebf77edd8832eba70bfa01d58af8cdc6bd803955199169d5c225"
+     "sha256": "8d73d9d73159a2a7f850b7e558fe8f86165c4a2fc54d9d30d556c238260e7aaf"
     }
    ],
    "dirs": [
@@ -140,7 +140,7 @@
     {
      "attemptId": "00000000-0000-4000-8000-0000000000a1",
      "baseVersion": 0,
-     "clientMutationId": "5d0b6b5c-c23d-47b4-9883-b6c30fdfc854",
+     "clientMutationId": "09f8c62e-3a6c-4382-8831-4b5b37997b80",
      "draft": {
       "classifications": {
        "f1": "true-positive"
@@ -242,7 +242,7 @@
     "offline_root": true,
     "items": [
      "cr-58ba6fd014506ab8",
-     "cr-f4ad185595515c9a"
+     "cr-e657140a26053c7f"
     ]
    },
    "done": true,
@@ -253,7 +253,7 @@
   },
   "requests": [
    {
-    "t": 1792757001.275475,
+    "t": 1792817652.7434509,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -265,7 +265,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757001.2766452,
+    "t": 1792817652.744842,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -277,7 +277,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757001.2774038,
+    "t": 1792817652.745738,
     "method": "POST",
     "path": "/oauth/device",
     "fields": [
@@ -292,7 +292,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757002.281657,
+    "t": 1792817653.748912,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -308,7 +308,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757002.2841961,
+    "t": 1792817653.75037,
     "method": "GET",
     "path": "/api/trpc/desktop.me",
     "fields": [],
@@ -320,7 +320,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757002.655499,
+    "t": 1792817654.0749881,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -333,10 +333,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 30.787
+    "handlingMs": 27.899
    },
    {
-    "t": 1792757002.655981,
+    "t": 1792817654.075679,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -349,10 +349,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.084
+    "handlingMs": 0.125
    },
    {
-    "t": 1792757003.805429,
+    "t": 1792817655.2125921,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -365,10 +365,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.176
+    "handlingMs": 0.177
    },
    {
-    "t": 1792757005.365269,
+    "t": 1792817656.73177,
     "method": "GET",
     "path": "/api/trpc/desktop.access",
     "fields": [],
@@ -381,10 +381,10 @@
     "procedure": "desktop.access",
     "input": "{\"json\":{\"courseIds\":[\"runtime-security\"]}}",
     "status": 200,
-    "handlingMs": 0.289
+    "handlingMs": 0.297
    },
    {
-    "t": 1792757005.374589,
+    "t": 1792817656.7409012,
     "method": "GET",
     "path": "/api/trpc/desktop.bundle",
     "fields": [],
@@ -397,10 +397,10 @@
     "procedure": "desktop.bundle",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 5.496
+    "handlingMs": 5.315
    },
    {
-    "t": 1792757006.9509492,
+    "t": 1792817658.300131,
     "method": "GET",
     "path": "/api/trpc/desktop.access",
     "fields": [],
@@ -413,10 +413,10 @@
     "procedure": "desktop.access",
     "input": "{\"json\":{\"courseIds\":[\"model-security\"]}}",
     "status": 200,
-    "handlingMs": 0.178
+    "handlingMs": 0.312
    },
    {
-    "t": 1792757006.9536011,
+    "t": 1792817658.3022988,
     "method": "GET",
     "path": "/api/trpc/desktop.bundle",
     "fields": [],
@@ -429,10 +429,10 @@
     "procedure": "desktop.bundle",
     "input": "{\"json\":{\"courseId\":\"model-security\"}}",
     "status": 413,
-    "handlingMs": 1.889
+    "handlingMs": 1.433
    },
    {
-    "t": 1792757006.954411,
+    "t": 1792817658.3032808,
     "method": "GET",
     "path": "/api/trpc/desktop.manifest",
     "fields": [],
@@ -445,10 +445,10 @@
     "procedure": "desktop.manifest",
     "input": "{\"json\":{\"courseId\":\"model-security\"}}",
     "status": 200,
-    "handlingMs": 0.185
+    "handlingMs": 0.181
    },
    {
-    "t": 1792757006.980651,
+    "t": 1792817658.33065,
     "method": "GET",
     "path": "/api/trpc/desktop.unitBundle",
     "fields": [],
@@ -461,10 +461,10 @@
     "procedure": "desktop.unitBundle",
     "input": "{\"json\":{\"unitId\":\"model-security-unit-1\"}}",
     "status": 200,
-    "handlingMs": 14.196
+    "handlingMs": 15.046
    },
    {
-    "t": 1792757007.0081542,
+    "t": 1792817658.360805,
     "method": "GET",
     "path": "/api/trpc/desktop.unitBundle",
     "fields": [],
@@ -477,10 +477,10 @@
     "procedure": "desktop.unitBundle",
     "input": "{\"json\":{\"unitId\":\"model-security-unit-2\"}}",
     "status": 200,
-    "handlingMs": 11.904
+    "handlingMs": 12.775
    },
    {
-    "t": 1792757007.0337632,
+    "t": 1792817658.388494,
     "method": "GET",
     "path": "/api/trpc/desktop.unitBundle",
     "fields": [],
@@ -493,10 +493,10 @@
     "procedure": "desktop.unitBundle",
     "input": "{\"json\":{\"unitId\":\"model-security-unit-3\"}}",
     "status": 200,
-    "handlingMs": 10.97
+    "handlingMs": 11.805
    },
    {
-    "t": 1792757007.447063,
+    "t": 1792817658.779674,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -509,10 +509,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
     "status": 200,
-    "handlingMs": 2.087
+    "handlingMs": 1.855
    },
    {
-    "t": 1792757007.4601212,
+    "t": 1792817658.793584,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -525,10 +525,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.124
+    "handlingMs": 0.143
    },
    {
-    "t": 1792757008.128437,
+    "t": 1792817659.552187,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -541,10 +541,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lab\"}}",
     "status": 200,
-    "handlingMs": 1.646
+    "handlingMs": 1.955
    },
    {
-    "t": 1792757008.4408278,
+    "t": 1792817659.8662841,
     "method": "GET",
     "path": "/api/trpc/labs.get",
     "fields": [],
@@ -557,10 +557,10 @@
     "procedure": "labs.get",
     "input": "{\"json\":{\"courseId\":\"runtime-security\",\"order\":2}}",
     "status": 200,
-    "handlingMs": 0.353
+    "handlingMs": 0.469
    },
    {
-    "t": 1792757008.446931,
+    "t": 1792817659.8757498,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.list",
     "fields": [],
@@ -573,10 +573,10 @@
     "procedure": "desktop.attempt.list",
     "input": "{\"json\":{\"limit\":100}}",
     "status": 200,
-    "handlingMs": 0.324
+    "handlingMs": 0.563
    },
    {
-    "t": 1792757008.464733,
+    "t": 1792817659.8948438,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.get",
     "fields": [],
@@ -589,10 +589,10 @@
     "procedure": "desktop.attempt.get",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\"}}",
     "status": 200,
-    "handlingMs": 0.47
+    "handlingMs": 0.538
    },
    {
-    "t": 1792757031.398486,
+    "t": 1792817682.790219,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -604,7 +604,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757031.400971,
+    "t": 1792817682.793406,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -616,7 +616,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757031.404265,
+    "t": 1792817682.7969,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -632,7 +632,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757031.431764,
+    "t": 1792817682.8301592,
     "method": "POST",
     "path": "/api/trpc/desktop.draft.save",
     "fields": [],
@@ -643,12 +643,12 @@
     "authorization": true,
     "clientSecret": false,
     "procedure": "desktop.draft.save",
-    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\",\"baseVersion\":0,\"clientMutationId\":\"5d0b6b5c-c23d-47b4-9883-b6c30fdfc854\",\"draft\":{\"classifications\":{\"f1\":\"true-positive\"},\"commands\":[],\"debrief\":\"\",\"steps\":{}}}}",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\",\"baseVersion\":0,\"clientMutationId\":\"09f8c62e-3a6c-4382-8831-4b5b37997b80\",\"draft\":{\"classifications\":{\"f1\":\"true-positive\"},\"commands\":[],\"debrief\":\"\",\"steps\":{}}}}",
     "status": 200,
-    "handlingMs": 25.369
+    "handlingMs": 30.622
    },
    {
-    "t": 1792757031.435814,
+    "t": 1792817682.835297,
     "method": "GET",
     "path": "/api/trpc/desktop.access",
     "fields": [],
@@ -661,10 +661,10 @@
     "procedure": "desktop.access",
     "input": "{\"json\":{\"courseIds\":[\"runtime-security\"]}}",
     "status": 200,
-    "handlingMs": 3.2
+    "handlingMs": 3.831
    },
    {
-    "t": 1792757031.439092,
+    "t": 1792817682.8394182,
     "method": "GET",
     "path": "/api/trpc/desktop.manifest",
     "fields": [],
@@ -677,10 +677,10 @@
     "procedure": "desktop.manifest",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 2.609
+    "handlingMs": 3.115
    },
    {
-    "t": 1792757031.4671109,
+    "t": 1792817682.863615,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.get",
     "fields": [],
@@ -693,10 +693,10 @@
     "procedure": "desktop.attempt.get",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\"}}",
     "status": 200,
-    "handlingMs": 2.759
+    "handlingMs": 3.514
    },
    {
-    "t": 1792757033.105372,
+    "t": 1792817684.483296,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -709,10 +709,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 2.053
+    "handlingMs": 2.868
    },
    {
-    "t": 1792757033.22694,
+    "t": 1792817684.612293,
     "method": "GET",
     "path": "/api/trpc/desktop.access",
     "fields": [],
@@ -725,10 +725,10 @@
     "procedure": "desktop.access",
     "input": "{\"json\":{\"courseIds\":[\"runtime-security\"]}}",
     "status": 200,
-    "handlingMs": 2.803
+    "handlingMs": 3.644
    },
    {
-    "t": 1792757033.236334,
+    "t": 1792817684.623801,
     "method": "GET",
     "path": "/api/trpc/desktop.bundle",
     "fields": [],
@@ -741,10 +741,10 @@
     "procedure": "desktop.bundle",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 6.032
+    "handlingMs": 7.564
    },
    {
-    "t": 1792757034.694019,
+    "t": 1792817686.095181,
     "method": "POST",
     "path": "/oauth/revoke",
     "fields": [
@@ -760,7 +760,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757034.775178,
+    "t": 1792817686.1954381,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -773,10 +773,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 1.432
+    "handlingMs": 1.886
    },
    {
-    "t": 1792757034.7773418,
+    "t": 1792817686.197674,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -789,10 +789,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 2.113
+    "handlingMs": 3.798
    },
    {
-    "t": 1792757036.954017,
+    "t": 1792817688.385122,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -804,7 +804,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757036.955078,
+    "t": 1792817688.386744,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -816,7 +816,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757036.955883,
+    "t": 1792817688.387809,
     "method": "POST",
     "path": "/oauth/device",
     "fields": [
@@ -831,7 +831,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757037.959201,
+    "t": 1792817689.391309,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -847,7 +847,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757037.960421,
+    "t": 1792817689.393173,
     "method": "GET",
     "path": "/api/trpc/desktop.me",
     "fields": [],
@@ -859,7 +859,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757038.2475939,
+    "t": 1792817689.713693,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -872,10 +872,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.265
+    "handlingMs": 0.188
    },
    {
-    "t": 1792757038.2483242,
+    "t": 1792817689.7149582,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -888,10 +888,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.103
+    "handlingMs": 0.178
    },
    {
-    "t": 1792757038.317795,
+    "t": 1792817689.789257,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -904,10 +904,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.086
+    "handlingMs": 0.116
    },
    {
-    "t": 1792757039.3802109,
+    "t": 1792817690.9081228,
     "method": "POST",
     "path": "/oauth/revoke",
     "fields": [
@@ -923,7 +923,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757040.428993,
+    "t": 1792817691.994284,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -935,7 +935,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757040.4298072,
+    "t": 1792817691.99538,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -947,7 +947,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757040.430615,
+    "t": 1792817691.9960792,
     "method": "POST",
     "path": "/oauth/device",
     "fields": [
@@ -962,7 +962,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757041.4336362,
+    "t": 1792817692.999466,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -978,7 +978,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757041.434827,
+    "t": 1792817693.0012412,
     "method": "GET",
     "path": "/api/trpc/desktop.me",
     "fields": [],
@@ -990,7 +990,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757041.470538,
+    "t": 1792817693.036601,
     "method": "GET",
     "path": "/api/trpc/desktop.access",
     "fields": [],
@@ -1003,10 +1003,10 @@
     "procedure": "desktop.access",
     "input": "{\"json\":{\"courseIds\":[\"runtime-security\"]}}",
     "status": 200,
-    "handlingMs": 0.306
+    "handlingMs": 0.37
    },
    {
-    "t": 1792757041.471808,
+    "t": 1792817693.038893,
     "method": "GET",
     "path": "/api/trpc/desktop.manifest",
     "fields": [],
@@ -1019,10 +1019,10 @@
     "procedure": "desktop.manifest",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.435
+    "handlingMs": 0.996
    },
    {
-    "t": 1792757041.491334,
+    "t": 1792817693.067861,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.get",
     "fields": [],
@@ -1035,10 +1035,10 @@
     "procedure": "desktop.attempt.get",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\"}}",
     "status": 200,
-    "handlingMs": 0.743
+    "handlingMs": 0.367
    },
    {
-    "t": 1792757041.730763,
+    "t": 1792817693.314173,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -1051,10 +1051,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.119
+    "handlingMs": 0.252
    },
    {
-    "t": 1792757041.7315352,
+    "t": 1792817693.315111,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -1067,10 +1067,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.12
+    "handlingMs": 0.215
    },
    {
-    "t": 1792757041.81076,
+    "t": 1792817693.388085,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -1083,10 +1083,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.164
+    "handlingMs": 0.147
    },
    {
-    "t": 1792757042.050848,
+    "t": 1792817693.627278,
     "method": "GET",
     "path": "/api/trpc/desktop.access",
     "fields": [],
@@ -1099,10 +1099,10 @@
     "procedure": "desktop.access",
     "input": "{\"json\":{\"courseIds\":[\"runtime-security\"]}}",
     "status": 200,
-    "handlingMs": 2.66
+    "handlingMs": 3.002
    },
    {
-    "t": 1792757042.059969,
+    "t": 1792817693.637193,
     "method": "GET",
     "path": "/api/trpc/desktop.bundle",
     "fields": [],
@@ -1115,10 +1115,10 @@
     "procedure": "desktop.bundle",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 5.978
+    "handlingMs": 6.085
    },
    {
-    "t": 1792757061.7215219,
+    "t": 1792817713.227242,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -1130,7 +1130,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757061.723114,
+    "t": 1792817713.2295349,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -1142,7 +1142,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757061.725064,
+    "t": 1792817713.232393,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -1158,7 +1158,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792757061.780533,
+    "t": 1792817713.279285,
     "method": "GET",
     "path": "/api/trpc/desktop.access",
     "fields": [],
@@ -1171,10 +1171,10 @@
     "procedure": "desktop.access",
     "input": "{\"json\":{\"courseIds\":[\"runtime-security\"]}}",
     "status": 200,
-    "handlingMs": 54.546
+    "handlingMs": 44.119
    },
    {
-    "t": 1792757061.802272,
+    "t": 1792817713.314708,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.get",
     "fields": [],
@@ -1187,10 +1187,10 @@
     "procedure": "desktop.attempt.get",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\"}}",
     "status": 200,
-    "handlingMs": 0.184
+    "handlingMs": 0.364
    },
    {
-    "t": 1792757062.822884,
+    "t": 1792817714.287421,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -1203,10 +1203,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.217
+    "handlingMs": 0.135
    },
    {
-    "t": 1792757062.823185,
+    "t": 1792817714.292207,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -1219,10 +1219,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.127
+    "handlingMs": 0.115
    },
    {
-    "t": 1792757062.900116,
+    "t": 1792817714.377863,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -1235,10 +1235,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.111
+    "handlingMs": 0.143
    },
    {
-    "t": 1792757096.778782,
+    "t": 1792817747.828043,
     "method": "GET",
     "path": "/api/trpc/desktop.access",
     "fields": [],
@@ -1251,10 +1251,10 @@
     "procedure": "desktop.access",
     "input": "{\"json\":{\"courseIds\":[\"runtime-security\"]}}",
     "status": 200,
-    "handlingMs": 0.738
+    "handlingMs": 0.488
    },
    {
-    "t": 1792757096.7920399,
+    "t": 1792817747.8406038,
     "method": "GET",
     "path": "/api/trpc/desktop.bundle",
     "fields": [],
@@ -1267,7 +1267,7 @@
     "procedure": "desktop.bundle",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 8.612
+    "handlingMs": 7.876
    }
   ]
  },

@@ -24,9 +24,80 @@
    "content_in_diagnostics": [],
    "secret_in_diagnostics": []
   },
+  "tree_panel_cancelled": "docs/planning/evidence/C24/native/tree-diagnostics-panel-cancelled.json",
+  "tree_cleared": "docs/planning/evidence/C24/native/tree-diagnostics-cleared.json",
+  "keyboard": {
+   "export_reached": true,
+   "panel_shown": true,
+   "saved": true,
+   "focus_after_save": "Export diagnostics\u2026",
+   "focus_after_save_on_export": true,
+   "cancelled": true,
+   "focus_after_cancel": "Export diagnostics\u2026",
+   "focus_after_cancel_on_export": true,
+   "clear_reached": true,
+   "cleared_announced": true,
+   "zoom_200": {
+    "zoom": 2,
+    "window": {
+     "pos": [
+      95,
+      37
+     ],
+     "size": [
+      1280,
+      820
+     ]
+    },
+    "found": {
+     "label": "Clear diagnostics",
+     "pos": [
+      988,
+      617
+     ],
+     "size": [
+      281,
+      89
+     ]
+    },
+    "clear": true
+   },
+   "minimum_size": {
+    "zoom": 1,
+    "window": {
+     "pos": [
+      95,
+      37
+     ],
+     "size": [
+      900,
+      600
+     ]
+    },
+    "found": {
+     "label": "Export diagnostics\u2026",
+     "pos": [
+      384,
+      517
+     ],
+     "size": [
+      162,
+      45
+     ]
+    },
+    "clear": true
+   }
+  },
   "network": {
    "startup_sockets": 0,
-   "log": "docs/planning/evidence/C24/native/startup-network-samples.log"
+   "log": "docs/planning/evidence/C24/native/startup-network-samples.log",
+   "processes": [
+    "com.apple.WebKit.GPU",
+    "com.apple.WebKit.Networking",
+    "com.apple.WebKit.WebContent",
+    "prisma-airs-desktop-v2"
+   ],
+   "webkit_sampled": 3
   },
   "tree_offline_library": "docs/planning/evidence/C24/native/tree-offline-library.json",
   "tree_offline_settings": "docs/planning/evidence/C24/native/tree-offline-settings.json",
@@ -35,7 +106,10 @@
    "reports": true,
    "receipt": true,
    "diagnostics": true,
-   "sent_on_reconnect": 0
+   "sent_on_reconnect": 0,
+   "reconnect_sockets": 0,
+   "reconnect_log": "docs/planning/evidence/C24/native/reconnect-network-samples.log",
+   "reconnect_webkit_sampled": 3
   },
   "node_free": [],
   "earlier": {
@@ -67,37 +141,37 @@
  },
  "log": [
   {
-   "t": "07:48:05",
+   "t": "00:37:01",
    "step": "typed",
    "field": "TSG ID (optional)",
    "attempts": 1
   },
   {
-   "t": "07:48:07",
+   "t": "00:37:03",
    "step": "typed",
    "field": "Label",
    "attempts": 1
   },
   {
-   "t": "07:48:09",
+   "t": "00:37:05",
    "step": "typed",
    "field": "Endpoint origin",
    "attempts": 1
   },
   {
-   "t": "07:48:12",
+   "t": "00:37:08",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "07:48:14",
+   "t": "00:37:11",
    "step": "typed",
    "field": "Profile name or ID",
    "attempts": 1
   },
   {
-   "t": "07:48:16",
+   "t": "00:37:13",
    "step": "typed",
    "field": "Prompt",
    "attempts": 1

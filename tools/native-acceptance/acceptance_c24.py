@@ -238,16 +238,17 @@ def run():
     time.sleep(0.8)
     smallest = c8.reach(app, 1, "Export diagnostics…")
     fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {app.pid}) to set size of window 1 to {{1280, 820}}'])
-    in_window = lambda f: bool(f) and f.get("role") not in ("AXSheet", None)  # noqa: E731
+    # Focus comes back to the control that opened the panel, not just the window.
+    on_export = lambda f: bool(f) and f.get("role") == "AXButton" and f.get("label") == "Export diagnostics…"  # noqa: E731
     obs["keyboard"] = {
         "export_reached": bool(reached["found"]),
         "panel_shown": panel,
         "saved": saved_panel and said and exported_doc.get("schema") == "prisma-airs-desktop-v2/diagnostics/1",
         "focus_after_save": (focus_saved or {}).get("label"),
-        "focus_after_save_in_window": in_window(focus_saved),
+        "focus_after_save_on_export": on_export(focus_saved),
         "cancelled": cancelled and cancel_said and sorted(os.listdir(out)) == ["prisma-airs-desktop-diagnostics.json"],
         "focus_after_cancel": (focus_cancelled or {}).get("label"),
-        "focus_after_cancel_in_window": in_window(focus_cancelled),
+        "focus_after_cancel_on_export": on_export(focus_cancelled),
         "clear_reached": bool(clear["found"]),
         "cleared_announced": cleared_said and bool(status),
         "zoom_200": zoomed,
@@ -356,8 +357,8 @@ def evaluate(prepared, o):
     add("C24-N05", not o["node_free"], f"Node or JavaScript runtime files in the bundle: {o['node_free']}", [])
     e = o["earlier"]
     k = o["keyboard"]
-    add("C24-N07", k["export_reached"] and k["panel_shown"] and k["saved"] and k["focus_after_save_in_window"]
-        and k["cancelled"] and k["focus_after_cancel_in_window"] and k["clear_reached"] and k["cleared_announced"]
+    add("C24-N07", k["export_reached"] and k["panel_shown"] and k["saved"] and k["focus_after_save_on_export"]
+        and k["cancelled"] and k["focus_after_cancel_on_export"] and k["clear_reached"] and k["cleared_announced"]
         and k["zoom_200"]["clear"] and k["minimum_size"]["clear"],
         f"Export reached by Tab and pressed with Space: {k['export_reached']}; production save panel shown: {k['panel_shown']}; "
         f"saved and announced: {k['saved']}; focus after saving: {k['focus_after_save']}; cancelled, nothing saved and announced: "

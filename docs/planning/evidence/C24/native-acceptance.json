@@ -1,20 +1,20 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C24",
-  "recorded_utc": "2026-10-23T12:49:07Z",
+  "recorded_utc": "2026-10-24T05:40:28Z",
   "method": "cua",
-  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes); tools/native-acceptance/acceptance_c24.py",
+  "performed_by": "Claude Code driving the real fixture window and the production NSSavePanel (fixture switch fixture-native-sheets) through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes); tools/native-acceptance/acceptance_c24.py",
   "host": "Mac17,3; macOS 27.0.1 (26A434)",
   "app": {
     "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
     "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
-    "executable_sha256": "b58c2d0e926f4f51031f411de413fe82942d66878c96dc8c23693ed072de8cad",
+    "executable_sha256": "13b9bb6dd0bafa0a2b2105ac6ca9dd0a584d66f4d1d1fa9a8174cad7e54a4f8e",
     "fixture": true
   },
   "checks": [
     {
       "id": "C24-N01",
-      "description": "Settings \u203a Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only) through the save sheet, and Clear diagnostics leaves only the record of clearing.",
+      "description": "Settings \u203a Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only; in the fixture build without a sheet, into its data root), and Clear diagnostics leaves only the record of clearing.",
       "result": "pass",
       "observation": "diagnostics {'stated': True, 'counted': True, 'saved': True, 'schema': 'prisma-airs-desktop-v2/diagnostics/1', 'events': 8, 'kinds_only': True, 'cleared': True}",
       "evidence": [
@@ -34,9 +34,9 @@
     },
     {
       "id": "C24-N03",
-      "description": "Startup and reconnect network inventory: across 15 s of startup with a configured tenant the app and its WebKit processes open no internet socket (sampled lsof), and after an offline launch the synthetic services receive no request once they are reachable again until the operator acts.",
+      "description": "Startup and reconnect network inventory: across 15 s of startup with a configured tenant, the app and every WebKit process that appeared with its launch (each sampled, named and counted, so an empty WebKit set fails) open no internet socket (sampled lsof); after an offline launch the synthetic services receive no request once they are reachable again until the operator acts, and the same processes hold no socket while nothing is asked.",
       "result": "pass",
-      "observation": "startup internet sockets over 15 s: 0; requests on reconnect: 0",
+      "observation": "startup internet sockets over 15 s of the app and its WebKit processes (['com.apple.WebKit.GPU', 'com.apple.WebKit.Networking', 'com.apple.WebKit.WebContent', 'prisma-airs-desktop-v2'], WebKit sampled: 3): 0; after reconnect: requests 0, sockets over 8 s 0 (WebKit sampled: 3)",
       "evidence": [
         "docs/planning/evidence/C24/native/observations.json",
         "docs/planning/evidence/C24/native/startup-network-samples.log"
@@ -46,7 +46,7 @@
       "id": "C24-N04",
       "description": "T23 across local categories: with imported cases, FP/FN reports and a receipt kept, an offline launch (no synthetic service reachable) shows the cases in the Case Library, the reports in Sessions & Reports, the import receipt and the diagnostics count, and nothing is sent or replayed on reconnect.",
       "result": "pass",
-      "observation": "offline {'cases': True, 'reports': True, 'receipt': True, 'diagnostics': True, 'sent_on_reconnect': 0}",
+      "observation": "offline {'cases': True, 'reports': True, 'receipt': True, 'diagnostics': True, 'sent_on_reconnect': 0, 'reconnect_sockets': 0, 'reconnect_log': 'docs/planning/evidence/C24/native/reconnect-network-samples.log', 'reconnect_webkit_sampled': 3}",
       "evidence": [
         "docs/planning/evidence/C24/native/observations.json",
         "docs/planning/evidence/C24/native/tree-offline-library.json",
@@ -60,6 +60,17 @@
       "observation": "Node or JavaScript runtime files in the bundle: []",
       "evidence": [
         "docs/planning/evidence/C24/native/observations.json"
+      ]
+    },
+    {
+      "id": "C24-N07",
+      "description": "Diagnostics by keyboard alone: Export diagnostics\u2026 is reached by Tab and pressed with Space, the production save sheet (NSSavePanel) saves the document into a chosen folder and Diagnostics saved. is announced; a second export cancelled in the sheet saves nothing and Nothing was saved. is announced; focus returns to Export diagnostics\u2026 each time; Clear diagnostics is reached and pressed the same way and Diagnostics cleared. is announced; both controls are reachable and clear at 200% zoom and at the minimum window size.",
+      "result": "pass",
+      "observation": "Export reached by Tab and pressed with Space: True; production save panel shown: True; saved and announced: True; focus after saving: Export diagnostics\u2026; cancelled, nothing saved and announced: True; focus after cancelling: Export diagnostics\u2026; Clear reached and its outcome announced: True; 200% zoom: {'label': 'Clear diagnostics', 'pos': [988, 617], 'size': [281, 89]} clear True; minimum size: {'label': 'Export diagnostics\u2026', 'pos': [384, 517], 'size': [162, 45]} clear True",
+      "evidence": [
+        "docs/planning/evidence/C24/native/observations.json",
+        "docs/planning/evidence/C24/native/tree-diagnostics-panel-cancelled.json",
+        "docs/planning/evidence/C24/native/tree-diagnostics-cleared.json"
       ]
     },
     {
@@ -99,6 +110,8 @@
     "Spoken VoiceOver output is not recorded (no operator listened); Accessibility roles, names, order and focus are inspected by every earlier chunk's driver on this bundle.",
     "Network evidence is sampled lsof output (0.5 s), not a packet capture; DNS through mDNSResponder is not attributed. Reconnect is the synthetic services becoming reachable again.",
     "The offline launch covers the categories this driver stages (imported cases, FP/FN reports, an import receipt, diagnostics); Academy, API Client, Gateway and Harness offline work is covered by C07, C14, C15, C17, C18, C20 and C21's drivers on this bundle (C24-N06).",
-    "The fixture build keeps diagnostics under its data root (fixture-logs/); production builds keep them in macOS's logs folder for the app (D051)."
+    "The fixture build keeps diagnostics under its data root (fixture-logs/); production builds keep them in macOS's logs folder for the app (D051).",
+    "N01 exports without a sheet into the fixture data root; N07 drives the production NSSavePanel into a driver-owned temporary folder. No Accessibility tree is saved while a panel lists folders.",
+    "WebKit processes are those that appeared with the launch (pgrep com.apple.WebKit before and after); another app's WebKit process started meanwhile would be sampled too, which can only add sockets, never hide one."
   ]
 }

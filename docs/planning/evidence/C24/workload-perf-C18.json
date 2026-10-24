@@ -2,425 +2,425 @@
  "schema": "airs-v2-workload-perf/1",
  "label": "acceptance",
  "registration_sha256": "2fbd7a9fd0010d702206afc839ea09700aac2673a85417d01956f8f76d8fb362",
- "started_utc": "2026-10-23T13:02:42Z",
- "finished_utc": "2026-10-23T13:04:40Z",
- "executable_sha256": "b58c2d0e926f4f51031f411de413fe82942d66878c96dc8c23693ed072de8cad",
+ "started_utc": "2026-10-24T05:55:15Z",
+ "finished_utc": "2026-10-24T05:57:22Z",
+ "executable_sha256": "13b9bb6dd0bafa0a2b2105ac6ca9dd0a584d66f4d1d1fa9a8174cad7e54a4f8e",
  "host": "Mac17,3",
  "metrics": {
   "gateway-stream-first-output": {
    "unit": "ms",
    "samples": [
-    38.354708,
-    32.6275,
-    31.063209,
-    36.8595,
-    26.038583,
-    27.188916,
-    28.00325,
-    27.860375,
-    30.001666,
-    32.320458
+    58.852584,
+    44.479334,
+    47.576792,
+    56.396125,
+    47.271334,
+    51.493583,
+    40.128042,
+    53.961458,
+    61.108583,
+    58.791208
    ]
   },
   "gateway-stream-64kib-complete": {
    "unit": "ms",
    "samples": [
-    19.794917,
-    20.387958,
-    24.122791,
-    26.387583,
-    24.709625,
-    24.150958,
-    21.987417,
-    22.581,
-    26.4035,
-    25.267875
+    34.800958,
+    32.978916,
+    47.080875,
+    42.715458,
+    29.726625,
+    24.34275,
+    28.310584,
+    26.744125,
+    26.586292,
+    23.380458
    ]
   },
   "gateway-stream-stop": {
    "unit": "ms",
    "samples": [
-    19.926,
-    15.329875,
-    17.832541,
-    8.679375,
-    18.844458,
-    18.654,
-    17.464625,
-    17.646209,
-    28.256208,
-    16.360208
+    19.944083,
+    18.807042,
+    21.317667,
+    19.187042,
+    17.715791,
+    18.156083,
+    18.106875,
+    21.376375,
+    19.392292,
+    16.218958
    ]
   },
   "gateway-responsive-during-stream": {
    "unit": "ms",
    "samples": [
-    23.702792,
-    19.059417,
-    14.268417,
-    19.570125,
-    18.857667,
-    19.82775,
-    18.6395,
-    17.6525,
-    20.210166,
-    20.91,
-    18.447667,
-    15.650958,
-    21.085167,
-    16.342292,
-    20.123875,
-    23.141375,
-    23.030541,
-    17.482125,
-    20.354583,
-    23.121458
+    29.936292,
+    19.19725,
+    20.916916,
+    23.133625,
+    20.137875,
+    19.94625,
+    18.758792,
+    21.882333,
+    19.7245,
+    21.470042,
+    26.918375,
+    21.906708,
+    23.267083,
+    23.8805,
+    26.0485,
+    24.946833,
+    26.566958,
+    21.776542,
+    19.33975,
+    20.094542
    ]
   },
   "gateway-usage-charts-30d": {
    "unit": "ms",
    "samples": [
-    137.827708,
-    118.873333,
-    102.070542,
-    100.90675,
-    114.096333,
-    106.076875,
-    111.235125,
-    116.635917,
-    99.813667,
-    146.916666
+    32.513416,
+    149.523208,
+    124.719292,
+    130.511125,
+    116.678958,
+    148.894,
+    136.612084,
+    177.812459,
+    183.844125,
+    168.789459
    ]
   },
   "gateway-process-tree-resident": {
    "unit": "MiB",
    "samples": [
-    445.8,
-    426.2,
-    406.4,
-    401.4,
-    390.8,
-    392.2,
-    392.2,
-    392.2,
-    392.2,
-    391.8,
-    391.6,
-    391.3,
-    391.1,
-    391.1,
-    391.0,
-    390.9,
-    390.9,
-    390.9,
-    390.9,
-    390.9
+    346.5,
+    347.1,
+    348.4,
+    349.5,
+    351.2,
+    352.8,
+    350.2,
+    345.9,
+    342.9,
+    342.1,
+    341.7,
+    341.4,
+    340.9,
+    340.9,
+    340.9,
+    340.8,
+    340.8,
+    340.8,
+    340.8,
+    340.8
    ]
   }
  },
  "details": {
   "process_tree": {
-   "app": 93221,
+   "app": 85056,
    "webkit": [
-    93223,
-    93224,
-    93225
+    85060,
+    85061,
+    85062
    ]
   },
   "bulk": [
    {
     "sample": 1,
-    "ms": 38.354708,
-    "polls": 2,
+    "polls": 3,
+    "ms": 58.852584,
     "completed": true
    },
    {
     "sample": 2,
-    "ms": 32.6275,
+    "ms": 44.479334,
     "polls": 3,
     "completed": true
    },
    {
     "sample": 3,
     "polls": 3,
-    "ms": 31.063209,
+    "ms": 47.576792,
     "completed": true
    },
    {
     "sample": 4,
-    "ms": 36.8595,
     "polls": 3,
+    "ms": 56.396125,
     "completed": true
    },
    {
     "sample": 5,
-    "polls": 2,
-    "ms": 26.038583,
+    "ms": 47.271334,
+    "polls": 3,
     "completed": true
    },
    {
     "sample": 6,
-    "polls": 2,
-    "ms": 27.188916,
+    "ms": 51.493583,
+    "polls": 3,
     "completed": true
    },
    {
     "sample": 7,
     "polls": 2,
-    "ms": 28.00325,
+    "ms": 40.128042,
     "completed": true
    },
    {
     "sample": 8,
-    "polls": 2,
-    "ms": 27.860375,
+    "ms": 53.961458,
+    "polls": 3,
     "completed": true
    },
    {
     "sample": 9,
     "polls": 3,
-    "ms": 30.001666,
+    "ms": 61.108583,
     "completed": true
    },
    {
     "sample": 10,
     "polls": 3,
-    "ms": 32.320458,
+    "ms": 58.791208,
     "completed": true
    },
    {
     "sample": 11,
-    "ms": 19.794917,
     "polls": 2,
+    "ms": 34.800958,
     "output": 65536
    },
    {
     "sample": 12,
-    "ms": 20.387958,
+    "ms": 32.978916,
     "polls": 2,
     "output": 65536
    },
    {
     "sample": 13,
     "polls": 2,
-    "ms": 24.122791,
+    "ms": 47.080875,
     "output": 65536
    },
    {
     "sample": 14,
-    "ms": 26.387583,
     "polls": 2,
+    "ms": 42.715458,
     "output": 65536
    },
    {
     "sample": 15,
     "polls": 2,
-    "ms": 24.709625,
+    "ms": 29.726625,
     "output": 65536
    },
    {
     "sample": 16,
-    "ms": 24.150958,
+    "ms": 24.34275,
     "polls": 2,
     "output": 65536
    },
    {
     "sample": 17,
     "polls": 2,
-    "ms": 21.987417,
+    "ms": 28.310584,
     "output": 65536
    },
    {
     "sample": 18,
+    "ms": 26.744125,
     "polls": 2,
-    "ms": 22.581,
     "output": 65536
    },
    {
     "sample": 19,
+    "ms": 26.586292,
     "polls": 2,
-    "ms": 26.4035,
     "output": 65536
    },
    {
     "sample": 20,
+    "ms": 23.380458,
     "polls": 2,
-    "ms": 25.267875,
     "output": 65536
    }
   ],
   "stop": [
    {
     "sample": 1,
-    "ms": 19.926,
-    "polls": 1
+    "polls": 1,
+    "ms": 19.944083
    },
    {
     "sample": 2,
-    "ms": 15.329875,
+    "ms": 18.807042,
     "polls": 1
    },
    {
     "sample": 3,
-    "ms": 17.832541,
+    "ms": 21.317667,
     "polls": 1
    },
    {
     "sample": 4,
-    "ms": 8.679375,
-    "polls": 1
+    "polls": 1,
+    "ms": 19.187042
    },
    {
     "sample": 5,
-    "ms": 18.844458,
+    "ms": 17.715791,
     "polls": 1
    },
    {
     "sample": 6,
-    "ms": 18.654,
-    "polls": 1
+    "polls": 1,
+    "ms": 18.156083
    },
    {
     "sample": 7,
-    "polls": 1,
-    "ms": 17.464625
+    "ms": 18.106875,
+    "polls": 1
    },
    {
     "sample": 8,
-    "ms": 17.646209,
+    "ms": 21.376375,
     "polls": 1
    },
    {
     "sample": 9,
-    "ms": 28.256208,
+    "ms": 19.392292,
     "polls": 1
    },
    {
     "sample": 10,
-    "ms": 16.360208,
-    "polls": 1
+    "polls": 1,
+    "ms": 16.218958
    }
   ],
   "responsive": [
    {
     "sample": 1,
     "during_stream": true,
-    "ms": 23.702792,
+    "ms": 29.936292,
     "polls": 1
    },
    {
     "sample": 2,
     "during_stream": true,
-    "ms": 19.059417,
-    "polls": 1
+    "polls": 1,
+    "ms": 19.19725
    },
    {
     "sample": 3,
     "during_stream": true,
-    "ms": 14.268417,
+    "ms": 20.916916,
     "polls": 1
    },
    {
     "sample": 4,
     "during_stream": true,
-    "ms": 19.570125,
-    "polls": 1
+    "polls": 1,
+    "ms": 23.133625
    },
    {
     "sample": 5,
     "during_stream": true,
-    "polls": 1,
-    "ms": 18.857667
+    "ms": 20.137875,
+    "polls": 1
    },
    {
     "sample": 6,
     "during_stream": true,
-    "ms": 19.82775,
-    "polls": 1
+    "polls": 1,
+    "ms": 19.94625
    },
    {
     "sample": 7,
     "during_stream": true,
-    "ms": 18.6395,
-    "polls": 1
+    "polls": 1,
+    "ms": 18.758792
    },
    {
     "sample": 8,
     "during_stream": true,
-    "ms": 17.6525,
-    "polls": 1
+    "polls": 1,
+    "ms": 21.882333
    },
    {
     "sample": 9,
     "during_stream": true,
     "polls": 1,
-    "ms": 20.210166
+    "ms": 19.7245
    },
    {
     "sample": 10,
     "during_stream": true,
-    "ms": 20.91,
-    "polls": 1
+    "polls": 1,
+    "ms": 21.470042
    },
    {
     "sample": 11,
     "during_stream": true,
-    "ms": 18.447667,
+    "ms": 26.918375,
     "polls": 1
    },
    {
     "sample": 12,
     "during_stream": true,
     "polls": 1,
-    "ms": 15.650958
+    "ms": 21.906708
    },
    {
     "sample": 13,
     "during_stream": true,
-    "ms": 21.085167,
+    "ms": 23.267083,
     "polls": 1
    },
    {
     "sample": 14,
     "during_stream": true,
-    "ms": 16.342292,
+    "ms": 23.8805,
     "polls": 1
    },
    {
     "sample": 15,
     "during_stream": true,
-    "ms": 20.123875,
+    "ms": 26.0485,
     "polls": 1
    },
    {
     "sample": 16,
     "during_stream": true,
-    "ms": 23.141375,
+    "ms": 24.946833,
     "polls": 1
    },
    {
     "sample": 17,
     "during_stream": true,
-    "ms": 23.030541,
-    "polls": 1
+    "polls": 1,
+    "ms": 26.566958
    },
    {
     "sample": 18,
     "during_stream": true,
-    "polls": 1,
-    "ms": 17.482125
+    "ms": 21.776542,
+    "polls": 1
    },
    {
     "sample": 19,
     "during_stream": true,
     "polls": 1,
-    "ms": 20.354583
+    "ms": 19.33975
    },
    {
     "sample": 20,
     "during_stream": true,
     "polls": 1,
-    "ms": 23.121458
+    "ms": 20.094542
    }
   ],
   "charts": [
@@ -428,71 +428,71 @@
     "sample": 1,
     "points": 720,
     "model": true,
-    "polls": 2,
-    "ms": 137.827708
+    "ms": 32.513416,
+    "polls": 1
    },
    {
     "sample": 2,
     "points": 719,
     "model": true,
-    "ms": 118.873333,
-    "polls": 1
+    "polls": 1,
+    "ms": 149.523208
    },
    {
     "sample": 3,
     "points": 720,
     "model": true,
-    "polls": 1,
-    "ms": 102.070542
+    "ms": 124.719292,
+    "polls": 1
    },
    {
     "sample": 4,
     "points": 719,
     "model": true,
-    "ms": 100.90675,
+    "ms": 130.511125,
     "polls": 1
    },
    {
     "sample": 5,
     "points": 720,
     "model": true,
-    "polls": 1,
-    "ms": 114.096333
+    "ms": 116.678958,
+    "polls": 1
    },
    {
     "sample": 6,
     "points": 719,
     "model": true,
-    "ms": 106.076875,
-    "polls": 1
+    "polls": 1,
+    "ms": 148.894
    },
    {
     "sample": 7,
     "points": 720,
     "model": true,
-    "polls": 1,
-    "ms": 111.235125
+    "ms": 136.612084,
+    "polls": 1
    },
    {
     "sample": 8,
     "points": 719,
     "model": true,
-    "ms": 116.635917,
-    "polls": 1
+    "polls": 1,
+    "ms": 177.812459
    },
    {
     "sample": 9,
     "points": 720,
     "model": true,
-    "polls": 1,
-    "ms": 99.813667
+    "ms": 183.844125,
+    "polls": 1
    },
    {
     "sample": 10,
     "points": 719,
     "model": true,
     "polls": 1,
-    "ms": 146.916666
+    "ms": 168.789459
    }
   ],
   "resident_steps": [

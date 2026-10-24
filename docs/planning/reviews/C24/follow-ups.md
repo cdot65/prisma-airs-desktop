@@ -77,7 +77,8 @@ mutation probes in `docs/planning/evidence/C24/mutation-probes/probes.py`
     announced;
   - a second export cancelled in the panel saves nothing, and "Nothing was
     saved." is announced;
-  - focus returns to the window both times;
+  - focus returns to Export diagnostics… both times (tightened from "to
+    the window"; see below);
   - Clear diagnostics is reached and pressed by keyboard, and its outcome
     announced;
   - both controls are reachable and clear of the bottom fade at 200% zoom
@@ -101,3 +102,34 @@ mutation probes in `docs/planning/evidence/C24/mutation-probes/probes.py`
 - The governance needs owner or independent reviewer acknowledgement of
   version 5; the review is asked for it. Signed and notarized packaging
   stays C26's.
+
+## Found by the first native run of C24-N07
+
+The P07 raise chain's first run of C24-N07 failed three times. The panel was
+shown, but nothing was saved. Tracing the panel step by step (button labels
+and the name field only, no folder listing) showed two causes:
+
+- **Driver.** `native_sheets.press` pressed the first button labelled
+  "Save" in any window. Settings has its own Save (the management client
+  form), so that button was pressed and the panel stayed open. `press`
+  now presses only an enabled button of that label inside a sheet
+  (`in_sheet`). The C10, C11, C12 and C21 panel checks use the same
+  helper. A press that opens the Replace confirmation can report an
+  Accessibility error although it took effect. The old helper hid this by
+  pressing again. The new one counts the press as done once the panel's
+  button is held, and each check still verifies the saved file and its
+  announcement. With the helper changed, C10, C11, C12, C21 and C24 pass on
+  this bundle.
+- **Product.** With the driver fixed, the file was saved and announced, but
+  no element had focus afterwards. While the dialog was open, Export
+  diagnostics… and Clear diagnostics were `disabled`. A disabled button
+  drops keyboard focus, so focus did not come back to Export when the
+  dialog closed. Both buttons are now `aria-disabled` while saving and
+  ignore presses, as the other export buttons in the app are.
+  - React test (`diagnostics-panel.test.tsx`): Export is pressed with
+    Space and keeps focus while held. A second Space sends nothing. Export
+    still has focus once the save is announced.
+  - Probes: `Export drops keyboard focus while its dialog is open`, `a held
+    Export asks again`.
+  - Natively, C24-N07 now requires focus on Export diagnostics… after
+    saving and after cancelling, not merely somewhere in the window.

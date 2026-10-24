@@ -35,16 +35,40 @@ def wait_closed(app, timeout=10):
     return app.wait_for(lambda t: sheets(t) == 0, timeout)[1]
 
 
+def in_sheet(tree, label):
+    """The `ax press` index of the last enabled button labelled `label`
+    inside a sheet, or None. `ax press` matches by label prefix across every
+    window in tree order, so a window button with the same label (Settings
+    has its own Save) is counted but never chosen."""
+    found, matched, sheet = None, 0, None
+    for n in tree:
+        if sheet is not None and n.get("depth", 0) <= sheet:
+            sheet = None
+        if n.get("role") == "AXSheet":
+            sheet = n.get("depth", 0)
+        elif n.get("role") == "AXButton" and (n.get("label") or "").startswith(label):
+            if sheet is not None and n.get("label") == label and n.get("enabled"):
+                found = matched
+            matched += 1
+    return found
+
+
 def press(app, label, attempts=4):
     """AXPresses a panel button once it is enabled (panels settle late)."""
     for _ in range(attempts):
-        tree, ready = app.wait_for(lambda t: any(n.get("role") == "AXButton" and n.get("label") == label
-                                                 and n.get("enabled") for n in t), 6)
+        tree, ready = app.wait_for(lambda t: in_sheet(t, label) is not None, 6)
+        nth = in_sheet(tree, label)
+        if nth is None:
+            continue
         try:
-            app.ax("press", "AXButton", label)
+            app.ax("press", "AXButton", label, nth)
             return True
         except RuntimeError:
             time.sleep(1.0)
+            # A press that opens a confirmation (Replace) can report an
+            # error although it took effect: the button is then held.
+            if in_sheet(app.tree(), label) is None:
+                return True
     return False
 
 

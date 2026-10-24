@@ -1,0 +1,80 @@
+
+running 8 tests
+test budgets::tests::the_cumulative_chunk_carries_every_workload_under_its_measuring_chunk ... ok
+test budgets::tests::nearest_rank_statistics ... ok
+test budgets::tests::a_budget_fails_over_its_limit_short_of_samples_or_in_another_unit ... ok
+test sdk::tests::exactly_one_registry_entry_is_accepted ... ok
+test review::tests::a_phase_diff_starts_at_the_previous_phase ... ok
+test budgets::tests::the_registered_workload_table_parses_exactly ... ok
+test notices::tests::legacy_and_reviewed_file_licenses_count_only_when_exact ... ok
+test fingerprint::tests::every_installed_academy_package_is_fingerprinted_and_verified ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 44 tests
+test approved_manifest_parses_with_codex_threshold_nine ... ok
+test expired_attempts_cannot_advance ... ok
+test consistent_attempt_passes ... ok
+test edited_verdict_after_receipt_is_rejected ... ok
+test changed_or_missing_prepared_bytes_invalidate_native_acceptance ... ok
+test d034_phases_need_nine_and_every_eight_chunk_is_raised_before_sign_off ... ok
+test completion_ledger_is_append_only_and_requires_predecessors ... ok
+test flag_verification_refuses_unadvertised_flags ... ok
+test edited_packet_and_raw_output_are_rejected ... ok
+test inputs_changing_during_review_are_rejected ... ok
+test fresh_exec_with_forbidden_tool_use_is_rejected ... ok
+test fresh_exec_requires_a_completed_turn_whose_final_message_is_the_verdict ... ok
+test failed_or_incomplete_reviewer_turns_cannot_complete ... ok
+test mismatched_request_or_fingerprints_are_rejected ... ok
+test missing_or_failing_native_proof_is_rejected ... ok
+test malformed_verdicts_are_rejected ... ok
+test missing_failed_or_mismatched_runs_are_rejected ... ok
+test native_status_and_completion_resolve_phase_members_alike ... ok
+test queue_acknowledgement_without_verdict_is_rejected ... ok
+test owner_acceptance_takes_only_the_threshold_and_is_honored_only_when_recorded ... ok
+test receipt_self_reported_pass_is_not_trusted ... ok
+test receipt_scores_must_match_the_verdict ... ok
+test native_record_must_match_the_required_inventory_and_identity ... ok
+test ledger_generations_invalidation_and_receipt_integrity ... ok
+test prepared_bundle_bytes_path_and_identifier_are_bound ... ok
+test run_ids_must_match_their_references ... ok
+test edits_to_consumed_shared_source_are_detected ... ok
+test phases_require_integrated_native_runs_and_acceptance ... ok
+test shared_staging_paths_cannot_escape_their_roots ... ok
+test required_fix_blocker_or_gap_rejects_despite_nines ... ok
+test shared_prepare_rejects_escapes_before_touching_anything ... ok
+test score_eight_in_any_dimension_is_rejected ... ok
+test on_disk_attempt_round_trips_and_detects_tampering ... ok
+test run_records_must_cover_the_exact_approved_plan ... ok
+test test_output_parsing_rejects_zero_test_targets ... ok
+test thread_wait_requires_a_completed_turn_not_progress ... ok
+test transport_argv_substitutes_only_validated_values ... ok
+test verdict_parser_rejects_scores_out_of_range ... ok
+test workflow_ledger_matches_markdown_with_live_requirements ... ok
+test edits_to_the_web_consumer_scratch_tree_are_detected ... ok
+test stale_inputs_are_rejected ... ok
+test run_identity_exit_status_tests_and_logs_are_verified ... ok
+test manifest_rejects_unlisted_programs_placeholders_and_weakened_review ... ok
+test source_fingerprint_detects_edits_modes_untracked_files_and_git_config ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+--- stderr ---
+   Compiling xtask v0.2.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/crates/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.60s
+     Running unittests src/lib.rs (target/debug/deps/xtask-8dd50c4784bf56eb)
+     Running unittests src/main.rs (target/debug/deps/xtask-0895600dddbb43bf)
+     Running tests/shell_controller.rs (target/debug/deps/shell_controller-202f8c645c4c9998)
+   Doc-tests xtask

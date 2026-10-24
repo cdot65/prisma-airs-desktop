@@ -1,14 +1,14 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C17",
-  "recorded_utc": "2026-10-23T12:34:56Z",
+  "recorded_utc": "2026-10-24T05:26:31Z",
   "method": "cua",
   "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c17.py",
   "host": "Mac17,3; macOS 27.0.1 (26A434)",
   "app": {
     "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
     "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
-    "executable_sha256": "b58c2d0e926f4f51031f411de413fe82942d66878c96dc8c23693ed072de8cad",
+    "executable_sha256": "13b9bb6dd0bafa0a2b2105ac6ca9dd0a584d66f4d1d1fa9a8174cad7e54a4f8e",
     "fixture": true
   },
   "checks": [
@@ -109,7 +109,7 @@
       "id": "C17-N12",
       "description": "Reconnecting replays nothing (T23): after a relaunch with the service reachable no Gateway or IAM write is sent, the draft (with its offline edit) and both records are still listed, a record goes only when dismissed, and the kept draft's action is reachable by keyboard inside the window.",
       "result": "pass",
-      "observation": "reconnect {'listed': True, 'writes_after_reconnect': [], 'draft_listed': True, 'records': 2, 'reach_open_draft': {'zoom': 1, 'window': {'pos': [95, 37], 'size': [1280, 820]}, 'found': {'label': 'Open draft: Update provider 7e3a0000-0000-4000-8000-829700000001 in Team A', 'pos': [1060, 737], 'size': [71, 44]}, 'clear': True}, 'edit_kept': True, 'dismissed_one': True, 'team_d_gone': True, 'writes_total': []}",
+      "observation": "reconnect {'listed': True, 'writes_after_reconnect': [], 'draft_listed': True, 'records': 2, 'reach_open_draft': {'zoom': 1, 'window': {'pos': [95, 37], 'size': [1280, 820]}, 'found': {'label': 'Open draft: Update provider 7e3a0000-0000-4000-8000-829700000001 in Team A', 'pos': [1066, 737], 'size': [70, 44]}, 'clear': True}, 'edit_kept': True, 'dismissed_one': True, 'team_d_gone': True, 'writes_total': []}",
       "evidence": [
         "docs/planning/evidence/C24/native-C17/observations.json",
         "docs/planning/evidence/C24/native-C17/tree-reconnect.json"

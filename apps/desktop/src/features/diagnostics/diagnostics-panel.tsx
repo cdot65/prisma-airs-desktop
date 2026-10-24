@@ -56,10 +56,13 @@ export function DiagnosticsPanel({ view, dispatch }: Props) {
                         {view.events} event{view.events === 1 ? '' : 's'} kept.
                     </p>
                     <div className='flex flex-wrap gap-2'>
-                        <Button type='button' tier='secondary' disabled={busy} onClick={() => void run({ kind: 'exportDiagnostics' })}>
+                        {/* aria-disabled, not disabled, while the save dialog is open: a
+                            disabled button drops keyboard focus, which would not come back to
+                            Export when the dialog closes. */}
+                        <Button type='button' tier='secondary' aria-disabled={busy} onClick={() => !busy && void run({ kind: 'exportDiagnostics' })}>
                             Export diagnostics…
                         </Button>
-                        <Button type='button' tier='tertiary' disabled={busy} onClick={() => void run({ kind: 'clearDiagnostics' })}>
+                        <Button type='button' tier='tertiary' aria-disabled={busy} onClick={() => !busy && void run({ kind: 'clearDiagnostics' })}>
                             Clear diagnostics
                         </Button>
                     </div>

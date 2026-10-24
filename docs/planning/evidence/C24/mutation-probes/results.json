@@ -1,11 +1,12 @@
 [
   {
     "inputs": {
-      "apps/desktop/src/features/diagnostics/diagnostics-panel.tsx": "3ae7077adcf7830ef4e5ad8d0c790118aa0f21fe0964f8839bf406d2471f74cb",
-      "crates/desktop-core/src/authority.rs": "c930617fcfbfa9f5a5e84ab765545ad59612799c2120296ee14f76b03a454edc",
-      "crates/desktop-core/src/diagnostics.rs": "ca2dcaa82ecfbcdfe919cb92b4e94a3e5b2bee570abbd32eae4bb70ec2e59cb6",
-      "crates/xtask/src/budgets.rs": "3471528e9d5751f64c5b2789fbf0c6826826c2fb0fe7932c0082453c4f811fe3",
-      "packages/desktop-contracts/src/client.ts": "8caef701a24126e99999338f67744e55a734b7eaaaf1ec2f858347cfb6eed98d"
+      "apps/desktop/src/features/diagnostics/diagnostics-panel.tsx": "efa13fa9aec3098aee960750f7e6fc631f1e24638d087f98c1197ab48addf36e",
+      "crates/desktop-core/src/authority.rs": "03208591a5003c6378685050427544c07b5945ea4e32e6ecabb054864145cba4",
+      "crates/desktop-core/src/authority/diagnostics_domain.rs": "de86e4ed3becc0d0f4aea4662ed89b786eeb0918598f5df21eb8117651f67775",
+      "crates/desktop-core/src/diagnostics.rs": "db177273bae893dbcdc8b9fd363fe1bfc2bd5b274e5ac0522a884664e123ca0b",
+      "crates/xtask/src/budgets.rs": "dc67c69825b18d73a407394c5fe7b608df87d4ddfd5bc761b8c9e0a87b14a262",
+      "packages/desktop-contracts/src/client.ts": "29b43ccece8c076e494ccf83a3d2271fa8b973757866b0fb8990f16ec9a0f4c3"
     }
   },
   {
@@ -352,6 +353,266 @@
       "src/contracts/snapshot-validation.test.ts"
     ],
     "guard": "rejects a view Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a token-shaped storage health is exported",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "only_values_the_app_records_are_exported",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a single-word request kind is exported",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "only_values_the_app_records_are_exported",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a single-word refusal is exported",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "only_values_the_app_records_are_exported",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "any reset outcome is exported",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "only_values_the_app_records_are_exported",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "any version is exported",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "only_values_the_app_records_are_exported",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a standard library panic path is recorded",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "only_values_the_app_records_are_exported",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed clearing counts nothing",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "a_clearing_that_cannot_remove_the_files_says_so_and_keeps_counting_them",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed clearing is recorded as cleared",
+    "files": [
+      "crates/desktop-core/src/diagnostics.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "a_clearing_that_cannot_remove_the_files_says_so_and_keeps_counting_them",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed clearing reads cleared",
+    "files": [
+      "crates/desktop-core/src/authority/diagnostics_domain.rs"
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--features",
+      "test-fixtures",
+      "--test",
+      "native_quality"
+    ],
+    "guard": "a_clearing_that_cannot_remove_the_files_says_so_and_keeps_counting_them",
+    "exit_code": 101,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a failed clearing is not said",
+    "files": [
+      "apps/desktop/src/features/diagnostics/diagnostics-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/diagnostics/diagnostics-panel.test.tsx"
+    ],
+    "guard": "announces a clearing, and says when one could not remove everything",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "an unknown clearing passes the contract",
+    "files": [
+      "packages/desktop-contracts/src/client.ts"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/contracts/snapshot-validation.test.ts"
+    ],
+    "guard": "rejects a view Rust never issues",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "Export drops keyboard focus while its dialog is open",
+    "files": [
+      "apps/desktop/src/features/diagnostics/diagnostics-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/diagnostics/diagnostics-panel.test.tsx"
+    ],
+    "guard": "states what is kept, exports and clears only when asked, and announces the export",
+    "exit_code": 1,
+    "guard_failed": true
+  },
+  {
+    "mutation": "a held Export asks again",
+    "files": [
+      "apps/desktop/src/features/diagnostics/diagnostics-panel.tsx"
+    ],
+    "command": [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/features/diagnostics/diagnostics-panel.test.tsx"
+    ],
+    "guard": "states what is kept, exports and clears only when asked, and announces the export",
     "exit_code": 1,
     "guard_failed": true
   }
