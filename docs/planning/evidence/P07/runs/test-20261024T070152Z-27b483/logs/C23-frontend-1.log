@@ -1,0 +1,44 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+ ✓ src/contracts/snapshot-validation.test.ts (122 tests) 13ms
+ ✓ src/contracts/invoke.test.ts (10 tests) 68ms
+ ✓ src/features/import-v1/import-view.test.tsx (6 tests) 391ms
+ ✓ src/features/harness/harness-view.test.tsx (16 tests) 1522ms
+   ✓ company sign-in and protected history (C20) > sets up company sign-in, signs in through the browser, chooses it and signs out  347ms
+ ✓ src/shell/desktop-shell.test.tsx (11 tests) 1572ms
+   ✓ desktop shell > hands focus to the Academy page heading once the page renders  1043ms
+
+ Test Files  5 passed (5)
+      Tests  165 passed (165)
+   Start at  02:07:05
+   Duration  2.98s (transform 761ms, setup 319ms, collect 3.28s, tests 3.57s, environment 788ms, prepare 156ms)
+
+
+--- stderr ---
+stderr | src/shell/desktop-shell.test.tsx > desktop shell > lists every native feature and shows unavailable destinations explicitly
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+react-router@1.170.16_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+
+stderr | src/shell/desktop-shell.test.tsx > desktop shell > hands focus to the Academy page heading once the page renders
+Error: Not implemented: window.scrollTo
+    at module.exports (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at /Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/jsdom@25.0.1/node_modules/jsdom/lib/jsdom/browser/Window.js:960:7
+    at Object.fn (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/scroll-restoration.ts:366:11)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1285:18
+    at Set.forEach (<anonymous>)
+    at RouterCore.emit (file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+router-core@1.171.13/node_modules/@tanstack/router-core/src/router.ts:1283:22)
+    at file:///Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/@tanstack+react-router@1.170.16_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/@tanstack/react-router/src/Match.tsx:276:14
+    at Object.react_stack_bottom_frame (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+    at commitHookEffectListMount (/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:13249:29) undefined
+

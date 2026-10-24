@@ -109,6 +109,9 @@ def plant(account, data):
 
 
 def item_data(account):
+    # The staged keychain locks itself after a while (its default settings);
+    # unlocking reads nothing and changes no item.
+    fx.sh(["security", "unlock-keychain", "-p", V1_PASSWORD, V1_KEYCHAIN])
     out = fx.sh(["security", "find-generic-password", "-s", V1_SERVICE, "-a", account, "-w", V1_KEYCHAIN])
     return hashlib.sha256(out.stdout.encode()).hexdigest() if out.returncode == 0 else None
 
@@ -204,6 +207,61 @@ def look(app):
     return label
 
 
+# Keyboard navigation (System Settings > Keyboard), which AppKit reads only
+# from the global preference: with it on, Tab reaches a sheet's buttons, as
+# for an operator who works by keyboard. The driver turns it on for the
+# keyboard pass and restores the operator's own value (or its absence)
+# afterwards, whatever happens.
+KEYBOARD_UI = {"saved": False, "before": None}
+
+
+def keyboard_navigation(on):
+    if on:
+        out = fx.sh(["defaults", "read", "-g", "AppleKeyboardUIMode"])
+        KEYBOARD_UI.update(saved=True, before=out.stdout.strip() if out.returncode == 0 else None)
+        fx.sh(["defaults", "write", "-g", "AppleKeyboardUIMode", "-int", "2"])
+    elif KEYBOARD_UI["saved"]:
+        if KEYBOARD_UI["before"] is None:
+            fx.sh(["defaults", "delete", "-g", "AppleKeyboardUIMode"])
+        else:
+            fx.sh(["defaults", "write", "-g", "AppleKeyboardUIMode", "-int", KEYBOARD_UI["before"]])
+        KEYBOARD_UI["saved"] = False
+
+
+def focus_of(app):
+    """The innermost focused element: an open sheet reports focus on itself
+    as well as on its focused button, which comes later in tree order."""
+    tree = app.tree()
+    focused = [n for n in tree if n.get("focused") and n.get("role") not in ("AXWindow", "AXWebArea", "AXGroup", "AXScrollArea")]
+    f = focused[-1] if focused else None
+    return f and {"role": f.get("role"), "label": f.get("label"), "value": f.get("value")}
+
+
+def tab_to(app, role, prefix, steps=110):
+    """Tabs until an element of `role` whose label starts with `prefix` has
+    focus; returns its label, or None if Tab never reaches it."""
+    for _ in range(steps):
+        app.keycode(48)
+        f = app.focused(app.tree())
+        if f and f.get("role") == role and (f.get("label") or "").startswith(prefix):
+            return f.get("label")
+    return None
+
+
+def space_on(app, role, prefix):
+    """Tabs to the element and presses Space on it; presses nothing (and
+    returns None) when Tab never reaches it."""
+    reached = tab_to(app, role, prefix)
+    if reached:
+        app.keycode(49)
+    return reached
+
+
+def checked(app, prefix):
+    n = fx.App.node(app.tree(), "AXCheckBox", prefix)
+    return n is not None and str(n.get("value")) in ("1", "True", "true")
+
+
 def open_import(app):
     app.ax("press", "AXButton", "Import from v1")
     return app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Import from v1") is not None, 10)
@@ -214,6 +272,7 @@ def main():
         return run()
     finally:
         fx.sh(["pkill", "-f", fx.PROCESS])
+        keyboard_navigation(False)
         for d in (RECEIPTS, RECEIPT_COPIES):
             if os.path.isdir(d):
                 os.chmod(d, 0o700)
@@ -371,6 +430,108 @@ def run():
     obs["rollback"]["prod_removed"] = not any((n.get("label") or "") == "Prod" for n in tree)
     obs["tree_rolled_back"] = save_tree("rolled-back", tree)
 
+    # ---- N08: the import by keyboard alone ----
+    # Inspect, choose categories and a tenant's target, review and change
+    # the selection, import (stopped by the crash hook, then Import again
+    # after a relaunch), and roll back with the confirmation sheet: every
+    # control is reached by Tab and operated by Space, the arrow keys and
+    # Return, and each step's outcome and focus is read.
+    keyboard_navigation(True)
+    app.quit()
+    # The crash hook is read at launch: this import stops after its first
+    # item is written and noted applied.
+    with open(CRASH, "w") as f:
+        f.write("applied\n")
+    app.launch()
+    kb = {}
+    kb["nav"] = space_on(app, "AXButton", "Import from v1")
+    app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Import from v1") is not None, 10)
+    kb["look"] = space_on(app, "AXButton", "Look")
+    tree, kb["inspected"] = c8.text(app, "v1’s data was found.", 12)
+    kb["focus_after_look"] = focus_of(app)
+    picked = {}
+    for label in ("Tenants (names and TSG IDs)", "Saved cases"):
+        reached = space_on(app, "AXCheckBox", label)
+        time.sleep(0.4)
+        picked[label] = bool(reached) and checked(app, label)
+    kb["categories_checked_by_space"] = picked
+    # Scratch's target: its pop-up opened with Space, Skip chosen with the
+    # arrow keys and Return.
+    kb["target_reached"] = space_on(app, "AXPopUpButton", "Scratch")
+    time.sleep(0.8)
+    for _ in range(3):
+        app.keycode(125)
+        time.sleep(0.2)
+    app.keycode(36)
+    time.sleep(0.6)
+    target = fx.App.node(app.tree(), "AXPopUpButton", "Scratch")
+    kb["target_value"] = target and target.get("value")
+    kb["review_reached"] = space_on(app, "AXButton", "Review what would be imported")
+    tree, kb["reviewed"] = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Review") is not None, 20)
+    kb["focus_after_review"] = focus_of(app)
+    items = labelled(tree, "AXCheckBox", "")
+    kb["review_items"] = items
+    kb["scratch_skipped"] = not any("Scratch" in l and "→" in l and "Skip" not in l and "not imported" not in l
+                                    for l in items if l.startswith("Tenants"))
+    importer = next((l for l in labelled(tree, "AXButton", "Import ") if l != "Import from v1"), "")
+    # One reviewed item turned off and on again with Space: the import's
+    # count follows.
+    item = next((l for l in items if l.startswith("Saved cases")), None)
+    toggled = space_on(app, "AXCheckBox", item) if item else None
+    time.sleep(0.4)
+    fewer = next((l for l in labelled(app.tree(), "AXButton", "Import ") if l != "Import from v1"), "")
+    if toggled:
+        app.keycode(49)
+    time.sleep(0.4)
+    again = next((l for l in labelled(app.tree(), "AXButton", "Import ") if l != "Import from v1"), "")
+    kb["item_toggled"] = {"item": toggled, "before": importer, "off": fewer, "on": again}
+    kb["import_reached"] = space_on(app, "AXButton", importer) if importer else None
+    time.sleep(3.0)
+    app.kill()
+    os.remove(CRASH)
+    app.launch()
+    time.sleep(3.0)  # the launch rollback runs first
+    kb["nav_after_relaunch"] = space_on(app, "AXButton", "Import from v1")
+    tree, kb["import_view_after_relaunch"] = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Import from v1") is not None, 10)
+    tree, kb["undone_at_relaunch"] = c8.text(app, "Did not finish, so it was undone", 20)
+    kb["import_again_reached"] = space_on(app, "AXButton", "Import again")
+    tree, kb["imported_again"] = app.wait_for(lambda t: app.has_text(t, "Imported ·"), 30)
+    kb["focus_after_import"] = focus_of(app)
+    obs["tree_keyboard_imported"] = save_tree("keyboard-imported", tree)
+    # Roll back: Return cancels the destructive sheet and focus returns to
+    # Roll back…; then Tab reaches Roll Back in the sheet and Space confirms.
+    kb["roll_back_reached"] = space_on(app, "AXButton", "Roll back…")
+    tree, kb["sheet_shown"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Roll Back") is not None, 10)
+    app.keycode(36)
+    tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Roll Back") is None, 10)
+    time.sleep(0.8)
+    kb["return_cancelled"] = app.has_text(app.tree(), "Imported ·")
+    kb["focus_after_cancel"] = focus_of(app)
+    if (kb["focus_after_cancel"] or {}).get("label") == "Roll back…":
+        app.keycode(49)
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Roll Back") is not None, 10)
+    tabs = 0
+    kb["sheet_focus_trace"] = [focus_of(app)]
+    while tabs < 4 and (focus_of(app) or {}).get("label") != "Roll Back":
+        app.keycode(48)
+        tabs += 1
+        kb["sheet_focus_trace"].append(focus_of(app))
+    kb["confirm_focused_after_tabs"] = tabs if (focus_of(app) or {}).get("label") == "Roll Back" else None
+    if kb["confirm_focused_after_tabs"] is not None:
+        app.keycode(49)
+    tree, kb["rolled_back"] = app.wait_for(lambda t: len(labelled(t, "AXStaticText", "Rolled back ·")) >= 2, 30)
+    app.wait_for(lambda t: any(n.get("focused") and n.get("label") == "Imports" for n in t), 5)
+    kb["focus_after_roll_back"] = focus_of(app)
+    obs["tree_keyboard_rolled_back"] = save_tree("keyboard-rolled-back", tree)
+    app.open_settings()
+    tree = app.tree()
+    kb["after"] = {"mine_kept": app.has_text(tree, "Mine"),
+                   "prod_removed": not any((n.get("label") or "") == "Prod" for n in tree),
+                   "scratch_never_made": not any((n.get("label") or "") == "Scratch" for n in tree)}
+    keyboard_navigation(False)
+    kb["keyboard_navigation_restored"] = (fx.sh(["defaults", "read", "-g", "AppleKeyboardUIMode"]).stdout.strip() or None) == KEYBOARD_UI["before"]
+    obs["keyboard_import"] = kb
+
     # ---- N08: keyboard and reach ----
     open_import(app)
     order = app.tab_walk(40)
@@ -388,7 +549,8 @@ def run():
 
     # ---- N09: a record lost in both files, then folders that cannot be read ----
     app.quit()
-    ids = sorted(n[:-5] for n in os.listdir(RECEIPTS) if n.endswith(".json"))
+    # One record is lost in both files; the others stay readable.
+    ids = sorted(n[:-5] for n in os.listdir(RECEIPTS) if n.endswith(".json"))[:1]
     for d in (RECEIPTS, RECEIPT_COPIES):
         for i in ids:
             with open(os.path.join(d, f"{i}.json"), "w") as f:
@@ -429,7 +591,11 @@ def run():
     # ---- N06 / N07: preservation and no credential, no network ----
     trees = [os.path.join(NATIVE, n) for n in os.listdir(NATIVE) if n.startswith("tree-")]
     obs["canary_in_trees"] = [rel(p) for p in trees if CANARY in open(p).read()]
-    obs["preserved"] = {"v1": v1_fingerprint() == staged, "real_v1": fx.v1_metadata() == v1_before,
+    after = v1_fingerprint()
+    obs["v1_items_after"] = {a: (after["items"].get(a) or "none")[:12] for a in ACCOUNTS}
+    obs["v1_changed"] = sorted([k for k in set(staged["files"]) | set(after["files"]) if staged["files"].get(k) != after["files"].get(k)]
+                               + [a for a in ACCOUNTS if staged["items"].get(a) != after["items"].get(a)])
+    obs["preserved"] = {"v1": after == staged, "real_v1": fx.v1_metadata() == v1_before,
                         "search_list": fx.sh(["security", "list-keychains", "-d", "user"]).stdout == login_before}
     obs["network"] = len(mgmt.requests()) + len(endpoint.requests())
     endpoint.stop()
@@ -470,8 +636,29 @@ def evaluate(prepared, o):
     add("C23-N07", o["network"] == 0 and m["needs_key"] and r["blocked_drafts"],
         f"requests to the synthetic services: {o['network']}; imported tenant asks for a key: {m['needs_key']}; drafts need sign-in: {r['blocked_drafts']}", [])
     k = o["keyboard"]
-    add("C23-N08", all(k.values()) and o["zoom"]["clear"] and o["min"]["clear"],
-        f"Tab reached {k}; 200% zoom: {o['zoom']['found']}; minimum size: {o['min']['found']}", [])
+    kb = o["keyboard_import"]
+    label = lambda f: (f or {}).get("label")  # noqa: E731
+    t = kb["item_toggled"]
+    steps = {
+        "Import view opened": bool(kb["nav"]),
+        "inspected by Space, focus kept on Look again": bool(kb["look"]) and kb["inspected"] and label(kb["focus_after_look"]) == "Look again",
+        "categories checked by Space": len(kb["categories_checked_by_space"]) == 2 and all(kb["categories_checked_by_space"].values()),
+        "Scratch's target set to Skip with the arrow keys": bool(kb["target_reached"]) and kb["target_value"] == "Skip this tenant",
+        "reviewed, focus on Review": bool(kb["review_reached"]) and kb["reviewed"] and label(kb["focus_after_review"]) == "Review"
+        and kb["scratch_skipped"],
+        "an item turned off and on by Space": bool(t["item"]) and t["off"] != t["before"] and t["on"] == t["before"],
+        "imported, stopped, undone at relaunch": bool(kb["import_reached"]) and bool(kb["nav_after_relaunch"]) and kb["undone_at_relaunch"],
+        "Import again, focus on Imports": bool(kb["import_again_reached"]) and kb["imported_again"] and label(kb["focus_after_import"]) == "Imports",
+        "Return cancelled the rollback, focus on Roll back": bool(kb["roll_back_reached"]) and kb["sheet_shown"] and kb["return_cancelled"]
+        and label(kb["focus_after_cancel"]) == "Roll back…",
+        "Roll Back reached by Tab and confirmed by Space, focus on Imports": kb["confirm_focused_after_tabs"] is not None and kb["rolled_back"]
+        and label(kb["focus_after_roll_back"]) == "Imports",
+        "rolled back: Mine kept, Prod removed, Scratch never made": all(kb["after"].values()),
+        "Keyboard navigation restored": kb["keyboard_navigation_restored"],
+    }
+    add("C23-N08", all(steps.values()) and all(k.values()) and o["zoom"]["clear"] and o["min"]["clear"],
+        f"by keyboard: {steps}; Tab reached {k}; 200% zoom: {o['zoom']['found']}; minimum size: {o['min']['found']}",
+        [o["tree_keyboard_imported"], o["tree_keyboard_rolled_back"]])
     lost, unreadable = o["lost"], o["unreadable"]
     add("C23-N09", lost["records"] >= 1 and lost["named"] and lost["remove_reached"] and lost["released"]
         and lost["focus_in_window"] and unreadable["said"] and unreadable["alert"],
@@ -495,6 +682,7 @@ def evaluate(prepared, o):
             "The v1 source is a synthetic fixture folder and a staged file keychain read without prompting; the production source (v1's folder and the login Keychain, where macOS asks before each item is read) is the same read-only adapter's other branch and is not driven here.",
             "The interruption is the fixture crash hook (the import stops after an item is noted writing) followed by ending the app; every other commit point and rollback interruption is exercised by the imports_rollback suite.",
             "Spoken VoiceOver output was not recorded; AX roles, names and focus are inspected.",
+            "C23-N08's keyboard pass turns on macOS Keyboard navigation (the global AppleKeyboardUIMode preference, which AppKit reads for a sheet's buttons) for its duration and restores the operator's own value afterwards; without it no app's destructive confirmation button is reachable by Tab, and Return cancels.",
         ],
     }
     with open(RECORD, "w") as f:

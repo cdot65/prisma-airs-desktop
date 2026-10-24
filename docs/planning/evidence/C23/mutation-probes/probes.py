@@ -85,6 +85,8 @@ CHECKED = "a_document_copy_of_a_receipt_is_checked_before_it_drives_anything"
 U_ROUND = "receipts_round_trip_and_damage_is_reported"
 FE_LOST = "says a record lost in both copies holds what imports write, and releases it only when asked"
 FE_UNREADABLE = "says when the import records cannot be read at all"
+# P07 phase review attempt-01 (keyboard path).
+FE_FOCUS = "moves focus to the review when it replaces the form, and back to Look again when it is cancelled"
 
 PROBES = [
     ("a link is followed",
@@ -208,6 +210,14 @@ PROBES = [
      [(RECEIPT, "    r.schema == RECEIPT_SCHEMA && id_ok(&r.id) && !r.terminal()", "    id_ok(&r.id) && !r.terminal()")], IR_T, CHECKED),
     ("a settled document copy is accepted",
      [(RECEIPT, "    r.schema == RECEIPT_SCHEMA && id_ok(&r.id) && !r.terminal()", "    r.schema == RECEIPT_SCHEMA && id_ok(&r.id)")], IR_T, CHECKED),
+    # ---- P07 phase attempt-01: focus on the keyboard path ----
+    ("the review does not take focus",
+     [(VIEW, "        if (plan && plan.review !== was) planRef.current?.focus()\n", "")], FE_I, FE_FOCUS),
+    ("Cancel leaves focus nowhere",
+     [(VIEW, "        if (!plan && was !== undefined && view.activity === null) lookRef.current?.focus()\n", "")], FE_I, FE_FOCUS),
+    ("a confirmed rollback leaves focus nowhere",
+     [(VIEW, "        else if (was === 'importing' || was === 'rollingBack' || was === 'confirming') resultRef.current?.focus()",
+       "        else if (was === 'importing' || was === 'rollingBack') resultRef.current?.focus()")], FE_I, FE_READY),
 ]
 
 

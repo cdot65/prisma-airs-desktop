@@ -1,0 +1,8 @@
+PASS C13-N01 Red Teaming {'read': True, 'statistics': True, 'tiles': True, 'lists': True, 'rows_with_attacks': 95, 'window_query': ['LAST_30_DAYS'], 'list_query': [('0', '100')], 'tsg_header': [None, None], 'leaks': []}
+PASS C13-N02 window {'shown': True, 'query': 'LAST_7_DAYS'}
+PASS C13-N03 attack results {'opened': True, 'heading_focused': True, 'complete': True, 'rows_in_snapshot': 100, 'first_row': True, 'skips': ['0', '100', '200'], 'prompts_kept_out': True, 'leaks': []}
+PASS C13-N04 models and skills {'read': True, 'skills': True, 'statistics': True, 'pseudonyms': 100, 'background': ['false'], 'period': ['30_DAYS'], 'agentguard_tsg': ['1234567890'], 'model_tsg': ['None'], 'leaks': []}
+PASS C13-N05 failures {'one_source': {'denied': True, 'others': True, 'tile': True}, 'all_sources': {'failed': True, 'kept': True}, 'statistics_absent_with_scans': True, 'leaks': []}
+PASS C13-N06 Red Teaming {'disclosed': True, 'controls': []}; models {'disclosed': True, 'controls': []}; non-read requests: []
+PASS C13-N07 200% zoom: {'label': 'Refresh Red Teaming', 'pos': [575, 404], 'size': [350, 88]}; minimum size: {'label': 'Open attack results for scan 00000000', 'pos': [706, 517], 'size': [261, 44]}
+PASS C13-N08 without a management client: {'asked': True, 'requests': 0}; secrets or private markers in AX snapshots: []; v1 unchanged: True

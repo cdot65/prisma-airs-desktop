@@ -1,6 +1,7 @@
 //! Pre-registered performance budgets (T20): the unsigned production
 //! footprint build and the evidence check the `native` gate applies to the
-//! chunk that registered the budgets (and phases containing it).
+//! chunk that registered the budgets, the cumulative chunk (C24) and the
+//! phases containing either.
 //!
 //! Evidence must name the registered budgets hash and start after the
 //! registration; statistics are recomputed here from the raw samples, never
@@ -255,6 +256,15 @@ fn cumulative(subject: Subject) -> bool {
     subject == Subject::Chunk(CUMULATIVE)
 }
 
+/// Whether the subject re-measures every registered budget, the footprint
+/// included: the cumulative chunk, and a phase containing it. The phase
+/// reviews a later tree than the chunk did, so the chunk's measurements
+/// cannot stand in for its own.
+fn carries_every_budget(subject: Subject, members: &[String]) -> bool {
+    cumulative(subject)
+        || (subject.is_phase() && members.contains(&Subject::Chunk(CUMULATIVE).to_string()))
+}
+
 /// Whether this subject must carry budget evidence.
 pub fn required(repo: &Repo, manifest: &Manifest, subject: Subject) -> Result<Option<String>> {
     let path = repo.join(BUDGETS);
@@ -262,11 +272,11 @@ pub fn required(repo: &Repo, manifest: &Manifest, subject: Subject) -> Result<Op
         return Ok(None);
     }
     let budgets: Budgets = read_json(&path)?;
-    Ok((cumulative(subject)
-        || manifest
-            .native_members(subject)?
-            .contains(&budgets.registered_by_chunk))
-    .then_some(budgets.registered_by_chunk))
+    let members = manifest.native_members(subject)?;
+    Ok(
+        (carries_every_budget(subject, &members) || members.contains(&budgets.registered_by_chunk))
+            .then_some(budgets.registered_by_chunk),
+    )
 }
 
 /// Reasons the subject's budget evidence does not pass (empty when it does).
@@ -279,7 +289,9 @@ pub fn status(repo: &Repo, manifest: &Manifest, subject: Subject) -> Vec<String>
     match manifest.native_members(subject) {
         Ok(members) => {
             for workload in WORKLOADS {
-                if cumulative(subject) || members.iter().any(|m| m == workload.measured_by) {
+                if carries_every_budget(subject, &members)
+                    || members.iter().any(|m| m == workload.measured_by)
+                {
                     failures.extend(
                         evaluate_workload(repo, subject, workload)
                             .unwrap_or_else(|e| vec![e.to_string()]),
@@ -589,8 +601,8 @@ fn evaluate(repo: &Repo, subject: Subject, chunk: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::{
-        Budget, CUMULATIVE, Metric, WORKLOADS, cumulative, judge, statistic, workload_budgets,
-        workload_evidence,
+        Budget, CUMULATIVE, Metric, WORKLOADS, carries_every_budget, cumulative, judge, statistic,
+        workload_budgets, workload_evidence,
     };
     use crate::subject::Subject;
 
@@ -616,6 +628,31 @@ mod tests {
             // Another chunk keeps its own name.
             assert_eq!(workload_evidence(dir, Subject::Chunk(22), w), w.evidence);
         }
+    }
+
+    #[test]
+    fn the_phase_containing_the_cumulative_chunk_measures_every_budget_itself() {
+        let members = |ids: &[&str]| ids.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+        assert!(carries_every_budget(
+            Subject::Phase(7),
+            &members(&["C23", "C24"])
+        ));
+        assert!(carries_every_budget(
+            Subject::Chunk(CUMULATIVE),
+            &members(&["C24"])
+        ));
+        assert!(!carries_every_budget(
+            Subject::Phase(8),
+            &members(&["C25", "C26"])
+        ));
+        assert!(!carries_every_budget(
+            Subject::Phase(6),
+            &members(&["C19", "C22"])
+        ));
+        assert!(!carries_every_budget(
+            Subject::Chunk(23),
+            &members(&["C23"])
+        ));
     }
 
     #[test]

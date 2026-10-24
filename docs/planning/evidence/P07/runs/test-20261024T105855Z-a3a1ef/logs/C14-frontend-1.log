@@ -1,0 +1,17 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+ ✓ src/features/workbench/document-save.test.tsx (15 tests) 4340ms
+   ✓ API Client document Save > sends the fields typed before the protection debounce fires  736ms
+   ✓ API Client document Save > protects the snapshot when typing pauses, marking unprotected edits once  482ms
+   ✓ API Client document Save > re-arms the close guard after a save and while an older protection is outstanding  578ms
+   ✓ API Client document Save > asks before closing the collection when the latest typing cannot be kept  577ms
+   ✓ API Client document Save > saves a reverted document before the pause, so the older protected draft is superseded  996ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  06:01:12
+   Duration  5.73s (transform 643ms, setup 54ms, collect 1.01s, tests 4.34s, environment 122ms, prepare 47ms)
+
+
+--- stderr ---

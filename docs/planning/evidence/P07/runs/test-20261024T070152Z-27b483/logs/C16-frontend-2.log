@@ -1,0 +1,41 @@
+
+running 32 tests
+test gateway_changes::tests::catalog_parameters_are_checked_and_fail_closed ... ok
+test gateway_changes::tests::a_one_time_key_is_taken_before_anything_is_shown ... ok
+test gateway_changes::tests::deletes_carry_nothing_and_targets_are_identifiers ... ok
+test gateway_changes::tests::counters_never_make_a_review_conflict ... ok
+test gateway_changes::tests::only_the_v1_gateway_matrix_is_accepted ... ok
+test gateway_changes::tests::a_models_readback_needs_every_requested_model_and_the_all_models_setting ... ok
+test gateway::tests::secret_field_names_follow_v1 ... ok
+test gateway_changes::tests::references_match_ids_and_at_paths_only ... ok
+test gateway::tests::guardrails_with_credentials_show_only_that_they_have_them ... ok
+test gateway_changes::tests::drafts_never_carry_credentials ... ok
+test gateway::tests::models_scope_bindings_and_inference_keys ... ok
+test gateway::tests::listed_workspaces_and_reads_are_bounded ... ok
+test gateway::tests::projections_never_carry_key_material ... ok
+test gateway::tests::routes_show_their_public_document_and_where_credentials_are ... ok
+test gateway_inference::tests::responses_events_carry_text_identity_usage_and_end ... ok
+test gateway_files::tests::upload_names_are_ones_a_multipart_part_may_carry ... ok
+test gateway_inference::tests::outcomes_follow_what_was_sent_and_answered ... ok
+test gateway_local::tests::a_sent_change_drops_its_draft_and_an_unsent_one_keeps_it ... ok
+test gateway_inference::tests::output_is_bounded_on_a_character_boundary ... ok
+test gateway::tests::inventories_claim_completeness_only_from_the_service ... ok
+test gateway_local::tests::drafts_are_checked_replaced_per_change_and_bounded ... ok
+test gateway_observe::tests::model_groups_rank_by_requests_and_never_invent_totals ... ok
+test gateway_observe::tests::reads_are_bounded ... ok
+test gateway_observe::tests::policies_name_the_chosen_workspace_and_hide_their_conditions ... ok
+test gateway_files::tests::files_are_read_within_their_bounds ... ok
+test gateway_observe::tests::logs_belong_to_the_chosen_workspace_and_carry_no_metadata ... ok
+test gateway_local::tests::credential_text_is_never_kept_whole_truncated_nested_or_escaped ... ok
+test gateway_observe::tests::charts_report_only_what_the_service_did ... ok
+test gateway_local::tests::files_round_trip_owner_only_and_a_bad_file_is_kept ... ok
+test gateway_inference::tests::runs_and_endpoints_are_bounded ... ok
+test gateway_changes::tests::provisioning_names_its_exact_scope ... ok
+test gateway_changes::tests::scoped_creates_are_placed_in_the_chosen_workspace_only ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 189 filtered out; finished in 0.05s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-fea76e958ea44aa0)

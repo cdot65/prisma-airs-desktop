@@ -131,19 +131,32 @@ export const ImportView = forwardRef<HTMLHeadingElement, Props>(function ImportV
     const busy = view.activity !== null
     const previous = useRef<ImportActivity | null>(null)
 
+    // The review replaces the form whose button asked for it, and Cancel
+    // replaces the review: focus moves to what took the pressed button's place.
+    const planRef = useRef<HTMLHeadingElement>(null)
+    const lookRef = useRef<HTMLButtonElement>(null)
+    const reviewBefore = useRef(plan?.review)
     useEffect(() => {
         // A new review starts with every ready item chosen.
         if (plan) setItems(plan.items.filter((i) => i.status.kind === 'ready').map((i) => i.index))
+        const was = reviewBefore.current
+        reviewBefore.current = plan?.review
+        if (plan && plan.review !== was) planRef.current?.focus()
+        if (!plan && was !== undefined && view.activity === null) lookRef.current?.focus()
     }, [plan?.review])
 
     useEffect(() => {
         // When an import or rollback settles, its result is where focus goes.
+        // A cancelled confirmation returns focus to its Roll back button; once
+        // confirmed, that button is gone (the snapshots may skip rollingBack
+        // and go from confirming straight to settled), so focus goes to the
+        // result.
         const was = previous.current
         previous.current = view.activity
-        if ((was === 'importing' || was === 'rollingBack') && view.activity === null) resultRef.current?.focus()
-        if (was === 'confirming' && view.activity === null && asked.current) {
-            rollBackRefs.current[asked.current]?.focus()
-        }
+        if (view.activity !== null) return
+        const kept = was === 'confirming' && asked.current ? rollBackRefs.current[asked.current] : null
+        if (kept) kept.focus()
+        else if (was === 'importing' || was === 'rollingBack' || was === 'confirming') resultRef.current?.focus()
     }, [view.activity])
 
     // Removing a record (Forget, or Remove damaged record) removes the
@@ -237,7 +250,7 @@ export const ImportView = forwardRef<HTMLHeadingElement, Props>(function ImportV
             {!plan ? (
                 <div className='flex flex-col gap-4'>
                     <div>
-                        <Button type='button' tier='secondary' disabled={busy} onClick={() => void run({ kind: 'inspectV1Import' })}>
+                        <Button ref={lookRef} type='button' tier='secondary' disabled={busy} onClick={() => void run({ kind: 'inspectV1Import' })}>
                             {view.source ? 'Look again' : 'Look for v1 data'}
                         </Button>
                     </div>
@@ -346,7 +359,7 @@ export const ImportView = forwardRef<HTMLHeadingElement, Props>(function ImportV
                         void run({ kind: 'confirmV1Import', review: plan.review, items })
                     }}
                 >
-                    <h2 id={planId} className='text-academy-ink text-[16px] font-semibold'>
+                    <h2 id={planId} ref={planRef} tabIndex={-1} className='text-academy-ink text-[16px] font-semibold outline-none'>
                         Review
                     </h2>
                     <ul className='flex flex-col gap-1'>

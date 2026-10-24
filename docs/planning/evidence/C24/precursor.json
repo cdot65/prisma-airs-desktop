@@ -1,0 +1,34 @@
+{
+  "schema": "airs-v2/precursor/1",
+  "version": "0.2.0",
+  "status": "C24's approved versioned snapshot (release-contract.md, Manual update and rollback). A local precursor for the first stable v2's forward and rollback installation test, not a release. C26 builds its signed and notarized rollback-test package beside the candidate.",
+  "source_commit": "582ae0683fb0a8ceb2ece58bba254dd463116798",
+  "review": {
+    "attempt": "docs/planning/reviews/C24/attempt-02",
+    "request_id": "rq-C24-20261024T064655Z-ea25ccdc",
+    "scores": {
+      "architecture": 9,
+      "behavior": 9,
+      "authority_security": 9,
+      "validation": 9,
+      "overall": 9
+    },
+    "source_fingerprint": "77cece3bd85d718f7202a258a587c64bd69f893f5b7acc65669f956e717bbcac",
+    "dependencies_fingerprint": "cea9d27552c7b2de630103988d2e6dbb02cb1290b890c45826440683ddc63db7"
+  },
+  "version_files_sha256": {
+    "apps/desktop/src-tauri/Cargo.toml": "9e4417c9696a8089b5e1f5e9cc72f52c70fd33e39aa89f5fc699635a1c1ecb0c",
+    "apps/desktop/src-tauri/tauri.conf.json": "b9cd4eb0514f79094be2181ebaa74e1c7da020e7db6b4cc70df925baa7c48e56",
+    "apps/desktop/package.json": "c37a4c50eb9ec90f37a42e524a6b5c3973af31ce6034d22970b6dd87e7dc847a"
+  },
+  "lockfiles_sha256": {
+    "Cargo.lock": "f253fb608d7ce72d48074227dfbd70d728d4304a7912047d9f85ecb30a778812",
+    "pnpm-lock.yaml": "4cadf4ade1c3dc90cdb4021b5d2471502e83e3816beeb4d0970d676d84d2e133"
+  },
+  "unsigned_production_build": {
+    "from": "docs/planning/evidence/C24/footprint.json",
+    "app_tree_sha256": "de043cec09bb657b2ebe4fd951dc4fd90a0fcf6e3bea31b5522e170e26e0a9d3",
+    "dmg_sha256": "6d0ddb265c7221345b9bf423543584970effc565489873334b6959b36f4b51d7",
+    "note": "xtask footprint's unsigned build of this source, measured for size; not the precursor package"
+  }
+}

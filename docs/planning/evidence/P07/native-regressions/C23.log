@@ -1,0 +1,9 @@
+PASS C23-N01 inspect {'found': True, 'no_keychain_read': True, 'navigation': True, 'tenants': ['Prod (TSG 1234567890)', 'Scratch · session only in v1'], 'session_only': True, 'categories': ['Tenants (names and TSG IDs) 2 found', 'Sca
+PASS C23-N02 reads ['credentials-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', 'cases-11111111-2222-4333-8444-555555555555', 'harness-history-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee']; ready ['Tenants (names and TSG IDs) : Prod → Prod (new ten
+PASS C23-N03 import {'receipt': True, 'focus': 'Imports', 'tenant_tsg': True, 'needs_key': True, 'cases': True, 'reports': True}
+PASS C23-N04 interrupted {'written': True, 'hidden_while_stopped': True, 'undone': True, 'import_again': True, 'gone_after_relaunch': True, 'imported_again': True}
+PASS C23-N05 rollback {'asked': True, 'cancel_focus': 'Roll back…', 'kept_after_cancel': True, 'rolled_back': True, 'mine_kept': True, 'prod_removed': True}
+PASS C23-N06 preserved {'v1': True, 'real_v1': True, 'search_list': True}
+PASS C23-N07 requests to the synthetic services: 0; imported tenant asks for a key: True; drafts need sign-in: True
+PASS C23-N08 by keyboard: {'Import view opened': True, 'inspected by Space, focus kept on Look again': True, 'categories checked by Space': True, "Scratch's target set to Skip with the arrow keys": True, 'reviewed, focus on Review': 
+PASS C23-N09 a record damaged in both files: named True, Remove reached by Tab True, released by Space (both files gone) True, focus after Imports; folders that cannot be read: said True, what to do True

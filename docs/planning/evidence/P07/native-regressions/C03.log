@@ -1,0 +1,13 @@
+PASS C03-N01 Runtime Security available without 'Not available': True; landing heading: True; Settings guidance without a tenant: True; Tab reached ['By name', 'Profile name or ID', 'Prompt', 'Response', 'Applicat
+PASS C03-N02 endpoint requests for the scan: 1; POST /v1/scan/sync/request content-type application/json; token equals the synthetic key: True; x-payload-hash is the HMAC of the received body: True; Authorization 
+PASS C03-N03 'Not determined' with 'Do not treat this as allowed' and the verbatim action 'quarantine-v2': True; a bare 'Allowed' label present: False; allow/benign with a prompt DLP content error and global flags
+PASS C03-N04 401 reported as not accepted and refused: True; endpoint requests: 1
+PASS C03-N05 'Cancelled. The request may already have reached the service': True; no verdict after the delayed reply: True; Scan enabled: True; endpoint requests: 1
+PASS C03-N06 Tenant B's Runtime view shows no Tenant A scans: True; Tenant A's record says the reply was discarded: True; endpoint requests: 1
+PASS C03-N07 connection failure with unknown outcome and resend guidance: True; requests 6 s later: 1; after pressing Scan: 2
+PASS C03-N08 offline launch and scan reported unknown (connection failed; 'may or may not have reached the service', never 'was sent'): True; requests while offline: 0; 6 s after the endpoint returned: 0; explicit
+PASS C03-N09 in-flight scan sent before quitting: 1; history after relaunch: False; requests within 6 s of relaunch: 0
+PASS C03-N10 Tab reached Prompt: True; then Scan: True; Space submitted and 'Blocked' shown: True; AX status regions: 1; endpoint requests 1 with profile {'profile_name': 'Keyboard profile'}
+PASS C03-N11 64 KiB prompt and 32 KiB response typed and present in the fields: True; request received [{'promptChars': 65536, 'responseChars': 32768, 'bodyBytes': 98395, 'tokenMatches': True, 'payloadHashMatches'
+PASS C03-N12 200% zoom: {'prompt': {'pos': [649, 481], 'size': [652, 224]}, 'scan': {'pos': [649, 617], 'size': [127, 88]}} in window {'pos': [95, 37], 'size': [1280, 820]}, clear: True; minimum size: {'prompt': {
+PASS C03-N13 data root files ['~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/.fl8C9901EB', '~/Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture/fixture-logs/diagnostics.json

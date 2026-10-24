@@ -1,0 +1,56 @@
+{
+  "schema": "airs-v2/review-receipt/1",
+  "receipt_id": "P07-attempt-01-rq-P07-20261024T095457Z-5c4fec69",
+  "subject": "P07",
+  "request_id": "rq-P07-20261024T095457Z-5c4fec69",
+  "attempt_id": "attempt-01",
+  "transport": {
+    "kind": "codex-thread",
+    "thread": "01a141e8-0412-7b30-8ebc-db2ade105d6d",
+    "codex_path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/codex",
+    "codex_version": "codex-cli 0.163.0",
+    "codex_sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+    "submitted_utc": "2026-10-24T09:55:12Z",
+    "completed_utc": "2026-10-24T10:03:39Z",
+    "exit_code": 0,
+    "timed_out": false,
+    "raw_output": {
+      "path": "docs/planning/reviews/P07/attempt-01/thread-reply.jsonl",
+      "sha256": "1a4ad274a2e2ac53ecf87df7fea8e156e5012061cd2df7183b36dab7675276dd"
+    },
+    "model": null
+  },
+  "packet_sha256": "7ebf5c2c08b031e211f5b223fcf57134e2014f16b7360a7dbeedcef89c8d88ae",
+  "verdict_sha256": "70b8d3a0c9ff9537ed6d6f00b8268186b6be437262f6c1940651307691367ec6",
+  "fingerprints": {
+    "source": "77cece3bd85d718f7202a258a587c64bd69f893f5b7acc65669f956e717bbcac",
+    "dependencies": "cea9d27552c7b2de630103988d2e6dbb02cb1290b890c45826440683ddc63db7",
+    "build_flags": "5e8d9e0061e7564c27344c93085d6f9f74e9500a96c0e5db67f2cf963b35317c",
+    "evidence": "3059fff6b37843a7c67c47bc1cc9578da76f1653edb7e0f3a1e2e9734d2c5254"
+  },
+  "fingerprints_after": {
+    "source": "77cece3bd85d718f7202a258a587c64bd69f893f5b7acc65669f956e717bbcac",
+    "dependencies": "cea9d27552c7b2de630103988d2e6dbb02cb1290b890c45826440683ddc63db7",
+    "build_flags": "5e8d9e0061e7564c27344c93085d6f9f74e9500a96c0e5db67f2cf963b35317c",
+    "evidence": "3059fff6b37843a7c67c47bc1cc9578da76f1653edb7e0f3a1e2e9734d2c5254"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "required_fixes": 1,
+  "blockers": 0,
+  "evidence_gaps": 1,
+  "passed": false,
+  "failures": [
+    "score validation=8 is below 9",
+    "score overall=8 is below 9",
+    "1 required fixes remain",
+    "1 evidence gaps remain",
+    "reviewer recommendation is fail"
+  ],
+  "created_utc": "2026-10-24T10:03:39Z"
+}

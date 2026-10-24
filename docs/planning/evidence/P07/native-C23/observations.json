@@ -1,0 +1,264 @@
+{
+ "observations": {
+  "available": true,
+  "inspect": {
+   "found": true,
+   "no_keychain_read": true,
+   "navigation": true,
+   "tenants": [
+    "Prod (TSG 1234567890)",
+    "Scratch \u00b7 session only in v1"
+   ],
+   "session_only": true,
+   "categories": [
+    "Tenants (names and TSG IDs) 2 found",
+    "Scan endpoints Read from v1\u2019s Keychain only if selected",
+    "Appearance 1 found",
+    "Saved cases Read from v1\u2019s Keychain only if selected",
+    "FP/FN reports 1 found",
+    "Academy lab drafts v1 has none on this Mac",
+    "API Client collections v1 has none on this Mac",
+    "Harness conversations Read from v1\u2019s Keychain only if selected"
+   ]
+  },
+  "tree_inspect": "docs/planning/evidence/P07/native-C23/tree-inspect.json",
+  "review": {
+   "reviewed": true,
+   "keychain_note": true,
+   "reads": [
+    "credentials-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    "cases-11111111-2222-4333-8444-555555555555",
+    "harness-history-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+   ],
+   "ready": [
+    "Tenants (names and TSG IDs) : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Saved cases : Prod \u2192 Prod (new tenant) Ready \u00b7 2 new",
+    "Harness conversations : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Tenants (names and TSG IDs) : Scratch \u2192 Scratch (new tenant) Ready \u00b7 1 new",
+    "FP/FN reports : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Appearance : Appearance Ready \u00b7 1 new"
+   ],
+   "blocked_drafts": true,
+   "items": [
+    "Tenants (names and TSG IDs) : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Saved cases : Prod \u2192 Prod (new tenant) Ready \u00b7 2 new",
+    "Harness conversations : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Tenants (names and TSG IDs) : Scratch \u2192 Scratch (new tenant) Ready \u00b7 1 new",
+    "Saved cases : Scratch \u2192 Scratch (new tenant) Cannot import: this v1 tenant kept nothing on this Mac (session only) \u00b7 0 new",
+    "Harness conversations : Scratch \u2192 Scratch (new tenant) Cannot import: this v1 tenant kept nothing on this Mac (session only) \u00b7 0 new",
+    "FP/FN reports : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Appearance : Appearance Ready \u00b7 1 new",
+    "Academy lab drafts : Academy lab drafts Cannot import: sign in to the same Academy account first \u00b7 0 new"
+   ],
+   "already_present": true
+  },
+  "tree_review": "docs/planning/evidence/P07/native-C23/tree-review.json",
+  "interrupted": {
+   "written": true,
+   "hidden_while_stopped": true,
+   "undone": true,
+   "import_again": true,
+   "gone_after_relaunch": true,
+   "imported_again": true
+  },
+  "tree_stopped": "docs/planning/evidence/P07/native-C23/tree-stopped.json",
+  "tree_interrupted": "docs/planning/evidence/P07/native-C23/tree-interrupted.json",
+  "import": {
+   "receipt": true,
+   "focus": "Imports",
+   "tenant_tsg": true,
+   "needs_key": true,
+   "cases": true,
+   "reports": true
+  },
+  "tree_imported": "docs/planning/evidence/P07/native-C23/tree-imported.json",
+  "tree_review_again": "docs/planning/evidence/P07/native-C23/tree-review-again.json",
+  "rollback": {
+   "asked": true,
+   "cancel_focus": "Roll back\u2026",
+   "kept_after_cancel": true,
+   "rolled_back": true,
+   "mine_kept": true,
+   "prod_removed": true
+  },
+  "tree_rolled_back": "docs/planning/evidence/P07/native-C23/tree-rolled-back.json",
+  "tree_keyboard_imported": "docs/planning/evidence/P07/native-C23/tree-keyboard-imported.json",
+  "tree_keyboard_rolled_back": "docs/planning/evidence/P07/native-C23/tree-keyboard-rolled-back.json",
+  "keyboard_import": {
+   "nav": "Import from v1",
+   "look": "Look for v1 data",
+   "inspected": true,
+   "focus_after_look": {
+    "role": "AXButton",
+    "label": "Look again",
+    "value": ""
+   },
+   "categories_checked_by_space": {
+    "Tenants (names and TSG IDs)": true,
+    "Saved cases": true
+   },
+   "target_reached": "Scratch \u00b7 session only in v1",
+   "target_value": "Skip this tenant",
+   "review_reached": "Review what would be imported",
+   "reviewed": true,
+   "focus_after_review": {
+    "role": "AXHeading",
+    "label": "Review",
+    "value": 2
+   },
+   "review_items": [
+    "Tenants (names and TSG IDs) : Prod \u2192 Prod (new tenant) Ready \u00b7 1 new",
+    "Saved cases : Prod \u2192 Prod (new tenant) Ready \u00b7 2 new",
+    "Tenants (names and TSG IDs) : Scratch Cannot import: its v1 tenant is not imported \u00b7 0 new",
+    "Saved cases : Scratch Cannot import: its v1 tenant is not imported \u00b7 0 new"
+   ],
+   "scratch_skipped": true,
+   "item_toggled": {
+    "item": "Saved cases : Prod \u2192 Prod (new tenant) Ready \u00b7 2 new",
+    "before": "Import 2 items",
+    "off": "Import 1 item",
+    "on": "Import 2 items"
+   },
+   "import_reached": "Import 2 items",
+   "nav_after_relaunch": "Import from v1",
+   "import_view_after_relaunch": true,
+   "undone_at_relaunch": true,
+   "import_again_reached": "Import again",
+   "imported_again": true,
+   "focus_after_import": {
+    "role": "AXHeading",
+    "label": "Imports",
+    "value": 2
+   },
+   "roll_back_reached": "Roll back\u2026",
+   "sheet_shown": true,
+   "return_cancelled": true,
+   "focus_after_cancel": {
+    "role": "AXButton",
+    "label": "Roll back\u2026",
+    "value": ""
+   },
+   "sheet_focus_trace": [
+    {
+     "role": "AXButton",
+     "label": "Cancel",
+     "value": null
+    },
+    {
+     "role": "AXButton",
+     "label": "Roll Back",
+     "value": null
+    }
+   ],
+   "confirm_focused_after_tabs": 1,
+   "rolled_back": true,
+   "focus_after_roll_back": {
+    "role": "AXHeading",
+    "label": "Imports",
+    "value": 2
+   },
+   "after": {
+    "mine_kept": true,
+    "prod_removed": true,
+    "scratch_never_made": true
+   },
+   "keyboard_navigation_restored": true
+  },
+  "keyboard": {
+   "look": true,
+   "forget": true
+  },
+  "zoom": {
+   "zoom": 2,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     1280,
+     820
+    ]
+   },
+   "found": {
+    "label": "Forget this record",
+    "pos": [
+     607,
+     617
+    ],
+    "size": [
+     284,
+     88
+    ]
+   },
+   "clear": true
+  },
+  "min": {
+   "zoom": 1,
+   "window": {
+    "pos": [
+     95,
+     37
+    ],
+    "size": [
+     900,
+     600
+    ]
+   },
+   "found": {
+    "label": "Forget this record",
+    "pos": [
+     363,
+     517
+    ],
+    "size": [
+     142,
+     44
+    ]
+   },
+   "clear": true
+  },
+  "tree_lost": "docs/planning/evidence/P07/native-C23/tree-record-lost.json",
+  "lost": {
+   "records": 1,
+   "named": true,
+   "remove_reached": true,
+   "released": true,
+   "focus_in_window": true,
+   "focus": "Imports"
+  },
+  "tree_released": "docs/planning/evidence/P07/native-C23/tree-record-released.json",
+  "unreadable": {
+   "said": true,
+   "alert": true
+  },
+  "tree_unreadable": "docs/planning/evidence/P07/native-C23/tree-records-unreadable.json",
+  "canary_in_trees": [],
+  "v1_items_after": {
+   "credentials-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee": "b2053839ecba",
+   "cases-11111111-2222-4333-8444-555555555555": "c3e4c772757c",
+   "harness-history-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee": "793d8a5a57c9"
+  },
+  "v1_changed": [],
+  "preserved": {
+   "v1": true,
+   "real_v1": true,
+   "search_list": true
+  },
+  "network": 0
+ },
+ "log": [
+  {
+   "t": "11:15:55",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "11:15:56",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  }
+ ]
+}

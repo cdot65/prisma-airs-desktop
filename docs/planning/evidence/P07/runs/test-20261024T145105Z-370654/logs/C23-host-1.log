@@ -1,0 +1,17 @@
+
+running 8 tests
+test import_v1::parse::tests::only_the_scan_endpoint_is_taken_from_credentials ... ok
+test import_v1::parse::tests::appearance_maps_only_light_dark_or_system ... ok
+test import_v1::parse::tests::academy_records_open_only_with_their_key_owner_and_name ... ok
+test import_v1::parse::tests::tenants_are_strict_and_drop_the_sandbox ... ok
+test import_v1::source::tests::the_instance_lock_is_shared_never_created ... ok
+test import_v1::source::tests::reads_are_bounded_and_never_follow_symlinks ... ok
+test import_v1::source::tests::listing_is_bounded_and_typed ... ok
+test import_v1::receipt::tests::receipts_round_trip_and_damage_is_reported ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 213 filtered out; finished in 0.03s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-fea76e958ea44aa0)

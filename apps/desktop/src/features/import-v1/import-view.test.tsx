@@ -93,6 +93,36 @@ describe('Import from v1 (C23)', () => {
         )
     })
 
+    it('moves focus to the review when it replaces the form, and back to Look again when it is cancelled', async () => {
+        const plan: V1ImportView['plan'] = {
+            review: REVIEW,
+            items: [
+                {
+                    index: 0,
+                    category: 'cases',
+                    label: 'Prod',
+                    target: 'Ours',
+                    status: { kind: 'ready' },
+                    counts: { new: 1, present: 0, conflict: 0, skipped: 0 },
+                    partial: null,
+                },
+            ],
+        }
+        const native = scriptedNative(snapshot(inspected))
+        const user = await open(native)
+        await user.click(screen.getByRole('checkbox', { name: /^Saved cases/ }))
+        screen.getByRole('button', { name: 'Review what would be imported' }).focus()
+        await user.keyboard('{Enter}')
+        await waitFor(() => expect(native.dispatched.some((i) => i.kind === 'planV1Import')).toBe(true))
+        await native.push(snapshot({ ...inspected, plan }))
+        await waitFor(() => expect(screen.getByRole('heading', { name: 'Review' })).toHaveFocus())
+        screen.getByRole('button', { name: 'Cancel' }).focus()
+        await user.keyboard(' ')
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'dismissV1Import' }))
+        await native.push(snapshot(inspected))
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Look again' })).toHaveFocus())
+    })
+
     it('imports only ready items, states every status as text and focuses the result', async () => {
         const plan: V1ImportView['plan'] = {
             review: REVIEW,
@@ -148,6 +178,15 @@ describe('Import from v1 (C23)', () => {
         await native.push(snapshot({ ...inspected, plan: null, receipts: [receipt()], activity: 'confirming' }))
         await native.push(snapshot({ ...inspected, plan: null, receipts: [receipt()] }))
         await waitFor(() => expect(screen.getByRole('button', { name: 'Roll back…' })).toHaveFocus())
+        // Confirmed, and published straight from confirming to rolled back:
+        // the Roll back button is gone, so focus goes to the result.
+        await user.keyboard(' ')
+        await native.push(snapshot({ ...inspected, plan: null, receipts: [receipt()], activity: 'confirming' }))
+        await native.push(
+            snapshot({ ...inspected, plan: null, receipts: [receipt({ state: 'rolledBack', canRollBack: false })] })
+        )
+        expect(await screen.findByText(/^Rolled back ·/)).toBeInTheDocument()
+        await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Imports' })).toHaveFocus())
     })
 
     it('offers Roll back for an unsettled import and blocks a new review meanwhile', async () => {
