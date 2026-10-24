@@ -1137,7 +1137,7 @@ function isReceiptView(value: unknown): boolean {
     )
 }
 
-/** Local redacted diagnostics (C24): a count, the retention and an export. */
+/** Local redacted diagnostics (C24): a count, the retention, an export and a clearing. */
 function isDiagnosticsView(value: unknown): boolean {
     return (
         isRecord(value) &&
@@ -1145,7 +1145,8 @@ function isDiagnosticsView(value: unknown): boolean {
         isU32(value.events) &&
         value.retentionDays === 14 &&
         optional((e) => oneOf(['saving', 'saved', 'cancelled', 'failed'], e), value.export) &&
-        Object.keys(value).length === 4
+        optional((c) => oneOf(['cleared', 'failed'], c), value.clear) &&
+        Object.keys(value).length === 5
     )
 }
 
@@ -1191,7 +1192,9 @@ function isV1ImportView(value: unknown): boolean {
         Array.isArray(value.receipts) &&
         value.receipts.length <= MAX_RECEIPTS &&
         value.receipts.every(isReceiptView) &&
-        isU32(value.damagedReceipts) &&
+        isStrings(value.damagedReceipts, (id) => typeof id === 'string' && RECEIPT_ID.test(id)) &&
+        (value.damagedReceipts as unknown[]).length <= MAX_RECEIPTS &&
+        typeof value.receiptsUnreadable === 'boolean' &&
         optional((p) => oneOf(IMPORT_PROBLEMS, p), value.problem)
     )
 }

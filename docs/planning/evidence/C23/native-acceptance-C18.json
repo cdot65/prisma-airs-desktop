@@ -1,14 +1,14 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C18",
-  "recorded_utc": "2026-10-23T10:25:11Z",
+  "recorded_utc": "2026-10-23T23:35:35Z",
   "method": "cua",
   "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c18.py",
   "host": "Mac17,3; macOS 27.0.1 (26A434)",
   "app": {
     "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
     "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
-    "executable_sha256": "8be1b95f41b4331bfc4e0dc026b428574a772821a2d68126a494605f0b1db99b",
+    "executable_sha256": "b569a38a8be54c52d52f8703adfea8ecc0d133504e396c752c5313b42e22f63c",
     "fixture": true
   },
   "checks": [
@@ -145,7 +145,7 @@
       "id": "C18-N11",
       "description": "No AX snapshot carries the inference key, the management secret or the scan key; the synthetic server never logged the prompt or the key; the runtime requests are exactly the runs pressed; v1 data is unchanged.",
       "result": "pass",
-      "observation": "inference requests [{'trace': 'airs-51dcaae3df2baf95', 'status': 200}, {'trace': 'airs-05b09bd8044e53b3', 'status': 200}, {'trace': 'airs-598c707287014841', 'status': 446}, {'trace': 'airs-bd3749f7deddb818', 'status': 503}, {'trace': 'airs-76cdccf35834c1f1', 'status': 200}, {'trace': 'airs-126235e3a12c7d45', 'status': 200}]; responses 4; secrets in AX snapshots: []; upload content or path in AX snapshots: []; prompt or key in the server log: False; v1 unchanged: True",
+      "observation": "inference requests [{'trace': 'airs-de1e5d4b73018777', 'status': 200}, {'trace': 'airs-589c54f64d0124ca', 'status': 200}, {'trace': 'airs-3adba8a8cb8931e6', 'status': 446}, {'trace': 'airs-171f55912d78905f', 'status': 503}, {'trace': 'airs-cbf1a9659c8a2a14', 'status': 200}, {'trace': 'airs-b3e86e55ff66b8e3', 'status': 200}]; responses 4; secrets in AX snapshots: []; upload content or path in AX snapshots: []; prompt or key in the server log: False; v1 unchanged: True",
       "evidence": [
         "docs/planning/evidence/C23/native-C18/observations.json"
       ]

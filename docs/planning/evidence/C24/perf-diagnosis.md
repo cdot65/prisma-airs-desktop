@@ -57,13 +57,34 @@ in `perf.json`), so the first-launch cost an operator meets once after
 installing stays visible. The change needs owner or independent reviewer
 acknowledgement under the budget governance; C24's review is asked for it.
 
-## Open for C26
+## The complete package (budgets.json version 5)
 
-The production bundle that `xtask footprint` measures does not carry the
-engine (only the fixture build adds `tauri.harness.conf.json`; D046 leaves
-signed release packaging to C26). The release bundle C26 builds will. With
-the engine, that bundle is about 360 MB and its DMG holds the engine's
-113 MB compressed archive or more, beyond the registered app-bundle
-(150 MiB) and DMG (100 MiB) budgets, and its first launch after installing
-carries the assessment above. C24 records this; how the engine ships against
-those budgets is C26's to decide with the owner.
+The production bundle `xtask footprint` measured did not carry the engine:
+only the fixture build added `tauri.harness.conf.json` (D046), and C19
+registered no footprint for it. The C24 review (C24-G3) asked that the
+complete package be measured in C24. `xtask footprint` now unpacks the
+sealed engine and builds the production app with that overlay, as
+`native-prepare` does for the fixture build. budgets.json version 5,
+registered before that complete package was measured, keeps the first
+slice's allowance and adds exactly the engine's pinned sizes
+(`resources/harness/pin.json`):
+- app bundle: 150 MiB + 328.4 MiB of sealed engine resources = 479 MiB;
+- DMG: 100 MiB + the 108.2 MiB sealed archive = 209 MiB.
+
+The version 4 footprint without the engine is kept as
+`footprint-v4-without-engine-20261023.json`. The first launch after
+installing still carries the assessment above; it is reported with every
+cold-start sample. Signed and notarized packaging remains C26's.
+
+## Failed measurement attempts kept
+
+`perf-failed-acceptance-2026-10-23T141459Z.json`, `…T141712Z.json` and
+`…T141923Z.json` are three attempts of the version 4 measurement that
+stopped while setting up the measurement tenant. The cold-start samples
+they hold had been taken. The cause was outside the app: the bundle-swap
+experiments above had left copies of the fixture bundle registered with
+LaunchServices under the same identifier, and `open -n` launched one of
+them, so the driver's keystrokes reached another copy. The stale
+registrations were removed (`lsregister -u`), the sequence was reproduced
+to open the right bundle, and the measurement then completed
+(`perf.json`).

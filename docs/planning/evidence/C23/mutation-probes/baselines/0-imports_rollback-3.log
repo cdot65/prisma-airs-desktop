@@ -1,25 +1,30 @@
 
-running 18 tests
-test damaged_unsupported_linked_and_oversized_sources_block_only_their_category ... ok
+running 23 tests
 test a_running_v1_or_a_locked_keychain_blocks_without_fallback ... ok
-test inspection_reads_files_only_and_the_keychain_only_for_selected_categories ... ok
+test damaged_unsupported_linked_and_oversized_sources_block_only_their_category ... ok
 test a_declined_rollback_changes_nothing ... ok
 test conflicts_are_reported_and_never_overwritten ... ok
-test imported_conversations_are_inspect_only ... ok
 test api_client_collections_join_the_recent_list_and_leave_it_on_rollback ... ok
+test held::an_import_whose_document_copy_is_not_confirmed_writes_nothing ... ok
 test academy_drafts_go_only_to_the_same_signed_in_account ... ok
+test inspection_reads_files_only_and_the_keychain_only_for_selected_categories ... ok
+test held::a_paused_import_grants_no_authority_over_what_it_staged ... ok
+test held::a_rollback_that_cannot_finish_keeps_what_the_import_writes_waiting ... ok
 test a_source_changed_after_review_is_not_imported ... ok
-test reset_waits_for_an_import_and_removes_its_receipts ... ok
+test imported_conversations_are_inspect_only ... ok
 test importing_twice_finds_everything_already_present_and_owns_nothing ... ok
 test an_import_brings_work_without_credentials_and_a_rollback_removes_only_it ... ok
+test held::a_document_copy_of_a_receipt_is_checked_before_it_drives_anything ... ok
 test recovery::an_identical_case_added_after_an_interruption_is_never_claimed ... ok
+test reset_waits_for_an_import_and_removes_its_receipts ... ok
+test an_interrupted_rollback_finishes_after_relaunch ... ok
 test recovery::an_open_library_shows_the_previous_generation_until_the_import_commits ... ok
 test recovery::drafts_belong_to_the_planned_account_through_import_and_rollback ... ok
 test recovery::a_receipt_that_is_not_durably_recorded_authorizes_no_write ... ok
-test an_interrupted_rollback_finishes_after_relaunch ... ok
+test held::what_an_unsettled_import_wrote_is_never_published_whatever_its_receipt_files ... ok
 test recovery::an_import_interrupted_anywhere_shows_nothing_and_is_undone_at_the_next_launch ... ok
 
-test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.81s
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 42.63s
 
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
-     Running tests/imports_rollback/main.rs (target/debug/deps/imports_rollback-21168c9c682c3bbc)
+     Running tests/imports_rollback/main.rs (target/debug/deps/imports_rollback-ee2f22edec9106d0)

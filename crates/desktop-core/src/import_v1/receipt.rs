@@ -159,12 +159,31 @@ fn path(root: &Path, id: &str) -> Option<PathBuf> {
     id_ok(id).then(|| root.join(format!("{id}.json")))
 }
 
-/// Writes the receipt durably: a temporary file synced and renamed over the
-/// old one, then the directory synced.
+/// The folder of every receipt's second copy, beside the first (D050): a
+/// receipt whose file is damaged, or whose folder cannot be read, is read
+/// from it.
+pub fn copies(root: &Path) -> PathBuf {
+    let mut name = root.as_os_str().to_owned();
+    name.push(".copy");
+    PathBuf::from(name)
+}
+
+/// Writes the receipt durably, in both of its copies, the first before the
+/// second: each a temporary file synced and renamed over the old one, then
+/// its directory synced. A receipt is recorded only once both are.
 pub fn store(root: &Path, receipt: &Receipt) -> Result<(), ReceiptFailure> {
-    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-    let target = path(root, &receipt.id).ok_or(ReceiptFailure::Unavailable)?;
     let bytes = serde_json::to_vec_pretty(receipt).map_err(|_| ReceiptFailure::Unavailable)?;
+    write_copy(root, &receipt.id, &bytes)?;
+    #[cfg(feature = "test-fixtures")]
+    if sync_fault(root) {
+        return Err(ReceiptFailure::Unconfirmed);
+    }
+    write_copy(&copies(root), &receipt.id, &bytes)
+}
+
+fn write_copy(root: &Path, id: &str, bytes: &[u8]) -> Result<(), ReceiptFailure> {
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+    let target = path(root, id).ok_or(ReceiptFailure::Unavailable)?;
     std::fs::DirBuilder::new()
         .recursive(true)
         .create(root)
@@ -180,17 +199,13 @@ pub fn store(root: &Path, receipt: &Receipt) -> Result<(), ReceiptFailure> {
             .create_new(true)
             .mode(0o600)
             .open(&temp)?;
-        file.write_all(&bytes)?;
+        file.write_all(bytes)?;
         file.sync_all()?;
         std::fs::rename(&temp, &target)
     })();
     if written.is_err() {
         let _ = std::fs::remove_file(&temp);
         return Err(ReceiptFailure::Unavailable);
-    }
-    #[cfg(feature = "test-fixtures")]
-    if sync_fault(root) {
-        return Err(ReceiptFailure::Unconfirmed);
     }
     std::fs::File::open(root)
         .and_then(|d| d.sync_all())
@@ -232,25 +247,96 @@ fn sync_fault(root: &Path) -> bool {
     })
 }
 
-/// Every receipt, oldest first. A damaged one is reported, never removed.
-pub fn load_all(root: &Path) -> (Vec<Receipt>, usize) {
-    let Ok(entries) = std::fs::read_dir(root) else {
-        return (Vec::new(), 0);
+/// What the receipt folders hold.
+#[derive(Debug, Default)]
+pub struct Inventory {
+    /// Every receipt read from either copy, oldest first.
+    pub receipts: Vec<Receipt>,
+    /// Receipts readable in neither copy: reported, never removed.
+    pub damaged: Vec<String>,
+    /// Neither folder can be listed: what they hold is unknown.
+    pub unreadable: bool,
+}
+
+impl Inventory {
+    /// Something an import wrote may be unaccounted for (D050).
+    pub fn uncertain(&self) -> bool {
+        self.unreadable || !self.damaged.is_empty()
+    }
+}
+
+/// What listing a receipt folder gave.
+enum Listing {
+    /// It does not exist: it holds no receipts.
+    Missing,
+    Listed(Vec<String>),
+    /// It exists but it, or an entry in it, cannot be read.
+    Unreadable,
+}
+
+fn names(root: &Path) -> Listing {
+    let entries = match std::fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Listing::Missing,
+        Err(_) => return Listing::Unreadable,
     };
-    let mut receipts = Vec::new();
-    let mut damaged = 0;
-    for entry in entries.flatten().take(64) {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let Some(id) = name.strip_suffix(".json").filter(|id| id_ok(id)) else {
-            continue;
+    let mut names = Vec::new();
+    for entry in entries {
+        let Ok(entry) = entry else {
+            return Listing::Unreadable;
         };
-        match load(root, id) {
-            Ok(r) => receipts.push(r),
-            Err(_) => damaged += 1,
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if let Some(id) = name.strip_suffix(".json").filter(|id| id_ok(id)) {
+            names.push(id.to_owned());
         }
     }
-    receipts.sort_by(|a, b| a.created.cmp(&b.created).then(a.id.cmp(&b.id)));
-    (receipts, damaged)
+    Listing::Listed(names)
+}
+
+/// Every receipt, from its first copy or else its second. One readable in
+/// neither is reported, never removed; when neither folder can be listed
+/// the inventory is unknown.
+pub fn load_all(root: &Path) -> Inventory {
+    let second = copies(root);
+    let (first, other) = (names(root), names(&second));
+    let mut ids: Vec<String> = [&first, &other]
+        .into_iter()
+        .filter_map(|l| match l {
+            Listing::Listed(names) => Some(names.iter().cloned()),
+            Listing::Missing | Listing::Unreadable => None,
+        })
+        .flatten()
+        .collect();
+    ids.sort();
+    ids.dedup();
+    let mut inventory = Inventory {
+        // Each receipt is in both folders, so a folder that cannot be read
+        // is stood in for only by the other one listed (a missing one, as
+        // with a receipt written before the second copy existed, cannot).
+        unreadable: matches!(
+            (&first, &other),
+            (Listing::Unreadable, Listing::Missing | Listing::Unreadable)
+                | (Listing::Missing, Listing::Unreadable)
+        ),
+        ..Inventory::default()
+    };
+    for id in ids.into_iter().take(64) {
+        match load(root, &id).or_else(|_| load(&second, &id)) {
+            Ok(r) => inventory.receipts.push(r),
+            Err(_) => inventory.damaged.push(id),
+        }
+    }
+    inventory
+        .receipts
+        .sort_by(|a, b| a.created.cmp(&b.created).then(a.id.cmp(&b.id)));
+    inventory
+}
+
+/// Whether the saved document's copy of a receipt can stand for its files
+/// (D050): the current schema, a valid ID, and not settled, as only an
+/// unsettled receipt is kept there. The document fails to load otherwise.
+pub fn binding_ok(r: &Receipt) -> bool {
+    r.schema == RECEIPT_SCHEMA && id_ok(&r.id) && !r.terminal()
 }
 
 pub fn load(root: &Path, id: &str) -> Result<Receipt, ReceiptFailure> {
@@ -267,26 +353,31 @@ pub fn load(root: &Path, id: &str) -> Result<Receipt, ReceiptFailure> {
     Ok(receipt)
 }
 
-/// Forgets a receipt (its imported work stays; it can no longer be rolled
-/// back).
+/// Forgets a receipt, both copies (its imported work stays; it can no
+/// longer be rolled back).
 pub fn forget(root: &Path, id: &str) -> Result<(), ReceiptFailure> {
-    let path = path(root, id).ok_or(ReceiptFailure::Corrupt)?;
-    match std::fs::remove_file(path) {
-        Ok(()) => {}
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-        Err(_) => return Err(ReceiptFailure::Unavailable),
+    for dir in [root.to_path_buf(), copies(root)] {
+        let path = path(&dir, id).ok_or(ReceiptFailure::Corrupt)?;
+        match std::fs::remove_file(path) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => return Err(ReceiptFailure::Unavailable),
+        }
+        std::fs::File::open(&dir)
+            .and_then(|d| d.sync_all())
+            .map_err(|_| ReceiptFailure::Unconfirmed)?;
     }
-    std::fs::File::open(root)
-        .and_then(|d| d.sync_all())
-        .map_err(|_| ReceiptFailure::Unconfirmed)
+    Ok(())
 }
 
-/// Removes every receipt (local-data reset).
+/// Removes every receipt, both copies (local-data reset).
 pub fn purge(root: &Path) -> bool {
-    match std::fs::remove_dir_all(root) {
-        Ok(()) => true,
-        Err(e) => e.kind() == std::io::ErrorKind::NotFound,
-    }
+    [root.to_path_buf(), copies(root)]
+        .iter()
+        .all(|dir| match std::fs::remove_dir_all(dir) {
+            Ok(()) => true,
+            Err(e) => e.kind() == std::io::ErrorKind::NotFound,
+        })
 }
 
 #[cfg(test)]
@@ -324,8 +415,11 @@ mod tests {
         store(&root, &receipt).expect("stored");
         assert_eq!(load(&root, &receipt.id).expect("loaded"), receipt);
         std::fs::write(root.join("imp-00000000000000ff.json"), b"{").expect("write");
-        let (all, damaged) = load_all(&root);
-        assert_eq!((all.len(), damaged), (1, 1));
+        let inventory = load_all(&root);
+        assert_eq!((inventory.receipts.len(), inventory.damaged.len()), (1, 1));
+        // A damaged first copy is read from the second.
+        std::fs::write(root.join(format!("{}.json", receipt.id)), b"{").expect("write");
+        assert_eq!(load_all(&root).receipts, vec![receipt.clone()]);
         assert!(load(&root, "../x").is_err());
         forget(&root, &receipt.id).expect("forgot");
         assert!(purge(&root));

@@ -21,9 +21,15 @@ source: SourceState | null, tenants: Array<V1TenantChoice>, categories: Array<Ca
  */
 notMapped: Array<string>, plan: PlanView | null, activity: ImportActivity | null, receipts: Array<ReceiptView>, 
 /**
- * Receipts that could not be read (kept, never removed).
+ * Receipts readable in neither copy (kept until the operator removes
+ * one): what an import writes is held meanwhile (D050).
  */
-damagedReceipts: number, 
+damagedReceipts: Array<string>, 
+/**
+ * Neither receipt folder can be read: what an import writes is held
+ * until it can.
+ */
+receiptsUnreadable: boolean, 
 /**
  * Why the last step failed.
  */

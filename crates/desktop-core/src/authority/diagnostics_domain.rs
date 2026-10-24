@@ -18,6 +18,15 @@ pub enum DiagnosticsExport {
     Failed,
 }
 
+/// How the last clearing ended.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum DiagnosticsClear {
+    Cleared,
+    /// A file could not be removed: its events are still kept and counted.
+    Failed,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagnosticsView {
@@ -28,12 +37,14 @@ pub struct DiagnosticsView {
     /// Days events are kept.
     pub retention_days: u32,
     pub export: Option<DiagnosticsExport>,
+    pub clear: Option<DiagnosticsClear>,
 }
 
 #[derive(Default)]
 pub(super) struct DiagnosticsState {
     lease: u64,
     export: Option<DiagnosticsExport>,
+    clear: Option<DiagnosticsClear>,
 }
 
 pub(super) const EXPORT_NAME: &str = "prisma-airs-desktop-diagnostics.json";
@@ -46,7 +57,17 @@ impl State {
             retention_days: u32::try_from(crate::diagnostics::RETENTION_SECS / 86_400)
                 .unwrap_or(u32::MAX),
             export: self.diagnostics.export,
+            clear: self.diagnostics.clear,
         }
+    }
+
+    /// Clears the kept diagnostics and keeps how that ended for the view.
+    pub(super) fn clear_diagnostics(&mut self) {
+        self.diagnostics.clear = Some(if self.diagnostics_log.clear() {
+            DiagnosticsClear::Cleared
+        } else {
+            DiagnosticsClear::Failed
+        });
     }
 
     pub(super) fn begin_diagnostics_export(&mut self) -> Result<u64, Refusal> {

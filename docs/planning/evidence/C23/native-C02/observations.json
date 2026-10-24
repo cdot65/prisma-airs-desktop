@@ -47,6 +47,16 @@
     "subrole": null,
     "label": "Reset local data\u2026"
    },
+   {
+    "role": "AXButton",
+    "subrole": null,
+    "label": "Export diagnostics\u2026"
+   },
+   {
+    "role": "AXButton",
+    "subrole": null,
+    "label": "Clear diagnostics"
+   },
    null,
    {
     "role": "AXButton",
@@ -137,16 +147,6 @@
     "role": "AXPopUpButton",
     "subrole": null,
     "label": "Region"
-   },
-   {
-    "role": "AXButton",
-    "subrole": null,
-    "label": "Add tenant"
-   },
-   {
-    "role": "AXButton",
-    "subrole": null,
-    "label": "Choose profile file\u2026"
    }
   ],
   "created": true,
@@ -154,28 +154,28 @@
   "created_row": true,
   "tree_created": "docs/planning/evidence/C23/native-C02/tree-created.json",
   "secure_field": {
-   "depth": 10,
-   "subrole": "AXSecureTextField",
-   "pos": [
-    384,
-    353
-   ],
-   "value": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
-   "description": "",
    "title": "AIRS API key",
    "current": "false",
-   "enabled": true,
-   "focused": true,
+   "depth": 10,
+   "pos": [
+    384,
+    561
+   ],
+   "role": "AXTextField",
    "size": [
     942,
     40
    ],
-   "role": "AXTextField",
-   "label": "AIRS API key"
+   "subrole": "AXSecureTextField",
+   "enabled": true,
+   "value": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+   "label": "AIRS API key",
+   "description": "",
+   "focused": true
   },
   "keychain_saved": true,
   "items_after_save": [
-   "cr-7bd22f6a730351d9"
+   "cr-4bc5e29b3e95d4ab"
   ],
   "capture_saved": "docs/planning/evidence/C23/native-C02/captures/keychain-key-saved.png",
   "tree_saved": "docs/planning/evidence/C23/native-C02/tree-keychain-saved.json",
@@ -190,7 +190,7 @@
   "switched_to_b": true,
   "session_held": true,
   "items_after_session": [
-   "cr-7bd22f6a730351d9"
+   "cr-4bc5e29b3e95d4ab"
   ],
   "session_added_no_item": true,
   "key_b_in_tree": false,
@@ -294,6 +294,16 @@
     "role": "AXButton",
     "subrole": null,
     "label": "Reset local data\u2026"
+   },
+   {
+    "role": "AXButton",
+    "subrole": null,
+    "label": "Export diagnostics\u2026"
+   },
+   {
+    "role": "AXButton",
+    "subrole": null,
+    "label": "Clear diagnostics"
    },
    null,
    {
@@ -461,6 +471,16 @@
     "subrole": null,
     "label": "Reset local data\u2026"
    },
+   {
+    "role": "AXButton",
+    "subrole": null,
+    "label": "Export diagnostics\u2026"
+   },
+   {
+    "role": "AXButton",
+    "subrole": null,
+    "label": "Clear diagnostics"
+   },
    null,
    {
     "role": "AXButton",
@@ -471,26 +491,6 @@
     "role": "AXButton",
     "subrole": null,
     "label": "Academy"
-   },
-   {
-    "role": "AXButton",
-    "subrole": null,
-    "label": "Administration"
-   },
-   {
-    "role": "AXButton",
-    "subrole": null,
-    "label": "Sessions & Reports"
-   },
-   {
-    "role": "AXButton",
-    "subrole": null,
-    "label": "Case Library"
-   },
-   {
-    "role": "AXButton",
-    "subrole": null,
-    "label": "Red Team & Models"
    }
   ],
   "lock": true,
@@ -499,15 +499,15 @@
   "locked_tree": "docs/planning/evidence/C23/native-C02/tree-locked.json",
   "capture_locked": "docs/planning/evidence/C23/native-C02/captures/keychain-locked.png",
   "items_while_locked": [
-   "cr-7bd22f6a730351d9"
+   "cr-4bc5e29b3e95d4ab"
   ],
   "cli_view_after_unlock": false,
   "resaved_after_unlock": true,
   "items_before_lock": [
-   "cr-7bd22f6a730351d9"
+   "cr-4bc5e29b3e95d4ab"
   ],
   "items_after_unlock": [
-   "cr-4f9cadf5e8a277e4"
+   "cr-dcf7b1b4a7eb4d93"
   ],
   "session_gone": true,
   "prod_still_saved": true,
@@ -517,7 +517,7 @@
   "capture_review": "docs/planning/evidence/C23/native-C02/captures/endpoint-review.png",
   "endpoint_changed": true,
   "items_before_endpoint": [
-   "cr-4f9cadf5e8a277e4"
+   "cr-dcf7b1b4a7eb4d93"
   ],
   "items_after_endpoint": [],
   "sheet_attached": true,
@@ -628,64 +628,64 @@
  },
  "log": [
   {
-   "t": "03:58:23",
+   "t": "17:20:10",
    "step": "typed",
    "field": "Label",
    "attempts": 1
   },
   {
-   "t": "03:58:24",
+   "t": "17:20:11",
    "step": "typed",
    "field": "TSG ID (optional)",
    "attempts": 1
   },
   {
-   "t": "03:58:28",
+   "t": "17:20:15",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "03:58:33",
+   "t": "17:20:20",
    "step": "launch 1 done",
    "created": true,
    "keychain_saved": true,
    "items_after_save": [
-    "cr-7bd22f6a730351d9"
+    "cr-4bc5e29b3e95d4ab"
    ]
   },
   {
-   "t": "03:58:59",
+   "t": "17:20:46",
    "step": "typed",
    "field": "Label",
    "attempts": 1
   },
   {
-   "t": "03:59:01",
+   "t": "17:20:48",
    "step": "typed",
    "field": "TSG ID (optional)",
    "attempts": 1
   },
   {
-   "t": "03:59:05",
+   "t": "17:20:52",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "04:00:07",
+   "t": "17:21:53",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "04:00:14",
+   "t": "17:22:00",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "04:00:17",
+   "t": "17:22:03",
    "step": "launch 2 done",
    "restored": true,
    "held": true,
@@ -693,25 +693,25 @@
    "resaved": true
   },
   {
-   "t": "04:00:30",
+   "t": "17:22:16",
    "step": "typed",
    "field": "Endpoint origin",
    "attempts": 1
   },
   {
-   "t": "04:00:46",
+   "t": "17:22:32",
    "step": "typed",
    "field": "Label",
    "attempts": 1
   },
   {
-   "t": "04:00:47",
+   "t": "17:22:33",
    "step": "typed",
    "field": "Endpoint origin",
    "attempts": 1
   },
   {
-   "t": "04:02:19",
+   "t": "17:24:07",
    "step": "typed",
    "field": "Label",
    "attempts": 1

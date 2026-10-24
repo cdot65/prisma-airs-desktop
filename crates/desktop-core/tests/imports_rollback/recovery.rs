@@ -379,7 +379,7 @@ async fn an_open_library_shows_the_previous_generation_until_the_import_commits(
     assert!(desk.reports(&ours).is_empty());
 }
 
-async fn open_library(desk: &mut Desk) {
+pub(crate) async fn open_library(desk: &mut Desk) {
     let context = desk.json()["active"]["context"].clone();
     desk.send(json!({"kind": "openLibrary", "context": context}))
         .await
@@ -393,7 +393,7 @@ async fn open_library(desk: &mut Desk) {
     panic!("library did not open: {}", desk.json()["library"]);
 }
 
-async fn save_case(desk: &mut Desk, name: &str) {
+pub(crate) async fn save_case(desk: &mut Desk, name: &str) {
     let context = desk.json()["active"]["context"].clone();
     let count = desk.json()["library"]["cases"]
         .as_array()

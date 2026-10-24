@@ -2082,10 +2082,33 @@ No credential, session, sign-in or approval is ever transferred:
   review, the receipt and a resumed import name the same tenant.
 
 **Receipts: the import's commit record.**
-- An import writes a receipt, `<data root>/imports/<id>.json`: 0600,
-  replaced atomically, and synced with its directory. A note is recorded
-  only when the file and its directory are synced; anything less is
-  `notRecorded`, and nothing is written on it.
+- An import writes a receipt in two copies, `<data root>/imports/<id>.json`
+  and then `<data root>/imports.copy/<id>.json`: each 0600, replaced
+  atomically, and synced with its directory. A note is recorded only when
+  both copies and their directories are synced; anything less is
+  `notRecorded`, and nothing is written on it. A receipt is read from its
+  first copy, or from its second when the first is damaged or its folder
+  cannot be listed (the second is written last, so it never runs ahead of
+  the first). A missing folder holds no receipts; one that exists but
+  cannot be listed (or an entry of which cannot be read) is not taken for
+  empty, and a missing folder never stands in for an unreadable one.
+- The commit binding: while a receipt has not settled, every note also
+  writes a copy of it into the saved document (`openImports`), after both
+  files; settling removes the copy. A note is recorded only once that save
+  is confirmed durable. At launch, an unsettled receipt its files no longer
+  give (both damaged, or neither folder listable) is taken from the
+  document, so what it names stays hidden and its rollback runs; a copy
+  whose files say it settled is dropped (the files are newer). Losing the
+  document itself already makes local storage unavailable, and then
+  nothing local is shown or written. The field is present only while an
+  import is unsettled.
+- A document copy is checked as a receipt file is, when the document is
+  loaded: the current receipt schema, a valid ID named once, at most
+  `MAX_RECEIPTS` copies, and unsettled (the field's invariant). Any other
+  copy makes the document inconsistent, so it loads as damaged: nothing
+  in it is shown, published or saved, no rollback is driven by it, and the
+  document, the receipt files and the owner stores stay as they were for
+  the operator.
 - Inside the section that makes each owner write (the local-data writer
   with the placement lock for cases and reports, the API Client's lane, the
   saved document for tenants and appearance, the account's offline store
@@ -2104,8 +2127,29 @@ No credential, session, sign-in or approval is ever transferred:
   Harness history list, the API Client's recent list, Academy's kept
   drafts and their reads) and the views show the previous generation. The
   `applied` note is the commit: the receipt and its entries are published
-  together, in one step. While an import or its rollback writes, intents
-  that write or export what it writes wait (`busy`).
+  together, in one step. Nothing it names gives authority meanwhile either:
+  its new tenant cannot be selected or be the active one, is not offered
+  as an existing target, and its conversation cannot be opened or resumed
+  by its ID.
+- Intents that write or export what an import writes wait (`busy`) while
+  an import or its rollback runs and until every receipt has settled
+  (`applied` or `rolledBack`): a rollback that could not finish (its
+  owner refused, at launch or later) keeps its receipt unsettled and what
+  it names hidden, and the wait lasts until a retried rollback settles it.
+  Nothing else can therefore write an entry the receipt names, so treating
+  an item that stopped while `writing` as having written its entries
+  never claims another writer's work.
+- A settled receipt readable in neither file, or receipt folders that
+  cannot be listed with nothing standing in, leave the inventory unknown
+  (what they named is committed or undone, so nothing is staged by them).
+  The app fails closed all the same: the same intents wait, no new import
+  or Import Again starts, and the import view names the lost record or
+  says the folders cannot be read, by alert. Restoring access and
+  reopening the app lists them again (a launch rollback's own writes
+  restore its folders' permissions, and the inventory is read again when
+  it ends). A lost record is released only by the operator removing it
+  (`forgetV1ImportReceipt`), which leaves whatever that import wrote as it
+  is and no longer roll-backable.
 - An import is whole or nothing. An item that cannot be written (its
   source changed, its owner refused, its note was not recorded) rolls the
   whole import back at once, without asking.
@@ -2177,17 +2221,28 @@ review; it implements D021).
   formatting it);
 - the saved document could not be read (its health);
 - a reset finished or failed at a stage;
-- the app panicked, with its source location only (a repository-relative
-  path and line; any other path is recorded as `external`, since a
-  dependency's absolute path names the build machine's folders). Never the
-  panic message: it may hold anything;
+- the app panicked, with its source location only (a Rust source file of
+  this repository, relative, lower case, and its line; any other location,
+  a dependency's or the standard library's, is recorded as `external` with
+  line 0, since such a path can name the build machine's folders). Never
+  the panic message: it may hold anything;
 - the operator cleared the diagnostics.
 
-Every name and code is checked when it is recorded and again when it is
-exported: ASCII letters, digits, `-`, `_`, `.` and `/`, at most 48 bytes.
-Anything else is not written, so no prompt, response, key, token, tenant
-name, file path or other customer text can enter the log, whatever a caller
-passes.
+Every field is checked against the values the app records for that event,
+when it is recorded and again when a line is read back or exported:
+- a request kind is one of `INTENT_KINDS`, which the same table as
+  `Intent::kind` generates, so the two cannot differ;
+- a refusal code, a storage health and a reset outcome (`done`, or
+  `failed-` and a reset stage) are the serialized names of those enums'
+  variants, each listed beside an exhaustive match so a new variant does not
+  build until it is listed;
+- a version is `major.minor.patch` in digits;
+- a panic location is `external` or a repository source file as above.
+
+A character set alone is not taken as redaction: a token-shaped canary, or a
+single ordinary word, in any field is never written, and a stored line that
+holds one (edited or foreign) is not exported, while the app's own events
+stay.
 
 **Where and how long.**
 - In macOS's logs folder for the app (`~/Library/Logs/<identifier>`), apart
@@ -2206,7 +2261,11 @@ passes.
   count. Export saves a JSON document (schema, app version, fixture flag,
   export time, events) through the native save sheet, re-checking every
   line; an edited or foreign line is not exported.
-- Clear removes every line, keeping only the record of clearing.
+- Clear removes every line, keeping only the record of clearing. If a file
+  cannot be removed, what it holds is counted again from disk (and still
+  exported), no clearing is recorded, and the view says the clearing did
+  not remove everything (`clear: failed`); a later clearing that can
+  removes it.
 - Local-data reset removes the folder with the rest of the data; the reset's
   own outcome is the first new line.
 

@@ -35,3 +35,11 @@ C24's re-measurement also changed the core budgets C03 registered:
 | Consumer (owner) | What C24 changed | Why its behavior holds | Re-run on C24 |
 |---|---|---|---|
 | Core budgets and their measurement (C03; P01's measurement) | budgets.json version 4: the cold-usable-shell method launches each fresh copy once before timing its cold launch, and `measure_c03.py` reports that first launch per run; the version 3 registration is kept as `C03/budget-registration-v3.json` | Limits, statistics, sample counts and every other method are unchanged. C03's and P01's records were measured under version 3 and stand on it; the version 3 failure on C24's bundle is kept (`perf-v3-over-budget-20261023.json`) and its cause is recorded in `perf-diagnosis.md` | `measure_c03.py` and `xtask footprint` under version 4 on the C24 bundle |
+
+The P07 remediation of review attempt-01 reaches these consumers too:
+
+| Consumer (owner) | What changed | Why its behavior holds | Re-run |
+|---|---|---|---|
+| `Intent::kind` (C24 dispatch, every chunk's intents) | Generated from one table with `INTENT_KINDS` by a macro | Every variant maps to the same name as before (the table was produced from the previous match) | full desktop-core suite; `native_quality` |
+| The production package (C19's D046, C26) | `xtask footprint` builds the production app with the sealed Harness engine (`tauri.harness.conf.json`), as the fixture build already was | The engine, its seal and its verification are unchanged; the production app now carries what the fixture build carried since C19 | `xtask footprint` under budgets.json version 5 |
+| Core footprint budgets (C03) | budgets.json version 5: app-bundle-bytes and dmg-bytes measured on the complete package, limits plus the engine's pinned sizes | Every other budget, statistic and method is unchanged; version 4's record is kept | `measure_c03.py` and `xtask footprint` on the C24 bundle |

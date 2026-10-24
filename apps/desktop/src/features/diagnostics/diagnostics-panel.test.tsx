@@ -36,6 +36,24 @@ describe('diagnostics (C24)', () => {
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'clearDiagnostics' }))
     })
 
+    it('announces a clearing, and says when one could not remove everything', async () => {
+        const native = scriptedNative(snapshot({ events: 12, clear: 'failed' }))
+        const user = userEvent.setup()
+        render(<App client={new DesktopClient(native.transport)} />)
+        await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Settings/ }))
+        const group = await screen.findByRole('group', { name: 'Diagnostics' })
+        // The events still kept are counted, and the failure is an alert.
+        expect(within(group).getByText('12 events kept.')).toBeInTheDocument()
+        expect(within(group).getByRole('alert')).toHaveTextContent(/could not all be removed, so the events counted above are still kept/)
+        // Retried by keyboard: Clear is reachable and admitted again.
+        within(group).getByRole('button', { name: 'Clear diagnostics' }).focus()
+        await user.keyboard('{Enter}')
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'clearDiagnostics' }))
+        await native.push(snapshot({ events: 2, clear: 'cleared' }))
+        expect(await within(group).findByRole('status')).toHaveTextContent('Diagnostics cleared.')
+        expect(within(group).queryByRole('alert')).toBeNull()
+    })
+
     it('says when a build keeps none', async () => {
         const native = scriptedNative(snapshot({ available: false }))
         const user = userEvent.setup()

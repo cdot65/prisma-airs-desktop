@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { Button } from '@ai-security-academy/presentation'
-import type { DiagnosticsExport, DiagnosticsView } from '@prisma-airs/desktop-contracts'
+import type { DiagnosticsClear, DiagnosticsExport, DiagnosticsView } from '@prisma-airs/desktop-contracts'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
 
 const EXPORT_TEXT: Record<DiagnosticsExport, string> = {
@@ -8,6 +8,11 @@ const EXPORT_TEXT: Record<DiagnosticsExport, string> = {
     saved: 'Diagnostics saved.',
     cancelled: 'Nothing was saved.',
     failed: 'The diagnostics could not be saved.',
+}
+
+const CLEAR_TEXT: Record<DiagnosticsClear, string> = {
+    cleared: 'Diagnostics cleared.',
+    failed: 'The diagnostics could not all be removed, so the events counted above are still kept. Try again.',
 }
 
 interface Props {
@@ -61,6 +66,15 @@ export function DiagnosticsPanel({ view, dispatch }: Props) {
                     {view.export ? (
                         <p role='status' aria-live='polite' className='text-academy-ink-soft text-[13px]'>
                             {EXPORT_TEXT[view.export]}
+                        </p>
+                    ) : null}
+                    {view.clear === 'failed' ? (
+                        <p role='alert' data-slot='diagnostics-clear' className='text-academy-accent-warn text-[13px]'>
+                            {CLEAR_TEXT.failed}
+                        </p>
+                    ) : view.clear === 'cleared' ? (
+                        <p role='status' aria-live='polite' data-slot='diagnostics-clear' className='text-academy-ink-soft text-[13px]'>
+                            {CLEAR_TEXT.cleared}
                         </p>
                     ) : null}
                 </>

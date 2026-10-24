@@ -5,10 +5,12 @@
 //! read-only source), hashes them before and after, and drives the import
 //! with intents. A relaunch reuses the same storage, receipts and v1 source.
 
+mod held;
 mod recovery;
 mod v1;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use desktop_core::fixtures::{self, Handles, ScriptedStore};
@@ -49,10 +51,36 @@ fn start(previous: Option<Desk>) -> Desk {
 /// As [`start`], with `learner` saved as the signed-in Academy account (its
 /// offline work opens without Academy).
 fn start_as(previous: Option<Desk>, learner: Option<&str>) -> Desk {
+    start_edited(previous, learner, |_| {})
+}
+
+/// As [`start_as`], with the saved state edited before the launch.
+fn start_edited(
+    previous: Option<Desk>,
+    learner: Option<&str>,
+    edit: impl FnOnce(&mut desktop_core::store::PersistedState),
+) -> Desk {
+    launch(previous, learner, edit, None)
+}
+
+/// As [`start`], relaunched on the production file store in `dir`, whose
+/// document the test wrote: it is loaded, checked and saved as at a real
+/// launch.
+fn start_on_disk(previous: Desk, dir: &Path) -> Desk {
+    launch(Some(previous), None, |_| {}, Some(dir))
+}
+
+fn launch(
+    previous: Option<Desk>,
+    learner: Option<&str>,
+    edit: impl FnOnce(&mut desktop_core::store::PersistedState),
+    on_disk: Option<&Path>,
+) -> Desk {
     let mut state = previous
         .as_ref()
         .and_then(|old| old.adapters.store.saved())
         .unwrap_or_default();
+    edit(&mut state);
     if let Some(account) = learner {
         state.learner = Some(desktop_core::store::StoredLearner {
             account_id: account.to_owned(),
@@ -64,6 +92,9 @@ fn start_as(previous: Option<Desk>, learner: Option<&str>) -> Desk {
     }
     let store = ScriptedStore::with_state(state);
     let (mut adapters, mut handles) = fixtures::adapters_with(store);
+    if let Some(dir) = on_disk {
+        adapters.store = Arc::new(desktop_core::store::FileStore::open(dir).expect("file store"));
+    }
     let history_root = previous
         .as_ref()
         .map_or_else(|| temp("history"), |d| d.history_root.clone());

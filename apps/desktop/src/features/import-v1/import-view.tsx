@@ -146,6 +146,15 @@ export const ImportView = forwardRef<HTMLHeadingElement, Props>(function ImportV
         }
     }, [view.activity])
 
+    // Removing a record (Forget, or Remove damaged record) removes the
+    // button that had focus: focus moves to the imports instead.
+    const records = view.receipts.length + view.damagedReceipts.length
+    const recordsBefore = useRef(records)
+    useEffect(() => {
+        if (records < recordsBefore.current) resultRef.current?.focus()
+        recordsBefore.current = records
+    }, [records])
+
     async function run(intent: Parameters<Dispatch>[0]) {
         setMessage(null)
         const outcome = await dispatch(intent)
@@ -188,8 +197,41 @@ export const ImportView = forwardRef<HTMLHeadingElement, Props>(function ImportV
             ) : null}
             {open ? (
                 <Callout tone='default' icon={Info} data-slot='import-interrupted'>
-                    An import or its rollback did not finish, and nothing of it is shown. Roll it back below before
-                    starting another.
+                    An import or its rollback did not finish, and nothing of it is shown. What an import writes
+                    (tenants, cases, reports and the rest) can't be changed until it is rolled back. Roll it back
+                    below before starting another.
+                </Callout>
+            ) : null}
+            {view.receiptsUnreadable ? (
+                <Callout tone='danger' icon={AlertTriangle} role='alert' data-slot='import-records-unreadable'>
+                    The import records can't be read, so what an import writes (tenants, cases, reports and the
+                    rest) is held and can't be changed. Restore access to the app's data folder, then reopen the
+                    app.
+                </Callout>
+            ) : null}
+            {view.damagedReceipts.length > 0 ? (
+                <Callout tone='danger' icon={AlertTriangle} role='alert' data-slot='import-records-damaged'>
+                    <p>
+                        {view.damagedReceipts.length === 1
+                            ? 'An import record is damaged in both of its copies'
+                            : `${view.damagedReceipts.length} import records are damaged in both of their copies`}
+                        , so what an import writes (tenants, cases, reports and the rest) is held and can't be
+                        changed. Removing a damaged record releases it: whatever that import wrote stays as it is
+                        and can no longer be rolled back.
+                    </p>
+                    <div className='mt-2 flex flex-wrap gap-2'>
+                        {view.damagedReceipts.map((id) => (
+                            <Button
+                                key={id}
+                                type='button'
+                                tier='secondary'
+                                disabled={busy}
+                                onClick={() => void run({ kind: 'forgetV1ImportReceipt', receipt: id })}
+                            >
+                                Remove damaged record {id}
+                            </Button>
+                        ))}
+                    </div>
                 </Callout>
             ) : null}
             {!plan ? (
@@ -367,12 +409,6 @@ export const ImportView = forwardRef<HTMLHeadingElement, Props>(function ImportV
                         ))}
                     </ul>
                 )}
-                {view.damagedReceipts > 0 ? (
-                    <p className='text-academy-ink-faint text-[12px]'>
-                        {view.damagedReceipts} import record{view.damagedReceipts === 1 ? '' : 's'} could not be read and{' '}
-                        {view.damagedReceipts === 1 ? 'was' : 'were'} kept as {view.damagedReceipts === 1 ? 'it is' : 'they are'}.
-                    </p>
-                ) : null}
             </section>
             {message ? (
                 <p role='alert' className='text-academy-accent-warn text-[13px]'>

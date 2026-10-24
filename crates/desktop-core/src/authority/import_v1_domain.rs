@@ -132,8 +132,12 @@ pub struct V1ImportView {
     pub plan: Option<PlanView>,
     pub activity: Option<ImportActivity>,
     pub receipts: Vec<ReceiptView>,
-    /// Receipts that could not be read (kept, never removed).
-    pub damaged_receipts: u32,
+    /// Receipts readable in neither copy (kept until the operator removes
+    /// one): what an import writes is held meanwhile (D050).
+    pub damaged_receipts: Vec<String>,
+    /// Neither receipt folder can be read: what an import writes is held
+    /// until it can.
+    pub receipts_unreadable: bool,
     /// Why the last step failed.
     pub problem: Option<Problem>,
 }
@@ -190,7 +194,8 @@ pub(super) struct V1Import {
     activity: Option<ImportActivity>,
     lease: u64,
     receipts: Vec<Receipt>,
-    damaged: usize,
+    damaged: Vec<String>,
+    unreadable: bool,
     problem: Option<Problem>,
     /// Entries of an import not committed yet, or of a rollback under way:
     /// no view shows them (D050).
@@ -275,7 +280,8 @@ impl State {
             }),
             activity: i.activity,
             receipts: i.receipts.iter().map(receipt_view).collect(),
-            damaged_receipts: u32::try_from(i.damaged).unwrap_or(u32::MAX),
+            damaged_receipts: i.damaged.clone(),
+            receipts_unreadable: i.unreadable,
             problem: i.problem,
         }
     }
@@ -288,6 +294,7 @@ impl State {
             .tenants
             .iter()
             .filter(|t| t.profile.tsg_id.as_deref() == Some(tsg))
+            .filter(|t| !self.v1_hides_tenant(&t.profile.id))
             .map(|t| t.profile.id.clone())
             .collect()
     }
@@ -299,9 +306,37 @@ impl State {
         let Some(root) = self.import_root.clone() else {
             return;
         };
-        let (receipts, damaged) = receipt::load_all(&root);
-        self.v1_import.receipts = receipts;
-        self.v1_import.damaged = damaged;
+        let mut inventory = receipt::load_all(&root);
+        // The saved document's copies bind every receipt that has not
+        // settled: one its files no longer give is taken from there (so what
+        // it names stays hidden and is rolled back), and one whose files say
+        // it settled is dropped from the document (the files are written
+        // first, so they are newer).
+        let before = self.data.clone();
+        let mut stale = false;
+        self.data
+            .open_imports
+            .retain(|o| match inventory.receipts.iter().find(|r| r.id == o.id) {
+                Some(r) if r.terminal() => {
+                    stale = true;
+                    false
+                }
+                Some(_) => true,
+                None => {
+                    inventory.damaged.retain(|d| *d != o.id);
+                    inventory.receipts.push(o.clone());
+                    true
+                }
+            });
+        if stale {
+            let _ = self.save_with(&before);
+        }
+        inventory
+            .receipts
+            .sort_by(|a, b| a.created.cmp(&b.created).then(a.id.cmp(&b.id)));
+        self.v1_import.receipts = inventory.receipts;
+        self.v1_import.damaged = inventory.damaged;
+        self.v1_import.unreadable = inventory.unreadable;
         self.restage();
         if self.v1_import.receipts.iter().any(|r| !r.terminal()) {
             let lease = self.v1_lease(ImportActivity::RollingBack);
@@ -387,6 +422,23 @@ impl State {
                 _ => None,
             })
             .unwrap_or(now)
+    }
+
+    /// What an import writes waits (D050): while one, or its rollback,
+    /// runs; until every receipt has settled (an import or rollback that
+    /// did not finish, at launch or after, keeps it waiting until it does);
+    /// and while a receipt cannot be read.
+    pub(super) fn v1_import_holds(&self) -> bool {
+        self.v1_import_busy() || self.v1_records_settled().is_err()
+    }
+
+    /// Every receipt has settled and can be read.
+    fn v1_records_settled(&self) -> Result<(), Refusal> {
+        let i = &self.v1_import;
+        if i.unreadable || !i.damaged.is_empty() || i.receipts.iter().any(|r| !r.terminal()) {
+            return Err(Refusal::Busy);
+        }
+        Ok(())
     }
 
     /// An import, resume or rollback is writing (reset waits for it).
@@ -502,6 +554,7 @@ impl State {
             return Err(Refusal::ReviewConsumed);
         }
         self.v1_idle()?;
+        self.v1_records_settled()?;
         let plan = self
             .v1_import
             .review
@@ -575,9 +628,7 @@ impl State {
         if !(receipt.state == ReceiptState::RolledBack && receipt.recovered) {
             return Err(Refusal::InvalidInput);
         }
-        if self.v1_import.receipts.iter().any(|r| !r.terminal()) {
-            return Err(Refusal::Busy);
-        }
+        self.v1_records_settled()?;
         let lease = self.v1_lease(ImportActivity::Importing);
         Ok(Effect::V1Import(Job::Resume {
             lease,
@@ -602,6 +653,14 @@ impl State {
 
     pub(super) fn forget_v1_receipt(&mut self, id: &str) -> Result<(), Refusal> {
         self.v1_idle()?;
+        // The operator's way past a receipt neither copy of which can be
+        // read: what it imported stays as it is, no longer held.
+        if self.v1_import.damaged.iter().any(|d| d == id) {
+            let root = self.import_root.clone().ok_or(Refusal::CapabilityMissing)?;
+            receipt::forget(&root, id).map_err(|_| Refusal::DeniedStore)?;
+            self.v1_import.damaged.retain(|d| d != id);
+            return Ok(());
+        }
         if !self.v1_receipt(id)?.terminal() {
             return Err(Refusal::InvalidInput);
         }
@@ -1145,15 +1204,34 @@ fn conversation_hash(r: &crate::harness::history::Record) -> String {
 
 // ---------------------------------------------------------------- receipt
 
-/// Writes the receipt durably (its file and its folder synced): anything
-/// less is `notRecorded`, and nothing is written on it.
-fn store_durably(root: &Path, r: &Receipt) -> Result<(), Problem> {
-    receipt::store(root, r).map_err(|_| Problem::NotRecorded)
+/// Writes the receipt durably: its two files, each synced with its folder,
+/// and then, while it has not settled, the copy in the saved document (its
+/// commit binding, D050; removed once it settles). Anything less is
+/// `notRecorded`, and nothing is written on it. The files are written first,
+/// so they are never older than the document's copy.
+fn store_durably(inner: &Inner, root: &Path, r: &Receipt) -> Result<(), Problem> {
+    receipt::store(root, r).map_err(|_| Problem::NotRecorded)?;
+    let mut s = lock(inner).map_err(|_| Problem::NotRecorded)?;
+    let before = s.data.clone();
+    let at = s.data.open_imports.iter().position(|o| o.id == r.id);
+    match (r.terminal(), at) {
+        (false, Some(i)) => s.data.open_imports[i] = r.clone(),
+        (false, None) => s.data.open_imports.push(r.clone()),
+        (true, Some(i)) => {
+            s.data.open_imports.remove(i);
+        }
+        (true, None) => return Ok(()),
+    }
+    s.save_with(&before).map_err(|_| Problem::NotRecorded)?;
+    if s.durability_unconfirmed {
+        return Err(Problem::NotRecorded);
+    }
+    Ok(())
 }
 
 /// Writes the receipt durably and publishes it.
 fn note(inner: &Inner, root: &Path, r: &Receipt) -> Result<(), Problem> {
-    let stored = store_durably(root, r);
+    let stored = store_durably(inner, root, r);
     changed(inner, |s| s.put_v1_receipt(r));
     stored
 }
@@ -1239,7 +1317,7 @@ impl Journal {
             }
             r.clone()
         });
-        store_durably(&self.root, &r).map_err(Some)?;
+        store_durably(inner, &self.root, &r).map_err(Some)?;
         if interrupted(inner, CommitPoint::Writing) {
             return Err(None);
         }
@@ -1328,7 +1406,7 @@ async fn import(
         Err(Some(p)) => p,
         Ok(()) => {
             r.state = ReceiptState::Applied;
-            match store_durably(root, &r) {
+            match store_durably(inner, root, &r) {
                 Ok(()) => {
                     // The commit: the receipt and everything it wrote show
                     // together.
@@ -1563,7 +1641,20 @@ async fn recover(inner: &Arc<Inner>, lease: u64) {
             problem.get_or_insert(p);
         }
     }
-    changed(inner, |s| s.settle_v1(lease, problem));
+    // Its writes restore the folders' permissions: what they hold now is
+    // listed again.
+    let inventory = tokio::task::spawn_blocking(move || receipt::load_all(&root))
+        .await
+        .unwrap_or_default();
+    changed(inner, |s| {
+        s.v1_import.unreadable = inventory.unreadable;
+        s.v1_import.damaged = inventory
+            .damaged
+            .into_iter()
+            .filter(|d| !s.v1_import.receipts.iter().any(|r| r.id == *d))
+            .collect();
+        s.settle_v1(lease, problem);
+    });
 }
 
 /// Rolls a receipt back: each entry it wrote, and each it was writing when
@@ -1597,7 +1688,7 @@ async fn revert(inner: &Arc<Inner>, root: &Path, mut r: Receipt, undone: bool) -
             }
         }
         r.state = ReceiptState::RolledBack;
-        let _ = store_durably(root, &r);
+        let _ = store_durably(inner, root, &r);
         changed(inner, |s| {
             s.put_v1_receipt(&r);
             s.restage();
@@ -1605,7 +1696,7 @@ async fn revert(inner: &Arc<Inner>, root: &Path, mut r: Receipt, undone: bool) -
         return None;
     }
     r.state = ReceiptState::RollingBack;
-    if let Err(p) = store_durably(root, &r) {
+    if let Err(p) = store_durably(inner, root, &r) {
         // Not recorded: nothing is removed. A committed import stays shown.
         if committed {
             (r.state, r.recovered) = previous;
@@ -1680,7 +1771,7 @@ async fn revert(inner: &Arc<Inner>, root: &Path, mut r: Receipt, undone: bool) -
     if done {
         r.state = ReceiptState::RolledBack;
     }
-    let stored = store_durably(root, &r);
+    let stored = store_durably(inner, root, &r);
     changed(inner, |s| {
         s.put_v1_receipt(&r);
         s.restage();

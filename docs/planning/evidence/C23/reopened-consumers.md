@@ -29,3 +29,12 @@ C23's native regressions also changed one earlier chunk's driver:
 | Consumer (owner) | What C23 changed | Why its behavior holds | Re-run on C23 |
 |---|---|---|---|
 | C09 native driver, C09-N07 (C09) | The check that the operator's later clipboard text is kept past the 60 s clear repeats its window, with a newly issued key, when another writer changed the pasteboard during it; only a window no other writer touched decides the check, and the record states how many windows were repeated | During C23's regressions Universal Clipboard from another device (a type marked `com.apple.is-remote-clipboard`) replaced the driver's text 13 s into the window, three runs in a row; a change-count watch showed the app wrote nothing then. The app's code and the check's pass condition are unchanged | C09 native driver on the C23 bundle |
+
+The P07 remediation of review attempt-02 reaches these consumers too:
+
+| Consumer (owner) | What changed | Why its behavior holds | Re-run |
+|---|---|---|---|
+| Intent admission (C01, every chunk) | The import write gate holds until every receipt has settled and while a receipt cannot be read, not only while an import or rollback runs | With every receipt settled and readable (always, unless an import was interrupted or a receipt lost), admission is exactly as before | full desktop-core suite; C23 native driver |
+| Tenant selection and the snapshot's active tenant (C02) | `selectTenant` refuses a tenant an unsettled receipt names; the active tenant shown is never one | Tenants outside an unsettled import select and show as before | `context_credentials` suite; C02 native driver in the C24 cumulative run |
+| Harness history open and resume (C20) | Opening or resuming a conversation an unsettled receipt names is refused; such an opened conversation is not published | Every other conversation opens and resumes as before | `harness_identity_history` suite; C20 native driver in the C24 cumulative run |
+| The saved document (C01, C02 and every chunk that saves state) | `PersistedState` gains `openImports`, the unsettled receipts (C23's commit binding) | Serialized only while an import is unsettled (`skip_serializing_if` empty), so every saved document otherwise is byte-for-byte as before and every earlier build reads it; a reset clears it with the rest of the data | `context_credentials` store tests; full desktop-core suite |

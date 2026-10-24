@@ -1,6 +1,6 @@
 {
  "observations": {
-  "origin": "https://localhost:53460",
+  "origin": "https://localhost:65304",
   "guest_nav": [
    "Learn"
   ],
@@ -162,7 +162,7 @@
   "tree_certificate_print_failed": "docs/planning/evidence/C23/native-C06/tree-certificate-print-failed.json",
   "certificate": {
    "shown": true,
-   "cert_url": "https://localhost:53460/verify/cert-certification",
+   "cert_url": "https://localhost:65304/verify/cert-certification",
    "prints_before": [],
    "prints_after": [
     "print"
@@ -235,7 +235,7 @@
      "desktop.attempt.start",
      {
       "labId": "m-rt-1-lab-def",
-      "requestId": "2b719bb2-159d-49eb-9491-4edd49d45393"
+      "requestId": "d5f2722a-4b6e-4a3d-bd1d-6383ef79acc1"
      }
     ],
     [
@@ -249,7 +249,7 @@
      {
       "attemptId": "00000000-0000-4000-8000-0000000000a1",
       "baseVersion": 0,
-      "clientMutationId": "5d6978bd-35b5-4f64-9cd6-452b07def2db",
+      "clientMutationId": "dd94077b-01da-40b3-ac67-a6ea55931302",
       "draft": {
        "commands": [],
        "debrief": "",
@@ -267,7 +267,7 @@
      {
       "attemptId": "00000000-0000-4000-8000-0000000000a1",
       "draftVersion": 1,
-      "submissionId": "a906a381-e88f-49a1-a83d-a6cb951fba08"
+      "submissionId": "16ec9958-1f90-414e-952e-799e13fd445f"
      }
     ],
     [
@@ -300,15 +300,15 @@
   "shift": {
    "shown": true,
    "explained": true,
-   "answered_after_s": 0.7,
+   "answered_after_s": 1.07,
    "sla_from_academy": true,
    "serve": [
-    0.04
+    0.03
    ],
    "answer": [
-    0.64
+    0.62
    ],
-   "briefing_replied": 6.05,
+   "briefing_replied": 6.04,
    "answer_body": {
     "shiftId": "00000000-0000-4000-8000-0000000000d1",
     "order": 2,
@@ -428,7 +428,7 @@
     [
      {
       "contentType": "image/jpeg",
-      "size": 232518
+      "size": 232991
      },
      true
     ]
@@ -436,7 +436,7 @@
    "put": [
     [
      "image/jpeg",
-     232518,
+     232991,
      false,
      200
     ]
@@ -490,8 +490,8 @@
    "host_appearance": true,
    "no_theme_choice": true,
    "items_before": [
-    "cr-58ba6fd014506ab8",
-    "cr-c946fb92ff247183"
+    "cr-0feb46a4c6711d76",
+    "cr-58ba6fd014506ab8"
    ],
    "guest_nav": true,
    "guest_nav_links": [
@@ -515,7 +515,7 @@
   "truth_in_trees": [],
   "requests": [
    {
-    "t": 1792746565.3682292,
+    "t": 1792794667.09921,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -528,10 +528,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 4.735
+    "handlingMs": 1.798
    },
    {
-    "t": 1792746565.368628,
+    "t": 1792794667.099479,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -544,10 +544,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.144
+    "handlingMs": 0.127
    },
    {
-    "t": 1792746567.5139341,
+    "t": 1792794669.218569,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -559,7 +559,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746567.515337,
+    "t": 1792794669.2197728,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -571,7 +571,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746567.516182,
+    "t": 1792794669.220638,
     "method": "POST",
     "path": "/oauth/device",
     "fields": [
@@ -586,7 +586,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746568.519657,
+    "t": 1792794670.22563,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -602,7 +602,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746568.521367,
+    "t": 1792794670.229109,
     "method": "GET",
     "path": "/api/trpc/desktop.me",
     "fields": [],
@@ -614,7 +614,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746568.864393,
+    "t": 1792794670.512908,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -627,10 +627,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.246
+    "handlingMs": 0.125
    },
    {
-    "t": 1792746568.866951,
+    "t": 1792794670.5138078,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -643,10 +643,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.223
+    "handlingMs": 0.087
    },
    {
-    "t": 1792746570.0932329,
+    "t": 1792794671.7099829,
     "method": "GET",
     "path": "/api/trpc/caches.list",
     "fields": [],
@@ -659,10 +659,10 @@
     "procedure": "caches.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.136
+    "handlingMs": 0.1
    },
    {
-    "t": 1792746570.109789,
+    "t": 1792794671.714318,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -675,10 +675,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.18
+    "handlingMs": 0.097
    },
    {
-    "t": 1792746570.110361,
+    "t": 1792794671.714899,
     "method": "GET",
     "path": "/api/trpc/gamification.summary",
     "fields": [],
@@ -691,10 +691,10 @@
     "procedure": "gamification.summary",
     "input": null,
     "status": 200,
-    "handlingMs": 0.108
+    "handlingMs": 0.093
    },
    {
-    "t": 1792746570.110973,
+    "t": 1792794671.715926,
     "method": "GET",
     "path": "/api/trpc/gamification.dossier",
     "fields": [],
@@ -707,10 +707,10 @@
     "procedure": "gamification.dossier",
     "input": null,
     "status": 404,
-    "handlingMs": 0.068
+    "handlingMs": 0.07
    },
    {
-    "t": 1792746570.1125162,
+    "t": 1792794671.720896,
     "method": "GET",
     "path": "/api/trpc/shift.eligibility",
     "fields": [],
@@ -723,10 +723,10 @@
     "procedure": "shift.eligibility",
     "input": null,
     "status": 200,
-    "handlingMs": 0.096
+    "handlingMs": 0.115
    },
    {
-    "t": 1792746570.118269,
+    "t": 1792794671.7212071,
     "method": "GET",
     "path": "/api/trpc/shift.getActive",
     "fields": [],
@@ -739,10 +739,10 @@
     "procedure": "shift.getActive",
     "input": null,
     "status": 200,
-    "handlingMs": 0.258
+    "handlingMs": 0.088
    },
    {
-    "t": 1792746570.127369,
+    "t": 1792794671.726088,
     "method": "GET",
     "path": "/api/trpc/shift.daily",
     "fields": [],
@@ -755,10 +755,10 @@
     "procedure": "shift.daily",
     "input": null,
     "status": 412,
-    "handlingMs": 0.19
+    "handlingMs": 0.101
    },
    {
-    "t": 1792746572.417637,
+    "t": 1792794673.996073,
     "method": "GET",
     "path": "/api/trpc/settings.get",
     "fields": [],
@@ -771,10 +771,10 @@
     "procedure": "settings.get",
     "input": null,
     "status": 200,
-    "handlingMs": 0.279
+    "handlingMs": 0.145
    },
    {
-    "t": 1792746572.418423,
+    "t": 1792794673.9963892,
     "method": "GET",
     "path": "/api/trpc/certifications.list",
     "fields": [],
@@ -787,10 +787,10 @@
     "procedure": "certifications.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.213
+    "handlingMs": 0.362
    },
    {
-    "t": 1792746572.419219,
+    "t": 1792794673.99682,
     "method": "GET",
     "path": "/api/trpc/exam.eligibility",
     "fields": [],
@@ -803,10 +803,10 @@
     "procedure": "exam.eligibility",
     "input": "{\"json\":{\"certificationId\":null},\"meta\":{\"values\":{\"certificationId\":[\"undefined\"]},\"v\":1}}",
     "status": 200,
-    "handlingMs": 0.103
+    "handlingMs": 0.108
    },
    {
-    "t": 1792746572.4212108,
+    "t": 1792794673.998198,
     "method": "GET",
     "path": "/api/trpc/exam.eligibility",
     "fields": [],
@@ -819,10 +819,10 @@
     "procedure": "exam.eligibility",
     "input": "{\"json\":{\"certificationId\":\"ai-app-security\"}}",
     "status": 200,
-    "handlingMs": 0.108
+    "handlingMs": 0.081
    },
    {
-    "t": 1792746573.092396,
+    "t": 1792794674.657602,
     "method": "POST",
     "path": "/api/trpc/exam.start",
     "fields": [],
@@ -835,10 +835,10 @@
     "procedure": "exam.start",
     "input": "{\"json\":{\"consent\":true,\"certificationId\":\"ai-app-security\"}}",
     "status": 200,
-    "handlingMs": 0.255
+    "handlingMs": 0.199
    },
    {
-    "t": 1792746573.098189,
+    "t": 1792794674.6629078,
     "method": "GET",
     "path": "/api/trpc/exam.getActive",
     "fields": [],
@@ -851,10 +851,10 @@
     "procedure": "exam.getActive",
     "input": null,
     "status": 200,
-    "handlingMs": 0.241
+    "handlingMs": 0.172
    },
    {
-    "t": 1792746574.7899709,
+    "t": 1792794676.351243,
     "method": "POST",
     "path": "/api/trpc/exam.answer",
     "fields": [],
@@ -867,10 +867,10 @@
     "procedure": "exam.answer",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"questionId\":\"q1\",\"value\":0}}",
     "status": 200,
-    "handlingMs": 0.12
+    "handlingMs": 0.092
    },
    {
-    "t": 1792746575.8625002,
+    "t": 1792794677.4311209,
     "method": "POST",
     "path": "/api/trpc/exam.submit",
     "fields": [],
@@ -883,10 +883,10 @@
     "procedure": "exam.submit",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"answers\":[{\"questionId\":\"q1\",\"value\":0}]}}",
     "status": 503,
-    "handlingMs": 0.201
+    "handlingMs": 0.241
    },
    {
-    "t": 1792746578.070287,
+    "t": 1792794679.639127,
     "method": "GET",
     "path": "/api/trpc/exam.submissionState",
     "fields": [],
@@ -899,10 +899,10 @@
     "procedure": "exam.submissionState",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\"}}",
     "status": 200,
-    "handlingMs": 0.142
+    "handlingMs": 0.148
    },
    {
-    "t": 1792746578.076475,
+    "t": 1792794679.642593,
     "method": "GET",
     "path": "/api/trpc/exam.result",
     "fields": [],
@@ -915,10 +915,10 @@
     "procedure": "exam.result",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\"}}",
     "status": 200,
-    "handlingMs": 0.154
+    "handlingMs": 0.099
    },
    {
-    "t": 1792746580.707395,
+    "t": 1792794682.167139,
     "method": "POST",
     "path": "/api/trpc/exam.answer",
     "fields": [],
@@ -931,10 +931,10 @@
     "procedure": "exam.answer",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"questionId\":\"q1\",\"value\":0}}",
     "status": 200,
-    "handlingMs": 0.158
+    "handlingMs": 0.095
    },
    {
-    "t": 1792746584.1178648,
+    "t": 1792794685.55336,
     "method": "POST",
     "path": "/api/trpc/exam.submit",
     "fields": [],
@@ -947,10 +947,10 @@
     "procedure": "exam.submit",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"answers\":[{\"questionId\":\"q1\",\"value\":0}]}}",
     "status": 503,
-    "handlingMs": 0.131
+    "handlingMs": 0.097
    },
    {
-    "t": 1792746605.976366,
+    "t": 1792794707.012615,
     "method": "GET",
     "path": "/api/trpc/exam.submissionState",
     "fields": [],
@@ -963,10 +963,10 @@
     "procedure": "exam.submissionState",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\"}}",
     "status": 200,
-    "handlingMs": 2.606
+    "handlingMs": 0.113
    },
    {
-    "t": 1792746606.54461,
+    "t": 1792794707.570314,
     "method": "GET",
     "path": "/api/trpc/certificate.mine",
     "fields": [],
@@ -979,10 +979,10 @@
     "procedure": "certificate.mine",
     "input": null,
     "status": 200,
-    "handlingMs": 0.145
+    "handlingMs": 0.116
    },
    {
-    "t": 1792746608.5351198,
+    "t": 1792794709.493616,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -995,10 +995,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.16
+    "handlingMs": 0.166
    },
    {
-    "t": 1792746608.536511,
+    "t": 1792794709.494462,
     "method": "GET",
     "path": "/api/trpc/paths.forCourse",
     "fields": [],
@@ -1011,10 +1011,10 @@
     "procedure": "paths.forCourse",
     "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.184
+    "handlingMs": 0.115
    },
    {
-    "t": 1792746608.539274,
+    "t": 1792794709.497279,
     "method": "GET",
     "path": "/api/trpc/progress.courseSummary",
     "fields": [],
@@ -1027,10 +1027,10 @@
     "procedure": "progress.courseSummary",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.106
+    "handlingMs": 0.089
    },
    {
-    "t": 1792746608.5419421,
+    "t": 1792794709.499489,
     "method": "GET",
     "path": "/api/trpc/enrollment.affectedByCourseRemoval",
     "fields": [],
@@ -1043,10 +1043,10 @@
     "procedure": "enrollment.affectedByCourseRemoval",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.122
+    "handlingMs": 0.129
    },
    {
-    "t": 1792746608.5443661,
+    "t": 1792794709.499945,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -1059,10 +1059,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.367
+    "handlingMs": 0.16
    },
    {
-    "t": 1792746608.547837,
+    "t": 1792794709.5033972,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -1075,10 +1075,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.11
+    "handlingMs": 0.089
    },
    {
-    "t": 1792746608.638318,
+    "t": 1792794709.5797498,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1091,10 +1091,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lab\"}}",
     "status": 200,
-    "handlingMs": 2.104
+    "handlingMs": 1.701
    },
    {
-    "t": 1792746608.946729,
+    "t": 1792794709.8902578,
     "method": "GET",
     "path": "/api/trpc/labs.get",
     "fields": [],
@@ -1107,10 +1107,10 @@
     "procedure": "labs.get",
     "input": "{\"json\":{\"courseId\":\"runtime-security\",\"order\":2}}",
     "status": 200,
-    "handlingMs": 0.35
+    "handlingMs": 0.3
    },
    {
-    "t": 1792746608.9543529,
+    "t": 1792794709.896544,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.list",
     "fields": [],
@@ -1123,10 +1123,10 @@
     "procedure": "desktop.attempt.list",
     "input": "{\"json\":{\"limit\":100}}",
     "status": 200,
-    "handlingMs": 0.477
+    "handlingMs": 0.286
    },
    {
-    "t": 1792746609.101045,
+    "t": 1792794710.060852,
     "method": "POST",
     "path": "/api/trpc/desktop.attempt.start",
     "fields": [],
@@ -1137,12 +1137,12 @@
     "authorization": true,
     "clientSecret": false,
     "procedure": "desktop.attempt.start",
-    "input": "{\"json\":{\"labId\":\"m-rt-1-lab-def\",\"requestId\":\"2b719bb2-159d-49eb-9491-4edd49d45393\"}}",
+    "input": "{\"json\":{\"labId\":\"m-rt-1-lab-def\",\"requestId\":\"d5f2722a-4b6e-4a3d-bd1d-6383ef79acc1\"}}",
     "status": 200,
-    "handlingMs": 0.13
+    "handlingMs": 0.128
    },
    {
-    "t": 1792746609.1041028,
+    "t": 1792794710.0638258,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.get",
     "fields": [],
@@ -1155,10 +1155,10 @@
     "procedure": "desktop.attempt.get",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\"}}",
     "status": 200,
-    "handlingMs": 0.133
+    "handlingMs": 0.121
    },
    {
-    "t": 1792746610.556693,
+    "t": 1792794711.4924061,
     "method": "POST",
     "path": "/api/trpc/desktop.draft.save",
     "fields": [],
@@ -1169,12 +1169,12 @@
     "authorization": true,
     "clientSecret": false,
     "procedure": "desktop.draft.save",
-    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\",\"baseVersion\":0,\"clientMutationId\":\"5d6978bd-35b5-4f64-9cd6-452b07def2db\",\"draft\":{\"commands\":[],\"debrief\":\"\",\"steps\":{},\"classifications\":{\"f1\":\"true-positive\",\"f2\":\"false-positive\"},\"decision\":\"block\"}}}",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\",\"baseVersion\":0,\"clientMutationId\":\"dd94077b-01da-40b3-ac67-a6ea55931302\",\"draft\":{\"commands\":[],\"debrief\":\"\",\"steps\":{},\"classifications\":{\"f1\":\"true-positive\",\"f2\":\"false-positive\"},\"decision\":\"block\"}}}",
     "status": 200,
-    "handlingMs": 0.148
+    "handlingMs": 0.214
    },
    {
-    "t": 1792746610.561203,
+    "t": 1792794711.497059,
     "method": "POST",
     "path": "/api/trpc/desktop.attempt.submit",
     "fields": [],
@@ -1185,12 +1185,12 @@
     "authorization": true,
     "clientSecret": false,
     "procedure": "desktop.attempt.submit",
-    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\",\"draftVersion\":1,\"submissionId\":\"a906a381-e88f-49a1-a83d-a6cb951fba08\"}}",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\",\"draftVersion\":1,\"submissionId\":\"16ec9958-1f90-414e-952e-799e13fd445f\"}}",
     "status": 200,
-    "handlingMs": 0.109
+    "handlingMs": 0.122
    },
    {
-    "t": 1792746610.5637162,
+    "t": 1792794711.499802,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.list",
     "fields": [],
@@ -1203,10 +1203,10 @@
     "procedure": "desktop.attempt.list",
     "input": "{\"json\":{\"limit\":100}}",
     "status": 200,
-    "handlingMs": 0.276
+    "handlingMs": 0.254
    },
    {
-    "t": 1792746610.5666492,
+    "t": 1792794711.5034509,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1219,10 +1219,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lab\"}}",
     "status": 200,
-    "handlingMs": 1.729
+    "handlingMs": 2.646
    },
    {
-    "t": 1792746610.665971,
+    "t": 1792794711.580965,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -1235,10 +1235,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.171
+    "handlingMs": 0.173
    },
    {
-    "t": 1792746610.762936,
+    "t": 1792794711.662014,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -1251,10 +1251,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-2\"}}",
     "status": 200,
-    "handlingMs": 0.336
+    "handlingMs": 0.284
    },
    {
-    "t": 1792746610.7681742,
+    "t": 1792794711.666795,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -1267,10 +1267,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-2\"}}",
     "status": 200,
-    "handlingMs": 0.127
+    "handlingMs": 0.09
    },
    {
-    "t": 1792746610.884607,
+    "t": 1792794711.765174,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1283,10 +1283,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-2-lab\"}}",
     "status": 200,
-    "handlingMs": 1.476
+    "handlingMs": 1.878
    },
    {
-    "t": 1792746610.888591,
+    "t": 1792794711.7690072,
     "method": "GET",
     "path": "/api/trpc/labs.get",
     "fields": [],
@@ -1299,10 +1299,10 @@
     "procedure": "labs.get",
     "input": "{\"json\":{\"courseId\":\"runtime-security\",\"order\":3}}",
     "status": 200,
-    "handlingMs": 0.129
+    "handlingMs": 0.115
    },
    {
-    "t": 1792746610.961011,
+    "t": 1792794711.8306801,
     "method": "POST",
     "path": "/api/trpc/desktop.attempt.start",
     "fields": [],
@@ -1313,12 +1313,12 @@
     "authorization": true,
     "clientSecret": false,
     "procedure": "desktop.attempt.start",
-    "input": "{\"json\":{\"labId\":\"m-rt-2-lab-def\",\"requestId\":\"0487243b-c58f-4d79-b5d3-e9c2ddb0024e\"}}",
+    "input": "{\"json\":{\"labId\":\"m-rt-2-lab-def\",\"requestId\":\"e5dd4594-57f3-4c27-9281-e9d4a5293cfc\"}}",
     "status": 412,
-    "handlingMs": 0.099
+    "handlingMs": 0.1
    },
    {
-    "t": 1792746611.0491571,
+    "t": 1792794711.9073112,
     "method": "GET",
     "path": "/api/trpc/gamification.dossier",
     "fields": [],
@@ -1331,10 +1331,10 @@
     "procedure": "gamification.dossier",
     "input": null,
     "status": 404,
-    "handlingMs": 0.196
+    "handlingMs": 0.213
    },
    {
-    "t": 1792746611.136191,
+    "t": 1792794711.9802399,
     "method": "GET",
     "path": "/api/trpc/orientation.get",
     "fields": [],
@@ -1347,10 +1347,10 @@
     "procedure": "orientation.get",
     "input": null,
     "status": 200,
-    "handlingMs": 0.109
+    "handlingMs": 0.092
    },
    {
-    "t": 1792746611.14133,
+    "t": 1792794711.984001,
     "method": "GET",
     "path": "/api/trpc/shift.dailyBoard",
     "fields": [],
@@ -1363,10 +1363,10 @@
     "procedure": "shift.dailyBoard",
     "input": null,
     "status": 404,
-    "handlingMs": 0.107
+    "handlingMs": 0.073
    },
    {
-    "t": 1792746611.1447449,
+    "t": 1792794711.985336,
     "method": "GET",
     "path": "/api/trpc/shop.list",
     "fields": [],
@@ -1379,10 +1379,10 @@
     "procedure": "shop.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.25
+    "handlingMs": 0.097
    },
    {
-    "t": 1792746611.145451,
+    "t": 1792794711.986932,
     "method": "POST",
     "path": "/api/trpc/shift.serve",
     "fields": [],
@@ -1395,10 +1395,10 @@
     "procedure": "shift.serve",
     "input": "{\"json\":{\"shiftId\":\"00000000-0000-4000-8000-0000000000d1\"}}",
     "status": 200,
-    "handlingMs": 0.071
+    "handlingMs": 0.059
    },
    {
-    "t": 1792746611.1486132,
+    "t": 1792794711.988765,
     "method": "GET",
     "path": "/api/trpc/shift.getActive",
     "fields": [],
@@ -1411,10 +1411,10 @@
     "procedure": "shift.getActive",
     "input": null,
     "status": 200,
-    "handlingMs": 0.13
+    "handlingMs": 0.096
    },
    {
-    "t": 1792746611.14874,
+    "t": 1792794711.989374,
     "method": "GET",
     "path": "/api/trpc/shift.dailyBoard",
     "fields": [],
@@ -1427,10 +1427,10 @@
     "procedure": "shift.dailyBoard",
     "input": null,
     "status": 404,
-    "handlingMs": 0.12
+    "handlingMs": 0.051
    },
    {
-    "t": 1792746611.148947,
+    "t": 1792794711.9941912,
     "method": "GET",
     "path": "/api/trpc/gamification.summary",
     "fields": [],
@@ -1443,10 +1443,10 @@
     "procedure": "gamification.summary",
     "input": null,
     "status": 200,
-    "handlingMs": 0.058
+    "handlingMs": 0.097
    },
    {
-    "t": 1792746611.742473,
+    "t": 1792794712.572146,
     "method": "POST",
     "path": "/api/trpc/shift.answer",
     "fields": [],
@@ -1459,10 +1459,10 @@
     "procedure": "shift.answer",
     "input": "{\"json\":{\"shiftId\":\"00000000-0000-4000-8000-0000000000d1\",\"order\":2,\"values\":[\"0\"]}}",
     "status": 200,
-    "handlingMs": 0.16
+    "handlingMs": 0.194
    },
    {
-    "t": 1792746611.745304,
+    "t": 1792794712.575091,
     "method": "GET",
     "path": "/api/trpc/shift.getActive",
     "fields": [],
@@ -1475,10 +1475,10 @@
     "procedure": "shift.getActive",
     "input": null,
     "status": 200,
-    "handlingMs": 0.23
+    "handlingMs": 0.202
    },
    {
-    "t": 1792746611.746583,
+    "t": 1792794712.576999,
     "method": "GET",
     "path": "/api/trpc/shift.dailyBoard",
     "fields": [],
@@ -1491,10 +1491,10 @@
     "procedure": "shift.dailyBoard",
     "input": null,
     "status": 404,
-    "handlingMs": 0.132
+    "handlingMs": 0.136
    },
    {
-    "t": 1792746611.747951,
+    "t": 1792794712.5787468,
     "method": "GET",
     "path": "/api/trpc/gamification.summary",
     "fields": [],
@@ -1507,10 +1507,10 @@
     "procedure": "gamification.summary",
     "input": null,
     "status": 200,
-    "handlingMs": 0.149
+    "handlingMs": 0.122
    },
    {
-    "t": 1792746617.150398,
+    "t": 1792794717.991883,
     "method": "GET",
     "path": "/api/trpc/shift.briefing",
     "fields": [],
@@ -1523,10 +1523,10 @@
     "procedure": "shift.briefing",
     "input": "{\"json\":{\"shiftId\":\"00000000-0000-4000-8000-0000000000d1\",\"stage\":1}}",
     "status": 200,
-    "handlingMs": 6005.434
+    "handlingMs": 6005.255
    },
    {
-    "t": 1792746619.149524,
+    "t": 1792794720.340919,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1539,10 +1539,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
     "status": 200,
-    "handlingMs": 1.881
+    "handlingMs": 1.74
    },
    {
-    "t": 1792746620.717392,
+    "t": 1792794721.9066508,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1555,10 +1555,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-03\"}}",
     "status": 200,
-    "handlingMs": 1.779
+    "handlingMs": 1.809
    },
    {
-    "t": 1792746621.561225,
+    "t": 1792794722.753045,
     "method": "POST",
     "path": "/api/trpc/admin.feedback.submit",
     "fields": [],
@@ -1571,10 +1571,10 @@
     "procedure": "admin.feedback.submit",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\",\"rating\":4,\"lessonId\":\"m-rt-1-lesson-03\"}}",
     "status": 200,
-    "handlingMs": 0.161
+    "handlingMs": 0.202
    },
    {
-    "t": 1792746623.230475,
+    "t": 1792794724.3244202,
     "method": "POST",
     "path": "/api/trpc/progress.resetCourse",
     "fields": [],
@@ -1587,10 +1587,10 @@
     "procedure": "progress.resetCourse",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.144
+    "handlingMs": 0.092
    },
    {
-    "t": 1792746623.232887,
+    "t": 1792794724.326349,
     "method": "GET",
     "path": "/api/trpc/progress.courseSummary",
     "fields": [],
@@ -1603,10 +1603,10 @@
     "procedure": "progress.courseSummary",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.162
+    "handlingMs": 0.083
    },
    {
-    "t": 1792746623.238088,
+    "t": 1792794724.331336,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -1619,10 +1619,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.128
+    "handlingMs": 0.106
    },
    {
-    "t": 1792746623.242027,
+    "t": 1792794724.332503,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -1635,10 +1635,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.113
+    "handlingMs": 0.074
    },
    {
-    "t": 1792746626.655138,
+    "t": 1792794727.7172532,
     "method": "POST",
     "path": "/api/trpc/enrollment.removeByCourse",
     "fields": [],
@@ -1651,10 +1651,10 @@
     "procedure": "enrollment.removeByCourse",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.21
+    "handlingMs": 0.109
    },
    {
-    "t": 1792746626.658179,
+    "t": 1792794727.719281,
     "method": "GET",
     "path": "/api/trpc/enrollment.affectedByCourseRemoval",
     "fields": [],
@@ -1667,10 +1667,10 @@
     "procedure": "enrollment.affectedByCourseRemoval",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.156
+    "handlingMs": 0.103
    },
    {
-    "t": 1792746626.661511,
+    "t": 1792794727.7222788,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -1683,10 +1683,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.168
+    "handlingMs": 0.097
    },
    {
-    "t": 1792746626.666124,
+    "t": 1792794727.7246258,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -1699,10 +1699,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.147
+    "handlingMs": 0.066
    },
    {
-    "t": 1792746633.05409,
+    "t": 1792794734.112283,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -1715,10 +1715,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.281
+    "handlingMs": 0.235
    },
    {
-    "t": 1792746633.055219,
+    "t": 1792794734.1130571,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -1731,10 +1731,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.358
+    "handlingMs": 0.2
    },
    {
-    "t": 1792746633.057931,
+    "t": 1792794734.114123,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -1747,10 +1747,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.142
+    "handlingMs": 0.092
    },
    {
-    "t": 1792746633.270816,
+    "t": 1792794734.267801,
     "method": "GET",
     "path": "/api/trpc/settings.get",
     "fields": [],
@@ -1763,10 +1763,10 @@
     "procedure": "settings.get",
     "input": null,
     "status": 200,
-    "handlingMs": 0.285
+    "handlingMs": 0.191
    },
    {
-    "t": 1792746633.272681,
+    "t": 1792794734.268277,
     "method": "GET",
     "path": "/api/trpc/certifications.list",
     "fields": [],
@@ -1779,10 +1779,10 @@
     "procedure": "certifications.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.396
+    "handlingMs": 0.219
    },
    {
-    "t": 1792746633.273609,
+    "t": 1792794734.2687302,
     "method": "GET",
     "path": "/api/trpc/exam.eligibility",
     "fields": [],
@@ -1795,10 +1795,10 @@
     "procedure": "exam.eligibility",
     "input": "{\"json\":{\"certificationId\":null},\"meta\":{\"values\":{\"certificationId\":[\"undefined\"]},\"v\":1}}",
     "status": 200,
-    "handlingMs": 0.326
+    "handlingMs": 0.146
    },
    {
-    "t": 1792746633.274785,
+    "t": 1792794734.269908,
     "method": "GET",
     "path": "/api/trpc/exam.eligibility",
     "fields": [],
@@ -1811,10 +1811,10 @@
     "procedure": "exam.eligibility",
     "input": "{\"json\":{\"certificationId\":\"ai-app-security\"}}",
     "status": 200,
-    "handlingMs": 0.147
+    "handlingMs": 0.096
    },
    {
-    "t": 1792746633.393986,
+    "t": 1792794734.34064,
     "method": "GET",
     "path": "/api/trpc/exam.getActive",
     "fields": [],
@@ -1827,10 +1827,10 @@
     "procedure": "exam.getActive",
     "input": null,
     "status": 200,
-    "handlingMs": 0.383
+    "handlingMs": 0.123
    },
    {
-    "t": 1792746633.509019,
+    "t": 1792794734.404944,
     "method": "POST",
     "path": "/api/trpc/exam.answer",
     "fields": [],
@@ -1843,10 +1843,10 @@
     "procedure": "exam.answer",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"questionId\":\"q1\",\"value\":0}}",
     "status": 200,
-    "handlingMs": 0.167
+    "handlingMs": 0.087
    },
    {
-    "t": 1792746672.2660449,
+    "t": 1792794771.317657,
     "method": "GET",
     "path": "/api/trpc/gamification.summary",
     "fields": [],
@@ -1859,10 +1859,10 @@
     "procedure": "gamification.summary",
     "input": null,
     "status": 200,
-    "handlingMs": 0.455
+    "handlingMs": 0.186
    },
    {
-    "t": 1792746672.292439,
+    "t": 1792794771.33811,
     "method": "GET",
     "path": "/api/trpc/shop.list",
     "fields": [],
@@ -1875,10 +1875,10 @@
     "procedure": "shop.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.198
+    "handlingMs": 0.156
    },
    {
-    "t": 1792746672.7269719,
+    "t": 1792794771.5555289,
     "method": "POST",
     "path": "/api/trpc/settings.avatarUploadUrl",
     "fields": [],
@@ -1889,12 +1889,12 @@
     "authorization": true,
     "clientSecret": false,
     "procedure": "settings.avatarUploadUrl",
-    "input": "{\"json\":{\"contentType\":\"image/jpeg\",\"size\":232518}}",
+    "input": "{\"json\":{\"contentType\":\"image/jpeg\",\"size\":232991}}",
     "status": 200,
-    "handlingMs": 0.168
+    "handlingMs": 0.097
    },
    {
-    "t": 1792746672.7288032,
+    "t": 1792794771.557096,
     "method": "PUT",
     "path": "/upload/avatars/user_2fixturelearner.jpg",
     "fields": [],
@@ -1906,11 +1906,11 @@
     "clientSecret": false,
     "put": true,
     "contentType": "image/jpeg",
-    "bytes": 232518,
+    "bytes": 232991,
     "status": 200
    },
    {
-    "t": 1792746672.729861,
+    "t": 1792794771.558151,
     "method": "POST",
     "path": "/api/trpc/settings.confirmAvatar",
     "fields": [],
@@ -1923,10 +1923,10 @@
     "procedure": "settings.confirmAvatar",
     "input": "{\"json\":{\"ext\":\"jpg\"}}",
     "status": 200,
-    "handlingMs": 0.127
+    "handlingMs": 0.079
    },
    {
-    "t": 1792746672.737592,
+    "t": 1792794771.5624719,
     "method": "GET",
     "path": "/api/trpc/settings.get",
     "fields": [],
@@ -1939,10 +1939,10 @@
     "procedure": "settings.get",
     "input": null,
     "status": 200,
-    "handlingMs": 0.209
+    "handlingMs": 0.102
    },
    {
-    "t": 1792746672.743569,
+    "t": 1792794771.5652769,
     "method": "GET",
     "path": "/api/avatars/user_2fixturelearner.jpg",
     "fields": [],
@@ -1956,7 +1956,7 @@
     "status": 200
    },
    {
-    "t": 1792746675.4975429,
+    "t": 1792794774.186269,
     "method": "POST",
     "path": "/api/trpc/settings.avatarUploadUrl",
     "fields": [],
@@ -1969,10 +1969,10 @@
     "procedure": "settings.avatarUploadUrl",
     "input": "{\"json\":{\"contentType\":\"image/jpeg\",\"size\":7797}}",
     "status": 200,
-    "handlingMs": 0.155
+    "handlingMs": 0.108
    },
    {
-    "t": 1792746675.498486,
+    "t": 1792794774.187118,
     "method": "PUT",
     "path": "/upload/avatars/user_2fixturelearner.jpg",
     "fields": [],
@@ -1988,7 +1988,7 @@
     "status": 200
    },
    {
-    "t": 1792746675.499278,
+    "t": 1792794774.187768,
     "method": "POST",
     "path": "/api/trpc/settings.confirmAvatar",
     "fields": [],
@@ -2001,10 +2001,10 @@
     "procedure": "settings.confirmAvatar",
     "input": "{\"json\":{\"ext\":\"jpg\"}}",
     "status": 200,
-    "handlingMs": 0.094
+    "handlingMs": 0.077
    },
    {
-    "t": 1792746675.502476,
+    "t": 1792794774.189482,
     "method": "GET",
     "path": "/api/trpc/settings.get",
     "fields": [],
@@ -2017,10 +2017,10 @@
     "procedure": "settings.get",
     "input": null,
     "status": 200,
-    "handlingMs": 0.198
+    "handlingMs": 0.091
    },
    {
-    "t": 1792746675.5073972,
+    "t": 1792794774.19166,
     "method": "GET",
     "path": "/api/avatars/user_2fixturelearner.jpg",
     "fields": [],
@@ -2034,7 +2034,7 @@
     "status": 200
    },
    {
-    "t": 1792746677.9471538,
+    "t": 1792794776.466043,
     "method": "POST",
     "path": "/api/trpc/settings.avatarUploadUrl",
     "fields": [],
@@ -2047,10 +2047,10 @@
     "procedure": "settings.avatarUploadUrl",
     "input": "{\"json\":{\"contentType\":\"image/jpeg\",\"size\":7797}}",
     "status": 200,
-    "handlingMs": 0.205
+    "handlingMs": 0.097
    },
    {
-    "t": 1792746677.948372,
+    "t": 1792794776.46686,
     "method": "PUT",
     "path": "/upload/avatars/user_2fixturelearner.jpg",
     "fields": [],
@@ -2066,7 +2066,7 @@
     "status": 0
    },
    {
-    "t": 1792746677.952157,
+    "t": 1792794776.468502,
     "method": "GET",
     "path": "/api/trpc/settings.get",
     "fields": [],
@@ -2079,10 +2079,10 @@
     "procedure": "settings.get",
     "input": null,
     "status": 200,
-    "handlingMs": 0.226
+    "handlingMs": 0.08
    },
    {
-    "t": 1792746677.958147,
+    "t": 1792794776.4705012,
     "method": "GET",
     "path": "/api/avatars/user_2fixturelearner.jpg",
     "fields": [],
@@ -2096,7 +2096,7 @@
     "status": 200
    },
    {
-    "t": 1792746684.389618,
+    "t": 1792794782.336771,
     "method": "POST",
     "path": "/api/trpc/settings.removeAvatar",
     "fields": [],
@@ -2109,10 +2109,10 @@
     "procedure": "settings.removeAvatar",
     "input": "{}",
     "status": 200,
-    "handlingMs": 0.228
+    "handlingMs": 0.142
    },
    {
-    "t": 1792746684.5286431,
+    "t": 1792794782.430414,
     "method": "POST",
     "path": "/oauth/revoke",
     "fields": [
@@ -2128,7 +2128,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746684.543298,
+    "t": 1792794782.4337049,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -2141,10 +2141,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.142
+    "handlingMs": 0.083
    },
    {
-    "t": 1792746684.5533361,
+    "t": 1792794782.442465,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -2157,10 +2157,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.136
+    "handlingMs": 0.098
    },
    {
-    "t": 1792746686.778914,
+    "t": 1792794784.559816,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -2172,7 +2172,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746686.780179,
+    "t": 1792794784.56067,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -2184,7 +2184,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746686.78101,
+    "t": 1792794784.5614688,
     "method": "POST",
     "path": "/oauth/device",
     "fields": [
@@ -2199,7 +2199,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746687.784728,
+    "t": 1792794785.5656588,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -2215,7 +2215,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746687.786454,
+    "t": 1792794785.567536,
     "method": "GET",
     "path": "/api/trpc/desktop.me",
     "fields": [],
@@ -2227,7 +2227,7 @@
     "clientSecret": false
    },
    {
-    "t": 1792746688.1341782,
+    "t": 1792794785.90547,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -2240,10 +2240,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.115
+    "handlingMs": 0.198
    },
    {
-    "t": 1792746688.135784,
+    "t": 1792794785.90611,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -2256,10 +2256,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.103
+    "handlingMs": 0.183
    },
    {
-    "t": 1792746688.3071182,
+    "t": 1792794786.058827,
     "method": "GET",
     "path": "/api/trpc/settings.get",
     "fields": [],
@@ -2272,10 +2272,10 @@
     "procedure": "settings.get",
     "input": null,
     "status": 200,
-    "handlingMs": 0.238
+    "handlingMs": 0.177
    },
    {
-    "t": 1792746688.307745,
+    "t": 1792794786.05892,
     "method": "GET",
     "path": "/api/trpc/certifications.list",
     "fields": [],
@@ -2288,10 +2288,10 @@
     "procedure": "certifications.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.081
+    "handlingMs": 0.083
    },
    {
-    "t": 1792746688.308695,
+    "t": 1792794786.05985,
     "method": "GET",
     "path": "/api/trpc/exam.eligibility",
     "fields": [],
@@ -2304,10 +2304,10 @@
     "procedure": "exam.eligibility",
     "input": "{\"json\":{\"certificationId\":null},\"meta\":{\"values\":{\"certificationId\":[\"undefined\"]},\"v\":1}}",
     "status": 200,
-    "handlingMs": 0.094
+    "handlingMs": 0.087
    },
    {
-    "t": 1792746688.309994,
+    "t": 1792794786.061105,
     "method": "GET",
     "path": "/api/trpc/exam.eligibility",
     "fields": [],
@@ -2320,10 +2320,10 @@
     "procedure": "exam.eligibility",
     "input": "{\"json\":{\"certificationId\":\"ai-app-security\"}}",
     "status": 200,
-    "handlingMs": 0.075
+    "handlingMs": 0.085
    },
    {
-    "t": 1792746688.395312,
+    "t": 1792794786.1364858,
     "method": "GET",
     "path": "/api/trpc/exam.getActive",
     "fields": [],
@@ -2336,10 +2336,10 @@
     "procedure": "exam.getActive",
     "input": null,
     "status": 200,
-    "handlingMs": 0.153
+    "handlingMs": 0.15
    },
    {
-    "t": 1792746696.411964,
+    "t": 1792794794.157255,
     "method": "POST",
     "path": "/api/trpc/exam.submit",
     "fields": [],
@@ -2352,7 +2352,7 @@
     "procedure": "exam.submit",
     "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"answers\":[]}}",
     "status": 503,
-    "handlingMs": 0.255
+    "handlingMs": 0.218
    }
   ]
  },

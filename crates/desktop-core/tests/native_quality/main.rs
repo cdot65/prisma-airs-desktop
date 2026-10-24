@@ -348,3 +348,130 @@ async fn a_panic_is_recorded_by_where_never_by_what() {
     );
     assert!(!log.contains(CONTENT) && !log.contains("/Users/"), "{log}");
 }
+
+/// C24-F1: a stored line is exported only when each of its fields is a
+/// value the app records for that event. Valid JSON lines whose string
+/// fields hold a token-shaped canary or a single word are dropped; the app's
+/// own events stay. Recording holds the same boundary: a panic outside this
+/// repository is recorded only as external.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn only_values_the_app_records_are_exported() {
+    let mut desk = start();
+    seed(&mut desk).await;
+    let logs = desk.adapters.logs_root.clone();
+    let current = logs.join("diagnostics.jsonl");
+    let mut planted = std::fs::read_to_string(&current).expect("log");
+    for (canary, word) in [
+        (SECRET, "hunter"),
+        ("SYNTHETIC-C24-SECRET-scan-key", "acme"),
+    ] {
+        for line in [
+            json!({"at": 1, "event": {"type": "storage", "health": canary}}),
+            json!({"at": 1, "event": {"type": "storage", "health": word}}),
+            json!({"at": 1, "event": {"type": "intent", "kind": word, "refusal": null}}),
+            json!({"at": 1, "event": {"type": "intent", "kind": "scan", "refusal": word}}),
+            json!({"at": 1, "event": {"type": "reset", "outcome": word}}),
+            json!({"at": 1, "event": {"type": "reset", "outcome": format!("failed-{word}")}}),
+            json!({"at": 1, "event": {"type": "started", "version": word, "fixture": true}}),
+            json!({"at": 1, "event": {"type": "panicked", "file": canary, "line": 1}}),
+            json!({"at": 1, "event": {"type": "panicked", "file": format!("{word}/main.rs"), "line": 1}}),
+        ] {
+            planted.push_str(&format!("{line}\n"));
+        }
+    }
+    std::fs::write(&current, planted).expect("plant");
+    // The app's own events, recorded through its paths.
+    desk.core
+        .record_panic("/Users/someone/.cargo/registry/src/x/lib.rs", 7);
+    desk.core.record_panic("library/core/src/option.rs", 9);
+    desk.core
+        .record_panic("crates/desktop-core/src/authority.rs", 42);
+    desk.send(json!({"kind": "exportDiagnostics"}))
+        .await
+        .expect("export");
+    assert!(eventually(|| desk.json()["diagnostics"]["export"] == "saved").await);
+    let saved = desk.adapters.saver.saved();
+    let text = String::from_utf8(saved[0].1.clone()).expect("utf8");
+    for needle in [
+        SECRET,
+        "SYNTHETIC-C24-SECRET",
+        "hunter",
+        "acme",
+        "someone",
+        "option.rs",
+    ] {
+        assert!(!text.contains(needle), "{needle} exported: {text}");
+    }
+    let doc: Value = serde_json::from_str(&text).expect("json");
+    let events = doc["events"].as_array().expect("events");
+    // The app's own events stay useful.
+    assert!(events.iter().any(|e| e["event"]["type"] == "intent"));
+    let panics: Vec<&Value> = events
+        .iter()
+        .filter(|e| e["event"]["type"] == "panicked")
+        .collect();
+    assert_eq!(panics.len(), 3, "{panics:?}");
+    assert!(panics.iter().any(
+        |p| p["event"]["file"] == "crates/desktop-core/src/authority.rs"
+            && p["event"]["line"] == 42
+    ));
+    assert_eq!(
+        panics
+            .iter()
+            .filter(|p| p["event"]["file"] == "external" && p["event"]["line"] == 0)
+            .count(),
+        2
+    );
+}
+
+/// C24-F2: a clearing that cannot remove a file says so, keeps counting
+/// what is still kept (and exports it), and records no clearing; a later
+/// clearing that can removes it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_clearing_that_cannot_remove_the_files_says_so_and_keeps_counting_them() {
+    use std::os::unix::fs::PermissionsExt;
+    let mut desk = start();
+    seed(&mut desk).await;
+    let logs = desk.adapters.logs_root.clone();
+    let before = log_text(&desk).lines().count();
+    assert!(before > 3);
+    // The folder no longer allows removing its files.
+    std::fs::set_permissions(&logs, std::fs::Permissions::from_mode(0o500)).expect("deny");
+    desk.send(json!({"kind": "clearDiagnostics"}))
+        .await
+        .expect("admitted");
+    let view = desk.json()["diagnostics"].clone();
+    std::fs::set_permissions(&logs, std::fs::Permissions::from_mode(0o700)).expect("allow");
+    assert_eq!(view["clear"], "failed", "{view}");
+    let kept = log_text(&desk);
+    assert!(
+        !kept.contains("\"cleared\""),
+        "no clearing recorded: {kept}"
+    );
+    assert!(kept.lines().count() >= before);
+    // Counted as kept, not as cleared.
+    let counted = desk.json()["diagnostics"]["events"]
+        .as_u64()
+        .expect("count");
+    assert_eq!(
+        counted,
+        u64::try_from(kept.lines().count()).expect("lines"),
+        "{kept}"
+    );
+    // And exported.
+    desk.send(json!({"kind": "exportDiagnostics"}))
+        .await
+        .expect("export");
+    assert!(eventually(|| desk.json()["diagnostics"]["export"] == "saved").await);
+    let saved = desk.adapters.saver.saved();
+    let doc: Value = serde_json::from_slice(&saved[0].1).expect("json");
+    assert!(doc["events"].as_array().is_some_and(|e| e.len() >= before));
+    // Retried, it removes them.
+    desk.send(json!({"kind": "clearDiagnostics"}))
+        .await
+        .expect("cleared");
+    assert_eq!(desk.json()["diagnostics"]["clear"], "cleared");
+    let log = log_text(&desk);
+    assert!(log.lines().count() <= 2, "{log}");
+    assert!(log.contains("\"cleared\""), "{log}");
+}

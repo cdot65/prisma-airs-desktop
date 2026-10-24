@@ -50,6 +50,12 @@ WORKSPACE = "33333333-4444-4555-8666-777777777777"
 LOG = []
 
 
+# The fixture build's receipt folders (its data root's imports/, and the
+# second copy beside it).
+RECEIPTS = os.path.join(fx.DATA, "imports")
+RECEIPT_COPIES = RECEIPTS + ".copy"
+
+
 def rel(path):
     return os.path.relpath(path, ROOT)
 
@@ -208,6 +214,9 @@ def main():
         return run()
     finally:
         fx.sh(["pkill", "-f", fx.PROCESS])
+        for d in (RECEIPTS, RECEIPT_COPIES):
+            if os.path.isdir(d):
+                os.chmod(d, 0o700)
         if os.path.exists(V1_KEYCHAIN):
             fx.sh(["security", "delete-keychain", V1_KEYCHAIN])
         fx.clean_fixture_root()
@@ -375,6 +384,46 @@ def run():
     fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {app.pid}) to set size of window 1 to {{900, 600}}'])
     time.sleep(0.8)
     obs["min"] = c8.reach(app, 1, "Forget this record")
+    fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {app.pid}) to set size of window 1 to {{1280, 820}}'])
+
+    # ---- N09: a record lost in both files, then folders that cannot be read ----
+    app.quit()
+    ids = sorted(n[:-5] for n in os.listdir(RECEIPTS) if n.endswith(".json"))
+    for d in (RECEIPTS, RECEIPT_COPIES):
+        for i in ids:
+            with open(os.path.join(d, f"{i}.json"), "w") as f:
+                f.write("{")
+    app.launch()
+    open_import(app)
+    tree, named = c8.text(app, "damaged in both of", 10)
+    obs["tree_lost"] = save_tree("record-lost", tree)
+    remove = f"Remove damaged record {ids[0]}" if ids else "Remove damaged record"
+    reached = c8.reach(app, 1, remove)
+    app.keycode(49)  # Space presses the focused button
+    tree, released = app.wait_for(lambda t: not app.has_text(t, "damaged in both of"), 10)
+    focus = app.focused(tree)
+    obs["lost"] = {
+        "records": len(ids),
+        "named": named,
+        "remove_reached": bool(reached["found"]),
+        "released": released and not any(os.path.exists(os.path.join(d, f"{i}.json"))
+                                          for d in (RECEIPTS, RECEIPT_COPIES) for i in ids),
+        "focus_in_window": bool(focus) and focus.get("role") not in ("AXSheet", None),
+        "focus": focus and focus.get("label"),
+    }
+    obs["tree_released"] = save_tree("record-released", tree)
+    app.quit()
+    for d in (RECEIPTS, RECEIPT_COPIES):
+        os.chmod(d, 0)
+    try:
+        app.launch()
+        open_import(app)
+        tree, said = c8.text(app, "The import records can", 10)
+        obs["unreadable"] = {"said": said, "alert": app.has_text(tree, "Restore access to the app")}
+        obs["tree_unreadable"] = save_tree("records-unreadable", tree)
+    finally:
+        for d in (RECEIPTS, RECEIPT_COPIES):
+            os.chmod(d, 0o700)
 
     app.quit()
     # ---- N06 / N07: preservation and no credential, no network ----
@@ -423,6 +472,13 @@ def evaluate(prepared, o):
     k = o["keyboard"]
     add("C23-N08", all(k.values()) and o["zoom"]["clear"] and o["min"]["clear"],
         f"Tab reached {k}; 200% zoom: {o['zoom']['found']}; minimum size: {o['min']['found']}", [])
+    lost, unreadable = o["lost"], o["unreadable"]
+    add("C23-N09", lost["records"] >= 1 and lost["named"] and lost["remove_reached"] and lost["released"]
+        and lost["focus_in_window"] and unreadable["said"] and unreadable["alert"],
+        f"a record damaged in both files: named {lost['named']}, Remove reached by Tab {lost['remove_reached']}, released by Space "
+        f"(both files gone) {lost['released']}, focus after {lost['focus']}; folders that cannot be read: said {unreadable['said']}, "
+        f"what to do {unreadable['alert']}",
+        [o["tree_lost"], o["tree_released"], o["tree_unreadable"]])
 
     hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
     os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"

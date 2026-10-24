@@ -1079,12 +1079,16 @@
       {
         "id": "C23-N08",
         "check": "The import view works by keyboard alone in tab order (category checkboxes, tenant targets, Review, item checkboxes, Import, Import again, Roll back), every control and status has an Accessibility name, progress is announced as a status, and the view stays usable at 200% text size and the minimum window size with reduced motion."
+      },
+      {
+        "id": "C23-N09",
+        "check": "Lost import records fail closed and are said: with a receipt damaged in both of its files the import view names it in an alert, Remove damaged record … is reached by Tab and pressed with Space, both files are removed, the alert clears and focus stays in the window; with neither receipt folder readable the view says the records can't be read and to restore access and reopen the app."
       }
     ],
     "C24": [
       {
         "id": "C24-N01",
-        "check": "Settings › Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only) through the save sheet, and Clear diagnostics leaves only the record of clearing."
+        "check": "Settings › Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only; in the fixture build without a sheet, into its data root), and Clear diagnostics leaves only the record of clearing."
       },
       {
         "id": "C24-N02",
@@ -1092,7 +1096,7 @@
       },
       {
         "id": "C24-N03",
-        "check": "Startup and reconnect network inventory: across 15 s of startup with a configured tenant the app and its WebKit processes open no internet socket (sampled lsof), and after an offline launch the synthetic services receive no request once they are reachable again until the operator acts."
+        "check": "Startup and reconnect network inventory: across 15 s of startup with a configured tenant, the app and every WebKit process that appeared with its launch (each sampled, named and counted, so an empty WebKit set fails) open no internet socket (sampled lsof); after an offline launch the synthetic services receive no request once they are reachable again until the operator acts, and the same processes hold no socket while nothing is asked."
       },
       {
         "id": "C24-N04",
@@ -1105,6 +1109,10 @@
       {
         "id": "C24-N06",
         "check": "The cumulative T09 matrix: every earlier chunk's native acceptance (C01–C23) passes again on this bundle (their records under this chunk's evidence), covering menus, shortcuts, keyboard and focus, Accessibility roles and names, zoom, minimum window size, themes and reduced motion for every workflow."
+      },
+      {
+        "id": "C24-N07",
+        "check": "Diagnostics by keyboard alone: Export diagnostics… is reached by Tab and pressed with Space, the production save sheet (NSSavePanel) saves the document into a chosen folder and Diagnostics saved. is announced; a second export cancelled in the sheet saves nothing and Nothing was saved. is announced; focus returns to the window each time; Clear diagnostics is reached and pressed the same way and Diagnostics cleared. is announced; both controls are reachable and clear at 200% zoom and at the minimum window size."
       }
     ]
   }

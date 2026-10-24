@@ -2,9 +2,11 @@
 //!
 //! The log holds typed events only: what kind of request was admitted or
 //! refused and why, storage and reset outcomes, and where the app panicked.
-//! Every field is a fixed name, a code or a number, so no prompt, response,
+//! Every field must be one of the values the app records for that event (a
+//! request kind, a refusal code, a storage health, a reset outcome, a
+//! version, a source file of this repository), so no prompt, response,
 //! credential, token, tenant name, file path or other customer text can be
-//! written, whatever a caller passes. The log stays on this Mac in its own
+//! written or exported, whatever a caller passes or a line on disk says. The log stays on this Mac in its own
 //! folder, bounded (two files of at most 256 KiB; older than 14 days is
 //! dropped); nothing sends it anywhere. Export is explicit, through the
 //! native save sheet, and re-checks every line; reset removes the folder.
@@ -26,8 +28,9 @@ pub const RETENTION_SECS: u64 = 14 * 24 * 60 * 60;
 /// The longest name or code a field may hold.
 const NAME_LIMIT: usize = 48;
 
-/// One typed event. Names and codes are checked against [`name_ok`] when
-/// recorded and when exported: anything else is never written.
+/// One typed event. Each field is checked against what the app records for
+/// it ([`Event::fields_ok`]) when recorded and again when read back or
+/// exported: anything else is never written or exported.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Event {
@@ -57,18 +60,46 @@ pub fn name_ok(text: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'/'))
 }
 
+/// A release version: `major.minor.patch`, digits only.
+fn version_ok(text: &str) -> bool {
+    let parts: Vec<&str> = text.split('.').collect();
+    text.len() <= 32
+        && parts.len() == 3
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// Where a panic happened: `external` (outside this repository), or a Rust
+/// source file of it, relative, lower case, without `..`.
+pub(crate) fn panic_file_ok(file: &str) -> bool {
+    file == "external"
+        || name_ok(file)
+            && (file.starts_with("crates/") || file.starts_with("apps/"))
+            && file.ends_with(".rs")
+            && file.bytes().all(|b| {
+                b.is_ascii_lowercase()
+                    || b.is_ascii_digit()
+                    || matches!(b, b'-' | b'_' | b'.' | b'/')
+            })
+            && !file
+                .split('/')
+                .any(|c| c.is_empty() || c == "." || c == "..")
+}
+
 impl Event {
-    fn fields_ok(&self) -> bool {
+    pub(crate) fn fields_ok(&self) -> bool {
+        use crate::authority::{
+            known_intent_kind, known_refusal, known_reset_outcome, known_storage_health,
+        };
         match self {
-            Event::Started { version, .. } => name_ok(version),
+            Event::Started { version, .. } => version_ok(version),
             Event::Intent { kind, refusal } => {
-                name_ok(kind) && refusal.as_deref().is_none_or(name_ok)
+                known_intent_kind(kind) && refusal.as_deref().is_none_or(known_refusal)
             }
-            Event::Storage { health } => name_ok(health),
-            Event::Reset { outcome } => name_ok(outcome),
-            Event::Panicked { file, .. } => {
-                name_ok(file) && !file.starts_with('/') && !file.split('/').any(|c| c == "..")
-            }
+            Event::Storage { health } => known_storage_health(health),
+            Event::Reset { outcome } => known_reset_outcome(outcome),
+            Event::Panicked { file, .. } => panic_file_ok(file),
             Event::Cleared => true,
         }
     }
@@ -249,15 +280,36 @@ impl Diagnostics {
     }
 
     /// Removes every kept line; what remains is the record of clearing.
-    pub fn clear(&self) {
-        if let Some(dir) = self.dir() {
+    /// `false`: a file could not be removed. What it holds is counted again
+    /// from disk (and still exported), and no clearing is recorded; a later
+    /// clear that succeeds removes it.
+    pub fn clear(&self) -> bool {
+        let Some(dir) = self.dir() else {
+            return true;
+        };
+        let removed = {
             let _guard = self.lock.lock();
-            let _ = std::fs::remove_file(dir.join(PREVIOUS));
-            let _ = std::fs::remove_file(dir.join(CURRENT));
-            self.current.store(0, Ordering::Relaxed);
-            self.previous.store(0, Ordering::Relaxed);
+            let mut removed = true;
+            for (name, counter) in [(PREVIOUS, &self.previous), (CURRENT, &self.current)] {
+                let path = dir.join(name);
+                match std::fs::remove_file(&path) {
+                    Ok(()) => counter.store(0, Ordering::Relaxed),
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        counter.store(0, Ordering::Relaxed);
+                    }
+                    Err(_) => {
+                        removed = false;
+                        let kept = u32::try_from(read_lines(&path).len()).unwrap_or(u32::MAX);
+                        counter.store(kept, Ordering::Relaxed);
+                    }
+                }
+            }
+            removed
+        };
+        if removed {
+            self.record(Event::Cleared);
         }
-        self.record(Event::Cleared);
+        removed
     }
 
     /// Removes the folder (local-data reset).

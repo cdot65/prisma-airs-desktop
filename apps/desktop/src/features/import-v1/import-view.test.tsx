@@ -186,4 +186,28 @@ describe('Import from v1 (C23)', () => {
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'resumeV1Import', receipt: RECEIPT }))
         expect(screen.getByRole('button', { name: 'Forget this record' })).toBeInTheDocument()
     })
+
+    it('says a record lost in both copies holds what imports write, and releases it only when asked', async () => {
+        const native = scriptedNative(snapshot({ damagedReceipts: [RECEIPT] }))
+        const user = await open(native)
+        const alert = screen.getByText(/An import record is damaged in both of its copies/).closest('[role="alert"]')
+        expect(alert).not.toBeNull()
+        expect(alert).toHaveTextContent(/is held and can't be changed/)
+        expect(alert).toHaveTextContent(/can no longer be rolled back/)
+        expect(native.dispatched).toEqual([])
+        await user.click(screen.getByRole('button', { name: `Remove damaged record ${RECEIPT}` }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'forgetV1ImportReceipt', receipt: RECEIPT }))
+        // Released: the alert and its button go, and focus moves to the imports.
+        await native.push(snapshot({ damagedReceipts: [] }))
+        await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Imports' })).toHaveFocus())
+        expect(screen.queryByText(/damaged in both of its copies/)).toBeNull()
+    })
+
+    it('says when the import records cannot be read at all', async () => {
+        const native = scriptedNative(snapshot({ receiptsUnreadable: true }))
+        await open(native)
+        const alert = screen.getByText(/The import records can't be read/).closest('[role="alert"]')
+        expect(alert).toHaveTextContent(/Restore access to the app's data folder, then reopen the app/)
+        expect(screen.queryByRole('button', { name: /Remove damaged record/ })).toBeNull()
+    })
 })

@@ -122,7 +122,9 @@ fn file_bytes(dir: &Path) -> Result<u64> {
 
 const MIB: f64 = 1024.0 * 1024.0;
 
-/// Builds the unsigned production app and DMG and records their sizes.
+/// Builds the complete unsigned production app and DMG, the sealed Harness
+/// engine included (C19, D046; budgets.json version 5), and records their
+/// sizes.
 pub fn footprint(
     repo: &Repo,
     manifest: &Manifest,
@@ -140,6 +142,8 @@ pub fn footprint(
         return Err(invalid("the clock is before the budget registration"));
     }
     let target = manifest.target.as_str();
+    // The sealed engine the production app ships with (C19).
+    crate::harness::unpack(repo)?;
     let commands: Vec<Vec<String>> = [
         vec!["pnpm", "--filter", "@prisma-airs/desktop", "build"],
         vec![
@@ -155,6 +159,9 @@ pub fn footprint(
             target,
             "--bundles",
             "app,dmg",
+            // The sealed Harness engine as a bundle resource (C19, D046).
+            "--config",
+            "src-tauri/tauri.harness.conf.json",
         ],
     ]
     .iter()

@@ -1140,12 +1140,14 @@ describe('reviewed v1 import (C23)', () => {
 })
 
 describe('local diagnostics (C24)', () => {
-    const view = { available: true, events: 12, retentionDays: 14, export: 'saved' }
+    const view = { available: true, events: 12, retentionDays: 14, export: 'saved', clear: null }
     const snapshot = (v: unknown) => ({ ...valid, diagnostics: v })
 
     it('accepts what Rust issues', () => {
         expect(parseShellSnapshot(snapshot(view))).toBeTruthy()
         expect(parseShellSnapshot(snapshot({ ...view, available: false, events: 0, export: null }))).toBeTruthy()
+        expect(parseShellSnapshot(snapshot({ ...view, clear: 'failed' }))).toBeTruthy()
+        expect(parseShellSnapshot(snapshot({ ...view, clear: 'cleared' }))).toBeTruthy()
     })
 
     it('rejects a view Rust never issues', () => {
@@ -1154,6 +1156,7 @@ describe('local diagnostics (C24)', () => {
             snapshot({ ...view, events: -1 }),
             snapshot({ ...view, retentionDays: 365 }),
             snapshot({ ...view, export: 'uploaded' }),
+            snapshot({ ...view, clear: 'partly' }),
             snapshot({ ...view, path: '/Users/someone/Library/Logs' }),
         ]) {
             expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)

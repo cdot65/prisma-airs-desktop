@@ -1,6 +1,6 @@
 {
   "schema": "airs-v2-budgets/1",
-  "version": 4,
+  "version": 5,
   "registered_by_chunk": "C03",
   "status": "registered before any acceptance measurement; changes need a new version with rationale, the prior results and owner or independent reviewer acknowledgement (test-catalogue: Performance budget governance)",
   "host": {
@@ -12,7 +12,7 @@
   },
   "build_under_test": {
     "timing_and_memory": "the prepared fixture bundle (release profile, test-fixtures feature: production code plus the Fixture menu and fixture trust roots), against the synthetic localhost TLS scan endpoint tools/native-acceptance/scan_server.py",
-    "footprint": "an unsigned production bundle and DMG (release profile, no fixture features) built by `cargo run -p xtask -- footprint`; C26 repeats against the exact signed, notarized, installed bytes"
+    "footprint": "the complete unsigned production bundle and DMG (release profile, no fixture features, the sealed Harness engine bundled as C19 decided in D046) built by `cargo run -p xtask -- footprint`; C26 repeats against the exact signed, notarized, installed bytes"
   },
   "changes": [
     {
@@ -35,6 +35,13 @@
       "change": "cold-usable-shell method: each fresh copy at a new path is launched once and quit, its fixture data root and WebKit data are removed again, and only its second launch is timed; the first launch of each copy is reported alongside (details.cold[].first_launch_of_copy_ms). The limit, statistic and sample count are unchanged.",
       "rationale": "Since C19 the fixture bundle carries the sealed Harness engine (Contents/Resources/harness/airs-harness, 321 MB, D046). On the first launch of a bundle macOS has never seen, XProtect scans the executables in it before the app runs, about 6 ms per MB on this host: 2.3 s of XprotectService CPU for the C24 bundle against 0.1 s for the P01 bundle (16 MiB, rebuilt from 80d6c513 and measured on the same host and XProtect version the same day). Swapping executables showed the bundle, not the app's executable, carries the cost; the C24 bundle without harness/ launched fresh in 684-715 ms, and a copy launched a second time with no data root starts in 380-430 ms. The version 3 method therefore timed the one-time install assessment of a resource the app does not touch at launch, not a cold start of the app; version 4 times the cold launch an installed copy makes and reports the first launch separately. Diagnosis: docs/planning/evidence/C24/perf-diagnosis.md.",
       "prior_results": "docs/planning/evidence/C24/perf-v3-over-budget-20261023.json (failed: cold-usable-shell p95 2608.9 ms, every sample 2503-2616 ms; the other core budgets passed). C03 and P01 measured under version 3 (cold p95 614 and 609 ms) before the engine was bundled."
+    },
+    {
+      "version": 5,
+      "from_sha256": "dfffb52461c1d4f09559bc24bf8027b88933a2ddd85f77da38fcaf806654a9ba",
+      "change": "app-bundle-bytes and dmg-bytes: measured on the complete production app, built with the sealed Harness engine (tauri.harness.conf.json) as the fixture build already was; the limits become the original allowance for the application plus the engine's pinned sizes (resources/harness/pin.json): app bundle 150 MiB + 344,345,483 bytes of sealed engine resources (328.4 MiB) = 479 MiB; DMG 100 MiB + the 113,493,748-byte sealed archive (108.2 MiB) = 209 MiB. Statistics, samples and every other budget are unchanged.",
+      "rationale": "The version 1-4 footprint limits were registered in C03 for the first slice, whose rationale says later features register their own additions. C19 (D046) made the pinned Harness engine, a 306 MiB executable and its notices that v2 does not build and cannot strip without breaking its seal, a bundle resource, but bundled it only in fixture builds and registered no footprint for it, so xtask footprint kept measuring a production app without it (35.5 MiB in C24) while the app that ships must carry it. The C24 review found the gap (C24-G3). Version 5 measures what ships and keeps the first slice's allowance for everything else: the limits add exactly the engine's pinned sizes, set from the pin record before this complete package was measured.",
+      "prior_results": "docs/planning/evidence/C24/footprint-v4-without-engine-20261023.json (app 35.55 MiB and DMG 15.39 MiB without the engine; both passed version 4). The C24 fixture bundle with the engine measured 364.06 MiB (the C24 review's count). No complete production package had been measured."
     }
   ],
   "budgets": [
@@ -86,20 +93,20 @@
     {
       "id": "app-bundle-bytes",
       "statistic": "value",
-      "limit": 150,
+      "limit": 479,
       "unit": "MiB",
       "samples": 1,
-      "method": "Sum of regular-file sizes inside the unsigned production .app.",
-      "rationale": "First slice; later features register their own additions."
+      "method": "Sum of regular-file sizes inside the complete unsigned production .app, the sealed Harness engine included.",
+      "rationale": "First slice (150 MiB) plus the sealed Harness engine's resources as pinned (328.4 MiB, C19); later features register their own additions."
     },
     {
       "id": "dmg-bytes",
       "statistic": "value",
-      "limit": 100,
+      "limit": 209,
       "unit": "MiB",
       "samples": 1,
-      "method": "Size of the unsigned production DMG produced by tauri build --bundles dmg.",
-      "rationale": "Download size for the first slice."
+      "method": "Size of the unsigned production DMG produced by tauri build --bundles dmg, the sealed Harness engine included.",
+      "rationale": "Download size for the first slice (100 MiB) plus the sealed engine's archive as pinned (108.2 MiB, C19)."
     }
   ],
   "later_workloads": [

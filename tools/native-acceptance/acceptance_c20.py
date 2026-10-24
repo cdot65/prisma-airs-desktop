@@ -51,6 +51,16 @@ HISTORY = os.path.join(fx.DATA, "harness-history")
 EXPORTS = os.path.join(fx.DATA, "fixture-exports")
 SERVICE = "io.cdot.prisma-airs-desktop.v2.fixture.scan"
 LOG = []
+# A signed token: its header and claims are both JSON objects. A bare "eyJ"
+# also occurs by chance in random base64url values, such as a PKCE challenge,
+# state or nonce in the logged authorization query.
+JWT = re.compile(r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.")
+
+
+def secrets_in(text, literals):
+    """Which of `literals`, and whether a signed token, appear in `text`."""
+    found = [s for s in literals if s in text]
+    return found + (["a signed token"] if JWT.search(text) else [])
 c19.NATIVE = NATIVE
 
 
@@ -220,7 +230,7 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before):
                       "provider_shown": app.has_text(tree, issuer), "account_shown": app.has_text(tree, f"Company sign-in ({ACCOUNT})"),
                       "keychain_item_added": len(after_items) == len(before_items) + 1,
                       "token_exchanges": [r.get("grantType") for r in token_rows],
-                      "no_token_in_state": "c20-refresh-" not in state_text and "eyJ" not in state_text}
+                      "no_token_in_state": not secrets_in(state_text, ("c20-refresh-",))}
     obs["tree_signed_in"] = save_tree("signed-in", tree)
 
     # ---- N02: a conversation answered with the verified access token ----
@@ -392,7 +402,7 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before):
     tree, deleted = c8.text(app, "No saved conversations in this workspace.", 10)
     obs["export_delete"] = {"exported": exported, "files": [os.path.basename(e) for e in exports],
                             "transcript": CANARY in markdown and "## Harness" in markdown,
-                            "no_secrets": all(s not in markdown for s in (INFERENCE_KEY, "c20-refresh-", "eyJ")),
+                            "no_secrets": not secrets_in(markdown, (INFERENCE_KEY, "c20-refresh-")),
                             "asked": asked, "deleted": deleted, "files_left": len(history_files())}
     obs["tree_deleted"] = save_tree("deleted", tree)
 
@@ -419,10 +429,11 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before):
 
     app.quit()
     trees = [os.path.join(NATIVE, n) for n in os.listdir(NATIVE) if n.startswith("tree-")]
-    secrets = (c8.SECRET, c8.SCAN_KEY, INFERENCE_KEY, "c20-refresh-", "eyJ")
-    obs["secret_in_trees"] = [rel(p) for p in trees if any(s in open(p).read() for s in secrets)]
-    log_text = json.dumps(mgmt.requests())
-    obs["secret_in_log"] = any(s in log_text for s in (INFERENCE_KEY, "c20-refresh-", "eyJ", CANARY))
+    secrets = (c8.SECRET, c8.SCAN_KEY, INFERENCE_KEY, "c20-refresh-")
+    obs["secret_in_trees"] = [rel(p) for p in trees if secrets_in(open(p).read(), secrets)]
+    # Each request that holds one is named by its path and what it held.
+    obs["secret_in_log"] = [{"path": r.get("path"), "found": found} for r in mgmt.requests()
+                            if (found := secrets_in(json.dumps(r), (INFERENCE_KEY, "c20-refresh-", CANARY)))]
     obs["v1_unchanged"] = fx.v1_metadata() == v1_before
     obs["engines_left"] = c19.engines()
     with open(os.path.join(NATIVE, "observations.json"), "w") as f:

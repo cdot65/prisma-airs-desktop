@@ -1,0 +1,28 @@
+
+running 19 tests
+test a_duplicate_identity_pair_still_owns_its_body ... ok
+test adoption_previews_v1s_profile_and_never_changes_it ... ok
+test environments_and_workbench_secrets_resolve_masked_in_the_preview ... ok
+test documents_open_from_their_own_metadata_not_the_inventory ... ok
+test closing_with_unprotected_edits_waits_for_protection_or_an_explicit_discard ... ok
+test a_save_stopped_between_writes_restores_every_submitted_field ... ok
+test an_older_acknowledgement_never_clears_newer_unprotected_edits ... ok
+test requests_wait_their_turn_and_the_close_guard_sees_unprotected_edits ... ok
+test imports_create_drafts_and_never_replace_or_change_sources ... ok
+test a_json_body_saves_as_its_requests_while_an_associated_schema_stays_owned ... ok
+test an_interrupted_save_is_found_after_a_restart_and_nothing_replays ... ok
+test a_body_is_owned_by_the_file_it_reaches_not_its_spelling ... ok
+test saving_the_saved_snapshot_drops_an_older_protected_draft ... ok
+test external_changes_become_conflicts_and_both_versions_are_archived ... ok
+test saves_a_fresh_snapshot_keeping_the_files_layout_and_revisions ... ok
+test the_git_view_is_read_only_and_bounded ... ok
+test stale_and_invalid_snapshots_never_write_and_typing_during_save_stays_protected ... ok
+test reset_removes_the_private_folder_and_keeps_the_operators_collections ... ok
+test the_built_in_collection_is_private_generic_and_keeps_edits ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.18s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running tests/workbench_documents/main.rs (target/debug/deps/workbench_documents-d829c0a0895cfefa)

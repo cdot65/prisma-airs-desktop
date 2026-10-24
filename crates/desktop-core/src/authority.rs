@@ -650,120 +650,198 @@ pub enum Intent {
     },
 }
 
-impl Intent {
-    /// The request's kind, as its `kind` tag names it (diagnostics record
-    /// this name and never the request's contents).
-    pub fn kind(&self) -> &'static str {
-        match self {
-            Intent::SetAppearance { .. } => "setAppearance",
-            Intent::CreateTenant { .. } => "createTenant",
-            Intent::SelectTenant { .. } => "selectTenant",
-            Intent::DeleteTenant { .. } => "deleteTenant",
-            Intent::ConfigureScanCredential { .. } => "configureScanCredential",
-            Intent::RemoveScanCredential { .. } => "removeScanCredential",
-            Intent::ConfigureManagementCredential { .. } => "configureManagementCredential",
-            Intent::RemoveManagementCredential { .. } => "removeManagementCredential",
-            Intent::Management { .. } => "management",
-            Intent::SelectGatewayWorkspace { .. } => "selectGatewayWorkspace",
-            Intent::ReviewChange { .. } => "reviewChange",
-            Intent::RequestApply { .. } => "requestApply",
-            Intent::DiscardChange { .. } => "discardChange",
-            Intent::ChooseDictionaryFile { .. } => "chooseDictionaryFile",
-            Intent::RevealSecret { .. } => "revealSecret",
-            Intent::ForgetSecret { .. } => "forgetSecret",
-            Intent::CancelChange { .. } => "cancelChange",
-            Intent::OpenGatewayLocal { .. } => "openGatewayLocal",
-            Intent::SaveGatewayDraft { .. } => "saveGatewayDraft",
-            Intent::DiscardGatewayLocal { .. } => "discardGatewayLocal",
-            Intent::ConfigureInferenceCredential { .. } => "configureInferenceCredential",
-            Intent::RemoveInferenceCredential { .. } => "removeInferenceCredential",
-            Intent::RunInference { .. } => "runInference",
-            Intent::StopInference { .. } => "stopInference",
-            Intent::ClearInference { .. } => "clearInference",
-            Intent::StartHarness { .. } => "startHarness",
-            Intent::ConfigureHarnessSignIn { .. } => "configureHarnessSignIn",
-            Intent::RemoveHarnessSignIn { .. } => "removeHarnessSignIn",
-            Intent::ChooseHarnessCredential { .. } => "chooseHarnessCredential",
-            Intent::SignInHarness { .. } => "signInHarness",
-            Intent::CancelHarnessSignIn { .. } => "cancelHarnessSignIn",
-            Intent::SignOutHarness { .. } => "signOutHarness",
-            Intent::ChooseHarnessProject { .. } => "chooseHarnessProject",
-            Intent::ClearHarnessProject { .. } => "clearHarnessProject",
-            Intent::SetHarnessWrite { .. } => "setHarnessWrite",
-            Intent::DecideHarnessApproval { .. } => "decideHarnessApproval",
-            Intent::ReviewHarnessProposal { .. } => "reviewHarnessProposal",
-            Intent::DismissHarnessProposal { .. } => "dismissHarnessProposal",
-            Intent::ConfirmHarnessWrite { .. } => "confirmHarnessWrite",
-            Intent::ListMcpServers { .. } => "listMcpServers",
-            Intent::EnableMcpServer { .. } => "enableMcpServer",
-            Intent::SignInMcpServer { .. } => "signInMcpServer",
-            Intent::CancelMcpSignIn { .. } => "cancelMcpSignIn",
-            Intent::SignOutMcpServer { .. } => "signOutMcpServer",
-            Intent::ListHarnessHistory { .. } => "listHarnessHistory",
-            Intent::OpenHarnessHistory { .. } => "openHarnessHistory",
-            Intent::CloseHarnessHistory { .. } => "closeHarnessHistory",
-            Intent::DeleteHarnessHistory { .. } => "deleteHarnessHistory",
-            Intent::ExportHarnessHistory { .. } => "exportHarnessHistory",
-            Intent::ResumeHarness { .. } => "resumeHarness",
-            Intent::SendHarness { .. } => "sendHarness",
-            Intent::InterruptHarness { .. } => "interruptHarness",
-            Intent::EndHarness { .. } => "endHarness",
-            Intent::ClearHarness { .. } => "clearHarness",
-            Intent::ReadGatewayFiles { .. } => "readGatewayFiles",
-            Intent::ChooseGatewayFile { .. } => "chooseGatewayFile",
-            Intent::UploadGatewayFile { .. } => "uploadGatewayFile",
-            Intent::DeleteGatewayFile { .. } => "deleteGatewayFile",
-            Intent::SavePlaygroundDraft { .. } => "savePlaygroundDraft",
-            Intent::OpenReports { .. } => "openReports",
-            Intent::SaveReport { .. } => "saveReport",
-            Intent::RemoveReport { .. } => "removeReport",
-            Intent::UndoReport { .. } => "undoReport",
-            Intent::ExportReports { .. } => "exportReports",
-            Intent::ClearInvestigation { .. } => "clearInvestigation",
-            Intent::ExportInvestigation { .. } => "exportInvestigation",
-            Intent::OpenLibrary { .. } => "openLibrary",
-            Intent::SaveCase { .. } => "saveCase",
-            Intent::DeleteCase { .. } => "deleteCase",
-            Intent::ImportCases { .. } => "importCases",
-            Intent::ImportExamples { .. } => "importExamples",
-            Intent::CopyCase { .. } => "copyCase",
-            Intent::ExportCases { .. } => "exportCases",
-            Intent::SaveLibraryAgain { .. } => "saveLibraryAgain",
-            Intent::Workbench { .. } => "workbench",
-            Intent::HoldInsight { .. } => "holdInsight",
-            Intent::RestoreInsight { .. } => "restoreInsight",
-            Intent::ReviewEndpointChange { .. } => "reviewEndpointChange",
-            Intent::ConfirmEndpointChange { .. } => "confirmEndpointChange",
-            Intent::DiscardReview { .. } => "discardReview",
-            Intent::ChooseProfileImport => "chooseProfileImport",
-            Intent::ConfirmProfileImport { .. } => "confirmProfileImport",
-            Intent::ResetLocalData => "resetLocalData",
-            Intent::InspectV1Import => "inspectV1Import",
-            Intent::PlanV1Import { .. } => "planV1Import",
-            Intent::ConfirmV1Import { .. } => "confirmV1Import",
-            Intent::ResumeV1Import { .. } => "resumeV1Import",
-            Intent::RollBackV1Import { .. } => "rollBackV1Import",
-            Intent::ForgetV1ImportReceipt { .. } => "forgetV1ImportReceipt",
-            Intent::DismissV1Import => "dismissV1Import",
-            Intent::Scan { .. } => "scan",
-            Intent::CancelScan { .. } => "cancelScan",
-            Intent::StartAcademySignIn => "startAcademySignIn",
-            Intent::CancelAcademySignIn => "cancelAcademySignIn",
-            Intent::OpenAcademyVerification => "openAcademyVerification",
-            Intent::SignOutAcademy => "signOutAcademy",
-            Intent::PrintPage { .. } => "printPage",
-            Intent::UploadAvatar { .. } => "uploadAvatar",
-            Intent::LoadAcademyImage { .. } => "loadAcademyImage",
-            Intent::DownloadCourse { .. } => "downloadCourse",
-            Intent::RemoveDownload { .. } => "removeDownload",
-            Intent::SaveLocalDraft { .. } => "saveLocalDraft",
-            Intent::LoadLocalDraft { .. } => "loadLocalDraft",
-            Intent::ClearLocalDraft { .. } => "clearLocalDraft",
-            Intent::AcademyCall { .. } => "academyCall",
-            Intent::ExportDiagnostics => "exportDiagnostics",
-            Intent::ClearDiagnostics => "clearDiagnostics",
+/// Each request's kind as its `kind` tag names it, and the list of every
+/// kind (diagnostics record a kind, never the request's contents, and
+/// export only kinds on this list).
+macro_rules! intent_kinds {
+    ($($variant:ident => $name:literal,)*) => {
+        impl Intent {
+            pub fn kind(&self) -> &'static str {
+                match self {
+                    $(Intent::$variant { .. } => $name,)*
+                }
+            }
         }
-    }
+
+        /// Every request kind.
+        pub(crate) const INTENT_KINDS: &[&str] = &[$($name,)*];
+    };
+}
+
+intent_kinds! {
+    SetAppearance => "setAppearance",
+    CreateTenant => "createTenant",
+    SelectTenant => "selectTenant",
+    DeleteTenant => "deleteTenant",
+    ConfigureScanCredential => "configureScanCredential",
+    RemoveScanCredential => "removeScanCredential",
+    ConfigureManagementCredential => "configureManagementCredential",
+    RemoveManagementCredential => "removeManagementCredential",
+    Management => "management",
+    SelectGatewayWorkspace => "selectGatewayWorkspace",
+    ReviewChange => "reviewChange",
+    RequestApply => "requestApply",
+    DiscardChange => "discardChange",
+    ChooseDictionaryFile => "chooseDictionaryFile",
+    RevealSecret => "revealSecret",
+    ForgetSecret => "forgetSecret",
+    CancelChange => "cancelChange",
+    OpenGatewayLocal => "openGatewayLocal",
+    SaveGatewayDraft => "saveGatewayDraft",
+    DiscardGatewayLocal => "discardGatewayLocal",
+    ConfigureInferenceCredential => "configureInferenceCredential",
+    RemoveInferenceCredential => "removeInferenceCredential",
+    RunInference => "runInference",
+    StopInference => "stopInference",
+    ClearInference => "clearInference",
+    StartHarness => "startHarness",
+    ConfigureHarnessSignIn => "configureHarnessSignIn",
+    RemoveHarnessSignIn => "removeHarnessSignIn",
+    ChooseHarnessCredential => "chooseHarnessCredential",
+    SignInHarness => "signInHarness",
+    CancelHarnessSignIn => "cancelHarnessSignIn",
+    SignOutHarness => "signOutHarness",
+    ChooseHarnessProject => "chooseHarnessProject",
+    ClearHarnessProject => "clearHarnessProject",
+    SetHarnessWrite => "setHarnessWrite",
+    DecideHarnessApproval => "decideHarnessApproval",
+    ReviewHarnessProposal => "reviewHarnessProposal",
+    DismissHarnessProposal => "dismissHarnessProposal",
+    ConfirmHarnessWrite => "confirmHarnessWrite",
+    ListMcpServers => "listMcpServers",
+    EnableMcpServer => "enableMcpServer",
+    SignInMcpServer => "signInMcpServer",
+    CancelMcpSignIn => "cancelMcpSignIn",
+    SignOutMcpServer => "signOutMcpServer",
+    ListHarnessHistory => "listHarnessHistory",
+    OpenHarnessHistory => "openHarnessHistory",
+    CloseHarnessHistory => "closeHarnessHistory",
+    DeleteHarnessHistory => "deleteHarnessHistory",
+    ExportHarnessHistory => "exportHarnessHistory",
+    ResumeHarness => "resumeHarness",
+    SendHarness => "sendHarness",
+    InterruptHarness => "interruptHarness",
+    EndHarness => "endHarness",
+    ClearHarness => "clearHarness",
+    ReadGatewayFiles => "readGatewayFiles",
+    ChooseGatewayFile => "chooseGatewayFile",
+    UploadGatewayFile => "uploadGatewayFile",
+    DeleteGatewayFile => "deleteGatewayFile",
+    SavePlaygroundDraft => "savePlaygroundDraft",
+    OpenReports => "openReports",
+    SaveReport => "saveReport",
+    RemoveReport => "removeReport",
+    UndoReport => "undoReport",
+    ExportReports => "exportReports",
+    ClearInvestigation => "clearInvestigation",
+    ExportInvestigation => "exportInvestigation",
+    OpenLibrary => "openLibrary",
+    SaveCase => "saveCase",
+    DeleteCase => "deleteCase",
+    ImportCases => "importCases",
+    ImportExamples => "importExamples",
+    CopyCase => "copyCase",
+    ExportCases => "exportCases",
+    SaveLibraryAgain => "saveLibraryAgain",
+    Workbench => "workbench",
+    HoldInsight => "holdInsight",
+    RestoreInsight => "restoreInsight",
+    ReviewEndpointChange => "reviewEndpointChange",
+    ConfirmEndpointChange => "confirmEndpointChange",
+    DiscardReview => "discardReview",
+    ChooseProfileImport => "chooseProfileImport",
+    ConfirmProfileImport => "confirmProfileImport",
+    ResetLocalData => "resetLocalData",
+    InspectV1Import => "inspectV1Import",
+    PlanV1Import => "planV1Import",
+    ConfirmV1Import => "confirmV1Import",
+    ResumeV1Import => "resumeV1Import",
+    RollBackV1Import => "rollBackV1Import",
+    ForgetV1ImportReceipt => "forgetV1ImportReceipt",
+    DismissV1Import => "dismissV1Import",
+    Scan => "scan",
+    CancelScan => "cancelScan",
+    StartAcademySignIn => "startAcademySignIn",
+    CancelAcademySignIn => "cancelAcademySignIn",
+    OpenAcademyVerification => "openAcademyVerification",
+    SignOutAcademy => "signOutAcademy",
+    PrintPage => "printPage",
+    UploadAvatar => "uploadAvatar",
+    LoadAcademyImage => "loadAcademyImage",
+    DownloadCourse => "downloadCourse",
+    RemoveDownload => "removeDownload",
+    SaveLocalDraft => "saveLocalDraft",
+    LoadLocalDraft => "loadLocalDraft",
+    ClearLocalDraft => "clearLocalDraft",
+    AcademyCall => "academyCall",
+    ExportDiagnostics => "exportDiagnostics",
+    ClearDiagnostics => "clearDiagnostics",
+}
+
+/// Every refusal (a new one fails to build until it is listed here).
+const REFUSALS: [Refusal; 11] = [
+    Refusal::StaleContext,
+    Refusal::CapabilityMissing,
+    Refusal::InvalidInput,
+    Refusal::ReviewInvalid,
+    Refusal::ReviewConsumed,
+    Refusal::Busy,
+    Refusal::LockedStore,
+    Refusal::DeniedStore,
+    Refusal::AlreadyProcessed,
+    Refusal::SequenceGap,
+    Refusal::ShuttingDown,
+];
+const _: fn(Refusal) = |r| match r {
+    Refusal::StaleContext
+    | Refusal::CapabilityMissing
+    | Refusal::InvalidInput
+    | Refusal::ReviewInvalid
+    | Refusal::ReviewConsumed
+    | Refusal::Busy
+    | Refusal::LockedStore
+    | Refusal::DeniedStore
+    | Refusal::AlreadyProcessed
+    | Refusal::SequenceGap
+    | Refusal::ShuttingDown => {}
+};
+const HEALTHS: [StorageHealth; 4] = [
+    StorageHealth::Ready,
+    StorageHealth::Corrupt,
+    StorageHealth::Unavailable,
+    StorageHealth::Resetting,
+];
+const _: fn(StorageHealth) = |h| match h {
+    StorageHealth::Ready
+    | StorageHealth::Corrupt
+    | StorageHealth::Unavailable
+    | StorageHealth::Resetting => {}
+};
+const RESET_STAGES: [ResetStage; 2] = [ResetStage::Credentials, ResetStage::Document];
+const _: fn(ResetStage) = |s| match s {
+    ResetStage::Credentials | ResetStage::Document => {}
+};
+
+/// Whether a diagnostics value is one the app records (D051): a request
+/// kind, a refusal code, a storage health or a reset outcome. Anything
+/// else (an edited or foreign line) is never exported.
+pub(crate) fn known_intent_kind(kind: &str) -> bool {
+    INTENT_KINDS.contains(&kind)
+}
+
+pub(crate) fn known_refusal(code: &str) -> bool {
+    REFUSALS.iter().any(|r| refusal_code(r) == code)
+}
+
+pub(crate) fn known_storage_health(health: &str) -> bool {
+    HEALTHS.iter().any(|h| refusal_code_of(h) == health)
+}
+
+pub(crate) fn known_reset_outcome(outcome: &str) -> bool {
+    outcome == "done"
+        || RESET_STAGES
+            .iter()
+            .any(|s| outcome.strip_prefix("failed-") == Some(refusal_code_of(s).as_str()))
 }
 
 /// A serializable value's name (an enum's tag), for diagnostics.
@@ -1349,6 +1427,8 @@ struct Data {
     learner_cleanup: Vec<RecordId>,
     /// Workspaces whose protected Harness history may exist (C20).
     harness_history: Vec<crate::store::GatewayPreference>,
+    /// Unsettled v1 import receipts, the commit binding (C23, D050).
+    open_imports: Vec<crate::import_v1::receipt::Receipt>,
 }
 
 struct EndpointReview {
@@ -1538,10 +1618,12 @@ impl State {
                 .map(tenant_view)
                 .collect(),
             active: match (&self.data.active, &self.active_ref) {
-                (Some(tenant), Some(context)) => Some(ActiveContext {
-                    tenant: tenant.clone(),
-                    context: context.clone(),
-                }),
+                (Some(tenant), Some(context)) if !self.v1_hides_tenant(tenant) => {
+                    Some(ActiveContext {
+                        tenant: tenant.clone(),
+                        context: context.clone(),
+                    })
+                }
                 _ => None,
             },
             endpoint_review: self.endpoint_review.as_ref().and_then(|r| {
@@ -1677,6 +1759,7 @@ impl State {
                 .filter_map(|t| t.harness_sign_in.clone())
                 .collect(),
             harness_history: self.data.harness_history.clone(),
+            open_imports: self.data.open_imports.clone(),
             harness_projects: self
                 .data
                 .tenants
@@ -2420,14 +2503,15 @@ impl Core {
     /// Records where the app panicked (never the panic's message: it may
     /// hold anything) in the local diagnostics (C24, D051).
     pub fn record_panic(&self, file: &str, line: u32) {
-        // A source path of this repository; anything else (a dependency's
-        // absolute path names the build machine's folders) is "external".
-        let relative = !file.starts_with('/') && !file.split('/').any(|c| c == "..");
+        // A source file of this repository; anything else (a dependency's
+        // or the standard library's path, which can name the build
+        // machine's folders) is "external", with no line.
+        let ours = crate::diagnostics::panic_file_ok(file) && file != "external";
         self.inner
             .diagnostics
             .record(crate::diagnostics::Event::Panicked {
-                file: if relative { file } else { "external" }.to_owned(),
-                line,
+                file: if ours { file } else { "external" }.to_owned(),
+                line: if ours { line } else { 0 },
             });
     }
 
@@ -2815,6 +2899,7 @@ fn data_from(doc: PersistedState) -> Data {
         learner: doc.learner,
         learner_cleanup: doc.learner_cleanup,
         harness_history: doc.harness_history,
+        open_imports: doc.open_imports,
     }
 }
 
@@ -2855,9 +2940,10 @@ impl AuthorityHandle {
                 Admit::Fresh => {
                     let mut effects = Vec::new();
                     // What an import writes waits while it (or its
-                    // rollback) runs (D050).
+                    // rollback) runs, until every receipt has settled, and
+                    // while a receipt cannot be read (D050).
                     let result =
-                        if state.v1_import_busy() && import_v1_domain::waits_for_import(&intent) {
+                        if state.v1_import_holds() && import_v1_domain::waits_for_import(&intent) {
                             Err(Refusal::Busy)
                         } else {
                             admit(
@@ -3066,7 +3152,8 @@ fn admit(
         }
         Intent::SelectTenant { tenant } => {
             state.require_storage()?;
-            if state.tenant(&tenant).is_none() {
+            // A tenant an unsettled import wrote is not there yet (D050).
+            if state.tenant(&tenant).is_none() || state.v1_hides_tenant(&tenant) {
                 return Err(Refusal::InvalidInput);
             }
             let before = state.data.clone();
@@ -3940,7 +4027,7 @@ fn admit(
         }
         Intent::ExportDiagnostics => diagnostics_domain::admit_export(state, effects)?,
         Intent::ClearDiagnostics => {
-            state.diagnostics_log.clear();
+            state.clear_diagnostics();
             state.changed();
         }
         intent @ (Intent::InspectV1Import

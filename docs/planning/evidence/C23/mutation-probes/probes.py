@@ -51,7 +51,10 @@ OWNERS = "crates/desktop-core/src/authority/import_v1_domain/owners.rs"
 AUTHORITY = "crates/desktop-core/src/authority.rs"
 LIBRARY = "crates/desktop-core/src/authority/library_domain.rs"
 VIEW = "apps/desktop/src/features/import-v1/import-view.tsx"
+RECEIPT = "crates/desktop-core/src/import_v1/receipt.rs"
+HISTORY = "crates/desktop-core/src/authority/harness_history.rs"
 CLIENT = "packages/desktop-contracts/src/client.ts"
+STORE = "crates/desktop-core/src/store.rs"
 
 INSPECT = "inspection_reads_files_only_and_the_keychain_only_for_selected_categories"
 IMPORT = "an_import_brings_work_without_credentials_and_a_rollback_removes_only_it"
@@ -73,6 +76,15 @@ FE_REVIEW = "reads nothing until asked, then reviews the chosen categories and t
 FE_READY = "imports only ready items, states every status as text and focuses the result"
 SNAP = "rejects categories, statuses, receipts and bounds Rust never issues"
 FE_UNSETTLED = "offers Roll back for an unsettled import and blocks a new review meanwhile"
+# P07 follow-ups (review attempt-02).
+HELD = "a_rollback_that_cannot_finish_keeps_what_the_import_writes_waiting"
+PAUSED = "a_paused_import_grants_no_authority_over_what_it_staged"
+COPIES = "what_an_unsettled_import_wrote_is_never_published_whatever_its_receipt_files"
+UNCONFIRMED = "an_import_whose_document_copy_is_not_confirmed_writes_nothing"
+CHECKED = "a_document_copy_of_a_receipt_is_checked_before_it_drives_anything"
+U_ROUND = "receipts_round_trip_and_damage_is_reported"
+FE_LOST = "says a record lost in both copies holds what imports write, and releases it only when asked"
+FE_UNREADABLE = "says when the import records cannot be read at all"
 
 PROBES = [
     ("a link is followed",
@@ -150,6 +162,52 @@ PROBES = [
      [(CLIENT, "        oneOf(RECEIPT_STATES, value.state) &&\n", "")], FE_SNAPSHOT, SNAP),
     ("an unrecorded receipt's reason fails the contract",
      [(CLIENT, "    'noTarget',\n    'notRecorded',\n]", "    'noTarget',\n]")], FE_I, FE_UNSETTLED),
+    # ---- P07 follow-ups (review attempt-02) ----
+    ("writes go ahead once a rollback that could not finish stops running",
+     [(AUTHORITY, "if state.v1_import_holds() && import_v1_domain::waits_for_import(&intent) {",
+       "if state.v1_import_busy() && import_v1_domain::waits_for_import(&intent) {")], IR_T, HELD),
+    ("a staged tenant can be selected",
+     [(AUTHORITY, "if state.tenant(&tenant).is_none() || state.v1_hides_tenant(&tenant) {",
+       "if state.tenant(&tenant).is_none() {")], IR_T, PAUSED),
+    ("a staged conversation can be opened",
+     [(HISTORY, "        if self.v1_hides_conversation(&tenant, &workspace, id) {\n            return Err(Refusal::InvalidInput);\n        }\n        let h = self.history_for(context, reference)?;\n        if h.busy {",
+       "        let h = self.history_for(context, reference)?;\n        if h.busy {")], IR_T, PAUSED),
+    ("a receipt's damaged first copy is not read from its second",
+     [(RECEIPT, "match load(root, &id).or_else(|_| load(&second, &id)) {", "match load(root, &id) {")], IR_T, COPIES),
+    ("a receipt is recorded in one copy",
+     [(RECEIPT, "    write_copy(&copies(root), &receipt.id, &bytes)\n}", "    Ok(())\n}")], IR_T, COPIES),
+    ("a folder that cannot be listed is taken for empty",
+     [(RECEIPT, "        Err(_) => return Listing::Unreadable,\n    };", "        Err(_) => return Listing::Missing,\n    };")], IR_T, COPIES),
+    ("a lost receipt holds nothing",
+     [(DOMAIN, "if i.unreadable || !i.damaged.is_empty() || i.receipts.iter().any(|r| !r.terminal()) {",
+       "if i.receipts.iter().any(|r| !r.terminal()) {")], IR_T, COPIES),
+    ("a damaged first copy is reported (unit)",
+     [(RECEIPT, "match load(root, &id).or_else(|_| load(&second, &id)) {", "match load(root, &id) {")], UNIT_T, U_ROUND),
+    ("a lost record is not named",
+     [(VIEW, "{view.damagedReceipts.length > 0 ? (", "{false ? (")], FE_I, FE_LOST),
+    ("unreadable records are not said",
+     [(VIEW, "{view.receiptsUnreadable ? (", "{false ? (")], FE_I, FE_UNREADABLE),
+    # ---- P07 follow-ups (review attempt-03) ----
+    ("an unsettled receipt is not bound in the saved document",
+     [(DOMAIN, "        (false, Some(i)) => s.data.open_imports[i] = r.clone(),\n        (false, None) => s.data.open_imports.push(r.clone()),",
+       "        (false, Some(_)) | (false, None) => return Ok(()),")], IR_T, COPIES),
+    ("the document's copy is not read at launch",
+     [(DOMAIN, "                None => {\n                    inventory.damaged.retain(|d| *d != o.id);\n                    inventory.receipts.push(o.clone());\n                    true\n                }",
+       "                None => true,")], IR_T, COPIES),
+    ("a missing folder stands in for an unreadable one",
+     [(RECEIPT, "            (Listing::Unreadable, Listing::Missing | Listing::Unreadable)\n                | (Listing::Missing, Listing::Unreadable)",
+       "            (Listing::Unreadable, Listing::Unreadable)")], IR_T, COPIES),
+    ("focus is lost when a record is removed",
+     [(VIEW, "        if (records < recordsBefore.current) resultRef.current?.focus()\n", "")], FE_I, FE_LOST),
+    ("an unconfirmed document save records a note",
+     [(DOMAIN, "    if s.durability_unconfirmed {\n        return Err(Problem::NotRecorded);\n    }\n    Ok(())", "    Ok(())")], IR_T, UNCONFIRMED),
+    # Attempt-04 (R4-F1): the document's copies are checked at load.
+    ("the document's receipt copies are not checked",
+     [(STORE, "        self.schema == STATE_SCHEMA\n            && imports_ok\n", "        self.schema == STATE_SCHEMA\n")], IR_T, CHECKED),
+    ("a document copy of another schema is accepted",
+     [(RECEIPT, "    r.schema == RECEIPT_SCHEMA && id_ok(&r.id) && !r.terminal()", "    id_ok(&r.id) && !r.terminal()")], IR_T, CHECKED),
+    ("a settled document copy is accepted",
+     [(RECEIPT, "    r.schema == RECEIPT_SCHEMA && id_ok(&r.id) && !r.terminal()", "    r.schema == RECEIPT_SCHEMA && id_ok(&r.id)")], IR_T, CHECKED),
 ]
 
 
