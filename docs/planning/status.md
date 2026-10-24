@@ -5,7 +5,8 @@ G00 and G01 passed (historical Claude reviews). C01–C04 and the P01 cumulative
 C08–C12 and the P03 cumulative review completed on 2026-10-19; C13–C15 and
 the P04 cumulative review completed on 2026-10-20; C16–C18 and the P05
 cumulative review completed on 2026-10-21; C19–C22 and the P06 cumulative
-review completed on 2026-10-23; implementation is at **C23** (P07). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
+review completed on 2026-10-23; C23–C24 and the P07 cumulative review
+completed on 2026-10-24; implementation is at **C25** (P08). D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no
 blockers; each phase review still needs 9/10, after every chunk accepted below
@@ -43,7 +44,10 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C21 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-03 passed; committed as 702cc54 and verified | Follow-ups remediated (`reviews/C21/follow-ups.md`) |
 | C22 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-04 passed; committed as 8985a00 and verified | Follow-ups remediated (`reviews/C22/follow-ups.md`) |
 | P06 | **Complete**: Codex phase attempt-05 scored 9/9/9/9/9; committed as 3dbb2ce and verified against the reviewed source fingerprint | Integrated native checks and workloads for C19–C22 and 182 mutation probes on the P06 bundle; attempts remediated (`reviews/P06/remediation-attempt-0*.md`) |
-| C23–C26 | Planned | Ordered predecessors required; C23 opens P07 |
+| C23 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-05 passed; committed as ba9cd27 and verified | Follow-ups remediated (`reviews/C23/follow-ups.md`) |
+| C24 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-02 passed; committed as 582ae06 and verified | Follow-ups remediated (`reviews/C24/follow-ups.md`) |
+| P07 | **Complete**: Codex phase attempt-04 scored 9/9/9/9/9; committed as 6a7253c2 and verified against the reviewed source fingerprint | Integrated native checks for C01–C24, every workload and the production footprint on the P07 bundle and tree, and 76 mutation probes; attempts remediated (`reviews/P07/remediation-attempt-0*.md`) |
+| C25–C26 | Planned | Ordered predecessors required; C25 opens P08 |
 
 ## C01 evidence (docs/planning/evidence/C01)
 
