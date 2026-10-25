@@ -1,0 +1,49 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L18",
+  "check": "L18-own-profile-id",
+  "workflows": [
+    "W03",
+    "W32"
+  ],
+  "environment": "test-b",
+  "manifest_sha256": "61f9aeec185bf3b1bb306ccf72414fe9132a0fc11e215c4673a17eb4f275f964",
+  "started_utc": "2026-10-25T12:26:56Z",
+  "finished_utc": "2026-10-25T12:26:56Z",
+  "inputs": {
+    "app_name": "airs-v2-c25",
+    "credential": "L18.scan_key",
+    "endpoint": "https://service.api.aisecurity.paloaltonetworks.com",
+    "profile_id": "0aff691c-b0a4-4ef6-9f12-cb175d311bc3",
+    "prompt": "Prisma AIRS Desktop v2 controlled live check: a synthetic benign prompt.",
+    "region": "us",
+    "storage": "session"
+  },
+  "outcome": "passed",
+  "detail": "a complete verdict for the explicit profile, with no management capability configured",
+  "observed": {
+    "action": "allow",
+    "category": "benign",
+    "management_configured": false,
+    "outcome": "completed",
+    "profile_name": "airs-desktop",
+    "service_error": false,
+    "timeout": false,
+    "verdict": "allow"
+  },
+  "ids": {
+    "profile_id": "0aff691c-b0a4-4ef6-9f12-cb175d311bc3",
+    "report_id": "R7b2558b2-5a97-4a1d-923e-35b6c0db9504",
+    "scan_id": "7b2558b2-5a97-4a1d-923e-35b6c0db9504",
+    "tr_id": "pan_33586dc2-d643-4c95-aaff-10f303762d96"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "a local session-only tenant; removed with the run's core, no remote resource",
+  "consumption": {
+    "scans": {
+      "limit": 10,
+      "used": 2
+    }
+  }
+}

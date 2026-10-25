@@ -1,0 +1,27 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-provision-workspace",
+  "workflows": [
+    "W37",
+    "W39"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "e5456fd320d532d4fb40414d4af3c4f4110657b72b2c970ef891586720932ba3",
+  "started_utc": "2026-10-25T20:43:11Z",
+  "finished_utc": "2026-10-25T20:43:11Z",
+  "inputs": {},
+  "outcome": "blocked",
+  "detail": "IAM refuses workspace bindings from this service account (see reconciliation log)",
+  "observed": {},
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {},
+  "implementation": {
+    "cargo_lock_sha256": "1bef6c8e8ff842ff737abe22cafe41963ebd13ecb1afb3cc69dfb4ed37bc61c1",
+    "runner_sha256": "e5c4998b423668ef122a652aedb3a4dc885731ffded457d944b07fc0020aecad",
+    "source_fingerprint": "3df30f29f163e8330e3f7b3b15aea803897a66df9fd226806d02362cd040a08d"
+  }
+}

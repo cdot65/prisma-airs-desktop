@@ -1,0 +1,41 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L17",
+  "check": "L17-discovery",
+  "workflows": [
+    "W47"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "0eb40706ac7bd4958aa706bd58ec652202909bf8166ebef00bc6fbd5acb19a86",
+  "started_utc": "2026-10-25T18:05:53Z",
+  "finished_utc": "2026-10-25T18:05:54Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L17.client_secret",
+      "L17.inference_key"
+    ],
+    "endpoint": "https://gateway.redtail.cdot.io/v1",
+    "inference_endpoint": "https://gateway.redtail.cdot.io/v1",
+    "mcp_server_id": "8a969a23-9dc6-40b0-9e15-1795d3711848",
+    "mcp_server_name": "strata-cloud-manager",
+    "operator_timeout_secs": "300",
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285",
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "outcome": "passed",
+  "detail": "the workspace's MCP catalog was read and lists the designated server (its upstream URL is never kept)",
+  "observed": {
+    "servers": 7,
+    "state": "ready"
+  },
+  "ids": {
+    "mcp_server_id": "8a969a23-9dc6-40b0-9e15-1795d3711848"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

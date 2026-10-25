@@ -1,0 +1,37 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-topic-update",
+  "workflows": [
+    "W08"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:44:04Z",
+  "finished_utc": "2026-10-25T19:44:05Z",
+  "inputs": {
+    "action": "update",
+    "body": {
+      "description": "C25 disposable topic, updated",
+      "examples": [
+        "c25 synthetic example"
+      ],
+      "revision": 1,
+      "topic_name": "airs-v2-c25-topic"
+    },
+    "kind": "topics",
+    "target": "e66ceb88-7297-4fde-8888-4bb76d8b76cf"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Update custom topic “airs-v2-c25-topic”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "found",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

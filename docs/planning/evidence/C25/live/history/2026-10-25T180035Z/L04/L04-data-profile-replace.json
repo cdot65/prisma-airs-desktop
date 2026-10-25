@@ -1,0 +1,89 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L04",
+  "check": "L04-data-profile-replace",
+  "workflows": [
+    "W14"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "aededb9459fff9b9241a2deddf65d81e3da3ad61b1d1a1e1ea534789ab3dc807",
+  "started_utc": "2026-10-25T17:56:16Z",
+  "finished_utc": "2026-10-25T17:56:18Z",
+  "inputs": {
+    "action": "update",
+    "body": {
+      "advance_data_patterns_rule_request": [
+        "(hello high more_than_equal_to 1)"
+      ],
+      "ai_onboarding": false,
+      "audit_metadata": {
+        "created_at": 1791120294542,
+        "created_by": "airs-cli@1001464285.iam.panserviceaccount.com",
+        "updated_at": 1791120294542,
+        "updated_by": "airs-cli@1001464285.iam.panserviceaccount.com"
+      },
+      "description": null,
+      "detection_rules": [
+        {
+          "expression_tree": {
+            "operator_type": "or",
+            "rule_item": null,
+            "sub_expressions": [
+              {
+                "operator_type": null,
+                "rule_item": {
+                  "by_unique_count": false,
+                  "confidence_level": "high",
+                  "detection_technique": "regex",
+                  "id": "6ac22c3e8655952d45a73212",
+                  "match_type": "include",
+                  "name": "hello",
+                  "occurrence_count": 1,
+                  "occurrence_operator_type": "more_than_equal_to",
+                  "supported_confidence_levels": [
+                    "high",
+                    "low"
+                  ],
+                  "version": 1
+                },
+                "sub_expressions": null
+              }
+            ]
+          },
+          "rule_type": "expression_tree"
+        }
+      ],
+      "is_granular_data_profile": false,
+      "is_parent_managed": false,
+      "name": "test123",
+      "profile_status": "active",
+      "profile_type": "advanced",
+      "tags": {
+        "classification": [
+          "pab",
+          "endpoint"
+        ]
+      },
+      "tenant_id": "8259670718644550656",
+      "type": "custom",
+      "version": 1
+    },
+    "kind": "dataProfiles",
+    "target": "11995044"
+  },
+  "outcome": "needs-reconciliation",
+  "detail": "the write may or may not have taken effect",
+  "observed": {
+    "confirmation_title": "Update data profile “test123”?",
+    "failure": {
+      "failure": "unavailable",
+      "kind": "service"
+    },
+    "outcome": "unknown"
+  },
+  "ids": {},
+  "readback": "none",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

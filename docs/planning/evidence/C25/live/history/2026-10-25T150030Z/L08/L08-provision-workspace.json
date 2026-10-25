@@ -1,0 +1,45 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-provision-workspace",
+  "workflows": [
+    "W37",
+    "W39"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "742c40a9bcaf70a080690038c7537ecb32aef4add6bc1945e2bfec5513c14568",
+  "started_utc": "2026-10-25T14:57:50Z",
+  "finished_utc": "2026-10-25T14:57:54Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "existing_scope": false,
+      "name": "airs-v2-c25-ws",
+      "scope_name": "airs_v2_c25_scope"
+    },
+    "kind": "gatewayWorkspaces"
+  },
+  "outcome": "needs-reconciliation",
+  "detail": "the provisioning did not settle every step",
+  "observed": {
+    "provisioning": {
+      "binding": "rejected",
+      "boundRead": false,
+      "cleanup": "retained",
+      "scope": "completed",
+      "scopeName": "airs_v2_c25_scope",
+      "scopeRead": "found",
+      "workspace": "completed",
+      "workspaceId": "efa744cf-be77-47ab-af8e-c19c43ceece8",
+      "workspaceRead": "found",
+      "workspaceSlug": "ws-airs-v-53c854"
+    }
+  },
+  "ids": {
+    "created_id": "efa744cf-be77-47ab-af8e-c19c43ceece8"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

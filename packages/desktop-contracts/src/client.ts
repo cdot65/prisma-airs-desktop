@@ -443,6 +443,10 @@ function isOfflineView(value: unknown): boolean {
     return downloads && drafts
 }
 
+/** An Academy account as `desktop.me` names it: its user ID, a UUID (as live
+ * Academy does, C25), or a Clerk `user_` identifier (core `is_account_id`). */
+const ACADEMY_ACCOUNT = /^(?:[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}|user_[A-Za-z0-9_]{1,123})$/
+
 function isAcademyView(value: unknown): boolean {
     if (!isRecord(value)) return false
     switch (value.state) {
@@ -461,7 +465,7 @@ function isAcademyView(value: unknown): boolean {
             return (
                 isString(value.displayName) &&
                 typeof value.accountId === 'string' &&
-                /^user_[A-Za-z0-9_]{1,123}$/.test(value.accountId) &&
+                ACADEMY_ACCOUNT.test(value.accountId) &&
                 typeof value.learner === 'string' &&
                 LEARNER_REF.test(value.learner)
             )

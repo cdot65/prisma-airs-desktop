@@ -1,0 +1,47 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L05",
+  "check": "L05-session-detail",
+  "workflows": [
+    "W17"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:44:48Z",
+  "finished_utc": "2026-10-25T19:44:52Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L05.client_secret"
+    ],
+    "region": "us",
+    "reveal_content": "synthetic",
+    "scan_id": "d1c42a65-2bb7-4063-90b4-e7caec4d7d26",
+    "storage": "session",
+    "tsg_id": "1001464285"
+  },
+  "outcome": "passed",
+  "detail": "the discovered synthetic session's actions were read",
+  "observed": {
+    "discovered": {
+      "app_name": "airs-v2-c25",
+      "by": "app_name",
+      "candidates": 6,
+      "chosen_by": "first in the service's order"
+    },
+    "session": {
+      "result": "session"
+    },
+    "transaction": {
+      "result": "transaction"
+    }
+  },
+  "ids": {
+    "scan_id": "c4895010-55a6-4442-b490-a4f7f8fccafa",
+    "session_id": "pan_e33ec042-632f-42fe-bf91-44aa986e9918"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

@@ -1,0 +1,204 @@
+{
+ "observations": {
+  "draft_as_read": {
+   "service_fields": [
+    "id",
+    "name",
+    "tenant_id",
+    "type",
+    "version",
+    "audit_metadata",
+    "is_parent_managed"
+   ],
+   "null_fields": [
+    "description",
+    "euc_template_id",
+    "is_end_user_coaching_enabled",
+    "rule2"
+   ]
+  },
+  "filter_reviewed": true,
+  "tree_filter_review": "docs/planning/evidence/C25/native/tree-filter-review.json",
+  "filter_confirmation": "Type Live shape to confirm",
+  "t09": {
+   "forward": [
+    {
+     "role": "AXButton",
+     "label": "Review again"
+    },
+    {
+     "role": "AXButton",
+     "label": "Close"
+    },
+    {
+     "role": "AXTextField",
+     "label": "Type Live shape to confirm"
+    },
+    {
+     "role": "AXButton",
+     "label": "Apply\u2026"
+    },
+    null,
+    {
+     "role": "AXButton",
+     "label": "Runtime Security"
+    }
+   ],
+   "backward": [
+    {
+     "role": "AXTextField",
+     "label": "Type Live shape to confirm"
+    },
+    {
+     "role": "AXButton",
+     "label": "Close"
+    },
+    {
+     "role": "AXButton",
+     "label": "Review again"
+    },
+    {
+     "role": "AXTextArea",
+     "label": "data filtering profile draft (JSON)"
+    }
+   ],
+   "last_forward": "Runtime Security",
+   "on_apply": true,
+   "ring_focused": 4199,
+   "ring_unfocused": 0,
+   "captures": [
+    "docs/planning/evidence/C25/native/capture-apply-focused.png",
+    "docs/planning/evidence/C25/native/capture-apply-unfocused.png",
+    "docs/planning/evidence/C25/native/tree-apply-focused.json",
+    "docs/planning/evidence/C25/native/tree-apply-unfocused.json"
+   ],
+   "button_names": [
+    "Review again",
+    "Close",
+    "Apply\u2026"
+   ],
+   "impact_named": true
+  },
+  "filter_applied": true,
+  "filter_puts": [
+   {
+    "path": "/dlp/v2/api/data-filtering-profiles/filter-live",
+    "status": 200,
+    "dlpBody": {
+     "criteria_details": [],
+     "data_profile_id": 11,
+     "direction": "BOTH",
+     "exception_rules": [],
+     "exclusions": {
+      "app_exclusion_list": [],
+      "url_exclusion_list": []
+     },
+     "file_based": true,
+     "file_type": [
+      "pdf",
+      "txt-upload"
+     ],
+     "is_granular_profile": false,
+     "log_severity": "LOW",
+     "non_file_based": false,
+     "rule1": {
+      "action": "alert",
+      "response_page": "This file has dlp issues",
+      "show_rsp_page": "no"
+     },
+     "scan_type": "include"
+    }
+   }
+  ],
+  "tree_filter_applied": "docs/planning/evidence/C25/native/tree-filter-applied.json",
+  "active_ordinary": true,
+  "inactive_impact": true,
+  "inactive_impact_node": [
+   {
+    "role": "AXStaticText",
+    "label": "Saves this profile inactive. The service does not list inactive profiles, so it will not appear in the profile list or read back after saving; note its name and ID first."
+   }
+  ],
+  "tree_inactive": "docs/planning/evidence/C25/native/tree-profile-inactive.json",
+  "escape": {
+   "sheet_shown": true,
+   "sheet_gone": true,
+   "writes_after": 0,
+   "profile_posts": []
+  },
+  "tree_escaped": "docs/planning/evidence/C25/native/tree-profile-escaped.json",
+  "academy": {
+   "awaiting": true,
+   "signed_in": true,
+   "desktop_me_calls": 1,
+   "failed_shown": false,
+   "restored": true
+  },
+  "tree_academy_signed_in": "docs/planning/evidence/C25/native/tree-academy-signed-in.json",
+  "tree_academy_restored": "docs/planning/evidence/C25/native/tree-academy-restored.json",
+  "secret_in_trees": [],
+  "v1_unchanged": true
+ },
+ "log": [
+  {
+   "t": "15:05:01",
+   "step": "typed",
+   "field": "TSG ID (optional)",
+   "attempts": 1
+  },
+  {
+   "t": "15:05:03",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "15:05:05",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  },
+  {
+   "t": "15:05:08",
+   "step": "typed",
+   "field": "AIRS API key",
+   "attempts": 1
+  },
+  {
+   "t": "15:05:10",
+   "step": "typed",
+   "field": "Client ID",
+   "attempts": 1
+  },
+  {
+   "t": "15:05:13",
+   "step": "typed",
+   "field": "Client secret",
+   "attempts": 1
+  },
+  {
+   "t": "15:05:40",
+   "step": "typed",
+   "field": "Type Live shape to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "15:05:49",
+   "step": "typed",
+   "field": "security profile draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "15:05:55",
+   "step": "typed",
+   "field": "security profile draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "15:05:57",
+   "step": "typed",
+   "field": "Type CREATE to confirm",
+   "attempts": 1
+  }
+ ]
+}

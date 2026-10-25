@@ -1,0 +1,103 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L04",
+  "check": "L04-filtering-profile-replace",
+  "workflows": [
+    "W15"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "a07f5c8fcdc630d323879456e4d8d44f0d2a5d80936274c1ead65a2ab25e078e",
+  "started_utc": "2026-10-25T18:00:45Z",
+  "finished_utc": "2026-10-25T18:00:45Z",
+  "inputs": {
+    "action": "update",
+    "body": {
+      "audit_metadata": {
+        "created_at": 1791120294542,
+        "created_by": null,
+        "updated_at": 1791120294542,
+        "updated_by": "airs-cli@1001464285.iam.panserviceaccount.com"
+      },
+      "criteria_details": [],
+      "data_profile_id": 11995044,
+      "description": null,
+      "direction": "c2s",
+      "euc_template_id": null,
+      "exception_rules": [],
+      "exclusions": {
+        "app_exclusion_list": [],
+        "exclusion_list": {},
+        "url_exclusion_list": []
+      },
+      "file_based": true,
+      "file_type": [
+        "asm",
+        "c_cpp-hdr",
+        "c_cpp-src",
+        "cpp-hdr",
+        "cpp-src",
+        "csharp",
+        "csv",
+        "doc",
+        "docx",
+        "gzip",
+        "java-src",
+        "jpeg-upload",
+        "js",
+        "matlab/obj-c",
+        "pdf",
+        "pl",
+        "powershell",
+        "png-upload",
+        "ppt",
+        "pptx",
+        "py",
+        "r",
+        "rtf",
+        "ruby",
+        "tif",
+        "txt-upload",
+        "vbs",
+        "verilog",
+        "vhdl",
+        "vsd",
+        "vsdx",
+        "vsdm",
+        "xls",
+        "xlsx",
+        "7z"
+      ],
+      "is_end_user_coaching_enabled": null,
+      "is_granular_profile": false,
+      "is_parent_managed": false,
+      "log_severity": "low",
+      "name": "test123",
+      "non_file_based": false,
+      "rule1": {
+        "action": "alert",
+        "response_page": "This file has dlp issues",
+        "show_rsp_page": "no"
+      },
+      "rule2": null,
+      "scan_type": "include",
+      "tenant_id": "8259670718644550656",
+      "type": "custom",
+      "version": 1
+    },
+    "kind": "filteringProfiles",
+    "target": "6ac253a6cb0597f1d7b3fbac"
+  },
+  "outcome": "failed",
+  "detail": "the review refused the draft; nothing was sent",
+  "observed": {
+    "review_failure": {
+      "kind": "problem",
+      "problem": "contract"
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

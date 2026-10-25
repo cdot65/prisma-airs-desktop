@@ -1,0 +1,39 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L01",
+  "check": "L01-denied",
+  "workflows": [
+    "W02",
+    "W05"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T19:29:30Z",
+  "finished_utc": "2026-10-25T19:29:31Z",
+  "inputs": {
+    "app_name": "airs-v2-c25",
+    "credential": "L01.denied_scan_key",
+    "endpoint": "https://service.api.aisecurity.paloaltonetworks.com",
+    "profile_name": "airs-desktop",
+    "prompt": "Prisma AIRS Desktop v2 controlled live check: a synthetic benign prompt.",
+    "region": "us",
+    "storage": "session"
+  },
+  "outcome": "passed",
+  "detail": "the service refused the credential and nothing was shown as a result",
+  "observed": {
+    "failure": "unauthorized",
+    "outcome": "rejected",
+    "status": 401
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "a local session-only tenant; removed with the run's core, no remote resource",
+  "consumption": {
+    "scans": {
+      "limit": 20,
+      "used": 10
+    }
+  }
+}

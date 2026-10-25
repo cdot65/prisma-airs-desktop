@@ -12,8 +12,8 @@ export type AcademyView = { "state": "signedOut" } | { "state": "starting" } | {
  */
 expiresIn: number, } | { "state": "completing" } | { "state": "signedIn", displayName: string, 
 /**
- * Academy's `user_…` account id (not a credential); learner pages
- * key per-learner local state by it.
+ * Academy's account id, a UUID or a `user_…` id (not a credential);
+ * learner pages key per-learner local state by it.
  */
 accountId: string, learner: LearnerRef, } | { "state": "failed", failure: AcademyFailure, vault: VaultError | null, 
 /**

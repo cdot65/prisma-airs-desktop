@@ -1,0 +1,44 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L04",
+  "check": "L04-dictionary-create",
+  "workflows": [
+    "W16"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "e5456fd320d532d4fb40414d4af3c4f4110657b72b2c970ef891586720932ba3",
+  "started_utc": "2026-10-25T20:42:40Z",
+  "finished_utc": "2026-10-25T20:42:41Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "file": "c25-synthetic-keyword\n",
+      "metadata": {
+        "category": "Confidential",
+        "name": "airs-v2-c25-dictionary",
+        "original_file_name": "c25-keywords.txt",
+        "region_name": "United States"
+      }
+    },
+    "kind": "dictionaries"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create dictionary “airs-v2-c25-dictionary”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "6ade69c072df7d1eadb2f6fd"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {},
+  "implementation": {
+    "cargo_lock_sha256": "1bef6c8e8ff842ff737abe22cafe41963ebd13ecb1afb3cc69dfb4ed37bc61c1",
+    "runner_sha256": "e5c4998b423668ef122a652aedb3a4dc885731ffded457d944b07fc0020aecad",
+    "source_fingerprint": "3df30f29f163e8330e3f7b3b15aea803897a66df9fd226806d02362cd040a08d"
+  }
+}

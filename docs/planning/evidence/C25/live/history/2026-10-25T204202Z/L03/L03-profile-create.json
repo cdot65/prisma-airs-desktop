@@ -1,0 +1,212 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-profile-create",
+  "workflows": [
+    "W07"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:44:05Z",
+  "finished_utc": "2026-10-25T19:44:06Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "active": true,
+      "policy": {
+        "ai-security-profiles": [
+          {
+            "content-type-configurations": {
+              "prompt": {
+                "agent-protection": [],
+                "app-protection": {
+                  "alert-url-category": {},
+                  "allow-url-category": {},
+                  "block-url-category": {},
+                  "default-url-category": {
+                    "member": [
+                      "malicious"
+                    ]
+                  },
+                  "url-detected-action": "block",
+                  "url-detected-severity": "low"
+                },
+                "data-protection": {
+                  "data-leak-detection": {
+                    "action": "block",
+                    "member": [
+                      {
+                        "id": "",
+                        "text": "sensitive content",
+                        "version": "2"
+                      }
+                    ]
+                  },
+                  "database-security": null
+                },
+                "model-protection": [
+                  {
+                    "action": "block",
+                    "name": "prompt-injection",
+                    "severity": "medium"
+                  }
+                ]
+              },
+              "response": {
+                "agent-protection": [],
+                "app-protection": {
+                  "alert-url-category": {},
+                  "allow-url-category": {},
+                  "block-url-category": {},
+                  "default-url-category": {
+                    "member": [
+                      "malicious"
+                    ]
+                  },
+                  "url-detected-action": "block",
+                  "url-detected-severity": "low"
+                },
+                "data-protection": {
+                  "data-leak-detection": {
+                    "action": "block",
+                    "member": [
+                      {
+                        "id": "",
+                        "text": "sensitive content",
+                        "version": "2"
+                      }
+                    ]
+                  },
+                  "database-security": [
+                    {
+                      "action": "block",
+                      "name": "database-security-create",
+                      "severity": "medium"
+                    },
+                    {
+                      "action": "block",
+                      "name": "database-security-read",
+                      "severity": "low"
+                    },
+                    {
+                      "action": "block",
+                      "name": "database-security-update",
+                      "severity": "medium"
+                    },
+                    {
+                      "action": "block",
+                      "name": "database-security-delete",
+                      "severity": "high"
+                    }
+                  ]
+                },
+                "model-protection": []
+              },
+              "tool-call": {
+                "agent-protection": [],
+                "app-protection": {
+                  "alert-url-category": {},
+                  "allow-url-category": {},
+                  "block-url-category": {},
+                  "default-url-category": {
+                    "member": [
+                      "malicious"
+                    ]
+                  },
+                  "url-detected-action": "block",
+                  "url-detected-severity": "low"
+                },
+                "data-protection": {
+                  "data-leak-detection": {
+                    "action": "block",
+                    "member": [
+                      {
+                        "id": "",
+                        "text": "sensitive content",
+                        "version": "2"
+                      }
+                    ]
+                  },
+                  "database-security": null
+                },
+                "model-protection": []
+              },
+              "tool-response": {
+                "agent-protection": [],
+                "app-protection": {
+                  "default-url-category": {
+                    "member": null
+                  },
+                  "url-detected-action": "",
+                  "url-detected-severity": "low"
+                },
+                "data-protection": {
+                  "data-leak-detection": {
+                    "action": "",
+                    "member": null
+                  },
+                  "database-security": [
+                    {
+                      "action": "block",
+                      "name": "database-security-create",
+                      "severity": "medium"
+                    },
+                    {
+                      "action": "block",
+                      "name": "database-security-read",
+                      "severity": "low"
+                    },
+                    {
+                      "action": "block",
+                      "name": "database-security-update",
+                      "severity": "medium"
+                    },
+                    {
+                      "action": "block",
+                      "name": "database-security-delete",
+                      "severity": "high"
+                    }
+                  ]
+                },
+                "model-protection": [
+                  {
+                    "action": "block",
+                    "name": "prompt-injection",
+                    "severity": "medium"
+                  }
+                ]
+              }
+            },
+            "content-type-mode": "per_content_type",
+            "model-configuration": {
+              "enable-full-conversation-inspection": false,
+              "latency": {
+                "inline-timeout-action": "block",
+                "max-inline-latency": 5
+              },
+              "mask-data-in-storage": false
+            },
+            "model-type": "default"
+          }
+        ],
+        "dlp-data-profiles": []
+      },
+      "profile_name": "airs-v2-c25-profile"
+    },
+    "kind": "profiles"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create security profile “airs-v2-c25-profile”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "a1f3f49d-72c0-4b10-a402-219ceb3c1cba"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

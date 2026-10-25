@@ -1,0 +1,38 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L04",
+  "check": "L04-dictionary-replace",
+  "workflows": [
+    "W16"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "a07f5c8fcdc630d323879456e4d8d44f0d2a5d80936274c1ead65a2ab25e078e",
+  "started_utc": "2026-10-25T18:00:42Z",
+  "finished_utc": "2026-10-25T18:00:45Z",
+  "inputs": {
+    "action": "update",
+    "body": {
+      "file": "c25-synthetic-keyword-2\n",
+      "metadata": {
+        "category": "Confidential",
+        "name": "airs-v2-c25-dictionary",
+        "original_file_name": "c25-keywords-2.txt",
+        "region_name": "United States"
+      }
+    },
+    "kind": "dictionaries",
+    "target": "6ade43c9a0bbca61288fb831"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Update dictionary “airs-v2-c25-dictionary”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "found",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

@@ -171,6 +171,15 @@ fn https(text: &str) -> Option<Url> {
     .then_some(url)
 }
 
+/// An Academy account: its user ID as `desktop.me` returns it, a canonical
+/// UUID (C25, live Academy), or a Clerk `user_` identifier.
+pub fn is_account_id(id: &str) -> bool {
+    crate::red_team::is_uuid(id)
+        || (id.starts_with("user_")
+            && id.len() <= 128
+            && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
+}
+
 /// An `https://host[:port]` origin with no path, query or credentials.
 pub fn origin_of(text: &str) -> Option<String> {
     let url = https(text)?;

@@ -1,0 +1,65 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C25",
+  "recorded_utc": "2026-10-25T20:06:14Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window and its AppKit sheet through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes, the fixture build's own WebView capture) against tools/native-acceptance/mgmt_server.py and academy_server.py; tools/native-acceptance/acceptance_c25.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "1266b95a5e6663610b9375bcc77d681f46cc4a14383a676c24b994ec1f3bc637",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C25-N01",
+      "description": "Editing a data filtering profile as read (unset fields null, plus the service's own id, name, tenant_id, type, version, audit_metadata and is_parent_managed): Edit\u2026 opens it as a JSON draft, Review change accepts it unchanged, Apply\u2026 opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-filtering-profiles/<id> whose body holds the draft without the nulls or the service's own fields, and the window says it was read back.",
+      "result": "pass",
+      "observation": "draft as read holds service fields ['id', 'name', 'tenant_id', 'type', 'version', 'audit_metadata', 'is_parent_managed'] and nulls ['description', 'euc_template_id', 'is_end_user_coaching_enabled', 'rule2']; reviewed: True; applied and read back: True; PUTs [{'path': '/dlp/v2/api/data-filtering-profiles/filter-live', 'status': 200, 'dlpBody': {'criteria_details': [], 'data_profile_id': 11, 'direction': 'BOTH', 'exception_rules': [], 'exclusions': {'app_exclusion_list': [], 'url_exclusion_list': []}, 'file_based': True, 'file_type': ['pdf', 'txt-upload'], 'is_granular_profile': False, 'log_severity': 'LOW', 'non_file_based': False, 'rule1': {'action': 'alert', 'response_page': 'This file has dlp issues', 'show_rsp_page': 'no'}, 'scan_type': 'include'}}]",
+      "evidence": [
+        "docs/planning/evidence/C25/native/observations.json",
+        "docs/planning/evidence/C25/native/tree-filter-review.json",
+        "docs/planning/evidence/C25/native/tree-filter-applied.json"
+      ]
+    },
+    {
+      "id": "C25-N02",
+      "description": "A security profile saved inactive: reviewing a New security profile draft with \"active\": false shows the impact 'Saves this profile inactive. The service does not list inactive profiles, so it will not appear in the profile list or read back after saving; note its name and ID first.' (an active draft shows the ordinary 'Applies only to this tenant' impact).",
+      "result": "pass",
+      "observation": "active draft shows the ordinary impact only: True; inactive draft shows the inactive impact: True ([{'role': 'AXStaticText', 'label': 'Saves this profile inactive. The service does not list inactive profiles, so it will not appear in the profile list or read back after saving; note its name and ID first.'}])",
+      "evidence": [
+        "docs/planning/evidence/C25/native/observations.json",
+        "docs/planning/evidence/C25/native/tree-profile-inactive.json"
+      ]
+    },
+    {
+      "id": "C25-N03",
+      "description": "Academy device sign-in when desktop.me names the account by a UUID (as live Academy does): after approval the Academy account group says 'Signed in to Academy as' with the display name, and the learner is kept across a relaunch.",
+      "result": "pass",
+      "observation": "code shown: True; signed in as Grace Hopper with desktop.me accountId 0b7c9d2e-4f1a-4c3b-9e8d-1a2b3c4d5e6f: True (desktop.me calls 1); kept across a relaunch: True",
+      "evidence": [
+        "docs/planning/evidence/C25/native/observations.json",
+        "docs/planning/evidence/C25/native/tree-academy-signed-in.json",
+        "docs/planning/evidence/C25/native/tree-academy-restored.json"
+      ]
+    },
+    {
+      "id": "C25-N04",
+      "description": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply\u2026 in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent.",
+      "result": "pass",
+      "observation": "Tab from the draft: [{'role': 'AXButton', 'label': 'Review again'}, {'role': 'AXButton', 'label': 'Close'}, {'role': 'AXTextField', 'label': 'Type Live shape to confirm'}, {'role': 'AXButton', 'label': 'Apply\u2026'}, None, {'role': 'AXButton', 'label': 'Runtime Security'}]; Shift-Tab from Apply\u2026: [{'role': 'AXTextField', 'label': 'Type Live shape to confirm'}, {'role': 'AXButton', 'label': 'Close'}, {'role': 'AXButton', 'label': 'Review again'}, {'role': 'AXTextArea', 'label': 'data filtering profile draft (JSON)'}]; focus ring pixels around Apply\u2026 4199 focused vs 0 not; named buttons ['Review again', 'Close', 'Apply\u2026']; impact named: True; Escape on the sheet: {'sheet_shown': True, 'sheet_gone': True, 'writes_after': 0, 'profile_posts': []}",
+      "evidence": [
+        "docs/planning/evidence/C25/native/observations.json",
+        "docs/planning/evidence/C25/native/capture-apply-focused.png",
+        "docs/planning/evidence/C25/native/capture-apply-unfocused.png",
+        "docs/planning/evidence/C25/native/tree-apply-focused.json",
+        "docs/planning/evidence/C25/native/tree-apply-unfocused.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "The endpoints are local synthetic fixtures shaped after the live behaviours found in C25 (live receipts under evidence/C25/live). The fixture filtering profile uses the request contract's direction BOTH and log_severity LOW: the live service stores c2s and low, which the SDK contract refuses (an SDK follow-up recorded in blocked-gaps.md).",
+    "Focus visibility is measured on the fixture build's own WebView snapshot; spoken VoiceOver output was not recorded; AX roles, names and focus are inspected."
+  ]
+}

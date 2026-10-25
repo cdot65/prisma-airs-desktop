@@ -1,0 +1,147 @@
+{
+  "schema": "airs-v2/live-run/1",
+  "evidence": "live",
+  "manifest_sha256": "e5456fd320d532d4fb40414d4af3c4f4110657b72b2c970ef891586720932ba3",
+  "started_utc": "2026-10-25T20:42:02Z",
+  "finished_utc": "2026-10-25T20:43:34Z",
+  "families": [
+    {
+      "id": "L01",
+      "status": "passed",
+      "checks": [
+        "L01-scan: passed",
+        "L01-denied: passed"
+      ]
+    },
+    {
+      "id": "L02",
+      "status": "passed",
+      "checks": [
+        "L02-verify: passed",
+        "L02-inventories: passed",
+        "L02-pagination: passed",
+        "L02-detail: passed",
+        "L02-least-privilege-denied: passed"
+      ]
+    },
+    {
+      "id": "L03",
+      "status": "passed",
+      "checks": [
+        "L03-topic-create: passed",
+        "L03-topic-update: passed",
+        "L03-profile-create: passed",
+        "L03-key-create: passed",
+        "L03-key-rotate: passed",
+        "L03-application-update: passed",
+        "L03-cleanup-key: passed",
+        "L03-cleanup-application: passed",
+        "L03-cleanup-profile: passed",
+        "L03-cleanup-topic: passed"
+      ]
+    },
+    {
+      "id": "L04",
+      "status": "blocked",
+      "checks": [
+        "L04-pattern-create: passed",
+        "L04-pattern-replace: passed",
+        "L04-dictionary-create: passed",
+        "L04-dictionary-replace: passed",
+        "L04-data-profile-replace: blocked",
+        "L04-filtering-profile-replace: blocked",
+        "L04-deployment-catalog: passed",
+        "L04-cleanup-dictionary: passed",
+        "L04-cleanup-pattern: passed"
+      ]
+    },
+    {
+      "id": "L05",
+      "status": "passed",
+      "checks": [
+        "L05-inventory: passed",
+        "L05-session-detail: passed",
+        "L05-search: passed",
+        "L05-content-reveal: passed"
+      ]
+    },
+    {
+      "id": "L06",
+      "status": "passed",
+      "checks": [
+        "L06-red-team: passed",
+        "L06-model-and-skills: passed",
+        "L06-attack-report: passed"
+      ]
+    },
+    {
+      "id": "L07",
+      "status": "passed",
+      "checks": [
+        "L07-workspaces: passed",
+        "L07-inventories: passed",
+        "L07-prerequisites: passed",
+        "L07-least-privilege-denied: passed"
+      ]
+    },
+    {
+      "id": "L08",
+      "status": "blocked",
+      "checks": [
+        "L08-provision-workspace: blocked",
+        "L08-route-create: passed",
+        "L08-route-update: passed",
+        "L08-service-key-create: passed",
+        "L08-service-key-rotate: passed",
+        "L08-cleanup-service-key: passed",
+        "L08-cleanup-route: passed",
+        "L08-cleanup-workspace: blocked"
+      ]
+    },
+    {
+      "id": "L09",
+      "status": "passed",
+      "checks": [
+        "L09-stream: passed",
+        "L09-cancel: passed",
+        "L09-error-recovery: passed"
+      ]
+    },
+    {
+      "id": "L10",
+      "status": "passed",
+      "checks": [
+        "L10-runtime-overview: passed",
+        "L10-gateway-observation: passed"
+      ]
+    },
+    {
+      "id": "L15",
+      "status": "passed",
+      "checks": [
+        "L15-headers-and-query: passed",
+        "L15-cookies: passed",
+        "L15-multipart-upload: passed",
+        "L15-download: passed",
+        "L15-stored-secret: passed",
+        "L15-airs-read: passed",
+        "L15-airs-reviewed-write: passed"
+      ]
+    },
+    {
+      "id": "L18",
+      "status": "passed",
+      "checks": [
+        "L18-own-scope: passed",
+        "L18-own-profile-id: passed",
+        "L18-cross-scope-denied: passed"
+      ]
+    }
+  ],
+  "stopped": null,
+  "implementation": {
+    "cargo_lock_sha256": "1bef6c8e8ff842ff737abe22cafe41963ebd13ecb1afb3cc69dfb4ed37bc61c1",
+    "runner_sha256": "e5c4998b423668ef122a652aedb3a4dc885731ffded457d944b07fc0020aecad",
+    "source_fingerprint": "3df30f29f163e8330e3f7b3b15aea803897a66df9fd226806d02362cd040a08d"
+  }
+}

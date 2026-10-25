@@ -23,14 +23,18 @@ const USAGE: &str = "usage: xtask <command> [options]
   fingerprint       --chunk Cxx|--phase Pxx
   handshake
   bindings          [--check]
-  ledger            [--check]
+  ledger            [--check | --record]
   notices           [--check]
   fetch-inputs      --source PATH_TO_ACADEMY_GIT_REPO
   shared-prepare    --input .inputs/academy --scratch .work/academy
   shared-lifecycle  --allowlist docs/architecture/shared-lifecycle.json --scratch .work/academy [--list]
   sdk-test          --package scm-sdk --features scan --scratch .work/scm-sdk
   footprint         --chunk Cxx|--phase Pxx --manifest docs/architecture/checks.json
-  package           --kind preview|release-candidate --manifest docs/architecture/checks.json";
+  package           --kind preview|release-candidate --manifest docs/architecture/checks.json
+  live-scope        [--scope PRIVATE_MANIFEST_OUTSIDE_THE_REPOSITORY]
+  live-run          --scope PRIVATE_MANIFEST_OUTSIDE_THE_REPOSITORY [--family Lxx]...
+  harness-sign      --identity NAME --out DIR_OUTSIDE_RESOURCES
+  release-sign      --identity NAME --app PATH --dmg PATH [--profile NOTARY_PROFILE] [--execute [--notarize]]";
 
 struct Args {
     command: String,
@@ -351,10 +355,62 @@ pub fn main(raw: Vec<String>) -> Result<()> {
             let env = Environment::prepare(&repo)?;
             crate::notices::run(&env, &repo, args.has("--check"))
         }
+        "live-scope" => {
+            args.only(&["--scope"])?;
+            if args.has("--scope") && args.value("--scope").is_none() {
+                return Err(invalid(format!("live-scope --scope needs a path\n{USAGE}")));
+            }
+            let record = crate::live::run(&repo, args.value("--scope").map(std::path::Path::new))?;
+            let s = &record.summary;
+            println!(
+                "live scope: {} of 18 families designated, {} blocked; required rows: {} designated, {} blocked by access, {} owned by C26; wrote {}",
+                s.families_designated,
+                s.families_blocked,
+                s.rows_designated,
+                s.rows_blocked,
+                s.rows_owned_by_c26,
+                crate::live::REPORT
+            );
+            Ok(())
+        }
+        "live-run" => {
+            args.only(&["--scope", "--family"])?;
+            let scope = PathBuf::from(args.require("--scope")?);
+            let families = args.values("--family");
+            let record = crate::live_run::main(&repo, &scope, &families)?;
+            for family in &record.families {
+                println!(
+                    "{} {}: {}",
+                    family.id,
+                    family.status,
+                    family.checks.join("; ")
+                );
+            }
+            if let Some(stop) = &record.stopped {
+                println!(
+                    "STOPPED at {}/{}: {}{}",
+                    stop.family,
+                    stop.check,
+                    stop.reason,
+                    if stop.reconcile {
+                        " (needs reconciliation)"
+                    } else {
+                        ""
+                    }
+                );
+            }
+            if record.passed() {
+                Ok(())
+            } else {
+                Err(invalid("live run did not pass every requested family"))
+            }
+        }
         "ledger" => {
-            args.only(&["--check"])?;
+            args.only(&["--check", "--record"])?;
             if args.has("--check") {
                 ledger::check(&repo)
+            } else if args.has("--record") {
+                ledger::record(&repo)
             } else {
                 ledger::generate(&repo)
             }
@@ -372,6 +428,84 @@ pub fn main(raw: Vec<String>) -> Result<()> {
                 &PathBuf::from(args.require("--input")?),
                 &PathBuf::from(args.require("--scratch")?),
             )
+        }
+        "harness-sign" => {
+            args.only(&["--identity", "--out"])?;
+            let record_path = repo.join(crate::harness::PIN_RECORD);
+            let record: serde_json::Value = serde_json::from_slice(
+                &std::fs::read(&record_path).map_err(crate::io_err(&record_path))?,
+            )
+            .map_err(|e| invalid(format!("{}: {e}", crate::harness::PIN_RECORD)))?;
+            if record.get("signing").is_some() {
+                return Err(invalid("the sealed engine is already signed"));
+            }
+            let root = crate::harness::unpack(&repo)?;
+            let pin = desktop_core::harness::engine::pin();
+            let signed = crate::signing::sign_engine(
+                &root.join(&pin.executable),
+                &pin.binary_sha256,
+                &PathBuf::from(args.require("--out")?),
+                args.require("--identity")?,
+            )?;
+            println!(
+                "signed engine {} (unsigned {}); reseal with tools/harness/seal.py --signed-engine",
+                signed.signed_sha256, signed.unsigned_sha256
+            );
+            Ok(())
+        }
+        "release-sign" => {
+            args.only(&[
+                "--identity",
+                "--app",
+                "--dmg",
+                "--profile",
+                "--execute",
+                "--notarize",
+            ])?;
+            let app = PathBuf::from(args.require("--app")?);
+            let release = crate::signing::Release {
+                executable: native::plist_value(&app, "CFBundleExecutable")?,
+                app,
+                dmg: PathBuf::from(args.require("--dmg")?),
+                volume: "Prisma AIRS Desktop v2".to_owned(),
+                identity: args.require("--identity")?.to_owned(),
+                profile: args
+                    .value("--profile")
+                    .unwrap_or("prisma-airs-desktop")
+                    .to_owned(),
+            };
+            if !args.has("--execute") {
+                if args.has("--notarize") {
+                    return Err(invalid("--notarize needs --execute"));
+                }
+                for step in release.plan() {
+                    println!("{}: {}", step.label, step.argv.join(" "));
+                }
+                return Ok(());
+            }
+            let pin = desktop_core::harness::engine::pin();
+            let record =
+                crate::signing::execute(&release, &pin.binary_sha256, args.has("--notarize"))?;
+            crate::write_json(
+                &repo
+                    .evidence_dir(Subject::Chunk(26))
+                    .join("release-signing.json"),
+                &record,
+            )?;
+            println!(
+                "signed{}: app tree {}",
+                if record.notarized {
+                    ", notarized and stapled"
+                } else {
+                    ""
+                },
+                record
+                    .after_signing
+                    .app_tree_sha256
+                    .as_deref()
+                    .unwrap_or("?")
+            );
+            Ok(())
         }
         "footprint" => {
             args.only(&["--chunk", "--phase", "--manifest"])?;

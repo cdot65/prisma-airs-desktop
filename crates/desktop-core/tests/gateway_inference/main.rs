@@ -56,6 +56,8 @@ enum Chat {
     Lost,
     /// A successful answer that is not an event stream.
     NotStream,
+    /// These exact event-stream bytes (as a live Gateway sent them).
+    Raw(Vec<u8>),
     /// One delta, then a `length` finish (cut at the token limit).
     Cut,
 }
@@ -387,6 +389,12 @@ impl Gateway {
                 ),
                 Chat::Lost => Reply::Close,
                 Chat::NotStream => json_reply(200, &json!({"id": id, "object": "chat.completion"})),
+                Chat::Raw(bytes) => Reply::Stream {
+                    head: "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream; charset=utf-8\r\nset-cookie: __cf_bm=synthetic; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com\r\nconnection: close".into(),
+                    // In small pieces, as a network delivers them.
+                    parts: bytes.chunks(37).map(|c| (2, c.to_vec())).collect(),
+                    hang: false,
+                },
                 Chat::Cut => Reply::Stream {
                     head: SSE_HEAD.into(),
                     parts: vec![
@@ -974,7 +982,8 @@ async fn a_run_streams_its_output_once_with_its_route_and_trace_and_is_never_ret
     assert_eq!(chats[0].header("x-portkey-config"), Some(ROUTE));
     let body: Value = serde_json::from_slice(&chats[0].body).expect("body");
     assert_eq!(body["stream"], true);
-    assert_eq!(body["max_tokens"], 256);
+    assert_eq!(body["max_completion_tokens"], 256);
+    assert!(body.get("max_tokens").is_none());
     assert_eq!(
         body["messages"][0],
         json!({"role": "system", "content": "be brief"})
@@ -1053,6 +1062,62 @@ async fn a_run_streams_its_output_once_with_its_route_and_trace_and_is_never_ret
         assert!(desk.run(&reference, run).await.is_err());
     }
     assert_eq!(desk.server.seen().len(), before);
+}
+
+/// A live OpenAI stream through the Gateway (C25, 2026-10-25): each chunk
+/// carries `service_tier`, `obfuscation` and a null `refusal`, and usage
+/// arrives in a last chunk with no choices.
+const LIVE_STREAM: &str = concat!(
+    "data: {\"id\":\"chatcmpl-E\",\"object\":\"chat.completion.chunk\",\"created\":1792956677,\"model\":\"gpt-5.6-luna\",\"service_tier\":\"default\",\"system_fingerprint\":null,\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\",\"refusal\":null},\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"r1tnwRLEHZMqbI\"}\n\n",
+    "data: {\"id\":\"chatcmpl-E\",\"object\":\"chat.completion.chunk\",\"created\":1792956677,\"model\":\"gpt-5.6-luna\",\"service_tier\":\"default\",\"system_fingerprint\":null,\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"8iCven5H2J0P0y\"}\n\n",
+    "data: {\"id\":\"chatcmpl-E\",\"object\":\"chat.completion.chunk\",\"created\":1792956677,\"model\":\"gpt-5.6-luna\",\"service_tier\":\"default\",\"system_fingerprint\":null,\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":null,\"obfuscation\":\"PUyrBZuDUZ\"}\n\n",
+    "data: {\"id\":\"chatcmpl-E\",\"object\":\"chat.completion.chunk\",\"created\":1792956677,\"model\":\"gpt-5.6-luna\",\"service_tier\":\"default\",\"system_fingerprint\":null,\"choices\":[],\"usage\":{\"prompt_tokens\":9,\"completion_tokens\":4,\"total_tokens\":13,\"prompt_tokens_details\":{\"cached_tokens\":0,\"cache_write_tokens\":0,\"audio_tokens\":0},\"completion_tokens_details\":{\"reasoning_tokens\":0,\"audio_tokens\":0,\"accepted_prediction_tokens\":0,\"rejected_prediction_tokens\":0}},\"obfuscation\":\"LJlfZfJcOq\"}\n\n",
+    "data: [DONE]\n\n",
+);
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_live_openai_stream_through_the_gateway_completes() {
+    let mut desk = desk().await;
+    let reference = desk.choose(WS_A).await;
+    desk.store_key(&reference, INFERENCE_KEY)
+        .await
+        .expect("stored");
+    desk.service().chat = Chat::Raw(LIVE_STREAM.as_bytes().to_vec());
+    desk.run(&reference, prompt("Say ok.")).await.expect("run");
+    let view = desk.ended().await;
+    assert_eq!(view["failure"], Value::Null, "{view}");
+    assert_eq!(view["state"], "completed");
+    assert_eq!(view["output"], "ok");
+    assert_eq!(view["servedModel"], "gpt-5.6-luna");
+    assert_eq!(view["finish"], "stop");
+    assert_eq!(view["usage"]["total"], 13);
+}
+
+/// A Gateway cache hit (C25, live): the whole answer in one chunk, with
+/// usage and no `finish_reason`. The SDK's stream contract requires
+/// `finish_reason`, so the run fails as an invalid response after the
+/// Gateway answered (an SDK follow-up); nothing is retried.
+const CACHED_STREAM: &str = concat!(
+    "data: {\"id\":\"chatcmpl-C\",\"object\":\"chat.completion.chunk\",\"created\":1792957315,\"model\":\"gpt-5.6-luna\",\"system_fingerprint\":null,\"provider\":\"openai\",\"usage\":{\"completion_tokens\":4,\"prompt_tokens\":14,\"total_tokens\":18},\"service_tier\":\"default\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"ready\"}}]}\n\n",
+    "data: [DONE]\n\n",
+);
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cached_gateway_answer_without_finish_reason_is_an_invalid_response() {
+    let mut desk = desk().await;
+    let reference = desk.choose(WS_A).await;
+    desk.store_key(&reference, INFERENCE_KEY)
+        .await
+        .expect("stored");
+    desk.service().chat = Chat::Raw(CACHED_STREAM.as_bytes().to_vec());
+    desk.run(&reference, prompt("Reply with the single word: ready."))
+        .await
+        .expect("run");
+    let view = desk.ended().await;
+    assert_eq!(view["state"], "failed");
+    assert_eq!(view["failure"], "invalidResponse");
+    assert_eq!(view["outcome"], "completed", "the Gateway answered");
+    assert_eq!(desk.chats().len(), 1, "never retried");
 }
 
 #[tokio::test(flavor = "multi_thread")]

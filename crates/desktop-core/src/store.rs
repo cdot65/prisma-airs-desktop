@@ -278,7 +278,7 @@ impl PersistedState {
                 .all(|c| seen.insert((c.tenant.clone(), c.class)))
         };
         let learner_ok = self.learner.as_ref().is_none_or(|l| {
-            l.account_id.starts_with("user_")
+            crate::academy::is_account_id(&l.account_id)
                 && !l.display_name.trim().is_empty()
                 && crate::academy::origin_of(&l.issuer).as_deref() == Some(l.issuer.as_str())
                 && !l.client_id.is_empty()

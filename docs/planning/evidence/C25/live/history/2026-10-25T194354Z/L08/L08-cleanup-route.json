@@ -1,0 +1,30 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-cleanup-route",
+  "workflows": [
+    "W37"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T19:30:39Z",
+  "finished_utc": "2026-10-25T19:30:44Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "gatewayRoutes",
+    "target": "b5febde3-ff63-45a0-ae60-f3818e904edb"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back absent",
+  "observed": {
+    "confirmation_title": "Delete Gateway route “airs-v2-c25-route-2”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "absent",
+  "cleanup": "this is the cleanup",
+  "consumption": {}
+}

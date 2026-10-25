@@ -1,0 +1,37 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L05",
+  "check": "L05-search",
+  "workflows": [
+    "W18"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "2ec20f2e882bc1a8e9f0161eb85bbe0b1e0a873d35e80dd79e28f09623b8de5c",
+  "started_utc": "2026-10-25T14:29:41Z",
+  "finished_utc": "2026-10-25T14:29:42Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L05.client_secret"
+    ],
+    "region": "us",
+    "reveal_content": "synthetic",
+    "scan_id": "d1c42a65-2bb7-4063-90b4-e7caec4d7d26",
+    "storage": "session",
+    "tsg_id": "1001464285"
+  },
+  "outcome": "passed",
+  "detail": "the bounded search by the session's scan ID completed and states its completeness",
+  "observed": {
+    "search": {
+      "result": "search"
+    }
+  },
+  "ids": {
+    "scan_id": "d1c42a65-2bb7-4063-90b4-e7caec4d7d26"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

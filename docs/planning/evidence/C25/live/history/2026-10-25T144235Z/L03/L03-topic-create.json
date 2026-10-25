@@ -1,0 +1,37 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-topic-create",
+  "workflows": [
+    "W08"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "6c23bbcd6da2dce11f5df70d4de34ab58e2d43073855e83b3804c1ecabbe60e0",
+  "started_utc": "2026-10-25T14:34:49Z",
+  "finished_utc": "2026-10-25T14:34:51Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "description": "C25 disposable topic",
+      "examples": [
+        "c25 synthetic example"
+      ],
+      "topic_name": "airs-v2-c25-topic"
+    },
+    "kind": "topics"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create custom topic “airs-v2-c25-topic”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "34b0bdab-bac4-4470-a931-a2ddb32120ad"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

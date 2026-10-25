@@ -1,0 +1,31 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-cleanup-application",
+  "workflows": [
+    "W09"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "6c23bbcd6da2dce11f5df70d4de34ab58e2d43073855e83b3804c1ecabbe60e0",
+  "started_utc": "2026-10-25T14:49:59Z",
+  "finished_utc": "2026-10-25T14:49:59Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "applications",
+    "target": "bb1f4af3-6532-48bb-b16f-7e3f4aeb7eb8"
+  },
+  "outcome": "failed",
+  "detail": "the review refused the draft; nothing was sent",
+  "observed": {
+    "review_failure": {
+      "kind": "problem",
+      "problem": "notFound"
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

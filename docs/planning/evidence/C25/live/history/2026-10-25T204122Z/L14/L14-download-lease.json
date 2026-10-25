@@ -1,0 +1,28 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L14",
+  "check": "L14-download-lease",
+  "workflows": [
+    "W55"
+  ],
+  "environment": "academy-test",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T18:41:53Z",
+  "finished_utc": "2026-10-25T18:41:54Z",
+  "inputs": {
+    "course_id": "app-architecture"
+  },
+  "outcome": "passed",
+  "detail": "the client-safe course was downloaded under its lease and sealed for this account",
+  "observed": {
+    "failure": null,
+    "http_status": null,
+    "outcome": null,
+    "result": "data"
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "removed at the end of the family",
+  "consumption": {}
+}

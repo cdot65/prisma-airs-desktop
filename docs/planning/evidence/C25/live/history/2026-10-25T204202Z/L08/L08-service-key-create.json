@@ -1,0 +1,38 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-service-key-create",
+  "workflows": [
+    "W38"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:45:04Z",
+  "finished_utc": "2026-10-25T19:45:04Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "name": "airs-v2-c25-key",
+      "scopes": [
+        "completions.write"
+      ],
+      "type": "service"
+    },
+    "kind": "gatewayServiceKeys"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create Gateway service key “airs-v2-c25-key”?",
+    "failure": null,
+    "one_time_secret": "held, then forgotten unseen",
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "29a4d93a-9b98-41cd-9bf1-2c51530b7a45"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-application-update",
+  "workflows": [
+    "W09"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "6c23bbcd6da2dce11f5df70d4de34ab58e2d43073855e83b3804c1ecabbe60e0",
+  "started_utc": "2026-10-25T14:32:22Z",
+  "finished_utc": "2026-10-25T14:32:23Z",
+  "inputs": {
+    "action": "update",
+    "body": {
+      "app_name": "airs-v2-c25-app",
+      "cloud_provider": "aws",
+      "environment": "staging"
+    },
+    "kind": "applications",
+    "target": "bb1f4af3-6532-48bb-b16f-7e3f4aeb7eb8"
+  },
+  "outcome": "failed",
+  "detail": "the service did not apply it (rejected); nothing changed",
+  "observed": {
+    "confirmation_title": "Update application “airs-v2-c25-app”?",
+    "failure": {
+      "failure": "rejected",
+      "kind": "service"
+    },
+    "outcome": "rejected"
+  },
+  "ids": {},
+  "readback": "none",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

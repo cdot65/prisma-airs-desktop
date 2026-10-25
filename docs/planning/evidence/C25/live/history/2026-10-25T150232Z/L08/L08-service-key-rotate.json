@@ -1,0 +1,33 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-service-key-rotate",
+  "workflows": [
+    "W38"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "c7a5ea1df2f24e2da0625ddc4093670a6319aab3f263b7fe4aef7e5260d7e6a7",
+  "started_utc": "2026-10-25T15:00:32Z",
+  "finished_utc": "2026-10-25T15:00:33Z",
+  "inputs": {
+    "action": "rotate",
+    "body": {
+      "key_transition_period_ms": 3600000
+    },
+    "kind": "gatewayServiceKeys",
+    "target": "860fcd3d-baae-45d6-a426-1702fa8f1e40"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Rotate Gateway service key “airs-v2-c25-key”?",
+    "failure": null,
+    "one_time_secret": "held, then forgotten unseen",
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "found",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

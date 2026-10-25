@@ -1,0 +1,30 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-cleanup-topic",
+  "workflows": [
+    "W08"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "6c23bbcd6da2dce11f5df70d4de34ab58e2d43073855e83b3804c1ecabbe60e0",
+  "started_utc": "2026-10-25T14:50:01Z",
+  "finished_utc": "2026-10-25T14:50:02Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "topics",
+    "target": "c4b01e9e-6109-4c2b-8468-5c8a2fa84bb5"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back absent",
+  "observed": {
+    "confirmation_title": "Delete custom topic “airs-v2-c25-topic”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "absent",
+  "cleanup": "this is the cleanup",
+  "consumption": {}
+}

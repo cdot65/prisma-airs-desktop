@@ -1,0 +1,40 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-key-rotate",
+  "workflows": [
+    "W10",
+    "W11"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "e5456fd320d532d4fb40414d4af3c4f4110657b72b2c970ef891586720932ba3",
+  "started_utc": "2026-10-25T20:42:21Z",
+  "finished_utc": "2026-10-25T20:42:26Z",
+  "inputs": {
+    "action": "rotate",
+    "body": {
+      "rotation_time_interval": 90,
+      "rotation_time_unit": "days"
+    },
+    "kind": "apiKeys",
+    "target": "9a8be069-9f2c-4675-8b64-abf27ddecace"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Rotate API key “airs-v2-c25-key”?",
+    "failure": null,
+    "one_time_secret": "held, then forgotten unseen",
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "found",
+  "cleanup": "nothing created",
+  "consumption": {},
+  "implementation": {
+    "cargo_lock_sha256": "1bef6c8e8ff842ff737abe22cafe41963ebd13ecb1afb3cc69dfb4ed37bc61c1",
+    "runner_sha256": "e5c4998b423668ef122a652aedb3a4dc885731ffded457d944b07fc0020aecad",
+    "source_fingerprint": "3df30f29f163e8330e3f7b3b15aea803897a66df9fd226806d02362cd040a08d"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L10",
+  "check": "L10-gateway-observation",
+  "workflows": [
+    "W41"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "e5456fd320d532d4fb40414d4af3c4f4110657b72b2c970ef891586720932ba3",
+  "started_utc": "2026-10-25T20:43:28Z",
+  "finished_utc": "2026-10-25T20:43:30Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L10.client_secret"
+    ],
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285",
+    "window_days": "7",
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "outcome": "passed",
+  "detail": "the workspace's usage, logs and limit policies were read with their freshness",
+  "observed": {
+    "observations": {
+      "limits": {
+        "result": "gateway"
+      },
+      "logs": {
+        "result": "gateway"
+      },
+      "usage": {
+        "result": "gateway"
+      }
+    }
+  },
+  "ids": {
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {},
+  "implementation": {
+    "cargo_lock_sha256": "1bef6c8e8ff842ff737abe22cafe41963ebd13ecb1afb3cc69dfb4ed37bc61c1",
+    "runner_sha256": "e5c4998b423668ef122a652aedb3a4dc885731ffded457d944b07fc0020aecad",
+    "source_fingerprint": "3df30f29f163e8330e3f7b3b15aea803897a66df9fd226806d02362cd040a08d"
+  }
+}

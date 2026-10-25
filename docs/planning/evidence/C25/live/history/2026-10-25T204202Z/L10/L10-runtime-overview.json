@@ -1,0 +1,35 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L10",
+  "check": "L10-runtime-overview",
+  "workflows": [
+    "W21"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:45:10Z",
+  "finished_utc": "2026-10-25T19:45:13Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L10.client_secret"
+    ],
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285",
+    "window_days": "7",
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "outcome": "passed",
+  "detail": "the Runtime Home/Inbox sources were read with their freshness and completeness",
+  "observed": {
+    "overview": {
+      "result": "overview"
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

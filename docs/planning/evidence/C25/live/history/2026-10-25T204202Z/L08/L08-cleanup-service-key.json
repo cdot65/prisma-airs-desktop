@@ -1,0 +1,30 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-cleanup-service-key",
+  "workflows": [
+    "W38"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:45:05Z",
+  "finished_utc": "2026-10-25T19:45:06Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "gatewayServiceKeys",
+    "target": "29a4d93a-9b98-41cd-9bf1-2c51530b7a45"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back absent",
+  "observed": {
+    "confirmation_title": "Delete Gateway service key “airs-v2-c25-key”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "absent",
+  "cleanup": "this is the cleanup",
+  "consumption": {}
+}

@@ -1,0 +1,367 @@
+{
+  "schema": "airs-v2/live-manifest/1",
+  "note": "Template for the C25 owner-approved private execution manifest (docs/planning/evidence/C25/live-scope-request.md). Copy it OUTSIDE the repository, chmod 600, fill it and approve it. It fails validation until owner_approval is complete. Name secrets only by reference: {\"kind\": \"keychain\", \"service\": \"io.cdot.prisma-airs-desktop.v2.<name>\", \"account\": \"...\"} or {\"kind\": \"file\", \"path\": \"/absolute/path/outside/the/repository\"}. Environments are staging or test, never production. Check it with: cargo run -p xtask -- live-scope --scope <path>. Each family lists its non-secret field names (empty values) under nonsecret, and its credential names and budget keys in reason; every field is optional unless the check it feeds says it is blocked without it. Run it with: cargo run -p xtask -- live-run --scope <path> [--family Lxx].",
+  "owner_approval": {
+    "approved_by": "",
+    "approved_utc": "",
+    "decision": ""
+  },
+  "environments": {},
+  "families": {
+    "L01": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): scan_key, denied_scan_key. budget keys: scans",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "region": "",
+        "origin": "",
+        "profile_name": "",
+        "profile_id": "",
+        "app_name": "",
+        "expected_profile_id": "",
+        "prompt": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L02": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret, restricted_client_secret",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "restricted_client_id": "",
+        "restricted_denied_resource": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L03": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "deployment_profile": "",
+        "app_environment": "",
+        "app_cloud_provider": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L04": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "data_profile_id": "",
+        "filtering_profile_id": "",
+        "dictionary_category": "",
+        "dictionary_region": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L05": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "session_id": "",
+        "session_app_id": "",
+        "session_app_name": "",
+        "scan_id": "",
+        "reveal_content": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L06": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "red_team_scan_id": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L07": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret, restricted_client_secret",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "workspace_id": "",
+        "restricted_client_id": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L08": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "route_provider": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L09": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret, inference_key. budget keys: runs, tokens",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "workspace_id": "",
+        "inference_endpoint": "",
+        "model": "",
+        "route": "",
+        "unavailable_model": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L10": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "workspace_id": "",
+        "window_days": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L11": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "academy_origin": "",
+        "second_account": "",
+        "operator_timeout_secs": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L12": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent). call.<NN>-<label> = '<workflows> <procedure> [<SuperJSON input>]', the workflows (comma-separated, among W50,W51,W52,W65) the call is evidence for (e.g. W50 units.get {\"json\":{...}}); a mutation must also be in permitted_operations",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "academy_origin": "",
+        "call.01-label": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L13": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent; the avatar upload and removal count two). call.<NN>-<label> as L12, workflows among W52,W53,W54,W65,W66; list settings.removeAvatar in permitted_operations to exercise the avatar upload and its removal",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "academy_origin": "",
+        "call.01-label": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L14": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. budget keys: calls (for call.* entries, workflows among W55,W56). access_change = designated when the operator can withdraw the test learner's course access during the run",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "academy_origin": "",
+        "course_id": "",
+        "attempt_id": "",
+        "base_version": "",
+        "access_change": "",
+        "operator_timeout_secs": "",
+        "call.01-label": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L15": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret, endpoint_token",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "endpoint": "",
+        "headers_path": "",
+        "cookie_set_path": "",
+        "cookie_echo_path": "",
+        "upload_path": "",
+        "download_path": "",
+        "auth_path": "",
+        "airs_read_path": "",
+        "airs_write_method": "",
+        "airs_write_path": "",
+        "airs_write_body": "",
+        "airs_cleanup_path": "",
+        "echo": "",
+        "airs_created_id_field": "",
+        "airs_created_name_field": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L16": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): inference_key. budget keys: tokens. run by the native acceptance driver in the signed app, not by xtask live-run",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "workspace_id": "",
+        "inference_endpoint": "",
+        "sso_issuer": "",
+        "sso_client_id": "",
+        "sso_audience": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L17": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): client_secret, inference_key",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "client_id": "",
+        "tsg_id": "",
+        "region": "",
+        "origin": "",
+        "workspace_id": "",
+        "mcp_server_id": "",
+        "inference_endpoint": "",
+        "scope_change": "",
+        "operator_timeout_secs": "",
+        "mcp_server_name": "",
+        "operator_present": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    },
+    "L18": {
+      "status": "blocked",
+      "reason": "not yet designated by the owner. credentials (by reference): scan_key. budget keys: scans",
+      "environment": "",
+      "credentials": {},
+      "nonsecret": {
+        "region": "",
+        "origin": "",
+        "profile_name": "",
+        "profile_id": ""
+      },
+      "permitted_operations": [],
+      "disposable_prefix": null,
+      "budget": {},
+      "cleanup": [],
+      "irreversible_exclusions": []
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L04",
+  "check": "L04-dictionary-create",
+  "workflows": [
+    "W16"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "aededb9459fff9b9241a2deddf65d81e3da3ad61b1d1a1e1ea534789ab3dc807",
+  "started_utc": "2026-10-25T17:56:12Z",
+  "finished_utc": "2026-10-25T17:56:13Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "file": "c25-synthetic-keyword\n",
+      "metadata": {
+        "category": "Confidential",
+        "name": "airs-v2-c25-dictionary",
+        "original_file_name": "c25-keywords.txt",
+        "region_name": "United States"
+      }
+    },
+    "kind": "dictionaries"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create dictionary “airs-v2-c25-dictionary”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "6ade42bcb45ca7fd1cff56ee"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

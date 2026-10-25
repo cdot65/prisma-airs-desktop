@@ -1,0 +1,42 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-key-create",
+  "workflows": [
+    "W10",
+    "W11"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T19:29:43Z",
+  "finished_utc": "2026-10-25T19:29:49Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "api_key_name": "airs-v2-c25-key",
+      "cust_app": "airs-v2-c25-app",
+      "cust_cloud_provider": "aws",
+      "cust_env": "staging",
+      "dp_name": "redtail-airs",
+      "revoked": false,
+      "rotation_time_interval": 30,
+      "rotation_time_unit": "days"
+    },
+    "kind": "apiKeys"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create API key “airs-v2-c25-key”?",
+    "failure": null,
+    "one_time_secret": "held, then forgotten unseen",
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "ad72306f-5383-4170-b82f-77864044a8e3"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

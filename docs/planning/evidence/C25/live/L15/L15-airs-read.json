@@ -1,0 +1,50 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L15",
+  "check": "L15-airs-read",
+  "workflows": [
+    "W31",
+    "W32"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "e5456fd320d532d4fb40414d4af3c4f4110657b72b2c970ef891586720932ba3",
+  "started_utc": "2026-10-25T20:43:31Z",
+  "finished_utc": "2026-10-25T20:43:32Z",
+  "inputs": {
+    "airs_api": "https://api.apps.paloaltonetworks.com",
+    "airs_cleanup_path": "/aisec/v1/mgmt/topic/{created_id}",
+    "airs_created_id_field": "topic_id",
+    "airs_created_name_field": "topic_name",
+    "airs_read_path": "/aisec/v1/mgmt/topics",
+    "airs_write_body": "{\"topic_name\": \"airs-v2-c25-wb-topic\", \"description\": \"C25 API Client probe\", \"examples\": [\"airs-v2-c25 workbench example\"], \"active\": true}",
+    "airs_write_method": "POST",
+    "airs_write_path": "/aisec/v1/mgmt/topic",
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L15.client_secret"
+    ],
+    "endpoint": "https://httpbin.org",
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285"
+  },
+  "outcome": "passed",
+  "detail": "an approved AIRS read was admitted with the tenant's management credential and answered",
+  "observed": {
+    "bytes": 1696,
+    "result": "ran",
+    "status": 200
+  },
+  "ids": {
+    "run_id": "run-6a9467791cd96ebc"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {},
+  "implementation": {
+    "cargo_lock_sha256": "1bef6c8e8ff842ff737abe22cafe41963ebd13ecb1afb3cc69dfb4ed37bc61c1",
+    "runner_sha256": "e5c4998b423668ef122a652aedb3a4dc885731ffded457d944b07fc0020aecad",
+    "source_fingerprint": "3df30f29f163e8330e3f7b3b15aea803897a66df9fd226806d02362cd040a08d"
+  }
+}

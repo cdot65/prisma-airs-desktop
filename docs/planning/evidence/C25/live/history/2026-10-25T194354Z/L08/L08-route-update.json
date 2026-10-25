@@ -1,0 +1,32 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-route-update",
+  "workflows": [
+    "W37"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T19:30:35Z",
+  "finished_utc": "2026-10-25T19:30:37Z",
+  "inputs": {
+    "action": "update",
+    "body": {
+      "name": "airs-v2-c25-route-2"
+    },
+    "kind": "gatewayRoutes",
+    "target": "b5febde3-ff63-45a0-ae60-f3818e904edb"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Update Gateway route “airs-v2-c25-route-2”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "found",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

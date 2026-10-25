@@ -1,0 +1,47 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L15",
+  "check": "L15-airs-read",
+  "workflows": [
+    "W31",
+    "W32"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "e0e934eeea1063fd362219c695bc229c7280633b28180db47674c1a2ea8af424",
+  "started_utc": "2026-10-25T17:52:45Z",
+  "finished_utc": "2026-10-25T17:52:46Z",
+  "inputs": {
+    "airs_api": "https://api.apps.paloaltonetworks.com",
+    "airs_cleanup_path": "/aisec/v1/mgmt/topic/{created_id}",
+    "airs_created_id_field": "topic_id",
+    "airs_created_name_field": "topic_name",
+    "airs_read_path": "/aisec/v1/mgmt/topics",
+    "airs_write_body": "{\"topic_name\": \"airs-v2-c25-wb-topic\", \"description\": \"C25 API Client probe\", \"examples\": [\"airs-v2-c25 workbench example\"], \"active\": true}",
+    "airs_write_method": "POST",
+    "airs_write_path": "/aisec/v1/mgmt/topic",
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L15.client_secret"
+    ],
+    "download_path": "/ai-security-logo.svg",
+    "echo": "no",
+    "endpoint": "https://academy.cdot.io",
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285"
+  },
+  "outcome": "passed",
+  "detail": "an approved AIRS read was admitted with the tenant's management credential and answered",
+  "observed": {
+    "bytes": 1696,
+    "result": "ran",
+    "status": 200
+  },
+  "ids": {
+    "run_id": "run-5eac34352a6ff49e"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

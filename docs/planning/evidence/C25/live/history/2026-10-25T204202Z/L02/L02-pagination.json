@@ -1,0 +1,51 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L02",
+  "check": "L02-pagination",
+  "workflows": [
+    "W07"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:44:01Z",
+  "finished_utc": "2026-10-25T19:44:02Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L02.client_secret"
+    ],
+    "region": "us",
+    "restricted_client_id": "desktop-read-only@1001464285.iam.panserviceaccount.com",
+    "storage": "session",
+    "tsg_id": "1001464285"
+  },
+  "outcome": "passed",
+  "detail": "the second page continued where the first ended",
+  "observed": {
+    "first": {
+      "complete": false,
+      "count": 1,
+      "limit": 1,
+      "next_offset": 1,
+      "offset": 0,
+      "resource": "profiles",
+      "result": "page",
+      "total": 14
+    },
+    "second": {
+      "complete": false,
+      "count": 1,
+      "limit": 1,
+      "next_offset": 2,
+      "offset": 1,
+      "resource": "profiles",
+      "result": "page",
+      "total": 14
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

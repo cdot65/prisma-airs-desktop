@@ -179,8 +179,8 @@ pub enum AcademyView {
     #[serde(rename_all = "camelCase")]
     SignedIn {
         display_name: String,
-        /// Academy's `user_…` account id (not a credential); learner pages
-        /// key per-learner local state by it.
+        /// Academy's account id, a UUID or a `user_…` id (not a credential);
+        /// learner pages key per-learner local state by it.
         account_id: String,
         learner: LearnerRef,
     },

@@ -268,6 +268,8 @@ describe('shell snapshot validation', () => {
         ['an unknown academy state', { ...valid, academy: { state: 'hacked' } }],
         ['a non-HTTPS verification page', { ...valid, academy: { state: 'awaitingApproval', userCode: 'A', verificationUri: 'http://x', expiresIn: 1 } }],
         ['a malformed learner reference', { ...valid, academy: { state: 'signedIn', displayName: 'A', learner: 'cx-1' } }],
+        ['an account that is neither a UUID nor a user_ id', { ...valid, academy: { ...signedIn, accountId: 'org_1' } }],
+        ['a truncated UUID account', { ...valid, academy: { ...signedIn, accountId: '0b7c9d2e-4f1a-4c3b-9e8d-1a2b3c4d5e6' } }],
         ['an unknown academy failure', { ...valid, academy: { state: 'failed', failure: 'oops', vault: null, displayName: null } }],
         ['active context with a malformed reference', { ...valid, active: { tenant: tenant().id, context: 'not a context' } }],
         ['a missing Academy origin', { ...valid, academyOrigin: undefined }],
@@ -287,6 +289,14 @@ describe('shell snapshot validation', () => {
         ['a reachability flag that is not a flag', offline({ reachable: 'yes' })],
     ])('rejects %s', (_case, snapshot) => {
         expect(() => parseShellSnapshot(snapshot)).toThrow(ContractViolation)
+    })
+})
+
+describe('Academy account ids (C25)', () => {
+    it('accepts the UUID live Academy names an account by, and a user_ id', () => {
+        for (const accountId of ['0b7c9d2e-4f1a-4c3b-9e8d-1a2b3c4d5e6f', 'user_2fixture']) {
+            expect(parseShellSnapshot({ ...valid, academy: { ...signedIn, accountId } }).academy).toMatchObject({ accountId })
+        }
     })
 })
 

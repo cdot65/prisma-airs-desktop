@@ -1,0 +1,137 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L02",
+  "check": "L02-inventories",
+  "workflows": [
+    "W07",
+    "W08",
+    "W09",
+    "W10",
+    "W12"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "d4ad3312210b936b386e57a730053f0b6da84b732a7f802e4ddc125c700c27de",
+  "started_utc": "2026-10-25T14:28:08Z",
+  "finished_utc": "2026-10-25T14:28:17Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L02.client_secret"
+    ],
+    "region": "us",
+    "restricted_client_id": "desktop-read-only@1001464285.iam.panserviceaccount.com",
+    "storage": "session",
+    "tsg_id": "1001464285"
+  },
+  "outcome": "passed",
+  "detail": "every supported Runtime and DLP inventory returned a page",
+  "observed": {
+    "pages": {
+      "apiKeys": {
+        "complete": true,
+        "count": 11,
+        "limit": 25,
+        "next_offset": null,
+        "offset": 0,
+        "resource": "apiKeys",
+        "result": "page",
+        "total": null
+      },
+      "applications": {
+        "complete": true,
+        "count": 11,
+        "limit": 25,
+        "next_offset": null,
+        "offset": 0,
+        "resource": "applications",
+        "result": "page",
+        "total": null
+      },
+      "dataPatterns": {
+        "complete": false,
+        "count": 25,
+        "limit": 25,
+        "next_offset": 25,
+        "offset": 0,
+        "resource": "dataPatterns",
+        "result": "page",
+        "total": null
+      },
+      "dataProfiles": {
+        "complete": false,
+        "count": 25,
+        "limit": 25,
+        "next_offset": 25,
+        "offset": 0,
+        "resource": "dataProfiles",
+        "result": "page",
+        "total": null
+      },
+      "deploymentProfiles": {
+        "complete": true,
+        "count": 1,
+        "limit": 25,
+        "next_offset": null,
+        "offset": 0,
+        "resource": "deploymentProfiles",
+        "result": "page",
+        "total": 1
+      },
+      "dictionaries": {
+        "complete": false,
+        "count": 25,
+        "limit": 25,
+        "next_offset": 25,
+        "offset": 0,
+        "resource": "dictionaries",
+        "result": "page",
+        "total": null
+      },
+      "dlpCatalog": {
+        "complete": false,
+        "count": 25,
+        "limit": 25,
+        "next_offset": 25,
+        "offset": 0,
+        "resource": "dlpCatalog",
+        "result": "page",
+        "total": 43
+      },
+      "filteringProfiles": {
+        "complete": false,
+        "count": 25,
+        "limit": 25,
+        "next_offset": 25,
+        "offset": 0,
+        "resource": "filteringProfiles",
+        "result": "page",
+        "total": null
+      },
+      "profiles": {
+        "complete": true,
+        "count": 14,
+        "limit": 25,
+        "next_offset": null,
+        "offset": 0,
+        "resource": "profiles",
+        "result": "page",
+        "total": 14
+      },
+      "topics": {
+        "complete": true,
+        "count": 5,
+        "limit": 25,
+        "next_offset": null,
+        "offset": 0,
+        "resource": "topics",
+        "result": "page",
+        "total": null
+      }
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

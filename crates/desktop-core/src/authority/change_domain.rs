@@ -25,7 +25,7 @@ use super::gateway_domain::ChangeScope;
 use super::{ConfirmationRequest, Refusal, State};
 use crate::changes::{
     ChangeAction, ChangeDraft, ChangeKind, ChangeProblem, Mutation, confirmation, digest, impact,
-    item_name, normalize, preview_after, take_secret, with_auth_code,
+    item_name, normalize, preview_after, take_secret, with_app_auth_code, with_auth_code,
 };
 use crate::context::{ContextRef, ReviewId, WorkspaceRef};
 use crate::gateway::ListedWorkspace;
@@ -1383,6 +1383,7 @@ async fn baseline(
         // DLP items are read by their own get (v1 `current`); 404 is absent.
         (kind, _) if kind.is_dlp() => {
             match binding.dlp_item(resource, &draft.target, deadline).await? {
+                Some(item) if dlp_deleted(&item) => Err(ChangeProblem::NotFound.into()),
                 Some(item) => Ok((draft.clone(), Some(item))),
                 None => Err(ChangeProblem::NotFound.into()),
             }
@@ -1407,6 +1408,13 @@ async fn baseline(
                 if let Value::Object(map) = &mut before {
                     map.insert("affected_keys".into(), Value::Array(keys));
                 }
+            }
+            if (kind, action) == (ChangeKind::Applications, A::Update) {
+                let deployments = binding.deployment_profiles(deadline).await?;
+                return Ok((
+                    with_app_auth_code(draft, &before, &deployments)?,
+                    Some(before),
+                ));
             }
             Ok((draft.clone(), Some(before)))
         }
@@ -1441,6 +1449,10 @@ async fn readback(
         let id = crate::management::identity(response.get("id"))
             .unwrap_or_else(|| mutation.target.clone());
         return match binding.dlp_item(resource, &id, deadline).await {
+            // The DLP service archives what it deletes: the item stays
+            // readable by its ID with status `deleted` and an archived name
+            // (C25 live finding), so a deleted item reads back as absent.
+            Ok(Some(item)) if dlp_deleted(&item) => (Readback::Absent, None),
             Ok(Some(item)) => (Readback::Found, Some(item.to_string())),
             Ok(None) => (Readback::Absent, None),
             Err(_) => (Readback::Failed, None),
@@ -1478,6 +1490,14 @@ async fn readback(
         Ok(Walk::Incomplete) => (Readback::Incomplete, None),
         Err(_) => (Readback::Failed, None),
     }
+}
+
+/// Whether a DLP item read by its ID is one the service has deleted
+/// (archived): its `status` is `deleted`.
+fn dlp_deleted(item: &Value) -> bool {
+    item.get("status")
+        .and_then(Value::as_str)
+        .is_some_and(|s| s.eq_ignore_ascii_case("deleted"))
 }
 
 /// The baseline read of one review.

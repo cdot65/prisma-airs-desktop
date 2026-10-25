@@ -1531,11 +1531,7 @@ fn identity(data: &str) -> Option<(String, String)> {
     let json = value.get("json")?;
     let account = json.get("accountId")?.as_str()?;
     let name = json.get("displayName")?.as_str()?;
-    let ok = account.starts_with("user_")
-        && account.len() <= 128
-        && account
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'_')
+    let ok = crate::academy::is_account_id(account)
         && !name.trim().is_empty()
         && name.chars().count() <= 200
         && !name.chars().any(char::is_control);
@@ -1660,10 +1656,21 @@ mod tests {
             identity(r#"{"json":{"accountId":"user_2abc","displayName":" Ada L "}}"#),
             Some(("user_2abc".into(), "Ada L".into()))
         );
+        // Live Academy returns its own user ID, a UUID (C25).
+        assert_eq!(
+            identity(
+                r#"{"json":{"accountId":"0b7c9d2e-4f1a-4c3b-9e8d-1a2b3c4d5e6f","displayName":"Academy learner"}}"#
+            ),
+            Some((
+                "0b7c9d2e-4f1a-4c3b-9e8d-1a2b3c4d5e6f".into(),
+                "Academy learner".into()
+            ))
+        );
         for bad in [
             r#"{"json":{"accountId":"org_1","displayName":"A"}}"#,
             r#"{"json":{"accountId":"user_1","displayName":"  "}}"#,
             r#"{"json":{"accountId":"user_1/x","displayName":"A"}}"#,
+            r#"{"json":{"accountId":"0b7c9d2e-4f1a-4c3b-9e8d-1a2b3c4d5e6","displayName":"A"}}"#,
             r#"{"json":{"displayName":"A"}}"#,
             r#"{"accountId":"user_1","displayName":"A"}"#,
         ] {

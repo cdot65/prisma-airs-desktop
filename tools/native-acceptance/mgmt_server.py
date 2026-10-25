@@ -664,7 +664,12 @@ class Handler(BaseHTTPRequestHandler):
             if index is None:
                 return 404, {"error": "not found"}
             if method == "PUT":
-                store[index] = dict(body, id=item_id)
+                if collection == "data-filtering-profiles":
+                    # As the live service (C25): fields left out of the body
+                    # (its own fields, unset ones) are kept.
+                    store[index] = dict(store[index], **body, id=item_id)
+                else:
+                    store[index] = dict(body, id=item_id)
                 return (204, None) if collection == "dictionaries" else (200, store[index])
             if method == "DELETE":
                 store.pop(index)
@@ -1446,7 +1451,21 @@ class Server(ThreadingHTTPServer):
                               {"id": "pattern-2", "name": "Badge numbers", "type": "custom",
                                "detection_config": {"technique": "regex"}}],
             "data-profiles": [{"id": "dp-1", "name": "PCI", "detection_rules": []}],
-            "data-filtering-profiles": [{"id": "filter-1", "name": "Default", "file_based": True, "non_file_based": False}],
+            "data-filtering-profiles": [{"id": "filter-1", "name": "Default", "file_based": True, "non_file_based": False},
+                                        # C25: shaped as the live service reads a filtering profile back:
+                                        # unset fields null, plus its own fields.
+                                        {"id": "filter-live", "name": "Live shape", "tenant_id": "8259670718644550656",
+                                         "type": "custom", "version": 1, "is_parent_managed": False,
+                                         "audit_metadata": {"created_at": 1791120294542, "updated_at": 1791120294542,
+                                                            "created_by": None, "updated_by": "synthetic@example.com"},
+                                         "description": None, "euc_template_id": None, "is_end_user_coaching_enabled": None,
+                                         "rule2": None, "direction": "BOTH", "log_severity": "LOW", "scan_type": "include",
+                                         "file_based": True, "non_file_based": False, "data_profile_id": 11,
+                                         "file_type": ["pdf", "txt-upload"], "criteria_details": [], "exception_rules": [],
+                                         "is_granular_profile": False,
+                                         "exclusions": {"app_exclusion_list": [], "url_exclusion_list": []},
+                                         "rule1": {"action": "alert", "response_page": "This file has dlp issues",
+                                                   "show_rsp_page": "no"}}],
             "dictionaries": [{"id": "dict-1", "name": "Codes", "original_file_name": "codes.txt",
                               "category": "Confidential", "region_name": "United States"}],
         }

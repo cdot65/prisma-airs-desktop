@@ -1114,6 +1114,24 @@
         "id": "C24-N07",
         "check": "Diagnostics by keyboard alone: Export diagnostics… is reached by Tab and pressed with Space, the production save sheet (NSSavePanel) saves the document into a chosen folder and Diagnostics saved. is announced; a second export cancelled in the sheet saves nothing and Nothing was saved. is announced; focus returns to Export diagnostics… each time; Clear diagnostics is reached and pressed the same way and Diagnostics cleared. is announced; both controls are reachable and clear at 200% zoom and at the minimum window size."
       }
+    ],
+    "C25": [
+      {
+        "id": "C25-N01",
+        "check": "Editing a data filtering profile as read (unset fields null, plus the service's own id, name, tenant_id, type, version, audit_metadata and is_parent_managed): Edit… opens it as a JSON draft, Review change accepts it unchanged, Apply… opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-filtering-profiles/<id> whose body holds the draft without the nulls or the service's own fields, and the window says it was read back."
+      },
+      {
+        "id": "C25-N02",
+        "check": "A security profile saved inactive: reviewing a New security profile draft with \"active\": false shows the impact 'Saves this profile inactive. The service does not list inactive profiles, so it will not appear in the profile list or read back after saving; note its name and ID first.' (an active draft shows the ordinary 'Applies only to this tenant' impact)."
+      },
+      {
+        "id": "C25-N03",
+        "check": "Academy device sign-in when desktop.me names the account by a UUID (as live Academy does): after approval the Academy account group says 'Signed in to Academy as' with the display name, and the learner is kept across a relaunch."
+      },
+      {
+        "id": "C25-N04",
+        "check": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply… in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent."
+      }
     ]
   }
 }

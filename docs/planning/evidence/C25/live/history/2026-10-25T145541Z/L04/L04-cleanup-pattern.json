@@ -1,0 +1,30 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L04",
+  "check": "L04-cleanup-pattern",
+  "workflows": [
+    "W13"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "6c23bbcd6da2dce11f5df70d4de34ab58e2d43073855e83b3804c1ecabbe60e0",
+  "started_utc": "2026-10-25T14:53:39Z",
+  "finished_utc": "2026-10-25T14:53:43Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "dataPatterns",
+    "target": "6ade17e5312bba1d9b86faff"
+  },
+  "outcome": "needs-reconciliation",
+  "detail": "the write completed but its readback was found, not absent",
+  "observed": {
+    "confirmation_title": "Delete data pattern “airs-v2-c25-pattern”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "found",
+  "cleanup": "this is the cleanup",
+  "consumption": {}
+}

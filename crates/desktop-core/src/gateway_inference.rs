@@ -112,7 +112,9 @@ impl InferenceRun {
     /// The streamed request: chat is v1's shape (system then user
     /// message); Responses carries the system text as its instructions,
     /// and an attached file as an `input_file` beside the prompt. Either
-    /// asks for at most [`MAX_TOKENS`].
+    /// asks for at most [`MAX_TOKENS`]. Chat sends the cap as
+    /// `max_completion_tokens`: current OpenAI models refuse `max_tokens`
+    /// (found by the C25 live run, HTTP 400 `unsupported_parameter`).
     fn request(&self) -> Option<Request> {
         let system = self.system.as_deref().filter(|s| !s.trim().is_empty());
         match self.api {
@@ -126,7 +128,7 @@ impl InferenceRun {
                     "model": self.model,
                     "messages": messages,
                     "stream": true,
-                    "max_tokens": MAX_TOKENS,
+                    "max_completion_tokens": MAX_TOKENS,
                 }))
                 .ok()
                 .map(Request::Chat)
@@ -771,7 +773,8 @@ mod tests {
         };
         let request = body(InferenceApi::Chat);
         assert_eq!(request["stream"], true);
-        assert_eq!(request["max_tokens"], MAX_TOKENS);
+        assert_eq!(request["max_completion_tokens"], MAX_TOKENS);
+        assert!(request.get("max_tokens").is_none_or(Value::is_null));
         assert_eq!(request["messages"][0]["role"], "system");
         assert_eq!(request["messages"][1]["content"], "hi");
         let request = body(InferenceApi::Responses);

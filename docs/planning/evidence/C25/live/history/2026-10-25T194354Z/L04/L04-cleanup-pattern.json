@@ -1,0 +1,30 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L04",
+  "check": "L04-cleanup-pattern",
+  "workflows": [
+    "W13"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T19:30:13Z",
+  "finished_utc": "2026-10-25T19:30:16Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "dataPatterns",
+    "target": "6ade58bc6868a2469c15fda3"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back absent",
+  "observed": {
+    "confirmation_title": "Delete data pattern “airs-v2-c25-pattern”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "absent",
+  "cleanup": "this is the cleanup",
+  "consumption": {}
+}

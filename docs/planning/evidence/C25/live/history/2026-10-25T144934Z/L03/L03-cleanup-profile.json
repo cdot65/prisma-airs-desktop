@@ -1,0 +1,30 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-cleanup-profile",
+  "workflows": [
+    "W07"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "6c23bbcd6da2dce11f5df70d4de34ab58e2d43073855e83b3804c1ecabbe60e0",
+  "started_utc": "2026-10-25T14:43:02Z",
+  "finished_utc": "2026-10-25T14:43:04Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "profiles",
+    "target": "2a0233f4-e3b2-49a0-ba5a-8dcef212daa1"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back absent",
+  "observed": {
+    "confirmation_title": "Delete security profile “airs-v2-c25-profile”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "absent",
+  "cleanup": "this is the cleanup",
+  "consumption": {}
+}

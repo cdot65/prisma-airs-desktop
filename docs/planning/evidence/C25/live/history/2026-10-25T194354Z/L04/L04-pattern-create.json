@@ -1,0 +1,51 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L04",
+  "check": "L04-pattern-create",
+  "workflows": [
+    "W13"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T19:30:03Z",
+  "finished_utc": "2026-10-25T19:30:04Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "description": "C25 disposable pattern",
+      "detection_config": {
+        "supported_confidence_levels": [
+          "high",
+          "low"
+        ],
+        "technique": "regex"
+      },
+      "matching_rules": {
+        "proximity_distance": 200,
+        "regexes": [
+          {
+            "regex": "airs-v2-c25-[0-9]{6}",
+            "weight": 1
+          }
+        ]
+      },
+      "name": "airs-v2-c25-pattern",
+      "type": "custom"
+    },
+    "kind": "dataPatterns"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create data pattern “airs-v2-c25-pattern”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "6ade58bc6868a2469c15fda3"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-provision-workspace",
+  "workflows": [
+    "W37",
+    "W39"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "742c40a9bcaf70a080690038c7537ecb32aef4add6bc1945e2bfec5513c14568",
+  "started_utc": "2026-10-25T14:56:28Z",
+  "finished_utc": "2026-10-25T14:56:30Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "existing_scope": false,
+      "name": "airs-v2-c25-ws",
+      "scope_name": "airs-v2-c25-scope"
+    },
+    "kind": "gatewayWorkspaces"
+  },
+  "outcome": "failed",
+  "detail": "the review refused the draft; nothing was sent",
+  "observed": {
+    "review_failure": {
+      "failure": "rejected",
+      "kind": "service"
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

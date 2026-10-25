@@ -1,0 +1,34 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-cleanup-key",
+  "workflows": [
+    "W10"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "6c23bbcd6da2dce11f5df70d4de34ab58e2d43073855e83b3804c1ecabbe60e0",
+  "started_utc": "2026-10-25T14:42:55Z",
+  "finished_utc": "2026-10-25T14:42:56Z",
+  "inputs": {
+    "action": "delete",
+    "body": {
+      "rotation_time_interval": 30,
+      "rotation_time_unit": "days"
+    },
+    "kind": "apiKeys",
+    "target": "05e3458d-87fb-4ef8-a945-642f97813247"
+  },
+  "outcome": "failed",
+  "detail": "the review refused the draft; nothing was sent",
+  "observed": {
+    "review_failure": {
+      "kind": "problem",
+      "problem": "notFound"
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

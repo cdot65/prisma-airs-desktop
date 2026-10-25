@@ -145,7 +145,15 @@ impl Service {
                 }
             }
             ("DELETE", Some(id)) => {
-                store.retain(|i| i["id"] != id.as_str());
+                if is_dictionary {
+                    store.retain(|i| i["id"] != id.as_str());
+                } else if let Some(item) = store.iter_mut().find(|i| i["id"] == id.as_str()) {
+                    // As the live service (C25): a deleted item is archived,
+                    // still readable by its ID with status `deleted`.
+                    let name = item["name"].as_str().unwrap_or_default().to_owned();
+                    item["name"] = json!(format!("{name}_archived_20261025145341"));
+                    item["status"] = json!("deleted");
+                }
                 Reply::Raw {
                     head: "HTTP/1.1 204 No Content\r\ncontent-length: 0\r\nconnection: close"
                         .into(),
@@ -498,7 +506,24 @@ async fn data_patterns_are_created_replaced_and_deleted_exactly() {
             .starts_with("DELETE /dlp/v2/api/data-patterns/pattern-1 ")
     );
     assert!(write.body.is_empty(), "the SDK delete sends no body");
+    // The service archives the pattern (status `deleted`); it reads back
+    // absent and cannot be reviewed for another change.
     assert_eq!(deleted.readback, Some(Readback::Absent));
+    let again = desk
+        .review(&draft(
+            "dataPatterns",
+            "update",
+            "pattern-1",
+            pattern("Card numbers v3"),
+        ))
+        .await;
+    assert_eq!(again.state, ChangeReviewState::Failed);
+    assert_eq!(
+        again.failure,
+        Some(ChangeFailure::Problem {
+            problem: ChangeProblem::NotFound
+        })
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -609,9 +634,11 @@ async fn filtering_profiles_are_replaced_only() {
             .request_line
             .starts_with("PUT /dlp/v2/api/data-filtering-profiles/filter-1 ")
     );
+    // The profile's name is the service's own field: a replace leaves it
+    // out, and the service keeps it (C25).
     assert_eq!(
         body(&write),
-        json!({"name": "Default", "file_based": false, "non_file_based": true})
+        json!({"file_based": false, "non_file_based": true})
     );
     assert_eq!(replaced.readback, Some(Readback::Found));
 }

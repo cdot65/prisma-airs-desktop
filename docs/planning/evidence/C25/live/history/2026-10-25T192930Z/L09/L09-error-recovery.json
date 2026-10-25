@@ -1,0 +1,56 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L09",
+  "check": "L09-error-recovery",
+  "workflows": [
+    "W40"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "858f3b822afa6f97153e52efdd16e8a897ed7a67651694344e4cc0d106b5f0ab",
+  "started_utc": "2026-10-25T14:27:54Z",
+  "finished_utc": "2026-10-25T14:27:55Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L09.client_secret",
+      "L09.inference_key"
+    ],
+    "endpoint": "https://gateway.redtail.cdot.io/v1",
+    "inference_endpoint": "https://gateway.redtail.cdot.io/v1",
+    "model": "gpt-5.6-luna",
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285",
+    "unavailable_model": "airs-v2-c25-no-such-model",
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "outcome": "passed",
+  "detail": "the Gateway refused the unknown model; no answer and no other model were shown, and the run was cleared",
+  "observed": {
+    "answered": false,
+    "failure": "rejected",
+    "finish": null,
+    "outcome": "rejected",
+    "output_chars": 0,
+    "sent": true,
+    "served_model": null,
+    "state": "failed",
+    "usage": null
+  },
+  "ids": {
+    "trace": "airs-d238faf7a4cfb1ef"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {
+    "runs": {
+      "limit": 20,
+      "used": 18
+    },
+    "tokens": {
+      "limit": 50000,
+      "used": 50
+    }
+  }
+}

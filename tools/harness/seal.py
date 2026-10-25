@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reseals the pinned native Harness engine for v2 (C19, D046).
 
-  seal.py <v1 darwin-arm64.tar.gz> <repo>
+  seal.py <v1 darwin-arm64.tar.gz> <repo> [--signed-engine DIR]
 
 The input is v1's sealed runtime archive at v1 commit 74754c02 (stored with
 Git LFS as sha256 e79f564a...). Only the engine and its notices are taken:
@@ -17,6 +17,16 @@ input always reseals to the same bytes:
 
   resources/harness/darwin-arm64.tar.gz   (Git LFS)
   resources/harness/pin.json              (the compiled pin; plain text)
+
+With --signed-engine (C26), DIR holds `airs-harness` and `signing.json` as
+written by `cargo run -p xtask -- harness-sign`: the pinned engine signed
+with a Developer ID identity (hardened runtime, secure timestamp). The
+signed bytes replace the engine only when the record names the pinned
+unsigned engine as its source and the file has the recorded signed hash;
+the signed hash then becomes binarySha256 (the app checks it before it
+starts the engine), and pin.json keeps the signing record and the unsigned
+provenance. A Developer ID signature carries a secure timestamp, so a
+signed reseal is reproducible from DIR, not from the v1 archive alone.
 """
 
 import gzip
@@ -73,8 +83,35 @@ def take(archive):
     return wanted
 
 
+def signed_engine(directory):
+    """The signed engine and its record from `harness-sign`, checked
+    against the pinned unsigned engine."""
+    with open(os.path.join(directory, "signing.json"), "rb") as f:
+        record = json.loads(f.read())
+    with open(os.path.join(directory, "airs-harness"), "rb") as f:
+        data = f.read()
+    if (record.get("schema") != "airs-v2/engine-signing/1"
+            or record.get("unsigned_sha256") != BINARY_SHA256
+            or record.get("signed_sha256") != sha256(data)
+            or sha256(data) == BINARY_SHA256
+            or record.get("options") != "runtime"
+            or data[:4] not in (b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe")):
+        raise SystemExit("the signed engine does not match its signing record or the pin")
+    return data, record
+
+
 def main():
-    archive, repo = sys.argv[1], sys.argv[2]
+    args = sys.argv[1:]
+    signed = None
+    if "--signed-engine" in args:
+        at = args.index("--signed-engine")
+        if at + 1 >= len(args):
+            raise SystemExit("--signed-engine needs a directory")
+        signed = signed_engine(args[at + 1])
+        del args[at:at + 2]
+    if len(args) != 2:
+        raise SystemExit(__doc__)
+    archive, repo = args
     with open(archive, "rb") as f:
         if sha256(f.read()) != V1_ARCHIVE_SHA256:
             raise SystemExit("the v1 archive is not the pinned one")
@@ -87,6 +124,10 @@ def main():
             or info["source_commit"] != ENGINE_COMMIT or info["target"] != "aarch64-apple-darwin"
             or info["version"] != RUNTIME_VERSION):
         raise SystemExit("the engine does not match its build record or the pin")
+    binary = BINARY_SHA256
+    if signed:
+        files["airs-harness"], signing = signed
+        binary = signing["signed_sha256"]
     inventory = {name: sha256(data) for name, data in sorted(files.items())}
     # One digest over the whole inventory: path, NUL, hash, newline each.
     resources = sha256("".join(f"{n}\0{h}\n" for n, h in inventory.items()).encode())
@@ -96,7 +137,7 @@ def main():
         "runtimeVersion": RUNTIME_VERSION,
         "engineCommit": ENGINE_COMMIT,
         "executable": "airs-harness",
-        "binarySha256": BINARY_SHA256,
+        "binarySha256": binary,
         "resourcesSha256": resources,
     }
     manifest = json.dumps({"pin": pin, "files": inventory}, indent=1, sort_keys=True).encode() + b"\n"
@@ -125,6 +166,10 @@ def main():
                   archiveBytes=len(data), files=len(inventory) + 1,
                   source={"v1Commit": V1_COMMIT, "v1Archive": "packaging/harness/darwin-arm64.tar.gz",
                           "v1ArchiveSha256": V1_ARCHIVE_SHA256, "buildInfoSha256": inventory["BUILD-INFO.json"]})
+    if signed:
+        record["signing"] = {"identity": signing["identity"], "teamIdentifier": signing["team_identifier"],
+                             "options": signing["options"], "timestamp": signing["timestamp"],
+                             "signedUtc": signing["signed_utc"], "unsignedBinarySha256": BINARY_SHA256}
     with open(os.path.join(out_dir, "pin.json"), "w") as f:
         f.write(json.dumps(record, indent=2, sort_keys=True) + "\n")
     print(json.dumps(record, indent=2, sort_keys=True))

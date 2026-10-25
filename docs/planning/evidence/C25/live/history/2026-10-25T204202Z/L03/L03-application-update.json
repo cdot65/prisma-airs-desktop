@@ -1,0 +1,34 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-application-update",
+  "workflows": [
+    "W09"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:44:18Z",
+  "finished_utc": "2026-10-25T19:44:20Z",
+  "inputs": {
+    "action": "update",
+    "body": {
+      "app_name": "airs-v2-c25-app",
+      "cloud_provider": "aws",
+      "environment": "development"
+    },
+    "kind": "applications",
+    "target": "bb1f4af3-6532-48bb-b16f-7e3f4aeb7eb8"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Update application “airs-v2-c25-app”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "found",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

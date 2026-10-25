@@ -1,0 +1,43 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-route-create",
+  "workflows": [
+    "W37"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "c7a5ea1df2f24e2da0625ddc4093670a6319aab3f263b7fe4aef7e5260d7e6a7",
+  "started_utc": "2026-10-25T15:02:34Z",
+  "finished_utc": "2026-10-25T15:02:34Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "config": {
+        "strategy": {
+          "mode": "single"
+        },
+        "targets": [
+          {
+            "provider": "@openai"
+          }
+        ]
+      },
+      "name": "airs-v2-c25-route"
+    },
+    "kind": "gatewayRoutes"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create Gateway route “airs-v2-c25-route”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "b1fab529-1f12-4899-a759-790fbeca8694"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-cleanup-key",
+  "workflows": [
+    "W10"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T19:29:56Z",
+  "finished_utc": "2026-10-25T19:30:00Z",
+  "inputs": {
+    "action": "delete",
+    "body": {
+      "rotation_time_interval": 30,
+      "rotation_time_unit": "days"
+    },
+    "kind": "apiKeys",
+    "target": "50028481-2b89-454b-8e55-abd243f72b25"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back absent",
+  "observed": {
+    "confirmation_title": "Delete API key “airs-v2-c25-key”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "absent",
+  "cleanup": "this is the cleanup",
+  "consumption": {}
+}

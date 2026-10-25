@@ -1,0 +1,41 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L08",
+  "check": "L08-route-create",
+  "workflows": [
+    "W37"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "c7a5ea1df2f24e2da0625ddc4093670a6319aab3f263b7fe4aef7e5260d7e6a7",
+  "started_utc": "2026-10-25T15:00:31Z",
+  "finished_utc": "2026-10-25T15:00:31Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "config": {
+        "targets": [
+          {
+            "provider": "openai"
+          }
+        ]
+      },
+      "name": "airs-v2-c25-route"
+    },
+    "kind": "gatewayRoutes"
+  },
+  "outcome": "failed",
+  "detail": "the service did not apply it (rejected); nothing changed",
+  "observed": {
+    "confirmation_title": "Create Gateway route “airs-v2-c25-route”?",
+    "failure": {
+      "failure": "rejected",
+      "kind": "service"
+    },
+    "outcome": "rejected"
+  },
+  "ids": {},
+  "readback": "none",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {}
+}

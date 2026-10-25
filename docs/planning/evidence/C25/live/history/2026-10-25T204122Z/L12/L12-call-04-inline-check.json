@@ -1,0 +1,37 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L12",
+  "check": "L12-call-04-inline-check",
+  "workflows": [
+    "W50",
+    "W51",
+    "W52",
+    "W65"
+  ],
+  "environment": "academy-test",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T18:41:51Z",
+  "finished_utc": "2026-10-25T18:41:52Z",
+  "inputs": {
+    "input": "{\"json\":{\"lessonId\":\"arch-foundations-l1\",\"questionId\":\"arch-foundations-l1-ic1\",\"answer\":2}}",
+    "procedure": "progress.checkInline"
+  },
+  "outcome": "passed",
+  "detail": "the hosted procedure answered",
+  "observed": {
+    "failure": null,
+    "http_status": null,
+    "outcome": null,
+    "result": "data"
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "synthetic coursework on a test account (owner-designated)",
+  "consumption": {
+    "calls": {
+      "limit": 10,
+      "used": 0
+    }
+  }
+}

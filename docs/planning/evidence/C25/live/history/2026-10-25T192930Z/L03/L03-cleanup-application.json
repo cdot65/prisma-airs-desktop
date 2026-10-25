@@ -1,0 +1,31 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "L03-cleanup-application",
+  "workflows": [
+    "W09"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "6c23bbcd6da2dce11f5df70d4de34ab58e2d43073855e83b3804c1ecabbe60e0",
+  "started_utc": "2026-10-25T14:51:33Z",
+  "finished_utc": "2026-10-25T14:51:33Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "applications",
+    "target": "bb1f4af3-6532-48bb-b16f-7e3f4aeb7eb8"
+  },
+  "outcome": "passed",
+  "detail": "already absent: the review's complete inventory walk found nothing to delete",
+  "observed": {
+    "review_failure": {
+      "kind": "problem",
+      "problem": "notFound"
+    }
+  },
+  "ids": {},
+  "readback": "absent",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

@@ -1,0 +1,23 @@
+
+running 14 tests
+test budgets::tests::a_budget_fails_over_its_limit_short_of_samples_or_in_another_unit ... ok
+test budgets::tests::the_registered_workload_table_parses_exactly ... ok
+test budgets::tests::the_phase_containing_the_cumulative_chunk_measures_every_budget_itself ... ok
+test review::tests::a_phase_diff_starts_at_the_previous_phase ... ok
+test budgets::tests::nearest_rank_statistics ... ok
+test ledger::record_tests::a_rows_chunks_and_live_status_are_read_exactly ... ok
+test sdk::tests::exactly_one_registry_entry_is_accepted ... ok
+test budgets::tests::the_cumulative_chunk_carries_every_workload_under_its_measuring_chunk ... ok
+test signing::tests::a_real_identity_is_timestamped_and_an_ad_hoc_one_is_not ... ok
+test signing::tests::the_release_plan_signs_inside_out_never_re_signs_the_engine_and_staples_both ... ok
+test notices::tests::legacy_and_reviewed_file_licenses_count_only_when_exact ... ok
+test fingerprint::tests::every_installed_academy_package_is_fingerprinted_and_verified ... ok
+test signing::tests::the_engine_is_signed_once_from_its_pinned_unsigned_bytes ... ok
+test signing::tests::release_signing_keeps_the_pinned_engine_and_refuses_another ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+
+--- stderr ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running unittests src/lib.rs (target/debug/deps/xtask-f2e91f790a1e8c61)

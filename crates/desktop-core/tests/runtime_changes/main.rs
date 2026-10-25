@@ -63,7 +63,9 @@ impl Service {
             ],
             apps: vec![
                 json!({"customer_appId": "app-1", "app_name": "Support bot", "cloud_provider": "aws",
-                              "environment": "production", "tsg_id": TSG}),
+                              "environment": "production", "tsg_id": TSG,
+                              "api_keys_dp_info": [{"api_key_name": "support", "auth_code": "OTHER-CODE",
+                                                    "dp_name": "dp-2"}]}),
             ],
             keys: vec![
                 json!({"api_key_id": "key-1", "api_key_name": "Support key", "cust_app": "Support bot",
@@ -196,12 +198,24 @@ impl Service {
                 else {
                     return raw(404, &json!({"error": "not found"}));
                 };
-                // The service keeps its own fields (tsg_id) on update.
+                // As the live service (C25): an update without the
+                // application's deployment auth code is refused.
+                if body.get("auth_code").and_then(Value::as_str).is_none() {
+                    return raw(400, &json!("auth_code is required"));
+                }
+                // The service keeps its own fields (tsg_id, key list) on update.
                 let tsg = app.get("tsg_id").cloned();
+                let infos = app.get("api_keys_dp_info").cloned();
                 *app = body.clone();
                 app["customer_appId"] = json!(id);
                 if let Some(tsg) = tsg {
                     app["tsg_id"] = tsg;
+                }
+                if let Some(infos) = infos {
+                    app["api_keys_dp_info"] = infos;
+                }
+                if let Some(o) = app.as_object_mut() {
+                    o.remove("auth_code");
                 }
                 raw(200, &app.clone())
             }
@@ -221,7 +235,10 @@ impl Service {
                 if !self.apps.iter().any(|a| a["app_name"] == body["cust_app"]) {
                     self.apps.push(json!({"customer_appId": format!("app-{}", self.serial + 1),
                                           "app_name": body["cust_app"], "cloud_provider": body["cust_cloud_provider"],
-                                          "environment": body["cust_env"]}));
+                                          "environment": body["cust_env"],
+                                          "api_keys_dp_info": [{"api_key_name": body["api_key_name"],
+                                                                "auth_code": body["auth_code"],
+                                                                "dp_name": body["dp_name"]}]}));
                 }
                 self.keys.push(key.clone());
                 let mut reply = key;
@@ -1205,7 +1222,7 @@ async fn every_supported_operation_sends_exactly_v1s_request_and_reads_back() {
     assert_eq!(
         body(&write),
         json!({"app_name": "Support bot", "cloud_provider": "azure", "environment": "staging",
-        "updated_by": CLIENT_ID})
+        "updated_by": CLIENT_ID, "auth_code": "OTHER-CODE"})
     );
     assert_eq!(app_updated.readback, Some(Readback::Found));
     // API key version (same application as the source key) and delete by name.

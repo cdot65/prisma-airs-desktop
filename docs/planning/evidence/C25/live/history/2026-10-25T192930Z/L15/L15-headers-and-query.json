@@ -1,0 +1,40 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L15",
+  "check": "L15-headers-and-query",
+  "workflows": [
+    "W29"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "aededb9459fff9b9241a2deddf65d81e3da3ad61b1d1a1e1ea534789ab3dc807",
+  "started_utc": "2026-10-25T17:56:19Z",
+  "finished_utc": "2026-10-25T17:56:20Z",
+  "inputs": {
+    "airs_cleanup_path": "/aisec/v1/mgmt/topic/{created_id}",
+    "airs_created_id_field": "topic_id",
+    "airs_created_name_field": "topic_name",
+    "airs_read_path": "/aisec/v1/mgmt/topics",
+    "airs_write_body": "{\"topic_name\": \"airs-v2-c25-wb-topic\", \"description\": \"C25 API Client probe\", \"examples\": [\"airs-v2-c25 workbench example\"], \"active\": true}",
+    "airs_write_method": "POST",
+    "airs_write_path": "/aisec/v1/mgmt/topic",
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "endpoint": "https://httpbin.org",
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285"
+  },
+  "outcome": "passed",
+  "detail": "the request carried exactly the typed header and query, and the endpoint echoed the header",
+  "observed": {
+    "bytes": 170,
+    "result": "ran",
+    "status": 200
+  },
+  "ids": {
+    "run_id": "run-7fc476ce3c9aaa33"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

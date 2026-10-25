@@ -3342,9 +3342,9 @@ dependencies = [
 
 [[package]]
 name = "scm-sdk"
-version = "0.1.0"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d555d955c3734dd5ee78f7173569bdecd4426095b2ffedc4b77d8f0f2c2e8d9"
+checksum = "533294fe977e26e251e01dd2de64a896aa22ce45e97ac6264a0df6af879edd55"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -5294,12 +5294,20 @@ dependencies = [
 name = "xtask"
 version = "0.2.0"
 dependencies = [
+ "base64 0.22.1",
  "desktop-core",
  "hex",
+ "rcgen",
+ "rustls",
  "serde",
  "serde_json",
  "sha2",
  "thiserror 2.0.21",
+ "time",
+ "tokio",
+ "tokio-rustls",
+ "url",
+ "zeroize",
 ]
 
 [[package]]

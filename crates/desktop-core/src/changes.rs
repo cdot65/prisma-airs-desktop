@@ -274,6 +274,18 @@ fn text(value: Option<&Value>) -> bool {
         .is_some_and(|s| !s.trim().is_empty())
 }
 
+/// The service's own fields of a data filtering profile, as it reads one
+/// back; a replace leaves them out.
+const FILTERING_READ_ONLY: &[&str] = &[
+    "id",
+    "name",
+    "tenant_id",
+    "type",
+    "version",
+    "audit_metadata",
+    "is_parent_managed",
+];
+
 /// The SDK request schema a kind/action's body is parsed with.
 fn schema(kind: ChangeKind, action: ChangeAction) -> Option<&'static str> {
     match (kind, action) {
@@ -336,7 +348,14 @@ pub fn normalize(draft: &ChangeDraft, client_id: &str) -> Result<Mutation, Chang
     body.remove("api_key");
     match kind {
         // v1 adds no authorship to DLP writes.
-        ChangeKind::DataPatterns | ChangeKind::FilteringProfiles => {}
+        ChangeKind::DataPatterns => {}
+        ChangeKind::FilteringProfiles => {
+            // An edit begins from the item as read. The service reads unset
+            // fields back as null, which the request contract refuses, and
+            // adds fields of its own, which a replace never sends back; the
+            // service keeps both unchanged when they are left out (C25).
+            body.retain(|key, v| !v.is_null() && !FILTERING_READ_ONLY.contains(&key.as_str()));
+        }
         ChangeKind::DataProfiles => {
             // A response-only legacy rendering never goes back with the
             // authoritative detection_rules; nulls are dropped (v1).
@@ -719,6 +738,46 @@ pub fn with_auth_code(
     })
 }
 
+/// Adds the application's deployment `auth_code` to an application update:
+/// the service refuses an update without it (HTTP 400 "auth_code is
+/// required", found by the C25 live run). The application record the
+/// review read names its deployment profile (`api_keys_dp_info[].dp_name`;
+/// its codes are redacted on read) and every entry must name the same one;
+/// the code is that profile's from `deployments`, as for a key create, and
+/// never comes from the draft.
+pub fn with_app_auth_code(
+    mutation: &Mutation,
+    before: &Value,
+    deployments: &[Value],
+) -> Result<Mutation, ChangeProblem> {
+    let names: Vec<&str> = before
+        .get("api_keys_dp_info")
+        .and_then(Value::as_array)
+        .map(|infos| {
+            infos
+                .iter()
+                .filter_map(|i| i.get("dp_name").and_then(Value::as_str))
+                .filter(|n| !n.trim().is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    let Some(name) = names.first() else {
+        return Err(ChangeProblem::DeploymentProfile);
+    };
+    if names.iter().any(|n| n != name) {
+        return Err(ChangeProblem::DeploymentProfile);
+    }
+    let mut named = mutation.clone();
+    if let Value::Object(map) = &mut named.body {
+        map.insert("dp_name".into(), Value::String((*name).to_owned()));
+    }
+    let mut ready = with_auth_code(&named, deployments)?;
+    if let Value::Object(map) = &mut ready.body {
+        map.remove("dp_name");
+    }
+    Ok(ready)
+}
+
 /// Canonical JSON (object keys sorted), as v1's `canonical`.
 pub fn canonical(value: &Value) -> String {
     match value {
@@ -788,6 +847,14 @@ pub fn impact(mutation: &Mutation) -> &'static str {
         }
         (_, ChangeAction::Delete) => {
             "Removes this resource. Referenced profiles/topics may be rejected by the server."
+        }
+        // The service does not list inactive profiles (C25 live finding):
+        // once saved, the profile leaves the inventory and cannot be read
+        // back or opened from it.
+        (ChangeKind::Profiles, ChangeAction::Create | ChangeAction::Update)
+            if mutation.body.get("active") == Some(&Value::Bool(false)) =>
+        {
+            "Saves this profile inactive. The service does not list inactive profiles, so it will not appear in the profile list or read back after saving; note its name and ID first."
         }
         _ => {
             "Applies only to this tenant. Existing unknown policy fields are preserved when included in the draft."
@@ -1181,5 +1248,99 @@ mod tests {
         let typed = json!({"name": "G", "profile_type": "basic", "detection_rules": [
             {"rule_type": "expression_tree", "expression_tree": {"rule_item": leaf(json!({}))}}]});
         assert!(!valid_data_profile(typed.as_object().expect("object")));
+    }
+
+    #[test]
+    fn a_filtering_profile_edited_as_read_drops_what_the_service_adds() {
+        // As the service reads it back: its own fields, and unset fields null.
+        let mut item = json!({"id": "f-1", "name": "test123", "tenant_id": "8259", "type": "custom",
+            "version": 1, "audit_metadata": {"created_at": 1}, "is_parent_managed": false,
+            "file_based": true, "non_file_based": false,
+            "description": null, "direction": "BOTH", "euc_template_id": null,
+            "is_end_user_coaching_enabled": null, "rule1": {"action": "alert"}, "rule2": null,
+            "data_profile_id": 11995044, "criteria_details": [], "exception_rules": []});
+        let edit = |item: &Value| {
+            normalize(
+                &draft(
+                    ChangeKind::FilteringProfiles,
+                    ChangeAction::Update,
+                    "f-1",
+                    item.clone(),
+                ),
+                "client@tsg",
+            )
+        };
+        let m = edit(&item).expect("an unchanged edit is accepted");
+        for key in [
+            "description",
+            "euc_template_id",
+            "is_end_user_coaching_enabled",
+            "rule2",
+        ]
+        .iter()
+        .chain(FILTERING_READ_ONLY)
+        {
+            assert!(m.body.get(*key).is_none(), "{key}");
+        }
+        assert_eq!(m.body["rule1"], json!({"action": "alert"}));
+        assert_eq!(m.body["file_based"], json!(true));
+        // The live service stores `c2s`/`s2c`, which the SDK request contract
+        // (BOTH, UPLOAD, DOWNLOAD) refuses: an SDK follow-up.
+        item["direction"] = json!("c2s");
+        assert_eq!(edit(&item).err(), Some(ChangeProblem::Contract));
+    }
+
+    #[test]
+    fn an_application_update_takes_its_auth_code_from_the_record_never_the_draft() {
+        let m = normalize(
+            &draft(
+                ChangeKind::Applications,
+                ChangeAction::Update,
+                "app-1",
+                json!({"app_name": "a", "cloud_provider": "aws", "environment": "development",
+                       "auth_code": "FORGED"}),
+            ),
+            "client@tsg",
+        )
+        .expect("normalized");
+        assert!(m.body.get("auth_code").is_none(), "never from the draft");
+        let deployments = [
+            json!({"dp_name": "dp-1", "auth_code": "CODE-1"}),
+            json!({"dp_name": "dp-2", "auth_code": "CODE-2"}),
+        ];
+        // As read: the codes are redacted, the profile names remain.
+        let record = json!({"app_name": "a", "api_keys_dp_info": [
+            {"api_key_name": "k1", "dp_name": "dp-2"}, {"api_key_name": "k2", "dp_name": "dp-2"}]});
+        let ready = with_app_auth_code(&m, &record, &deployments).expect("code");
+        assert_eq!(ready.body["auth_code"], "CODE-2");
+        assert!(
+            ready.body.get("dp_name").is_none(),
+            "only the code is added"
+        );
+        let mixed = json!({"api_keys_dp_info": [{"dp_name": "dp-1"}, {"dp_name": "dp-2"}]});
+        assert_eq!(
+            with_app_auth_code(&m, &mixed, &deployments),
+            Err(ChangeProblem::DeploymentProfile)
+        );
+        assert_eq!(
+            with_app_auth_code(&m, &json!({"app_name": "a"}), &deployments),
+            Err(ChangeProblem::DeploymentProfile)
+        );
+    }
+
+    #[test]
+    fn saving_a_profile_inactive_says_the_service_will_not_list_it() {
+        let inactive = Mutation {
+            kind: ChangeKind::Profiles,
+            action: ChangeAction::Create,
+            target: String::new(),
+            body: json!({"profile_name": "p", "active": false}),
+        };
+        assert!(impact(&inactive).contains("does not list inactive profiles"));
+        let active = Mutation {
+            body: json!({"profile_name": "p", "active": true}),
+            ..inactive.clone()
+        };
+        assert!(!impact(&active).contains("inactive"));
     }
 }

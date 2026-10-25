@@ -1,0 +1,35 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L07",
+  "check": "L07-prerequisites",
+  "workflows": [
+    "W36"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "c88ff84f5c54a68218cbc415b1b0e15dd8539914f0907444ad92f7f626f20a0a",
+  "started_utc": "2026-10-25T14:31:08Z",
+  "finished_utc": "2026-10-25T14:31:09Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L07.client_secret"
+    ],
+    "region": "us",
+    "restricted_client_id": "desktop-read-only@1001464285.iam.panserviceaccount.com",
+    "storage": "session",
+    "tsg_id": "1001464285",
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "outcome": "passed",
+  "detail": "the routing, provider, key and IAM prerequisites were read for the selected workspace",
+  "observed": {
+    "prerequisites": {
+      "result": "gateway"
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

@@ -2272,6 +2272,74 @@ stay.
 **Out of scope here:** diagnostics from the presentation (it logs nothing),
 system logs macOS keeps on its own, and uploading anything (never).
 
+## D052 — C25 scope reduction: Gateway workspace provisioning (W37, W39)
+
+Owner decision, 2026-10-25, recorded in C25.
+
+**Reduced:** the live requirement of L08's workspace provisioning, the IAM
+scope binding step of W37 and its cleanup in W39, is withdrawn from C25.
+Every other part of L08 stays required and passed live: route create,
+update and delete, and service key create, rotate and delete.
+
+**Why:** Redtail's IAM refuses the binding with HTTP 400 `invalid
+resource_type: workspace`, on PUT and on POST. The request is the SDK's
+exact binding (`resource_type: workspace` and the workspace slug, as every
+existing binding in the tenant has), and the service account is superuser
+on the tenant and on every scope. So no access the owner can grant unblocks
+it; the existing bindings were made by the Gateway console. The app's
+partial-result handling was itself shown live: the scope and workspace it
+created were kept, reported and reconciled (`evidence/C25/live/reconciliation.jsonl`).
+
+**Not reduced:** the source, fixture and native evidence for W37 and W39
+(C17), and the row's live requirement in any later release once the service
+accepts the binding.
+
+## D053 — C25 scope reduction: five blocked live checks
+
+Owner decision, 2026-10-25, recorded in C25 ("drop it" for each). The live
+requirement of these checks is withdrawn from C25. Their source, fixture
+and native evidence stays required and is unchanged; each returns as a live
+requirement in a later release once its cause is gone.
+
+| Row | Check | Why it could not pass |
+|---|---|---|
+| W49 | L11-account-switch | No second Academy test learner exists. Sign-in, protected admission and sign-out with revocation passed live |
+| W56 | L14-access-change-denied | Denial needs an entitled course whose access is withdrawn during the run; the course download under its lease and the local draft passed live |
+| W48 | L17-scope-change | Changing the shared `strata-cloud-manager` server's scope or grant is outside the `airs-v2-c25-*` change scope. Discovery, OAuth sign-in and revocation passed live; tool calls, approval, denial and refresh stay with the signed app (C26) |
+| W14 | L04-data-profile-replace | The DLP service answers HTTP 400 to every data profile and data pattern read or write by ID, predefined profiles included |
+| W15 | L04-filtering-profile-replace | The SDK request contract refuses the values the service stores (`direction` `c2s`/`s2c`, lower-case `log_severity`); an SDK follow-up. The app's own defect here (editing as read) was fixed and shown natively (C25-N01) |
+
+## D054 — scm-sdk 0.2.4
+
+Owner direction, 2026-10-25, recorded in C25 ("my scm sdk is on 0.2.4 …
+update it"). desktop-core pins `scm-sdk = "=0.2.4"` (crates.io), replacing
+0.1.0. The app built against it unchanged; the notice inventory was
+regenerated; every suite, the C25 gates and the operator-free live families
+ran again on it. The upgrade did not change the two SDK contract
+mismatches C25 recorded (filtering profile `direction` and `log_severity`;
+a cached Gateway stream chunk without `finish_reason`), which stay SDK
+follow-ups.
+
+## D055 — C25 review attempt-01: deferrals and a waived cleanup
+
+Owner decisions, 2026-10-25, recorded after Codex C25 attempt-01.
+
+1. **L16 and L17's Harness-run checks are C26's.** L16 (the Harness over
+   Gateway inference, key and company sign-in, history and proposals; rows
+   W42–W45) and L17's MCP tool call, native approval, denial and refresh
+   (W48) run inside the Harness engine, which runs only in the signed app.
+   C25 does not claim them. They are required in C26's signed-app
+   acceptance and must pass there before a stable release; this is a
+   deferral, not a reduction.
+2. **The inactive `airs-v2-c25-profile` cleanup is waived.** The service
+   omits inactive profiles from every list and no endpoint finds one by
+   name; the owner looked in the console too. It is an inactive, unused
+   test profile in Redtail. The reconciliation log records the waiver.
+3. **W56's live explicit lab submit is withdrawn from C25.** It would
+   leave a graded submission on the owner's Academy account. Its source,
+   fixture and native evidence stay required; the download under lease,
+   the local draft and sign-out with revocation passed live.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

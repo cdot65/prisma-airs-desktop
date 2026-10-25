@@ -1,0 +1,39 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L18",
+  "check": "L18-cross-scope-denied",
+  "workflows": [
+    "W03",
+    "W32"
+  ],
+  "environment": "test-b",
+  "manifest_sha256": "61f9aeec185bf3b1bb306ccf72414fe9132a0fc11e215c4673a17eb4f275f964",
+  "started_utc": "2026-10-25T12:26:56Z",
+  "finished_utc": "2026-10-25T12:26:57Z",
+  "inputs": {
+    "app_name": "airs-v2-c25",
+    "credential": "L01.scan_key",
+    "endpoint": "https://service.api.aisecurity.paloaltonetworks.com",
+    "profile_id": "0aff691c-b0a4-4ef6-9f12-cb175d311bc3",
+    "prompt": "Prisma AIRS Desktop v2 controlled live check: a synthetic benign prompt.",
+    "region": "us",
+    "storage": "session"
+  },
+  "outcome": "passed",
+  "detail": "the service refused this key for the other scope's profile and nothing was shown as a result",
+  "observed": {
+    "failure": "badRequest",
+    "outcome": "rejected",
+    "status": 400
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "a local session-only tenant; removed with the run's core, no remote resource",
+  "consumption": {
+    "scans": {
+      "limit": 10,
+      "used": 3
+    }
+  }
+}

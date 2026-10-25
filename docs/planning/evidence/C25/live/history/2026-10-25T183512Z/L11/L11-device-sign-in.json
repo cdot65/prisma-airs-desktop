@@ -1,0 +1,38 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L11",
+  "check": "L11-device-sign-in",
+  "workflows": [
+    "W49"
+  ],
+  "environment": "academy-test",
+  "manifest_sha256": "4c77adb7c6f78fbb24a357bb0e46ea0632256696c9babe0097ce48cbfc7d71d6",
+  "started_utc": "2026-10-25T18:31:38Z",
+  "finished_utc": "2026-10-25T18:32:34Z",
+  "inputs": {
+    "academy_origin": "https://academy.cdot.io",
+    "operator_timeout_secs": "900",
+    "storage": "session"
+  },
+  "outcome": "failed",
+  "detail": "the device sign-in failed",
+  "observed": {
+    "failure": "invalidResponse",
+    "state": "failed",
+    "vault": null
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {},
+  "operator_step": {
+    "bound_secs": 900,
+    "completed": true,
+    "finished_utc": "2026-10-25T18:32:34Z",
+    "instruction": "approve the Academy device sign-in with the designated test learner",
+    "judged_by": "the core's own state; the runner never supplies the result",
+    "kind": "academy-device-sign-in",
+    "prompted_utc": "2026-10-25T18:31:38Z"
+  }
+}

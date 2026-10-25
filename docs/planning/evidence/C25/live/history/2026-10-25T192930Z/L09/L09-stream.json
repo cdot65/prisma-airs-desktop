@@ -1,0 +1,61 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L09",
+  "check": "L09-stream",
+  "workflows": [
+    "W40"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "858f3b822afa6f97153e52efdd16e8a897ed7a67651694344e4cc0d106b5f0ab",
+  "started_utc": "2026-10-25T14:27:50Z",
+  "finished_utc": "2026-10-25T14:27:51Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L09.client_secret",
+      "L09.inference_key"
+    ],
+    "endpoint": "https://gateway.redtail.cdot.io/v1",
+    "inference_endpoint": "https://gateway.redtail.cdot.io/v1",
+    "model": "gpt-5.6-luna",
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285",
+    "unavailable_model": "airs-v2-c25-no-such-model",
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "outcome": "passed",
+  "detail": "a streamed answer through the designated Gateway route, with the model it served",
+  "observed": {
+    "answered": true,
+    "failure": null,
+    "finish": "stop",
+    "outcome": "completed",
+    "output_chars": 5,
+    "sent": true,
+    "served_model": "gpt-5.6-luna",
+    "state": "completed",
+    "usage": {
+      "completion": 4,
+      "prompt": 14,
+      "total": 18
+    }
+  },
+  "ids": {
+    "response_id": "chatcmpl-EctUNAqVuwM7LKF5VQhUxG5Ubor5l",
+    "trace": "airs-a66f076b13b25b29"
+  },
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {
+    "runs": {
+      "limit": 20,
+      "used": 16
+    },
+    "tokens": {
+      "limit": 50000,
+      "used": 50
+    }
+  }
+}

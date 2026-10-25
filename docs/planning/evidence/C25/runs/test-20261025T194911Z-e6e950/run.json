@@ -1,0 +1,144 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "test-20261025T194911Z-e6e950",
+  "subject": "C25",
+  "kind": "test",
+  "started_utc": "2026-10-25T19:49:11Z",
+  "finished_utc": "2026-10-25T19:49:20Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/cdot/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/cdot/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a"
+    },
+    {
+      "name": "node",
+      "path": "/Users/cdot/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/cdot/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/"
+  },
+  "inputs_before": {
+    "source": "03c44d0a70506e01b3dab3d4e312126958ca1fa6d3df47ecd53c002e0acc6e92",
+    "dependencies": "fb352c1fcb7ec48ec6bf2a4ae763580725a59a2f1623d20d8d6160cf616fc7ac",
+    "build_flags": "cf3e29061c276c1dbe21a872b4c0d7c32cea3faeda795085841762d665f80ff0"
+  },
+  "inputs_after": {
+    "source": "03c44d0a70506e01b3dab3d4e312126958ca1fa6d3df47ecd53c002e0acc6e92",
+    "dependencies": "fb352c1fcb7ec48ec6bf2a4ae763580725a59a2f1623d20d8d6160cf616fc7ac",
+    "build_flags": "cf3e29061c276c1dbe21a872b4c0d7c32cea3faeda795085841762d665f80ff0"
+  },
+  "commands": [
+    {
+      "label": "setup/1",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "shared-prepare",
+        "--input",
+        ".inputs/academy",
+        "--scratch",
+        ".work/academy"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 4715,
+      "output_sha256": "f2bef0f513f68ebf3898514fde2b759ac017fe0d0cc78fc0ed17cd90ce6dbae3",
+      "log": "logs/setup-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "setup/2",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 314,
+      "output_sha256": "b7e8fdb1033b2e93cce1ed6260aa246f84f9efc4f0554c7bb32b5aa1dbee6cf5",
+      "log": "logs/setup-2.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C25/fixture",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "controlled_live"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 125,
+      "output_sha256": "0e9e3997c45c0ad03b1a8f98ea4c1fcd75e9ca27aa868fea1eb7f1c44fa23d34",
+      "log": "logs/C25-fixture.log",
+      "tests": {
+        "passed": 13,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "artifacts": []
+}

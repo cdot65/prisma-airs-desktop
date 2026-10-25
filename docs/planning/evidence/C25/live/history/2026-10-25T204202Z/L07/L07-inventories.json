@@ -1,0 +1,76 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L07",
+  "check": "L07-inventories",
+  "workflows": [
+    "W35"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "754da0ae9ec0f425a9466f6ccfabe673b7548537687b4b139e38f03928fc8c0e",
+  "started_utc": "2026-10-25T19:44:56Z",
+  "finished_utc": "2026-10-25T19:44:57Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L07.client_secret"
+    ],
+    "region": "us",
+    "restricted_client_id": "desktop-read-only@1001464285.iam.panserviceaccount.com",
+    "storage": "session",
+    "tsg_id": "1001464285",
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "outcome": "passed",
+  "detail": "every Gateway inventory of the selected workspace, and the tenant's integrations, was read",
+  "observed": {
+    "inventories": {
+      "guardrails": {
+        "complete": true,
+        "count": 4,
+        "resource": "guardrails",
+        "result": "gatewayList",
+        "total": 4
+      },
+      "integrations": {
+        "complete": true,
+        "count": 8,
+        "resource": "integrations",
+        "result": "gatewayList",
+        "total": 8
+      },
+      "providers": {
+        "complete": true,
+        "count": 7,
+        "resource": "providers",
+        "result": "gatewayList",
+        "total": 7
+      },
+      "routes": {
+        "complete": true,
+        "count": 6,
+        "resource": "routes",
+        "result": "gatewayList",
+        "total": 6
+      },
+      "serviceKeys": {
+        "complete": true,
+        "count": 1,
+        "resource": "serviceKeys",
+        "result": "gatewayList",
+        "total": 1
+      },
+      "userKeys": {
+        "complete": true,
+        "count": 13,
+        "resource": "userKeys",
+        "result": "gatewayList",
+        "total": 13
+      }
+    }
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}

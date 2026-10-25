@@ -1,0 +1,42 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L17",
+  "check": "L17-discovery",
+  "workflows": [
+    "W47"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "205311085f0a56497bc67d365f73d18a9de7dd47554b3479d060fb7e74bf3e76",
+  "started_utc": "2026-10-25T15:10:59Z",
+  "finished_utc": "2026-10-25T15:10:59Z",
+  "inputs": {
+    "client_id": "prisma-airs-desktop@1001464285.iam.panserviceaccount.com",
+    "credentials": [
+      "L17.client_secret",
+      "L17.inference_key"
+    ],
+    "endpoint": "https://gateway.redtail.cdot.io/v1",
+    "inference_endpoint": "https://gateway.redtail.cdot.io/v1",
+    "mcp_server_name": "scm",
+    "operator_present": "no",
+    "region": "us",
+    "storage": "session",
+    "tsg_id": "1001464285",
+    "workspace_id": "ce06de57-3ccb-4a98-a653-bcc2b1de76ca"
+  },
+  "outcome": "failed",
+  "detail": "the catalog was not read or does not list exactly one designated server",
+  "observed": {
+    "discovered": {
+      "by": "mcp_server_name",
+      "matches": 0
+    },
+    "servers": 7,
+    "state": "ready"
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {}
+}
