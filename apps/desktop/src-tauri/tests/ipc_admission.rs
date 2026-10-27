@@ -494,3 +494,55 @@ fn ambient_environment_credentials_are_never_adopted() {
         std::env::remove_var("PANW_AI_SEC_API_ENDPOINT");
     }
 }
+
+/// C28 (D058): the native Go menu follows the presentation even when the
+/// shell observation that would have carried the change was replaced by a
+/// `Resync` (an overflowing stream): every new shell subscription reconciles
+/// the menu with the fresh snapshot, so the client's resubscribe repairs it.
+/// The mock runtime installs no native menu; the host records the variant it
+/// reconciled with, which is what `menu::rebuild` is then called with.
+#[test]
+fn the_go_menu_is_reconciled_on_every_shell_subscription() {
+    let h = harness();
+    let session = register(&h);
+    let host = h.app.state::<desktop_host::Host>();
+    assert_eq!(
+        host.menu_variant(),
+        None,
+        "nothing reconciled before a shell observation"
+    );
+    call(
+        &h.main,
+        "desktop_observe",
+        raw(&fixture("observe-shell-request.json")),
+    )
+    .expect("observe");
+    assert_eq!(
+        host.menu_variant(),
+        Some(desktop_core::features::UiVariant::Legacy)
+    );
+    // The variant changes; this subscription's update is treated as lost (the
+    // client resubscribes as it does after a Resync).
+    let mut body = fixture("dispatch-request.json");
+    body["session"] = json!(session);
+    body["sequence"] = json!("1");
+    body["intent"] = json!({"kind": "setUiVariant", "variant": "v2"});
+    call(&h.main, "desktop_dispatch", raw(&body)).expect("v2");
+    let mut again = fixture("observe-shell-request.json");
+    again["scope"]["updates"] = json!("__CHANNEL__:9");
+    call(&h.main, "desktop_observe", raw(&again)).expect("resubscribe");
+    assert_eq!(
+        host.menu_variant(),
+        Some(desktop_core::features::UiVariant::V2)
+    );
+    body["sequence"] = json!("2");
+    body["intent"] = json!({"kind": "setUiVariant", "variant": "legacy"});
+    call(&h.main, "desktop_dispatch", raw(&body)).expect("legacy");
+    again["scope"]["updates"] = json!("__CHANNEL__:10");
+    call(&h.main, "desktop_observe", raw(&again)).expect("resubscribe again");
+    assert_eq!(
+        host.menu_variant(),
+        Some(desktop_core::features::UiVariant::Legacy)
+    );
+    let _ = &h.adapters;
+}

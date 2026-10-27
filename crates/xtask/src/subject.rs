@@ -68,12 +68,12 @@ mod tests {
 
     #[test]
     fn accepts_registered_range_only() {
-        assert_eq!(Subject::parse("C01").unwrap(), Subject::Chunk(1));
-        assert_eq!(Subject::parse("C26").unwrap(), Subject::Chunk(26));
-        assert_eq!(Subject::parse("C27").unwrap(), Subject::Chunk(27));
-        assert_eq!(Subject::parse("C34").unwrap(), Subject::Chunk(34));
-        assert_eq!(Subject::parse("P08").unwrap(), Subject::Phase(8));
-        assert_eq!(Subject::parse("P09").unwrap(), Subject::Phase(9));
+        assert_eq!(Subject::parse("C01").expect("C01"), Subject::Chunk(1));
+        assert_eq!(Subject::parse("C26").expect("C26"), Subject::Chunk(26));
+        assert_eq!(Subject::parse("C27").expect("C27"), Subject::Chunk(27));
+        assert_eq!(Subject::parse("C34").expect("C34"), Subject::Chunk(34));
+        assert_eq!(Subject::parse("P08").expect("P08"), Subject::Phase(8));
+        assert_eq!(Subject::parse("P09").expect("P09"), Subject::Phase(9));
         for bad in ["C00", "C35", "P00", "P10", "C7", "C027", "c27", "X01"] {
             assert!(Subject::parse(bad).is_err(), "{bad} must be refused");
         }

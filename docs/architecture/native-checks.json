@@ -1132,6 +1132,36 @@
         "id": "C25-N04",
         "check": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply… in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent."
       }
+    ],
+    "C28": [
+      {
+        "id": "C28-N01",
+        "check": "Settings › Interface › 'Use the new interface' switches the window to the v2 shell without a relaunch: the rail named 'Destinations' lists Home ⌘1, Inbox ⌘2, Harness ⌘3, Academy ⌘4, Test Cases ⌘5, API Client ⌘6, Administration ⌘7 in that order (the Rust catalogue), the tenant switcher is above it, and the Home heading receives the page; the preference survives a relaunch and 'Return to the classic interface' restores the legacy rail named 'Features'."
+      },
+      {
+        "id": "C28-N02",
+        "check": "The native Go menu follows the presentation: in v2 it offers Switch Tenant… (⌘T) and then Home (⌘1) … Administration (⌘7) followed by the non-sidebar destinations without accelerators; Go › Harness moves the page (a `navigate` intent; the sidebar marks Harness current) and Go › Home returns; after returning to classic the Go menu is the legacy one again (Runtime Security ⌘1)."
+      },
+      {
+        "id": "C28-N03",
+        "check": "Keyboard only (I8): Tab reaches the tenant switcher, every rail destination, the palette trigger, the three appearance toggles, 'Show the calls' and the classic-interface control, each with a visible focus ring (band pixels change when focused, for the selected Home too); Enter on the trigger opens the command palette as the one topmost modal with focus in its field and Tab contained; ArrowDown traverses to the last entry with the active row inside the dialog and Enter dispatches only that row; Escape returns focus to the trigger; Go › Switch Tenant… while the palette is open closes it and leaves focus in the tenant list, and Escape returns focus to the switcher without selecting; the unavailable Inbox destination is disabled."
+      },
+      {
+        "id": "C28-N04",
+        "check": "The accessibility tree carries every status as a word (I9): with no tenant the Home read-status line exposes 'Add a tenant to start reading it.', with a tenant 'First read pending', the warn toast exposes its text with a 'Warning:' prefix, and no verdict is colour-only."
+      },
+      {
+        "id": "C28-N05",
+        "check": "Toasts (I10): a refused navigation (Go › Inbox, catalogued but unavailable, refused by the core) shows one warn toast naming the refusal that expires within 6 s; with macOS Reduce Motion enabled and the app relaunched the same toast persists past 8 s until dismissed; the setting is restored afterwards."
+      },
+      {
+        "id": "C28-N06",
+        "check": "Dark and Light appearance from the rail toggles apply the shared theme attribute the v2 tokens key on: AX text ink is the Gruvbox ink in Dark and the Paper ink in Light; the body background follows the --v2-bg token (self-capture)."
+      },
+      {
+        "id": "C28-N07",
+        "check": "At the interim 900×600 minimum and at 200% zoom in both themes the v2 shell shows no horizontal scroll (no node past the window's right edge, no horizontal scrollbar), the rail collapses to one 32px control per row with every control's frame inside the rail's frame (nothing clipped), focusing the last appearance toggle does not scroll the rail, destination labels stay in the accessible names, and the page heading stays reachable; with a configured tenant the collapsed switcher still names the tenant."
+      }
     ]
   }
 }

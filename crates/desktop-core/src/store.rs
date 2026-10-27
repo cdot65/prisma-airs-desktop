@@ -196,6 +196,19 @@ pub struct PersistedState {
     /// while an import or its rollback is unsettled.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub open_imports: Vec<crate::import_v1::receipt::Receipt>,
+    /// Which shell the desktop renders (C28, D058; absent before = legacy).
+    #[serde(default)]
+    pub ui_variant: crate::features::UiVariant,
+    /// First-run wizard state (C28/C29; absent before = needed).
+    #[serde(default)]
+    pub onboarding: crate::features::OnboardingState,
+    /// "Show the calls" preference (C28; absent before = on).
+    #[serde(default = "show_calls_default")]
+    pub show_calls: bool,
+}
+
+fn show_calls_default() -> bool {
+    true
 }
 
 impl Default for PersistedState {
@@ -215,6 +228,9 @@ impl Default for PersistedState {
             harness_projects: Vec::new(),
             harness_mcp: Vec::new(),
             open_imports: Vec::new(),
+            ui_variant: crate::features::UiVariant::Legacy,
+            onboarding: crate::features::OnboardingState::Needed,
+            show_calls: true,
         }
     }
 }

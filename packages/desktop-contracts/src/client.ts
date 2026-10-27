@@ -76,6 +76,8 @@ const DECIMAL_U64 = /^(0|[1-9][0-9]{0,19})$/
 const U64_MAX = 18446744073709551615n
 
 const FEATURE_IDS: readonly string[] = [
+    'home',
+    'inbox',
     'runtime',
     'academy',
     'administration',
@@ -89,6 +91,8 @@ const FEATURE_IDS: readonly string[] = [
     'settings',
 ]
 const THEMES: readonly string[] = ['system', 'light', 'dark']
+const UI_VARIANTS: readonly string[] = ['legacy', 'v2']
+const ONBOARDING_STATES: readonly string[] = ['needed', 'inProgress', 'done']
 const STORAGE: readonly string[] = ['ready', 'corrupt', 'unavailable', 'resetting']
 const SCAN_STATES: readonly string[] = ['missing', 'storing', 'ready', 'failed']
 const MODES: readonly string[] = ['keychain', 'session']
@@ -2522,6 +2526,23 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isRecord(value) ||
         !isDecimalU64(value.revision) ||
         !THEMES.includes(value.appearance as string) ||
+        !UI_VARIANTS.includes(value.uiVariant as string) ||
+        !ONBOARDING_STATES.includes(value.onboarding as string) ||
+        typeof value.activeFeature !== 'string' ||
+        !FEATURE_IDS.includes(value.activeFeature) ||
+        typeof value.showCalls !== 'boolean' ||
+        !optional(
+            (g) =>
+                isRecord(g) &&
+                typeof g.to === 'string' &&
+                TENANT_ID.test(g.to) &&
+                isRecord(g.pending) &&
+                typeof g.pending.conversation === 'string' &&
+                g.pending.conversation.length > 0 &&
+                typeof g.pending.decision === 'string' &&
+                g.pending.decision.length > 0,
+            value.switchBlocked
+        ) ||
         !Array.isArray(value.features) ||
         typeof value.fixtureBuild !== 'boolean' ||
         !oneOf(STORAGE, value.storage) ||
@@ -2578,7 +2599,9 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
             !FEATURE_IDS.includes(feature.id) ||
             seen.has(feature.id) ||
             typeof feature.label !== 'string' ||
-            !isRecord(feature.availability)
+            !isRecord(feature.availability) ||
+            !(feature.shortcut === null || (typeof feature.shortcut === 'number' && feature.shortcut >= 1 && feature.shortcut <= 9)) ||
+            typeof feature.sidebar !== 'boolean'
         ) {
             throw new ContractViolation('feature entry')
         }
@@ -2591,6 +2614,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
                 typeof availability.plannedChunk === 'string')
         if (!valid) throw new ContractViolation('feature availability')
     }
+    if (!seen.has(value.activeFeature as string)) throw new ContractViolation('active feature')
     return value as unknown as ShellSnapshot
 }
 
@@ -2601,6 +2625,8 @@ function parseMenuCommand(value: unknown): MenuCommand {
             return { kind: 'commandPalette' }
         case 'saveDocument':
             return { kind: 'saveDocument' }
+        case 'tenantSwitcher':
+            return { kind: 'tenantSwitcher' }
         case 'navigate':
             if (typeof value.feature === 'string' && FEATURE_IDS.includes(value.feature)) {
                 return value as unknown as MenuCommand

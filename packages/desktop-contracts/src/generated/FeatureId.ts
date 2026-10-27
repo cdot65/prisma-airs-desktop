@@ -3,4 +3,4 @@
 /**
  * Stable identifier of a top-level desktop feature destination.
  */
-export type FeatureId = "runtime" | "academy" | "administration" | "sessions" | "library" | "redTeam" | "apiClient" | "gateway" | "harness" | "import" | "settings";
+export type FeatureId = "home" | "inbox" | "runtime" | "academy" | "administration" | "sessions" | "library" | "redTeam" | "apiClient" | "gateway" | "harness" | "import" | "settings";

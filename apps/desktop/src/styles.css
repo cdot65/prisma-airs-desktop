@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './styles/tokens.css';
 
 /* Self-hosted fonts: the packaged CSP allows only bundled font files. */
 @import '@fontsource-variable/inter/index.css';
@@ -31,4 +32,24 @@
 html {
     scroll-padding-top: 72px;
     scroll-padding-bottom: 76px;
+}
+
+/* Tailwind's reset strips form controls to bare text, so a field written
+ * without classes had no visible edge (C26 installed acceptance F04). Every
+ * text field, select and text area gets a visible box at zero specificity:
+ * any utility class on a control still wins. The border meets the 3:1
+ * non-text contrast floor in both themes. */
+@layer base {
+    :where(input:not([type='radio'], [type='checkbox'], [type='range'], [type='file'], [type='hidden']), select, textarea) {
+        border: 1px solid var(--academy-ink-faint);
+        border-radius: var(--academy-radius-md);
+        background: var(--academy-paper);
+        color: var(--academy-ink);
+        padding: 0.5rem 0.75rem;
+        min-height: 2.25rem;
+    }
+
+    :where(input, select, textarea):disabled {
+        opacity: 0.6;
+    }
 }

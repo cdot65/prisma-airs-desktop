@@ -350,4 +350,35 @@ describe('desktop shell', () => {
         expect(document.querySelector('[data-slot="app-shell"]')).not.toBeNull()
         fetchSpy.mockRestore()
     })
+
+    it('routes the native Switch Tenant command to Settings in the legacy shell', async () => {
+        const s = await launch()
+        await s.pushAsync({ kind: 'menu', command: { kind: 'tenantSwitcher' } })
+        expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument()
+    })
+
+    it('reports a refused or unconfirmed interface change on the Settings toggle without changing the observed value', async () => {
+        const user = userEvent.setup()
+        const s = await launch()
+        await s.pushAsync({ kind: 'menu', command: { kind: 'navigate', feature: 'settings' } })
+        const toggle = await screen.findByRole('checkbox', { name: 'Use the new interface' })
+        expect(toggle).not.toBeChecked()
+        s.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
+        await user.click(toggle)
+        expect(s.dispatched.at(-1)).toEqual({ kind: 'setUiVariant', variant: 'v2' })
+        const status = document.querySelector('[data-slot="interface-status"]') as HTMLElement
+        await waitFor(() => expect(status.textContent?.length ?? 0).toBeGreaterThan(0))
+        expect(toggle).not.toBeChecked()
+        s.respond = () => {
+            throw new (class extends Error {
+                constructor() {
+                    super('lost')
+                    this.name = 'DeliveryOutcomeUnknown'
+                }
+            })()
+        }
+        await user.click(toggle)
+        await waitFor(() => expect(status.textContent?.length ?? 0).toBeGreaterThan(0))
+        expect(toggle).not.toBeChecked()
+    })
 })

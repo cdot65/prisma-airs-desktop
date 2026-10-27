@@ -1,0 +1,135 @@
+/*
+ * UI v2 "Refined Native" tokens (docs/architecture/ui-v2/tokens.md, C28).
+ * The only place a v2 colour, size or rhythm value lives. Light values on
+ * :root; dark values follow the shared theme attribute the desktop already
+ * sets (`data-theme="gruvbox"` is the dark general theme, `paper` the light
+ * one). Academy's --academy-* variables are untouched: the embedded learner
+ * view keeps them.
+ */
+:root {
+    --v2-bg: #f6f2e9;
+    --v2-side: #ebe5d8;
+    --v2-paper: #fbf8f1;
+    --v2-inset: #efe9dd;
+    --v2-rule: #e0d9ca;
+    --v2-ctl: #857d6e;
+    --v2-ink: #14141a;
+    --v2-soft: #4a463c;
+    --v2-faint: #635d50;
+    --v2-acc: #a33d15;
+    --v2-acc-ink: #ffffff;
+    --v2-acc-soft: #f4dfd3;
+    --v2-block: #b42318;
+    --v2-block-bg: #fbe4e1;
+    --v2-flag: #8a5300;
+    --v2-flag-bg: #faeed5;
+    --v2-ok: #1f6f3a;
+    --v2-ok-bg: #def0e3;
+    --v2-sel: var(--v2-acc);
+    --v2-sel-ink: var(--v2-acc-ink);
+    --v2-get: #245e8f;
+
+    --v2-page-top: 32px;
+    --v2-page-x: 44px;
+    --v2-title: 26px;
+    --v2-card-pad: 20px;
+    --v2-gap: 12px;
+    --v2-text: 14px;
+    --v2-text-2: 12px;
+    --v2-control: 32px;
+    --v2-radius-control: 7px;
+    --v2-radius-card: 12px;
+    --v2-rail: 244px;
+    --v2-reading: 860px;
+    --v2-scrim: rgba(20, 20, 26, 0.4);
+}
+
+:root[data-theme='gruvbox'] {
+    --v2-bg: #1d2021;
+    --v2-side: #161919;
+    --v2-paper: #282828;
+    --v2-inset: #32302f;
+    --v2-rule: #3c3836;
+    --v2-ctl: #8a7f70;
+    --v2-ink: #ebdbb2;
+    --v2-soft: #d5c4a1;
+    --v2-faint: #bdae93;
+    --v2-acc: #fe8019;
+    --v2-acc-ink: #1d2021;
+    --v2-acc-soft: #4a2f1a;
+    --v2-block: #ff6b57;
+    --v2-block-bg: #3d1f1c;
+    --v2-flag: #fabd2f;
+    --v2-flag-bg: #3a3019;
+    --v2-ok: #b8bb26;
+    --v2-ok-bg: #2b2f17;
+    --v2-get: #83a598;
+    --v2-scrim: rgba(0, 0, 0, 0.55);
+}
+
+/* The v2 shell root: body background, type and the visible focus ring
+ * (invariant: accent-colour ring on every focusable control; inset variant
+ * where a control declares it). */
+[data-v2-shell] {
+    background: var(--v2-bg);
+    color: var(--v2-ink);
+    font-size: var(--v2-text);
+    min-height: 100vh;
+}
+[data-v2-shell] :focus-visible {
+    outline: 2px solid var(--v2-acc);
+    outline-offset: 2px;
+}
+[data-v2-shell] [data-inset-focus]:focus-visible {
+    outline-offset: -4px;
+}
+[data-v2-shell] input,
+[data-v2-shell] select,
+[data-v2-shell] textarea {
+    border: 1px solid var(--v2-ctl);
+    border-radius: var(--v2-radius-control);
+    background: var(--v2-bg);
+    color: var(--v2-ink);
+    min-height: var(--v2-control);
+}
+/* Rail collapses to icons below 1280 CSS px; nothing scrolls horizontally. */
+[data-v2-shell] {
+    overflow-x: hidden;
+}
+@media (max-width: 1279px) {
+    [data-v2-rail] {
+        width: 64px !important;
+    }
+    /* Collapsed: one 32px control per row; icons stay, labels leave the
+     * layout but stay in the accessible name. */
+    [data-v2-rail] [data-v2-stack] {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    [data-v2-rail] [data-v2-stack] > * {
+        width: 100%;
+    }
+    /* Collapsed: labels leave the layout but stay in the accessible name. */
+    [data-v2-rail] [data-v2-label] {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+}
+/* The selected destination is accent-filled, so its ring is the ink-on-accent
+ * colour; every other control keeps the accent ring. */
+[data-v2-shell] [aria-current='page']:focus-visible {
+    outline-color: var(--v2-sel-ink);
+}
+[data-v2-shell] [data-v2-scrim] {
+    background: var(--v2-scrim);
+}
+@media (prefers-reduced-motion: reduce) {
+    [data-v2-shell] * {
+        transition: none !important;
+        animation: none !important;
+    }
+}

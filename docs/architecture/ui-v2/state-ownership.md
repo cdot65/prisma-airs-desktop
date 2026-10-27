@@ -83,7 +83,7 @@ and reconciled by hand; a key missing here is a specification defect.
 
 | Credential | Entry | Storage | Readable by the web layer |
 |---|---|---|---|
-| Scan API key | host secret sheet from the wizard tenant step or Administration | vault (`cr-` record), Keychain v2 namespace | id and masked indicator only |
-| Management client secret | host secret sheet, optional section | vault | id only |
-| Gateway workspace key | host secret sheet | vault | id only |
+| Scan API key | webview password field read through a ref, cleared at once, sent once as `EnteredSecret` inside `configureScanCredential` (P25) | vault (`cr-` record), Keychain v2 namespace | state and mode only (`ScanView`), never the value |
+| Management client secret | same path, `configureManagementCredential` (optional section) | vault | client id and state only |
+| Gateway workspace key | same path, `configureInferenceCredential` | vault | state only |
 | Issued API key (rotation) | `RevealSecret` host sheet / host clipboard | held per result for the active context, never persisted | never |

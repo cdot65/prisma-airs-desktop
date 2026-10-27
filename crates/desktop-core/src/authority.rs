@@ -61,7 +61,7 @@ pub use workbench_domain::{
 use crate::academy::AcademyClient;
 use crate::context::{ContextRef, EnteredSecret, LearnerRef, ReviewId, WorkspaceRef};
 use crate::delivery::{Admit, Delivery, DeliverySession, Sessions};
-use crate::features::{self, FeatureEntry};
+use crate::features::{self, FeatureEntry, FeatureId};
 use crate::import::{self, Discarded, ImportCandidate, ImportError, ImportFormat, ImportPreview};
 use crate::learner::{AcademyView, ProcedureKind};
 use crate::library::CaseDraft;
@@ -106,6 +106,26 @@ pub enum Intent {
     /// Set the desktop-wide appearance preference (not an Academy setting).
     SetAppearance {
         theme: Theme,
+    },
+    /// Choose the desktop presentation (C28, D058): the legacy shell or the
+    /// v2 shell. Persisted; navigation falls back to the new variant's first
+    /// sidebar destination.
+    SetUiVariant {
+        variant: features::UiVariant,
+    },
+    /// Make a destination the active one (C28). Refused unless the feature
+    /// is in the current presentation's catalogue and available; the native
+    /// menu, the sidebar and the palette all go through here.
+    Navigate {
+        feature: FeatureId,
+    },
+    /// Advance the first-run wizard (C28/C29): never back to `needed`.
+    SetOnboarding {
+        state: features::OnboardingState,
+    },
+    /// The "show the calls" preference (C28).
+    SetShowCalls {
+        on: bool,
     },
     /// Create a tenant profile with no credential.
     CreateTenant {
@@ -670,6 +690,10 @@ macro_rules! intent_kinds {
 
 intent_kinds! {
     SetAppearance => "setAppearance",
+    SetUiVariant => "setUiVariant",
+    Navigate => "navigate",
+    SetOnboarding => "setOnboarding",
+    SetShowCalls => "setShowCalls",
     CreateTenant => "createTenant",
     SelectTenant => "selectTenant",
     DeleteTenant => "deleteTenant",
@@ -1040,6 +1064,26 @@ pub struct ResetFailure {
     pub reason: VaultError,
 }
 
+/// Why a tenant switch is held (C28 contract, raised in C30): a Harness
+/// conversation has a decision pending; the operator chooses to archive it,
+/// discard it or stay. The shell renders its guard from this, never from a
+/// guess of its own (invariant I1).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SwitchBlocked {
+    /// The tenant the switch was asked for.
+    pub to: TenantId,
+    pub pending: PendingDecisionRef,
+}
+
+/// The conversation and decision that hold a switch (ids only; no content).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingDecisionRef {
+    pub conversation: String,
+    pub decision: String,
+}
+
 /// Redacted shell state.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -1047,6 +1091,18 @@ pub struct ShellSnapshot {
     /// Opaque, monotonically increasing revision (string-encoded u64).
     pub revision: String,
     pub appearance: Theme,
+    /// Which shell renders (C28, D058); `features` is that shell's catalogue.
+    pub ui_variant: features::UiVariant,
+    /// First-run wizard state (C28/C29).
+    pub onboarding: features::OnboardingState,
+    /// The active destination (C28): what `navigate` last set, else the
+    /// presentation's first sidebar entry.
+    pub active_feature: FeatureId,
+    /// "Show the calls" preference (C28).
+    pub show_calls: bool,
+    /// A held tenant switch awaiting the operator's resolution (C30 raises
+    /// it; always absent in C28).
+    pub switch_blocked: Option<SwitchBlocked>,
     pub features: Vec<FeatureEntry>,
     /// True only in the distinct test-fixtures identity.
     pub fixture_build: bool,
@@ -1420,6 +1476,9 @@ impl Tenant {
 #[derive(Clone, Debug, Default)]
 struct Data {
     appearance: Option<Theme>,
+    ui_variant: Option<features::UiVariant>,
+    onboarding: Option<features::OnboardingState>,
+    show_calls: Option<bool>,
     tenants: Vec<Tenant>,
     active: Option<TenantId>,
     pending_cleanup: Vec<RecordId>,
@@ -1458,6 +1517,8 @@ struct State {
     admitted: u64,
     storage: StorageHealth,
     data: Data,
+    /// Session-only: the destination `navigate` last set (C28).
+    active_feature: Option<FeatureId>,
     salt: [u8; 16],
     epoch: u64,
     active_ref: Option<ContextRef>,
@@ -1602,11 +1663,37 @@ impl State {
         self.data.appearance.unwrap_or(Theme::System)
     }
 
+    fn ui_variant(&self) -> features::UiVariant {
+        self.data.ui_variant.unwrap_or_default()
+    }
+
+    fn onboarding(&self) -> features::OnboardingState {
+        self.data.onboarding.unwrap_or_default()
+    }
+
+    fn show_calls(&self) -> bool {
+        self.data.show_calls.unwrap_or(true)
+    }
+
+    /// The active destination: the last admitted `navigate` while it stays
+    /// in the current catalogue, else the presentation's first sidebar entry.
+    fn active_feature(&self) -> FeatureId {
+        let variant = self.ui_variant();
+        self.active_feature
+            .filter(|f| features::catalogue_for(variant).iter().any(|e| e.id == *f))
+            .unwrap_or_else(|| features::default_feature(variant))
+    }
+
     fn snapshot(&self) -> ShellSnapshot {
         ShellSnapshot {
             revision: self.revision.to_string(),
             appearance: self.shown_appearance(),
-            features: features::catalogue(),
+            ui_variant: self.ui_variant(),
+            onboarding: self.onboarding(),
+            active_feature: self.active_feature(),
+            show_calls: self.show_calls(),
+            switch_blocked: None,
+            features: features::catalogue_for(self.ui_variant()),
             fixture_build: cfg!(feature = "test-fixtures"),
             storage: self.storage,
             // An import's tenants show once it commits (D050).
@@ -1695,6 +1782,9 @@ impl State {
     fn persisted(&self) -> PersistedState {
         PersistedState {
             appearance: self.appearance(),
+            ui_variant: self.ui_variant(),
+            onboarding: self.onboarding(),
+            show_calls: self.show_calls(),
             tenants: self
                 .data
                 .tenants
@@ -2374,6 +2464,7 @@ impl Core {
             admitted: 0,
             storage,
             data,
+            active_feature: None,
             salt,
             epoch: 0,
             active_ref: None,
@@ -2893,6 +2984,9 @@ fn data_from(doc: PersistedState) -> Data {
         .collect();
     Data {
         appearance: Some(doc.appearance),
+        ui_variant: Some(doc.ui_variant),
+        onboarding: Some(doc.onboarding),
+        show_calls: Some(doc.show_calls),
         tenants,
         active: doc.active_tenant,
         pending_cleanup: doc.pending_cleanup,
@@ -3118,6 +3212,66 @@ fn admit(
             if state.appearance() != theme {
                 let before = state.data.clone();
                 state.data.appearance = Some(theme);
+                if state.storage == StorageHealth::Ready
+                    && let Err(e) = state.save_with(&before)
+                {
+                    return Err(e);
+                }
+                state.changed();
+            }
+        }
+        Intent::SetUiVariant { variant } => {
+            if state.ui_variant() != variant {
+                let before = state.data.clone();
+                state.data.ui_variant = Some(variant);
+                if state.storage == StorageHealth::Ready
+                    && let Err(e) = state.save_with(&before)
+                {
+                    return Err(e);
+                }
+                // The other presentation's destination may not exist here.
+                state.active_feature = None;
+                state.changed();
+            }
+        }
+        Intent::Navigate { feature } => {
+            let entry = features::catalogue_for(state.ui_variant())
+                .into_iter()
+                .find(|e| e.id == feature)
+                .ok_or(Refusal::InvalidInput)?;
+            if entry.availability != features::Availability::Available {
+                return Err(Refusal::InvalidInput);
+            }
+            if state.active_feature != Some(feature) {
+                state.active_feature = Some(feature);
+                state.changed();
+            }
+        }
+        Intent::SetOnboarding { state: next } => {
+            use features::OnboardingState as O;
+            let current = state.onboarding();
+            let allowed = matches!(
+                (current, next),
+                (O::Needed, O::InProgress | O::Done) | (O::InProgress, O::Done)
+            ) || current == next;
+            if !allowed {
+                return Err(Refusal::InvalidInput);
+            }
+            if current != next {
+                let before = state.data.clone();
+                state.data.onboarding = Some(next);
+                if state.storage == StorageHealth::Ready
+                    && let Err(e) = state.save_with(&before)
+                {
+                    return Err(e);
+                }
+                state.changed();
+            }
+        }
+        Intent::SetShowCalls { on } => {
+            if state.show_calls() != on {
+                let before = state.data.clone();
+                state.data.show_calls = Some(on);
                 if state.storage == StorageHealth::Ready
                     && let Err(e) = state.save_with(&before)
                 {

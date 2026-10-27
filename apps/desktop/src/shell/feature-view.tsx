@@ -1,8 +1,8 @@
-import { forwardRef, useId } from 'react'
-import { Callout, Kicker } from '@ai-security-academy/presentation'
+import { forwardRef, useId, useState } from 'react'
+import { Button, Callout, Kicker } from '@ai-security-academy/presentation'
 import { Info } from 'lucide-react'
-import type { FeatureEntry, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
-import type { Dispatch } from '../features/tenants/dispatch'
+import type { FeatureEntry, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import { type Dispatch, outcomeMessage } from '../features/tenants/dispatch'
 import { DiagnosticsPanel } from '../features/diagnostics/diagnostics-panel'
 import { AcademyAccount } from '../features/academy/academy-account'
 import { TenantsSettings } from '../features/tenants/tenants-settings'
@@ -70,6 +70,20 @@ export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(functi
 ) {
     const legend = useId()
     const appearance = snapshot.appearance
+    const [interfaceBusy, setInterfaceBusy] = useState(false)
+    const [interfaceStatus, setInterfaceStatus] = useState<{ text: string; retry?: Intent } | null>(null)
+    // The observed `uiVariant` stays authoritative: a refusal is reported, an
+    // unknown delivery stays visibly unconfirmed with Retry (DESIGN-V2 §7),
+    // and nothing here re-sends on its own.
+    async function changeInterface(intent: Intent) {
+        setInterfaceBusy(true)
+        setInterfaceStatus(null)
+        const outcome = await dispatch(intent)
+        setInterfaceBusy(false)
+        if (outcome.kind === 'admitted') return
+        if (outcome.kind === 'unknown') setInterfaceStatus({ text: 'The interface change was sent but the desktop did not confirm it. The current interface is shown.', retry: intent })
+        else setInterfaceStatus({ text: outcomeMessage(outcome) ?? 'The interface change could not be delivered.' })
+    }
     return (
         <section aria-labelledby='settings-heading' data-slot='settings'>
             <PageHeading ref={ref} id='settings-heading' kicker='Desktop' title='Settings' />
@@ -96,6 +110,36 @@ export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(functi
                         </span>
                     </label>
                 ))}
+            </fieldset>
+            <fieldset className='border-academy-rule mt-6 flex flex-col gap-3 rounded-[12px] border p-5' data-slot='interface'>
+                <legend className='text-academy-ink px-1 text-[15px] font-semibold'>Interface</legend>
+                <p className='text-academy-ink-soft text-[13px]'>
+                    The new interface (Refined Native) is arriving destination by destination. Switching is a
+                    desktop-wide preference and keeps every tenant and credential as it is.
+                </p>
+                <label className='flex min-h-11 cursor-pointer items-center gap-3'>
+                    <input
+                        type='checkbox'
+                        checked={snapshot.uiVariant === 'v2'}
+                        aria-busy={interfaceBusy}
+                        onChange={(e) => void changeInterface({ kind: 'setUiVariant', variant: e.target.checked ? 'v2' : 'legacy' })}
+                        className='accent-[var(--academy-accent)] size-4'
+                    />
+                    <span className='text-academy-ink text-[14px] font-medium'>Use the new interface</span>
+                </label>
+                <p role='status' aria-live='polite' data-slot='interface-status' className='text-academy-ink-soft flex items-center gap-3 text-[13px]'>
+                    <span>{interfaceStatus?.text}</span>
+                    {interfaceStatus?.retry && (
+                        <>
+                            <Button type='button' tier='secondary' onClick={() => void changeInterface(interfaceStatus.retry as Intent)}>
+                                Retry
+                            </Button>
+                            <Button type='button' tier='secondary' onClick={() => setInterfaceStatus(null)}>
+                                Dismiss
+                            </Button>
+                        </>
+                    )}
+                </p>
             </fieldset>
             <div className='mt-6'>
                 <AcademyAccount view={snapshot.academy} dispatch={dispatch} />

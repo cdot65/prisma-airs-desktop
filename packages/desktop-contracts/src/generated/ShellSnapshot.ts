@@ -5,19 +5,23 @@ import type { ChangesView } from "./ChangesView";
 import type { DiagnosticsView } from "./DiagnosticsView";
 import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
+import type { FeatureId } from "./FeatureId";
 import type { GatewayView } from "./GatewayView";
 import type { HarnessView } from "./HarnessView";
 import type { ImportView } from "./ImportView";
 import type { LearnerRef } from "./LearnerRef";
 import type { LibraryView } from "./LibraryView";
 import type { OfflineView } from "./OfflineView";
+import type { OnboardingState } from "./OnboardingState";
 import type { OverviewView } from "./OverviewView";
 import type { ResetFailure } from "./ResetFailure";
 import type { ScanRecordView } from "./ScanRecordView";
 import type { SessionsView } from "./SessionsView";
 import type { StorageHealth } from "./StorageHealth";
+import type { SwitchBlocked } from "./SwitchBlocked";
 import type { TenantView } from "./TenantView";
 import type { Theme } from "./Theme";
+import type { UiVariant } from "./UiVariant";
 import type { V1ImportView } from "./V1ImportView";
 import type { WorkbenchView } from "./WorkbenchView";
 
@@ -28,7 +32,29 @@ export type ShellSnapshot = {
 /**
  * Opaque, monotonically increasing revision (string-encoded u64).
  */
-revision: string, appearance: Theme, features: Array<FeatureEntry>, 
+revision: string, appearance: Theme, 
+/**
+ * Which shell renders (C28, D058); `features` is that shell's catalogue.
+ */
+uiVariant: UiVariant, 
+/**
+ * First-run wizard state (C28/C29).
+ */
+onboarding: OnboardingState, 
+/**
+ * The active destination (C28): what `navigate` last set, else the
+ * presentation's first sidebar entry.
+ */
+activeFeature: FeatureId, 
+/**
+ * "Show the calls" preference (C28).
+ */
+showCalls: boolean, 
+/**
+ * A held tenant switch awaiting the operator's resolution (C30 raises
+ * it; always absent in C28).
+ */
+switchBlocked: SwitchBlocked | null, features: Array<FeatureEntry>, 
 /**
  * True only in the distinct test-fixtures identity.
  */

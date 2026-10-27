@@ -11,6 +11,9 @@ import {
 import { followAppearance } from './shell/appearance'
 import type { DispatchOutcome } from './features/tenants/dispatch'
 import { DesktopShell } from './shell/desktop-shell'
+import { V2Shell } from './v2/v2-shell'
+import { useShellStore } from './v2/store'
+import { SHELL_COPY } from './v2/copy'
 import { forgetAcademyPresentation } from './features/academy/presentation-storage'
 import { SAVE_DOCUMENT_EVENT } from './features/workbench/document-editor'
 
@@ -58,17 +61,57 @@ export function App({ client }: { client: DesktopClient }) {
         [client]
     )
 
+    // v2 (C28): navigation is Rust-owned. The native menu, the sidebar and
+    // the palette all dispatch `navigate`; refusals reach the status surface.
+    const v2 = snapshot?.uiVariant === 'v2'
+    const v2Navigate = useCallback(
+        async (feature: FeatureId) => {
+            useShellStore.getState().closePalette()
+            const intent: Intent = { kind: 'navigate', feature }
+            const outcome = await dispatch(intent)
+            if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused('Navigation', outcome.refusal), 'warn')
+            // Unknown delivery is kept inline with Retry; never an expiring toast alone.
+            else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed('Navigation', intent)
+            else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed('Navigation'), 'warn')
+        },
+        [dispatch]
+    )
+    const v2Preference = useCallback(
+        async (what: string, intent: Intent) => {
+            const outcome = await dispatch(intent)
+            if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused(what, outcome.refusal), 'warn')
+            else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed(what, intent)
+            else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed(what), 'warn')
+        },
+        [dispatch]
+    )
+
     const onMenu = useRef<(command: MenuCommand) => void>(() => undefined)
     onMenu.current = (command: MenuCommand) => {
         if (command.kind === 'navigate') {
             // Native navigation dismisses the modal palette first so focus can
             // move to the new page heading instead of behind an open dialog.
-            setPaletteOpen(false)
-            setActive(command.feature)
+            if (v2) void v2Navigate(command.feature)
+            else {
+                setPaletteOpen(false)
+                setActive(command.feature)
+            }
         }
-        else if (command.kind === 'commandPalette') setPaletteOpen(true)
+        else if (command.kind === 'commandPalette') {
+            if (v2) useShellStore.getState().openPalette()
+            else setPaletteOpen(true)
+        }
+        // ⌘T: the tenant switcher opens; nothing switches until chosen.
+        else if (command.kind === 'tenantSwitcher') {
+            if (v2) useShellStore.getState().setSwitcher(true)
+            else {
+                setPaletteOpen(false)
+                setActive('settings')
+            }
+        }
         // The open API Client request saves (its editor listens).
         else if (command.kind === 'saveDocument') window.dispatchEvent(new Event(SAVE_DOCUMENT_EVENT))
+        else if (v2) void v2Preference('The appearance change', { kind: 'setAppearance', theme: command.theme })
         else void setAppearance(command.theme)
     }
 
@@ -123,6 +166,33 @@ export function App({ client }: { client: DesktopClient }) {
             <main role='status' aria-live='polite' className='text-academy-ink-soft p-8'>
                 Starting Prisma AIRS Desktop…
             </main>
+        )
+    }
+    if (snapshot.uiVariant === 'v2') {
+        return (
+            <V2Shell
+                snapshot={snapshot}
+                appearancePending={pending}
+                status={failure ?? status}
+                onNavigate={(feature) => void v2Navigate(feature)}
+                onSetAppearance={(theme) => void v2Preference('The appearance change', { kind: 'setAppearance', theme })}
+                onSetShowCalls={(on) => void v2Preference('The preference change', { kind: 'setShowCalls', on })}
+                onReturnToClassic={() => void v2Preference('The interface change', { kind: 'setUiVariant', variant: 'legacy' })}
+                onSwitchTenant={(tenant) => {
+                    // The target is captured now: a late refusal still names it.
+                    const label = snapshot.tenants.find((t) => t.id === tenant)?.label ?? tenant
+                    void v2Preference(SHELL_COPY.switchTo(label), { kind: 'selectTenant', tenant })
+                }}
+                onReadNow={() => {
+                    const active = snapshot.active
+                    if (!active) return
+                    const label = snapshot.tenants.find((t) => t.id === active.tenant)?.label ?? active.tenant
+                    void v2Preference(SHELL_COPY.readOf(label), { kind: 'management', context: active.context, request: { kind: 'overview' } })
+                }}
+                onRetry={(what, intent) => void v2Preference(what, intent)}
+                dispatch={dispatch}
+                client={client}
+            />
         )
     }
     return (

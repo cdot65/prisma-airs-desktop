@@ -86,6 +86,9 @@ pub enum MenuCommand {
     },
     /// File > Save (Cmd+S): save the open API Client request.
     SaveDocument,
+    /// Go > Switch Tenant… (Cmd+T, C28): open the tenant switcher without
+    /// switching; the legacy shell routes it to Settings.
+    TenantSwitcher,
 }
 
 /// Result of `desktop_dispatch`.
@@ -239,6 +242,10 @@ pub fn export_typescript(dir: &Path) -> Result<(), ts_rs::ExportError> {
     MenuCommand::export_all(&config)?;
     FeatureEntry::export_all(&config)?;
     FeatureId::export_all(&config)?;
+    crate::features::UiVariant::export_all(&config)?;
+    crate::authority::SwitchBlocked::export_all(&config)?;
+    crate::authority::PendingDecisionRef::export_all(&config)?;
+    crate::features::OnboardingState::export_all(&config)?;
     Availability::export_all(&config)?;
     Ok(())
 }

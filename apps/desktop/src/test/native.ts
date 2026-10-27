@@ -5,7 +5,7 @@
  * channel, as the Rust host would.
  */
 import { act } from '@testing-library/react'
-import type { DesktopTransport, Intent, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
+import type { DesktopTransport, Intent, MenuCommand, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
 import shellResponse from '@prisma-airs/desktop-contracts/fixtures/wire/observe-shell-response.json'
 
 export const baseSnapshot = shellResponse.snapshot as ShellSnapshot
@@ -45,6 +45,8 @@ export interface Native {
     observeManagement: ObserveManagement
     observeWorkbench: ObserveWorkbench
     push(snapshot: ShellSnapshot): Promise<void>
+    /** Delivers a native menu command on the observation channel, as the host would. */
+    pushMenu(command: MenuCommand): Promise<void>
     current: ShellSnapshot
 }
 
@@ -68,6 +70,13 @@ export function scriptedNative(initial: ShellSnapshot): Native {
                 const snapshot = { ...next, revision: revision.toString() }
                 native.current = snapshot
                 const update = { kind: 'shell', snapshot }
+                native.delivered.push(JSON.stringify(update))
+                listeners.at(-1)?.(update)
+                await new Promise((resolve) => setTimeout(resolve, 0))
+            }),
+        pushMenu: (command) =>
+            act(async () => {
+                const update = { kind: 'menu', command }
                 native.delivered.push(JSON.stringify(update))
                 listeners.at(-1)?.(update)
                 await new Promise((resolve) => setTimeout(resolve, 0))

@@ -18,8 +18,8 @@ use tauri::async_runtime::JoinHandle;
 use tauri::ipc::{Channel, InvokeBody, JavaScriptChannelId, Request};
 use tauri::webview::{NewWindowResponse, PageLoadEvent};
 use tauri::{
-    Manager, Runtime, State, Url, Webview, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
-    WindowEvent,
+    AppHandle, Manager, Runtime, State, Url, Webview, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder, WindowEvent,
 };
 use tokio::sync::broadcast;
 
@@ -65,6 +65,8 @@ pub struct Host {
     menu: broadcast::Sender<MenuCommand>,
     observations: Arc<Mutex<Observations>>,
     zoom: Mutex<f64>,
+    /// The presentation the native Go menu was last reconciled with (C28).
+    menu_variant: Mutex<Option<desktop_core::features::UiVariant>>,
 }
 
 impl Host {
@@ -75,7 +77,31 @@ impl Host {
             menu,
             observations: Arc::default(),
             zoom: Mutex::new(1.0),
+            menu_variant: Mutex::new(None),
         }
+    }
+
+    /// Reconciles the native Go menu with `variant` (C28): called whenever a
+    /// shell observation starts or reports a changed presentation, so a
+    /// transition lost to an overflowing stream is repaired on the client's
+    /// resubscribe. Without an installed menu (host tests) only the record
+    /// is kept.
+    pub fn sync_menu<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        variant: desktop_core::features::UiVariant,
+    ) {
+        if let Ok(mut current) = self.menu_variant.lock() {
+            *current = Some(variant);
+        }
+        if app.menu().is_some() {
+            let _ = menu::rebuild(app, variant);
+        }
+    }
+
+    /// The presentation the Go menu was last reconciled with.
+    pub fn menu_variant(&self) -> Option<desktop_core::features::UiVariant> {
+        self.menu_variant.lock().ok().and_then(|v| *v)
     }
 
     /// Forwards a native menu selection to every live shell observation.
@@ -299,12 +325,27 @@ async fn desktop_observe<R: Runtime>(
                 return Err(Refusal::InvalidInput);
             };
             let mut menu = host.menu.subscribe();
+            let mut variant = snapshot.ui_variant;
+            let app = webview.app_handle().clone();
+            // Every (re)subscription reconciles the native menu with the fresh
+            // snapshot: a variant change dropped by an overflowing stream
+            // (replaced by Resync) must not leave the Go menu stale (C28).
+            host.sync_menu(&app, variant);
             host.register(webview.label(), &updates, move |id, registry| {
                 tauri::async_runtime::spawn(async move {
                 loop {
                     let update = tokio::select! {
                         next = subscription.next() => match next {
-                            Some(Update::Shell(snapshot)) => ObservationUpdate::Shell { snapshot },
+                            Some(Update::Shell(snapshot)) => {
+                                // A changed presentation changes the Go menu (C28).
+                                if snapshot.ui_variant != variant {
+                                    variant = snapshot.ui_variant;
+                                    if let Some(host) = app.try_state::<Host>() {
+                                        host.sync_menu(&app, variant);
+                                    }
+                                }
+                                ObservationUpdate::Shell { snapshot }
+                            }
                             Some(Update::Resync) | None => ObservationUpdate::Resync,
                         },
                         command = menu.recv() => match command {
@@ -435,6 +476,13 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             #[cfg(target_os = "macos")]
             power::observe_sleep(core.clone());
             app.manage(Host::new(&core));
+            // The Go menu follows the stored presentation (C28).
+            if let Ok(Observation::Shell { snapshot, .. }) =
+                core.operator().observe(ViewScope::Shell)
+            {
+                app.state::<Host>()
+                    .sync_menu(app.handle(), snapshot.ui_variant);
+            }
             app.manage(Exit {
                 core: core.clone(),
                 quitting: std::sync::atomic::AtomicBool::new(false),

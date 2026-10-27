@@ -1,0 +1,111 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C28",
+  "recorded_utc": "2026-10-27T13:09:18Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c28.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "cce1496227efad54ddfbbe110e7b8221bb5dd6df9dd9c24fccf0c033b68e21d2",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C28-N01",
+      "description": "Settings \u203a Interface \u203a 'Use the new interface' switches the window to the v2 shell without a relaunch: the rail named 'Destinations' lists Home \u23181, Inbox \u23182, Harness \u23183, Academy \u23184, Test Cases \u23185, API Client \u23186, Administration \u23187 in that order (the Rust catalogue), the tenant switcher is above it, and the Home heading receives the page; the preference survives a relaunch and 'Return to the classic interface' restores the legacy rail named 'Features'.",
+      "result": "pass",
+      "observation": "legacy first: True; tenant 'Northwind Health' created in legacy Settings: True; the switcher control itself is named 'Switch tenant: Northwind Health \u00b7 unitedStates \u00b7 TSG 1762204418' on Home and names the tenant on Harness too: True; with no tenant it said 'No tenant yet': True; after the Interface checkbox the rail read ['Home Command 1', 'Inbox Command 2', 'Harness Command 3', 'Academy Command 4', 'Test Cases Command 5', 'API Client Command 6', 'Administration Command 7'] (order and \u2318 hints ok: True); switcher present: True; Home heading: True; v2 after relaunch: True; classic restored by the rail button: True",
+      "evidence": [
+        "docs/planning/evidence/C28/native/observations.json",
+        "docs/planning/evidence/C28/native/tree-v2-home.json",
+        "docs/planning/evidence/C28/native/captures/home-light.png"
+      ]
+    },
+    {
+      "id": "C28-N02",
+      "description": "The native Go menu follows the presentation: in v2 it offers Switch Tenant\u2026 (\u2318T) and then Home (\u23181) \u2026 Administration (\u23187) followed by the non-sidebar destinations without accelerators; Go \u203a Harness moves the page (a `navigate` intent; the sidebar marks Harness current) and Go \u203a Home returns; after returning to classic the Go menu is the legacy one again (Runtime Security \u23181).",
+      "result": "pass",
+      "observation": "Go menu in v2: [('Switch Tenant\u2026', 'T'), ('missing value', None), ('Home', '1'), ('Inbox', '2'), ('Harness', '3'), ('Academy', '4'), ('Test Cases', '5'), ('API Client', '6'), ('Administration', '7'), ('Runtime Security', None), ('AI Gateway', None), ('Red Team  Models', None), ('Sessions  Reports', None), ('Import from v1', None), ('Settings', None)]; Go \u203a Harness marked current and showed the Harness heading: True; Go \u203a Home returned: True; Go menu after classic: [('Switch Tenant\u2026', 'T'), ('missing value', None), ('Runtime Security', '1')]",
+      "evidence": [
+        "docs/planning/evidence/C28/native/observations.json"
+      ]
+    },
+    {
+      "id": "C28-N03",
+      "description": "Keyboard only (I8): Tab reaches the tenant switcher, every rail destination, the palette trigger, the three appearance toggles, 'Show the calls' and the classic-interface control, each with a visible focus ring (band pixels change when focused, for the selected Home too); Enter on the trigger opens the command palette as the one topmost modal with focus in its field and Tab contained; ArrowDown traverses to the last entry with the active row inside the dialog and Enter dispatches only that row; Escape returns focus to the trigger; Go \u203a Switch Tenant\u2026 while the palette is open closes it and leaves focus in the tenant list, and Escape returns focus to the switcher without selecting; the unavailable Inbox destination is disabled.",
+      "result": "pass",
+      "observation": "Tab order ['Home Command 1', 'Inbox Command 2', 'Harness Command 3', 'Academy Command 4', 'Test Cases Command 5', 'API Client Command 6', 'Administration Command 7', 'Go to\u2026 Command K', 'Match system', 'Light', 'Dark', 'Show the calls', 'Return to the classic interface'] (toggles, Show the calls and classic reached: True); ArrowDown walked 12 rows to Settings across the scroll boundary with every current row inside the dialog (True) and Enter opened Settings (True); tenant entries carry environment and TSG: True; End kept the last entry (Read now) inside the dialog: True (Enter on it: read signal observed ['The read of Northwind Health was refused (capabilityMissing).', 'The read of Northwind Health was refused (capabilityMissing).']), Enter dispatched only that row (the overview read ran on Home: ['The read of Northwind Health was refused (capabilityMissing).', 'The read of Northwind Health was refused (capabilityMissing).']; Settings not opened) and a filtered Enter opened Settings: True; \u2318T over the open palette: list shown True, AX focused node 'Northwind Health UNITEDSTATES \u00b7 TSG 1762204418', Tab+Enter switched to Meridian Retail True (keyboard focus was in the list), Escape from a reopened list returned focus to 'Switch tenant: Northwind Health \u00b7 unitedStates \u00b7 TSG 1762204418', nothing switched: True; Return on the trigger opened the palette (one dialog: True) with focus on {'role': 'AXComboBox', 'label': 'Go to a destination, tenant or action'}; three Tabs stayed inside the dialog: True; Escape closed it (True) and focus returned to 'Go to\u2026 Command K'; Inbox disabled (AXEnabled false): True; focus-ring band pixels that change when Harness is focused: 1896 (accent pixels 1880 vs 0); when the selected Home is focused: 1896",
+      "evidence": [
+        "docs/planning/evidence/C28/native/observations.json",
+        "docs/planning/evidence/C28/native/tree-palette.json",
+        "docs/planning/evidence/C28/native/captures/rail-focus-harness.png",
+        "docs/planning/evidence/C28/native/captures/rail-plain.png"
+      ]
+    },
+    {
+      "id": "C28-N04",
+      "description": "The accessibility tree carries every status as a word (I9): with no tenant the Home read-status line exposes 'Add a tenant to start reading it.', with a tenant 'First read pending', the warn toast exposes its text with a 'Warning:' prefix, and no verdict is colour-only.",
+      "result": "pass",
+      "observation": "zero-tenant read status 'Add a tenant to start reading it.' exposed as text: True; configured-tenant read status 'First read pending' exposed as text: True; toast exposed 'Warning:' prefix and text: True",
+      "evidence": [
+        "docs/planning/evidence/C28/native/observations.json",
+        "docs/planning/evidence/C28/native/tree-v2-home-no-tenant.json",
+        "docs/planning/evidence/C28/native/tree-toast.json"
+      ]
+    },
+    {
+      "id": "C28-N05",
+      "description": "Toasts (I10): a refused navigation (Go \u203a Inbox, catalogued but unavailable, refused by the core) shows one warn toast naming the refusal that expires within 6 s; with macOS Reduce Motion enabled and the app relaunched the same toast persists past 8 s until dismissed; the setting is restored afterwards.",
+      "result": "pass",
+      "observation": "Go \u203a Inbox (catalogued, unavailable) refused by the core \u2192 warn toast shown: True, its Dismiss inert while the palette is open True and back after Escape True, gone after 7 s: True; Reduce Motion active True: toast persisted past 8 s True (inert under the palette too: True) and dismissed on request True; setting restored: True",
+      "evidence": [
+        "docs/planning/evidence/C28/native/observations.json"
+      ]
+    },
+    {
+      "id": "C28-N06",
+      "description": "Dark and Light appearance from the rail toggles apply the shared theme attribute the v2 tokens key on: AX text ink is the Gruvbox ink in Dark and the Paper ink in Light; the body background follows the --v2-bg token (self-capture).",
+      "result": "pass",
+      "observation": "AX ink for 'Northwind Health' (switcher name, body ink): Dark #efe1bf (Gruvbox ink #ebdbb2 expected light), Light #1a1a23 (Paper ink #14141a expected dark)",
+      "evidence": [
+        "docs/planning/evidence/C28/native/observations.json",
+        "docs/planning/evidence/C28/native/colors-dark.json",
+        "docs/planning/evidence/C28/native/colors-light.json",
+        "docs/planning/evidence/C28/native/captures/home-dark.png",
+        "docs/planning/evidence/C28/native/captures/home-light.png"
+      ]
+    },
+    {
+      "id": "C28-N07",
+      "description": "At the interim 900\u00d7600 minimum and at 200% zoom in both themes the v2 shell shows no horizontal scroll (no node past the window's right edge, no horizontal scrollbar), the rail collapses to one 32px control per row with every control's frame inside the rail's frame (nothing clipped), focusing the last appearance toggle does not scroll the rail, destination labels stay in the accessible names, and the page heading stays reachable; with a configured tenant the collapsed switcher still names the tenant.",
+      "result": "pass",
+      "observation": "at [900, 600]: 14 rail controls all inside the rail frame: True; collapsed switcher popup 323px wide and 509px tall inside the window (True) listing 20 tenants and Add a tenant: True; Tab reached Tenant 20 and Add a tenant inside the scrolling popup: True; Enter on the last tenant switched: True; at 200% the twenty-tenant popup walk reached Tenant 20 and Add a tenant in Light True and Dark True; ArrowDown walked 12 rows to Settings (True) and Enter opened it (True); End kept the last entry inside the dialog True and Enter dispatched only it, filtered Enter opened Settings True; focusing Dark moved the rail: False, Dark inside: True; collapsed switcher names the tenant: True; at 200% controls inside: True; web width 900, rail width 64 (collapsed), content right edge 995 vs window right 995 (overflow 0 px), horizontal scrollbars 0, labels in tree True; at 200% (ten Zoom In steps) heading height \u00d72.00, overflow 0 px, labels in tree True",
+      "evidence": [
+        "docs/planning/evidence/C28/native/observations.json",
+        "docs/planning/evidence/C28/native/captures/min-size.png",
+        "docs/planning/evidence/C28/native/captures/switcher-collapsed-900.png",
+        "docs/planning/evidence/C28/native/captures/zoom-200-light.png",
+        "docs/planning/evidence/C28/native/captures/zoom-200-dark.png",
+        "docs/planning/evidence/C28/native/captures/zoom-200-palette.png",
+        "docs/planning/evidence/C28/native/captures/switcher-200-light.png",
+        "docs/planning/evidence/C28/native/captures/switcher-200-dark.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot, not a screen capture; menus and window size are verified through System Events.",
+    "Twenty tenants are configured through the legacy Settings without credentials; reads are not exercised (C30 owns Inbox/read acceptance).",
+    "Spoken VoiceOver output was not recorded; the accessibility attributes VoiceOver consumes were inspected."
+  ],
+  "screens": [
+    "home-100-dark.png",
+    "home-100-light.png",
+    "home-200-dark.png",
+    "home-200-light.png",
+    "home-min-900x600.png",
+    "palette-200.png",
+    "switcher-collapsed-900.png"
+  ]
+}

@@ -1,0 +1,1634 @@
+diff --git a/apps/desktop/src-tauri/src/lib.rs b/apps/desktop/src-tauri/src/lib.rs
+index 2c265124..77278bfa 100644
+--- a/apps/desktop/src-tauri/src/lib.rs
++++ b/apps/desktop/src-tauri/src/lib.rs
+@@ -299,12 +299,21 @@ async fn desktop_observe<R: Runtime>(
+                 return Err(Refusal::InvalidInput);
+             };
+             let mut menu = host.menu.subscribe();
++            let mut variant = snapshot.ui_variant;
++            let app = webview.app_handle().clone();
+             host.register(webview.label(), &updates, move |id, registry| {
+                 tauri::async_runtime::spawn(async move {
+                 loop {
+                     let update = tokio::select! {
+                         next = subscription.next() => match next {
+-                            Some(Update::Shell(snapshot)) => ObservationUpdate::Shell { snapshot },
++                            Some(Update::Shell(snapshot)) => {
++                                // A changed presentation changes the Go menu (C28).
++                                if snapshot.ui_variant != variant {
++                                    variant = snapshot.ui_variant;
++                                    let _ = menu::rebuild(&app, variant);
++                                }
++                                ObservationUpdate::Shell { snapshot }
++                            }
+                             Some(Update::Resync) | None => ObservationUpdate::Resync,
+                         },
+                         command = menu.recv() => match command {
+@@ -435,6 +444,12 @@ pub fn run(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
+             #[cfg(target_os = "macos")]
+             power::observe_sleep(core.clone());
+             app.manage(Host::new(&core));
++            // The Go menu follows the stored presentation (C28).
++            if let Ok(Observation::Shell { snapshot, .. }) =
++                core.operator().observe(ViewScope::Shell)
++            {
++                menu::rebuild(app.handle(), snapshot.ui_variant)?;
++            }
+             app.manage(Exit {
+                 core: core.clone(),
+                 quitting: std::sync::atomic::AtomicBool::new(false),
+diff --git a/apps/desktop/src-tauri/src/menu.rs b/apps/desktop/src-tauri/src/menu.rs
+index 9a3699b4..a945ca05 100644
+--- a/apps/desktop/src-tauri/src/menu.rs
++++ b/apps/desktop/src-tauri/src/menu.rs
+@@ -1,72 +1,42 @@
+ //! Native macOS menus. Selections become typed [`MenuCommand`]s delivered on
+ //! the shell observation channel; menus never carry authority themselves.
+ 
+-use desktop_core::features::FeatureId;
++use desktop_core::features::{self, FeatureId, UiVariant};
+ use desktop_core::wire::{MenuCommand, Theme};
+ use tauri::menu::{Menu, MenuBuilder, MenuEvent, MenuItemBuilder, SubmenuBuilder};
+ use tauri::{AppHandle, Manager, Runtime};
+ 
+ use crate::Host;
+ 
+-/// Feature destinations reachable from the Go menu, with their shortcuts.
+-const GO: [(&str, FeatureId, &str, Option<&str>); 11] = [
+-    (
+-        "go:runtime",
+-        FeatureId::Runtime,
+-        "Runtime Security",
+-        Some("CmdOrCtrl+1"),
+-    ),
+-    (
+-        "go:academy",
+-        FeatureId::Academy,
+-        "Academy",
+-        Some("CmdOrCtrl+2"),
+-    ),
+-    (
+-        "go:administration",
+-        FeatureId::Administration,
+-        "Administration",
+-        Some("CmdOrCtrl+3"),
+-    ),
+-    (
+-        "go:sessions",
+-        FeatureId::Sessions,
+-        "Sessions & Reports",
+-        Some("CmdOrCtrl+4"),
+-    ),
+-    (
+-        "go:library",
+-        FeatureId::Library,
+-        "Case Library",
+-        Some("CmdOrCtrl+5"),
+-    ),
+-    (
+-        "go:redTeam",
+-        FeatureId::RedTeam,
+-        "Red Team & Models",
+-        Some("CmdOrCtrl+6"),
+-    ),
+-    (
+-        "go:apiClient",
+-        FeatureId::ApiClient,
+-        "API Client",
+-        Some("CmdOrCtrl+7"),
+-    ),
+-    (
+-        "go:gateway",
+-        FeatureId::Gateway,
+-        "AI Gateway",
+-        Some("CmdOrCtrl+8"),
+-    ),
+-    (
+-        "go:harness",
+-        FeatureId::Harness,
+-        "Harness",
+-        Some("CmdOrCtrl+9"),
+-    ),
+-    ("go:import", FeatureId::Import, "Import from v1", None),
+-    ("go:settings", FeatureId::Settings, "Settings", None),
+-];
++/// The Go menu is the presentation's catalogue (`features::catalogue_for`):
++/// one Rust inventory feeds the menu, the sidebar and the palette, so the
++/// shortcuts the sidebar shows are the accelerators the menu defines (C28).
++fn go_items(variant: UiVariant) -> Vec<(String, FeatureId, String, Option<String>)> {
++    features::catalogue_for(variant)
++        .into_iter()
++        .map(|entry| {
++            (
++                format!("go:{}", feature_name(entry.id)),
++                entry.id,
++                entry.label,
++                entry.shortcut.map(|n| format!("CmdOrCtrl+{n}")),
++            )
++        })
++        .collect()
++}
++
++/// The wire name of a feature (`runtime`, `apiClient`, ...): the same spelling
++/// the renderer and the catalogue use.
++fn feature_name(id: FeatureId) -> String {
++    match serde_json::to_value(id) {
++        Ok(serde_json::Value::String(name)) => name,
++        _ => unreachable!("FeatureId serializes to a string"),
++    }
++}
++
++fn feature_for(name: &str) -> Option<FeatureId> {
++    serde_json::from_value(serde_json::Value::String(name.to_owned())).ok()
++}
+ 
+ const APPEARANCE: [(&str, Theme, &str); 3] = [
+     ("appearance:system", Theme::System, "Match System"),
+@@ -82,13 +52,16 @@ pub fn command_for(id: &str) -> Option<MenuCommand> {
+     if id == "save" {
+         return Some(MenuCommand::SaveDocument);
+     }
++    if id == "tenants" {
++        return Some(MenuCommand::TenantSwitcher);
++    }
+     if id == "settings" {
+         return Some(MenuCommand::Navigate {
+             feature: FeatureId::Settings,
+         });
+     }
+-    if let Some((_, feature, _, _)) = GO.iter().find(|(item, ..)| *item == id) {
+-        return Some(MenuCommand::Navigate { feature: *feature });
++    if let Some(feature) = id.strip_prefix("go:").and_then(feature_for) {
++        return Some(MenuCommand::Navigate { feature });
+     }
+     APPEARANCE
+         .iter()
+@@ -96,7 +69,22 @@ pub fn command_for(id: &str) -> Option<MenuCommand> {
+         .map(|(_, theme, _)| MenuCommand::SetAppearance { theme: *theme })
+ }
+ 
++/// The menu for the legacy presentation: what the app starts with before the
++/// core has loaded the stored preference (`rebuild` follows immediately).
+ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
++    build_for(app, UiVariant::Legacy)
++}
++
++/// Replaces the native menu with the one for `variant`: called once the core
++/// is up with the stored preference, and again whenever the shell snapshot
++/// reports a changed `ui_variant`, so ⌘1–⌘9 always match the shell shown.
++pub fn rebuild<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Result<()> {
++    let menu = build_for(app, variant)?;
++    app.set_menu(menu)?;
++    Ok(())
++}
++
++fn build_for<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Result<Menu<R>> {
+     let app_menu = SubmenuBuilder::new(app, "Prisma AIRS Desktop v2")
+         .about(None)
+         .separator()
+@@ -167,8 +155,13 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+         .separator()
+         .fullscreen()
+         .build()?;
+-    let mut go = SubmenuBuilder::new(app, "Go");
+-    for (id, _, label, accelerator) in GO {
++    let mut go = SubmenuBuilder::new(app, "Go").item(
++        &MenuItemBuilder::with_id("tenants", "Switch Tenant…")
++            .accelerator("CmdOrCtrl+T")
++            .build(app)?,
++    );
++    go = go.separator();
++    for (id, _, label, accelerator) in go_items(variant) {
+         let mut item = MenuItemBuilder::with_id(id, label);
+         if let Some(accelerator) = accelerator {
+             item = item.accelerator(accelerator);
+@@ -252,3 +245,46 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
+         app.state::<Host>().menu_command(command);
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn go_items_follow_the_presentation_catalogue() {
++        let legacy = go_items(UiVariant::Legacy);
++        assert_eq!(legacy[0].0, "go:runtime");
++        assert_eq!(legacy[0].3.as_deref(), Some("CmdOrCtrl+1"));
++        assert_eq!(legacy.len(), 11);
++        let v2 = go_items(UiVariant::V2);
++        assert_eq!(
++            v2[0],
++            (
++                "go:home".to_owned(),
++                FeatureId::Home,
++                "Home".to_owned(),
++                Some("CmdOrCtrl+1".to_owned())
++            )
++        );
++        assert_eq!(v2[1].0, "go:inbox");
++        assert_eq!(v2[6].3.as_deref(), Some("CmdOrCtrl+7"));
++        assert!(
++            v2[7..].iter().all(|(_, _, _, a)| a.is_none()),
++            "non-sidebar entries have no accelerator"
++        );
++        assert_eq!(
++            command_for("go:apiClient"),
++            Some(MenuCommand::Navigate {
++                feature: FeatureId::ApiClient
++            })
++        );
++        assert_eq!(
++            command_for("go:home"),
++            Some(MenuCommand::Navigate {
++                feature: FeatureId::Home
++            })
++        );
++        assert_eq!(command_for("go:nope"), None);
++        assert_eq!(command_for("tenants"), Some(MenuCommand::TenantSwitcher));
++    }
++}
+diff --git a/apps/desktop/src/app.tsx b/apps/desktop/src/app.tsx
+index dc877145..1d05abff 100644
+--- a/apps/desktop/src/app.tsx
++++ b/apps/desktop/src/app.tsx
+@@ -11,6 +11,9 @@ import {
+ import { followAppearance } from './shell/appearance'
+ import type { DispatchOutcome } from './features/tenants/dispatch'
+ import { DesktopShell } from './shell/desktop-shell'
++import { V2Shell } from './v2/v2-shell'
++import { useShellStore } from './v2/store'
++import { SHELL_COPY } from './v2/copy'
+ import { forgetAcademyPresentation } from './features/academy/presentation-storage'
+ import { SAVE_DOCUMENT_EVENT } from './features/workbench/document-editor'
+ 
+@@ -58,17 +61,57 @@ export function App({ client }: { client: DesktopClient }) {
+         [client]
+     )
+ 
++    // v2 (C28): navigation is Rust-owned. The native menu, the sidebar and
++    // the palette all dispatch `navigate`; refusals reach the status surface.
++    const v2 = snapshot?.uiVariant === 'v2'
++    const v2Navigate = useCallback(
++        async (feature: FeatureId) => {
++            useShellStore.getState().closePalette()
++            const intent: Intent = { kind: 'navigate', feature }
++            const outcome = await dispatch(intent)
++            if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused('Navigation', outcome.refusal), 'warn')
++            // Unknown delivery is kept inline with Retry; never an expiring toast alone.
++            else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed('Navigation', intent)
++            else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed('Navigation'), 'warn')
++        },
++        [dispatch]
++    )
++    const v2Preference = useCallback(
++        async (what: string, intent: Intent) => {
++            const outcome = await dispatch(intent)
++            if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused(what, outcome.refusal), 'warn')
++            else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed(what, intent)
++            else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed(what), 'warn')
++        },
++        [dispatch]
++    )
++
+     const onMenu = useRef<(command: MenuCommand) => void>(() => undefined)
+     onMenu.current = (command: MenuCommand) => {
+         if (command.kind === 'navigate') {
+             // Native navigation dismisses the modal palette first so focus can
+             // move to the new page heading instead of behind an open dialog.
+-            setPaletteOpen(false)
+-            setActive(command.feature)
++            if (v2) void v2Navigate(command.feature)
++            else {
++                setPaletteOpen(false)
++                setActive(command.feature)
++            }
++        }
++        else if (command.kind === 'commandPalette') {
++            if (v2) useShellStore.getState().openPalette()
++            else setPaletteOpen(true)
++        }
++        // ⌘T: the tenant switcher opens; nothing switches until chosen.
++        else if (command.kind === 'tenantSwitcher') {
++            if (v2) useShellStore.getState().setSwitcher(true)
++            else {
++                setPaletteOpen(false)
++                setActive('settings')
++            }
+         }
+-        else if (command.kind === 'commandPalette') setPaletteOpen(true)
+         // The open API Client request saves (its editor listens).
+         else if (command.kind === 'saveDocument') window.dispatchEvent(new Event(SAVE_DOCUMENT_EVENT))
++        else if (v2) void v2Preference('The appearance change', { kind: 'setAppearance', theme: command.theme })
+         else void setAppearance(command.theme)
+     }
+ 
+@@ -125,6 +168,27 @@ export function App({ client }: { client: DesktopClient }) {
+             </main>
+         )
+     }
++    if (snapshot.uiVariant === 'v2') {
++        return (
++            <V2Shell
++                snapshot={snapshot}
++                appearancePending={pending}
++                status={failure ?? status}
++                onNavigate={(feature) => void v2Navigate(feature)}
++                onSetAppearance={(theme) => void v2Preference('The appearance change', { kind: 'setAppearance', theme })}
++                onSetShowCalls={(on) => void v2Preference('The preference change', { kind: 'setShowCalls', on })}
++                onReturnToClassic={() => void v2Preference('The interface change', { kind: 'setUiVariant', variant: 'legacy' })}
++                onSwitchTenant={(tenant) => void v2Preference('The tenant switch', { kind: 'selectTenant', tenant })}
++                onReadNow={() => {
++                    const context = snapshot.active?.context
++                    if (context) void v2Preference('The read', { kind: 'management', context, request: { kind: 'overview' } })
++                }}
++                onRetry={(what, intent) => void v2Preference(what, intent)}
++                dispatch={dispatch}
++                client={client}
++            />
++        )
++    }
+     return (
+         <DesktopShell
+             snapshot={snapshot}
+diff --git a/apps/desktop/src/shell/desktop-shell.test.tsx b/apps/desktop/src/shell/desktop-shell.test.tsx
+index cdc89e41..778db3c7 100644
+--- a/apps/desktop/src/shell/desktop-shell.test.tsx
++++ b/apps/desktop/src/shell/desktop-shell.test.tsx
+@@ -350,4 +350,35 @@ describe('desktop shell', () => {
+         expect(document.querySelector('[data-slot="app-shell"]')).not.toBeNull()
+         fetchSpy.mockRestore()
+     })
++
++    it('routes the native Switch Tenant command to Settings in the legacy shell', async () => {
++        const s = await launch()
++        await s.pushAsync({ kind: 'menu', command: { kind: 'tenantSwitcher' } })
++        expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument()
++    })
++
++    it('reports a refused or unconfirmed interface change on the Settings toggle without changing the observed value', async () => {
++        const user = userEvent.setup()
++        const s = await launch()
++        await s.pushAsync({ kind: 'menu', command: { kind: 'navigate', feature: 'settings' } })
++        const toggle = await screen.findByRole('checkbox', { name: 'Use the new interface' })
++        expect(toggle).not.toBeChecked()
++        s.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
++        await user.click(toggle)
++        expect(s.dispatched.at(-1)).toEqual({ kind: 'setUiVariant', variant: 'v2' })
++        const status = document.querySelector('[data-slot="interface-status"]') as HTMLElement
++        await waitFor(() => expect(status.textContent?.length ?? 0).toBeGreaterThan(0))
++        expect(toggle).not.toBeChecked()
++        s.respond = () => {
++            throw new (class extends Error {
++                constructor() {
++                    super('lost')
++                    this.name = 'DeliveryOutcomeUnknown'
++                }
++            })()
++        }
++        await user.click(toggle)
++        await waitFor(() => expect(status.textContent?.length ?? 0).toBeGreaterThan(0))
++        expect(toggle).not.toBeChecked()
++    })
+ })
+diff --git a/apps/desktop/src/shell/desktop-shell.tsx b/apps/desktop/src/shell/desktop-shell.tsx
+index 6be81528..8278deb5 100644
+--- a/apps/desktop/src/shell/desktop-shell.tsx
++++ b/apps/desktop/src/shell/desktop-shell.tsx
+@@ -1,19 +1,9 @@
+-import { useCallback, useEffect, useRef, useState } from 'react'
++import { useEffect, useRef } from 'react'
+ import { ShellBrand, ShellFrame, ShellRail, ShellTopbar, type ShellNavItem } from '@ai-security-academy/presentation'
+ import type { DesktopClient, FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+-import { AcademyView } from '../features/academy/academy-view'
+-import { AdministrationView } from '../features/administration/administration-view'
+-import { SessionsView } from '../features/sessions/sessions-view'
+-import { type CasePrefill, LibraryView } from '../features/library/library-view'
+-import { RedTeamView } from '../features/red-team/red-team-view'
+-import { GatewayView } from '../features/gateway/gateway-view'
+-import { HarnessView } from '../features/harness/harness-view'
+-import { ImportView } from '../features/import-v1/import-view'
+-import { RuntimeView } from '../features/runtime/runtime-view'
+-import { WorkbenchView } from '../features/workbench/workbench-view'
+ import type { Dispatch } from '../features/tenants/dispatch'
+ import { CommandPalette } from './command-palette'
+-import { SettingsView, UnavailableView } from './feature-view'
++import { FeatureBody } from './feature-body'
+ import { FEATURE_ICONS } from './icons'
+ 
+ export interface DesktopShellProps {
+@@ -53,18 +43,6 @@ export function DesktopShell(props: DesktopShellProps) {
+     const heading = useRef<HTMLHeadingElement>(null)
+     const firstRender = useRef(true)
+     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
+-    const client = props.client
+-    const observeManagement = useCallback((operation: string) => client.observeManagement(operation), [client])
+-    const observeWorkbench = useCallback((operation: string) => client.observeWorkbench(operation), [client])
+-    // A Library case or starter to fill the scan form with, bound to the
+-    // context it was loaded in: another tenant or credential generation
+-    // never renders it (checked while rendering) and it is dropped when the
+-    // context changes, so returning never revives it.
+-    const context = snapshot.active?.context ?? null
+-    const [loaded, setLoaded] = useState<(CasePrefill & { context: string }) | null>(null)
+-    const prefill = loaded !== null && loaded.context === context ? loaded : null
+-    useEffect(() => setLoaded(null), [context])
+-
+     useEffect(() => {
+         // Move focus to the new page heading after navigation (not on launch).
+         if (firstRender.current) {
+@@ -167,93 +145,16 @@ export function DesktopShell(props: DesktopShellProps) {
+                 />
+             }
+         >
+-            {feature.id === 'settings' ? (
+-                <SettingsView
+-                    ref={heading}
+-                    snapshot={snapshot}
+-                    pending={props.appearancePending}
+-                    onSetAppearance={props.onSetAppearance}
+-                    dispatch={props.dispatch}
+-                    observeManagement={observeManagement}
+-                />
+-            ) : feature.id === 'administration' && feature.availability.state === 'available' ? (
+-                <AdministrationView
+-                    // A new tenant or management credential remounts the view,
+-                    // so no render ever pairs it with the previous one's rows.
+-                    key={snapshot.active?.context ?? 'none'}
+-                    ref={heading}
+-                    snapshot={snapshot}
+-                    dispatch={props.dispatch}
+-                    observe={observeManagement}
+-                    onNavigate={props.onNavigate}
+-                />
+-            ) : feature.id === 'sessions' && feature.availability.state === 'available' ? (
+-                <SessionsView
+-                    // A new tenant or management credential remounts the view:
+-                    // revealed content never outlives its credential.
+-                    key={snapshot.active?.context ?? 'none'}
+-                    ref={heading}
+-                    snapshot={snapshot}
+-                    dispatch={props.dispatch}
+-                    observe={observeManagement}
+-                    onNavigate={props.onNavigate}
+-                />
+-            ) : feature.id === 'library' && feature.availability.state === 'available' ? (
+-                <LibraryView
+-                    key={snapshot.active?.context ?? 'none'}
+-                    ref={heading}
+-                    snapshot={snapshot}
+-                    dispatch={props.dispatch}
+-                    onNavigate={props.onNavigate}
+-                    onLoad={(fields) => {
+-                        if (context) setLoaded((p) => ({ ...fields, context, nonce: (p?.nonce ?? 0) + 1 }))
+-                    }}
+-                />
+-            ) : feature.id === 'redTeam' && feature.availability.state === 'available' ? (
+-                <RedTeamView
+-                    key={context ?? 'none'}
+-                    ref={heading}
+-                    snapshot={snapshot}
+-                    dispatch={props.dispatch}
+-                    observe={observeManagement}
+-                    onNavigate={props.onNavigate}
+-                />
+-            ) : feature.id === 'gateway' && feature.availability.state === 'available' ? (
+-                <GatewayView
+-                    key={context ?? 'none'}
+-                    ref={heading}
+-                    snapshot={snapshot}
+-                    dispatch={props.dispatch}
+-                    observe={observeManagement}
+-                    onNavigate={props.onNavigate}
+-                />
+-            ) : feature.id === 'harness' && feature.availability.state === 'available' ? (
+-                // Keyed by context: a new tenant starts with nothing held.
+-                <HarnessView key={context ?? 'none'} ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
+-            ) : feature.id === 'import' && feature.availability.state === 'available' ? (
+-                <ImportView ref={heading} snapshot={snapshot} dispatch={props.dispatch} />
+-            ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
+-                // Not keyed by tenant: API Client documents are on this Mac,
+-                // independent of the selected tenant.
+-                <WorkbenchView ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
+-            ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
+-                <AcademyView ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
+-            ) : feature.id === 'runtime' && feature.availability.state === 'available' ? (
+-                // Keyed by context like the other views: a new tenant or
+-                // credential generation starts a fresh form, case name and
+-                // save status, and a late reply for the old one has nowhere
+-                // to land.
+-                <RuntimeView
+-                    key={context ?? 'none'}
+-                    ref={heading}
+-                    snapshot={snapshot}
+-                    dispatch={props.dispatch}
+-                    onNavigate={props.onNavigate}
+-                    prefill={prefill}
+-                />
+-            ) : (
+-                <UnavailableView ref={heading} feature={feature} />
+-            )}
++            <FeatureBody
++                ref={heading}
++                feature={feature}
++                snapshot={snapshot}
++                appearancePending={props.appearancePending}
++                onSetAppearance={props.onSetAppearance}
++                onNavigate={props.onNavigate}
++                dispatch={props.dispatch}
++                client={props.client}
++            />
+             {/* At 900 CSS px and wider the shared frame pads the page bottom by
+              * only 32px under its 60px fade; this space lets a page's last
+              * control scroll clear of the fade (C08-N11). */}
+diff --git a/apps/desktop/src/shell/feature-view.tsx b/apps/desktop/src/shell/feature-view.tsx
+index 080e4373..16831e23 100644
+--- a/apps/desktop/src/shell/feature-view.tsx
++++ b/apps/desktop/src/shell/feature-view.tsx
+@@ -1,8 +1,8 @@
+-import { forwardRef, useId } from 'react'
+-import { Callout, Kicker } from '@ai-security-academy/presentation'
++import { forwardRef, useId, useState } from 'react'
++import { Button, Callout, Kicker } from '@ai-security-academy/presentation'
+ import { Info } from 'lucide-react'
+-import type { FeatureEntry, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+-import type { Dispatch } from '../features/tenants/dispatch'
++import type { FeatureEntry, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
++import { type Dispatch, outcomeMessage } from '../features/tenants/dispatch'
+ import { DiagnosticsPanel } from '../features/diagnostics/diagnostics-panel'
+ import { AcademyAccount } from '../features/academy/academy-account'
+ import { TenantsSettings } from '../features/tenants/tenants-settings'
+@@ -70,6 +70,20 @@ export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(functi
+ ) {
+     const legend = useId()
+     const appearance = snapshot.appearance
++    const [interfaceBusy, setInterfaceBusy] = useState(false)
++    const [interfaceStatus, setInterfaceStatus] = useState<{ text: string; retry?: Intent } | null>(null)
++    // The observed `uiVariant` stays authoritative: a refusal is reported, an
++    // unknown delivery stays visibly unconfirmed with Retry (DESIGN-V2 §7),
++    // and nothing here re-sends on its own.
++    async function changeInterface(intent: Intent) {
++        setInterfaceBusy(true)
++        setInterfaceStatus(null)
++        const outcome = await dispatch(intent)
++        setInterfaceBusy(false)
++        if (outcome.kind === 'admitted') return
++        if (outcome.kind === 'unknown') setInterfaceStatus({ text: 'The interface change was sent but the desktop did not confirm it. The current interface is shown.', retry: intent })
++        else setInterfaceStatus({ text: outcomeMessage(outcome) ?? 'The interface change could not be delivered.' })
++    }
+     return (
+         <section aria-labelledby='settings-heading' data-slot='settings'>
+             <PageHeading ref={ref} id='settings-heading' kicker='Desktop' title='Settings' />
+@@ -97,6 +111,36 @@ export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(functi
+                     </label>
+                 ))}
+             </fieldset>
++            <fieldset className='border-academy-rule mt-6 flex flex-col gap-3 rounded-[12px] border p-5' data-slot='interface'>
++                <legend className='text-academy-ink px-1 text-[15px] font-semibold'>Interface</legend>
++                <p className='text-academy-ink-soft text-[13px]'>
++                    The new interface (Refined Native) is arriving destination by destination. Switching is a
++                    desktop-wide preference and keeps every tenant and credential as it is.
++                </p>
++                <label className='flex min-h-11 cursor-pointer items-center gap-3'>
++                    <input
++                        type='checkbox'
++                        checked={snapshot.uiVariant === 'v2'}
++                        aria-busy={interfaceBusy}
++                        onChange={(e) => void changeInterface({ kind: 'setUiVariant', variant: e.target.checked ? 'v2' : 'legacy' })}
++                        className='accent-[var(--academy-accent)] size-4'
++                    />
++                    <span className='text-academy-ink text-[14px] font-medium'>Use the new interface</span>
++                </label>
++                <p role='status' aria-live='polite' data-slot='interface-status' className='text-academy-ink-soft flex items-center gap-3 text-[13px]'>
++                    <span>{interfaceStatus?.text}</span>
++                    {interfaceStatus?.retry && (
++                        <>
++                            <Button type='button' tier='secondary' onClick={() => void changeInterface(interfaceStatus.retry as Intent)}>
++                                Retry
++                            </Button>
++                            <Button type='button' tier='secondary' onClick={() => setInterfaceStatus(null)}>
++                                Dismiss
++                            </Button>
++                        </>
++                    )}
++                </p>
++            </fieldset>
+             <div className='mt-6'>
+                 <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
+             </div>
+diff --git a/apps/desktop/src/shell/icons.ts b/apps/desktop/src/shell/icons.ts
+index 3b1b59f0..34683820 100644
+--- a/apps/desktop/src/shell/icons.ts
++++ b/apps/desktop/src/shell/icons.ts
+@@ -10,11 +10,15 @@ import {
+     ShieldCheck,
+     Swords,
+     Terminal,
++    House,
++    Inbox,
+     type LucideIcon,
+ } from 'lucide-react'
+ import type { FeatureId } from '@prisma-airs/desktop-contracts'
+ 
+ export const FEATURE_ICONS: Record<FeatureId, LucideIcon> = {
++    home: House,
++    inbox: Inbox,
+     runtime: ShieldCheck,
+     academy: GraduationCap,
+     administration: Boxes,
+diff --git a/apps/desktop/src/styles.css b/apps/desktop/src/styles.css
+index 4223d952..ca2597ef 100644
+--- a/apps/desktop/src/styles.css
++++ b/apps/desktop/src/styles.css
+@@ -1,4 +1,5 @@
+ @import 'tailwindcss';
++@import './styles/tokens.css';
+ 
+ /* Self-hosted fonts: the packaged CSP allows only bundled font files. */
+ @import '@fontsource-variable/inter/index.css';
+@@ -32,3 +33,23 @@ html {
+     scroll-padding-top: 72px;
+     scroll-padding-bottom: 76px;
+ }
++
++/* Tailwind's reset strips form controls to bare text, so a field written
++ * without classes had no visible edge (C26 installed acceptance F04). Every
++ * text field, select and text area gets a visible box at zero specificity:
++ * any utility class on a control still wins. The border meets the 3:1
++ * non-text contrast floor in both themes. */
++@layer base {
++    :where(input:not([type='radio'], [type='checkbox'], [type='range'], [type='file'], [type='hidden']), select, textarea) {
++        border: 1px solid var(--academy-ink-faint);
++        border-radius: var(--academy-radius-md);
++        background: var(--academy-paper);
++        color: var(--academy-ink);
++        padding: 0.5rem 0.75rem;
++        min-height: 2.25rem;
++    }
++
++    :where(input, select, textarea):disabled {
++        opacity: 0.6;
++    }
++}
+diff --git a/apps/desktop/src/test/native.ts b/apps/desktop/src/test/native.ts
+index 039f8e48..c30f18e5 100644
+--- a/apps/desktop/src/test/native.ts
++++ b/apps/desktop/src/test/native.ts
+@@ -5,7 +5,7 @@
+  * channel, as the Rust host would.
+  */
+ import { act } from '@testing-library/react'
+-import type { DesktopTransport, Intent, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
++import type { DesktopTransport, Intent, MenuCommand, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
+ import shellResponse from '@prisma-airs/desktop-contracts/fixtures/wire/observe-shell-response.json'
+ 
+ export const baseSnapshot = shellResponse.snapshot as ShellSnapshot
+@@ -45,6 +45,8 @@ export interface Native {
+     observeManagement: ObserveManagement
+     observeWorkbench: ObserveWorkbench
+     push(snapshot: ShellSnapshot): Promise<void>
++    /** Delivers a native menu command on the observation channel, as the host would. */
++    pushMenu(command: MenuCommand): Promise<void>
+     current: ShellSnapshot
+ }
+ 
+@@ -72,6 +74,13 @@ export function scriptedNative(initial: ShellSnapshot): Native {
+                 listeners.at(-1)?.(update)
+                 await new Promise((resolve) => setTimeout(resolve, 0))
+             }),
++        pushMenu: (command) =>
++            act(async () => {
++                const update = { kind: 'menu', command }
++                native.delivered.push(JSON.stringify(update))
++                listeners.at(-1)?.(update)
++                await new Promise((resolve) => setTimeout(resolve, 0))
++            }),
+         transport: {
+             async observe(bytes) {
+                 const text = decoder.decode(bytes)
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 83312262..5855a9bd 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -61,7 +61,7 @@ pub use workbench_domain::{
+ use crate::academy::AcademyClient;
+ use crate::context::{ContextRef, EnteredSecret, LearnerRef, ReviewId, WorkspaceRef};
+ use crate::delivery::{Admit, Delivery, DeliverySession, Sessions};
+-use crate::features::{self, FeatureEntry};
++use crate::features::{self, FeatureEntry, FeatureId};
+ use crate::import::{self, Discarded, ImportCandidate, ImportError, ImportFormat, ImportPreview};
+ use crate::learner::{AcademyView, ProcedureKind};
+ use crate::library::CaseDraft;
+@@ -107,6 +107,26 @@ pub enum Intent {
+     SetAppearance {
+         theme: Theme,
+     },
++    /// Choose the desktop presentation (C28, D058): the legacy shell or the
++    /// v2 shell. Persisted; navigation falls back to the new variant's first
++    /// sidebar destination.
++    SetUiVariant {
++        variant: features::UiVariant,
++    },
++    /// Make a destination the active one (C28). Refused unless the feature
++    /// is in the current presentation's catalogue and available; the native
++    /// menu, the sidebar and the palette all go through here.
++    Navigate {
++        feature: FeatureId,
++    },
++    /// Advance the first-run wizard (C28/C29): never back to `needed`.
++    SetOnboarding {
++        state: features::OnboardingState,
++    },
++    /// The "show the calls" preference (C28).
++    SetShowCalls {
++        on: bool,
++    },
+     /// Create a tenant profile with no credential.
+     CreateTenant {
+         profile: ProfileDraft,
+@@ -670,6 +690,10 @@ macro_rules! intent_kinds {
+ 
+ intent_kinds! {
+     SetAppearance => "setAppearance",
++    SetUiVariant => "setUiVariant",
++    Navigate => "navigate",
++    SetOnboarding => "setOnboarding",
++    SetShowCalls => "setShowCalls",
+     CreateTenant => "createTenant",
+     SelectTenant => "selectTenant",
+     DeleteTenant => "deleteTenant",
+@@ -1040,6 +1064,26 @@ pub struct ResetFailure {
+     pub reason: VaultError,
+ }
+ 
++/// Why a tenant switch is held (C28 contract, raised in C30): a Harness
++/// conversation has a decision pending; the operator chooses to archive it,
++/// discard it or stay. The shell renders its guard from this, never from a
++/// guess of its own (invariant I1).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct SwitchBlocked {
++    /// The tenant the switch was asked for.
++    pub to: TenantId,
++    pub pending: PendingDecisionRef,
++}
++
++/// The conversation and decision that hold a switch (ids only; no content).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct PendingDecisionRef {
++    pub conversation: String,
++    pub decision: String,
++}
++
+ /// Redacted shell state.
+ #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+ #[serde(rename_all = "camelCase")]
+@@ -1047,6 +1091,18 @@ pub struct ShellSnapshot {
+     /// Opaque, monotonically increasing revision (string-encoded u64).
+     pub revision: String,
+     pub appearance: Theme,
++    /// Which shell renders (C28, D058); `features` is that shell's catalogue.
++    pub ui_variant: features::UiVariant,
++    /// First-run wizard state (C28/C29).
++    pub onboarding: features::OnboardingState,
++    /// The active destination (C28): what `navigate` last set, else the
++    /// presentation's first sidebar entry.
++    pub active_feature: FeatureId,
++    /// "Show the calls" preference (C28).
++    pub show_calls: bool,
++    /// A held tenant switch awaiting the operator's resolution (C30 raises
++    /// it; always absent in C28).
++    pub switch_blocked: Option<SwitchBlocked>,
+     pub features: Vec<FeatureEntry>,
+     /// True only in the distinct test-fixtures identity.
+     pub fixture_build: bool,
+@@ -1420,6 +1476,9 @@ impl Tenant {
+ #[derive(Clone, Debug, Default)]
+ struct Data {
+     appearance: Option<Theme>,
++    ui_variant: Option<features::UiVariant>,
++    onboarding: Option<features::OnboardingState>,
++    show_calls: Option<bool>,
+     tenants: Vec<Tenant>,
+     active: Option<TenantId>,
+     pending_cleanup: Vec<RecordId>,
+@@ -1458,6 +1517,8 @@ struct State {
+     admitted: u64,
+     storage: StorageHealth,
+     data: Data,
++    /// Session-only: the destination `navigate` last set (C28).
++    active_feature: Option<FeatureId>,
+     salt: [u8; 16],
+     epoch: u64,
+     active_ref: Option<ContextRef>,
+@@ -1602,11 +1663,37 @@ impl State {
+         self.data.appearance.unwrap_or(Theme::System)
+     }
+ 
++    fn ui_variant(&self) -> features::UiVariant {
++        self.data.ui_variant.unwrap_or_default()
++    }
++
++    fn onboarding(&self) -> features::OnboardingState {
++        self.data.onboarding.unwrap_or_default()
++    }
++
++    fn show_calls(&self) -> bool {
++        self.data.show_calls.unwrap_or(true)
++    }
++
++    /// The active destination: the last admitted `navigate` while it stays
++    /// in the current catalogue, else the presentation's first sidebar entry.
++    fn active_feature(&self) -> FeatureId {
++        let variant = self.ui_variant();
++        self.active_feature
++            .filter(|f| features::catalogue_for(variant).iter().any(|e| e.id == *f))
++            .unwrap_or_else(|| features::default_feature(variant))
++    }
++
+     fn snapshot(&self) -> ShellSnapshot {
+         ShellSnapshot {
+             revision: self.revision.to_string(),
+             appearance: self.shown_appearance(),
+-            features: features::catalogue(),
++            ui_variant: self.ui_variant(),
++            onboarding: self.onboarding(),
++            active_feature: self.active_feature(),
++            show_calls: self.show_calls(),
++            switch_blocked: None,
++            features: features::catalogue_for(self.ui_variant()),
+             fixture_build: cfg!(feature = "test-fixtures"),
+             storage: self.storage,
+             // An import's tenants show once it commits (D050).
+@@ -1695,6 +1782,9 @@ impl State {
+     fn persisted(&self) -> PersistedState {
+         PersistedState {
+             appearance: self.appearance(),
++            ui_variant: self.ui_variant(),
++            onboarding: self.onboarding(),
++            show_calls: self.show_calls(),
+             tenants: self
+                 .data
+                 .tenants
+@@ -2374,6 +2464,7 @@ impl Core {
+             admitted: 0,
+             storage,
+             data,
++            active_feature: None,
+             salt,
+             epoch: 0,
+             active_ref: None,
+@@ -2893,6 +2984,9 @@ fn data_from(doc: PersistedState) -> Data {
+         .collect();
+     Data {
+         appearance: Some(doc.appearance),
++        ui_variant: Some(doc.ui_variant),
++        onboarding: Some(doc.onboarding),
++        show_calls: Some(doc.show_calls),
+         tenants,
+         active: doc.active_tenant,
+         pending_cleanup: doc.pending_cleanup,
+@@ -3126,6 +3220,66 @@ fn admit(
+                 state.changed();
+             }
+         }
++        Intent::SetUiVariant { variant } => {
++            if state.ui_variant() != variant {
++                let before = state.data.clone();
++                state.data.ui_variant = Some(variant);
++                if state.storage == StorageHealth::Ready
++                    && let Err(e) = state.save_with(&before)
++                {
++                    return Err(e);
++                }
++                // The other presentation's destination may not exist here.
++                state.active_feature = None;
++                state.changed();
++            }
++        }
++        Intent::Navigate { feature } => {
++            let entry = features::catalogue_for(state.ui_variant())
++                .into_iter()
++                .find(|e| e.id == feature)
++                .ok_or(Refusal::InvalidInput)?;
++            if entry.availability != features::Availability::Available {
++                return Err(Refusal::InvalidInput);
++            }
++            if state.active_feature != Some(feature) {
++                state.active_feature = Some(feature);
++                state.changed();
++            }
++        }
++        Intent::SetOnboarding { state: next } => {
++            use features::OnboardingState as O;
++            let current = state.onboarding();
++            let allowed = matches!(
++                (current, next),
++                (O::Needed, O::InProgress | O::Done) | (O::InProgress, O::Done)
++            ) || current == next;
++            if !allowed {
++                return Err(Refusal::InvalidInput);
++            }
++            if current != next {
++                let before = state.data.clone();
++                state.data.onboarding = Some(next);
++                if state.storage == StorageHealth::Ready
++                    && let Err(e) = state.save_with(&before)
++                {
++                    return Err(e);
++                }
++                state.changed();
++            }
++        }
++        Intent::SetShowCalls { on } => {
++            if state.show_calls() != on {
++                let before = state.data.clone();
++                state.data.show_calls = Some(on);
++                if state.storage == StorageHealth::Ready
++                    && let Err(e) = state.save_with(&before)
++                {
++                    return Err(e);
++                }
++                state.changed();
++            }
++        }
+         Intent::CreateTenant { profile } => {
+             state.require_storage()?;
+             let profile = profile.validate().ok_or(Refusal::InvalidInput)?;
+diff --git a/crates/desktop-core/src/features.rs b/crates/desktop-core/src/features.rs
+index 079fb16a..9446d16f 100644
+--- a/crates/desktop-core/src/features.rs
++++ b/crates/desktop-core/src/features.rs
+@@ -5,13 +5,39 @@
+ //! shows an unavailable destination naming the chunk, never a stub that looks
+ //! like working behavior.
+ 
+-use serde::Serialize;
++use serde::{Deserialize, Serialize};
+ use ts_rs::TS;
+ 
++/// Which desktop presentation the shell renders (D058). `Legacy` is the
++/// C01 shell; `V2` is the "Refined Native" shell introduced in C28 and the
++/// only one after C34. Persisted; changed only by `Intent::SetUiVariant`.
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum UiVariant {
++    #[default]
++    Legacy,
++    V2,
++}
++
++/// First-run state of the v2 onboarding wizard (D058, C29 realises D013).
++/// Persisted; it never moves back to `Needed`.
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum OnboardingState {
++    #[default]
++    Needed,
++    InProgress,
++    Done,
++}
++
+ /// Stable identifier of a top-level desktop feature destination.
+-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, TS)]
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+ #[serde(rename_all = "camelCase")]
+ pub enum FeatureId {
++    /// v2 only (C28): the tenant's Home.
++    Home,
++    /// v2 only (C28): the Inbox.
++    Inbox,
+     Runtime,
+     Academy,
+     Administration,
+@@ -45,6 +71,70 @@ pub struct FeatureEntry {
+     pub id: FeatureId,
+     pub label: String,
+     pub availability: Availability,
++    /// The native menu accelerator digit (⌘1–⌘9), when the destination has
++    /// one. The menu, the sidebar and the palette all read this one value.
++    pub shortcut: Option<u8>,
++    /// Whether the v2 sidebar lists it; false entries stay reachable from
++    /// the Go menu and the command palette.
++    pub sidebar: bool,
++}
++
++impl FeatureEntry {
++    fn available(id: FeatureId, label: &str, shortcut: Option<u8>, sidebar: bool) -> Self {
++        Self {
++            id,
++            label: label.to_owned(),
++            availability: Availability::Available,
++            shortcut,
++            sidebar,
++        }
++    }
++}
++
++/// The catalogue for a presentation, in navigation order: the single
++/// inventory the native menu, the sidebar and the command palette read.
++pub fn catalogue_for(variant: UiVariant) -> Vec<FeatureEntry> {
++    match variant {
++        UiVariant::Legacy => catalogue(),
++        UiVariant::V2 => vec![
++            FeatureEntry::available(FeatureId::Home, "Home", Some(1), true),
++            // Listed with its shortcut from the start so ⌘2 never moves; the
++            // Inbox view itself lands in C30 and is unavailable until then.
++            FeatureEntry {
++                id: FeatureId::Inbox,
++                label: "Inbox".to_owned(),
++                availability: Availability::Unavailable {
++                    reason: "The Inbox arrives in C30".to_owned(),
++                    planned_chunk: "C30".to_owned(),
++                },
++                shortcut: Some(2),
++                sidebar: true,
++            },
++            FeatureEntry::available(FeatureId::Harness, "Harness", Some(3), true),
++            FeatureEntry::available(FeatureId::Academy, "Academy", Some(4), true),
++            FeatureEntry::available(FeatureId::Library, "Test Cases", Some(5), true),
++            FeatureEntry::available(FeatureId::ApiClient, "API Client", Some(6), true),
++            FeatureEntry::available(FeatureId::Administration, "Administration", Some(7), true),
++            // Inside Administration's accordion in v2; still direct Go/palette
++            // destinations so nothing the legacy shell reached is lost.
++            FeatureEntry::available(FeatureId::Runtime, "Runtime Security", None, false),
++            FeatureEntry::available(FeatureId::Gateway, "AI Gateway", None, false),
++            FeatureEntry::available(FeatureId::RedTeam, "Red Team & Models", None, false),
++            FeatureEntry::available(FeatureId::Sessions, "Sessions & Reports", None, false),
++            FeatureEntry::available(FeatureId::Import, "Import from v1", None, false),
++            FeatureEntry::available(FeatureId::Settings, "Settings", None, false),
++        ],
++    }
++}
++
++/// The first sidebar destination of a presentation: where a fresh session
++/// lands and where navigation falls back after a variant change.
++pub fn default_feature(variant: UiVariant) -> FeatureId {
++    catalogue_for(variant)
++        .into_iter()
++        .find(|e| e.sidebar)
++        .map(|e| e.id)
++        .unwrap_or(FeatureId::Settings)
+ }
+ 
+ /// The catalogue shipped by this build, in navigation order.
+@@ -60,57 +150,79 @@ pub fn catalogue() -> Vec<FeatureEntry> {
+             id: FeatureId::Runtime,
+             label: "Runtime Security".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(1),
++            sidebar: true,
+         },
+         FeatureEntry {
+             id: FeatureId::Academy,
+             label: "Academy".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(2),
++            sidebar: true,
+         },
+         FeatureEntry {
+             id: FeatureId::Administration,
+             label: "Administration".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(3),
++            sidebar: true,
+         },
+         FeatureEntry {
+             id: FeatureId::Sessions,
+             label: "Sessions & Reports".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(4),
++            sidebar: true,
+         },
+         FeatureEntry {
+             id: FeatureId::Library,
+             label: "Case Library".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(5),
++            sidebar: true,
+         },
+         FeatureEntry {
+             id: FeatureId::RedTeam,
+             label: "Red Team & Models".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(6),
++            sidebar: true,
+         },
+         FeatureEntry {
+             id: FeatureId::ApiClient,
+             label: "API Client".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(7),
++            sidebar: true,
+         },
+         FeatureEntry {
+             id: FeatureId::Gateway,
+             label: "AI Gateway".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(8),
++            sidebar: true,
+         },
+         FeatureEntry {
+             id: FeatureId::Harness,
+             label: "Harness".to_owned(),
+             availability: Availability::Available,
++            shortcut: Some(9),
++            sidebar: true,
+         },
+     ];
+     entries.push(FeatureEntry {
+         id: FeatureId::Import,
+         label: "Import from v1".to_owned(),
+         availability: Availability::Available,
++        shortcut: None,
++        sidebar: true,
+     });
+     entries.push(FeatureEntry {
+         id: FeatureId::Settings,
+         label: "Settings".to_owned(),
+         availability: Availability::Available,
++        shortcut: None,
++        sidebar: true,
+     });
+     entries
+ }
+diff --git a/crates/desktop-core/src/store.rs b/crates/desktop-core/src/store.rs
+index 27fce35c..5ee4e645 100644
+--- a/crates/desktop-core/src/store.rs
++++ b/crates/desktop-core/src/store.rs
+@@ -196,6 +196,19 @@ pub struct PersistedState {
+     /// while an import or its rollback is unsettled.
+     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+     pub open_imports: Vec<crate::import_v1::receipt::Receipt>,
++    /// Which shell the desktop renders (C28, D058; absent before = legacy).
++    #[serde(default)]
++    pub ui_variant: crate::features::UiVariant,
++    /// First-run wizard state (C28/C29; absent before = needed).
++    #[serde(default)]
++    pub onboarding: crate::features::OnboardingState,
++    /// "Show the calls" preference (C28; absent before = on).
++    #[serde(default = "show_calls_default")]
++    pub show_calls: bool,
++}
++
++fn show_calls_default() -> bool {
++    true
+ }
+ 
+ impl Default for PersistedState {
+@@ -215,6 +228,9 @@ impl Default for PersistedState {
+             harness_projects: Vec::new(),
+             harness_mcp: Vec::new(),
+             open_imports: Vec::new(),
++            ui_variant: crate::features::UiVariant::Legacy,
++            onboarding: crate::features::OnboardingState::Needed,
++            show_calls: true,
+         }
+     }
+ }
+diff --git a/crates/desktop-core/src/wire.rs b/crates/desktop-core/src/wire.rs
+index 88144f26..6bcb8910 100644
+--- a/crates/desktop-core/src/wire.rs
++++ b/crates/desktop-core/src/wire.rs
+@@ -86,6 +86,9 @@ pub enum MenuCommand {
+     },
+     /// File > Save (Cmd+S): save the open API Client request.
+     SaveDocument,
++    /// Go > Switch Tenant… (Cmd+T, C28): open the tenant switcher without
++    /// switching; the legacy shell routes it to Settings.
++    TenantSwitcher,
+ }
+ 
+ /// Result of `desktop_dispatch`.
+@@ -239,6 +242,10 @@ pub fn export_typescript(dir: &Path) -> Result<(), ts_rs::ExportError> {
+     MenuCommand::export_all(&config)?;
+     FeatureEntry::export_all(&config)?;
+     FeatureId::export_all(&config)?;
++    crate::features::UiVariant::export_all(&config)?;
++    crate::authority::SwitchBlocked::export_all(&config)?;
++    crate::authority::PendingDecisionRef::export_all(&config)?;
++    crate::features::OnboardingState::export_all(&config)?;
+     Availability::export_all(&config)?;
+     Ok(())
+ }
+diff --git a/crates/xtask/src/subject.rs b/crates/xtask/src/subject.rs
+index eda53728..ff8c51d5 100644
+--- a/crates/xtask/src/subject.rs
++++ b/crates/xtask/src/subject.rs
+@@ -68,12 +68,12 @@ mod tests {
+ 
+     #[test]
+     fn accepts_registered_range_only() {
+-        assert_eq!(Subject::parse("C01").unwrap(), Subject::Chunk(1));
+-        assert_eq!(Subject::parse("C26").unwrap(), Subject::Chunk(26));
+-        assert_eq!(Subject::parse("C27").unwrap(), Subject::Chunk(27));
+-        assert_eq!(Subject::parse("C34").unwrap(), Subject::Chunk(34));
+-        assert_eq!(Subject::parse("P08").unwrap(), Subject::Phase(8));
+-        assert_eq!(Subject::parse("P09").unwrap(), Subject::Phase(9));
++        assert_eq!(Subject::parse("C01").expect("C01"), Subject::Chunk(1));
++        assert_eq!(Subject::parse("C26").expect("C26"), Subject::Chunk(26));
++        assert_eq!(Subject::parse("C27").expect("C27"), Subject::Chunk(27));
++        assert_eq!(Subject::parse("C34").expect("C34"), Subject::Chunk(34));
++        assert_eq!(Subject::parse("P08").expect("P08"), Subject::Phase(8));
++        assert_eq!(Subject::parse("P09").expect("P09"), Subject::Phase(9));
+         for bad in ["C00", "C35", "P00", "P10", "C7", "C027", "c27", "X01"] {
+             assert!(Subject::parse(bad).is_err(), "{bad} must be refused");
+         }
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index cb668a16..c28249f2 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1132,6 +1132,36 @@
+         "id": "C25-N04",
+         "check": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply… in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent."
+       }
++    ],
++    "C28": [
++      {
++        "id": "C28-N01",
++        "check": "Settings › Interface › 'Use the new interface' switches the window to the v2 shell without a relaunch: the rail named 'Destinations' lists Home ⌘1, Inbox ⌘2, Harness ⌘3, Academy ⌘4, Test Cases ⌘5, API Client ⌘6, Administration ⌘7 in that order (the Rust catalogue), the tenant switcher is above it, and the Home heading receives the page; the preference survives a relaunch and 'Return to the classic interface' restores the legacy rail named 'Features'."
++      },
++      {
++        "id": "C28-N02",
++        "check": "The native Go menu follows the presentation: in v2 it offers Switch Tenant… (⌘T) and then Home (⌘1) … Administration (⌘7) followed by the non-sidebar destinations without accelerators; Go › Harness moves the page (a `navigate` intent; the sidebar marks Harness current) and Go › Home returns; after returning to classic the Go menu is the legacy one again (Runtime Security ⌘1)."
++      },
++      {
++        "id": "C28-N03",
++        "check": "Keyboard only (I8): Tab reaches the tenant switcher, every rail destination, the palette trigger, the three appearance toggles, 'Show the calls' and the classic-interface control, each with a visible focus ring (band pixels change when focused, for the selected Home too); Enter on the trigger opens the command palette as the one topmost modal with focus in its field and Tab contained; ArrowDown traverses to the last entry with the active row inside the dialog and Enter dispatches only that row; Escape returns focus to the trigger; Go › Switch Tenant… while the palette is open closes it and leaves focus in the tenant list, and Escape returns focus to the switcher without selecting; the unavailable Inbox destination is disabled."
++      },
++      {
++        "id": "C28-N04",
++        "check": "The accessibility tree carries every status as a word (I9): with no tenant the Home read-status line exposes 'Add a tenant to start reading it.', with a tenant 'First read pending', the warn toast exposes its text with a 'Warning:' prefix, and no verdict is colour-only."
++      },
++      {
++        "id": "C28-N05",
++        "check": "Toasts (I10): a refused navigation (Go › Inbox, catalogued but unavailable, refused by the core) shows one warn toast naming the refusal that expires within 6 s; with macOS Reduce Motion enabled and the app relaunched the same toast persists past 8 s until dismissed; the setting is restored afterwards."
++      },
++      {
++        "id": "C28-N06",
++        "check": "Dark and Light appearance from the rail toggles apply the shared theme attribute the v2 tokens key on: AX text ink is the Gruvbox ink in Dark and the Paper ink in Light; the body background follows the --v2-bg token (self-capture)."
++      },
++      {
++        "id": "C28-N07",
++        "check": "At the interim 900×600 minimum and at 200% zoom in both themes the v2 shell shows no horizontal scroll (no node past the window's right edge, no horizontal scrollbar), the rail collapses to one 32px control per row with every control's frame inside the rail's frame (nothing clipped), focusing the last appearance toggle does not scroll the rail, destination labels stay in the accessible names, and the page heading stays reachable; with a configured tenant the collapsed switcher still names the tenant."
++      }
+     ]
+   }
+ }
+diff --git a/docs/architecture/ui-v2/provenance.md b/docs/architecture/ui-v2/provenance.md
+index e3fb58c0..1a8d67d9 100644
+--- a/docs/architecture/ui-v2/provenance.md
++++ b/docs/architecture/ui-v2/provenance.md
+@@ -34,7 +34,9 @@ page "Refined Native v2", version 134 (version id 1793059808-4929, published
+ | P21 | Test Cases "Run" was described in the first spec draft as scanning any case | Runtime-only "Open in Playground"; "Inspect" for every other product, which never dispatches a scan | Prototype lines 1035–1037 and the parity matrix (no invented execution) |
+ | P22 | Red Team Targets tab lists target names (`rtm` tables) | Targets shows `target_id` and `target_type` only | The C13 contract (`red_team.rs` 5–8, 56–66) deliberately keeps target names out of the core's reads; the privacy boundary is not widened for presentation |
+ | P23 | One rotation flow for every key | Staged Version → Delete rotation for Runtime API keys only; Gateway keys use `Rotate` (regenerate in place) | `gateway_changes::allowed` admits Rotate, not Version, for Gateway keys |
++| P24 | Minimum window 1180×720 (DESIGN-V2 §4, tokens.md) | The host keeps `min_inner_size(900, 600)` until C34 because C01-N09 (re-run cumulatively by C24-N06) pins the legacy minimum; the v2 shell is laid out to stay usable without horizontal scroll at 900×600 (rail collapsed to icons below 1280 CSS px) and C28-N07 asserts it at that size. C34 raises the minimum together with the legacy-script retirement | Legacy native acceptance must keep passing while both shells exist (D058 §5) |
++| P25 | Revision of P1/P2: "secrets enter only through a host secret sheet" | The retained, reviewed entry path (C02/C09) is a webview password field read through a ref, cleared immediately and sent once inside the intent as `EnteredSecret` (zeroized, never in React state, never logged); the host owns the *reveal* sheet (`RevealSecret`) and the clipboard. C29 uses exactly this path for the scan key, management secret and Gateway key; no new host entry sheet is built | The C27 spec assumed an entry sheet the host does not have; the reviewed pattern already satisfies D014 and the C24 canary checks (no secret in any AX tree or file) |
+ 
+ P10–P14 are the five round-16 Codex items carried as known gaps (see
+ [DESIGN-V2.md](DESIGN-V2.md) "Known gaps"). P16–P21 were added after the C27
+-attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b).
++attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b); P24–P25 were recorded in C28 when implementation met the host as it is.
+diff --git a/docs/architecture/ui-v2/state-ownership.md b/docs/architecture/ui-v2/state-ownership.md
+index 76cb56b1..a7d03fed 100644
+--- a/docs/architecture/ui-v2/state-ownership.md
++++ b/docs/architecture/ui-v2/state-ownership.md
+@@ -83,7 +83,7 @@ and reconciled by hand; a key missing here is a specification defect.
+ 
+ | Credential | Entry | Storage | Readable by the web layer |
+ |---|---|---|---|
+-| Scan API key | host secret sheet from the wizard tenant step or Administration | vault (`cr-` record), Keychain v2 namespace | id and masked indicator only |
+-| Management client secret | host secret sheet, optional section | vault | id only |
+-| Gateway workspace key | host secret sheet | vault | id only |
++| Scan API key | webview password field read through a ref, cleared at once, sent once as `EnteredSecret` inside `configureScanCredential` (P25) | vault (`cr-` record), Keychain v2 namespace | state and mode only (`ScanView`), never the value |
++| Management client secret | same path, `configureManagementCredential` (optional section) | vault | client id and state only |
++| Gateway workspace key | same path, `configureInferenceCredential` | vault | state only |
+ | Issued API key (rotation) | `RevealSecret` host sheet / host clipboard | held per result for the active context, never persisted | never |
+diff --git a/packages/desktop-contracts/fixtures/wire/observe-shell-response.json b/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
+index 06a9760b..0243ddb1 100644
+--- a/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
++++ b/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
+@@ -1 +1 @@
+-{"kind":"shell","snapshot":{"revision":"1","appearance":"system","features":[{"id":"runtime","label":"Runtime Security","availability":{"state":"available"}},{"id":"academy","label":"Academy","availability":{"state":"available"}},{"id":"administration","label":"Administration","availability":{"state":"available"}},{"id":"sessions","label":"Sessions & Reports","availability":{"state":"available"}},{"id":"library","label":"Case Library","availability":{"state":"available"}},{"id":"redTeam","label":"Red Team & Models","availability":{"state":"available"}},{"id":"apiClient","label":"API Client","availability":{"state":"available"}},{"id":"gateway","label":"AI Gateway","availability":{"state":"available"}},{"id":"harness","label":"Harness","availability":{"state":"available"}},{"id":"import","label":"Import from v1","availability":{"state":"available"}},{"id":"settings","label":"Settings","availability":{"state":"available"}}],"fixtureBuild":true,"storage":"ready","tenants":[],"active":null,"endpointReview":null,"import":{"state":"idle"},"resetFailure":null,"durabilityUnconfirmed":false,"scans":[],"academy":{"state":"signedOut"},"learner":"lx-000000000000000000000000","academyOrigin":"https://academy.cdot.io","academyOffline":{"state":"signedOut","reachable":true,"downloads":[],"localDrafts":[]},"changes":{"review":null,"staged":null,"results":[]},"sessions":{"reports":{"state":"idle","failure":null,"items":[],"undo":null,"problem":null,"unsaved":false},"investigation":null,"export":null},"library":{"state":"idle","failure":null,"cases":[],"problem":null,"unsaved":null,"notice":null,"choosing":false,"fetching":false,"export":null},"overview":{"read":null,"refreshing":false,"failure":null,"failedAt":null,"fresh":false,"attention":[],"held":[],"face":"firstLaunch"},"workbench":{"available":true,"loaded":false,"failure":null,"recent":[],"collection":null,"import":null,"adoption":null,"adoptionSettled":false,"git":null,"busy":false,"unprotected":false,"running":[],"review":null,"network":"loopbackOnly"},"gateway":{"workspaces":null,"complete":false,"selected":null,"remembered":null,"rememberedMissing":false,"local":{"state":"idle","failure":null,"drafts":[],"records":[],"playground":[],"runs":[],"files":[],"problem":null,"unsaved":false},"playground":null,"files":null},"harness":{"engine":{"available":false,"protocol":"airs-desktop/1","runtimeVersion":"0.1.7-desktop.2","engineCommit":"9331a5839bc6a763d94dee7584746f58bbbe1181"},"conversation":null,"signIn":null,"history":null,"project":null,"projectRefused":null,"mcp":null},"v1Import":{"available":true,"source":null,"tenants":[],"categories":[],"notMapped":[],"plan":null,"activity":null,"receipts":[],"damagedReceipts":[],"receiptsUnreadable":false,"problem":null},"diagnostics":{"available":true,"events":0,"retentionDays":14,"export":null,"clear":null}}}
+\ No newline at end of file
++{"kind":"shell","snapshot":{"revision":"1","appearance":"system","uiVariant":"legacy","onboarding":"needed","activeFeature":"runtime","showCalls":true,"switchBlocked":null,"features":[{"id":"runtime","label":"Runtime Security","availability":{"state":"available"},"shortcut":1,"sidebar":true},{"id":"academy","label":"Academy","availability":{"state":"available"},"shortcut":2,"sidebar":true},{"id":"administration","label":"Administration","availability":{"state":"available"},"shortcut":3,"sidebar":true},{"id":"sessions","label":"Sessions & Reports","availability":{"state":"available"},"shortcut":4,"sidebar":true},{"id":"library","label":"Case Library","availability":{"state":"available"},"shortcut":5,"sidebar":true},{"id":"redTeam","label":"Red Team & Models","availability":{"state":"available"},"shortcut":6,"sidebar":true},{"id":"apiClient","label":"API Client","availability":{"state":"available"},"shortcut":7,"sidebar":true},{"id":"gateway","label":"AI Gateway","availability":{"state":"available"},"shortcut":8,"sidebar":true},{"id":"harness","label":"Harness","availability":{"state":"available"},"shortcut":9,"sidebar":true},{"id":"import","label":"Import from v1","availability":{"state":"available"},"shortcut":null,"sidebar":true},{"id":"settings","label":"Settings","availability":{"state":"available"},"shortcut":null,"sidebar":true}],"fixtureBuild":true,"storage":"ready","tenants":[],"active":null,"endpointReview":null,"import":{"state":"idle"},"resetFailure":null,"durabilityUnconfirmed":false,"scans":[],"academy":{"state":"signedOut"},"learner":"lx-000000000000000000000000","academyOrigin":"https://academy.cdot.io","academyOffline":{"state":"signedOut","reachable":true,"downloads":[],"localDrafts":[]},"changes":{"review":null,"staged":null,"results":[]},"sessions":{"reports":{"state":"idle","failure":null,"items":[],"undo":null,"problem":null,"unsaved":false},"investigation":null,"export":null},"library":{"state":"idle","failure":null,"cases":[],"problem":null,"unsaved":null,"notice":null,"choosing":false,"fetching":false,"export":null},"overview":{"read":null,"refreshing":false,"failure":null,"failedAt":null,"fresh":false,"attention":[],"held":[],"face":"firstLaunch"},"workbench":{"available":true,"loaded":false,"failure":null,"recent":[],"collection":null,"import":null,"adoption":null,"adoptionSettled":false,"git":null,"busy":false,"unprotected":false,"running":[],"review":null,"network":"loopbackOnly"},"gateway":{"workspaces":null,"complete":false,"selected":null,"remembered":null,"rememberedMissing":false,"local":{"state":"idle","failure":null,"drafts":[],"records":[],"playground":[],"runs":[],"files":[],"problem":null,"unsaved":false},"playground":null,"files":null},"harness":{"engine":{"available":false,"protocol":"airs-desktop/1","runtimeVersion":"0.1.7-desktop.2","engineCommit":"9331a5839bc6a763d94dee7584746f58bbbe1181"},"conversation":null,"signIn":null,"history":null,"project":null,"projectRefused":null,"mcp":null},"v1Import":{"available":true,"source":null,"tenants":[],"categories":[],"notMapped":[],"plan":null,"activity":null,"receipts":[],"damagedReceipts":[],"receiptsUnreadable":false,"problem":null},"diagnostics":{"available":true,"events":0,"retentionDays":14,"export":null,"clear":null}}}
+diff --git a/packages/desktop-contracts/src/client.ts b/packages/desktop-contracts/src/client.ts
+index 6f76a6c0..d97f757a 100644
+--- a/packages/desktop-contracts/src/client.ts
++++ b/packages/desktop-contracts/src/client.ts
+@@ -76,6 +76,8 @@ const DECIMAL_U64 = /^(0|[1-9][0-9]{0,19})$/
+ const U64_MAX = 18446744073709551615n
+ 
+ const FEATURE_IDS: readonly string[] = [
++    'home',
++    'inbox',
+     'runtime',
+     'academy',
+     'administration',
+@@ -89,6 +91,8 @@ const FEATURE_IDS: readonly string[] = [
+     'settings',
+ ]
+ const THEMES: readonly string[] = ['system', 'light', 'dark']
++const UI_VARIANTS: readonly string[] = ['legacy', 'v2']
++const ONBOARDING_STATES: readonly string[] = ['needed', 'inProgress', 'done']
+ const STORAGE: readonly string[] = ['ready', 'corrupt', 'unavailable', 'resetting']
+ const SCAN_STATES: readonly string[] = ['missing', 'storing', 'ready', 'failed']
+ const MODES: readonly string[] = ['keychain', 'session']
+@@ -2522,6 +2526,23 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
+         !isRecord(value) ||
+         !isDecimalU64(value.revision) ||
+         !THEMES.includes(value.appearance as string) ||
++        !UI_VARIANTS.includes(value.uiVariant as string) ||
++        !ONBOARDING_STATES.includes(value.onboarding as string) ||
++        typeof value.activeFeature !== 'string' ||
++        !FEATURE_IDS.includes(value.activeFeature) ||
++        typeof value.showCalls !== 'boolean' ||
++        !optional(
++            (g) =>
++                isRecord(g) &&
++                typeof g.to === 'string' &&
++                TENANT_ID.test(g.to) &&
++                isRecord(g.pending) &&
++                typeof g.pending.conversation === 'string' &&
++                g.pending.conversation.length > 0 &&
++                typeof g.pending.decision === 'string' &&
++                g.pending.decision.length > 0,
++            value.switchBlocked
++        ) ||
+         !Array.isArray(value.features) ||
+         typeof value.fixtureBuild !== 'boolean' ||
+         !oneOf(STORAGE, value.storage) ||
+@@ -2578,7 +2599,9 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
+             !FEATURE_IDS.includes(feature.id) ||
+             seen.has(feature.id) ||
+             typeof feature.label !== 'string' ||
+-            !isRecord(feature.availability)
++            !isRecord(feature.availability) ||
++            !(feature.shortcut === null || (typeof feature.shortcut === 'number' && feature.shortcut >= 1 && feature.shortcut <= 9)) ||
++            typeof feature.sidebar !== 'boolean'
+         ) {
+             throw new ContractViolation('feature entry')
+         }
+@@ -2591,6 +2614,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
+                 typeof availability.plannedChunk === 'string')
+         if (!valid) throw new ContractViolation('feature availability')
+     }
++    if (!seen.has(value.activeFeature as string)) throw new ContractViolation('active feature')
+     return value as unknown as ShellSnapshot
+ }
+ 
+@@ -2601,6 +2625,8 @@ function parseMenuCommand(value: unknown): MenuCommand {
+             return { kind: 'commandPalette' }
+         case 'saveDocument':
+             return { kind: 'saveDocument' }
++        case 'tenantSwitcher':
++            return { kind: 'tenantSwitcher' }
+         case 'navigate':
+             if (typeof value.feature === 'string' && FEATURE_IDS.includes(value.feature)) {
+                 return value as unknown as MenuCommand
+diff --git a/packages/desktop-contracts/src/generated/FeatureEntry.ts b/packages/desktop-contracts/src/generated/FeatureEntry.ts
+index 6a305f7a..c23aba9f 100644
+--- a/packages/desktop-contracts/src/generated/FeatureEntry.ts
++++ b/packages/desktop-contracts/src/generated/FeatureEntry.ts
+@@ -5,4 +5,14 @@ import type { FeatureId } from "./FeatureId";
+ /**
+  * One navigation destination in the shell.
+  */
+-export type FeatureEntry = { id: FeatureId, label: string, availability: Availability, };
++export type FeatureEntry = { id: FeatureId, label: string, availability: Availability, 
++/**
++ * The native menu accelerator digit (⌘1–⌘9), when the destination has
++ * one. The menu, the sidebar and the palette all read this one value.
++ */
++shortcut: number | null, 
++/**
++ * Whether the v2 sidebar lists it; false entries stay reachable from
++ * the Go menu and the command palette.
++ */
++sidebar: boolean, };
+diff --git a/packages/desktop-contracts/src/generated/FeatureId.ts b/packages/desktop-contracts/src/generated/FeatureId.ts
+index 55bcc6a6..4e259597 100644
+--- a/packages/desktop-contracts/src/generated/FeatureId.ts
++++ b/packages/desktop-contracts/src/generated/FeatureId.ts
+@@ -3,4 +3,4 @@
+ /**
+  * Stable identifier of a top-level desktop feature destination.
+  */
+-export type FeatureId = "runtime" | "academy" | "administration" | "sessions" | "library" | "redTeam" | "apiClient" | "gateway" | "harness" | "import" | "settings";
++export type FeatureId = "home" | "inbox" | "runtime" | "academy" | "administration" | "sessions" | "library" | "redTeam" | "apiClient" | "gateway" | "harness" | "import" | "settings";
+diff --git a/packages/desktop-contracts/src/generated/Intent.ts b/packages/desktop-contracts/src/generated/Intent.ts
+index 5989323a..791576ac 100644
+--- a/packages/desktop-contracts/src/generated/Intent.ts
++++ b/packages/desktop-contracts/src/generated/Intent.ts
+@@ -7,12 +7,14 @@ import type { ContextRef } from "./ContextRef";
+ import type { CredentialSource } from "./CredentialSource";
+ import type { Destination } from "./Destination";
+ import type { EnteredSecret } from "./EnteredSecret";
++import type { FeatureId } from "./FeatureId";
+ import type { GatewayDraftInput } from "./GatewayDraftInput";
+ import type { HistoryFormat } from "./HistoryFormat";
+ import type { HoldKind } from "./HoldKind";
+ import type { InferenceRun } from "./InferenceRun";
+ import type { LearnerRef } from "./LearnerRef";
+ import type { ManagementRequest } from "./ManagementRequest";
++import type { OnboardingState } from "./OnboardingState";
+ import type { OperationId } from "./OperationId";
+ import type { PlaygroundDraftInput } from "./PlaygroundDraftInput";
+ import type { ProcedureKind } from "./ProcedureKind";
+@@ -25,6 +27,7 @@ import type { StorageMode } from "./StorageMode";
+ import type { TenantId } from "./TenantId";
+ import type { TenantTarget } from "./TenantTarget";
+ import type { Theme } from "./Theme";
++import type { UiVariant } from "./UiVariant";
+ import type { WorkbenchRequest } from "./WorkbenchRequest";
+ import type { WorkspaceRef } from "./WorkspaceRef";
+ 
+@@ -35,4 +38,4 @@ import type { WorkspaceRef } from "./WorkspaceRef";
+  * instructions; it never carries method names or arbitrary SDK payloads.
+  * Tenant-scoped instructions carry the ContextRef the caller was viewing.
+  */
+-export type Intent = { "kind": "setAppearance", theme: Theme, } | { "kind": "createTenant", profile: ProfileDraft, } | { "kind": "selectTenant", tenant: TenantId, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "configureManagementCredential", context: ContextRef, mode: StorageMode, clientId: string, secret: EnteredSecret, } | { "kind": "removeManagementCredential", context: ContextRef, } | { "kind": "management", context: ContextRef, request: ManagementRequest, } | { "kind": "selectGatewayWorkspace", context: ContextRef, workspace: string, } | { "kind": "reviewChange", context: ContextRef, draft: ChangeDraft, } | { "kind": "requestApply", review: ReviewId, draft: ChangeDraft, confirmation: string, } | { "kind": "discardChange", review: ReviewId, } | { "kind": "chooseDictionaryFile", context: ContextRef, } | { "kind": "revealSecret", operation: OperationId, } | { "kind": "forgetSecret", operation: OperationId, } | { "kind": "cancelChange", operation: OperationId, } | { "kind": "openGatewayLocal", context: ContextRef, } | { "kind": "saveGatewayDraft", context: ContextRef, draft: GatewayDraftInput, } | { "kind": "discardGatewayLocal", context: ContextRef, id: string, } | { "kind": "configureInferenceCredential", context: ContextRef, mode: StorageMode, workspace: WorkspaceRef, endpoint: string, secret: EnteredSecret, } | { "kind": "removeInferenceCredential", context: ContextRef, } | { "kind": "runInference", context: ContextRef, workspace: WorkspaceRef, run: InferenceRun, } | { "kind": "stopInference", operation: OperationId, } | { "kind": "clearInference", operation: OperationId, } | { "kind": "startHarness", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "configureHarnessSignIn", context: ContextRef, workspace: WorkspaceRef, endpoint: string, issuer: string, clientId: string, audience: string, } | { "kind": "removeHarnessSignIn", context: ContextRef, } | { "kind": "chooseHarnessCredential", context: ContextRef, source: CredentialSource, } | { "kind": "signInHarness", context: ContextRef, } | { "kind": "cancelHarnessSignIn", context: ContextRef, } | { "kind": "signOutHarness", context: ContextRef, } | { "kind": "chooseHarnessProject", context: ContextRef, } | { "kind": "clearHarnessProject", context: ContextRef, } | { "kind": "setHarnessWrite", context: ContextRef, write: boolean, } | { "kind": "decideHarnessApproval", conversation: OperationId, approval: string, allow: boolean, } | { "kind": "reviewHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "dismissHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "confirmHarnessWrite", conversation: OperationId, allow: boolean, } | { "kind": "listMcpServers", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "enableMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, enabled: boolean, } | { "kind": "signInMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "cancelMcpSignIn", context: ContextRef, } | { "kind": "signOutMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "listHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "openHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "closeHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "deleteHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "exportHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, format: HistoryFormat, } | { "kind": "resumeHarness", context: ContextRef, workspace: WorkspaceRef, id: string, } | { "kind": "sendHarness", conversation: OperationId, prompt: string, } | { "kind": "interruptHarness", conversation: OperationId, } | { "kind": "endHarness", conversation: OperationId, } | { "kind": "clearHarness", conversation: OperationId, } | { "kind": "readGatewayFiles", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "chooseGatewayFile", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "uploadGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "deleteGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "savePlaygroundDraft", context: ContextRef, workspace?: WorkspaceRef, draft: PlaygroundDraftInput, } | { "kind": "openReports", context: ContextRef, } | { "kind": "saveReport", context: ContextRef, target: ReportTarget, input: ReportInput, } | { "kind": "removeReport", context: ContextRef, scanId: string, subRequest: number, } | { "kind": "undoReport", context: ContextRef, } | { "kind": "exportReports", context: ContextRef, } | { "kind": "clearInvestigation", context: ContextRef, } | { "kind": "exportInvestigation", context: ContextRef, } | { "kind": "openLibrary", context: ContextRef, } | { "kind": "saveCase", context: ContextRef, draft: CaseDraft, } | { "kind": "deleteCase", context: ContextRef, id: string, } | { "kind": "importCases", context: ContextRef, } | { "kind": "importExamples", context: ContextRef, source: CatalogSource, } | { "kind": "copyCase", context: ContextRef, id: string, tenant: TenantId, } | { "kind": "exportCases", context: ContextRef, } | { "kind": "saveLibraryAgain", context: ContextRef, } | { "kind": "workbench", request: WorkbenchRequest, } | { "kind": "holdInsight", context: ContextRef, id: string, hold: HoldKind, } | { "kind": "restoreInsight", context: ContextRef, id: string, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "inspectV1Import" } | { "kind": "planV1Import", categories: Array<Category>, targets: Array<TenantTarget>, } | { "kind": "confirmV1Import", review: ReviewId, items: Array<number>, } | { "kind": "resumeV1Import", receipt: string, } | { "kind": "rollBackV1Import", receipt: string, } | { "kind": "forgetV1ImportReceipt", receipt: string, } | { "kind": "dismissV1Import" } | { "kind": "exportDiagnostics" } | { "kind": "clearDiagnostics" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, } | { "kind": "startAcademySignIn" } | { "kind": "cancelAcademySignIn" } | { "kind": "openAcademyVerification" } | { "kind": "signOutAcademy" } | { "kind": "printPage", learner: LearnerRef, } | { "kind": "uploadAvatar", learner: LearnerRef, } | { "kind": "loadAcademyImage", learner: LearnerRef, url: string, } | { "kind": "downloadCourse", learner: LearnerRef, courseId: string, } | { "kind": "removeDownload", learner: LearnerRef, courseId: string, } | { "kind": "saveLocalDraft", learner: LearnerRef, attemptId: string, baseVersion: number, draft: string, } | { "kind": "loadLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "clearLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "academyCall", learner: LearnerRef, procedure: string, procedureKind: ProcedureKind, input: string | null, };
++export type Intent = { "kind": "setAppearance", theme: Theme, } | { "kind": "setUiVariant", variant: UiVariant, } | { "kind": "navigate", feature: FeatureId, } | { "kind": "setOnboarding", state: OnboardingState, } | { "kind": "setShowCalls", on: boolean, } | { "kind": "createTenant", profile: ProfileDraft, } | { "kind": "selectTenant", tenant: TenantId, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "configureManagementCredential", context: ContextRef, mode: StorageMode, clientId: string, secret: EnteredSecret, } | { "kind": "removeManagementCredential", context: ContextRef, } | { "kind": "management", context: ContextRef, request: ManagementRequest, } | { "kind": "selectGatewayWorkspace", context: ContextRef, workspace: string, } | { "kind": "reviewChange", context: ContextRef, draft: ChangeDraft, } | { "kind": "requestApply", review: ReviewId, draft: ChangeDraft, confirmation: string, } | { "kind": "discardChange", review: ReviewId, } | { "kind": "chooseDictionaryFile", context: ContextRef, } | { "kind": "revealSecret", operation: OperationId, } | { "kind": "forgetSecret", operation: OperationId, } | { "kind": "cancelChange", operation: OperationId, } | { "kind": "openGatewayLocal", context: ContextRef, } | { "kind": "saveGatewayDraft", context: ContextRef, draft: GatewayDraftInput, } | { "kind": "discardGatewayLocal", context: ContextRef, id: string, } | { "kind": "configureInferenceCredential", context: ContextRef, mode: StorageMode, workspace: WorkspaceRef, endpoint: string, secret: EnteredSecret, } | { "kind": "removeInferenceCredential", context: ContextRef, } | { "kind": "runInference", context: ContextRef, workspace: WorkspaceRef, run: InferenceRun, } | { "kind": "stopInference", operation: OperationId, } | { "kind": "clearInference", operation: OperationId, } | { "kind": "startHarness", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "configureHarnessSignIn", context: ContextRef, workspace: WorkspaceRef, endpoint: string, issuer: string, clientId: string, audience: string, } | { "kind": "removeHarnessSignIn", context: ContextRef, } | { "kind": "chooseHarnessCredential", context: ContextRef, source: CredentialSource, } | { "kind": "signInHarness", context: ContextRef, } | { "kind": "cancelHarnessSignIn", context: ContextRef, } | { "kind": "signOutHarness", context: ContextRef, } | { "kind": "chooseHarnessProject", context: ContextRef, } | { "kind": "clearHarnessProject", context: ContextRef, } | { "kind": "setHarnessWrite", context: ContextRef, write: boolean, } | { "kind": "decideHarnessApproval", conversation: OperationId, approval: string, allow: boolean, } | { "kind": "reviewHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "dismissHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "confirmHarnessWrite", conversation: OperationId, allow: boolean, } | { "kind": "listMcpServers", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "enableMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, enabled: boolean, } | { "kind": "signInMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "cancelMcpSignIn", context: ContextRef, } | { "kind": "signOutMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "listHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "openHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "closeHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "deleteHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "exportHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, format: HistoryFormat, } | { "kind": "resumeHarness", context: ContextRef, workspace: WorkspaceRef, id: string, } | { "kind": "sendHarness", conversation: OperationId, prompt: string, } | { "kind": "interruptHarness", conversation: OperationId, } | { "kind": "endHarness", conversation: OperationId, } | { "kind": "clearHarness", conversation: OperationId, } | { "kind": "readGatewayFiles", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "chooseGatewayFile", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "uploadGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "deleteGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "savePlaygroundDraft", context: ContextRef, workspace?: WorkspaceRef, draft: PlaygroundDraftInput, } | { "kind": "openReports", context: ContextRef, } | { "kind": "saveReport", context: ContextRef, target: ReportTarget, input: ReportInput, } | { "kind": "removeReport", context: ContextRef, scanId: string, subRequest: number, } | { "kind": "undoReport", context: ContextRef, } | { "kind": "exportReports", context: ContextRef, } | { "kind": "clearInvestigation", context: ContextRef, } | { "kind": "exportInvestigation", context: ContextRef, } | { "kind": "openLibrary", context: ContextRef, } | { "kind": "saveCase", context: ContextRef, draft: CaseDraft, } | { "kind": "deleteCase", context: ContextRef, id: string, } | { "kind": "importCases", context: ContextRef, } | { "kind": "importExamples", context: ContextRef, source: CatalogSource, } | { "kind": "copyCase", context: ContextRef, id: string, tenant: TenantId, } | { "kind": "exportCases", context: ContextRef, } | { "kind": "saveLibraryAgain", context: ContextRef, } | { "kind": "workbench", request: WorkbenchRequest, } | { "kind": "holdInsight", context: ContextRef, id: string, hold: HoldKind, } | { "kind": "restoreInsight", context: ContextRef, id: string, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "inspectV1Import" } | { "kind": "planV1Import", categories: Array<Category>, targets: Array<TenantTarget>, } | { "kind": "confirmV1Import", review: ReviewId, items: Array<number>, } | { "kind": "resumeV1Import", receipt: string, } | { "kind": "rollBackV1Import", receipt: string, } | { "kind": "forgetV1ImportReceipt", receipt: string, } | { "kind": "dismissV1Import" } | { "kind": "exportDiagnostics" } | { "kind": "clearDiagnostics" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, } | { "kind": "startAcademySignIn" } | { "kind": "cancelAcademySignIn" } | { "kind": "openAcademyVerification" } | { "kind": "signOutAcademy" } | { "kind": "printPage", learner: LearnerRef, } | { "kind": "uploadAvatar", learner: LearnerRef, } | { "kind": "loadAcademyImage", learner: LearnerRef, url: string, } | { "kind": "downloadCourse", learner: LearnerRef, courseId: string, } | { "kind": "removeDownload", learner: LearnerRef, courseId: string, } | { "kind": "saveLocalDraft", learner: LearnerRef, attemptId: string, baseVersion: number, draft: string, } | { "kind": "loadLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "clearLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "academyCall", learner: LearnerRef, procedure: string, procedureKind: ProcedureKind, input: string | null, };
+diff --git a/packages/desktop-contracts/src/generated/MenuCommand.ts b/packages/desktop-contracts/src/generated/MenuCommand.ts
+index 7c45b6ff..c100c227 100644
+--- a/packages/desktop-contracts/src/generated/MenuCommand.ts
++++ b/packages/desktop-contracts/src/generated/MenuCommand.ts
+@@ -5,4 +5,4 @@ import type { Theme } from "./Theme";
+ /**
+  * A native menu selection forwarded to the presentation.
+  */
+-export type MenuCommand = { "kind": "navigate", feature: FeatureId, } | { "kind": "commandPalette" } | { "kind": "setAppearance", theme: Theme, } | { "kind": "saveDocument" };
++export type MenuCommand = { "kind": "navigate", feature: FeatureId, } | { "kind": "commandPalette" } | { "kind": "setAppearance", theme: Theme, } | { "kind": "saveDocument" } | { "kind": "tenantSwitcher" };
+diff --git a/packages/desktop-contracts/src/generated/ShellSnapshot.ts b/packages/desktop-contracts/src/generated/ShellSnapshot.ts
+index 5e469917..fd48a22f 100644
+--- a/packages/desktop-contracts/src/generated/ShellSnapshot.ts
++++ b/packages/desktop-contracts/src/generated/ShellSnapshot.ts
+@@ -5,19 +5,23 @@ import type { ChangesView } from "./ChangesView";
+ import type { DiagnosticsView } from "./DiagnosticsView";
+ import type { EndpointReviewView } from "./EndpointReviewView";
+ import type { FeatureEntry } from "./FeatureEntry";
++import type { FeatureId } from "./FeatureId";
+ import type { GatewayView } from "./GatewayView";
+ import type { HarnessView } from "./HarnessView";
+ import type { ImportView } from "./ImportView";
+ import type { LearnerRef } from "./LearnerRef";
+ import type { LibraryView } from "./LibraryView";
+ import type { OfflineView } from "./OfflineView";
++import type { OnboardingState } from "./OnboardingState";
+ import type { OverviewView } from "./OverviewView";
+ import type { ResetFailure } from "./ResetFailure";
+ import type { ScanRecordView } from "./ScanRecordView";
+ import type { SessionsView } from "./SessionsView";
+ import type { StorageHealth } from "./StorageHealth";
++import type { SwitchBlocked } from "./SwitchBlocked";
+ import type { TenantView } from "./TenantView";
+ import type { Theme } from "./Theme";
++import type { UiVariant } from "./UiVariant";
+ import type { V1ImportView } from "./V1ImportView";
+ import type { WorkbenchView } from "./WorkbenchView";
+ 
+@@ -28,7 +32,29 @@ export type ShellSnapshot = {
+ /**
+  * Opaque, monotonically increasing revision (string-encoded u64).
+  */
+-revision: string, appearance: Theme, features: Array<FeatureEntry>, 
++revision: string, appearance: Theme, 
++/**
++ * Which shell renders (C28, D058); `features` is that shell's catalogue.
++ */
++uiVariant: UiVariant, 
++/**
++ * First-run wizard state (C28/C29).
++ */
++onboarding: OnboardingState, 
++/**
++ * The active destination (C28): what `navigate` last set, else the
++ * presentation's first sidebar entry.
++ */
++activeFeature: FeatureId, 
++/**
++ * "Show the calls" preference (C28).
++ */
++showCalls: boolean, 
++/**
++ * A held tenant switch awaiting the operator's resolution (C30 raises
++ * it; always absent in C28).
++ */
++switchBlocked: SwitchBlocked | null, features: Array<FeatureEntry>, 
+ /**
+  * True only in the distinct test-fixtures identity.
+  */
+
+# Untracked files in scope:
+# + apps/desktop/src/shell/feature-body.tsx
+# + apps/desktop/src/styles/tokens.css
+# + apps/desktop/src/v2/copy.ts
+# + apps/desktop/src/v2/fixtures.ts
+# + apps/desktop/src/v2/home.tsx
+# + apps/desktop/src/v2/modal.test.tsx
+# + apps/desktop/src/v2/modal.tsx
+# + apps/desktop/src/v2/palette.tsx
+# + apps/desktop/src/v2/store.ts
+# + apps/desktop/src/v2/tenant-switcher.tsx
+# + apps/desktop/src/v2/toasts.tsx
+# + apps/desktop/src/v2/v2-shell.test.tsx
+# + apps/desktop/src/v2/v2-shell.tsx
+# + apps/desktop/src/v2/verdict.test.tsx
+# + apps/desktop/src/v2/verdict.tsx
+# + crates/desktop-core/tests/ui_v2_shell/main.rs
+# + docs/planning/evidence/C28/native-acceptance.json
+# + docs/planning/evidence/C28/native-prepare.json
+# + docs/planning/evidence/C28/native/captures/home-dark.png
+# + docs/planning/evidence/C28/native/captures/home-light.png
+# + docs/planning/evidence/C28/native/captures/min-size.png
+# + docs/planning/evidence/C28/native/captures/rail-focus-harness.png
+# + docs/planning/evidence/C28/native/captures/rail-focus-home-selected.png
+# + docs/planning/evidence/C28/native/captures/rail-plain.png
+# + docs/planning/evidence/C28/native/captures/switcher-collapsed-900.png
+# + docs/planning/evidence/C28/native/captures/zoom-200-dark.png
+# + docs/planning/evidence/C28/native/captures/zoom-200-light.png
+# + docs/planning/evidence/C28/native/captures/zoom-200-palette.png
+# + docs/planning/evidence/C28/native/colors-dark.json
+# + docs/planning/evidence/C28/native/colors-light.json
+# + docs/planning/evidence/C28/native/observations.json
+# + docs/planning/evidence/C28/native/tree-palette.json
+# + docs/planning/evidence/C28/native/tree-toast.json
+# + docs/planning/evidence/C28/native/tree-v2-home.json
+# + docs/planning/evidence/C28/owner-work.json
+# + docs/planning/evidence/C28/runs/bindings.exit
+# + docs/planning/evidence/C28/runs/bindings.log
+# + docs/planning/evidence/C28/runs/clippy-default.exit
+# + docs/planning/evidence/C28/runs/clippy-default.log
+# + docs/planning/evidence/C28/runs/clippy.exit
+# + docs/planning/evidence/C28/runs/clippy.log
+# + docs/planning/evidence/C28/runs/contracts-typecheck.exit
+# + docs/planning/evidence/C28/runs/contracts-typecheck.log
+# + docs/planning/evidence/C28/runs/core-context-credentials.exit
+# + docs/planning/evidence/C28/runs/core-context-credentials.log
+# + docs/planning/evidence/C28/runs/core-fixtures.exit
+# + docs/planning/evidence/C28/runs/core-fixtures.flake-harness-tools.log
+# + docs/planning/evidence/C28/runs/core-fixtures.isolated-harness_identity_history.log
+# + docs/planning/evidence/C28/runs/core-fixtures.log
+# + docs/planning/evidence/C28/runs/core-lib.exit
+# + docs/planning/evidence/C28/runs/core-lib.log
+# + docs/planning/evidence/C28/runs/core-ui-v2-shell.exit
+# + docs/planning/evidence/C28/runs/core-ui-v2-shell.log
+# + docs/planning/evidence/C28/runs/desktop-build.exit
+# + docs/planning/evidence/C28/runs/desktop-build.log
+# + docs/planning/evidence/C28/runs/desktop-typecheck.exit
+# + docs/planning/evidence/C28/runs/desktop-typecheck.log
+# + docs/planning/evidence/C28/runs/hash-inputs.sh
+# + docs/planning/evidence/C28/runs/host.exit
+# + docs/planning/evidence/C28/runs/host.log
+# + docs/planning/evidence/C28/runs/inputs-after.sha256
+# + docs/planning/evidence/C28/runs/inputs-before.sha256
+# + docs/planning/evidence/C28/runs/notices.exit
+# + docs/planning/evidence/C28/runs/notices.log
+# + docs/planning/evidence/C28/runs/run-attempt-01.json
+# + docs/planning/evidence/C28/runs/run-attempt-02.json
+# + docs/planning/evidence/C28/runs/run-attempt-03.json
+# + docs/planning/evidence/C28/runs/run-attempt-04.json
+# + docs/planning/evidence/C28/runs/run-checks.sh
+# + docs/planning/evidence/C28/runs/rustfmt.exit
+# + docs/planning/evidence/C28/runs/rustfmt.log
+# + docs/planning/evidence/C28/runs/shell-controller.exit
+# + docs/planning/evidence/C28/runs/shell-controller.log
+# + docs/planning/evidence/C28/runs/vitest-truth.exit
+# + docs/planning/evidence/C28/runs/vitest-truth.log
+# + docs/planning/evidence/C28/runs/vitest.exit
+# + docs/planning/evidence/C28/runs/vitest.log
+# + docs/planning/evidence/C28/runs/xtask-lib.exit
+# + docs/planning/evidence/C28/runs/xtask-lib.log
+# + docs/planning/evidence/C28/screens/home-100-dark.png
+# + docs/planning/evidence/C28/screens/home-100-light.png
+# + docs/planning/evidence/C28/screens/home-200-dark.png
+# + docs/planning/evidence/C28/screens/home-200-light.png
+# + docs/planning/evidence/C28/screens/home-min-900x600.png
+# + docs/planning/evidence/C28/screens/palette-200.png
+# + docs/planning/evidence/C28/screens/switcher-collapsed-900.png
+# + docs/planning/reviews/C28/attempt-01/diff.patch
+# + docs/planning/reviews/C28/attempt-01/message.txt
+# + docs/planning/reviews/C28/attempt-01/request.json
+# + docs/planning/reviews/C28/attempt-01/source-inventory.json
+# + docs/planning/reviews/C28/attempt-01/thread-reply.log
+# + docs/planning/reviews/C28/attempt-01/verdict-returned.json
+# + docs/planning/reviews/C28/attempt-01/verdict.json
+# + docs/planning/reviews/C28/attempt-02/diff.patch
+# + docs/planning/reviews/C28/attempt-02/message.txt
+# + docs/planning/reviews/C28/attempt-02/request.json
+# + docs/planning/reviews/C28/attempt-02/source-inventory.json
+# + docs/planning/reviews/C28/attempt-02/thread-reply.log
+# + docs/planning/reviews/C28/attempt-02/verdict-returned.json
+# + docs/planning/reviews/C28/attempt-03/diff.patch
+# + docs/planning/reviews/C28/attempt-03/message.txt
+# + docs/planning/reviews/C28/attempt-03/request.json
+# + docs/planning/reviews/C28/attempt-03/source-inventory.json
+# + docs/planning/reviews/C28/attempt-03/thread-reply.log
+# + docs/planning/reviews/C28/attempt-03/verdict-returned.json
+# + docs/planning/reviews/C28/remediation-attempt-01.md
+# + docs/planning/reviews/C28/remediation-attempt-02.md
+# + docs/planning/reviews/C28/remediation-attempt-03.md
+# + tools/native-acceptance/acceptance_c28.py

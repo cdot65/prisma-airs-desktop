@@ -1,0 +1,14 @@
+$ cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_shell
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.43s
+     Running tests/ui_v2_shell/main.rs (target/debug/deps/ui_v2_shell-56fd6f519ef42576)
+
+running 5 tests
+test a_fresh_store_is_legacy_with_onboarding_needed_and_calls_shown ... ok
+test the_variant_is_persisted_restored_and_switches_the_catalogue ... ok
+test onboarding_only_moves_forward_and_show_calls_persists ... ok
+test a_pre_c28_state_document_loads_with_the_legacy_defaults ... ok
+test navigate_accepts_only_catalogued_destinations_and_is_session_scoped ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+EXIT 0

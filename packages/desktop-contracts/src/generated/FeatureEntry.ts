@@ -5,4 +5,14 @@ import type { FeatureId } from "./FeatureId";
 /**
  * One navigation destination in the shell.
  */
-export type FeatureEntry = { id: FeatureId, label: string, availability: Availability, };
+export type FeatureEntry = { id: FeatureId, label: string, availability: Availability, 
+/**
+ * The native menu accelerator digit (⌘1–⌘9), when the destination has
+ * one. The menu, the sidebar and the palette all read this one value.
+ */
+shortcut: number | null, 
+/**
+ * Whether the v2 sidebar lists it; false entries stay reachable from
+ * the Go menu and the command palette.
+ */
+sidebar: boolean, };

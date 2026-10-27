@@ -1,72 +1,42 @@
 //! Native macOS menus. Selections become typed [`MenuCommand`]s delivered on
 //! the shell observation channel; menus never carry authority themselves.
 
-use desktop_core::features::FeatureId;
+use desktop_core::features::{self, FeatureId, UiVariant};
 use desktop_core::wire::{MenuCommand, Theme};
 use tauri::menu::{Menu, MenuBuilder, MenuEvent, MenuItemBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::Host;
 
-/// Feature destinations reachable from the Go menu, with their shortcuts.
-const GO: [(&str, FeatureId, &str, Option<&str>); 11] = [
-    (
-        "go:runtime",
-        FeatureId::Runtime,
-        "Runtime Security",
-        Some("CmdOrCtrl+1"),
-    ),
-    (
-        "go:academy",
-        FeatureId::Academy,
-        "Academy",
-        Some("CmdOrCtrl+2"),
-    ),
-    (
-        "go:administration",
-        FeatureId::Administration,
-        "Administration",
-        Some("CmdOrCtrl+3"),
-    ),
-    (
-        "go:sessions",
-        FeatureId::Sessions,
-        "Sessions & Reports",
-        Some("CmdOrCtrl+4"),
-    ),
-    (
-        "go:library",
-        FeatureId::Library,
-        "Case Library",
-        Some("CmdOrCtrl+5"),
-    ),
-    (
-        "go:redTeam",
-        FeatureId::RedTeam,
-        "Red Team & Models",
-        Some("CmdOrCtrl+6"),
-    ),
-    (
-        "go:apiClient",
-        FeatureId::ApiClient,
-        "API Client",
-        Some("CmdOrCtrl+7"),
-    ),
-    (
-        "go:gateway",
-        FeatureId::Gateway,
-        "AI Gateway",
-        Some("CmdOrCtrl+8"),
-    ),
-    (
-        "go:harness",
-        FeatureId::Harness,
-        "Harness",
-        Some("CmdOrCtrl+9"),
-    ),
-    ("go:import", FeatureId::Import, "Import from v1", None),
-    ("go:settings", FeatureId::Settings, "Settings", None),
-];
+/// The Go menu is the presentation's catalogue (`features::catalogue_for`):
+/// one Rust inventory feeds the menu, the sidebar and the palette, so the
+/// shortcuts the sidebar shows are the accelerators the menu defines (C28).
+fn go_items(variant: UiVariant) -> Vec<(String, FeatureId, String, Option<String>)> {
+    features::catalogue_for(variant)
+        .into_iter()
+        .map(|entry| {
+            (
+                format!("go:{}", feature_name(entry.id)),
+                entry.id,
+                entry.label,
+                entry.shortcut.map(|n| format!("CmdOrCtrl+{n}")),
+            )
+        })
+        .collect()
+}
+
+/// The wire name of a feature (`runtime`, `apiClient`, ...): the same spelling
+/// the renderer and the catalogue use.
+fn feature_name(id: FeatureId) -> String {
+    match serde_json::to_value(id) {
+        Ok(serde_json::Value::String(name)) => name,
+        _ => unreachable!("FeatureId serializes to a string"),
+    }
+}
+
+fn feature_for(name: &str) -> Option<FeatureId> {
+    serde_json::from_value(serde_json::Value::String(name.to_owned())).ok()
+}
 
 const APPEARANCE: [(&str, Theme, &str); 3] = [
     ("appearance:system", Theme::System, "Match System"),
@@ -82,13 +52,16 @@ pub fn command_for(id: &str) -> Option<MenuCommand> {
     if id == "save" {
         return Some(MenuCommand::SaveDocument);
     }
+    if id == "tenants" {
+        return Some(MenuCommand::TenantSwitcher);
+    }
     if id == "settings" {
         return Some(MenuCommand::Navigate {
             feature: FeatureId::Settings,
         });
     }
-    if let Some((_, feature, _, _)) = GO.iter().find(|(item, ..)| *item == id) {
-        return Some(MenuCommand::Navigate { feature: *feature });
+    if let Some(feature) = id.strip_prefix("go:").and_then(feature_for) {
+        return Some(MenuCommand::Navigate { feature });
     }
     APPEARANCE
         .iter()
@@ -96,7 +69,22 @@ pub fn command_for(id: &str) -> Option<MenuCommand> {
         .map(|(_, theme, _)| MenuCommand::SetAppearance { theme: *theme })
 }
 
+/// The menu for the legacy presentation: what the app starts with before the
+/// core has loaded the stored preference (`rebuild` follows immediately).
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+    build_for(app, UiVariant::Legacy)
+}
+
+/// Replaces the native menu with the one for `variant`: called once the core
+/// is up with the stored preference, and again whenever the shell snapshot
+/// reports a changed `ui_variant`, so ⌘1–⌘9 always match the shell shown.
+pub fn rebuild<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Result<()> {
+    let menu = build_for(app, variant)?;
+    app.set_menu(menu)?;
+    Ok(())
+}
+
+fn build_for<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Result<Menu<R>> {
     let app_menu = SubmenuBuilder::new(app, "Prisma AIRS Desktop v2")
         .about(None)
         .separator()
@@ -167,8 +155,13 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .separator()
         .fullscreen()
         .build()?;
-    let mut go = SubmenuBuilder::new(app, "Go");
-    for (id, _, label, accelerator) in GO {
+    let mut go = SubmenuBuilder::new(app, "Go").item(
+        &MenuItemBuilder::with_id("tenants", "Switch Tenant…")
+            .accelerator("CmdOrCtrl+T")
+            .build(app)?,
+    );
+    go = go.separator();
+    for (id, _, label, accelerator) in go_items(variant) {
         let mut item = MenuItemBuilder::with_id(id, label);
         if let Some(accelerator) = accelerator {
             item = item.accelerator(accelerator);
@@ -250,5 +243,48 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     }
     if let Some(command) = command_for(id) {
         app.state::<Host>().menu_command(command);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn go_items_follow_the_presentation_catalogue() {
+        let legacy = go_items(UiVariant::Legacy);
+        assert_eq!(legacy[0].0, "go:runtime");
+        assert_eq!(legacy[0].3.as_deref(), Some("CmdOrCtrl+1"));
+        assert_eq!(legacy.len(), 11);
+        let v2 = go_items(UiVariant::V2);
+        assert_eq!(
+            v2[0],
+            (
+                "go:home".to_owned(),
+                FeatureId::Home,
+                "Home".to_owned(),
+                Some("CmdOrCtrl+1".to_owned())
+            )
+        );
+        assert_eq!(v2[1].0, "go:inbox");
+        assert_eq!(v2[6].3.as_deref(), Some("CmdOrCtrl+7"));
+        assert!(
+            v2[7..].iter().all(|(_, _, _, a)| a.is_none()),
+            "non-sidebar entries have no accelerator"
+        );
+        assert_eq!(
+            command_for("go:apiClient"),
+            Some(MenuCommand::Navigate {
+                feature: FeatureId::ApiClient
+            })
+        );
+        assert_eq!(
+            command_for("go:home"),
+            Some(MenuCommand::Navigate {
+                feature: FeatureId::Home
+            })
+        );
+        assert_eq!(command_for("go:nope"), None);
+        assert_eq!(command_for("tenants"), Some(MenuCommand::TenantSwitcher));
     }
 }
