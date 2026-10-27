@@ -1,0 +1,895 @@
+diff --git a/crates/xtask/src/cli.rs b/crates/xtask/src/cli.rs
+index 6dc7c1c7..b91881fd 100644
+--- a/crates/xtask/src/cli.rs
++++ b/crates/xtask/src/cli.rs
+@@ -34,6 +34,7 @@ const USAGE: &str = "usage: xtask <command> [options]
+   live-scope        [--scope PRIVATE_MANIFEST_OUTSIDE_THE_REPOSITORY]
+   live-run          --scope PRIVATE_MANIFEST_OUTSIDE_THE_REPOSITORY [--family Lxx]...
+   harness-sign      --identity NAME --out DIR_OUTSIDE_RESOURCES
++  release-build     --manifest docs/architecture/checks.json
+   release-sign      --identity NAME --app PATH --dmg PATH [--profile NOTARY_PROFILE] [--execute [--notarize]]";
+ 
+ struct Args {
+@@ -100,11 +101,11 @@ impl Args {
+         match (self.value("--chunk"), self.value("--phase")) {
+             (Some(c), None) => match Subject::parse(c)? {
+                 s @ Subject::Chunk(_) => Ok(s),
+-                _ => Err(invalid("--chunk expects C01-C26")),
++                _ => Err(invalid("--chunk expects C01-C34")),
+             },
+             (None, Some(p)) => match Subject::parse(p)? {
+                 s @ Subject::Phase(_) => Ok(s),
+-                _ => Err(invalid("--phase expects P01-P08")),
++                _ => Err(invalid("--phase expects P01-P09")),
+             },
+             _ => Err(invalid(format!(
+                 "exactly one of --chunk or --phase is required\n{USAGE}"
+@@ -453,6 +454,14 @@ pub fn main(raw: Vec<String>) -> Result<()> {
+             );
+             Ok(())
+         }
++        "release-build" => {
++            args.only(&["--manifest"])?;
++            let manifest = args.manifest(&repo)?;
++            let env = Environment::prepare(&repo)?;
++            let record = crate::signing::release_build(&repo, &manifest, &env)?;
++            println!("{} {}", record.app, record.dmg);
++            Ok(())
++        }
+         "release-sign" => {
+             args.only(&[
+                 "--identity",
+diff --git a/crates/xtask/src/complete.rs b/crates/xtask/src/complete.rs
+index 0ea59763..6035cb24 100644
+--- a/crates/xtask/src/complete.rs
++++ b/crates/xtask/src/complete.rs
+@@ -520,7 +520,7 @@ pub fn reopen(
+     let ledger = repo.completion_ledger();
+     let entries = read_ledger(&ledger)?;
+     let mut affected = vec![subject];
+-    let order: Vec<Subject> = (1..=26u8)
++    let order: Vec<Subject> = (1..=Subject::LAST_CHUNK)
+         .flat_map(|n| {
+             let chunk = Subject::Chunk(n);
+             let mut out = vec![chunk];
+diff --git a/crates/xtask/src/manifest.rs b/crates/xtask/src/manifest.rs
+index b537f964..5d4b8f92 100644
+--- a/crates/xtask/src/manifest.rs
++++ b/crates/xtask/src/manifest.rs
+@@ -137,17 +137,17 @@ impl Manifest {
+         if self.target != "aarch64-apple-darwin" {
+             return Err(invalid("checks.json target must be aarch64-apple-darwin"));
+         }
+-        for n in 1..=26u8 {
++        for n in 1..=Subject::LAST_CHUNK {
+             let id = Subject::Chunk(n).to_string();
+             if !self.chunks.contains_key(&id) {
+                 return Err(invalid(format!("checks.json is missing chunk {id}")));
+             }
+         }
+-        if self.chunks.len() != 26 {
+-            return Err(invalid("checks.json must define exactly C01-C26"));
++        if self.chunks.len() != usize::from(Subject::LAST_CHUNK) {
++            return Err(invalid("checks.json must define exactly C01-C34"));
+         }
+         let mut phase_members = Vec::new();
+-        for n in 1..=8u8 {
++        for n in 1..=Subject::LAST_PHASE {
+             let id = Subject::Phase(n).to_string();
+             let members = self
+                 .phases
+@@ -155,9 +155,11 @@ impl Manifest {
+                 .ok_or_else(|| invalid(format!("checks.json is missing phase {id}")))?;
+             phase_members.extend(members.iter().cloned());
+         }
+-        let expected: Vec<String> = (1..=26u8).map(|n| Subject::Chunk(n).to_string()).collect();
+-        if phase_members != expected || self.phases.len() != 8 {
+-            return Err(invalid("phases must partition C01-C26 in order"));
++        let expected: Vec<String> = (1..=Subject::LAST_CHUNK)
++            .map(|n| Subject::Chunk(n).to_string())
++            .collect();
++        if phase_members != expected || self.phases.len() != usize::from(Subject::LAST_PHASE) {
++            return Err(invalid("phases must partition C01-C34 in order"));
+         }
+         for argv in self.all_static_commands() {
+             check_argv(argv)?;
+diff --git a/crates/xtask/src/package.rs b/crates/xtask/src/package.rs
+index f9d9415e..62000c83 100644
+--- a/crates/xtask/src/package.rs
++++ b/crates/xtask/src/package.rs
+@@ -27,7 +27,7 @@ impl Kind {
+ /// Completed chunks, in order, from the append-only ledger.
+ pub fn completed_chunks(repo: &Repo) -> Result<Vec<Subject>> {
+     let entries = read_ledger(&repo.completion_ledger())?;
+-    Ok((1..=26u8)
++    Ok((1..=Subject::LAST_CHUNK)
+         .map(Subject::Chunk)
+         .filter(|s| is_completed(repo, &entries, *s))
+         .collect())
+diff --git a/crates/xtask/src/subject.rs b/crates/xtask/src/subject.rs
+index 52b687a2..fe0b7cf0 100644
+--- a/crates/xtask/src/subject.rs
++++ b/crates/xtask/src/subject.rs
+@@ -1,4 +1,4 @@
+-//! Validated review subjects: chunks C01–C26 and phases P01–P08.
++//! Validated review subjects: chunks C01–C34 and phases P01–P09 (P09 = C27–C34, D058).
+ 
+ use std::fmt;
+ 
+@@ -11,6 +11,10 @@ pub enum Subject {
+ }
+ 
+ impl Subject {
++    /// The last registered chunk and phase (checks.json must define exactly these).
++    pub const LAST_CHUNK: u8 = 34;
++    pub const LAST_PHASE: u8 = 9;
++
+     pub fn parse(text: &str) -> Result<Self> {
+         let parse_num = |digits: &str, max: u8| -> Option<u8> {
+             (digits.len() == 2 && digits.bytes().all(|b| b.is_ascii_digit()))
+@@ -18,14 +22,20 @@ impl Subject {
+                 .flatten()
+                 .filter(|n| (1..=max).contains(n))
+         };
+-        if let Some(n) = text.strip_prefix('C').and_then(|rest| parse_num(rest, 26)) {
++        if let Some(n) = text
++            .strip_prefix('C')
++            .and_then(|rest| parse_num(rest, Self::LAST_CHUNK))
++        {
+             return Ok(Self::Chunk(n));
+         }
+-        if let Some(n) = text.strip_prefix('P').and_then(|rest| parse_num(rest, 8)) {
++        if let Some(n) = text
++            .strip_prefix('P')
++            .and_then(|rest| parse_num(rest, Self::LAST_PHASE))
++        {
+             return Ok(Self::Phase(n));
+         }
+         Err(invalid(format!(
+-            "not a valid chunk (C01-C26) or phase (P01-P08): {text:?}"
++            "not a valid chunk (C01-C34) or phase (P01-P09): {text:?}"
+         )))
+     }
+ 
+@@ -42,3 +52,23 @@ impl fmt::Display for Subject {
+         }
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::Subject;
++
++    #[test]
++    fn accepts_registered_range_only() {
++        assert_eq!(Subject::parse("C01").unwrap(), Subject::Chunk(1));
++        assert_eq!(Subject::parse("C26").unwrap(), Subject::Chunk(26));
++        assert_eq!(Subject::parse("C27").unwrap(), Subject::Chunk(27));
++        assert_eq!(Subject::parse("C34").unwrap(), Subject::Chunk(34));
++        assert_eq!(Subject::parse("P08").unwrap(), Subject::Phase(8));
++        assert_eq!(Subject::parse("P09").unwrap(), Subject::Phase(9));
++        for bad in ["C00", "C35", "P00", "P10", "C7", "C027", "c27", "X01"] {
++            assert!(Subject::parse(bad).is_err(), "{bad} must be refused");
++        }
++        assert_eq!(Subject::Chunk(34).to_string(), "C34");
++        assert_eq!(Subject::Phase(9).to_string(), "P09");
++    }
++}
+diff --git a/docs/architecture/checks.json b/docs/architecture/checks.json
+index e5610e28..8c0aedf5 100644
+--- a/docs/architecture/checks.json
++++ b/docs/architecture/checks.json
+@@ -2305,6 +2305,496 @@
+       ],
+       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+       "live_requirement": "final signed-byte F01-F09 manifest"
++    },
++    "C27": {
++      "rust_target": "docs_only",
++      "fixture_command": [
++        "cargo",
++        "test",
++        "--locked",
++        "-p",
++        "xtask",
++        "--lib"
++      ],
++      "native_prepare": [
++        "cargo",
++        "run",
++        "--locked",
++        "-p",
++        "xtask",
++        "--",
++        "native-prepare",
++        "--chunk",
++        "C27",
++        "--target",
++        "aarch64-apple-darwin",
++        "--features",
++        "test-fixtures"
++      ],
++      "native_acceptance": "not applicable: documentation and controller registration only (no UI change)",
++      "live_requirement": "no product endpoint calls",
++      "host_commands": [
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "xtask",
++          "--lib"
++        ],
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "xtask",
++          "--features",
++          "test-fixtures",
++          "--test",
++          "shell_controller"
++        ]
++      ]
++    },
++    "C28": {
++      "rust_target": "ui_v2_shell",
++      "fixture_command": [
++        "cargo",
++        "test",
++        "--locked",
++        "-p",
++        "desktop-core",
++        "--features",
++        "test-fixtures",
++        "--test",
++        "ui_v2_shell"
++      ],
++      "native_prepare": [
++        "cargo",
++        "run",
++        "--locked",
++        "-p",
++        "xtask",
++        "--",
++        "native-prepare",
++        "--chunk",
++        "C28",
++        "--target",
++        "aarch64-apple-darwin",
++        "--features",
++        "test-fixtures"
++      ],
++      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §7); real CUA/operator record required",
++      "live_requirement": "no product endpoint calls; fixtures only",
++      "host_commands": [
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-core",
++          "--features",
++          "test-fixtures"
++        ],
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-host",
++          "--features",
++          "test-fixtures"
++        ]
++      ],
++      "frontend_commands": [
++        [
++          "pnpm",
++          "--filter",
++          "@prisma-airs/desktop",
++          "exec",
++          "vitest",
++          "run",
++          "--config",
++          "vitest.config.ts"
++        ]
++      ]
++    },
++    "C29": {
++      "rust_target": "ui_v2_onboarding",
++      "fixture_command": [
++        "cargo",
++        "test",
++        "--locked",
++        "-p",
++        "desktop-core",
++        "--features",
++        "test-fixtures",
++        "--test",
++        "ui_v2_onboarding"
++      ],
++      "native_prepare": [
++        "cargo",
++        "run",
++        "--locked",
++        "-p",
++        "xtask",
++        "--",
++        "native-prepare",
++        "--chunk",
++        "C29",
++        "--target",
++        "aarch64-apple-darwin",
++        "--features",
++        "test-fixtures"
++      ],
++      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §7); real CUA/operator record required",
++      "live_requirement": "designated read-only tenant verify only (owner scope 2026-10-25); no writes",
++      "host_commands": [
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-core",
++          "--features",
++          "test-fixtures"
++        ],
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-host",
++          "--features",
++          "test-fixtures"
++        ]
++      ],
++      "frontend_commands": [
++        [
++          "pnpm",
++          "--filter",
++          "@prisma-airs/desktop",
++          "exec",
++          "vitest",
++          "run",
++          "--config",
++          "vitest.config.ts"
++        ]
++      ]
++    },
++    "C30": {
++      "rust_target": "ui_v2_inbox",
++      "fixture_command": [
++        "cargo",
++        "test",
++        "--locked",
++        "-p",
++        "desktop-core",
++        "--features",
++        "test-fixtures",
++        "--test",
++        "ui_v2_inbox"
++      ],
++      "native_prepare": [
++        "cargo",
++        "run",
++        "--locked",
++        "-p",
++        "xtask",
++        "--",
++        "native-prepare",
++        "--chunk",
++        "C30",
++        "--target",
++        "aarch64-apple-darwin",
++        "--features",
++        "test-fixtures"
++      ],
++      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §7); real CUA/operator record required",
++      "live_requirement": "no product endpoint calls; fixtures only",
++      "host_commands": [
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-core",
++          "--features",
++          "test-fixtures"
++        ],
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-host",
++          "--features",
++          "test-fixtures"
++        ]
++      ],
++      "frontend_commands": [
++        [
++          "pnpm",
++          "--filter",
++          "@prisma-airs/desktop",
++          "exec",
++          "vitest",
++          "run",
++          "--config",
++          "vitest.config.ts"
++        ]
++      ]
++    },
++    "C31": {
++      "rust_target": "ui_v2_reviews",
++      "fixture_command": [
++        "cargo",
++        "test",
++        "--locked",
++        "-p",
++        "desktop-core",
++        "--features",
++        "test-fixtures",
++        "--test",
++        "ui_v2_reviews"
++      ],
++      "native_prepare": [
++        "cargo",
++        "run",
++        "--locked",
++        "-p",
++        "xtask",
++        "--",
++        "native-prepare",
++        "--chunk",
++        "C31",
++        "--target",
++        "aarch64-apple-darwin",
++        "--features",
++        "test-fixtures"
++      ],
++      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §7); real CUA/operator record required",
++      "live_requirement": "one prefixed review apply and read-back on the designated change-allowed tenant with cleanup (owner scope 2026-10-25)",
++      "host_commands": [
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-core",
++          "--features",
++          "test-fixtures"
++        ],
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-host",
++          "--features",
++          "test-fixtures"
++        ]
++      ],
++      "frontend_commands": [
++        [
++          "pnpm",
++          "--filter",
++          "@prisma-airs/desktop",
++          "exec",
++          "vitest",
++          "run",
++          "--config",
++          "vitest.config.ts"
++        ]
++      ]
++    },
++    "C32": {
++      "rust_target": "ui_v2_harness",
++      "fixture_command": [
++        "cargo",
++        "test",
++        "--locked",
++        "-p",
++        "desktop-core",
++        "--features",
++        "test-fixtures",
++        "--test",
++        "ui_v2_harness"
++      ],
++      "native_prepare": [
++        "cargo",
++        "run",
++        "--locked",
++        "-p",
++        "xtask",
++        "--",
++        "native-prepare",
++        "--chunk",
++        "C32",
++        "--target",
++        "aarch64-apple-darwin",
++        "--features",
++        "test-fixtures"
++      ],
++      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §7); real CUA/operator record required",
++      "live_requirement": "no product endpoint calls; fixture engine only",
++      "host_commands": [
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-core",
++          "--features",
++          "test-fixtures"
++        ],
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-host",
++          "--features",
++          "test-fixtures"
++        ]
++      ],
++      "frontend_commands": [
++        [
++          "pnpm",
++          "--filter",
++          "@prisma-airs/desktop",
++          "exec",
++          "vitest",
++          "run",
++          "--config",
++          "vitest.config.ts"
++        ]
++      ]
++    },
++    "C33": {
++      "rust_target": "ui_v2_workbench",
++      "fixture_command": [
++        "cargo",
++        "test",
++        "--locked",
++        "-p",
++        "desktop-core",
++        "--features",
++        "test-fixtures",
++        "--test",
++        "ui_v2_workbench"
++      ],
++      "native_prepare": [
++        "cargo",
++        "run",
++        "--locked",
++        "-p",
++        "xtask",
++        "--",
++        "native-prepare",
++        "--chunk",
++        "C33",
++        "--target",
++        "aarch64-apple-darwin",
++        "--features",
++        "test-fixtures"
++      ],
++      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §7); real CUA/operator record required",
++      "live_requirement": "no product endpoint calls; fixtures only",
++      "host_commands": [
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-core",
++          "--features",
++          "test-fixtures"
++        ],
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-host",
++          "--features",
++          "test-fixtures"
++        ]
++      ],
++      "frontend_commands": [
++        [
++          "pnpm",
++          "--filter",
++          "@prisma-airs/desktop",
++          "exec",
++          "vitest",
++          "run",
++          "--config",
++          "vitest.config.ts"
++        ]
++      ]
++    },
++    "C34": {
++      "rust_target": "ui_v2_closure",
++      "fixture_command": [
++        "cargo",
++        "test",
++        "--locked",
++        "-p",
++        "desktop-core",
++        "--features",
++        "test-fixtures",
++        "--test",
++        "ui_v2_closure"
++      ],
++      "native_prepare": [
++        "cargo",
++        "run",
++        "--locked",
++        "-p",
++        "xtask",
++        "--",
++        "native-prepare",
++        "--chunk",
++        "C34",
++        "--target",
++        "aarch64-apple-darwin",
++        "--features",
++        "test-fixtures"
++      ],
++      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §7); real CUA/operator record required; cumulative for every destination",
++      "live_requirement": "no product endpoint calls; fixtures only",
++      "host_commands": [
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-core",
++          "--features",
++          "test-fixtures"
++        ],
++        [
++          "cargo",
++          "test",
++          "--locked",
++          "-p",
++          "desktop-host",
++          "--features",
++          "test-fixtures"
++        ]
++      ],
++      "frontend_commands": [
++        [
++          "pnpm",
++          "--filter",
++          "@prisma-airs/desktop",
++          "exec",
++          "vitest",
++          "run",
++          "--config",
++          "vitest.config.ts"
++        ]
++      ]
+     }
+   },
+   "phases": {
+@@ -2349,6 +2839,16 @@
+     "P08": [
+       "C25",
+       "C26"
++    ],
++    "P09": [
++      "C27",
++      "C28",
++      "C29",
++      "C30",
++      "C31",
++      "C32",
++      "C33",
++      "C34"
+     ]
+   },
+   "phase_native_prepare": [
+diff --git a/docs/architecture/review-verdict.schema.json b/docs/architecture/review-verdict.schema.json
+index 98781307..f4a872c4 100644
+--- a/docs/architecture/review-verdict.schema.json
++++ b/docs/architecture/review-verdict.schema.json
+@@ -26,7 +26,7 @@
+     },
+     "subject": {
+       "type": "string",
+-      "description": "Chunk C01-C26 or phase P01-P08 under review"
++      "description": "Chunk C01-C34 or phase P01-P09 under review"
+     },
+     "fingerprints": {
+       "type": "object",
+diff --git a/docs/planning/IMPLEMENTATION-PLAN.md b/docs/planning/IMPLEMENTATION-PLAN.md
+index 6e98edc1..bdbaa370 100644
+--- a/docs/planning/IMPLEMENTATION-PLAN.md
++++ b/docs/planning/IMPLEMENTATION-PLAN.md
+@@ -77,6 +77,7 @@ change updates predecessors, plan and review evidence before execution.
+ | P06   | C19–C22  | Native Harness, Rust sign-in, typed host tools, workspace MCP    |
+ | P07   | C23–C24  | Reviewed imports, native quality, accessibility/privacy closure  |
+ | P08   | C25–C26  | Controlled live qualification; signed installed DMG acceptance   |
++| P09   | C27–C34  | UI v2 "Refined Native": spec, shell, wizard, destinations (D058) |
+ 
+ ### G00 — Plan confirmation
+ 
+diff --git a/docs/planning/chunks/README.md b/docs/planning/chunks/README.md
+index b3326eff..737c8ef5 100644
+--- a/docs/planning/chunks/README.md
++++ b/docs/planning/chunks/README.md
+@@ -32,3 +32,11 @@ and [canonical implementer prompt](../prompts/implement-chunk.md).
+ - [C24 — Native quality, privacy, and performance closure](C24.md) (P07)
+ - [C25 — Controlled live and release-candidate qualification](C25.md) (P08)
+ - [C26 — Signed/notarized DMG, installed acceptance, and manual rollback](C26.md) (P08)
++- [C27 — UI v2 design specification and P09 registration](C27.md) (P09)
++- [C28 — Tokens, v2 shell behind the flag, Home skeleton](C28.md) (P09)
++- [C29 — First-run wizard and add-tenant sheet](C29.md) (P09)
++- [C30 — Inbox, reads, tenant switch guard, Home attention](C30.md) (P09)
++- [C31 — Reviews, Administration inventory, key rotation](C31.md) (P09)
++- [C32 — Harness re-skin and lifecycle fixtures](C32.md) (P09)
++- [C33 — API Client, Test Cases and the calls panel](C33.md) (P09)
++- [C34 — Academy embed, legacy shell removal, P09 closure](C34.md) (P09)
+diff --git a/docs/planning/decisions.md b/docs/planning/decisions.md
+index f70443b9..ecc7d50d 100644
+--- a/docs/planning/decisions.md
++++ b/docs/planning/decisions.md
+@@ -772,7 +772,8 @@ Decided in C14 (implementer decision, recorded for review).
+   `body_kind`, `[auth]`, `[variables]`), shared `environments/*.toml` and
+   JSON/YAML schema text. Edits go through `toml_edit` 0.25.17 (already in the
+   lock), so comments, row decoration, extension keys and CRLF survive a Save.
+-  A new collection is created only inside a Git repository (v1).
++  A new collection is created only inside a Git repository (v1; revised
++  by D057: Git is optional).
+ - **Inventory.** Discovery is read-only and bounded (1 MiB metadata, 2,000
+   requests, 20,000 entries, depth 24, 512-byte paths; a directory is read
+   no further than the entry budget, and an unreadable entry makes the
+@@ -2340,6 +2341,102 @@ Owner decisions, 2026-10-25, recorded after Codex C25 attempt-01.
+    fixture and native evidence stay required; the download under lease,
+    the local draft and sign-out with revocation passed live.
+ 
++## D056 — Academy live follow-ups move to 2.1.0; stable is 2.0.0
++
++Owner decisions, 2026-10-25 ("i don't care about the academy flows for
++now, mark it as a followup in version 2.1.0, let's instead focus on
++shipping 2.0.0"; the release version chosen as 2.0.0).
++
++1. **The stable release is 2.0.0.** The earlier 0.2.0 build, signed and
++   notarized, is the previous version for C26's manual update and
++   rollback checks.
++2. **C25-R2-F1 and C25-R2-G1 are 2.1.0 follow-ups.** They are interactive
++   live Academy flows for W53 (an exam started) and W65 (the Daily Incident
++   started and answered), and live runs asserting each Academy call's own
++   result. That result is the inline check's grading verdict, progress
++   cleared by a course reset, and certificates unchanged across it. The
++   runner already supports these assertions (`call.*` entries take
++   `?? <pointer> …` expectations, tested); the 2.1.0 work designates and
++   runs them. C25 stays complete at its D034 chunk gate. The P08 phase
++   sign-off does not raise C25 on these items.
++
++## D057 — C26 attempt 01: installed-acceptance defects and the Git rule
++
++C26 installed acceptance, attempt 01 (airsTest, 2026-10-26, record in
++`evidence/C26/installed/attempt-01/record.json`) passed install, signature,
++notarization, staple, engine pin, update (U1, U2) and F01–F03 on the
++real 2.0.0 bytes, and failed F04, F05 and F06. The tester stopped there;
++F07–F09, tamper and rollback did not run. C26 is not complete on this
++attempt; the defects are fixed, a new signed build is produced, and the
++whole kit is run again.
++
++1. **F04 (Gateway Playground).** Text fields written without classes had
++   no visible edge after Tailwind's reset, so the endpoint, key and prompt
++   fields could not be seen. Fixed app-wide by a zero-specificity base
++   style for text fields, selects and text areas; the Run button now says
++   what is missing, and the Inference prerequisites tab reflects the
++   stored key instead of stale copy.
++2. **F05 (Harness company sign-in).** Company sign-in was reachable only
++   after tenant, management client and Gateway workspace, and nothing
++   before that mentioned it. The Harness now shows a "what you need first"
++   checklist, an always-visible company sign-in section (disabled with its
++   reason until a workspace is chosen) and specific save refusals.
++3. **F06 (API Client).** Revises the D040 rule "a new collection
++   is created only inside a Git repository (v1)": Git is optional. A new
++   collection can be created in any folder the user chooses; opening an
++   empty folder initialises a collection there; a non-empty folder without
++   `collection.toml` is still refused, now visibly, with a next step. The
++   Git tab works unchanged when the collection is inside a repository.
++
++## D058 — UI v2 "Refined Native": frozen prototype, P09 extraction plan
++
++Draft 2026-10-26, pending owner acceptance before commit.
++
++The owner explored fifteen interactive shell concepts on a Claude Design canvas
++(https://claude.ai/artifact/2SEXT1XMHdZkxHvdw8oaYL), selected "Refined
++Native", and iterated its prototype (R2App, R2Onboard, R2Harness ×3,
++R2Rationale) through sixteen independent Codex usability reviews (scores 6, 7,
++7, then 8 on rounds 4–16). The prototype is frozen at canvas version 134 and
++copied verbatim into `docs/architecture/ui-v2/prototype/` with a SHA-256
++manifest; the canvas page is not changed again. Prototype data is invented and
++is never shipped.
++
++Decisions (grilling session, 55 questions, all recommendations accepted):
++
++1. Extraction is spec, then TypeScript presentation, then Rust contract, as
++   phase P09 chunks C27–C34 (see the chunk index). The first implementation
++   slice is the shell plus the first-run wizard and add-tenant sheet.
++2. The prototype's state model is normative for twelve named invariants
++   (`docs/architecture/ui-v2/invariants.md`) and illustrative for code shape.
++   Every prototype state field is assigned Rust-owned/observed or UI-transient
++   (`state-ownership.md`); nothing goes to browser storage.
++3. D014 holds: secrets enter only through the host secret sheet and vault;
++   rotation secrets are disclosed once through a core-issued token; typed-name
++   confirmation is validated in the core; tenant switch is refused by the core
++   while a Harness decision is pending; write-capable tool calls use the
++   native confirmation sheet.
++4. Tokens live in a local `--v2-*` file; Academy variables stay for the
++   embedded learner view. One Rust navigation inventory feeds the native menu,
++   sidebar and palette; ⌘1–⌘9 are menu-defined. Feature ids gain `home` and
++   `inbox`.
++5. The new shell ships behind a Rust-owned `ui_variant` flag and the legacy
++   shell, flag and legacy acceptance scripts are removed in C34. The Academy
++   learner view is embedded unchanged.
++6. The wizard realises D013 (scan key first and only required credential);
++   v1 import is offered on the tenant step.
++7. Verification: Vitest fixtures named after every prototype wrapper board,
++   Rust tests per invariant, native acceptance extended with focus ring, live
++   regions, topmost modal and Reduce Motion persistence, screenshot evidence
++   at 100%/200% in both themes per chunk. Live calls only in C29 (verify,
++   Vulture, reads) and C31 (review apply, Redtail, prefixed) inside the scope
++   designated 2026-10-25. C27 is reviewed at 9/10 in every dimension; C28–C34
++   follow D034.
++8. Minimum window 1180×720 with the rail collapsing below 1280 wide; toasts
++   persist under Reduce Motion; "Show the calls" panel shows diagnostics-
++   redacted wire data; English only in P09; chunks commit on main except C34.
++9. C27 proceeds in parallel with C26 (docs and controller registration only);
++   C28 waits for C26.
++
+ ## Directions explicitly requested before round 1
+ 
+ - Fresh application implementation; the existing GPUI codebase is primarily a
+diff --git a/docs/planning/status.md b/docs/planning/status.md
+index 2f073eeb..1acab483 100644
+--- a/docs/planning/status.md
++++ b/docs/planning/status.md
+@@ -48,6 +48,7 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
+ | C24 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-02 passed; committed as 582ae06 and verified | Follow-ups remediated (`reviews/C24/follow-ups.md`) |
+ | P07 | **Complete**: Codex phase attempt-04 scored 9/9/9/9/9; committed as 6a7253c2 and verified against the reviewed source fingerprint | Integrated native checks for C01–C24, every workload and the production footprint on the P07 bundle and tree, and 76 mutation probes; attempts remediated (`reviews/P07/remediation-attempt-0*.md`) |
+ | C25–C26 | Planned | Ordered predecessors required; C25 opens P08 |
++| C27–C34 | Planned (P09, D058) | C27 is docs and controller registration and may run in parallel with C26; C28 requires C26. Specification: `docs/architecture/ui-v2/` |
+ 
+ ## C01 evidence (docs/planning/evidence/C01)
+ 
+
+# Untracked files added by C27 (full content in the tree):
+# + docs/architecture/ui-v2/DESIGN-V2.md
+# + docs/architecture/ui-v2/README.md
+# + docs/architecture/ui-v2/invariants.md
+# + docs/architecture/ui-v2/prototype/MANIFEST.sha256
+# + docs/architecture/ui-v2/prototype/R2App.dc.html
+# + docs/architecture/ui-v2/prototype/R2Harness.dc.html
+# + docs/architecture/ui-v2/prototype/R2Harness2.dc.html
+# + docs/architecture/ui-v2/prototype/R2Harness3.dc.html
+# + docs/architecture/ui-v2/prototype/R2Onboard.dc.html
+# + docs/architecture/ui-v2/prototype/R2Rationale.dc.html
+# + docs/architecture/ui-v2/provenance.md
+# + docs/architecture/ui-v2/screens/academy.md
+# + docs/architecture/ui-v2/screens/api-client-test-cases.md
+# + docs/architecture/ui-v2/screens/harness.md
+# + docs/architecture/ui-v2/screens/inbox-reads.md
+# + docs/architecture/ui-v2/screens/reviews-administration.md
+# + docs/architecture/ui-v2/screens/shell.md
+# + docs/architecture/ui-v2/screens/wizard.md
+# + docs/architecture/ui-v2/state-ownership.md
+# + docs/architecture/ui-v2/tokens.md
+# + docs/planning/chunks/C27.md
+# + docs/planning/chunks/C28.md
+# + docs/planning/chunks/C29.md
+# + docs/planning/chunks/C30.md
+# + docs/planning/chunks/C31.md
+# + docs/planning/chunks/C32.md
+# + docs/planning/chunks/C33.md
+# + docs/planning/chunks/C34.md

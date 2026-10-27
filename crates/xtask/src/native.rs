@@ -201,6 +201,10 @@ pub fn acceptance_status(
     subject: Subject,
     executable_sha256: &str,
 ) -> Vec<String> {
+    if manifest.docs_only(subject) {
+        // D058: nothing native to accept for a documentation-only chunk.
+        return Vec::new();
+    }
     let path = repo.evidence_dir(subject).join("native-acceptance.json");
     let Ok(bytes) = std::fs::read(&path) else {
         return vec![format!(

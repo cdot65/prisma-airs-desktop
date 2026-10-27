@@ -2305,6 +2305,497 @@
       ],
       "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
       "live_requirement": "final signed-byte F01-F09 manifest"
+    },
+    "C27": {
+      "rust_target": "docs_only",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--lib"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C27",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "not applicable: documentation and controller registration only (no UI change)",
+      "live_requirement": "no product endpoint calls",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--lib"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "docs_only": true
+    },
+    "C28": {
+      "rust_target": "ui_v2_shell",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_shell"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C28",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §8); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C29": {
+      "rust_target": "ui_v2_onboarding",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_onboarding"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C29",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §8); real CUA/operator record required",
+      "live_requirement": "designated read-only tenant verify only (owner scope 2026-10-25); no writes",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C30": {
+      "rust_target": "ui_v2_inbox",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_inbox"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C30",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §8); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C31": {
+      "rust_target": "ui_v2_reviews",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_reviews"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C31",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §8); real CUA/operator record required",
+      "live_requirement": "one prefixed review apply and read-back on the designated change-allowed tenant with cleanup (owner scope 2026-10-25)",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C32": {
+      "rust_target": "ui_v2_harness",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_harness"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C32",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §8); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixture engine only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C33": {
+      "rust_target": "ui_v2_workbench",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_workbench"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C33",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §8); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C34": {
+      "rust_target": "ui_v2_closure",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_closure"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C34",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 §8); real CUA/operator record required; cumulative for every destination",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
     }
   },
   "phases": {
@@ -2349,6 +2840,16 @@
     "P08": [
       "C25",
       "C26"
+    ],
+    "P09": [
+      "C27",
+      "C28",
+      "C29",
+      "C30",
+      "C31",
+      "C32",
+      "C33",
+      "C34"
     ]
   },
   "phase_native_prepare": [

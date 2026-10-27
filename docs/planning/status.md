@@ -48,6 +48,8 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C24 | **Complete** (generation 2): completed at 8/10 under D034, then raised; Codex attempt-02 passed; committed as 582ae06 and verified | Follow-ups remediated (`reviews/C24/follow-ups.md`) |
 | P07 | **Complete**: Codex phase attempt-04 scored 9/9/9/9/9; committed as 6a7253c2 and verified against the reviewed source fingerprint | Integrated native checks for C01–C24, every workload and the production footprint on the P07 bundle and tree, and 76 mutation probes; attempts remediated (`reviews/P07/remediation-attempt-0*.md`) |
 | C25–C26 | Planned | Ordered predecessors required; C25 opens P08 |
+| C27 | **Reviewed** (P09, D058): Codex attempt-05 scored 9 in all five dimensions through the fresh-exec fallback (`reviews/C27/attempt-05/receipt.json`); controller receipt and ledger completion regenerate once C26 completes | Attempts 01–04 remediated (`reviews/C27/remediation-attempt-0{1..4}.md`); follow-ups in `reviews/C27/follow-ups.md` |
+| C28–C34 | Planned (P09, D058; owner authorised C28 to start before C26 completes, 2026-10-26) | Specification: `docs/architecture/ui-v2/` |
 
 ## C01 evidence (docs/planning/evidence/C01)
 

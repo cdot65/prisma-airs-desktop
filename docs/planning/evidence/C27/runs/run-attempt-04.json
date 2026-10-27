@@ -1,0 +1,58 @@
+{
+  "subject": "C27",
+  "attempt": "attempt-04",
+  "time": "2026-10-26T20:51:43-0500",
+  "cwd": "/Users/cdot/development/redtail/prisma-airs-desktop-v2",
+  "toolchain": {
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+    "rustfmt": "rustfmt 1.10.0-stable (b940084d7e 2026-09-28)",
+    "rustup_active": "1.99.0-aarch64-apple-darwin (overridden by '/Users/cdot/development/redtail/prisma-airs-desktop-v2/rust-toolchain.toml')",
+    "rust_toolchain_toml": "[toolchain]\nchannel = \"1.99.0\"\ntargets = [\"aarch64-apple-darwin\"]\ncomponents = [\"rustfmt\", \"clippy\"]\nprofile = \"minimal\"",
+    "approved_prefix": "rustc 1.99.0 (docs/architecture/toolchain.json)"
+  },
+  "environment": {
+    "PATH": "/Users/cdot/.cargo/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTFLAGS": null,
+    "CARGO_TARGET_DIR": null,
+    "CARGO_HOME": null,
+    "features": "test-fixtures (shell_controller only); default features for --lib",
+    "flags": "--locked"
+  },
+  "inputs": {
+    "procedure": "docs/planning/evidence/C27/runs/hash-inputs.sh (sha256 of the sorted inventory file it writes)",
+    "procedure_sha256": "54e17919756ebf5aa9d121b75cd7fc5caab24292f34a4c214da3bf18c8ebf6fb",
+    "before_inventory": "docs/planning/evidence/C27/runs/inputs-before.sha256",
+    "before_inventory_sha256": "b55d3c752638ff3f46c874c3cb18b9e1603240e341f8aa8d8181bdba985a9ed6",
+    "before_digest": "b55d3c752638ff3f46c874c3cb18b9e1603240e341f8aa8d8181bdba985a9ed6",
+    "after_inventory": "docs/planning/evidence/C27/runs/inputs-after.sha256",
+    "after_inventory_sha256": "b55d3c752638ff3f46c874c3cb18b9e1603240e341f8aa8d8181bdba985a9ed6",
+    "after_digest": "b55d3c752638ff3f46c874c3cb18b9e1603240e341f8aa8d8181bdba985a9ed6",
+    "unchanged": true,
+    "members": 187
+  },
+  "runs": {
+    "rustfmt-check": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/rustfmt-check.log",
+      "log_sha256": "f9f3013a11a72fc421a847dc9983a5a59eba4ec6849a8579d4dc56e8a32b7739",
+      "summary": []
+    },
+    "xtask-lib": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/xtask-lib.log",
+      "log_sha256": "61422ee7e6eee7c27138e3f8ddeb22ddef80f7c1073c15f1ee1949430168319c",
+      "summary": [
+        "test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s"
+      ]
+    },
+    "shell-controller": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/shell-controller.log",
+      "log_sha256": "4f9503d622ec1e4b8b6e700ff1c027f0e84041b817c505645765c6d5710805e6",
+      "summary": [
+        "test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s"
+      ]
+    }
+  }
+}

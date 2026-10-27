@@ -198,6 +198,23 @@ pub fn completion_problems(repo: &Repo, entries: &[Entry], subject: Subject) -> 
         return vec![format!("{subject} has no completion")];
     };
     let mut problems = Vec::new();
+    // Completion recognition applies the same rule as completion: a phase or
+    // documentation-only chunk (D058) is never recognised through owner
+    // acceptance, whatever the ledger line says.
+    // The policy is fixed in `Subject` (D058), so recognition never depends on
+    // loading a manifest and cannot fail open.
+    let strict = subject.is_phase() || subject.is_docs_only();
+    if strict && owner_acceptance.is_some() {
+        problems.push(format!(
+            "{subject} completion records owner acceptance, which {} does not allow",
+            if subject.is_phase() { "D034" } else { "D058" }
+        ));
+    }
+    let effective_owner = if strict {
+        None
+    } else {
+        owner_acceptance.as_ref()
+    };
     if entries.iter().any(|e| matches!(e, Entry::Invalidation { subject, generation: g, .. } if *subject == id && g == generation)) {
         problems.push(format!("{subject} generation {generation} was invalidated"));
     }
@@ -217,13 +234,13 @@ pub fn completion_problems(repo: &Repo, entries: &[Entry], subject: Subject) -> 
                     "{subject} receipt {receipt} was changed after completion"
                 ));
             } else if let Ok(parsed) = serde_json::from_slice::<Receipt>(&bytes) {
-                let minimum = if owner_acceptance.is_some() {
+                let minimum = if effective_owner.is_some() {
                     OWNER_MINIMUM_SCORE
                 } else {
                     gate::MINIMUM_SCORE
                 };
                 let scores_ok = parsed.scores.named().iter().all(|(_, s)| *s >= minimum);
-                let accepted = match owner_acceptance {
+                let accepted = match effective_owner {
                     // Owner-accepted (D032): the threshold alone may fail.
                     Some(_) => scores_ok && parsed.blockers == 0,
                     None => {
@@ -305,9 +322,31 @@ pub fn require_predecessors(repo: &Repo, manifest: &Manifest, subject: Subject) 
 }
 
 /// Every chunk and every phase needs check, test and native-prepare runs;
-/// a phase's native evidence is for its integrated tree.
-pub fn required_runs(_subject: Subject) -> Vec<RunKind> {
-    vec![RunKind::Check, RunKind::Test, RunKind::NativePrepare]
+/// a phase's native evidence is for its integrated tree. A documentation-only
+/// chunk (D058) has nothing to prepare natively and needs check and test only.
+pub fn required_runs(manifest: &Manifest, subject: Subject) -> Vec<RunKind> {
+    if manifest.docs_only(subject) {
+        vec![RunKind::Check, RunKind::Test]
+    } else {
+        vec![RunKind::Check, RunKind::Test, RunKind::NativePrepare]
+    }
+}
+
+/// Owner acceptance below the threshold (D034) applies to application
+/// chunks only: phases and documentation-only chunks (D058) need the full
+/// 9/10 gate.
+pub fn owner_acceptance_allowed(manifest: &Manifest, subject: Subject) -> Result<()> {
+    if subject.is_phase() {
+        return Err(invalid(format!(
+            "{subject} is a phase review: D034 requires 9/10 with no owner acceptance"
+        )));
+    }
+    if manifest.docs_only(subject) {
+        return Err(invalid(format!(
+            "{subject} is a documentation-only chunk: D058 requires 9/10 in every dimension with no owner acceptance"
+        )));
+    }
+    Ok(())
 }
 
 /// Approved command plans, one per required run kind.
@@ -319,10 +358,13 @@ pub fn expectations(
     manifest: &Manifest,
     subject: Subject,
 ) -> Result<(Plans, Option<NativeBase>)> {
-    let plans = required_runs(subject)
+    let plans = required_runs(manifest, subject)
         .into_iter()
         .map(|kind| Ok((kind, manifest.plan(subject, kind)?)))
         .collect::<Result<Vec<_>>>()?;
+    if manifest.docs_only(subject) {
+        return Ok((plans, None));
+    }
     let members = manifest.native_members(subject)?;
     let (required_checks, fixture_identifier) =
         evidence::required_checks(&repo.join("docs/architecture/native-checks.json"), &members)?;
@@ -416,11 +458,10 @@ pub fn complete_with(
     if owner_accept.is_some_and(|r| r.trim().is_empty()) {
         return Err(invalid("--owner-accept needs the owner's reason"));
     }
-    // D034: chunks may complete at 8/10; phases always need the full gate.
-    if owner_accept.is_some() && matches!(subject, Subject::Phase(_)) {
-        return Err(invalid(format!(
-            "{subject} is a phase review: D034 requires 9/10 with no owner acceptance"
-        )));
+    // D034: chunks may complete at 8/10; phases and documentation-only
+    // chunks (D058) always need the full gate.
+    if owner_accept.is_some() {
+        owner_acceptance_allowed(manifest, subject)?;
     }
     if let Subject::Phase(_) = subject {
         let entries = read_ledger(&repo.completion_ledger())?;
@@ -520,7 +561,7 @@ pub fn reopen(
     let ledger = repo.completion_ledger();
     let entries = read_ledger(&ledger)?;
     let mut affected = vec![subject];
-    let order: Vec<Subject> = (1..=26u8)
+    let order: Vec<Subject> = (1..=Subject::LAST_CHUNK)
         .flat_map(|n| {
             let chunk = Subject::Chunk(n);
             let mut out = vec![chunk];

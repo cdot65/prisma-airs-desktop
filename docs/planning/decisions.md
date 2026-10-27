@@ -772,7 +772,8 @@ Decided in C14 (implementer decision, recorded for review).
   `body_kind`, `[auth]`, `[variables]`), shared `environments/*.toml` and
   JSON/YAML schema text. Edits go through `toml_edit` 0.25.17 (already in the
   lock), so comments, row decoration, extension keys and CRLF survive a Save.
-  A new collection is created only inside a Git repository (v1).
+  A new collection is created only inside a Git repository (v1; revised
+  by D057: Git is optional).
 - **Inventory.** Discovery is read-only and bounded (1 MiB metadata, 2,000
   requests, 20,000 entries, depth 24, 512-byte paths; a directory is read
   no further than the entry budget, and an unreadable entry makes the
@@ -2339,6 +2340,112 @@ Owner decisions, 2026-10-25, recorded after Codex C25 attempt-01.
    leave a graded submission on the owner's Academy account. Its source,
    fixture and native evidence stay required; the download under lease,
    the local draft and sign-out with revocation passed live.
+
+## D056 — Academy live follow-ups move to 2.1.0; stable is 2.0.0
+
+Owner decisions, 2026-10-25 ("i don't care about the academy flows for
+now, mark it as a followup in version 2.1.0, let's instead focus on
+shipping 2.0.0"; the release version chosen as 2.0.0).
+
+1. **The stable release is 2.0.0.** The earlier 0.2.0 build, signed and
+   notarized, is the previous version for C26's manual update and
+   rollback checks.
+2. **C25-R2-F1 and C25-R2-G1 are 2.1.0 follow-ups.** They are interactive
+   live Academy flows for W53 (an exam started) and W65 (the Daily Incident
+   started and answered), and live runs asserting each Academy call's own
+   result. That result is the inline check's grading verdict, progress
+   cleared by a course reset, and certificates unchanged across it. The
+   runner already supports these assertions (`call.*` entries take
+   `?? <pointer> …` expectations, tested); the 2.1.0 work designates and
+   runs them. C25 stays complete at its D034 chunk gate. The P08 phase
+   sign-off does not raise C25 on these items.
+
+## D057 — C26 attempt 01: installed-acceptance defects and the Git rule
+
+C26 installed acceptance, attempt 01 (airsTest, 2026-10-26, record in
+`evidence/C26/installed/attempt-01/record.json`) passed install, signature,
+notarization, staple, engine pin, update (U1, U2) and F01–F03 on the
+real 2.0.0 bytes, and failed F04, F05 and F06. The tester stopped there;
+F07–F09, tamper and rollback did not run. C26 is not complete on this
+attempt; the defects are fixed, a new signed build is produced, and the
+whole kit is run again.
+
+1. **F04 (Gateway Playground).** Text fields written without classes had
+   no visible edge after Tailwind's reset, so the endpoint, key and prompt
+   fields could not be seen. Fixed app-wide by a zero-specificity base
+   style for text fields, selects and text areas; the Run button now says
+   what is missing, and the Inference prerequisites tab reflects the
+   stored key instead of stale copy.
+2. **F05 (Harness company sign-in).** Company sign-in was reachable only
+   after tenant, management client and Gateway workspace, and nothing
+   before that mentioned it. The Harness now shows a "what you need first"
+   checklist, an always-visible company sign-in section (disabled with its
+   reason until a workspace is chosen) and specific save refusals.
+3. **F06 (API Client).** Revises the D040 rule "a new collection
+   is created only inside a Git repository (v1)": Git is optional. A new
+   collection can be created in any folder the user chooses; opening an
+   empty folder initialises a collection there; a non-empty folder without
+   `collection.toml` is still refused, now visibly, with a next step. The
+   Git tab works unchanged when the collection is inside a repository.
+
+## D058 — UI v2 "Refined Native": frozen prototype, P09 extraction plan
+
+Accepted by the owner on 2026-10-26 ("I accept it as written"), with authority to implement P09 end to end autonomously and to proceed with C28 while C26 remains in progress; every chunk is reviewed until it scores 9 in every dimension.
+
+The owner explored fifteen interactive shell concepts on a Claude Design canvas
+(https://claude.ai/artifact/2SEXT1XMHdZkxHvdw8oaYL), selected "Refined
+Native", and iterated its prototype (R2App, R2Onboard, R2Harness ×3,
+R2Rationale) through sixteen independent Codex usability reviews (scores 6, 7,
+7, then 8 on rounds 4–16). The prototype is frozen at canvas version 134 and
+copied verbatim into `docs/architecture/ui-v2/prototype/` with a SHA-256
+manifest; the canvas page is not changed again. Prototype data is invented and
+is never shipped.
+
+Decisions (grilling session, 55 questions, all recommendations accepted):
+
+1. Extraction is spec, then TypeScript presentation, then Rust contract, as
+   phase P09 chunks C27–C34 (see the chunk index). The first implementation
+   slice is the shell plus the first-run wizard and add-tenant sheet.
+2. The prototype's state model is normative for twelve named invariants
+   (`docs/architecture/ui-v2/invariants.md`) and illustrative for code shape.
+   Every prototype state field is assigned Rust-owned/observed or UI-transient
+   (`state-ownership.md`); nothing goes to browser storage.
+3. D014 holds: secrets enter only through the host secret sheet and vault;
+   an issued API key is disclosed only through the existing `RevealSecret`
+   host path, held for the active context and never persisted; key rotation
+   is the admitted sequence additional key (`Version`) → local deployment
+   acknowledgement → old key `Delete` with readback (no invented grace
+   period or revocation); typed-name confirmation is validated in the core;
+   tenant switch is refused by the core while a Harness decision is pending;
+   write-capable tool calls use the native confirmation sheet.
+3a. Only products with an admitted service are verified, inventoried or
+   changed (Runtime Security, Gateway, Red Team and Model/skill reads).
+   Agentic Identity Security and Agentic Endpoint Security render as "Not
+   available in this release" with a dependency gate; no inventory,
+   verification result or mutation is invented for them.
+4. Tokens live in a local `--v2-*` file; Academy variables stay for the
+   embedded learner view. One Rust navigation inventory feeds the native menu,
+   sidebar and palette; ⌘1–⌘9 are menu-defined. Feature ids gain `home` and
+   `inbox`.
+5. The new shell ships behind a Rust-owned `ui_variant` flag and the legacy
+   shell, flag and legacy acceptance scripts are removed in C34. The Academy
+   learner view is embedded unchanged.
+6. The wizard realises D013 (scan key first and only required credential);
+   v1 import is offered on the tenant step.
+7. Verification: Vitest fixtures named after every prototype wrapper board,
+   Rust tests per invariant, native acceptance extended with focus ring, live
+   regions, topmost modal and Reduce Motion persistence, screenshot evidence
+   at 100%/200% in both themes per chunk. Live calls only in C29 (verify,
+   Vulture, reads) and C31 (review apply, Redtail, prefixed) inside the scope
+   designated 2026-10-25. C27 is reviewed at 9/10 in every dimension and the
+   controller enforces it: a `docs_only` chunk has no native preparation or
+   acceptance and refuses owner acceptance at completion and at recognition;
+   C28–C34 follow D034.
+8. Minimum window 1180×720 with the rail collapsing below 1280 wide; toasts
+   persist under Reduce Motion; "Show the calls" panel shows diagnostics-
+   redacted wire data; English only in P09; chunks commit on main except C34.
+9. C27 proceeds in parallel with C26 (docs and controller registration only);
+   C28 waits for C26.
 
 ## Directions explicitly requested before round 1
 

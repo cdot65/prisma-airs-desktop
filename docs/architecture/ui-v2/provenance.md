@@ -1,0 +1,40 @@
+# Provenance and intentional deviations
+
+Every fixture file and screen contract cites the frozen prototype file and the
+prototype state names it derives from. This file lists where the
+implementation deliberately differs from the prototype and why. Anything not
+listed here is expected to match the prototype's behaviour and spacing.
+
+Frozen reference: canvas https://claude.ai/artifact/2SEXT1XMHdZkxHvdw8oaYL,
+page "Refined Native v2", version 134 (version id 1793059808-4929, published
+2026-10-26). Files and hashes: [prototype/MANIFEST.sha256](prototype/MANIFEST.sha256).
+
+| # | Prototype | Implementation | Reason |
+|---|---|---|---|
+| P1 | Wizard tenant step draws the scan key, management client secret and Gateway workspace key as text fields (`R2Onboard` `f.scanKey`, `f.secret`, `f.gwKey`) | "Add scan key…" button opens the host's native secret sheet; the step then shows a masked indicator and the vault record id | The web layer never holds a secret (D014, C09 reveal ownership). Visual delta: button plus masked state instead of a field |
+| P2 | Rotation panel renders the secret in a readonly input with Reveal/Copy (`R2App` `secretShown`) | Reveal shows the secret in the host secret sheet; Copy goes through the host clipboard; both consume a one-time disclosure token | Invariant I6; same reason as P1 |
+| P3 | State lives in one component with `byTenant` (`R2App` `TS/ts/tPatch`) | Core-owned scopes per [state-ownership.md](state-ownership.md) | D014 authority; prototype state model is normative for invariants only |
+| P4 | ⌘1–⌘9 are advertised but not bound (canvas rule: no global key handlers) | Native menu defines the shortcuts and dispatches `navigate` | Host owns menus; works under VoiceOver and shows in the menu bar |
+| P5 | Sidebar lists Home, Inbox, Harness, Academy, Test Cases, API Client, Administration | Same, backed by Rust feature ids `home`, `inbox`, `harness`, `academy`, `library`, `apiClient`, `administration`; `gateway` and `redTeam` move inside Administration; `sessions`, `import`, `settings` reachable from the palette and Administration | One Rust inventory feeds menu, sidebar and palette |
+| P6 | Wizard boards are 1440×900 with a fixed 320px rail | Minimum window 1180×720; rail collapses to icons below 1280 wide | 13-inch displays |
+| P7 | Toasts expire on timers always | Persist until dismissed under Reduce Motion | Native acceptance Reduce Motion check |
+| P8 | Inbox items, Harness lifecycles, API responses, cases and Academy progress are invented in-component data | Wire fixtures in `packages/desktop-contracts/fixtures/wire`, content derived from the prototype data | Fixtures are the contract test surface; prototype data is never shipped |
+| P9 | `TOPICS.injo` added in round 16 as a separate key from detector `inj` | Core topic inventory keys are a distinct type from detector ids | Carries the round-16 fix into the type system |
+| P10 | Administration creation label is a per-product single value | Per-tab creation capability and label in `AdminInventory` | Round 16 finding: wrong label on API keys, Security profiles and Logs tabs |
+| P11 | Home snooze button hard-codes "Snooze 24 hours" | Item-specific `snoozeLabel` shared by Home and Inbox | Round 16 finding; invariant I11 |
+| P12 | API Client Send has no live completion status | Compact `role="status"` region with request name, response code and duration; JSON body outside the live region | Round 16 finding |
+| P13 | Tenant switch with an open applied key review leaves disclosure open | Any review exit, including switch, finalises disclosure | Round 16 finding; invariant I6 |
+| P14 | Applied injection-override examples show "Not demonstrated" in the Playground | Topic examples classify under the topic key with a profile-aware verdict | Round 16 finding |
+| P15 | Import from v1 is a separate destination | Also offered on the wizard tenant step as a secondary action; credentials re-entered via the secret sheet | First run is where an upgrading user needs it |
+| P16 | Harness lifecycle 2 (mcp) reads an AES endpoint inventory (`CONVOS.mcp.tool` = `aes-inventory/get_endpoints`) and its follow-up is an AES policy review | The fixture reads the workspace MCP server inventory the core already exposes (`GatewayRead::McpServers`, C22) and the follow-up opens a Gateway guardrail review (`ChangeKind::GatewayGuardrails`) | AES has no admitted service (P18); the lifecycle stays read-only as in the prototype |
+| P17 | Wizard tenant step requires a management OAuth client id and secret (`ERR.clientId`, `ERR.secret`) and makes the scan key optional (`scanOn`) | First run requires the scan key and makes the management client an optional second section; add mode keeps both optional. Secrets enter only through the host secret sheet | D013 (scan-key-first; management credentials are separate and never imply scan authentication) |
+| P18 | Six products are verified, inventoried and administered (AIS tool policies, AES discovered AI and policies, AES policy review `REVIEWS.aes`) | Only products with an admitted service are verified, inventoried or changed: Runtime Security (`ManagementResource`, `ChangeKind`), Gateway (`GatewayRead`, Gateway `ChangeKind`s), Red Team and Model/skill reads (C13, read-only). Agentic Identity Security and Agentic Endpoint Security render as "Not available in this release" with their dependency gate; no inventory, verification result or mutation is invented for them | The existing interfaces do not supply those product APIs; fixtures cannot establish a capability (parity matrix, C13 rule) |
+| P19 | Wizard Academy step creates a local account with streaks, reminders and a quiz (`s.acad`, `s.af`, `s.streaks`, `s.remind`, `s.quiz`) | The step signs in to the hosted Academy identity or skips; the embedded learner view owns progress and gamification | D004–D006, C04 |
+| P20 | Key rotation issues a new key with a 24-hour grace period, a later revocation and a secret recoverable from the Keychain (`REVIEWS.key`, `keyRotated/keySecretClosed/keyDeployed/keyDoneAt`) | Two admitted operations in sequence: `ApiKeys · Version` (additional key, one-time reveal through the existing `RevealSecret` host sheet, never persisted) → local deployment acknowledgement → `ApiKeys · Delete` of the old key with readback. Two distinct timestamps; a lost secret means "issue another key" | `changes.rs` 842–846 and `management.rs` 980–988 define Rotate (regenerate, no grace) and Version (additional key); DESIGN.md "Secrets" forbids persisting issued keys |
+| P21 | Test Cases "Run" was described in the first spec draft as scanning any case | Runtime-only "Open in Playground"; "Inspect" for every other product, which never dispatches a scan | Prototype lines 1035–1037 and the parity matrix (no invented execution) |
+| P22 | Red Team Targets tab lists target names (`rtm` tables) | Targets shows `target_id` and `target_type` only | The C13 contract (`red_team.rs` 5–8, 56–66) deliberately keeps target names out of the core's reads; the privacy boundary is not widened for presentation |
+| P23 | One rotation flow for every key | Staged Version → Delete rotation for Runtime API keys only; Gateway keys use `Rotate` (regenerate in place) | `gateway_changes::allowed` admits Rotate, not Version, for Gateway keys |
+
+P10–P14 are the five round-16 Codex items carried as known gaps (see
+[DESIGN-V2.md](DESIGN-V2.md) "Known gaps"). P16–P21 were added after the C27
+attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b).

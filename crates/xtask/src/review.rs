@@ -110,6 +110,40 @@ fn hashed(repo: &Repo, path: &Path) -> Result<HashedPath> {
     })
 }
 
+/// The native acceptance record the packet binds. Every application chunk
+/// and phase needs one; a documentation-only chunk (D058) has nothing native
+/// to accept, which the packet states as a limitation instead of a fabricated
+/// record. `native_pending` is the explicitly requested early review whose
+/// missing record is stated to the reviewer and fails the gate by
+/// construction.
+pub fn native_acceptance_reference(
+    repo: &Repo,
+    manifest: &Manifest,
+    subject: Subject,
+    native_pending: Option<String>,
+    limitations: &mut Vec<String>,
+) -> Result<Option<HashedPath>> {
+    if manifest.docs_only(subject) {
+        limitations.push(format!(
+            "{subject} is a documentation-only chunk (D058): no native preparation or acceptance applies; the gate requires 9/10 in every dimension with no owner acceptance"
+        ));
+        return Ok(None);
+    }
+    let native_path = repo.evidence_dir(subject).join("native-acceptance.json");
+    if native_path.is_file() {
+        return Ok(Some(hashed(repo, &native_path)?));
+    }
+    if let Some(reason) = native_pending {
+        limitations.push(format!(
+            "MANDATORY NATIVE ACCEPTANCE IS MISSING ({reason}); this attempt cannot pass the gate"
+        ));
+        return Ok(None);
+    }
+    Err(invalid(
+        "native acceptance record is missing; mandatory native evidence is blocked, not optional",
+    ))
+}
+
 /// Latest passing run of each required kind executed against `fingerprints`.
 fn select_runs(
     repo: &Repo,
@@ -117,9 +151,10 @@ fn select_runs(
     fingerprints: &Fingerprints,
 ) -> Result<(Vec<RunRef>, Option<String>)> {
     let runs = runner::load_runs(repo, subject)?;
+    let manifest = Manifest::load(&repo.manifest())?;
     let mut selected = Vec::new();
     let mut executable = None;
-    for kind in complete::required_runs(subject) {
+    for kind in complete::required_runs(&manifest, subject) {
         let found = runs.iter().rev().find(|(_, r)| {
             r.kind == kind
                 && r.status == Status::Passed
@@ -312,21 +347,8 @@ pub fn review(
     let codex = Codex::resolve(env, reviewer, repo.root())?;
     let fingerprints = fingerprint::all(repo, manifest, subject, &env.toolchain_hash())?;
     let (runs, executable) = select_runs(repo, subject, &fingerprints)?;
-    let native_path = repo.evidence_dir(subject).join("native-acceptance.json");
-    let native_acceptance = if native_path.is_file() {
-        Some(hashed(repo, &native_path)?)
-    } else if let Some(reason) = native_pending {
-        // An explicitly requested early review: the missing record is stated
-        // to the reviewer and the gate fails by construction.
-        limitations.push(format!(
-            "MANDATORY NATIVE ACCEPTANCE IS MISSING ({reason}); this attempt cannot pass the gate"
-        ));
-        None
-    } else {
-        return Err(invalid(
-            "native acceptance record is missing; mandatory native evidence is blocked, not optional",
-        ));
-    };
+    let native_acceptance =
+        native_acceptance_reference(repo, manifest, subject, native_pending, &mut limitations)?;
     let reviews = repo.reviews_dir(subject);
     expire_pending(&reviews, "superseded by a new review attempt")?;
 

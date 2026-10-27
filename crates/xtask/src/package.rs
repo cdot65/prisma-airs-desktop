@@ -27,7 +27,7 @@ impl Kind {
 /// Completed chunks, in order, from the append-only ledger.
 pub fn completed_chunks(repo: &Repo) -> Result<Vec<Subject>> {
     let entries = read_ledger(&repo.completion_ledger())?;
-    Ok((1..=26u8)
+    Ok((1..=Subject::LAST_CHUNK)
         .map(Subject::Chunk)
         .filter(|s| is_completed(repo, &entries, *s))
         .collect())

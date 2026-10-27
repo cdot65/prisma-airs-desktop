@@ -77,6 +77,7 @@ change updates predecessors, plan and review evidence before execution.
 | P06   | C19–C22  | Native Harness, Rust sign-in, typed host tools, workspace MCP    |
 | P07   | C23–C24  | Reviewed imports, native quality, accessibility/privacy closure  |
 | P08   | C25–C26  | Controlled live qualification; signed installed DMG acceptance   |
+| P09   | C27–C34  | UI v2 "Refined Native": spec, shell, wizard, destinations (D058) |
 
 ### G00 — Plan confirmation
 

@@ -469,6 +469,14 @@ fn manifest_rejects_unlisted_programs_placeholders_and_weakened_review() {
                 v["chunks"].as_object_mut().expect("chunks").remove("C26");
             }),
         ),
+        (
+            "application chunk marked docs_only",
+            Box::new(|v| v["chunks"]["C28"]["docs_only"] = serde_json::json!(true)),
+        ),
+        (
+            "specification chunk unmarked",
+            Box::new(|v| v["chunks"]["C27"]["docs_only"] = serde_json::json!(false)),
+        ),
     ];
     for (name, mutate) in mutations {
         let mut value = original.clone();
@@ -1472,7 +1480,9 @@ fn prepared_bundle_bytes_path_and_identifier_are_bound() {
 #[test]
 fn phases_require_integrated_native_runs_and_acceptance() {
     let manifest = Manifest::load(&repo().manifest()).expect("manifest");
-    assert!(complete::required_runs(Subject::Phase(1)).contains(&RunKind::NativePrepare));
+    assert!(
+        complete::required_runs(&manifest, Subject::Phase(1)).contains(&RunKind::NativePrepare)
+    );
     let native = manifest
         .plan(Subject::Phase(1), RunKind::NativePrepare)
         .expect("plan");
@@ -1511,31 +1521,46 @@ fn phases_require_integrated_native_runs_and_acceptance() {
             "{member}'s checks are part of P01: {required:?}"
         );
     }
-    // A phase fails closed while any member has no inventory yet: the first
-    // phase with such a member (it moves as chunks land).
-    let inventories: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(&inventory).expect("inventory")).expect("json");
-    let (later, pending) = (1..=8)
-        .find_map(|phase| {
-            let members: Vec<String> = manifest
-                .phase_chunks(Subject::Phase(phase))
-                .ok()?
-                .iter()
-                .map(Subject::to_string)
-                .collect();
-            let pending = members
-                .iter()
-                .find(|c| inventories["chunks"].get(c.as_str()).is_none())?
-                .clone();
-            Some((members, pending))
-        })
-        .expect("a phase with a member without an inventory");
-    let error =
-        xtask::evidence::required_checks(&inventory, &later).expect_err("inventories pending");
-    assert!(
-        error.to_string().contains(pending.as_str()),
-        "a phase fails closed until each member has an inventory: {error}"
+    // A phase fails closed while any member has no inventory, or an empty one:
+    // controlled inputs, independent of which repository chunks have landed.
+    let dir = scratch("inventories");
+    let controlled = dir.join("native-checks.json");
+    std::fs::write(
+        &controlled,
+        serde_json::to_vec(&serde_json::json!({
+            "schema": "airs-v2/native-checks/1",
+            "description": "controlled",
+            "fixture_identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+            "chunks": {
+                "C01": [{"id": "C01-N01", "check": "launches"}],
+                "C03": []
+            }
+        }))
+        .expect("json"),
+    )
+    .expect("write");
+    let (ids, _) = xtask::evidence::required_checks(&controlled, &["C01".to_owned()])
+        .expect("a present inventory");
+    assert_eq!(ids, vec!["C01-N01"]);
+    let missing =
+        xtask::evidence::required_checks(&controlled, &["C01".to_owned(), "C02".to_owned()])
+            .expect_err("a missing member inventory fails the phase");
+    assert!(missing.to_string().contains("C02"), "{missing}");
+    let empty = xtask::evidence::required_checks(&controlled, &["C03".to_owned()])
+        .expect_err("an empty inventory fails");
+    assert!(empty.to_string().contains("empty"), "{empty}");
+    // P09's integrated members exclude the documentation-only C27 (D058) and
+    // keep every application chunk required.
+    assert_eq!(
+        manifest.native_members(Subject::Phase(9)).expect("P09"),
+        vec!["C28", "C29", "C30", "C31", "C32", "C33", "C34"]
     );
+    let p09 = xtask::evidence::required_checks(
+        &controlled,
+        &manifest.native_members(Subject::Phase(9)).expect("P09"),
+    )
+    .expect_err("P09 members without inventories fail closed");
+    assert!(p09.to_string().contains("C28"), "{p09}");
 }
 
 #[test]
@@ -1773,4 +1798,189 @@ fn d034_phases_need_nine_and_every_eight_chunk_is_raised_before_sign_off() {
             .contains("C02 must first pass a 9/10 review (D034)"),
         "{error}"
     );
+}
+
+// ---- D058: the documentation-only chunk C27 ----
+
+#[test]
+fn documentation_only_chunk_is_exempt_from_native_gates_but_not_from_the_threshold() {
+    let manifest = Manifest::load(&repo().manifest()).expect("manifest");
+    assert!(manifest.docs_only(Subject::Chunk(27)));
+    assert!(!manifest.docs_only(Subject::Chunk(28)));
+    assert!(!manifest.docs_only(Subject::Phase(9)));
+    assert_eq!(
+        complete::required_runs(&manifest, Subject::Chunk(27)),
+        vec![RunKind::Check, RunKind::Test]
+    );
+    assert!(
+        complete::required_runs(&manifest, Subject::Chunk(28)).contains(&RunKind::NativePrepare)
+    );
+    // Integrated P09 validation never asks for a C27 native inventory.
+    assert_eq!(
+        manifest.native_members(Subject::Phase(9)).expect("P09"),
+        vec!["C28", "C29", "C30", "C31", "C32", "C33", "C34"]
+    );
+    assert!(
+        manifest
+            .native_members(Subject::Chunk(27))
+            .expect("C27")
+            .is_empty()
+    );
+    let (_, native) = complete::expectations(&repo(), &manifest, Subject::Chunk(27)).expect("C27");
+    assert!(native.is_none(), "a docs-only chunk has no native base");
+    // Application chunks still need an inventory; an empty one is refused.
+    let err = xtask::evidence::required_checks(
+        &repo().join("docs/architecture/native-checks.json"),
+        &["C27".to_owned()],
+    )
+    .expect_err("C27 has no inventory and must not pass as an application chunk");
+    assert!(err.to_string().contains("no native check inventory"));
+    // Owner acceptance (D034) is refused for C27 and for phases, allowed for C28.
+    assert!(complete::owner_acceptance_allowed(&manifest, Subject::Chunk(27)).is_err());
+    assert!(complete::owner_acceptance_allowed(&manifest, Subject::Phase(9)).is_err());
+    assert!(complete::owner_acceptance_allowed(&manifest, Subject::Chunk(28)).is_ok());
+    assert!(
+        xtask::native::acceptance_status(&repo(), &manifest, Subject::Chunk(27), "0").is_empty()
+    );
+}
+
+#[test]
+fn d058_specification_chunk_is_never_completed_or_recognised_below_nine() {
+    let manifest = Manifest::load(&repo().manifest()).expect("manifest");
+    let dir = scratch("d058");
+    let repo = Repo::new(&dir);
+    // Completion refuses owner acceptance for C27 (and still for phases).
+    let error = complete::complete_with(
+        &repo,
+        &manifest,
+        Subject::Chunk(27),
+        fixtures::fingerprints(),
+        Some("spec looks fine at 8"),
+    )
+    .expect_err("C27 owner acceptance");
+    assert!(error.to_string().contains("D058"), "{error}");
+    // Recognition: an owner-accepted sub-nine C27 completion is not complete,
+    // whatever the ledger line claims; a clean nine-score C27 is; an
+    // owner-accepted 8/10 C28 stays complete (D034 control).
+    let write_receipt = |subject: &str, attempt: &str, scores: u8, fixes: usize, passed: bool| {
+        let mut receipt = receipt_of(&fixtures::valid());
+        receipt.subject = subject.into();
+        receipt.scores.architecture = scores;
+        receipt.scores.behavior = scores;
+        receipt.scores.authority_security = scores;
+        receipt.scores.validation = scores;
+        receipt.scores.overall = scores;
+        receipt.required_fixes = fixes;
+        receipt.evidence_gaps = 0;
+        receipt.blockers = 0;
+        receipt.passed = passed;
+        let relative = format!("docs/planning/reviews/{subject}/{attempt}/receipt.json");
+        let bytes = fixtures::to_bytes(&receipt);
+        std::fs::create_dir_all(dir.join(&relative).parent().expect("parent")).expect("mkdir");
+        std::fs::write(dir.join(&relative), &bytes).expect("write");
+        (relative, sha(&bytes))
+    };
+    let owner = || {
+        Some(complete::OwnerAcceptance {
+            decision: "D034".into(),
+            reason: "accepted at 8".into(),
+            minimum_score: complete::OWNER_MINIMUM_SCORE,
+            accepted_failures: vec!["score overall=8 is below 9".into()],
+        })
+    };
+    let mut generation = 0u32;
+    let mut record = |subject: &str,
+                      relative: String,
+                      sha256: String,
+                      acceptance: Option<complete::OwnerAcceptance>| {
+        generation += 1;
+        let id = format!("r-{subject}-{generation}");
+        ledger_line(
+            &dir,
+            &complete::Entry::Completion {
+                subject: subject.into(),
+                generation,
+                receipt_id: id.clone(),
+                receipt: relative,
+                receipt_sha256: sha256,
+                fingerprints: fixtures::fingerprints(),
+                completed_utc: "t".into(),
+                owner_acceptance: acceptance,
+            },
+        );
+        ledger_line(
+            &dir,
+            &complete::Entry::Commit {
+                subject: subject.into(),
+                generation,
+                receipt_id: id,
+                commit: "c".into(),
+                tree: "t".into(),
+                source: "s".into(),
+                verified_utc: "t".into(),
+            },
+        );
+    };
+    let ledger = || complete::read_ledger(&repo.completion_ledger()).expect("ledger");
+    // 1. C27 at 8/10, no fixes, owner-accepted: refused with the D058 reason.
+    let (rel, hash) = write_receipt("C27", "attempt-01", 8, 0, false);
+    record("C27", rel, hash, owner());
+    let problems = complete::completion_problems(&repo, &ledger(), Subject::Chunk(27));
+    assert!(
+        problems.iter().any(|p| p.contains("D058")),
+        "owner acceptance must be reported: {problems:?}"
+    );
+    assert!(!complete::is_completed(
+        &repo,
+        &ledger(),
+        Subject::Chunk(27)
+    ));
+    // 2. C27 at 9/10 but with a required fix remaining, owner-accepted: refused.
+    let (rel, hash) = write_receipt("C27", "attempt-02", 9, 1, false);
+    record("C27", rel, hash, owner());
+    assert!(!complete::is_completed(
+        &repo,
+        &ledger(),
+        Subject::Chunk(27)
+    ));
+    // 3. C27 at 9/10, clean, passed, no acceptance: complete.
+    let (rel, hash) = write_receipt("C27", "attempt-03", 9, 0, true);
+    record("C27", rel, hash, None);
+    assert!(complete::is_completed(&repo, &ledger(), Subject::Chunk(27)));
+    // 4. Control: C28 at 8/10 with the owner's D034 acceptance is complete.
+    let (rel, hash) = write_receipt("C28", "attempt-01", 8, 0, false);
+    record("C28", rel, hash, owner());
+    assert!(complete::is_completed(&repo, &ledger(), Subject::Chunk(28)));
+    // The review packet: C27 binds no native record and says so; application
+    // chunks and phases without one are refused outright.
+    let mut limitations = Vec::new();
+    let reference = xtask::review::native_acceptance_reference(
+        &repo,
+        &manifest,
+        Subject::Chunk(27),
+        None,
+        &mut limitations,
+    )
+    .expect("docs-only packet");
+    assert!(reference.is_none());
+    assert!(
+        limitations.iter().any(|l| l.contains("D058")),
+        "{limitations:?}"
+    );
+    for subject in [Subject::Chunk(28), Subject::Phase(9)] {
+        let error = xtask::review::native_acceptance_reference(
+            &repo,
+            &manifest,
+            subject,
+            None,
+            &mut Vec::new(),
+        )
+        .expect_err("mandatory native evidence");
+        assert!(
+            error
+                .to_string()
+                .contains("native acceptance record is missing"),
+            "{error}"
+        );
+    }
 }

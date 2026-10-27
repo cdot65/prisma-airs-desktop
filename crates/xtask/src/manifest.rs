@@ -54,6 +54,11 @@ pub struct Chunk {
     pub native_prepare: Argv,
     pub native_acceptance: String,
     pub live_requirement: String,
+    /// D058: a documentation-only chunk (C27) has no application change, so
+    /// no native preparation or acceptance applies and owner acceptance below
+    /// 9/10 is refused. Every other chunk keeps the full gate.
+    #[serde(default)]
+    pub docs_only: bool,
     #[serde(default)]
     pub frontend_commands: Vec<Argv>,
     #[serde(default)]
@@ -137,17 +142,30 @@ impl Manifest {
         if self.target != "aarch64-apple-darwin" {
             return Err(invalid("checks.json target must be aarch64-apple-darwin"));
         }
-        for n in 1..=26u8 {
+        for n in 1..=Subject::LAST_CHUNK {
             let id = Subject::Chunk(n).to_string();
             if !self.chunks.contains_key(&id) {
                 return Err(invalid(format!("checks.json is missing chunk {id}")));
             }
         }
-        if self.chunks.len() != 26 {
-            return Err(invalid("checks.json must define exactly C01-C26"));
+        if self.chunks.len() != usize::from(Subject::LAST_CHUNK) {
+            return Err(invalid("checks.json must define exactly C01-C34"));
+        }
+        for (id, chunk) in &self.chunks {
+            let fixed = Subject::parse(id)?.is_docs_only();
+            if chunk.docs_only != fixed {
+                return Err(invalid(format!(
+                    "{id} docs_only must be {fixed}: the documentation-only policy (D058) is fixed in the controller and cannot be changed from checks.json"
+                )));
+            }
+            if chunk.docs_only && !chunk.native_acceptance.starts_with("not applicable") {
+                return Err(invalid(format!(
+                    "{id} is docs_only but declares native acceptance; a documentation-only chunk states 'not applicable'"
+                )));
+            }
         }
         let mut phase_members = Vec::new();
-        for n in 1..=8u8 {
+        for n in 1..=Subject::LAST_PHASE {
             let id = Subject::Phase(n).to_string();
             let members = self
                 .phases
@@ -155,9 +173,11 @@ impl Manifest {
                 .ok_or_else(|| invalid(format!("checks.json is missing phase {id}")))?;
             phase_members.extend(members.iter().cloned());
         }
-        let expected: Vec<String> = (1..=26u8).map(|n| Subject::Chunk(n).to_string()).collect();
-        if phase_members != expected || self.phases.len() != 8 {
-            return Err(invalid("phases must partition C01-C26 in order"));
+        let expected: Vec<String> = (1..=Subject::LAST_CHUNK)
+            .map(|n| Subject::Chunk(n).to_string())
+            .collect();
+        if phase_members != expected || self.phases.len() != usize::from(Subject::LAST_PHASE) {
+            return Err(invalid("phases must partition C01-C34 in order"));
         }
         for argv in self.all_static_commands() {
             check_argv(argv)?;
@@ -260,11 +280,23 @@ impl Manifest {
             Ok(self
                 .phase_chunks(subject)?
                 .iter()
+                .filter(|c| !self.docs_only(**c))
                 .map(Subject::to_string)
                 .collect())
+        } else if self.docs_only(subject) {
+            Ok(Vec::new())
         } else {
             Ok(vec![subject.to_string()])
         }
+    }
+
+    /// Whether `subject` is a documentation-only chunk (D058): no native
+    /// preparation or acceptance, no owner acceptance below the threshold.
+    /// Phases are never documentation-only.
+    pub fn docs_only(&self, subject: Subject) -> bool {
+        // The policy is fixed in `Subject`; validation guarantees checks.json
+        // agrees, so a manifest can neither widen nor disable it.
+        subject.is_docs_only()
     }
 
     /// The phase containing a chunk.

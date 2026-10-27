@@ -34,6 +34,7 @@ const USAGE: &str = "usage: xtask <command> [options]
   live-scope        [--scope PRIVATE_MANIFEST_OUTSIDE_THE_REPOSITORY]
   live-run          --scope PRIVATE_MANIFEST_OUTSIDE_THE_REPOSITORY [--family Lxx]...
   harness-sign      --identity NAME --out DIR_OUTSIDE_RESOURCES
+  release-build     --manifest docs/architecture/checks.json
   release-sign      --identity NAME --app PATH --dmg PATH [--profile NOTARY_PROFILE] [--execute [--notarize]]";
 
 struct Args {
@@ -100,11 +101,11 @@ impl Args {
         match (self.value("--chunk"), self.value("--phase")) {
             (Some(c), None) => match Subject::parse(c)? {
                 s @ Subject::Chunk(_) => Ok(s),
-                _ => Err(invalid("--chunk expects C01-C26")),
+                _ => Err(invalid("--chunk expects C01-C34")),
             },
             (None, Some(p)) => match Subject::parse(p)? {
                 s @ Subject::Phase(_) => Ok(s),
-                _ => Err(invalid("--phase expects P01-P08")),
+                _ => Err(invalid("--phase expects P01-P09")),
             },
             _ => Err(invalid(format!(
                 "exactly one of --chunk or --phase is required\n{USAGE}"
@@ -451,6 +452,14 @@ pub fn main(raw: Vec<String>) -> Result<()> {
                 "signed engine {} (unsigned {}); reseal with tools/harness/seal.py --signed-engine",
                 signed.signed_sha256, signed.unsigned_sha256
             );
+            Ok(())
+        }
+        "release-build" => {
+            args.only(&["--manifest"])?;
+            let manifest = args.manifest(&repo)?;
+            let env = Environment::prepare(&repo)?;
+            let record = crate::signing::release_build(&repo, &manifest, &env)?;
+            println!("{} {}", record.app, record.dmg);
             Ok(())
         }
         "release-sign" => {

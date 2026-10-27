@@ -1,0 +1,36 @@
+{
+  "subject": "C27",
+  "attempt": "attempt-02",
+  "time": "2026-10-26T20:24:33-0500",
+  "cwd": "/Users/cdot/development/redtail/prisma-airs-desktop-v2",
+  "toolchain": {
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27) (Homebrew)",
+    "rustfmt": "rustfmt 1.10.0"
+  },
+  "features": "test-fixtures (shell_controller only)",
+  "inputs_before": "2365786ac49d8a3166ff39b42e4afc7ef775bb6cc00ef755c922325cd26113e5",
+  "inputs_after": "2365786ac49d8a3166ff39b42e4afc7ef775bb6cc00ef755c922325cd26113e5",
+  "inputs_hash_covers": "every crates/xtask/**/*.rs and Cargo.toml, Cargo.lock, docs/architecture/{checks,native-checks,review-verdict.schema}.json",
+  "runs": {
+    "rustfmt-check": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/rustfmt-check.log",
+      "summary": []
+    },
+    "xtask-lib": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/xtask-lib.log",
+      "summary": [
+        "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s\n"
+      ]
+    },
+    "shell-controller": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/shell-controller.log",
+      "summary": [
+        "test result: ok. 45 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s\n"
+      ]
+    }
+  }
+}

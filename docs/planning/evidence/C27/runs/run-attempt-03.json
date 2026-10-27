@@ -1,0 +1,46 @@
+{
+  "subject": "C27",
+  "attempt": "attempt-03",
+  "time": "2026-10-26T20:42:20-0500",
+  "cwd": "/Users/cdot/development/redtail/prisma-airs-desktop-v2",
+  "toolchain": {
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+    "rustfmt": "rustfmt 1.10.0-stable (b940084d7e 2026-09-28)",
+    "rustup_active": "1.99.0-aarch64-apple-darwin (overridden by '/Users/cdot/development/redtail/prisma-airs-desktop-v2/rust-toolchain.toml')",
+    "rust_toolchain_toml": "[toolchain]\nchannel = \"1.99.0\"\ntargets = [\"aarch64-apple-darwin\"]\ncomponents = [\"rustfmt\", \"clippy\"]\nprofile = \"minimal\"",
+    "approved_prefix": "rustc 1.99.0 (docs/architecture/toolchain.json)"
+  },
+  "environment": {
+    "PATH": "/Users/cdot/.cargo/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTFLAGS": null,
+    "CARGO_TARGET_DIR": null,
+    "CARGO_HOME": null,
+    "features": "test-fixtures (shell_controller only); default features for --lib",
+    "flags": "--locked"
+  },
+  "inputs_before": "08ccead865508fe5aec23547e05103990df12f8898f63e85abd87d254bf51df3",
+  "inputs_after": "08ccead865508fe5aec23547e05103990df12f8898f63e85abd87d254bf51df3",
+  "inputs_hash_covers": "every file under crates/xtask and crates/desktop-core (the only local path dependency of xtask, compiled by these runs), workspace Cargo.toml, Cargo.lock, rust-toolchain.toml and every docs/architecture/*.json manifest and fixture rule",
+  "runs": {
+    "rustfmt-check": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/rustfmt-check.log",
+      "summary": []
+    },
+    "xtask-lib": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/xtask-lib.log",
+      "summary": [
+        "test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s"
+      ]
+    },
+    "shell-controller": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C27/runs/shell-controller.log",
+      "summary": [
+        "test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s"
+      ]
+    }
+  }
+}
