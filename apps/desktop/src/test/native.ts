@@ -16,10 +16,13 @@ export function tenant(overrides: Partial<TenantView> = {}): TenantView {
         label: 'Prod EU',
         tsgId: '1234567890',
         destination: { kind: 'region', region: 'europe' },
+        environment: 'production',
         origin: 'https://service-de.api.aisecurity.paloaltonetworks.com',
         scan: { state: 'missing', mode: null, failure: null },
         management: { state: 'missing', mode: null, failure: null, clientId: null, tokenOrigin: null },
         inference: { state: 'missing', mode: null, failure: null, target: null },
+        products: ['runtimeSecurity'],
+        setupWarnings: [],
         ...overrides,
     }
 }

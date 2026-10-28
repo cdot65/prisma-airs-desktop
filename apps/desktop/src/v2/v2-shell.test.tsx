@@ -88,7 +88,7 @@ describe('v2 shell', () => {
         expect(dialog).toHaveAttribute('aria-modal', 'true')
         const options = within(dialog).getAllByRole('option').map((o) => o.textContent)
         expect(options.slice(0, 2)).toEqual(['Home⌘1', 'Inbox⌘2C30'])
-        expect(options).toContain('Switch to Meridian Retail · unitedStates · TSG 1001464285')
+        expect(options).toContain('Switch to Meridian Retail · Production · TSG 1001464285')
         expect(options).toContain('Read now')
         // End and Home jump to the last and first entries.
         await user.keyboard('{End}')
@@ -107,13 +107,13 @@ describe('v2 shell', () => {
         const user = userEvent.setup()
         const native = await launch(fxSwitcher())
         const switcher = screen.getByRole('button', { name: /^Switch tenant/ })
-        expect(switcher).toHaveAccessibleName('Switch tenant: Northwind Health · europe · TSG 1762204418')
+        expect(switcher).toHaveAccessibleName('Switch tenant: Northwind Health · Production · TSG 1762204418')
         expect(switcher).toHaveTextContent('TSG 1762204418')
         await user.click(switcher)
         const list = screen.getByRole('group', { name: 'Switch tenant' })
         expect(within(list).getAllByRole('button').map((o) => o.textContent)).toEqual([
-            'Northwind Healtheurope · TSG 1762204418',
-            'Meridian RetailunitedStates · TSG 1001464285',
+            'Northwind HealthProduction · TSG 1762204418',
+            'Meridian RetailProduction · TSG 1001464285',
             'Add a tenant…',
         ])
         await user.click(within(list).getByRole('button', { name: /Meridian Retail/ }))
@@ -420,14 +420,14 @@ describe('v2 shell', () => {
         const a = tenant({ id: 'tn-0123456789abcdef', label: 'Acme', tsgId: '1111111111' })
         const b = tenant({ id: 'tn-fedcba9876543210', label: 'Acme', tsgId: '2222222222' })
         const native = await launch({ ...fxHome(), tenants: [a, b], active: { tenant: a.id, context: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' }, activeFeature: 'harness' })
-        expect(screen.getByRole('button', { name: 'Switch tenant: Acme · europe · TSG 1111111111' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Switch tenant: Acme · Production · TSG 1111111111' })).toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         const rows = within(screen.getByRole('group', { name: 'Switch tenant' })).getAllByRole('button')
-        expect(rows.map((r) => r.textContent)).toEqual(['Acmeeurope · TSG 1111111111', 'Acmeeurope · TSG 2222222222', 'Add a tenant…'])
+        expect(rows.map((r) => r.textContent)).toEqual(['AcmeProduction · TSG 1111111111', 'AcmeProduction · TSG 2222222222', 'Add a tenant…'])
         await user.click(rows[1]!)
         expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id })
         await native.push({ ...native.current, active: { tenant: b.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
-        expect(screen.getByRole('button', { name: 'Switch tenant: Acme · europe · TSG 2222222222' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Switch tenant: Acme · Production · TSG 2222222222' })).toBeInTheDocument()
     })
 
     it('identifies identically named tenants in the palette by environment and TSG, and ArrowDown moves the current row', async () => {
@@ -439,8 +439,8 @@ describe('v2 shell', () => {
         await user.click(rail().getByRole('button', { name: /Go to…/ }))
         const dialog = screen.getByRole('dialog', { name: 'Command palette' })
         const labels = within(dialog).getAllByRole('option').map((o) => o.textContent)
-        expect(labels).toContain('Switch to Acme · europe · TSG 1111111111')
-        expect(labels).toContain('Switch to Acme · unitedStates · TSG 2222222222')
+        expect(labels).toContain('Switch to Acme · Production · TSG 1111111111')
+        expect(labels).toContain('Switch to Acme · Production · TSG 2222222222')
         // ArrowDown moves the current row one step at a time (aria-current follows).
         const current = () => within(dialog).getAllByRole('option').find((o) => o.getAttribute('aria-current') === 'true')?.textContent
         expect(current()).toBe('Home⌘1')

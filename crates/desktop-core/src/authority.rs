@@ -35,6 +35,7 @@ mod management_domain;
 mod observation_domain;
 mod offline_domain;
 mod sessions_domain;
+mod setup_domain;
 mod workbench_domain;
 
 pub use change_domain::{
@@ -126,6 +127,41 @@ pub enum Intent {
     /// The "show the calls" preference (C28).
     SetShowCalls {
         on: bool,
+    },
+    /// Start a tenant setup (C29): a draft with its own context that the
+    /// credential intents and `verifyTenantSetup` address. One at a time;
+    /// `firstRun` only while no tenant exists.
+    BeginTenantSetup {
+        mode: features::SetupMode,
+        profile: ProfileDraft,
+    },
+    /// Change the draft's profile. A new destination retires the draft's
+    /// credentials (they were bound to the old origin).
+    UpdateTenantSetup {
+        context: ContextRef,
+        profile: ProfileDraft,
+    },
+    /// Record the draft's chosen products (Runtime Security always).
+    ChooseSetupProducts {
+        context: ContextRef,
+        products: Vec<features::ProductId>,
+    },
+    /// Verify the draft's current inputs over the admitted reads; the
+    /// lines stream through `ShellSnapshot.setup.verify`.
+    VerifyTenantSetup {
+        context: ContextRef,
+    },
+    /// Commit the draft as a tenant (products, verify warnings, active
+    /// selection, first-run onboarding) and import the chosen starter
+    /// packs. Refused unless the current inputs were verified without a
+    /// blocking failure (an optional service's failure is carried as a warning).
+    CompleteTenantSetup {
+        context: ContextRef,
+        packs: Vec<features::ProductId>,
+    },
+    /// Drop the draft and clean up its credentials. Nothing else changes.
+    DiscardTenantSetup {
+        context: ContextRef,
     },
     /// Create a tenant profile with no credential.
     CreateTenant {
@@ -694,6 +730,12 @@ intent_kinds! {
     Navigate => "navigate",
     SetOnboarding => "setOnboarding",
     SetShowCalls => "setShowCalls",
+    BeginTenantSetup => "beginTenantSetup",
+    UpdateTenantSetup => "updateTenantSetup",
+    ChooseSetupProducts => "chooseSetupProducts",
+    VerifyTenantSetup => "verifyTenantSetup",
+    CompleteTenantSetup => "completeTenantSetup",
+    DiscardTenantSetup => "discardTenantSetup",
     CreateTenant => "createTenant",
     SelectTenant => "selectTenant",
     DeleteTenant => "deleteTenant",
@@ -986,6 +1028,8 @@ pub struct TenantView {
     pub label: String,
     pub tsg_id: Option<String>,
     pub destination: Destination,
+    /// Production / staging / other (C29).
+    pub environment: features::TenantEnvironment,
     /// The exact origin the scan key may be sent to.
     pub origin: String,
     pub scan: ScanView,
@@ -993,6 +1037,11 @@ pub struct TenantView {
     pub management: ManagementView,
     /// The Gateway workspace inference key (C18; no secret material).
     pub inference: inference_domain::InferenceKeyView,
+    /// The products this tenant reads (C29); Runtime Security until set.
+    pub products: Vec<features::ProductId>,
+    /// Verify warnings recorded at wizard completion (C29); the Inbox
+    /// renders them (C30).
+    pub setup_warnings: Vec<features::SetupWarning>,
 }
 
 /// Redacted management-capability state. Never contains the client secret.
@@ -1103,6 +1152,8 @@ pub struct ShellSnapshot {
     /// A held tenant switch awaiting the operator's resolution (C30 raises
     /// it; always absent in C28).
     pub switch_blocked: Option<SwitchBlocked>,
+    /// The tenant setup in progress (C29), with its draft and verification.
+    pub setup: Option<features::SetupView>,
     pub features: Vec<FeatureEntry>,
     /// True only in the distinct test-fixtures identity.
     pub fixture_build: bool,
@@ -1420,6 +1471,10 @@ enum ScanCapability {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Tenant {
     profile: TenantProfile,
+    /// Products chosen in the wizard (C29); empty means Runtime only.
+    products: Vec<features::ProductId>,
+    /// Verify warnings recorded at wizard completion (C29).
+    setup_warnings: Vec<features::SetupWarning>,
     scan: ScanCapability,
     /// The management OAuth client secret (destination: the token origin).
     management: ScanCapability,
@@ -1443,6 +1498,8 @@ impl Tenant {
     fn new(profile: TenantProfile) -> Self {
         Self {
             profile,
+            products: Vec::new(),
+            setup_warnings: Vec::new(),
             scan: ScanCapability::Missing,
             management: ScanCapability::Missing,
             management_client: None,
@@ -1481,6 +1538,8 @@ struct Data {
     show_calls: Option<bool>,
     tenants: Vec<Tenant>,
     active: Option<TenantId>,
+    /// The draft under setup (C29): not a tenant until completion.
+    setup: Option<setup_domain::Setup>,
     pending_cleanup: Vec<RecordId>,
     learner: Option<StoredLearner>,
     learner_cleanup: Vec<RecordId>,
@@ -1671,6 +1730,21 @@ impl State {
         self.data.onboarding.unwrap_or_default()
     }
 
+    /// What the shell shows (C29): a first run is one with no tenant yet. A
+    /// desktop that already has a tenant (an upgrade, or a tenant created
+    /// before the v2 shell was chosen) is never sent through the wizard.
+    /// A desktop with a tenant is never in the wizard: an upgrade, a tenant
+    /// created before v2 was chosen, or one imported during first run
+    /// (the import flow is the reviewed C23 destination; its tenant's
+    /// credentials are added in Administration).
+    fn shown_onboarding(&self) -> features::OnboardingState {
+        if self.data.tenants.is_empty() {
+            self.onboarding()
+        } else {
+            features::OnboardingState::Done
+        }
+    }
+
     fn show_calls(&self) -> bool {
         self.data.show_calls.unwrap_or(true)
     }
@@ -1689,10 +1763,11 @@ impl State {
             revision: self.revision.to_string(),
             appearance: self.shown_appearance(),
             ui_variant: self.ui_variant(),
-            onboarding: self.onboarding(),
+            onboarding: self.shown_onboarding(),
             active_feature: self.active_feature(),
             show_calls: self.show_calls(),
             switch_blocked: None,
+            setup: self.setup_view(),
             features: features::catalogue_for(self.ui_variant()),
             fixture_build: cfg!(feature = "test-fixtures"),
             storage: self.storage,
@@ -1771,17 +1846,51 @@ impl State {
         }
     }
 
+    /// Whether `id` is a committed tenant (never the setup draft).
+    fn committed_tenant(&self, id: &TenantId) -> bool {
+        self.data.tenants.iter().any(|t| &t.profile.id == id)
+    }
+
+    /// A tenant, or the draft under setup (C29), by id.
     fn tenant(&self, id: &TenantId) -> Option<&Tenant> {
-        self.data.tenants.iter().find(|t| &t.profile.id == id)
+        self.data
+            .tenants
+            .iter()
+            .chain(self.data.setup.as_ref().map(|s| &s.tenant))
+            .find(|t| &t.profile.id == id)
     }
 
     fn tenant_mut(&mut self, id: &TenantId) -> Option<&mut Tenant> {
-        self.data.tenants.iter_mut().find(|t| &t.profile.id == id)
+        self.data
+            .tenants
+            .iter_mut()
+            .chain(self.data.setup.as_mut().map(|s| &mut s.tenant))
+            .find(|t| &t.profile.id == id)
     }
 
     fn persisted(&self) -> PersistedState {
         PersistedState {
             appearance: self.appearance(),
+            tenant_products: self
+                .data
+                .tenants
+                .iter()
+                .filter(|t| !t.products.is_empty())
+                .map(|t| crate::store::TenantProducts {
+                    tenant: t.profile.id.clone(),
+                    products: t.products.clone(),
+                })
+                .collect(),
+            tenant_warnings: self
+                .data
+                .tenants
+                .iter()
+                .filter(|t| !t.setup_warnings.is_empty())
+                .map(|t| crate::store::TenantWarnings {
+                    tenant: t.profile.id.clone(),
+                    warnings: t.setup_warnings.clone(),
+                })
+                .collect(),
             ui_variant: self.ui_variant(),
             onboarding: self.onboarding(),
             show_calls: self.show_calls(),
@@ -1792,10 +1901,15 @@ impl State {
                 .map(|t| t.profile.clone())
                 .collect(),
             active_tenant: self.data.active.clone(),
+            tenant_draft: self.data.setup.as_ref().map(|s| crate::store::StoredDraft {
+                profile: s.tenant.profile.clone(),
+                mode: s.mode,
+            }),
             credentials: self
                 .data
                 .tenants
                 .iter()
+                .chain(self.data.setup.as_ref().map(|s| &s.tenant))
                 .flat_map(|t| {
                     [
                         CredentialClass::Scan,
@@ -2108,6 +2222,9 @@ impl State {
         if self.storage == StorageHealth::Resetting {
             return Err(Refusal::StaleContext);
         }
+        if let Some(draft) = self.setup_tenant_for(context) {
+            return Ok(draft);
+        }
         match (&self.active_ref, &self.data.active) {
             (Some(current), Some(tenant)) if current == context => Ok(tenant.clone()),
             _ => Err(Refusal::StaleContext),
@@ -2235,6 +2352,7 @@ fn tenant_view(t: &Tenant) -> TenantView {
         id: t.profile.id.clone(),
         label: t.profile.label.clone(),
         tsg_id: t.profile.tsg_id.clone(),
+        environment: t.profile.environment,
         origin: t.profile.destination.origin().to_owned(),
         destination: t.profile.destination.clone(),
         scan: ScanView {
@@ -2242,6 +2360,12 @@ fn tenant_view(t: &Tenant) -> TenantView {
             mode,
             failure,
         },
+        products: if t.products.is_empty() {
+            vec![features::ProductId::RuntimeSecurity]
+        } else {
+            t.products.clone()
+        },
+        setup_warnings: t.setup_warnings.clone(),
         management: {
             let (state, mode, failure, token_origin) = match &t.management {
                 ScanCapability::Missing => (ScanState::Missing, None, None, None),
@@ -2910,6 +3034,19 @@ impl Core {
 }
 
 fn data_from(doc: PersistedState) -> Data {
+    // A setup that was in progress is not restored: its credentials are
+    // cleaned up (C29).
+    let draft_records: Vec<RecordId> = doc
+        .tenant_draft
+        .as_ref()
+        .map(|d| {
+            doc.credentials
+                .iter()
+                .filter(|c| c.tenant == d.profile.id)
+                .map(|c| c.record.clone())
+                .collect()
+        })
+        .unwrap_or_default();
     let tenants = doc
         .tenants
         .into_iter()
@@ -2979,6 +3116,20 @@ fn data_from(doc: PersistedState) -> Data {
                 };
                 tenant.inference_target = Some(target);
             }
+            if let Some(tp) = doc
+                .tenant_products
+                .iter()
+                .find(|p| p.tenant == tenant.profile.id)
+            {
+                tenant.products = tp.products.clone();
+            }
+            if let Some(tw) = doc
+                .tenant_warnings
+                .iter()
+                .find(|w| w.tenant == tenant.profile.id)
+            {
+                tenant.setup_warnings = tw.warnings.clone();
+            }
             tenant
         })
         .collect();
@@ -2989,7 +3140,16 @@ fn data_from(doc: PersistedState) -> Data {
         show_calls: Some(doc.show_calls),
         tenants,
         active: doc.active_tenant,
-        pending_cleanup: doc.pending_cleanup,
+        setup: None,
+        pending_cleanup: {
+            let mut pending = doc.pending_cleanup;
+            for record in draft_records {
+                if !pending.contains(&record) {
+                    pending.push(record);
+                }
+            }
+            pending
+        },
         learner: doc.learner,
         learner_cleanup: doc.learner_cleanup,
         harness_history: doc.harness_history,
@@ -3280,6 +3440,77 @@ fn admit(
                 state.changed();
             }
         }
+        Intent::BeginTenantSetup { mode, profile } => {
+            state.require_storage()?;
+            let before = state.data.clone();
+            state.begin_setup(mode, profile)?;
+            state.save_with(&before)?;
+            state.changed();
+        }
+        Intent::UpdateTenantSetup { context, profile } => {
+            state.require_storage()?;
+            let before = state.data.clone();
+            let retired = state.update_setup(&context, profile)?;
+            state.save_with(&before)?;
+            for old in retired {
+                let _ = session.delete(&old);
+            }
+            effects.push(Effect::Cleanup);
+            state.changed();
+        }
+        Intent::ChooseSetupProducts { context, products } => {
+            state.require_storage()?;
+            let before = state.data.clone();
+            state.choose_setup_products(&context, products)?;
+            state.save_with(&before)?;
+            state.changed();
+        }
+        Intent::VerifyTenantSetup { context } => {
+            let starts = state.begin_verify(
+                &context,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            effects.push(Effect::Start(starts));
+            effects.push(Effect::Start(state.take_gateway_starts()));
+            state.changed();
+        }
+        Intent::CompleteTenantSetup { context, packs } => {
+            state.require_storage()?;
+            let before = state.data.clone();
+            let recorded_secs = wall_secs(state.clock_offset);
+            let done = state.complete_setup(&context, packs, recorded_secs)?;
+            state.save_with(&before)?;
+            effects.push(Effect::Start(state.reissue_context()));
+            effects.push(Effect::Start(state.take_gateway_starts()));
+            if !done.packs.is_empty() {
+                let (lease, write) = state.queue_examples(&done.tenant, &done.packs);
+                if let Some(lease) = lease {
+                    effects.push(Effect::LoadLibrary { lease });
+                }
+                if let Some((tenant, generation)) = write {
+                    effects.push(Effect::StoreLibrary { tenant, generation });
+                }
+            }
+            let _ = done.first_run;
+            state.changed();
+        }
+        Intent::DiscardTenantSetup { context } => {
+            if state.setup_has_keychain_credential() {
+                state.require_storage()?;
+            }
+            let before = state.data.clone();
+            let retired = state.discard_setup(&context)?;
+            if state.storage == StorageHealth::Ready {
+                state.save_with(&before)?;
+            }
+            for old in retired {
+                let _ = session.delete(&old);
+            }
+            effects.push(Effect::Start(state.take_gateway_starts()));
+            effects.push(Effect::Cleanup);
+            state.changed();
+        }
         Intent::CreateTenant { profile } => {
             state.require_storage()?;
             let profile = profile.validate().ok_or(Refusal::InvalidInput)?;
@@ -3294,11 +3525,18 @@ fn admit(
                 label: profile.label,
                 tsg_id: profile.tsg_id,
                 destination: profile.destination,
+                environment: profile.environment,
             }));
             if select {
                 state.data.active = Some(id);
             }
+            // A first-run draft is over once the desktop has a tenant (C29).
+            let retired = state.end_first_run_setup();
             state.save_with(&before)?;
+            for old in retired {
+                let _ = session.delete(&old);
+            }
+            effects.push(Effect::Cleanup);
             if select {
                 effects.push(Effect::Start(state.reissue_context()));
             }
@@ -3306,8 +3544,9 @@ fn admit(
         }
         Intent::SelectTenant { tenant } => {
             state.require_storage()?;
-            // A tenant an unsettled import wrote is not there yet (D050).
-            if state.tenant(&tenant).is_none() || state.v1_hides_tenant(&tenant) {
+            // A tenant an unsettled import wrote is not there yet (D050); a
+            // setup draft is not a tenant until it completes (C29).
+            if !state.committed_tenant(&tenant) || state.v1_hides_tenant(&tenant) {
                 return Err(Refusal::InvalidInput);
             }
             let before = state.data.clone();
@@ -3318,7 +3557,7 @@ fn admit(
         }
         Intent::DeleteTenant { tenant } => {
             state.require_storage()?;
-            if state.tenant(&tenant).is_none() {
+            if !state.committed_tenant(&tenant) {
                 return Err(Refusal::InvalidInput);
             }
             let before = state.data.clone();
@@ -4164,6 +4403,7 @@ fn admit(
                     label: candidate.label,
                     tsg_id: candidate.tsg_id,
                     destination: candidate.destination.ok_or(Refusal::InvalidInput)?,
+                    environment: Default::default(),
                 }
                 .validate()
                 .ok_or(Refusal::InvalidInput)?;
@@ -4172,6 +4412,7 @@ fn admit(
                     label: profile.label,
                     tsg_id: profile.tsg_id,
                     destination: profile.destination,
+                    environment: profile.environment,
                 }));
             }
             state.save_with(&before)?;
@@ -5170,8 +5411,13 @@ fn configure_credential(
     // workspace choice are untouched).
     if class == CredentialClass::Inference {
         effects.push(Effect::Start(state.retire_inference(&tenant)));
-    } else {
+    } else if state.data.active.as_ref() == Some(&tenant) {
         effects.push(Effect::Start(state.reissue_context()));
+    } else if state.is_setup_tenant(&tenant) {
+        // A draft under setup (C29) has its own context: replacing its
+        // credential retires that context (and the binding cached under it)
+        // without touching the shell's active context.
+        state.reissue_setup_context();
     }
     if authorized {
         if mode == StorageMode::Keychain {
@@ -5247,8 +5493,10 @@ fn remove_credential(
     }
     if class == CredentialClass::Inference {
         effects.push(Effect::Start(state.retire_inference(&tenant)));
-    } else {
+    } else if state.data.active.as_ref() == Some(&tenant) {
         effects.push(Effect::Start(state.reissue_context()));
+    } else if state.is_setup_tenant(&tenant) {
+        state.reissue_setup_context();
     }
     effects.push(Effect::Cleanup);
     state.changed();
@@ -5506,6 +5754,14 @@ fn settle_reset(inner: &Arc<Inner>, result: Result<bool, ResetFailure>) {
     if cleanup {
         drain_cleanup(inner);
     }
+}
+
+/// Wall-clock seconds since the Unix epoch, moved by the fixture clock offset.
+fn wall_secs(clock_offset: u32) -> u32 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| u32::try_from(d.as_secs()).unwrap_or(u32::MAX))
+        .saturating_add(clock_offset)
 }
 
 #[cfg(test)]

@@ -17,6 +17,7 @@ import type { OverviewView } from "./OverviewView";
 import type { ResetFailure } from "./ResetFailure";
 import type { ScanRecordView } from "./ScanRecordView";
 import type { SessionsView } from "./SessionsView";
+import type { SetupView } from "./SetupView";
 import type { StorageHealth } from "./StorageHealth";
 import type { SwitchBlocked } from "./SwitchBlocked";
 import type { TenantView } from "./TenantView";
@@ -54,7 +55,11 @@ showCalls: boolean,
  * A held tenant switch awaiting the operator's resolution (C30 raises
  * it; always absent in C28).
  */
-switchBlocked: SwitchBlocked | null, features: Array<FeatureEntry>, 
+switchBlocked: SwitchBlocked | null, 
+/**
+ * The tenant setup in progress (C29), with its draft and verification.
+ */
+setup: SetupView | null, features: Array<FeatureEntry>, 
 /**
  * True only in the distinct test-fixtures identity.
  */

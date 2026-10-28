@@ -120,6 +120,20 @@ impl State {
 
     /// Cancels every binding but the current context's (its session ends
     /// in-flight reads; its token cache is dropped with it).
+    /// Retires the binding cached under one context (C29: a setup draft's
+    /// context when its credentials or profile change).
+    pub(super) fn retire_management_binding(&mut self, context: &ContextRef) {
+        self.management_bindings.retain(|b| {
+            if &b.context == context {
+                b.session.cancel();
+                b.investigation.retire();
+                false
+            } else {
+                true
+            }
+        });
+    }
+
     pub(super) fn retire_management_bindings(&mut self) {
         let keep = self.active_ref.clone();
         self.management_bindings.retain(|b| {
@@ -271,7 +285,13 @@ impl State {
         let current = self.active_ref.clone();
         let mut overviews = Vec::new();
         let mut listings = Vec::new();
+        // A setup's verify reads (C29) belong to the draft's context and
+        // settle into its lines instead of an observation.
+        let setup_context = self.data.setup.as_ref().map(|s| s.context.clone());
+        let setup_operations = self.setup_operations();
+        let mut setup_results = Vec::new();
         let selected = self.gateway_selection();
+        let setup_selected = self.setup_workspace_reference();
         for record in self.management_calls.iter_mut().filter(|r| !r.settled) {
             let settlement = match self.operations.state(&record.operation) {
                 Some(OperationState::Settled(s)) => s,
@@ -283,11 +303,15 @@ impl State {
             };
             record.settled = true;
             let reply = record.slot.lock().ok().and_then(|mut s| s.take());
-            let retired = current.as_ref() != Some(&record.context)
-                || record
-                    .workspace
-                    .as_ref()
-                    .is_some_and(|w| selected.as_ref() != Some(w));
+            let for_setup = setup_operations.contains(&record.operation);
+            // The draft's context stays current for every read admitted under
+            // it (its verify lines and the presentation's own reads, such as
+            // the Gateway workspace listing) until the draft ends.
+            let retired = (current.as_ref() != Some(&record.context)
+                && setup_context.as_ref() != Some(&record.context))
+                || record.workspace.as_ref().is_some_and(|w| {
+                    selected.as_ref() != Some(w) && setup_selected.as_ref() != Some(w)
+                });
             let result = match (reply, retired, settlement.stop) {
                 // A reply for a retired context is never shown.
                 (_, true, _) | (_, _, Some(_)) | (None, _, _) => ManagementResult::Failed {
@@ -306,10 +330,18 @@ impl State {
             {
                 listings.push((record.context.clone(), list.clone()));
             }
+            if for_setup {
+                // Consumed by the setup; nothing observes it.
+                record.observed = true;
+                setup_results.push((record.operation.clone(), result.clone()));
+            }
             if let Ok(mut slot) = record.cell.result.lock() {
                 *slot = Some(result);
             }
             record.cell.ready.notify_waiters();
+        }
+        for (operation, result) in setup_results {
+            self.setup_settled(&operation, &result);
         }
         for (context, result) in overviews {
             self.overview_settled(&context, result);
@@ -346,7 +378,8 @@ impl State {
         // A result whose context (or Gateway workspace choice) retired
         // before it was observed is withdrawn (it may have settled while it
         // was current).
-        let current = self.active_ref.as_ref() == Some(&context)
+        let current = (self.active_ref.as_ref() == Some(&context)
+            || self.is_setup_context(&context))
             && self.workspace_current(workspace.as_ref());
         let record = self
             .management_calls

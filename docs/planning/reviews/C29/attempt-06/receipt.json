@@ -1,0 +1,43 @@
+{
+  "review_id": "C29-attempt-06-1793167426",
+  "subject": "C29",
+  "attempt": "attempt-06",
+  "request_id": "C29-attempt-06-1793167426",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed), run by hand; see limitations",
+  "time": "2026-10-28T01:12:31-0500",
+  "model": "gpt-6.1-sol (xhigh)",
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": 0,
+  "blockers": 1,
+  "evidence_gaps": 1,
+  "fingerprints": {
+    "source": "100c10d92330d40f887f3bac0f10c61e852af344dcc492890d14ad115f100241",
+    "dependencies": "b12839be9f5323353b810d472b64a5d0d3ba991a34d24a41d2333d8a92a40e90",
+    "build_flags": "10d55cf3a7a0aebf59c82161a544df26382e6740c51bbea7123040da9e98b823",
+    "evidence": "d43847ad5e997710e6c80b3930b88917fbdfe17d142952caddf3c975d9978d34"
+  },
+  "native_acceptance": {
+    "record": "docs/planning/evidence/C29/native-acceptance.json",
+    "sha256": "1d2ea9865acd0c8165e06fcf5da1afa579ad466752cdde3f1fa2afe8eb7e4138",
+    "prepare": "docs/planning/evidence/C29/native-prepare.json",
+    "prepare_sha256": "6e35a4c1c0a9825b473e3a565857f0772af733929277dd13493568f89be9a332"
+  },
+  "verdict_sha256": "05e37316e4c58941e42443598cc3c7e338ac8a029b59c8a5d572d9a4d5d3e61f",
+  "source_frozen": "reviewer confirmed all scoped hashes unchanged at final check",
+  "outcome": "9/9/9/8/8 with no required fixes; recommendation fail solely for the mandatory live Vulture verify receipt (B1/E1), which the approved manifest does not designate (evidence/C29/live/blocked.json; live-scope-request.md names the family). Code, native and synthetic evidence complete; manual fresh-exec receipt, to be regenerated through the controller after C26 completes and after the live row runs",
+  "attempt_history": [
+    "01 7/5/9/6/6",
+    "02 8/6/7/6/6",
+    "03 8/7/8/7/7",
+    "04 9/8/9/7/8",
+    "05 9/8/9/8/8",
+    "06 9/9/9/8/8"
+  ]
+}

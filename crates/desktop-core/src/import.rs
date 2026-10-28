@@ -197,6 +197,7 @@ pub fn preview(
             label: label.clone(),
             tsg_id: tsg_id.clone(),
             destination,
+            environment: Default::default(),
         });
         let (shown, problem) = match draft.clone().and_then(ProfileDraft::validate) {
             Some(valid) => (valid, None),
@@ -209,6 +210,7 @@ pub fn preview(
                     destination: Destination::Region {
                         region: Region::UnitedStates,
                     },
+                    environment: Default::default(),
                 })
                 .validate()
                 .is_none()
@@ -227,6 +229,7 @@ pub fn preview(
                         destination: Destination::Region {
                             region: Region::UnitedStates,
                         },
+                        environment: Default::default(),
                     },
                     Some(problem),
                 )

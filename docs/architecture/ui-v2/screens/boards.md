@@ -13,7 +13,8 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
 | R2Dark | R2App | start=home, theme=dark | `fx.home.dark` | token contrast snapshot | C28 |
 | R2Palette | R2App | start=home, overlay=palette | `fx.palette` | palette filter/dispatch, N03 | C28 |
 | R2Tenants | R2App | start=home, overlay=tenants | `fx.switcher` | V2-T01, T02 | C28/C30 |
-| R2AddTenant | R2Onboard | mode=add, step=tenant | `fx.addTenant` | cancel semantics, secret-sheet button | C29 |
+| R2AddTenant | R2Onboard | mode=add, step=tenant | `fx.addTenant` | cancel semantics, no Back on the first step | C29 |
+| R2AddTenant drafted | R2Onboard | mode=add, step=tenant, drafted | `fx.addTenant.drafted` | optional scan key, Continue open | C29 |
 | R2On01 Welcome | R2Onboard | step=welcome | `fx.on.welcome` | copy constants | C29 |
 | R2On02 Tenant | R2Onboard | step=tenant, filled=false | `fx.on.tenant.empty` | validation, aria-invalid | C29 |
 | R2On02b Tenant filled | R2Onboard | step=tenant, filled=true | `fx.on.tenant.filled` | rail context line, continue enabled | C29 |
@@ -21,6 +22,7 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
 | R2On04 Verify | R2Onboard | step=verify, verify=running | `fx.on.verify.running` | streaming order | C29 |
 | R2On04b Verify warning | R2Onboard | step=verify, verify=warn | `fx.on.verify.warn` | warning row → Inbox item at completion | C29 |
 | R2On04c Verify fail | R2Onboard | step=verify, verify=fail | `fx.on.verify.fail` | fix-and-verify-again path | C29 |
+| R2On04d Verify stale | R2Onboard | step=verify, verify=done, inputs changed | `fx.on.verify.stale` | results no longer count; later steps unreachable | C29 |
 | R2On05 Packs | R2Onboard | step=packs | `fx.on.packs` | pack counts, optional | C29 |
 | R2On06 Academy | R2Onboard | step=academy | `fx.on.academy` | hosted sign-in or skip (P19) | C29 |
 | R2On07 Done | R2Onboard | step=done | `fx.on.done` | finite open, `onboarding=done` | C29 |

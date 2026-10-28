@@ -321,6 +321,7 @@ function AddTenant({ dispatch }: { dispatch: Dispatch }) {
                             label: String(data.get('tenant-label') ?? ''),
                             tsgId: tsg.trim() === '' ? null : tsg,
                             destination: readDestination(form, 'tenant'),
+                            environment: 'production',
                         },
                     }).then((ok) => {
                         if (ok) form.reset()

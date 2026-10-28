@@ -13,7 +13,8 @@ use ts_rs::TS;
 use super::{Refusal, State};
 use crate::context::ContextRef;
 use crate::library::{
-    CaseDraft, CaseLibrary, CaseProblem, CaseView, LibraryFailure, TestCase, new_examples,
+    CaseDraft, CaseLibrary, CaseProblem, CaseProduct, CaseView, LibraryFailure, TestCase,
+    new_examples,
 };
 use crate::tenants::TenantId;
 
@@ -430,6 +431,50 @@ impl State {
     }
 
     /// Starts reading the public catalog; returns the lease and its URL.
+    /// Imports the bundled examples of `products` into `tenant`'s library
+    /// (C29 starter packs). An open library takes them now (returns the
+    /// write); otherwise they wait for the load this starts (returns its
+    /// lease) and are merged when it settles.
+    pub(super) fn queue_examples(
+        &mut self,
+        tenant: &TenantId,
+        products: &[CaseProduct],
+    ) -> (Option<u64>, Option<(TenantId, u64)>) {
+        let Ok(cases) =
+            crate::library::parse_catalog(crate::library::BUNDLED_CATALOG, tenant.as_str())
+        else {
+            return (None, None);
+        };
+        let cases: Vec<TestCase> = cases
+            .into_iter()
+            .filter(|c| products.contains(&c.product))
+            .collect();
+        if cases.is_empty() || self.library_root.is_none() {
+            return (None, None);
+        }
+        if self
+            .libraries
+            .iter()
+            .any(|l| &l.tenant == tenant && l.state == LibraryState::Ready)
+        {
+            let write = self.add_examples(tenant, Ok(cases)).ok();
+            return (None, write);
+        }
+        let added = cases.len() as u32;
+        let lease = self.start_library(tenant);
+        if let Some(library) = self.libraries.iter_mut().find(|l| &l.tenant == tenant) {
+            for case in cases {
+                library.pending.push(Pending {
+                    case,
+                    origin: tenant.clone(),
+                    notice: LibraryNotice::ExamplesAdded { added },
+                    stamp: library.status,
+                });
+            }
+        }
+        (lease, None)
+    }
+
     pub(super) fn begin_catalog(
         &mut self,
         context: &ContextRef,

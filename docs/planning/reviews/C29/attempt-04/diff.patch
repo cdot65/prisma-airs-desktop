@@ -1,0 +1,2647 @@
+diff --git a/apps/desktop/src-tauri/tests/ipc_admission.rs b/apps/desktop/src-tauri/tests/ipc_admission.rs
+index 7b543d5e..534d3f5b 100644
+--- a/apps/desktop/src-tauri/tests/ipc_admission.rs
++++ b/apps/desktop/src-tauri/tests/ipc_admission.rs
+@@ -546,3 +546,110 @@ fn the_go_menu_is_reconciled_on_every_shell_subscription() {
+     );
+     let _ = &h.adapters;
+ }
++
++/// C29: the setup draft's credential intents cross IPC under the draft's own
++/// context; no receipt, snapshot or Keychain call echoes a secret, nothing
++/// becomes a tenant before completion, and a discard leaves no draft behind.
++#[test]
++fn setup_draft_intents_cross_ipc_without_echoing_secrets_or_creating_tenants() {
++    let h = harness();
++    let session = register(&h);
++    let begun = send(
++        &h,
++        &session,
++        1,
++        json!({"kind": "beginTenantSetup", "mode": "add", "profile": {
++        "label": "Drafted", "tsgId": "1234567890", "destination": {"kind": "region", "region": "europe"},
++        "environment": "staging"}}),
++    );
++    assert_eq!(begun.expect("begun")["outcome"], "receipt");
++    let snap = snapshot(&h, 20);
++    assert_eq!(
++        snap["tenants"].as_array().map(Vec::len),
++        Some(0),
++        "a draft is not a tenant"
++    );
++    assert!(snap["active"].is_null());
++    let setup = &snap["setup"];
++    assert_eq!(setup["mode"], "add");
++    assert_eq!(setup["tenant"]["environment"], "staging");
++    assert_eq!(setup["scanRequired"], false);
++    let context = setup["context"].as_str().expect("draft context").to_owned();
++    let key = "synthetic-ipc-draft-scan-key-0042";
++    let secret = "synthetic-ipc-draft-client-secret-0042";
++    let stored = send(
++        &h,
++        &session,
++        2,
++        json!({"kind": "configureScanCredential", "context": context, "mode": "session", "key": key}),
++    )
++    .expect("admitted");
++    assert_eq!(stored["outcome"], "receipt");
++    assert!(!stored.to_string().contains(key));
++    // The scan key retired the draft's context (a credential change always does).
++    let context = snapshot(&h, 21)["setup"]["context"]
++        .as_str()
++        .expect("fresh draft context")
++        .to_owned();
++    let client = send(
++        &h,
++        &session,
++        3,
++        json!({"kind": "configureManagementCredential", "context": context, "mode": "session",
++        "clientId": "svc@1234567890.iam.example", "secret": secret}),
++    )
++    .expect("admitted");
++    assert!(!client.to_string().contains(secret));
++    assert!(eventually(|| {
++        let s = snapshot(&h, 21);
++        s["setup"]["tenant"]["scan"]["state"] == "ready"
++            && s["setup"]["tenant"]["management"]["state"] == "ready"
++    }));
++    let snap = snapshot(&h, 22);
++    let text = snap.to_string();
++    assert!(
++        !text.contains(key) && !text.contains(secret),
++        "no snapshot carries a secret"
++    );
++    assert_eq!(
++        snap["setup"]["tenant"]["management"]["clientId"],
++        "svc@1234567890.iam.example"
++    );
++    assert_eq!(
++        snap["tenants"].as_array().map(Vec::len),
++        Some(0),
++        "still not a tenant"
++    );
++    assert!(
++        h.adapters.vault.calls().is_empty(),
++        "session-only never reaches the Keychain"
++    );
++    // (Verification is not run here: the fixture host has no synthetic management plane,
++    // and a routine host test must never reach a product service; the core and reads
++    // suites cover it.) Each credential change retired the draft's context: re-read it.
++    let context = snapshot(&h, 24)["setup"]["context"]
++        .as_str()
++        .expect("fresh draft context")
++        .to_owned();
++    let discarded = send(
++        &h,
++        &session,
++        4,
++        json!({"kind": "discardTenantSetup", "context": context}),
++    )
++    .expect("discard");
++    assert_eq!(discarded["outcome"], "receipt");
++    let snap = snapshot(&h, 25);
++    assert!(snap["setup"].is_null());
++    assert_eq!(snap["tenants"].as_array().map(Vec::len), Some(0));
++    let stale = send(
++        &h,
++        &session,
++        5,
++        json!({"kind": "verifyTenantSetup", "context": context}),
++    );
++    assert_eq!(
++        stale.expect("refusal"),
++        json!({"outcome": "refusal", "refusal": "staleContext"})
++    );
++}
+diff --git a/apps/desktop/src/app.tsx b/apps/desktop/src/app.tsx
+index 4f762a53..a05ddd25 100644
+--- a/apps/desktop/src/app.tsx
++++ b/apps/desktop/src/app.tsx
+@@ -12,6 +12,8 @@ import { followAppearance } from './shell/appearance'
+ import type { DispatchOutcome } from './features/tenants/dispatch'
+ import { DesktopShell } from './shell/desktop-shell'
+ import { V2Shell } from './v2/v2-shell'
++import { Wizard } from './v2/wizard/wizard'
++import { ImportView } from './features/import-v1/import-view'
+ import { useShellStore } from './v2/store'
+ import { SHELL_COPY } from './v2/copy'
+ import { forgetAcademyPresentation } from './features/academy/presentation-storage'
+@@ -168,6 +170,40 @@ export function App({ client }: { client: DesktopClient }) {
+             </main>
+         )
+     }
++    if (snapshot.uiVariant === 'v2' && snapshot.onboarding !== 'done') {
++        // First run: the wizard owns the window. "Import from v1" is the one
++        // way out of it before a tenant exists: the reviewed C23 import renders
++        // on its own, and Home brings the wizard back (R5).
++        if (snapshot.activeFeature === 'import') {
++            return (
++                <div data-v2-shell='' data-slot='first-run-import' className='flex min-h-screen flex-col' style={{ background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
++                    <div className='flex items-center gap-3 border-b px-6 py-3' style={{ borderColor: 'var(--v2-rule)' }}>
++                        <button type='button' onClick={() => void v2Navigate('home')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                            {SHELL_COPY.backToSetup}
++                        </button>
++                        <span className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
++                            {SHELL_COPY.importDuringSetup}
++                        </span>
++                    </div>
++                    <main className='flex-grow p-6'>
++                        <ImportView snapshot={snapshot} dispatch={dispatch} />
++                    </main>
++                </div>
++            )
++        }
++        return (
++            <div data-v2-shell=''>
++                <Wizard
++                    snapshot={snapshot}
++                    dispatch={dispatch}
++                    observeManagement={(operation) => client.observeManagement(operation)}
++                    mode='firstRun'
++                    onClose={() => undefined}
++                    onNavigate={(feature) => void v2Navigate(feature)}
++                />
++            </div>
++        )
++    }
+     if (snapshot.uiVariant === 'v2') {
+         return (
+             <V2Shell
+diff --git a/apps/desktop/src/features/tenants/tenants-settings.tsx b/apps/desktop/src/features/tenants/tenants-settings.tsx
+index f61a0cf6..8dff85ba 100644
+--- a/apps/desktop/src/features/tenants/tenants-settings.tsx
++++ b/apps/desktop/src/features/tenants/tenants-settings.tsx
+@@ -321,6 +321,7 @@ function AddTenant({ dispatch }: { dispatch: Dispatch }) {
+                             label: String(data.get('tenant-label') ?? ''),
+                             tsgId: tsg.trim() === '' ? null : tsg,
+                             destination: readDestination(form, 'tenant'),
++                            environment: 'production',
+                         },
+                     }).then((ok) => {
+                         if (ok) form.reset()
+diff --git a/apps/desktop/src/test/native.ts b/apps/desktop/src/test/native.ts
+index c30f18e5..49f6cd61 100644
+--- a/apps/desktop/src/test/native.ts
++++ b/apps/desktop/src/test/native.ts
+@@ -16,10 +16,13 @@ export function tenant(overrides: Partial<TenantView> = {}): TenantView {
+         label: 'Prod EU',
+         tsgId: '1234567890',
+         destination: { kind: 'region', region: 'europe' },
++        environment: 'production',
+         origin: 'https://service-de.api.aisecurity.paloaltonetworks.com',
+         scan: { state: 'missing', mode: null, failure: null },
+         management: { state: 'missing', mode: null, failure: null, clientId: null, tokenOrigin: null },
+         inference: { state: 'missing', mode: null, failure: null, target: null },
++        products: ['runtimeSecurity'],
++        setupWarnings: [],
+         ...overrides,
+     }
+ }
+diff --git a/apps/desktop/src/v2/copy.ts b/apps/desktop/src/v2/copy.ts
+index 865c3ab2..8f49ebb3 100644
+--- a/apps/desktop/src/v2/copy.ts
++++ b/apps/desktop/src/v2/copy.ts
+@@ -1,3 +1,8 @@
++import type { TenantEnvironment } from '@prisma-airs/desktop-contracts'
++
++/** A tenant's environment as the shell names it (C29). */
++export const ENVIRONMENT_LABELS: Record<TenantEnvironment, string> = { production: 'Production', staging: 'Staging', other: 'Other' }
++
+ /** Every string the v2 shell shows (DESIGN-V2 §3: one copy file per screen family). */
+ export const SHELL_COPY = {
+     brand: 'Prisma AIRS',
+@@ -6,6 +11,9 @@ export const SHELL_COPY = {
+     tenantSwitcher: 'Switch tenant',
+     tenantNone: 'No tenant yet',
+     addTenant: 'Add a tenant…',
++    tenantAdded: (tenant: string) => `${tenant} is set up and active.`,
++    backToSetup: 'Back to setup',
++    importDuringSetup: 'Importing a v1 profile creates its tenant and opens Prisma AIRS on it; add its scan key in Administration. Secrets are always entered again.',
+     palette: 'Go to…',
+     paletteLabel: 'Command palette',
+     paletteInput: 'Go to a destination, tenant or action',
+diff --git a/apps/desktop/src/v2/modal.tsx b/apps/desktop/src/v2/modal.tsx
+index 32b5b96b..40887f2e 100644
+--- a/apps/desktop/src/v2/modal.tsx
++++ b/apps/desktop/src/v2/modal.tsx
+@@ -94,7 +94,7 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
+ 
+     return (
+         <div
+-            className='fixed inset-0 z-50 grid place-items-start justify-center pt-[10vh]'
++            className='fixed inset-0 z-50 grid place-items-start justify-center pt-[4vh]'
+             data-v2-scrim=''
+             aria-hidden={topmost ? undefined : true}
+             inert={topmost ? undefined : true}
+@@ -111,7 +111,9 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
+                 onKeyDown={onKeyDown}
+                 onMouseDown={(e) => e.stopPropagation()}
+                 className='rounded-[12px] border p-5 shadow-2xl'
+-                style={{ width: `min(${width}px, 92vw)`, background: 'var(--v2-paper)', borderColor: 'var(--v2-rule)', color: 'var(--v2-ink)' }}
++                // Bounded to the viewport: a tall dialog scrolls inside itself, so its
++                // actions stay reachable at the minimum window size and 200% zoom.
++                style={{ width: `min(${width}px, 92vw)`, maxHeight: '92vh', overflowY: 'auto', background: 'var(--v2-paper)', borderColor: 'var(--v2-rule)', color: 'var(--v2-ink)' }}
+             >
+                 {children}
+             </div>
+diff --git a/apps/desktop/src/v2/palette.tsx b/apps/desktop/src/v2/palette.tsx
+index 9a7460b5..a3f46927 100644
+--- a/apps/desktop/src/v2/palette.tsx
++++ b/apps/desktop/src/v2/palette.tsx
+@@ -1,6 +1,6 @@
+ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+ import type { FeatureEntry, FeatureId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
+-import { SHELL_COPY } from './copy'
++import { ENVIRONMENT_LABELS, SHELL_COPY } from './copy'
+ import { Modal } from './modal'
+ 
+ export type PaletteEntry =
+@@ -30,7 +30,7 @@ export function paletteEntries(snapshot: ShellSnapshot): PaletteEntry[] {
+         .map((t) => ({
+             kind: 'switch',
+             id: `tenant:${t.id}`,
+-            label: SHELL_COPY.paletteSwitch(`${t.label} · ${t.destination.kind === 'region' ? t.destination.region : 'custom'}${t.tsgId ? ` · TSG ${t.tsgId}` : ''}`),
++            label: SHELL_COPY.paletteSwitch(`${t.label} · ${ENVIRONMENT_LABELS[t.environment]}${t.tsgId ? ` · TSG ${t.tsgId}` : ''}`),
+             tenant: t.id,
+         }))
+     const actions: PaletteEntry[] = snapshot.active ? [{ kind: 'readNow', id: 'action:read', label: SHELL_COPY.paletteReadNow }] : []
+diff --git a/apps/desktop/src/v2/tenant-switcher.tsx b/apps/desktop/src/v2/tenant-switcher.tsx
+index 508679ec..285167f3 100644
+--- a/apps/desktop/src/v2/tenant-switcher.tsx
++++ b/apps/desktop/src/v2/tenant-switcher.tsx
+@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+ import { createPortal } from 'react-dom'
+ import { ChevronDown } from 'lucide-react'
+ import type { ShellSnapshot } from '@prisma-airs/desktop-contracts'
+-import { SHELL_COPY } from './copy'
++import { ENVIRONMENT_LABELS, SHELL_COPY } from './copy'
+ import { useShellStore } from './store'
+ import { useModalsOpen } from './modal'
+ 
+@@ -16,7 +16,7 @@ export interface TenantSwitcherProps {
+ function environment(snapshot: ShellSnapshot, id: string | undefined): string {
+     const tenant = snapshot.tenants.find((t) => t.id === id)
+     if (!tenant) return ''
+-    return tenant.destination.kind === 'region' ? tenant.destination.region : 'custom'
++    return ENVIRONMENT_LABELS[tenant.environment]
+ }
+ 
+ /** The identity a tenant is told apart by: label, environment and TSG (labels may repeat). */
+diff --git a/apps/desktop/src/v2/v2-shell.test.tsx b/apps/desktop/src/v2/v2-shell.test.tsx
+index 2b362b3d..90ff5215 100644
+--- a/apps/desktop/src/v2/v2-shell.test.tsx
++++ b/apps/desktop/src/v2/v2-shell.test.tsx
+@@ -88,7 +88,7 @@ describe('v2 shell', () => {
+         expect(dialog).toHaveAttribute('aria-modal', 'true')
+         const options = within(dialog).getAllByRole('option').map((o) => o.textContent)
+         expect(options.slice(0, 2)).toEqual(['Home⌘1', 'Inbox⌘2C30'])
+-        expect(options).toContain('Switch to Meridian Retail · unitedStates · TSG 1001464285')
++        expect(options).toContain('Switch to Meridian Retail · Production · TSG 1001464285')
+         expect(options).toContain('Read now')
+         // End and Home jump to the last and first entries.
+         await user.keyboard('{End}')
+@@ -107,13 +107,13 @@ describe('v2 shell', () => {
+         const user = userEvent.setup()
+         const native = await launch(fxSwitcher())
+         const switcher = screen.getByRole('button', { name: /^Switch tenant/ })
+-        expect(switcher).toHaveAccessibleName('Switch tenant: Northwind Health · europe · TSG 1762204418')
++        expect(switcher).toHaveAccessibleName('Switch tenant: Northwind Health · Production · TSG 1762204418')
+         expect(switcher).toHaveTextContent('TSG 1762204418')
+         await user.click(switcher)
+         const list = screen.getByRole('group', { name: 'Switch tenant' })
+         expect(within(list).getAllByRole('button').map((o) => o.textContent)).toEqual([
+-            'Northwind Healtheurope · TSG 1762204418',
+-            'Meridian RetailunitedStates · TSG 1001464285',
++            'Northwind HealthProduction · TSG 1762204418',
++            'Meridian RetailProduction · TSG 1001464285',
+             'Add a tenant…',
+         ])
+         await user.click(within(list).getByRole('button', { name: /Meridian Retail/ }))
+@@ -420,14 +420,14 @@ describe('v2 shell', () => {
+         const a = tenant({ id: 'tn-0123456789abcdef', label: 'Acme', tsgId: '1111111111' })
+         const b = tenant({ id: 'tn-fedcba9876543210', label: 'Acme', tsgId: '2222222222' })
+         const native = await launch({ ...fxHome(), tenants: [a, b], active: { tenant: a.id, context: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' }, activeFeature: 'harness' })
+-        expect(screen.getByRole('button', { name: 'Switch tenant: Acme · europe · TSG 1111111111' })).toBeInTheDocument()
++        expect(screen.getByRole('button', { name: 'Switch tenant: Acme · Production · TSG 1111111111' })).toBeInTheDocument()
+         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+         const rows = within(screen.getByRole('group', { name: 'Switch tenant' })).getAllByRole('button')
+-        expect(rows.map((r) => r.textContent)).toEqual(['Acmeeurope · TSG 1111111111', 'Acmeeurope · TSG 2222222222', 'Add a tenant…'])
++        expect(rows.map((r) => r.textContent)).toEqual(['AcmeProduction · TSG 1111111111', 'AcmeProduction · TSG 2222222222', 'Add a tenant…'])
+         await user.click(rows[1]!)
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id })
+         await native.push({ ...native.current, active: { tenant: b.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
+-        expect(screen.getByRole('button', { name: 'Switch tenant: Acme · europe · TSG 2222222222' })).toBeInTheDocument()
++        expect(screen.getByRole('button', { name: 'Switch tenant: Acme · Production · TSG 2222222222' })).toBeInTheDocument()
+     })
+ 
+     it('identifies identically named tenants in the palette by environment and TSG, and ArrowDown moves the current row', async () => {
+@@ -439,8 +439,8 @@ describe('v2 shell', () => {
+         await user.click(rail().getByRole('button', { name: /Go to…/ }))
+         const dialog = screen.getByRole('dialog', { name: 'Command palette' })
+         const labels = within(dialog).getAllByRole('option').map((o) => o.textContent)
+-        expect(labels).toContain('Switch to Acme · europe · TSG 1111111111')
+-        expect(labels).toContain('Switch to Acme · unitedStates · TSG 2222222222')
++        expect(labels).toContain('Switch to Acme · Production · TSG 1111111111')
++        expect(labels).toContain('Switch to Acme · Production · TSG 2222222222')
+         // ArrowDown moves the current row one step at a time (aria-current follows).
+         const current = () => within(dialog).getAllByRole('option').find((o) => o.getAttribute('aria-current') === 'true')?.textContent
+         expect(current()).toBe('Home⌘1')
+diff --git a/apps/desktop/src/v2/v2-shell.tsx b/apps/desktop/src/v2/v2-shell.tsx
+index 20838667..b3be4b3c 100644
+--- a/apps/desktop/src/v2/v2-shell.tsx
++++ b/apps/desktop/src/v2/v2-shell.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useRef } from 'react'
++import { useEffect, useRef, useState } from 'react'
+ import { Eye, Moon, Sun, SunMoon, Undo2 } from 'lucide-react'
+ import type { DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+ import type { Dispatch } from '../features/tenants/dispatch'
+@@ -10,7 +10,8 @@ import { Palette } from './palette'
+ import { useShellStore } from './store'
+ import { TenantSwitcher } from './tenant-switcher'
+ import { Toasts } from './toasts'
+-import { useModalsOpen } from './modal'
++import { Modal, useModalsOpen } from './modal'
++import { Wizard } from './wizard/wizard'
+ 
+ export interface V2ShellProps {
+     snapshot: ShellSnapshot
+@@ -52,6 +53,16 @@ export function V2Shell(props: V2ShellProps) {
+     const modalOpen = useModalsOpen()
+     const heading = useRef<HTMLHeadingElement>(null)
+     const firstRender = useRef(true)
++    const [adding, setAdding] = useState(false)
++    // The sheet closes only when the wizard says so: a committed tenant (toast)
++    // or a discard the core admitted. Escape and the scrim are close requests
++    // the wizard answers with the same Cancel as its button.
++    const [closeRequests, setCloseRequests] = useState(0)
++    const closeSheet = (added?: string) => {
++        setAdding(false)
++        setCloseRequests(0)
++        if (added) useShellStore.getState().toast(SHELL_COPY.tenantAdded(added), 'ok')
++    }
+     const active = snapshot.activeFeature
+     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
+ 
+@@ -75,7 +86,7 @@ export function V2Shell(props: V2ShellProps) {
+                 className='sticky top-0 flex h-screen shrink-0 flex-col gap-2 overflow-y-auto p-3'
+                 style={{ width: 'var(--v2-rail)', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}
+             >
+-                <TenantSwitcher snapshot={snapshot} onSwitch={props.onSwitchTenant} onAdd={() => props.onNavigate('settings')} />
++                <TenantSwitcher snapshot={snapshot} onSwitch={props.onSwitchTenant} onAdd={() => setAdding(true)} />
+                 <ul className='mt-2 flex flex-col gap-0.5'>
+                     {snapshot.features
+                         .filter((f) => f.sidebar)
+@@ -236,6 +247,22 @@ export function V2Shell(props: V2ShellProps) {
+             {paletteOpen && (
+                 <Palette snapshot={snapshot} onNavigate={props.onNavigate} onSwitchTenant={props.onSwitchTenant} onReadNow={props.onReadNow} onClose={closePalette} />
+             )}
++            {adding && (
++                <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} data-slot='add-tenant-sheet'>
++                    <Wizard
++                        snapshot={snapshot}
++                        dispatch={props.dispatch}
++                        observeManagement={(operation) => props.client.observeManagement(operation)}
++                        mode='add'
++                        onClose={closeSheet}
++                        closeRequests={closeRequests}
++                        onNavigate={(feature) => {
++                            setAdding(false)
++                            props.onNavigate(feature)
++                        }}
++                    />
++                </Modal>
++            )}
+             {/* Toasts are background siblings of a modal too (I8): inert and hidden while one is open. */}
+             <div aria-hidden={modalOpen ? true : undefined} inert={modalOpen ? true : undefined}>
+                 <Toasts />
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 5855a9bd..8558909b 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -35,6 +35,7 @@ mod management_domain;
+ mod observation_domain;
+ mod offline_domain;
+ mod sessions_domain;
++mod setup_domain;
+ mod workbench_domain;
+ 
+ pub use change_domain::{
+@@ -127,6 +128,41 @@ pub enum Intent {
+     SetShowCalls {
+         on: bool,
+     },
++    /// Start a tenant setup (C29): a draft with its own context that the
++    /// credential intents and `verifyTenantSetup` address. One at a time;
++    /// `firstRun` only while no tenant exists.
++    BeginTenantSetup {
++        mode: features::SetupMode,
++        profile: ProfileDraft,
++    },
++    /// Change the draft's profile. A new destination retires the draft's
++    /// credentials (they were bound to the old origin).
++    UpdateTenantSetup {
++        context: ContextRef,
++        profile: ProfileDraft,
++    },
++    /// Record the draft's chosen products (Runtime Security always).
++    ChooseSetupProducts {
++        context: ContextRef,
++        products: Vec<features::ProductId>,
++    },
++    /// Verify the draft's current inputs over the admitted reads; the
++    /// lines stream through `ShellSnapshot.setup.verify`.
++    VerifyTenantSetup {
++        context: ContextRef,
++    },
++    /// Commit the draft as a tenant (products, verify warnings, active
++    /// selection, first-run onboarding) and import the chosen starter
++    /// packs. Refused unless the current inputs were verified without a
++    /// blocking failure (an optional service's failure is carried as a warning).
++    CompleteTenantSetup {
++        context: ContextRef,
++        packs: Vec<features::ProductId>,
++    },
++    /// Drop the draft and clean up its credentials. Nothing else changes.
++    DiscardTenantSetup {
++        context: ContextRef,
++    },
+     /// Create a tenant profile with no credential.
+     CreateTenant {
+         profile: ProfileDraft,
+@@ -694,6 +730,12 @@ intent_kinds! {
+     Navigate => "navigate",
+     SetOnboarding => "setOnboarding",
+     SetShowCalls => "setShowCalls",
++    BeginTenantSetup => "beginTenantSetup",
++    UpdateTenantSetup => "updateTenantSetup",
++    ChooseSetupProducts => "chooseSetupProducts",
++    VerifyTenantSetup => "verifyTenantSetup",
++    CompleteTenantSetup => "completeTenantSetup",
++    DiscardTenantSetup => "discardTenantSetup",
+     CreateTenant => "createTenant",
+     SelectTenant => "selectTenant",
+     DeleteTenant => "deleteTenant",
+@@ -986,6 +1028,8 @@ pub struct TenantView {
+     pub label: String,
+     pub tsg_id: Option<String>,
+     pub destination: Destination,
++    /// Production / staging / other (C29).
++    pub environment: features::TenantEnvironment,
+     /// The exact origin the scan key may be sent to.
+     pub origin: String,
+     pub scan: ScanView,
+@@ -993,6 +1037,11 @@ pub struct TenantView {
+     pub management: ManagementView,
+     /// The Gateway workspace inference key (C18; no secret material).
+     pub inference: inference_domain::InferenceKeyView,
++    /// The products this tenant reads (C29); Runtime Security until set.
++    pub products: Vec<features::ProductId>,
++    /// Verify warnings recorded at wizard completion (C29); the Inbox
++    /// renders them (C30).
++    pub setup_warnings: Vec<features::SetupWarning>,
+ }
+ 
+ /// Redacted management-capability state. Never contains the client secret.
+@@ -1103,6 +1152,8 @@ pub struct ShellSnapshot {
+     /// A held tenant switch awaiting the operator's resolution (C30 raises
+     /// it; always absent in C28).
+     pub switch_blocked: Option<SwitchBlocked>,
++    /// The tenant setup in progress (C29), with its draft and verification.
++    pub setup: Option<features::SetupView>,
+     pub features: Vec<FeatureEntry>,
+     /// True only in the distinct test-fixtures identity.
+     pub fixture_build: bool,
+@@ -1420,6 +1471,10 @@ enum ScanCapability {
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ struct Tenant {
+     profile: TenantProfile,
++    /// Products chosen in the wizard (C29); empty means Runtime only.
++    products: Vec<features::ProductId>,
++    /// Verify warnings recorded at wizard completion (C29).
++    setup_warnings: Vec<features::SetupWarning>,
+     scan: ScanCapability,
+     /// The management OAuth client secret (destination: the token origin).
+     management: ScanCapability,
+@@ -1443,6 +1498,8 @@ impl Tenant {
+     fn new(profile: TenantProfile) -> Self {
+         Self {
+             profile,
++            products: Vec::new(),
++            setup_warnings: Vec::new(),
+             scan: ScanCapability::Missing,
+             management: ScanCapability::Missing,
+             management_client: None,
+@@ -1481,6 +1538,8 @@ struct Data {
+     show_calls: Option<bool>,
+     tenants: Vec<Tenant>,
+     active: Option<TenantId>,
++    /// The draft under setup (C29): not a tenant until completion.
++    setup: Option<setup_domain::Setup>,
+     pending_cleanup: Vec<RecordId>,
+     learner: Option<StoredLearner>,
+     learner_cleanup: Vec<RecordId>,
+@@ -1671,6 +1730,21 @@ impl State {
+         self.data.onboarding.unwrap_or_default()
+     }
+ 
++    /// What the shell shows (C29): a first run is one with no tenant yet. A
++    /// desktop that already has a tenant (an upgrade, or a tenant created
++    /// before the v2 shell was chosen) is never sent through the wizard.
++    /// A desktop with a tenant is never in the wizard: an upgrade, a tenant
++    /// created before v2 was chosen, or one imported during first run
++    /// (the import flow is the reviewed C23 destination; its tenant's
++    /// credentials are added in Administration).
++    fn shown_onboarding(&self) -> features::OnboardingState {
++        if self.data.tenants.is_empty() {
++            self.onboarding()
++        } else {
++            features::OnboardingState::Done
++        }
++    }
++
+     fn show_calls(&self) -> bool {
+         self.data.show_calls.unwrap_or(true)
+     }
+@@ -1689,10 +1763,11 @@ impl State {
+             revision: self.revision.to_string(),
+             appearance: self.shown_appearance(),
+             ui_variant: self.ui_variant(),
+-            onboarding: self.onboarding(),
++            onboarding: self.shown_onboarding(),
+             active_feature: self.active_feature(),
+             show_calls: self.show_calls(),
+             switch_blocked: None,
++            setup: self.setup_view(),
+             features: features::catalogue_for(self.ui_variant()),
+             fixture_build: cfg!(feature = "test-fixtures"),
+             storage: self.storage,
+@@ -1771,17 +1846,51 @@ impl State {
+         }
+     }
+ 
++    /// Whether `id` is a committed tenant (never the setup draft).
++    fn committed_tenant(&self, id: &TenantId) -> bool {
++        self.data.tenants.iter().any(|t| &t.profile.id == id)
++    }
++
++    /// A tenant, or the draft under setup (C29), by id.
+     fn tenant(&self, id: &TenantId) -> Option<&Tenant> {
+-        self.data.tenants.iter().find(|t| &t.profile.id == id)
++        self.data
++            .tenants
++            .iter()
++            .chain(self.data.setup.as_ref().map(|s| &s.tenant))
++            .find(|t| &t.profile.id == id)
+     }
+ 
+     fn tenant_mut(&mut self, id: &TenantId) -> Option<&mut Tenant> {
+-        self.data.tenants.iter_mut().find(|t| &t.profile.id == id)
++        self.data
++            .tenants
++            .iter_mut()
++            .chain(self.data.setup.as_mut().map(|s| &mut s.tenant))
++            .find(|t| &t.profile.id == id)
+     }
+ 
+     fn persisted(&self) -> PersistedState {
+         PersistedState {
+             appearance: self.appearance(),
++            tenant_products: self
++                .data
++                .tenants
++                .iter()
++                .filter(|t| !t.products.is_empty())
++                .map(|t| crate::store::TenantProducts {
++                    tenant: t.profile.id.clone(),
++                    products: t.products.clone(),
++                })
++                .collect(),
++            tenant_warnings: self
++                .data
++                .tenants
++                .iter()
++                .filter(|t| !t.setup_warnings.is_empty())
++                .map(|t| crate::store::TenantWarnings {
++                    tenant: t.profile.id.clone(),
++                    warnings: t.setup_warnings.clone(),
++                })
++                .collect(),
+             ui_variant: self.ui_variant(),
+             onboarding: self.onboarding(),
+             show_calls: self.show_calls(),
+@@ -1792,10 +1901,15 @@ impl State {
+                 .map(|t| t.profile.clone())
+                 .collect(),
+             active_tenant: self.data.active.clone(),
++            tenant_draft: self.data.setup.as_ref().map(|s| crate::store::StoredDraft {
++                profile: s.tenant.profile.clone(),
++                mode: s.mode,
++            }),
+             credentials: self
+                 .data
+                 .tenants
+                 .iter()
++                .chain(self.data.setup.as_ref().map(|s| &s.tenant))
+                 .flat_map(|t| {
+                     [
+                         CredentialClass::Scan,
+@@ -2108,6 +2222,9 @@ impl State {
+         if self.storage == StorageHealth::Resetting {
+             return Err(Refusal::StaleContext);
+         }
++        if let Some(draft) = self.setup_tenant_for(context) {
++            return Ok(draft);
++        }
+         match (&self.active_ref, &self.data.active) {
+             (Some(current), Some(tenant)) if current == context => Ok(tenant.clone()),
+             _ => Err(Refusal::StaleContext),
+@@ -2235,6 +2352,7 @@ fn tenant_view(t: &Tenant) -> TenantView {
+         id: t.profile.id.clone(),
+         label: t.profile.label.clone(),
+         tsg_id: t.profile.tsg_id.clone(),
++        environment: t.profile.environment,
+         origin: t.profile.destination.origin().to_owned(),
+         destination: t.profile.destination.clone(),
+         scan: ScanView {
+@@ -2242,6 +2360,12 @@ fn tenant_view(t: &Tenant) -> TenantView {
+             mode,
+             failure,
+         },
++        products: if t.products.is_empty() {
++            vec![features::ProductId::RuntimeSecurity]
++        } else {
++            t.products.clone()
++        },
++        setup_warnings: t.setup_warnings.clone(),
+         management: {
+             let (state, mode, failure, token_origin) = match &t.management {
+                 ScanCapability::Missing => (ScanState::Missing, None, None, None),
+@@ -2910,6 +3034,19 @@ impl Core {
+ }
+ 
+ fn data_from(doc: PersistedState) -> Data {
++    // A setup that was in progress is not restored: its credentials are
++    // cleaned up (C29).
++    let draft_records: Vec<RecordId> = doc
++        .tenant_draft
++        .as_ref()
++        .map(|d| {
++            doc.credentials
++                .iter()
++                .filter(|c| c.tenant == d.profile.id)
++                .map(|c| c.record.clone())
++                .collect()
++        })
++        .unwrap_or_default();
+     let tenants = doc
+         .tenants
+         .into_iter()
+@@ -2979,6 +3116,20 @@ fn data_from(doc: PersistedState) -> Data {
+                 };
+                 tenant.inference_target = Some(target);
+             }
++            if let Some(tp) = doc
++                .tenant_products
++                .iter()
++                .find(|p| p.tenant == tenant.profile.id)
++            {
++                tenant.products = tp.products.clone();
++            }
++            if let Some(tw) = doc
++                .tenant_warnings
++                .iter()
++                .find(|w| w.tenant == tenant.profile.id)
++            {
++                tenant.setup_warnings = tw.warnings.clone();
++            }
+             tenant
+         })
+         .collect();
+@@ -2989,7 +3140,16 @@ fn data_from(doc: PersistedState) -> Data {
+         show_calls: Some(doc.show_calls),
+         tenants,
+         active: doc.active_tenant,
+-        pending_cleanup: doc.pending_cleanup,
++        setup: None,
++        pending_cleanup: {
++            let mut pending = doc.pending_cleanup;
++            for record in draft_records {
++                if !pending.contains(&record) {
++                    pending.push(record);
++                }
++            }
++            pending
++        },
+         learner: doc.learner,
+         learner_cleanup: doc.learner_cleanup,
+         harness_history: doc.harness_history,
+@@ -3280,6 +3440,77 @@ fn admit(
+                 state.changed();
+             }
+         }
++        Intent::BeginTenantSetup { mode, profile } => {
++            state.require_storage()?;
++            let before = state.data.clone();
++            state.begin_setup(mode, profile)?;
++            state.save_with(&before)?;
++            state.changed();
++        }
++        Intent::UpdateTenantSetup { context, profile } => {
++            state.require_storage()?;
++            let before = state.data.clone();
++            let retired = state.update_setup(&context, profile)?;
++            state.save_with(&before)?;
++            for old in retired {
++                let _ = session.delete(&old);
++            }
++            effects.push(Effect::Cleanup);
++            state.changed();
++        }
++        Intent::ChooseSetupProducts { context, products } => {
++            state.require_storage()?;
++            let before = state.data.clone();
++            state.choose_setup_products(&context, products)?;
++            state.save_with(&before)?;
++            state.changed();
++        }
++        Intent::VerifyTenantSetup { context } => {
++            let starts = state.begin_verify(
++                &context,
++                Arc::clone(&adapters.keychain),
++                Arc::clone(session),
++            )?;
++            effects.push(Effect::Start(starts));
++            effects.push(Effect::Start(state.take_gateway_starts()));
++            state.changed();
++        }
++        Intent::CompleteTenantSetup { context, packs } => {
++            state.require_storage()?;
++            let before = state.data.clone();
++            let recorded_secs = wall_secs(state.clock_offset);
++            let done = state.complete_setup(&context, packs, recorded_secs)?;
++            state.save_with(&before)?;
++            effects.push(Effect::Start(state.reissue_context()));
++            effects.push(Effect::Start(state.take_gateway_starts()));
++            if !done.packs.is_empty() {
++                let (lease, write) = state.queue_examples(&done.tenant, &done.packs);
++                if let Some(lease) = lease {
++                    effects.push(Effect::LoadLibrary { lease });
++                }
++                if let Some((tenant, generation)) = write {
++                    effects.push(Effect::StoreLibrary { tenant, generation });
++                }
++            }
++            let _ = done.first_run;
++            state.changed();
++        }
++        Intent::DiscardTenantSetup { context } => {
++            if state.setup_has_keychain_credential() {
++                state.require_storage()?;
++            }
++            let before = state.data.clone();
++            let retired = state.discard_setup(&context)?;
++            if state.storage == StorageHealth::Ready {
++                state.save_with(&before)?;
++            }
++            for old in retired {
++                let _ = session.delete(&old);
++            }
++            effects.push(Effect::Start(state.take_gateway_starts()));
++            effects.push(Effect::Cleanup);
++            state.changed();
++        }
+         Intent::CreateTenant { profile } => {
+             state.require_storage()?;
+             let profile = profile.validate().ok_or(Refusal::InvalidInput)?;
+@@ -3294,11 +3525,18 @@ fn admit(
+                 label: profile.label,
+                 tsg_id: profile.tsg_id,
+                 destination: profile.destination,
++                environment: profile.environment,
+             }));
+             if select {
+                 state.data.active = Some(id);
+             }
++            // A first-run draft is over once the desktop has a tenant (C29).
++            let retired = state.end_first_run_setup();
+             state.save_with(&before)?;
++            for old in retired {
++                let _ = session.delete(&old);
++            }
++            effects.push(Effect::Cleanup);
+             if select {
+                 effects.push(Effect::Start(state.reissue_context()));
+             }
+@@ -3306,8 +3544,9 @@ fn admit(
+         }
+         Intent::SelectTenant { tenant } => {
+             state.require_storage()?;
+-            // A tenant an unsettled import wrote is not there yet (D050).
+-            if state.tenant(&tenant).is_none() || state.v1_hides_tenant(&tenant) {
++            // A tenant an unsettled import wrote is not there yet (D050); a
++            // setup draft is not a tenant until it completes (C29).
++            if !state.committed_tenant(&tenant) || state.v1_hides_tenant(&tenant) {
+                 return Err(Refusal::InvalidInput);
+             }
+             let before = state.data.clone();
+@@ -3318,7 +3557,7 @@ fn admit(
+         }
+         Intent::DeleteTenant { tenant } => {
+             state.require_storage()?;
+-            if state.tenant(&tenant).is_none() {
++            if !state.committed_tenant(&tenant) {
+                 return Err(Refusal::InvalidInput);
+             }
+             let before = state.data.clone();
+@@ -4164,6 +4403,7 @@ fn admit(
+                     label: candidate.label,
+                     tsg_id: candidate.tsg_id,
+                     destination: candidate.destination.ok_or(Refusal::InvalidInput)?,
++                    environment: Default::default(),
+                 }
+                 .validate()
+                 .ok_or(Refusal::InvalidInput)?;
+@@ -4172,6 +4412,7 @@ fn admit(
+                     label: profile.label,
+                     tsg_id: profile.tsg_id,
+                     destination: profile.destination,
++                    environment: profile.environment,
+                 }));
+             }
+             state.save_with(&before)?;
+@@ -5170,8 +5411,13 @@ fn configure_credential(
+     // workspace choice are untouched).
+     if class == CredentialClass::Inference {
+         effects.push(Effect::Start(state.retire_inference(&tenant)));
+-    } else {
++    } else if state.data.active.as_ref() == Some(&tenant) {
+         effects.push(Effect::Start(state.reissue_context()));
++    } else if state.is_setup_tenant(&tenant) {
++        // A draft under setup (C29) has its own context: replacing its
++        // credential retires that context (and the binding cached under it)
++        // without touching the shell's active context.
++        state.reissue_setup_context();
+     }
+     if authorized {
+         if mode == StorageMode::Keychain {
+@@ -5247,8 +5493,10 @@ fn remove_credential(
+     }
+     if class == CredentialClass::Inference {
+         effects.push(Effect::Start(state.retire_inference(&tenant)));
+-    } else {
++    } else if state.data.active.as_ref() == Some(&tenant) {
+         effects.push(Effect::Start(state.reissue_context()));
++    } else if state.is_setup_tenant(&tenant) {
++        state.reissue_setup_context();
+     }
+     effects.push(Effect::Cleanup);
+     state.changed();
+@@ -5508,6 +5756,14 @@ fn settle_reset(inner: &Arc<Inner>, result: Result<bool, ResetFailure>) {
+     }
+ }
+ 
++/// Wall-clock seconds since the Unix epoch, moved by the fixture clock offset.
++fn wall_secs(clock_offset: u32) -> u32 {
++    std::time::SystemTime::now()
++        .duration_since(std::time::UNIX_EPOCH)
++        .map_or(0, |d| u32::try_from(d.as_secs()).unwrap_or(u32::MAX))
++        .saturating_add(clock_offset)
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+diff --git a/crates/desktop-core/src/authority/gateway_domain.rs b/crates/desktop-core/src/authority/gateway_domain.rs
+index dedc7358..927b38c5 100644
+--- a/crates/desktop-core/src/authority/gateway_domain.rs
++++ b/crates/desktop-core/src/authority/gateway_domain.rs
+@@ -18,6 +18,7 @@ use super::{Refusal, State, StorageHealth};
+ use crate::context::{ContextRef, WorkspaceRef};
+ use crate::gateway::{GatewayList, GatewayRead, GatewayResource, ListedWorkspace, WorkspaceScope};
+ use crate::management::ManagementRequest;
++use crate::tenants::TenantId;
+ 
+ /// The chosen workspace and the reference reads use.
+ #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+@@ -61,11 +62,21 @@ struct Listing {
+     complete: bool,
+ }
+ 
+-struct Selection {
+-    reference: WorkspaceRef,
+-    context: ContextRef,
+-    workspace: ListedWorkspace,
+-    restored: bool,
++#[derive(Clone, Debug)]
++pub(super) struct Selection {
++    pub(super) reference: WorkspaceRef,
++    pub(super) context: ContextRef,
++    pub(super) workspace: ListedWorkspace,
++    pub(super) restored: bool,
++}
++
++/// A setup draft's own Gateway listing and choice (C29): kept apart from
++/// the active tenant's, so a draft never clears or replaces the shell's
++/// selection and its late replies never reach the active tenant.
++#[derive(Clone, Debug, Default)]
++pub(super) struct SetupGateway {
++    pub(super) workspaces: Option<Vec<ListedWorkspace>>,
++    pub(super) selection: Option<Selection>,
+ }
+ 
+ /// Where a Gateway read is admitted: its operations domain (the tenant
+@@ -161,6 +172,9 @@ impl State {
+         workspace: &str,
+     ) -> Result<Vec<crate::runtime::Start>, Refusal> {
+         let tenant = self.check_context(context)?;
++        if self.is_setup_context(context) {
++            return self.select_setup_workspace(context, &tenant, workspace);
++        }
+         if self
+             .gateway
+             .selection
+@@ -182,12 +196,8 @@ impl State {
+             .and_then(|t| t.gateway_workspace.clone());
+         if remembered.as_deref() != Some(workspace) {
+             let before = self.data.clone();
+-            if let Some(t) = self
+-                .data
+-                .tenants
+-                .iter_mut()
+-                .find(|t| t.profile.id == tenant)
+-            {
++            // A setup draft (C29) remembers it too and carries it into the tenant.
++            if let Some(t) = self.tenant_mut(&tenant) {
+                 t.gateway_workspace = Some(workspace.to_owned());
+             }
+             if self.storage == StorageHealth::Ready {
+@@ -197,6 +207,37 @@ impl State {
+         Ok(self.choose(context.clone(), listed, false))
+     }
+ 
++    /// The draft's choice: from its own listing, remembered on the draft,
++    /// touching nothing of the active tenant's (no retirements).
++    fn select_setup_workspace(
++        &mut self,
++        context: &ContextRef,
++        tenant: &TenantId,
++        workspace: &str,
++    ) -> Result<Vec<crate::runtime::Start>, Refusal> {
++        let listed = self
++            .data
++            .setup
++            .as_ref()
++            .and_then(|s| s.gateway.workspaces.as_ref())
++            .and_then(|w| w.iter().find(|w| w.id == workspace))
++            .cloned()
++            .ok_or(Refusal::InvalidInput)?;
++        if let Some(t) = self.tenant_mut(tenant) {
++            t.gateway_workspace = Some(workspace.to_owned());
++        }
++        let reference = self.issue_workspace();
++        if let Some(setup) = self.data.setup.as_mut() {
++            setup.gateway.selection = Some(Selection {
++                reference,
++                context: context.clone(),
++                workspace: listed,
++                restored: false,
++            });
++        }
++        Ok(Vec::new())
++    }
++
+     fn choose(
+         &mut self,
+         context: ContextRef,
+@@ -219,6 +260,41 @@ impl State {
+     /// cleared; the tenant's remembered workspace is restored when listed.
+     pub(super) fn gateway_listed(&mut self, context: &ContextRef, list: &GatewayList) {
+         let workspaces = crate::gateway::listed_workspaces(list);
++        if self.is_setup_context(context) {
++            // The draft's listing: its own choice is reconciled, or restored
++            // from the draft's remembered workspace (a credential change
++            // retired the earlier choice with its context); the active
++            // tenant's listing and choice are untouched.
++            let reference = self.issue_workspace();
++            if let Some(setup) = self.data.setup.as_mut() {
++                match setup.gateway.selection.as_mut() {
++                    Some(selection) => {
++                        match workspaces.iter().find(|w| w.id == selection.workspace.id) {
++                            Some(listed) => selection.workspace = listed.clone(),
++                            None if list.complete => setup.gateway.selection = None,
++                            None => {}
++                        }
++                    }
++                    None => {
++                        if let Some(listed) = setup
++                            .tenant
++                            .gateway_workspace
++                            .as_deref()
++                            .and_then(|id| workspaces.iter().find(|w| w.id == id))
++                        {
++                            setup.gateway.selection = Some(Selection {
++                                reference,
++                                context: context.clone(),
++                                workspace: listed.clone(),
++                                restored: true,
++                            });
++                        }
++                    }
++                }
++                setup.gateway.workspaces = Some(workspaces);
++            }
++            return;
++        }
+         let mut starts = Vec::new();
+         if let Some(selection) = self.gateway.selection.as_mut() {
+             match workspaces.iter().find(|w| w.id == selection.workspace.id) {
+@@ -251,6 +327,11 @@ impl State {
+         self.gateway.pending.extend(starts);
+     }
+ 
++    /// Queues work freed by a retirement for the next `take_gateway_starts`.
++    pub(super) fn queue_gateway_starts(&mut self, starts: Vec<crate::runtime::Start>) {
++        self.gateway.pending.extend(starts);
++    }
++
+     /// Work freed by retirements inside settlements.
+     pub(super) fn take_gateway_starts(&mut self) -> Vec<crate::runtime::Start> {
+         std::mem::take(&mut self.gateway.pending)
+@@ -274,11 +355,11 @@ impl State {
+                 scope: None,
+             }));
+         }
++        // The selection under this context: the active tenant's or the
++        // setup draft's (each keeps its own).
+         let selection = self
+-            .gateway
+-            .selection
+-            .as_ref()
+-            .filter(|s| &s.context == context && Some(&s.reference) == workspace.as_ref())
++            .selection_under(context)
++            .filter(|s| Some(&s.reference) == workspace.as_ref())
+             .ok_or(Refusal::StaleContext)?;
+         Ok(Some(GatewayAdmission {
+             domain: selection.reference.as_str().to_owned(),
+@@ -287,6 +368,38 @@ impl State {
+         }))
+     }
+ 
++    /// The workspace chosen under a setup draft's context (C29), for the
++    /// draft's view.
++    pub(super) fn setup_workspace(&self, context: &ContextRef) -> Option<SelectedWorkspace> {
++        self.data
++            .setup
++            .as_ref()
++            .and_then(|s| s.gateway.selection.as_ref())
++            .filter(|s| &s.context == context)
++            .map(|s| SelectedWorkspace {
++                reference: s.reference.clone(),
++                workspace: s.workspace.clone(),
++                restored: s.restored,
++            })
++    }
++
++    /// The workspace selection made under `context`: the active tenant's
++    /// or the setup draft's (C29); never the other one's.
++    fn selection_under(&self, context: &ContextRef) -> Option<&Selection> {
++        if self.is_setup_context(context) {
++            self.data
++                .setup
++                .as_ref()
++                .and_then(|s| s.gateway.selection.as_ref())
++                .filter(|s| &s.context == context)
++        } else {
++            self.gateway
++                .selection
++                .as_ref()
++                .filter(|s| &s.context == context)
++        }
++    }
++
+     /// The current selection's reference.
+     pub(super) fn gateway_selection(&self) -> Option<WorkspaceRef> {
+         self.gateway.selection.as_ref().map(|s| s.reference.clone())
+@@ -299,10 +412,8 @@ impl State {
+         context: &ContextRef,
+         reference: &WorkspaceRef,
+     ) -> Option<ListedWorkspace> {
+-        self.gateway
+-            .selection
+-            .as_ref()
+-            .filter(|s| &s.context == context && &s.reference == reference)
++        self.selection_under(context)
++            .filter(|s| &s.reference == reference)
+             .map(|s| s.workspace.clone())
+     }
+ 
+@@ -326,8 +437,18 @@ impl State {
+                 .selection
+                 .as_ref()
+                 .is_some_and(|s| &s.reference == w)
++                || self.setup_workspace_reference().as_ref() == Some(w)
+         })
+     }
++
++    /// The draft's chosen workspace reference (C29), if any.
++    pub(super) fn setup_workspace_reference(&self) -> Option<WorkspaceRef> {
++        self.data
++            .setup
++            .as_ref()
++            .and_then(|s| s.gateway.selection.as_ref())
++            .map(|s| s.reference.clone())
++    }
+ }
+ 
+ /// Where a reviewed Gateway change applies (C17): the selection reference
+diff --git a/crates/desktop-core/src/authority/import_v1_domain/owners.rs b/crates/desktop-core/src/authority/import_v1_domain/owners.rs
+index 9769a610..ce1e7460 100644
+--- a/crates/desktop-core/src/authority/import_v1_domain/owners.rs
++++ b/crates/desktop-core/src/authority/import_v1_domain/owners.rs
+@@ -436,6 +436,7 @@ pub(super) async fn write(
+                 label,
+                 tsg_id,
+                 destination,
++                environment: Default::default(),
+             }
+             .validate()
+             .ok_or(fail(Problem::Corrupt))?;
+@@ -474,8 +475,13 @@ pub(super) async fn write(
+                     label: profile.label,
+                     tsg_id: profile.tsg_id,
+                     destination: profile.destination,
++                    environment: profile.environment,
+                 }));
+             s.v1_import.staged.push(entry.clone());
++            // A first-run draft is over once a tenant exists (C29); its
++            // Keychain records join the cleanup queue (session records of a
++            // draft are not expected during an import).
++            let _ = s.end_first_run_setup();
+             s.save_with(&before)
+                 .map_err(|_| fail(Problem::AccessDenied))?;
+             s.changed();
+@@ -1054,6 +1060,7 @@ pub(super) async fn revert(inner: &Arc<Inner>, receipt: &str, w: &Written) -> Re
+                         label: t.profile.label.clone(),
+                         tsg_id: t.profile.tsg_id.clone(),
+                         destination: t.profile.destination.clone(),
++                        environment: t.profile.environment,
+                     }) == *hash
+                 })
+             });
+diff --git a/crates/desktop-core/src/authority/library_domain.rs b/crates/desktop-core/src/authority/library_domain.rs
+index f63bc7ae..32fd25a0 100644
+--- a/crates/desktop-core/src/authority/library_domain.rs
++++ b/crates/desktop-core/src/authority/library_domain.rs
+@@ -13,7 +13,8 @@ use ts_rs::TS;
+ use super::{Refusal, State};
+ use crate::context::ContextRef;
+ use crate::library::{
+-    CaseDraft, CaseLibrary, CaseProblem, CaseView, LibraryFailure, TestCase, new_examples,
++    CaseDraft, CaseLibrary, CaseProblem, CaseProduct, CaseView, LibraryFailure, TestCase,
++    new_examples,
+ };
+ use crate::tenants::TenantId;
+ 
+@@ -430,6 +431,50 @@ impl State {
+     }
+ 
+     /// Starts reading the public catalog; returns the lease and its URL.
++    /// Imports the bundled examples of `products` into `tenant`'s library
++    /// (C29 starter packs). An open library takes them now (returns the
++    /// write); otherwise they wait for the load this starts (returns its
++    /// lease) and are merged when it settles.
++    pub(super) fn queue_examples(
++        &mut self,
++        tenant: &TenantId,
++        products: &[CaseProduct],
++    ) -> (Option<u64>, Option<(TenantId, u64)>) {
++        let Ok(cases) =
++            crate::library::parse_catalog(crate::library::BUNDLED_CATALOG, tenant.as_str())
++        else {
++            return (None, None);
++        };
++        let cases: Vec<TestCase> = cases
++            .into_iter()
++            .filter(|c| products.contains(&c.product))
++            .collect();
++        if cases.is_empty() || self.library_root.is_none() {
++            return (None, None);
++        }
++        if self
++            .libraries
++            .iter()
++            .any(|l| &l.tenant == tenant && l.state == LibraryState::Ready)
++        {
++            let write = self.add_examples(tenant, Ok(cases)).ok();
++            return (None, write);
++        }
++        let added = cases.len() as u32;
++        let lease = self.start_library(tenant);
++        if let Some(library) = self.libraries.iter_mut().find(|l| &l.tenant == tenant) {
++            for case in cases {
++                library.pending.push(Pending {
++                    case,
++                    origin: tenant.clone(),
++                    notice: LibraryNotice::ExamplesAdded { added },
++                    stamp: library.status,
++                });
++            }
++        }
++        (lease, None)
++    }
++
+     pub(super) fn begin_catalog(
+         &mut self,
+         context: &ContextRef,
+diff --git a/crates/desktop-core/src/authority/management_domain.rs b/crates/desktop-core/src/authority/management_domain.rs
+index 292dcb44..590fcfa7 100644
+--- a/crates/desktop-core/src/authority/management_domain.rs
++++ b/crates/desktop-core/src/authority/management_domain.rs
+@@ -120,6 +120,20 @@ impl State {
+ 
+     /// Cancels every binding but the current context's (its session ends
+     /// in-flight reads; its token cache is dropped with it).
++    /// Retires the binding cached under one context (C29: a setup draft's
++    /// context when its credentials or profile change).
++    pub(super) fn retire_management_binding(&mut self, context: &ContextRef) {
++        self.management_bindings.retain(|b| {
++            if &b.context == context {
++                b.session.cancel();
++                b.investigation.retire();
++                false
++            } else {
++                true
++            }
++        });
++    }
++
+     pub(super) fn retire_management_bindings(&mut self) {
+         let keep = self.active_ref.clone();
+         self.management_bindings.retain(|b| {
+@@ -271,7 +285,13 @@ impl State {
+         let current = self.active_ref.clone();
+         let mut overviews = Vec::new();
+         let mut listings = Vec::new();
++        // A setup's verify reads (C29) belong to the draft's context and
++        // settle into its lines instead of an observation.
++        let setup_context = self.data.setup.as_ref().map(|s| s.context.clone());
++        let setup_operations = self.setup_operations();
++        let mut setup_results = Vec::new();
+         let selected = self.gateway_selection();
++        let setup_selected = self.setup_workspace_reference();
+         for record in self.management_calls.iter_mut().filter(|r| !r.settled) {
+             let settlement = match self.operations.state(&record.operation) {
+                 Some(OperationState::Settled(s)) => s,
+@@ -283,11 +303,15 @@ impl State {
+             };
+             record.settled = true;
+             let reply = record.slot.lock().ok().and_then(|mut s| s.take());
+-            let retired = current.as_ref() != Some(&record.context)
+-                || record
+-                    .workspace
+-                    .as_ref()
+-                    .is_some_and(|w| selected.as_ref() != Some(w));
++            let for_setup = setup_operations.contains(&record.operation);
++            // The draft's context stays current for every read admitted under
++            // it (its verify lines and the presentation's own reads, such as
++            // the Gateway workspace listing) until the draft ends.
++            let retired = (current.as_ref() != Some(&record.context)
++                && setup_context.as_ref() != Some(&record.context))
++                || record.workspace.as_ref().is_some_and(|w| {
++                    selected.as_ref() != Some(w) && setup_selected.as_ref() != Some(w)
++                });
+             let result = match (reply, retired, settlement.stop) {
+                 // A reply for a retired context is never shown.
+                 (_, true, _) | (_, _, Some(_)) | (None, _, _) => ManagementResult::Failed {
+@@ -306,11 +330,19 @@ impl State {
+             {
+                 listings.push((record.context.clone(), list.clone()));
+             }
++            if for_setup {
++                // Consumed by the setup; nothing observes it.
++                record.observed = true;
++                setup_results.push((record.operation.clone(), result.clone()));
++            }
+             if let Ok(mut slot) = record.cell.result.lock() {
+                 *slot = Some(result);
+             }
+             record.cell.ready.notify_waiters();
+         }
++        for (operation, result) in setup_results {
++            self.setup_settled(&operation, &result);
++        }
+         for (context, result) in overviews {
+             self.overview_settled(&context, result);
+         }
+@@ -346,7 +378,8 @@ impl State {
+         // A result whose context (or Gateway workspace choice) retired
+         // before it was observed is withdrawn (it may have settled while it
+         // was current).
+-        let current = self.active_ref.as_ref() == Some(&context)
++        let current = (self.active_ref.as_ref() == Some(&context)
++            || self.is_setup_context(&context))
+             && self.workspace_current(workspace.as_ref());
+         let record = self
+             .management_calls
+diff --git a/crates/desktop-core/src/features.rs b/crates/desktop-core/src/features.rs
+index 9446d16f..93f8cf8c 100644
+--- a/crates/desktop-core/src/features.rs
++++ b/crates/desktop-core/src/features.rs
+@@ -30,6 +30,151 @@ pub enum OnboardingState {
+     Done,
+ }
+ 
++/// A product a tenant reads (C29, DESIGN-V2 §6): only products with an
++/// admitted service exist here; AIS and AES are not admitted and have no id.
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum ProductId {
++    RuntimeSecurity,
++    Gateway,
++    RedTeam,
++    ModelSkill,
++}
++
++/// A tenant's environment, chosen at setup (C29; prototype `env`).
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum TenantEnvironment {
++    #[default]
++    Production,
++    Staging,
++    Other,
++}
++
++/// Which wizard a setup runs in (C29).
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum SetupMode {
++    FirstRun,
++    Add,
++}
++
++/// One verification line (C29, screens/wizard.md "Verify").
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum VerifyLine {
++    ScanKey,
++    ManagementClient,
++    Gateway,
++    RedTeam,
++    ModelSkill,
++    /// Agentic Identity Security: listed as not available, never checked.
++    Ais,
++    /// Agentic Endpoint Security: listed as not available, never checked.
++    Aes,
++}
++
++/// How a verification line ended. `Stored` is an explicit non-result: the
++/// credential exists but no admitted read exercises it here.
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum VerifyState {
++    Pending,
++    Pass,
++    Warning,
++    Fail,
++    Stored,
++    Skipped,
++    /// No admitted service exists for this line (AIS, AES); never a result.
++    Unavailable,
++}
++
++/// One streamed verification result (core-owned).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct VerifyStep {
++    pub line: VerifyLine,
++    /// The admitted product the line reports on; none for an unavailable
++    /// product's line.
++    pub product: Option<ProductId>,
++    pub state: VerifyState,
++    pub reason: String,
++}
++
++/// A warning a verification run produced for an admitted product.
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct VerifyWarning {
++    pub product: ProductId,
++    pub reason: String,
++}
++
++/// The current verification run as the shell shows it.
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct VerifyView {
++    /// Counts runs; a later run replaces an earlier one's lines.
++    pub generation: u32,
++    pub steps: Vec<VerifyStep>,
++    /// Every line has settled.
++    pub done: bool,
++    /// Some line failed.
++    pub failed: bool,
++    /// A required line failed (the scan key on first run): completion is
++    /// refused. An optional line's failure is carried as a warning instead.
++    pub blocking: bool,
++    /// The inputs changed since this run started: it no longer counts.
++    pub stale: bool,
++    /// What completion records as the tenant's setup warnings: warning
++    /// lines and failed optional lines.
++    pub warnings: Vec<VerifyWarning>,
++}
++
++/// A starter pack: the bundled cases for one chosen product.
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct PackView {
++    pub product: ProductId,
++    pub count: u32,
++}
++
++/// The tenant under setup (C29): a draft with its own context, not yet a
++/// tenant. Absent when no wizard is open.
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct SetupView {
++    pub mode: SetupMode,
++    /// The context credential and verify intents use for the draft.
++    pub context: crate::context::ContextRef,
++    /// The draft's profile and credential states (no secret material).
++    pub tenant: crate::TenantView,
++    pub products: Vec<ProductId>,
++    /// First run requires the scan key; the add sheet does not.
++    pub scan_required: bool,
++    pub packs: Vec<PackView>,
++    /// The Gateway workspace chosen for the draft, with the reference its
++    /// inference key is configured under.
++    pub workspace: Option<crate::authority::SelectedWorkspace>,
++    pub verify: Option<VerifyView>,
++    /// The current inputs were verified without a blocking failure:
++    /// completion is admitted (optional failures travel as warnings).
++    pub completable: bool,
++}
++
++/// A recorded verify warning for one tenant: the Inbox item type C29
++/// defines and C30 renders (`InboxItem` kind `setupWarning`).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct SetupWarning {
++    /// `vw-<n>`, unique within the tenant.
++    pub id: String,
++    pub product: ProductId,
++    pub reason: String,
++    /// Wall-clock seconds since the Unix epoch when it was recorded
++    /// (`u32`: a JSON number, never a bigint, on the TypeScript side).
++    pub recorded_secs: u32,
++}
++
+ /// Stable identifier of a top-level desktop feature destination.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+ #[serde(rename_all = "camelCase")]
+diff --git a/crates/desktop-core/src/import.rs b/crates/desktop-core/src/import.rs
+index a57d7f3e..3f5cda92 100644
+--- a/crates/desktop-core/src/import.rs
++++ b/crates/desktop-core/src/import.rs
+@@ -197,6 +197,7 @@ pub fn preview(
+             label: label.clone(),
+             tsg_id: tsg_id.clone(),
+             destination,
++            environment: Default::default(),
+         });
+         let (shown, problem) = match draft.clone().and_then(ProfileDraft::validate) {
+             Some(valid) => (valid, None),
+@@ -209,6 +210,7 @@ pub fn preview(
+                     destination: Destination::Region {
+                         region: Region::UnitedStates,
+                     },
++                    environment: Default::default(),
+                 })
+                 .validate()
+                 .is_none()
+@@ -227,6 +229,7 @@ pub fn preview(
+                         destination: Destination::Region {
+                             region: Region::UnitedStates,
+                         },
++                        environment: Default::default(),
+                     },
+                     Some(problem),
+                 )
+diff --git a/crates/desktop-core/src/runtime.rs b/crates/desktop-core/src/runtime.rs
+index 420260a2..5328aa49 100644
+--- a/crates/desktop-core/src/runtime.rs
++++ b/crates/desktop-core/src/runtime.rs
+@@ -303,6 +303,16 @@ impl Operations {
+         now: Instant,
+     ) -> Vec<Start> {
+         let retired = |context: &str| context.starts_with(domain) && keep != Some(context);
++        self.retire_where(retired, now)
++    }
++
++    /// Retires exactly one context (C29: a setup draft's), leaving every
++    /// other domain untouched.
++    pub fn retire_context(&mut self, context: &str, now: Instant) -> Vec<Start> {
++        self.retire_where(|c| c == context, now)
++    }
++
++    fn retire_where(&mut self, retired: impl Fn(&str) -> bool, now: Instant) -> Vec<Start> {
+         for queued in self.queue.iter_mut() {
+             if retired(&queued.context) {
+                 queued.cancelled.get_or_insert(StopReason::ContextRetired);
+diff --git a/crates/desktop-core/src/store.rs b/crates/desktop-core/src/store.rs
+index 5ee4e645..61b758ee 100644
+--- a/crates/desktop-core/src/store.rs
++++ b/crates/desktop-core/src/store.rs
+@@ -205,6 +205,40 @@ pub struct PersistedState {
+     /// "Show the calls" preference (C28; absent before = on).
+     #[serde(default = "show_calls_default")]
+     pub show_calls: bool,
++    /// Each tenant's chosen products (C29; absent before = Runtime only).
++    #[serde(default, skip_serializing_if = "Vec::is_empty")]
++    pub tenant_products: Vec<TenantProducts>,
++    /// Verify warnings recorded at wizard completion (C29; Inbox items in C30).
++    #[serde(default, skip_serializing_if = "Vec::is_empty")]
++    pub tenant_warnings: Vec<TenantWarnings>,
++    /// A tenant setup in progress when the document was written (C29). It
++    /// is not restored: its credentials are cleaned up on the next load.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub tenant_draft: Option<StoredDraft>,
++}
++
++/// The draft a wizard was working on (C29).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(rename_all = "camelCase", deny_unknown_fields)]
++pub struct StoredDraft {
++    pub profile: TenantProfile,
++    pub mode: crate::features::SetupMode,
++}
++
++/// One tenant's recorded setup warnings (C29).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(rename_all = "camelCase", deny_unknown_fields)]
++pub struct TenantWarnings {
++    pub tenant: TenantId,
++    pub warnings: Vec<crate::features::SetupWarning>,
++}
++
++/// The products one tenant reads (C29).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(rename_all = "camelCase", deny_unknown_fields)]
++pub struct TenantProducts {
++    pub tenant: TenantId,
++    pub products: Vec<crate::features::ProductId>,
+ }
+ 
+ fn show_calls_default() -> bool {
+@@ -231,6 +265,9 @@ impl Default for PersistedState {
+             ui_variant: crate::features::UiVariant::Legacy,
+             onboarding: crate::features::OnboardingState::Needed,
+             show_calls: true,
++            tenant_products: Vec::new(),
++            tenant_warnings: Vec::new(),
++            tenant_draft: None,
+         }
+     }
+ }
+@@ -246,12 +283,20 @@ impl PersistedState {
+                     label: t.label.clone(),
+                     tsg_id: t.tsg_id.clone(),
+                     destination: t.destination.clone(),
++                    environment: t.environment,
+                 }
+                 .validate()
+                 .is_some_and(|d| {
+                     d.label == t.label && d.tsg_id == t.tsg_id && d.destination == t.destination
+                 })
+         });
++        // A credential belongs to a tenant, or to the setup draft that was
++        // in progress (C29): its records are cleaned up on the next load.
++        let owners: Vec<&TenantProfile> = self
++            .tenants
++            .iter()
++            .chain(self.tenant_draft.as_ref().map(|d| &d.profile))
++            .collect();
+         let mut records = BTreeSet::new();
+         let credentials_ok = self.credentials.iter().all(|c| {
+             records.insert(c.record.clone())
+@@ -259,7 +304,7 @@ impl PersistedState {
+                     CredentialClass::Scan => {
+                         c.client_id.is_none()
+                             && c.inference.is_none()
+-                            && self.tenants.iter().any(|t| {
++                            && owners.iter().any(|t| {
+                                 t.id == c.tenant && t.destination.origin() == c.destination
+                             })
+                     }
+@@ -271,8 +316,7 @@ impl PersistedState {
+                                 .as_deref()
+                                 .is_some_and(crate::management::client_id_is_valid)
+                             && crate::management::is_origin(&c.destination)
+-                            && self
+-                                .tenants
++                            && owners
+                                 .iter()
+                                 .any(|t| t.id == c.tenant && t.tsg_id.is_some())
+                     }
+@@ -283,10 +327,21 @@ impl PersistedState {
+                             && c.inference
+                                 .as_ref()
+                                 .is_some_and(|t| t.is_valid() && t.endpoint == c.destination)
+-                            && self.tenants.iter().any(|t| t.id == c.tenant)
++                            && owners.iter().any(|t| t.id == c.tenant)
+                     }
+                 }
+         });
++        let draft_ok = self.tenant_draft.as_ref().is_none_or(|d| {
++            !ids.contains(&d.profile.id)
++                && crate::tenants::ProfileDraft {
++                    label: d.profile.label.clone(),
++                    tsg_id: d.profile.tsg_id.clone(),
++                    destination: d.profile.destination.clone(),
++                    environment: d.profile.environment,
++                }
++                .validate()
++                .is_some()
++        });
+         let one_per_tenant = {
+             let mut seen = BTreeSet::new();
+             self.credentials
+@@ -392,6 +447,7 @@ impl PersistedState {
+             && learner_ok
+             && gateway_ok
+             && tenants_ok
++            && draft_ok
+             && credentials_ok
+             && one_per_tenant
+             && self.active_tenant.as_ref().is_none_or(|a| ids.contains(a))
+@@ -651,6 +707,7 @@ mod tests {
+                 destination: Destination::Region {
+                     region: Region::Europe,
+                 },
++                environment: Default::default(),
+             }],
+             active_tenant: Some(id.clone()),
+             credentials: vec![StoredCredential {
+@@ -688,6 +745,52 @@ mod tests {
+         fs::remove_dir_all(&dir).expect("cleanup");
+     }
+ 
++    #[test]
++    fn a_setup_draft_and_its_credential_round_trip_through_the_file_store() {
++        // C29: a keyed draft is written so its records are known; the
++        // production store accepts the document (the draft owns the record)
++        // and the next load cleans it up.
++        let dir = scratch("draft");
++        let store = FileStore::open(&dir).expect("open");
++        let mut doc = sample();
++        let draft_id = TenantId::parse("tn-00000000d4af7001").expect("id");
++        doc.tenant_draft = Some(StoredDraft {
++            profile: TenantProfile {
++                id: draft_id.clone(),
++                label: "Drafted".into(),
++                tsg_id: Some("1234567890".into()),
++                destination: Destination::Region {
++                    region: Region::UnitedStates,
++                },
++                environment: crate::features::TenantEnvironment::Staging,
++            },
++            mode: crate::features::SetupMode::Add,
++        });
++        doc.credentials.push(StoredCredential {
++            record: RecordId::parse("cr-00000000d4af7001").expect("record"),
++            tenant: draft_id.clone(),
++            destination: Region::UnitedStates.origin().into(),
++            class: CredentialClass::Scan,
++            client_id: None,
++            inference: None,
++        });
++        assert!(doc.is_consistent(), "a draft may own a credential");
++        store.save(&doc).expect("save");
++        assert_eq!(store.load(), Ok(Some(doc.clone())));
++        // A draft colliding with a tenant id, or an orphan record, is not.
++        let mut colliding = doc.clone();
++        colliding.tenant_draft.as_mut().expect("draft").profile.id = doc.tenants[0].id.clone();
++        assert!(!colliding.is_consistent());
++        let mut orphan = doc.clone();
++        orphan.tenant_draft = None;
++        assert!(
++            !orphan.is_consistent(),
++            "without the draft its record has no owner"
++        );
++        drop(store);
++        std::fs::remove_dir_all(&dir).ok();
++    }
++
+     #[test]
+     fn a_second_instance_cannot_take_the_lease() {
+         let dir = scratch("lease");
+diff --git a/crates/desktop-core/src/tenants.rs b/crates/desktop-core/src/tenants.rs
+index df570b33..87d714a1 100644
+--- a/crates/desktop-core/src/tenants.rs
++++ b/crates/desktop-core/src/tenants.rs
+@@ -131,6 +131,9 @@ pub struct ProfileDraft {
+     pub label: String,
+     pub tsg_id: Option<String>,
+     pub destination: Destination,
++    /// Production / staging / other (C29); production when absent.
++    #[serde(default)]
++    pub environment: crate::features::TenantEnvironment,
+ }
+ 
+ impl ProfileDraft {
+@@ -153,6 +156,7 @@ impl ProfileDraft {
+             label,
+             tsg_id,
+             destination,
++            environment: self.environment,
+         })
+     }
+ }
+@@ -165,6 +169,9 @@ pub struct TenantProfile {
+     pub label: String,
+     pub tsg_id: Option<String>,
+     pub destination: Destination,
++    /// Production / staging / other (C29); production for older documents.
++    #[serde(default)]
++    pub environment: crate::features::TenantEnvironment,
+ }
+ 
+ #[cfg(test)]
+@@ -204,6 +211,7 @@ mod tests {
+             destination: Destination::Region {
+                 region: Region::Europe,
+             },
++            environment: Default::default(),
+         };
+         let ok = draft("  Prod EU ", Some(" 1234567890 "))
+             .validate()
+diff --git a/crates/desktop-core/src/wire.rs b/crates/desktop-core/src/wire.rs
+index 6bcb8910..31aae86d 100644
+--- a/crates/desktop-core/src/wire.rs
++++ b/crates/desktop-core/src/wire.rs
+@@ -243,6 +243,7 @@ pub fn export_typescript(dir: &Path) -> Result<(), ts_rs::ExportError> {
+     FeatureEntry::export_all(&config)?;
+     FeatureId::export_all(&config)?;
+     crate::features::UiVariant::export_all(&config)?;
++    crate::features::ProductId::export_all(&config)?;
+     crate::authority::SwitchBlocked::export_all(&config)?;
+     crate::authority::PendingDecisionRef::export_all(&config)?;
+     crate::features::OnboardingState::export_all(&config)?;
+diff --git a/crates/desktop-core/tests/context_credentials/main.rs b/crates/desktop-core/tests/context_credentials/main.rs
+index ada7d6e8..93489e1b 100644
+--- a/crates/desktop-core/tests/context_credentials/main.rs
++++ b/crates/desktop-core/tests/context_credentials/main.rs
+@@ -1390,6 +1390,7 @@ fn persisted_state_rejects_dangling_references() {
+             destination: Destination::Region {
+                 region: Region::India,
+             },
++            environment: Default::default(),
+         }],
+         credentials: vec![StoredCredential {
+             record: RecordId::parse("cr-0123456789abcdef").expect("record"),
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index c28249f2..eea5ccef 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -10,7 +10,7 @@
+       },
+       {
+         "id": "C01-N02",
+-        "check": "Native menus: app menu (About, Settings… Cmd+,, Hide, Quit), Edit, View (Command Palette… Cmd+K, Appearance, zoom), Go (destinations Cmd+1–Cmd+9), Window."
++        "check": "Native menus: app menu (About, Settings\u2026 Cmd+,, Hide, Quit), Edit, View (Command Palette\u2026 Cmd+K, Appearance, zoom), Go (destinations Cmd+1\u2013Cmd+9), Window."
+       },
+       {
+         "id": "C01-N03",
+@@ -96,7 +96,7 @@
+       },
+       {
+         "id": "C02-N10",
+-        "check": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make … active', 'Delete …'); a refusal is exposed as an alert."
++        "check": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make \u2026 active', 'Delete \u2026'); a refusal is exposed as an alert."
+       },
+       {
+         "id": "C02-N11",
+@@ -114,7 +114,7 @@
+       },
+       {
+         "id": "C03-N02",
+-        "check": "Real UI submission through Tauri → Rust → SDK to the synthetic TLS endpoint: the endpoint receives exactly one POST /v1/scan/sync/request (application/json, x-pan-token equal to the synthetic key, x-payload-hash the HMAC-SHA256 of the received body, no Authorization header) carrying the entered profile name, prompt and application name; the window shows 'Blocked' with the verbatim action 'block', category 'malicious' and the reported detectors (including an unrecognized one)."
++        "check": "Real UI submission through Tauri \u2192 Rust \u2192 SDK to the synthetic TLS endpoint: the endpoint receives exactly one POST /v1/scan/sync/request (application/json, x-pan-token equal to the synthetic key, x-payload-hash the HMAC-SHA256 of the received body, no Authorization header) carrying the entered profile name, prompt and application name; the window shows 'Blocked' with the verbatim action 'block', category 'malicious' and the reported detectors (including an unrecognized one)."
+       },
+       {
+         "id": "C03-N03",
+@@ -168,7 +168,7 @@
+       },
+       {
+         "id": "C04-N02",
+-        "check": "Starting sign-in shows the device code (accessible name 'Sign-in code …') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL."
++        "check": "Starting sign-in shows the device code (accessible name 'Sign-in code \u2026') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL."
+       },
+       {
+         "id": "C04-N03",
+@@ -222,7 +222,7 @@
+       },
+       {
+         "id": "C05-N03",
+-        "check": "From the catalog's Courses filter, the course page and its module units open; a lesson exposes its heading and first paragraph and all section headings of a 50 KiB lesson; the trail 'Learn › <course>' links back to the course."
++        "check": "From the catalog's Courses filter, the course page and its module units open; a lesson exposes its heading and first paragraph and all section headings of a 50 KiB lesson; the trail 'Learn \u203a <course>' links back to the course."
+       },
+       {
+         "id": "C05-N04",
+@@ -246,7 +246,7 @@
+       },
+       {
+         "id": "C05-N09",
+-        "check": "Navigating Academy → Runtime Security → Harness placeholder shows no learner chrome or effects (XP, trail, reading progress, knowledge check, lab, guest note, probe) outside Academy, and no learner request is made while away."
++        "check": "Navigating Academy \u2192 Runtime Security \u2192 Harness placeholder shows no learner chrome or effects (XP, trail, reading progress, knowledge check, lab, guest note, probe) outside Academy, and no learner request is made while away."
+       },
+       {
+         "id": "C05-N10",
+@@ -392,11 +392,11 @@
+       },
+       {
+         "id": "C08-N04",
+-        "check": "Profiles open at 'Items 1–25 of 25+' with rows Profile 00–24 and a note that unread rows are not assumed absent; Next page reads offset 25 (limit 25, issued bearer token) and shows 'Items 26–30 of 30' with Next page disabled and no partial note; exactly those two profile reads were made."
++        "check": "Profiles open at 'Items 1\u201325 of 25+' with rows Profile 00\u201324 and a note that unread rows are not assumed absent; Next page reads offset 25 (limit 25, issued bearer token) and shows 'Items 26\u201330 of 30' with Next page disabled and no partial note; exactly those two profile reads were made."
+       },
+       {
+         "id": "C08-N05",
+-        "check": "A profile's details show its fields and say directional and customized prompt-injection settings were local previews and are not sent; an API key's details show its unknown status value 'FUTURE_STATUS' and last8 while none of the service's secret field values (api_key, auth_code) appear anywhere in the window; deployment profiles (local paging, 1–3 of 3) and DLP data patterns (Spring paging, 1–1 of 2) are listed."
++        "check": "A profile's details show its fields and say directional and customized prompt-injection settings were local previews and are not sent; an API key's details show its unknown status value 'FUTURE_STATUS' and last8 while none of the service's secret field values (api_key, auth_code) appear anywhere in the window; deployment profiles (local paging, 1\u20133 of 3) and DLP data patterns (Spring paging, 1\u20131 of 2) are listed."
+       },
+       {
+         "id": "C08-N06",
+@@ -408,7 +408,7 @@
+       },
+       {
+         "id": "C08-N08",
+-        "check": "Replacing the management client in Settings while page 2 of profiles is delayed in flight: back in Administration the inventory restarts at 'Items 1–25 of 25+', the delayed reply for the retired credential neither shows its page nor an alert after it arrives, and exactly one new token grant is made for the new credential."
++        "check": "Replacing the management client in Settings while page 2 of profiles is delayed in flight: back in Administration the inventory restarts at 'Items 1\u201325 of 25+', the delayed reply for the retired credential neither shows its page nor an alert after it arrives, and exactly one new token grant is made for the new credential."
+       },
+       {
+         "id": "C08-N09",
+@@ -430,11 +430,11 @@
+     "C09": [
+       {
+         "id": "C09-N01",
+-        "check": "Editing a custom topic in Administration: Edit… opens the item as a JSON draft; Review change reads the current item and shows its current and expected JSON with v1's impact text and the typed confirmation (the topic name); nothing is written by reviewing."
++        "check": "Editing a custom topic in Administration: Edit\u2026 opens the item as a JSON draft; Review change reads the current item and shows its current and expected JSON with v1's impact text and the typed confirmation (the topic name); nothing is written by reviewing."
+       },
+       {
+         "id": "C09-N02",
+-        "check": "Apply… opens a native AppKit sheet on the main window (not a WebView dialog) titled with Rust's stored summary (action, kind and name) and the tenant; while it is open the main window takes no input; Escape cancels it and nothing is written; a second Apply… and Return (the default for a non-destructive change) apply it: exactly one PUT with the management client as author, and the window says it was applied and read back."
++        "check": "Apply\u2026 opens a native AppKit sheet on the main window (not a WebView dialog) titled with Rust's stored summary (action, kind and name) and the tenant; while it is open the main window takes no input; Escape cancels it and nothing is written; a second Apply\u2026 and Return (the default for a non-destructive change) apply it: exactly one PUT with the management client as author, and the window says it was applied and read back."
+       },
+       {
+         "id": "C09-N03",
+@@ -450,7 +450,7 @@
+       },
+       {
+         "id": "C09-N06",
+-        "check": "Show new key… opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; the key is then shown once and no longer offered (the desktop keeps no copy); another key's sheet left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied."
++        "check": "Show new key\u2026 opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; the key is then shown once and no longer offered (the desktop keeps no copy); another key's sheet left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied."
+       },
+       {
+         "id": "C09-N07",
+@@ -480,15 +480,15 @@
+     "C10": [
+       {
+         "id": "C10-N01",
+-        "check": "Editing a data pattern: Edit… opens it as a JSON draft; Review change reads it by its own get; Apply… opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-patterns/<id> with the draft (no authorship added) and the window says it was read back."
++        "check": "Editing a data pattern: Edit\u2026 opens it as a JSON draft; Review change reads it by its own get; Apply\u2026 opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-patterns/<id> with the draft (no authorship added) and the window says it was read back."
+       },
+       {
+         "id": "C10-N02",
+-        "check": "Creating a dictionary from typed keywords: the endpoint receives exactly one multipart/form-data POST (boundary scm-sdk-…) with a json part (metadata.json, application/json) holding the metadata and a file part named by original_file_name (text/plain) whose bytes are exactly the typed keywords; the window says it was read back."
++        "check": "Creating a dictionary from typed keywords: the endpoint receives exactly one multipart/form-data POST (boundary scm-sdk-\u2026) with a json part (metadata.json, application/json) holding the metadata and a file part named by original_file_name (text/plain) whose bytes are exactly the typed keywords; the window says it was read back."
+       },
+       {
+         "id": "C10-N03",
+-        "check": "Native file selection: Choose keyword file… reads the staged text file (the window shows its name, size and line count), Use the chosen file and Review/Apply upload exactly its bytes as the file part; the source file is unchanged afterwards and no AX snapshot holds its path."
++        "check": "Native file selection: Choose keyword file\u2026 reads the staged text file (the window shows its name, size and line count), Use the chosen file and Review/Apply upload exactly its bytes as the file part; the source file is unchanged afterwards and no AX snapshot holds its path."
+       },
+       {
+         "id": "C10-N04",
+@@ -496,7 +496,7 @@
+       },
+       {
+         "id": "C10-N05",
+-        "check": "Unavailable operations are not offered: data profiles have Edit… but no Delete…, data filtering profiles have no New, and deployment profiles say they are read only."
++        "check": "Unavailable operations are not offered: data profiles have Edit\u2026 but no Delete\u2026, data filtering profiles have no New, and deployment profiles say they are read only."
+       },
+       {
+         "id": "C10-N06",
+@@ -512,17 +512,17 @@
+       },
+       {
+         "id": "C10-N09",
+-        "check": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file… and Review change inside the window and clear of the bottom fade."
++        "check": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file\u2026 and Review change inside the window and clear of the bottom fade."
+       },
+       {
+         "id": "C10-N10",
+-        "check": "The production NSOpenPanel (rfd) opens from Choose keyword file…: the file chosen through it is staged by name and line count, and Use the chosen file, Review and Apply with the native confirmation upload exactly its bytes as the multipart file part and read the dictionary back, with the source file unchanged and focus returned to the window; Cancel stages nothing; a file over the 256 KiB read bound is refused as too large."
++        "check": "The production NSOpenPanel (rfd) opens from Choose keyword file\u2026: the file chosen through it is staged by name and line count, and Use the chosen file, Review and Apply with the native confirmation upload exactly its bytes as the multipart file part and read the dictionary back, with the source file unchanged and focus returned to the window; Cancel stages nothing; a file over the 256 KiB read bound is refused as too large."
+       }
+     ],
+     "C11": [
+       {
+         "id": "C11-N01",
+-        "check": "Sessions lists the last 24 hours in pages of 25 ('Sessions 1–25 of 60', Next page 'Sessions 26–50 of 60'); every inventory read asks for time_interval=1, time_unit=day, limit=25; the Malicious filter shows only this page's malicious sessions."
++        "check": "Sessions lists the last 24 hours in pages of 25 ('Sessions 1\u201325 of 60', Next page 'Sessions 26\u201350 of 60'); every inventory read asks for time_interval=1, time_unit=day, limit=25; the Malicious filter shows only this page's malicious sessions."
+       },
+       {
+         "id": "C11-N02",
+@@ -534,7 +534,7 @@
+       },
+       {
+         "id": "C11-N04",
+-        "check": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV… saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response."
++        "check": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV\u2026 saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response."
+       },
+       {
+         "id": "C11-N05",
+@@ -542,7 +542,7 @@
+       },
+       {
+         "id": "C11-N06",
+-        "check": "Export metadata… saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again."
++        "check": "Export metadata\u2026 saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again."
+       },
+       {
+         "id": "C11-N07",
+@@ -550,7 +550,7 @@
+       },
+       {
+         "id": "C11-N08",
+-        "check": "Exception patterns is labelled 'Synthetic data · Memory only · No live integrations' and opening it sends no request."
++        "check": "Exception patterns is labelled 'Synthetic data \u00b7 Memory only \u00b7 No live integrations' and opening it sends no request."
+       },
+       {
+         "id": "C11-N09",
+@@ -558,7 +558,7 @@
+       },
+       {
+         "id": "C11-N10",
+-        "check": "The production NSSavePanel (rfd) opens from Export CSV…: saving writes an owner-only file; a second export into the same folder is confirmed with Replace and the file is replaced owner-only; Cancel saves nothing and says so; focus returns to the window."
++        "check": "The production NSSavePanel (rfd) opens from Export CSV\u2026: saving writes an owner-only file; a second export into the same folder is confirmed with Replace and the file is replaced owner-only; Cancel saves nothing and says so; focus returns to the window."
+       },
+       {
+         "id": "C11-N11",
+@@ -580,7 +580,7 @@
+       },
+       {
+         "id": "C12-N04",
+-        "check": "Export library… saves an owner-only version 2 file; after a case is removed, Import cases… restores it from that file; another tenant's file is refused with v1's message."
++        "check": "Export library\u2026 saves an owner-only version 2 file; after a case is removed, Import cases\u2026 restores it from that file; another tenant's file is refused with v1's message."
+       },
+       {
+         "id": "C12-N05",
+@@ -592,7 +592,7 @@
+       },
+       {
+         "id": "C12-N07",
+-        "check": "A failed chart read is stated as Runtime activity unavailable and Can’t confirm all clear (never zeros); with the endpoint stopped a refresh failure is reported while the last read stays visible, and nothing is sent within 6 s after the endpoint returns."
++        "check": "A failed chart read is stated as Runtime activity unavailable and Can\u2019t confirm all clear (never zeros); with the endpoint stopped a refresh failure is reported while the last read stays visible, and nothing is sent within 6 s after the endpoint returns."
+       },
+       {
+         "id": "C12-N08",
+@@ -604,7 +604,7 @@
+       },
+       {
+         "id": "C12-N10",
+-        "check": "The production panels for the Library: Export library… saves an owner-only file through NSSavePanel, Import cases… restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window."
++        "check": "The production panels for the Library: Export library\u2026 saves an owner-only file through NSSavePanel, Import cases\u2026 restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window."
+       },
+       {
+         "id": "C12-N11",
+@@ -790,15 +790,15 @@
+       },
+       {
+         "id": "C17-N02",
+-        "check": "Choosing another workspace while a change is prepared in the first closes it (no Review again or Apply… remains) and nothing is written."
++        "check": "Choosing another workspace while a change is prepared in the first closes it (no Review again or Apply\u2026 remains) and nothing is written."
+       },
+       {
+         "id": "C17-N03",
+-        "check": "A provider a route still references lists that route in its review and Apply… is disabled; an unreferenced provider's delete names the workspace in a destructive sheet whose Return cancels, and Delete sends exactly one DELETE, read back as absent."
++        "check": "A provider a route still references lists that route in its review and Apply\u2026 is disabled; an unreferenced provider's delete names the workspace in a destructive sheet whose Return cancels, and Delete sends exactly one DELETE, read back as absent."
+       },
+       {
+         "id": "C17-N04",
+-        "check": "A new service key is created in the chosen workspace and tenant; its one-time value is held in memory, appears in no Accessibility snapshot, is shown once in the native secret sheet (matching the issued key) and is no longer held afterwards; closing the change returns focus to New service key…."
++        "check": "A new service key is created in the chosen workspace and tenant; its one-time value is held in memory, appears in no Accessibility snapshot, is shown once in the native secret sheet (matching the issued key) and is no longer held afterwards; closing the change returns focus to New service key\u2026."
+       },
+       {
+         "id": "C17-N05",
+@@ -818,7 +818,7 @@
+       },
+       {
+         "id": "C17-N09",
+-        "check": "At 200% zoom and at the minimum window size Provision workspace… and Edit workspace… are reached by keyboard inside the window."
++        "check": "At 200% zoom and at the minimum window size Provision workspace\u2026 and Edit workspace\u2026 are reached by keyboard inside the window."
+       },
+       {
+         "id": "C17-N10",
+@@ -972,7 +972,7 @@
+       },
+       {
+         "id": "C20-N11",
+-        "check": "An unreadable saved conversation (a record that does not open with its workspace's key) is deleted only when confirmed, by keyboard: activating Delete unreadable conversation… only asks, Keep it keeps the file, and Delete permanently removes it while the readable record stays."
++        "check": "An unreadable saved conversation (a record that does not open with its workspace's key) is deleted only when confirmed, by keyboard: activating Delete unreadable conversation\u2026 only asks, Keep it keeps the file, and Delete permanently removes it while the readable record stays."
+       },
+       {
+         "id": "C20-N12",
+@@ -1082,13 +1082,13 @@
+       },
+       {
+         "id": "C23-N09",
+-        "check": "Lost import records fail closed and are said: with a receipt damaged in both of its files the import view names it in an alert, Remove damaged record … is reached by Tab and pressed with Space, both files are removed, the alert clears and focus stays in the window; with neither receipt folder readable the view says the records can't be read and to restore access and reopen the app."
++        "check": "Lost import records fail closed and are said: with a receipt damaged in both of its files the import view names it in an alert, Remove damaged record \u2026 is reached by Tab and pressed with Space, both files are removed, the alert clears and focus stays in the window; with neither receipt folder readable the view says the records can't be read and to restore access and reopen the app."
+       }
+     ],
+     "C24": [
+       {
+         "id": "C24-N01",
+-        "check": "Settings › Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only; in the fixture build without a sheet, into its data root), and Clear diagnostics leaves only the record of clearing."
++        "check": "Settings \u203a Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only; in the fixture build without a sheet, into its data root), and Clear diagnostics leaves only the record of clearing."
+       },
+       {
+         "id": "C24-N02",
+@@ -1108,17 +1108,17 @@
+       },
+       {
+         "id": "C24-N06",
+-        "check": "The cumulative T09 matrix: every earlier chunk's native acceptance (C01–C23) passes again on this bundle (their records under this chunk's evidence), covering menus, shortcuts, keyboard and focus, Accessibility roles and names, zoom, minimum window size, themes and reduced motion for every workflow."
++        "check": "The cumulative T09 matrix: every earlier chunk's native acceptance (C01\u2013C23) passes again on this bundle (their records under this chunk's evidence), covering menus, shortcuts, keyboard and focus, Accessibility roles and names, zoom, minimum window size, themes and reduced motion for every workflow."
+       },
+       {
+         "id": "C24-N07",
+-        "check": "Diagnostics by keyboard alone: Export diagnostics… is reached by Tab and pressed with Space, the production save sheet (NSSavePanel) saves the document into a chosen folder and Diagnostics saved. is announced; a second export cancelled in the sheet saves nothing and Nothing was saved. is announced; focus returns to Export diagnostics… each time; Clear diagnostics is reached and pressed the same way and Diagnostics cleared. is announced; both controls are reachable and clear at 200% zoom and at the minimum window size."
++        "check": "Diagnostics by keyboard alone: Export diagnostics\u2026 is reached by Tab and pressed with Space, the production save sheet (NSSavePanel) saves the document into a chosen folder and Diagnostics saved. is announced; a second export cancelled in the sheet saves nothing and Nothing was saved. is announced; focus returns to Export diagnostics\u2026 each time; Clear diagnostics is reached and pressed the same way and Diagnostics cleared. is announced; both controls are reachable and clear at 200% zoom and at the minimum window size."
+       }
+     ],
+     "C25": [
+       {
+         "id": "C25-N01",
+-        "check": "Editing a data filtering profile as read (unset fields null, plus the service's own id, name, tenant_id, type, version, audit_metadata and is_parent_managed): Edit… opens it as a JSON draft, Review change accepts it unchanged, Apply… opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-filtering-profiles/<id> whose body holds the draft without the nulls or the service's own fields, and the window says it was read back."
++        "check": "Editing a data filtering profile as read (unset fields null, plus the service's own id, name, tenant_id, type, version, audit_metadata and is_parent_managed): Edit\u2026 opens it as a JSON draft, Review change accepts it unchanged, Apply\u2026 opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-filtering-profiles/<id> whose body holds the draft without the nulls or the service's own fields, and the window says it was read back."
+       },
+       {
+         "id": "C25-N02",
+@@ -1130,21 +1130,21 @@
+       },
+       {
+         "id": "C25-N04",
+-        "check": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply… in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent."
++        "check": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply\u2026 in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent."
+       }
+     ],
+     "C28": [
+       {
+         "id": "C28-N01",
+-        "check": "Settings › Interface › 'Use the new interface' switches the window to the v2 shell without a relaunch: the rail named 'Destinations' lists Home ⌘1, Inbox ⌘2, Harness ⌘3, Academy ⌘4, Test Cases ⌘5, API Client ⌘6, Administration ⌘7 in that order (the Rust catalogue), the tenant switcher is above it, and the Home heading receives the page; the preference survives a relaunch and 'Return to the classic interface' restores the legacy rail named 'Features'."
++        "check": "Settings \u203a Interface \u203a 'Use the new interface' switches the window to the v2 shell without a relaunch: the rail named 'Destinations' lists Home \u23181, Inbox \u23182, Harness \u23183, Academy \u23184, Test Cases \u23185, API Client \u23186, Administration \u23187 in that order (the Rust catalogue), the tenant switcher is above it, and the Home heading receives the page; the preference survives a relaunch and 'Return to the classic interface' restores the legacy rail named 'Features'."
+       },
+       {
+         "id": "C28-N02",
+-        "check": "The native Go menu follows the presentation: in v2 it offers Switch Tenant… (⌘T) and then Home (⌘1) … Administration (⌘7) followed by the non-sidebar destinations without accelerators; Go › Harness moves the page (a `navigate` intent; the sidebar marks Harness current) and Go › Home returns; after returning to classic the Go menu is the legacy one again (Runtime Security ⌘1)."
++        "check": "The native Go menu follows the presentation: in v2 it offers Switch Tenant\u2026 (\u2318T) and then Home (\u23181) \u2026 Administration (\u23187) followed by the non-sidebar destinations without accelerators; Go \u203a Harness moves the page (a `navigate` intent; the sidebar marks Harness current) and Go \u203a Home returns; after returning to classic the Go menu is the legacy one again (Runtime Security \u23181)."
+       },
+       {
+         "id": "C28-N03",
+-        "check": "Keyboard only (I8): Tab reaches the tenant switcher, every rail destination, the palette trigger, the three appearance toggles, 'Show the calls' and the classic-interface control, each with a visible focus ring (band pixels change when focused, for the selected Home too); Enter on the trigger opens the command palette as the one topmost modal with focus in its field and Tab contained; ArrowDown traverses to the last entry with the active row inside the dialog and Enter dispatches only that row; Escape returns focus to the trigger; Go › Switch Tenant… while the palette is open closes it and leaves focus in the tenant list, and Escape returns focus to the switcher without selecting; the unavailable Inbox destination is disabled."
++        "check": "Keyboard only (I8): Tab reaches the tenant switcher, every rail destination, the palette trigger, the three appearance toggles, 'Show the calls' and the classic-interface control, each with a visible focus ring (band pixels change when focused, for the selected Home too); Enter on the trigger opens the command palette as the one topmost modal with focus in its field and Tab contained; ArrowDown traverses to the last entry with the active row inside the dialog and Enter dispatches only that row; Escape returns focus to the trigger; Go \u203a Switch Tenant\u2026 while the palette is open closes it and leaves focus in the tenant list, and Escape returns focus to the switcher without selecting; the unavailable Inbox destination is disabled."
+       },
+       {
+         "id": "C28-N04",
+@@ -1152,7 +1152,7 @@
+       },
+       {
+         "id": "C28-N05",
+-        "check": "Toasts (I10): a refused navigation (Go › Inbox, catalogued but unavailable, refused by the core) shows one warn toast naming the refusal that expires within 6 s; with macOS Reduce Motion enabled and the app relaunched the same toast persists past 8 s until dismissed; the setting is restored afterwards."
++        "check": "Toasts (I10): a refused navigation (Go \u203a Inbox, catalogued but unavailable, refused by the core) shows one warn toast naming the refusal that expires within 6 s; with macOS Reduce Motion enabled and the app relaunched the same toast persists past 8 s until dismissed; the setting is restored afterwards."
+       },
+       {
+         "id": "C28-N06",
+@@ -1160,7 +1160,33 @@
+       },
+       {
+         "id": "C28-N07",
+-        "check": "At the interim 900×600 minimum and at 200% zoom in both themes the v2 shell shows no horizontal scroll (no node past the window's right edge, no horizontal scrollbar), the rail collapses to one 32px control per row with every control's frame inside the rail's frame (nothing clipped), focusing the last appearance toggle does not scroll the rail, destination labels stay in the accessible names, and the page heading stays reachable; with a configured tenant the collapsed switcher still names the tenant."
++        "check": "At the interim 900\u00d7600 minimum and at 200% zoom in both themes the v2 shell shows no horizontal scroll (no node past the window's right edge, no horizontal scrollbar), the rail collapses to one 32px control per row with every control's frame inside the rail's frame (nothing clipped), focusing the last appearance toggle does not scroll the rail, destination labels stay in the accessible names, and the page heading stays reachable; with a configured tenant the collapsed switcher still names the tenant."
++      }
++    ],
++    "C29": [
++      {
++        "id": "C29-N01",
++        "check": "First run in the v2 presentation (onboarding needed, no tenant) opens on Welcome with the API-builder framing and three cards, no shell rail and no Back; it opens again after a relaunch; 'Set up a tenant' moves to the Tenant step, the heading takes focus, the rail marks the step current, and Continue is disabled naming what is missing ('Create the tenant to continue')."
++      },
++      {
++        "id": "C29-N02",
++        "check": "Tenant step: Create tenant with an empty name and a 9-digit TSG marks each field aria-invalid with its message and drafts nothing; a valid name and TSG draft the tenant in the core (status, rail 'Name \u00b7 Environment \u00b7 TSG \u2026', the profile stays editable with 'Save changes', Continue reads 'Save the scan key to continue'); the scan key is typed once into a secure field and attaches to the draft (Saved, Replace/Remove offered, Continue enabled); the management client saves; the Gateway section reads the workspaces through the client, chooses one and saves its key; editing the name updates the rail and keeps the credentials; no secret appears in any AX tree or in a data file outside the Keychain."
++      },
++      {
++        "id": "C29-N03",
++        "check": "Products step: Runtime Security is checked and not uncheckable ('Always on'), AIS and AES are 'Not available in this release' with disabled checkboxes, the licence note is shown; Verify shows planned rows ('Not run yet'; AIS/AES 'Not available') with Continue disabled; with the management client replaced by a rejected secret the core-owned run fails that optional line (scan key reported Stored, never Pass) and offers both 'Continue with warnings' and 'Fix and verify again', which returns to the editable Tenant step where the client is replaced; the rerun authenticates with the new secret (management Pass) and reads the chosen workspace's prerequisites (Pass); changing the products afterwards marks the run stale (Continue closed, Done unreachable) until a rerun finishes clean."
++      },
++      {
++        "id": "C29-N04",
++        "check": "Starter cases lists one pack per chosen product with its case count, checked; the Academy step is the reviewed account component (sign-in offered, 'syncs your Academy progress only'); Done summarises the draft; 'Open Prisma AIRS' sends one completion intent, after which Home shows the new tenant in the switcher and Test Cases lists the imported cases; a relaunch shows Home, not the wizard."
++      },
++      {
++        "id": "C29-N05",
++        "check": "Add a tenant\u2026 from the switcher opens the sheet as the one topmost modal (244px rail, no Welcome, Academy or Back), keyboard traversal stays inside it; Cancel before a draft changes nothing; a drafted and keyed tenant cancelled leaves the tenant list and the active tenant unchanged and its key gone; a draft without a key (optional in add mode) verifies with a warning, and Finish commits it once, makes it active with a toast and lists it beside the first."
++      },
++      {
++        "id": "C29-N06",
++        "check": "T09 matrix: every wizard step and the add sheet captured in light and dark at 100% and 200% zoom; Tab reaches each step's controls; at the 900\u00d7600 minimum the sheet's Cancel is inside the window once focused (the dialog scrolls within the viewport)."
+       }
+     ]
+   }
+diff --git a/docs/architecture/ui-v2/provenance.md b/docs/architecture/ui-v2/provenance.md
+index 1a8d67d9..4980a4f7 100644
+--- a/docs/architecture/ui-v2/provenance.md
++++ b/docs/architecture/ui-v2/provenance.md
+@@ -36,7 +36,14 @@ page "Refined Native v2", version 134 (version id 1793059808-4929, published
+ | P23 | One rotation flow for every key | Staged Version → Delete rotation for Runtime API keys only; Gateway keys use `Rotate` (regenerate in place) | `gateway_changes::allowed` admits Rotate, not Version, for Gateway keys |
+ | P24 | Minimum window 1180×720 (DESIGN-V2 §4, tokens.md) | The host keeps `min_inner_size(900, 600)` until C34 because C01-N09 (re-run cumulatively by C24-N06) pins the legacy minimum; the v2 shell is laid out to stay usable without horizontal scroll at 900×600 (rail collapsed to icons below 1280 CSS px) and C28-N07 asserts it at that size. C34 raises the minimum together with the legacy-script retirement | Legacy native acceptance must keep passing while both shells exist (D058 §5) |
+ | P25 | Revision of P1/P2: "secrets enter only through a host secret sheet" | The retained, reviewed entry path (C02/C09) is a webview password field read through a ref, cleared immediately and sent once inside the intent as `EnteredSecret` (zeroized, never in React state, never logged); the host owns the *reveal* sheet (`RevealSecret`) and the clipboard. C29 uses exactly this path for the scan key, management secret and Gateway key; no new host entry sheet is built | The C27 spec assumed an entry sheet the host does not have; the reviewed pattern already satisfies D014 and the C24 canary checks (no secret in any AX tree or file) |
++| P26 | `verifyTenantSetup` as one core intent streaming `VerifyStep`s (wizard.md) | Implemented as specified: `verifyTenantSetup{context}` runs in the core over the draft, admits the reads it needs through the management pipeline (management verify; the chosen Gateway workspace's prerequisites, or only the listing when none is chosen, reported as incomplete coverage; Red Team; model/skill) and settles each line from the result; AIS/AES are listed as not available and never read; the lines, `done`, `failed`, `blocking` and `stale` stream through `ShellSnapshot.setup.verify`. The scan key has no admitted read: its line is `stored`, never `pass`. Only the scan key (first run) blocks; an optional service's failure is carried as a warning the operator may continue over | Attempt-01 composed the reads in the presentation; attempt-02 read only the workspace listing and blocked on every failure — both rejected |
++| P27 | Add-tenant Cancel writes nothing except an already-vaulted credential | The wizard works on a core-owned draft (`beginTenantSetup`) with its own context and its own Gateway listing and choice; credentials attach to the draft; nothing is listed as a tenant (a draft id is refused by `selectTenant`/`deleteTenant`), the active tenant and its Gateway choice are untouched until `completeTenantSetup` commits the draft in one step and switches once. Every change to the draft's credentials or profile retires its context (and the binding, reads and listing under it). Cancel (`discardTenantSetup`) drops the draft, retires the binding and every read under its context and workspace reference, and queues its Keychain records for cleanup; the sheet closes only once the core admits it (a creation still pending or unconfirmed is awaited and whatever it produced is discarded). A relaunch, or a tenant committed outside the wizard during first run, does the same | Stronger than the spec's leftover credential: no orphan secrets and no cached authority surviving a replaced credential |
++| P28 | Gateway workspace key entered on the wizard tenant step | Implemented: an optional section reads the workspaces through the management client (`management` gateway inventory on the draft context), `selectGatewayWorkspace` chooses one, and `configureInferenceCredential` saves the endpoint and key for it | The admitted sequence (list → select → key) runs on the draft like on a tenant |
++| P29 | "Import from v1" fills the tenant step in place | The action navigates to the reviewed import destination (C23), which renders on its own during first run with a 'Back to setup' control; the wizard resumes afterwards | The import review flow is itself reviewed and must not be duplicated inside the wizard |
++| P30 | The wizard opens whenever onboarding is not done | The shell shows onboarding as done whenever a tenant already exists (an upgrade, or a tenant created before the v2 shell was chosen); the stored state is untouched. A first run is one with no tenant yet; a relaunch mid-setup reopens at the Tenant step with a fresh draft (the previous draft's credentials are cleaned up) | Existing users must never be sent through the wizard; a half-made draft is never a tenant |
++| P31 | Products step shows licence state read from the tenant | No admitted service reports licensing (DESIGN-V2 §6); each card shows what it reads with (scan key / management client, saved or not) and, once verified, that product's verify result; a note says licence state is not readable through the public APIs | Nothing may be inferred about licensing from reads that do not report it |
++| P32 | First-run import returns to the wizard | A v1 import during first run commits its tenants through the reviewed C23 flow; the desktop then has a tenant, so the first-run draft ends (its credentials are cleaned up) and the shell opens on the imported tenant; its scan key is added in Administration (the reviewed C08/C09 credential setup) | A tenant that exists is never sent back through a first-run wizard (P30), and the wizard cannot wrap an existing tenant without duplicating it |
+ 
+ P10–P14 are the five round-16 Codex items carried as known gaps (see
+ [DESIGN-V2.md](DESIGN-V2.md) "Known gaps"). P16–P21 were added after the C27
+-attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b); P24–P25 were recorded in C28 when implementation met the host as it is.
++attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b); P24–P25 were recorded in C28 and P26–P32 in C29 when implementation met the host as it is (P26–P28 revised after the C29 attempt-01 review; P26–P27 again, and P32 added, after attempt-02).
+diff --git a/docs/architecture/ui-v2/screens/boards.md b/docs/architecture/ui-v2/screens/boards.md
+index d612acdf..d4c94544 100644
+--- a/docs/architecture/ui-v2/screens/boards.md
++++ b/docs/architecture/ui-v2/screens/boards.md
+@@ -13,7 +13,8 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
+ | R2Dark | R2App | start=home, theme=dark | `fx.home.dark` | token contrast snapshot | C28 |
+ | R2Palette | R2App | start=home, overlay=palette | `fx.palette` | palette filter/dispatch, N03 | C28 |
+ | R2Tenants | R2App | start=home, overlay=tenants | `fx.switcher` | V2-T01, T02 | C28/C30 |
+-| R2AddTenant | R2Onboard | mode=add, step=tenant | `fx.addTenant` | cancel semantics, secret-sheet button | C29 |
++| R2AddTenant | R2Onboard | mode=add, step=tenant | `fx.addTenant` | cancel semantics, no Back on the first step | C29 |
++| R2AddTenant drafted | R2Onboard | mode=add, step=tenant, drafted | `fx.addTenant.drafted` | optional scan key, Continue open | C29 |
+ | R2On01 Welcome | R2Onboard | step=welcome | `fx.on.welcome` | copy constants | C29 |
+ | R2On02 Tenant | R2Onboard | step=tenant, filled=false | `fx.on.tenant.empty` | validation, aria-invalid | C29 |
+ | R2On02b Tenant filled | R2Onboard | step=tenant, filled=true | `fx.on.tenant.filled` | rail context line, continue enabled | C29 |
+@@ -21,6 +22,7 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
+ | R2On04 Verify | R2Onboard | step=verify, verify=running | `fx.on.verify.running` | streaming order | C29 |
+ | R2On04b Verify warning | R2Onboard | step=verify, verify=warn | `fx.on.verify.warn` | warning row → Inbox item at completion | C29 |
+ | R2On04c Verify fail | R2Onboard | step=verify, verify=fail | `fx.on.verify.fail` | fix-and-verify-again path | C29 |
++| R2On04d Verify stale | R2Onboard | step=verify, verify=done, inputs changed | `fx.on.verify.stale` | results no longer count; later steps unreachable | C29 |
+ | R2On05 Packs | R2Onboard | step=packs | `fx.on.packs` | pack counts, optional | C29 |
+ | R2On06 Academy | R2Onboard | step=academy | `fx.on.academy` | hosted sign-in or skip (P19) | C29 |
+ | R2On07 Done | R2Onboard | step=done | `fx.on.done` | finite open, `onboarding=done` | C29 |
+diff --git a/docs/architecture/ui-v2/state-ownership.md b/docs/architecture/ui-v2/state-ownership.md
+index a7d03fed..fa0203a1 100644
+--- a/docs/architecture/ui-v2/state-ownership.md
++++ b/docs/architecture/ui-v2/state-ownership.md
+@@ -27,8 +27,8 @@ and reconciled by hand; a key missing here is a specification defect.
+ | `s.f.clientId`, `s.f.secret` | management OAuth client id and secret (required in the prototype) | id: UI → Core; secret: **Host** | id in `addTenant`; secret entered only in the host secret sheet, vault record id returned | secret never in the web layer | **changed** (deviation P17): management credentials become an optional second section under D013; the id is kept, the secret field is replaced by "Add management client…" |
+ | `s.scanOn`, `s.f.scanKey` | scan key toggle and value | toggle: UI; key: **Host** | "Add scan key…" opens the host secret sheet; required for first run (D013) | never in the web layer | **changed** (P1, P17): toggle removed on first run (the scan key is required); kept in add mode |
+ | `s.gwOn`, `s.f.ws`, `s.f.endpoint`, `s.f.gwKey` | Gateway section toggle, workspace name, endpoint URL, workspace key | toggle/ws/endpoint: UI → Core; key: **Host** | `addTenant.gateway{ws, endpoint}`; key via secret sheet | — | kept; key path changed (P1) |
+-| `s.tried`, `s.vsig`, `s.vsStale` | validation attempted, validation signature, stale flag | UI | wizard store | per step | kept |
+-| `s.vs` | verify results per product | Core | streamed `VerifyStep` from `verifyTenantSetup` | session | kept; computed in core |
++| `s.tried`, `s.vsig`, `s.vsStale` | validation attempted, validation signature, stale flag | UI (tried) / Core (signature, stale) | wizard component; `setup.verify.stale`, `setup.completable` | per step / per draft | kept; the signature and the completion gate moved to the core so the presentation cannot complete over stale results |
++| `s.vs` | verify results per product | Core | `ShellSnapshot.setup.verify` (streamed `VerifyStep`s from `verifyTenantSetup`, with `done`/`failed`/`stale`) | until the draft completes or is discarded | kept; computed in core, including staleness against a signature of the draft's inputs |
+ | `s.aesFixed`, `s.failCleared` | AES warning demo acknowledged; failed row cleared | UI | wizard store | per run | **changed**: AES is not an admitted product (P18); the warning demo becomes a generic "warning row" fixture on an admitted product |
+ | `s.prods` | selected products | UI → Core | `completeOnboarding.products` | written at completion | kept; unavailable products are not selectable (P18) |
+ | `s.packs`, `s.casesState` | starter packs selected, pack state | UI → Core | `completeOnboarding.packs` → library entries | written at completion | kept |
+diff --git a/docs/planning/chunks/C29.md b/docs/planning/chunks/C29.md
+index e12f9820..b0e9baa9 100644
+--- a/docs/planning/chunks/C29.md
++++ b/docs/planning/chunks/C29.md
+@@ -23,8 +23,8 @@ an immutable input. Freeze all source/shared dependency inputs.
+ 
+ ## Required acceptance
+ 
+-- `onboarding` transitions needed → inProgress → done; cancel in add mode writes nothing except an already-vaulted credential, which Administration shows as unattached.
+-- No intent carries a secret (host test on the mock runtime).
++- `onboarding` transitions needed → inProgress → done; cancel in add mode writes nothing: the draft and its credentials are discarded (P27; stronger than the leftover credential the prototype assumed).
++- No intent persists, echoes or logs a secret: per P25 (accepted in C28) a secret enters once as `EnteredSecret` from the webview field and leaves it nowhere else; the host test on the mock runtime (`setup_draft_intents_cross_ipc_without_echoing_secrets_or_creating_tenants`) shows no receipt, snapshot or Keychain call carries it.
+ - Unavailable products (AIS, AES) are not selectable and never verified; V2-T19 for the products step.
+ - Live: verify against the designated read-only tenant (Vulture) under the owner scope, recorded as a redacted receipt; no writes.
+ - T09 for every step; V2-N02.
+diff --git a/packages/desktop-contracts/fixtures/wire/observe-shell-response.json b/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
+index 0243ddb1..5e74ad99 100644
+--- a/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
++++ b/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
+@@ -1 +1 @@
+-{"kind":"shell","snapshot":{"revision":"1","appearance":"system","uiVariant":"legacy","onboarding":"needed","activeFeature":"runtime","showCalls":true,"switchBlocked":null,"features":[{"id":"runtime","label":"Runtime Security","availability":{"state":"available"},"shortcut":1,"sidebar":true},{"id":"academy","label":"Academy","availability":{"state":"available"},"shortcut":2,"sidebar":true},{"id":"administration","label":"Administration","availability":{"state":"available"},"shortcut":3,"sidebar":true},{"id":"sessions","label":"Sessions & Reports","availability":{"state":"available"},"shortcut":4,"sidebar":true},{"id":"library","label":"Case Library","availability":{"state":"available"},"shortcut":5,"sidebar":true},{"id":"redTeam","label":"Red Team & Models","availability":{"state":"available"},"shortcut":6,"sidebar":true},{"id":"apiClient","label":"API Client","availability":{"state":"available"},"shortcut":7,"sidebar":true},{"id":"gateway","label":"AI Gateway","availability":{"state":"available"},"shortcut":8,"sidebar":true},{"id":"harness","label":"Harness","availability":{"state":"available"},"shortcut":9,"sidebar":true},{"id":"import","label":"Import from v1","availability":{"state":"available"},"shortcut":null,"sidebar":true},{"id":"settings","label":"Settings","availability":{"state":"available"},"shortcut":null,"sidebar":true}],"fixtureBuild":true,"storage":"ready","tenants":[],"active":null,"endpointReview":null,"import":{"state":"idle"},"resetFailure":null,"durabilityUnconfirmed":false,"scans":[],"academy":{"state":"signedOut"},"learner":"lx-000000000000000000000000","academyOrigin":"https://academy.cdot.io","academyOffline":{"state":"signedOut","reachable":true,"downloads":[],"localDrafts":[]},"changes":{"review":null,"staged":null,"results":[]},"sessions":{"reports":{"state":"idle","failure":null,"items":[],"undo":null,"problem":null,"unsaved":false},"investigation":null,"export":null},"library":{"state":"idle","failure":null,"cases":[],"problem":null,"unsaved":null,"notice":null,"choosing":false,"fetching":false,"export":null},"overview":{"read":null,"refreshing":false,"failure":null,"failedAt":null,"fresh":false,"attention":[],"held":[],"face":"firstLaunch"},"workbench":{"available":true,"loaded":false,"failure":null,"recent":[],"collection":null,"import":null,"adoption":null,"adoptionSettled":false,"git":null,"busy":false,"unprotected":false,"running":[],"review":null,"network":"loopbackOnly"},"gateway":{"workspaces":null,"complete":false,"selected":null,"remembered":null,"rememberedMissing":false,"local":{"state":"idle","failure":null,"drafts":[],"records":[],"playground":[],"runs":[],"files":[],"problem":null,"unsaved":false},"playground":null,"files":null},"harness":{"engine":{"available":false,"protocol":"airs-desktop/1","runtimeVersion":"0.1.7-desktop.2","engineCommit":"9331a5839bc6a763d94dee7584746f58bbbe1181"},"conversation":null,"signIn":null,"history":null,"project":null,"projectRefused":null,"mcp":null},"v1Import":{"available":true,"source":null,"tenants":[],"categories":[],"notMapped":[],"plan":null,"activity":null,"receipts":[],"damagedReceipts":[],"receiptsUnreadable":false,"problem":null},"diagnostics":{"available":true,"events":0,"retentionDays":14,"export":null,"clear":null}}}
++{"kind":"shell","snapshot":{"revision":"1","appearance":"system","uiVariant":"legacy","onboarding":"needed","activeFeature":"runtime","showCalls":true,"switchBlocked":null,"setup":null,"features":[{"id":"runtime","label":"Runtime Security","availability":{"state":"available"},"shortcut":1,"sidebar":true},{"id":"academy","label":"Academy","availability":{"state":"available"},"shortcut":2,"sidebar":true},{"id":"administration","label":"Administration","availability":{"state":"available"},"shortcut":3,"sidebar":true},{"id":"sessions","label":"Sessions & Reports","availability":{"state":"available"},"shortcut":4,"sidebar":true},{"id":"library","label":"Case Library","availability":{"state":"available"},"shortcut":5,"sidebar":true},{"id":"redTeam","label":"Red Team & Models","availability":{"state":"available"},"shortcut":6,"sidebar":true},{"id":"apiClient","label":"API Client","availability":{"state":"available"},"shortcut":7,"sidebar":true},{"id":"gateway","label":"AI Gateway","availability":{"state":"available"},"shortcut":8,"sidebar":true},{"id":"harness","label":"Harness","availability":{"state":"available"},"shortcut":9,"sidebar":true},{"id":"import","label":"Import from v1","availability":{"state":"available"},"shortcut":null,"sidebar":true},{"id":"settings","label":"Settings","availability":{"state":"available"},"shortcut":null,"sidebar":true}],"fixtureBuild":true,"storage":"ready","tenants":[],"active":null,"endpointReview":null,"import":{"state":"idle"},"resetFailure":null,"durabilityUnconfirmed":false,"scans":[],"academy":{"state":"signedOut"},"learner":"lx-000000000000000000000000","academyOrigin":"https://academy.cdot.io","academyOffline":{"state":"signedOut","reachable":true,"downloads":[],"localDrafts":[]},"changes":{"review":null,"staged":null,"results":[]},"sessions":{"reports":{"state":"idle","failure":null,"items":[],"undo":null,"problem":null,"unsaved":false},"investigation":null,"export":null},"library":{"state":"idle","failure":null,"cases":[],"problem":null,"unsaved":null,"notice":null,"choosing":false,"fetching":false,"export":null},"overview":{"read":null,"refreshing":false,"failure":null,"failedAt":null,"fresh":false,"attention":[],"held":[],"face":"firstLaunch"},"workbench":{"available":true,"loaded":false,"failure":null,"recent":[],"collection":null,"import":null,"adoption":null,"adoptionSettled":false,"git":null,"busy":false,"unprotected":false,"running":[],"review":null,"network":"loopbackOnly"},"gateway":{"workspaces":null,"complete":false,"selected":null,"remembered":null,"rememberedMissing":false,"local":{"state":"idle","failure":null,"drafts":[],"records":[],"playground":[],"runs":[],"files":[],"problem":null,"unsaved":false},"playground":null,"files":null},"harness":{"engine":{"available":false,"protocol":"airs-desktop/1","runtimeVersion":"0.1.7-desktop.2","engineCommit":"9331a5839bc6a763d94dee7584746f58bbbe1181"},"conversation":null,"signIn":null,"history":null,"project":null,"projectRefused":null,"mcp":null},"v1Import":{"available":true,"source":null,"tenants":[],"categories":[],"notMapped":[],"plan":null,"activity":null,"receipts":[],"damagedReceipts":[],"receiptsUnreadable":false,"problem":null},"diagnostics":{"available":true,"events":0,"retentionDays":14,"export":null,"clear":null}}}
+diff --git a/packages/desktop-contracts/src/client.ts b/packages/desktop-contracts/src/client.ts
+index d97f757a..917fa176 100644
+--- a/packages/desktop-contracts/src/client.ts
++++ b/packages/desktop-contracts/src/client.ts
+@@ -91,6 +91,11 @@ const FEATURE_IDS: readonly string[] = [
+     'settings',
+ ]
+ const THEMES: readonly string[] = ['system', 'light', 'dark']
++const PRODUCT_IDS: readonly string[] = ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill']
++const ENVIRONMENTS: readonly string[] = ['production', 'staging', 'other']
++const SETUP_MODES: readonly string[] = ['firstRun', 'add']
++const VERIFY_LINES: readonly string[] = ['scanKey', 'managementClient', 'gateway', 'redTeam', 'modelSkill', 'ais', 'aes']
++const VERIFY_STATES: readonly string[] = ['pending', 'pass', 'warning', 'fail', 'stored', 'skipped', 'unavailable']
+ const UI_VARIANTS: readonly string[] = ['legacy', 'v2']
+ const ONBOARDING_STATES: readonly string[] = ['needed', 'inProgress', 'done']
+ const STORAGE: readonly string[] = ['ready', 'corrupt', 'unavailable', 'resetting']
+@@ -305,6 +310,8 @@ function isTenant(value: unknown): boolean {
+         isRecord(value) &&
+         typeof value.id === 'string' &&
+         TENANT_ID.test(value.id) &&
++        // C29: the environment chosen at setup.
++        oneOf(ENVIRONMENTS, value.environment) &&
+         isString(value.label) &&
+         optional(isString, value.tsgId) &&
+         isDestination(value.destination) &&
+@@ -314,7 +321,76 @@ function isTenant(value: unknown): boolean {
+         optional((m) => oneOf(MODES, m), value.scan.mode) &&
+         optional((f) => oneOf(VAULT_ERRORS, f), value.scan.failure) &&
+         isManagementView(value.management) &&
+-        isInferenceKeyView(value.inference)
++        isInferenceKeyView(value.inference) &&
++        // C29: the products a tenant reads; Runtime Security is always first.
++        Array.isArray(value.products) &&
++        value.products.length >= 1 &&
++        value.products[0] === 'runtimeSecurity' &&
++        value.products.every((p: unknown) => typeof p === 'string' && PRODUCT_IDS.includes(p)) &&
++        new Set(value.products as string[]).size === value.products.length &&
++        // C29: verify warnings recorded at completion (Inbox items in C30).
++        Array.isArray(value.setupWarnings) &&
++        value.setupWarnings.every(isSetupWarning)
++    )
++}
++
++function isProductList(value: unknown): boolean {
++    return (
++        Array.isArray(value) &&
++        value.length >= 1 &&
++        value[0] === 'runtimeSecurity' &&
++        value.every((p: unknown) => typeof p === 'string' && PRODUCT_IDS.includes(p)) &&
++        new Set(value as string[]).size === value.length
++    )
++}
++
++/** The setup in progress (C29): a core-owned draft, never listed as a tenant. */
++function isSetupView(value: unknown): boolean {
++    if (
++        !isRecord(value) ||
++        !oneOf(SETUP_MODES, value.mode) ||
++        typeof value.context !== 'string' ||
++        !CONTEXT_REF.test(value.context) ||
++        !isTenant(value.tenant) ||
++        !isProductList(value.products) ||
++        typeof value.scanRequired !== 'boolean' ||
++        !optional((w) => isRecord(w) && typeof w.reference === 'string' && w.reference.length > 0 && isListedWorkspace(w.workspace) && typeof w.restored === 'boolean', value.workspace) ||
++        !Array.isArray(value.packs) ||
++        !value.packs.every((p: unknown) => isRecord(p) && oneOf(PRODUCT_IDS, p.product) && typeof p.count === 'number' && Number.isInteger(p.count) && p.count >= 0) ||
++        typeof value.completable !== 'boolean'
++    ) {
++        return false
++    }
++    const verify = value.verify
++    if (verify === null) return true
++    return (
++        isRecord(verify) &&
++        typeof verify.generation === 'number' &&
++        Number.isInteger(verify.generation) &&
++        verify.generation >= 1 &&
++        Array.isArray(verify.steps) &&
++        verify.steps.every((s: unknown) => isRecord(s) && oneOf(VERIFY_LINES, s.line) && (s.product === null || oneOf(PRODUCT_IDS, s.product)) && oneOf(VERIFY_STATES, s.state) && typeof s.reason === 'string') &&
++        typeof verify.done === 'boolean' &&
++        typeof verify.failed === 'boolean' &&
++        typeof verify.blocking === 'boolean' &&
++        typeof verify.stale === 'boolean' &&
++        Array.isArray(verify.warnings) &&
++        verify.warnings.every((w: unknown) => isRecord(w) && oneOf(PRODUCT_IDS, w.product) && typeof w.reason === 'string' && w.reason.length > 0)
++    )
++}
++
++const SETUP_WARNING_ID = /^vw-[0-9]{1,20}$/
++function isSetupWarning(value: unknown): boolean {
++    return (
++        isRecord(value) &&
++        typeof value.id === 'string' &&
++        SETUP_WARNING_ID.test(value.id) &&
++        oneOf(PRODUCT_IDS, value.product) &&
++        typeof value.reason === 'string' &&
++        value.reason.length > 0 &&
++        typeof value.recordedSecs === 'number' &&
++        Number.isInteger(value.recordedSecs) &&
++        value.recordedSecs >= 0
+     )
+ }
+ 
+@@ -2543,6 +2619,8 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
+                 g.pending.decision.length > 0,
+             value.switchBlocked
+         ) ||
++        // C29: the tenant setup in progress, with its draft and verification.
++        !optional(isSetupView, value.setup) ||
+         !Array.isArray(value.features) ||
+         typeof value.fixtureBuild !== 'boolean' ||
+         !oneOf(STORAGE, value.storage) ||
+diff --git a/packages/desktop-contracts/src/generated/Intent.ts b/packages/desktop-contracts/src/generated/Intent.ts
+index 791576ac..ceb9eca3 100644
+--- a/packages/desktop-contracts/src/generated/Intent.ts
++++ b/packages/desktop-contracts/src/generated/Intent.ts
+@@ -18,11 +18,13 @@ import type { OnboardingState } from "./OnboardingState";
+ import type { OperationId } from "./OperationId";
+ import type { PlaygroundDraftInput } from "./PlaygroundDraftInput";
+ import type { ProcedureKind } from "./ProcedureKind";
++import type { ProductId } from "./ProductId";
+ import type { ProfileDraft } from "./ProfileDraft";
+ import type { ReportInput } from "./ReportInput";
+ import type { ReportTarget } from "./ReportTarget";
+ import type { ReviewId } from "./ReviewId";
+ import type { ScanDraft } from "./ScanDraft";
++import type { SetupMode } from "./SetupMode";
+ import type { StorageMode } from "./StorageMode";
+ import type { TenantId } from "./TenantId";
+ import type { TenantTarget } from "./TenantTarget";
+@@ -38,4 +40,4 @@ import type { WorkspaceRef } from "./WorkspaceRef";
+  * instructions; it never carries method names or arbitrary SDK payloads.
+  * Tenant-scoped instructions carry the ContextRef the caller was viewing.
+  */
+-export type Intent = { "kind": "setAppearance", theme: Theme, } | { "kind": "setUiVariant", variant: UiVariant, } | { "kind": "navigate", feature: FeatureId, } | { "kind": "setOnboarding", state: OnboardingState, } | { "kind": "setShowCalls", on: boolean, } | { "kind": "createTenant", profile: ProfileDraft, } | { "kind": "selectTenant", tenant: TenantId, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "configureManagementCredential", context: ContextRef, mode: StorageMode, clientId: string, secret: EnteredSecret, } | { "kind": "removeManagementCredential", context: ContextRef, } | { "kind": "management", context: ContextRef, request: ManagementRequest, } | { "kind": "selectGatewayWorkspace", context: ContextRef, workspace: string, } | { "kind": "reviewChange", context: ContextRef, draft: ChangeDraft, } | { "kind": "requestApply", review: ReviewId, draft: ChangeDraft, confirmation: string, } | { "kind": "discardChange", review: ReviewId, } | { "kind": "chooseDictionaryFile", context: ContextRef, } | { "kind": "revealSecret", operation: OperationId, } | { "kind": "forgetSecret", operation: OperationId, } | { "kind": "cancelChange", operation: OperationId, } | { "kind": "openGatewayLocal", context: ContextRef, } | { "kind": "saveGatewayDraft", context: ContextRef, draft: GatewayDraftInput, } | { "kind": "discardGatewayLocal", context: ContextRef, id: string, } | { "kind": "configureInferenceCredential", context: ContextRef, mode: StorageMode, workspace: WorkspaceRef, endpoint: string, secret: EnteredSecret, } | { "kind": "removeInferenceCredential", context: ContextRef, } | { "kind": "runInference", context: ContextRef, workspace: WorkspaceRef, run: InferenceRun, } | { "kind": "stopInference", operation: OperationId, } | { "kind": "clearInference", operation: OperationId, } | { "kind": "startHarness", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "configureHarnessSignIn", context: ContextRef, workspace: WorkspaceRef, endpoint: string, issuer: string, clientId: string, audience: string, } | { "kind": "removeHarnessSignIn", context: ContextRef, } | { "kind": "chooseHarnessCredential", context: ContextRef, source: CredentialSource, } | { "kind": "signInHarness", context: ContextRef, } | { "kind": "cancelHarnessSignIn", context: ContextRef, } | { "kind": "signOutHarness", context: ContextRef, } | { "kind": "chooseHarnessProject", context: ContextRef, } | { "kind": "clearHarnessProject", context: ContextRef, } | { "kind": "setHarnessWrite", context: ContextRef, write: boolean, } | { "kind": "decideHarnessApproval", conversation: OperationId, approval: string, allow: boolean, } | { "kind": "reviewHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "dismissHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "confirmHarnessWrite", conversation: OperationId, allow: boolean, } | { "kind": "listMcpServers", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "enableMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, enabled: boolean, } | { "kind": "signInMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "cancelMcpSignIn", context: ContextRef, } | { "kind": "signOutMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "listHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "openHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "closeHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "deleteHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "exportHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, format: HistoryFormat, } | { "kind": "resumeHarness", context: ContextRef, workspace: WorkspaceRef, id: string, } | { "kind": "sendHarness", conversation: OperationId, prompt: string, } | { "kind": "interruptHarness", conversation: OperationId, } | { "kind": "endHarness", conversation: OperationId, } | { "kind": "clearHarness", conversation: OperationId, } | { "kind": "readGatewayFiles", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "chooseGatewayFile", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "uploadGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "deleteGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "savePlaygroundDraft", context: ContextRef, workspace?: WorkspaceRef, draft: PlaygroundDraftInput, } | { "kind": "openReports", context: ContextRef, } | { "kind": "saveReport", context: ContextRef, target: ReportTarget, input: ReportInput, } | { "kind": "removeReport", context: ContextRef, scanId: string, subRequest: number, } | { "kind": "undoReport", context: ContextRef, } | { "kind": "exportReports", context: ContextRef, } | { "kind": "clearInvestigation", context: ContextRef, } | { "kind": "exportInvestigation", context: ContextRef, } | { "kind": "openLibrary", context: ContextRef, } | { "kind": "saveCase", context: ContextRef, draft: CaseDraft, } | { "kind": "deleteCase", context: ContextRef, id: string, } | { "kind": "importCases", context: ContextRef, } | { "kind": "importExamples", context: ContextRef, source: CatalogSource, } | { "kind": "copyCase", context: ContextRef, id: string, tenant: TenantId, } | { "kind": "exportCases", context: ContextRef, } | { "kind": "saveLibraryAgain", context: ContextRef, } | { "kind": "workbench", request: WorkbenchRequest, } | { "kind": "holdInsight", context: ContextRef, id: string, hold: HoldKind, } | { "kind": "restoreInsight", context: ContextRef, id: string, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "inspectV1Import" } | { "kind": "planV1Import", categories: Array<Category>, targets: Array<TenantTarget>, } | { "kind": "confirmV1Import", review: ReviewId, items: Array<number>, } | { "kind": "resumeV1Import", receipt: string, } | { "kind": "rollBackV1Import", receipt: string, } | { "kind": "forgetV1ImportReceipt", receipt: string, } | { "kind": "dismissV1Import" } | { "kind": "exportDiagnostics" } | { "kind": "clearDiagnostics" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, } | { "kind": "startAcademySignIn" } | { "kind": "cancelAcademySignIn" } | { "kind": "openAcademyVerification" } | { "kind": "signOutAcademy" } | { "kind": "printPage", learner: LearnerRef, } | { "kind": "uploadAvatar", learner: LearnerRef, } | { "kind": "loadAcademyImage", learner: LearnerRef, url: string, } | { "kind": "downloadCourse", learner: LearnerRef, courseId: string, } | { "kind": "removeDownload", learner: LearnerRef, courseId: string, } | { "kind": "saveLocalDraft", learner: LearnerRef, attemptId: string, baseVersion: number, draft: string, } | { "kind": "loadLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "clearLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "academyCall", learner: LearnerRef, procedure: string, procedureKind: ProcedureKind, input: string | null, };
++export type Intent = { "kind": "setAppearance", theme: Theme, } | { "kind": "setUiVariant", variant: UiVariant, } | { "kind": "navigate", feature: FeatureId, } | { "kind": "setOnboarding", state: OnboardingState, } | { "kind": "setShowCalls", on: boolean, } | { "kind": "beginTenantSetup", mode: SetupMode, profile: ProfileDraft, } | { "kind": "updateTenantSetup", context: ContextRef, profile: ProfileDraft, } | { "kind": "chooseSetupProducts", context: ContextRef, products: Array<ProductId>, } | { "kind": "verifyTenantSetup", context: ContextRef, } | { "kind": "completeTenantSetup", context: ContextRef, packs: Array<ProductId>, } | { "kind": "discardTenantSetup", context: ContextRef, } | { "kind": "createTenant", profile: ProfileDraft, } | { "kind": "selectTenant", tenant: TenantId, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "configureManagementCredential", context: ContextRef, mode: StorageMode, clientId: string, secret: EnteredSecret, } | { "kind": "removeManagementCredential", context: ContextRef, } | { "kind": "management", context: ContextRef, request: ManagementRequest, } | { "kind": "selectGatewayWorkspace", context: ContextRef, workspace: string, } | { "kind": "reviewChange", context: ContextRef, draft: ChangeDraft, } | { "kind": "requestApply", review: ReviewId, draft: ChangeDraft, confirmation: string, } | { "kind": "discardChange", review: ReviewId, } | { "kind": "chooseDictionaryFile", context: ContextRef, } | { "kind": "revealSecret", operation: OperationId, } | { "kind": "forgetSecret", operation: OperationId, } | { "kind": "cancelChange", operation: OperationId, } | { "kind": "openGatewayLocal", context: ContextRef, } | { "kind": "saveGatewayDraft", context: ContextRef, draft: GatewayDraftInput, } | { "kind": "discardGatewayLocal", context: ContextRef, id: string, } | { "kind": "configureInferenceCredential", context: ContextRef, mode: StorageMode, workspace: WorkspaceRef, endpoint: string, secret: EnteredSecret, } | { "kind": "removeInferenceCredential", context: ContextRef, } | { "kind": "runInference", context: ContextRef, workspace: WorkspaceRef, run: InferenceRun, } | { "kind": "stopInference", operation: OperationId, } | { "kind": "clearInference", operation: OperationId, } | { "kind": "startHarness", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "configureHarnessSignIn", context: ContextRef, workspace: WorkspaceRef, endpoint: string, issuer: string, clientId: string, audience: string, } | { "kind": "removeHarnessSignIn", context: ContextRef, } | { "kind": "chooseHarnessCredential", context: ContextRef, source: CredentialSource, } | { "kind": "signInHarness", context: ContextRef, } | { "kind": "cancelHarnessSignIn", context: ContextRef, } | { "kind": "signOutHarness", context: ContextRef, } | { "kind": "chooseHarnessProject", context: ContextRef, } | { "kind": "clearHarnessProject", context: ContextRef, } | { "kind": "setHarnessWrite", context: ContextRef, write: boolean, } | { "kind": "decideHarnessApproval", conversation: OperationId, approval: string, allow: boolean, } | { "kind": "reviewHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "dismissHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "confirmHarnessWrite", conversation: OperationId, allow: boolean, } | { "kind": "listMcpServers", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "enableMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, enabled: boolean, } | { "kind": "signInMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "cancelMcpSignIn", context: ContextRef, } | { "kind": "signOutMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "listHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "openHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "closeHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "deleteHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "exportHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, format: HistoryFormat, } | { "kind": "resumeHarness", context: ContextRef, workspace: WorkspaceRef, id: string, } | { "kind": "sendHarness", conversation: OperationId, prompt: string, } | { "kind": "interruptHarness", conversation: OperationId, } | { "kind": "endHarness", conversation: OperationId, } | { "kind": "clearHarness", conversation: OperationId, } | { "kind": "readGatewayFiles", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "chooseGatewayFile", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "uploadGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "deleteGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "savePlaygroundDraft", context: ContextRef, workspace?: WorkspaceRef, draft: PlaygroundDraftInput, } | { "kind": "openReports", context: ContextRef, } | { "kind": "saveReport", context: ContextRef, target: ReportTarget, input: ReportInput, } | { "kind": "removeReport", context: ContextRef, scanId: string, subRequest: number, } | { "kind": "undoReport", context: ContextRef, } | { "kind": "exportReports", context: ContextRef, } | { "kind": "clearInvestigation", context: ContextRef, } | { "kind": "exportInvestigation", context: ContextRef, } | { "kind": "openLibrary", context: ContextRef, } | { "kind": "saveCase", context: ContextRef, draft: CaseDraft, } | { "kind": "deleteCase", context: ContextRef, id: string, } | { "kind": "importCases", context: ContextRef, } | { "kind": "importExamples", context: ContextRef, source: CatalogSource, } | { "kind": "copyCase", context: ContextRef, id: string, tenant: TenantId, } | { "kind": "exportCases", context: ContextRef, } | { "kind": "saveLibraryAgain", context: ContextRef, } | { "kind": "workbench", request: WorkbenchRequest, } | { "kind": "holdInsight", context: ContextRef, id: string, hold: HoldKind, } | { "kind": "restoreInsight", context: ContextRef, id: string, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "inspectV1Import" } | { "kind": "planV1Import", categories: Array<Category>, targets: Array<TenantTarget>, } | { "kind": "confirmV1Import", review: ReviewId, items: Array<number>, } | { "kind": "resumeV1Import", receipt: string, } | { "kind": "rollBackV1Import", receipt: string, } | { "kind": "forgetV1ImportReceipt", receipt: string, } | { "kind": "dismissV1Import" } | { "kind": "exportDiagnostics" } | { "kind": "clearDiagnostics" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, } | { "kind": "startAcademySignIn" } | { "kind": "cancelAcademySignIn" } | { "kind": "openAcademyVerification" } | { "kind": "signOutAcademy" } | { "kind": "printPage", learner: LearnerRef, } | { "kind": "uploadAvatar", learner: LearnerRef, } | { "kind": "loadAcademyImage", learner: LearnerRef, url: string, } | { "kind": "downloadCourse", learner: LearnerRef, courseId: string, } | { "kind": "removeDownload", learner: LearnerRef, courseId: string, } | { "kind": "saveLocalDraft", learner: LearnerRef, attemptId: string, baseVersion: number, draft: string, } | { "kind": "loadLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "clearLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "academyCall", learner: LearnerRef, procedure: string, procedureKind: ProcedureKind, input: string | null, };
+diff --git a/packages/desktop-contracts/src/generated/ProfileDraft.ts b/packages/desktop-contracts/src/generated/ProfileDraft.ts
+index 1e976bce..84ab98de 100644
+--- a/packages/desktop-contracts/src/generated/ProfileDraft.ts
++++ b/packages/desktop-contracts/src/generated/ProfileDraft.ts
+@@ -1,7 +1,12 @@
+ // This file was generated by [ts-rs](https://github.com/Aleph-Alpha/ts-rs). Do not edit this file manually.
+ import type { Destination } from "./Destination";
++import type { TenantEnvironment } from "./TenantEnvironment";
+ 
+ /**
+  * The nonsecret profile fields an operator supplies or imports.
+  */
+-export type ProfileDraft = { label: string, tsgId: string | null, destination: Destination, };
++export type ProfileDraft = { label: string, tsgId: string | null, destination: Destination, 
++/**
++ * Production / staging / other (C29); production when absent.
++ */
++environment: TenantEnvironment, };
+diff --git a/packages/desktop-contracts/src/generated/ShellSnapshot.ts b/packages/desktop-contracts/src/generated/ShellSnapshot.ts
+index fd48a22f..7faf3b77 100644
+--- a/packages/desktop-contracts/src/generated/ShellSnapshot.ts
++++ b/packages/desktop-contracts/src/generated/ShellSnapshot.ts
+@@ -17,6 +17,7 @@ import type { OverviewView } from "./OverviewView";
+ import type { ResetFailure } from "./ResetFailure";
+ import type { ScanRecordView } from "./ScanRecordView";
+ import type { SessionsView } from "./SessionsView";
++import type { SetupView } from "./SetupView";
+ import type { StorageHealth } from "./StorageHealth";
+ import type { SwitchBlocked } from "./SwitchBlocked";
+ import type { TenantView } from "./TenantView";
+@@ -54,7 +55,11 @@ showCalls: boolean,
+  * A held tenant switch awaiting the operator's resolution (C30 raises
+  * it; always absent in C28).
+  */
+-switchBlocked: SwitchBlocked | null, features: Array<FeatureEntry>, 
++switchBlocked: SwitchBlocked | null, 
++/**
++ * The tenant setup in progress (C29), with its draft and verification.
++ */
++setup: SetupView | null, features: Array<FeatureEntry>, 
+ /**
+  * True only in the distinct test-fixtures identity.
+  */
+diff --git a/packages/desktop-contracts/src/generated/TenantView.ts b/packages/desktop-contracts/src/generated/TenantView.ts
+index 6d10be0c..d6306913 100644
+--- a/packages/desktop-contracts/src/generated/TenantView.ts
++++ b/packages/desktop-contracts/src/generated/TenantView.ts
+@@ -2,10 +2,17 @@
+ import type { Destination } from "./Destination";
+ import type { InferenceKeyView } from "./InferenceKeyView";
+ import type { ManagementView } from "./ManagementView";
++import type { ProductId } from "./ProductId";
+ import type { ScanView } from "./ScanView";
++import type { SetupWarning } from "./SetupWarning";
++import type { TenantEnvironment } from "./TenantEnvironment";
+ import type { TenantId } from "./TenantId";
+ 
+ export type TenantView = { id: TenantId, label: string, tsgId: string | null, destination: Destination, 
++/**
++ * Production / staging / other (C29).
++ */
++environment: TenantEnvironment, 
+ /**
+  * The exact origin the scan key may be sent to.
+  */
+@@ -17,4 +24,13 @@ management: ManagementView,
+ /**
+  * The Gateway workspace inference key (C18; no secret material).
+  */
+-inference: InferenceKeyView, };
++inference: InferenceKeyView, 
++/**
++ * The products this tenant reads (C29); Runtime Security until set.
++ */
++products: Array<ProductId>, 
++/**
++ * Verify warnings recorded at wizard completion (C29); the Inbox
++ * renders them (C30).
++ */
++setupWarnings: Array<SetupWarning>, };
+diff --git a/packages/desktop-contracts/src/index.ts b/packages/desktop-contracts/src/index.ts
+index 2d2060ad..99f0b2fd 100644
+--- a/packages/desktop-contracts/src/index.ts
++++ b/packages/desktop-contracts/src/index.ts
+@@ -292,3 +292,15 @@ export type { V1TenantChoice } from './generated/V1TenantChoice'
+ export type { DiagnosticsClear } from './generated/DiagnosticsClear'
+ export type { DiagnosticsExport } from './generated/DiagnosticsExport'
+ export type { DiagnosticsView } from './generated/DiagnosticsView'
++
++export type { ProductId } from './generated/ProductId'
++export type { SetupWarning } from './generated/SetupWarning'
++export type { VerifyWarning } from './generated/VerifyWarning'
++export type { SetupView } from './generated/SetupView'
++export type { SetupMode } from './generated/SetupMode'
++export type { VerifyView } from './generated/VerifyView'
++export type { VerifyStep } from './generated/VerifyStep'
++export type { VerifyLine } from './generated/VerifyLine'
++export type { VerifyState } from './generated/VerifyState'
++export type { PackView } from './generated/PackView'
++export type { TenantEnvironment } from './generated/TenantEnvironment'
+
+# Untracked files in scope:
+# + apps/desktop/src/v2/wizard/copy.ts
+# + apps/desktop/src/v2/wizard/fixtures.ts
+# + apps/desktop/src/v2/wizard/wizard-boards.test.tsx
+# + apps/desktop/src/v2/wizard/wizard.test.tsx
+# + apps/desktop/src/v2/wizard/wizard.tsx
+# + crates/desktop-core/src/authority/setup_domain.rs
+# + crates/desktop-core/tests/ui_v2_onboarding/main.rs
+# + crates/desktop-core/tests/ui_v2_setup_reads/main.rs
+# + docs/planning/evidence/C29/live-scope-request.md
+# + docs/planning/evidence/C29/live/blocked.json
+# + docs/planning/evidence/C29/native-acceptance.json
+# + docs/planning/evidence/C29/native-prepare.json
+# + docs/planning/evidence/C29/native/captures/academy-dark-100.png
+# + docs/planning/evidence/C29/native/captures/academy-dark-200.png
+# + docs/planning/evidence/C29/native/captures/academy-light-100.png
+# + docs/planning/evidence/C29/native/captures/academy-light-200.png
+# + docs/planning/evidence/C29/native/captures/add-tenant-sheet-900x600.png
+# + docs/planning/evidence/C29/native/captures/add-tenant-sheet-dark-100.png
+# + docs/planning/evidence/C29/native/captures/add-tenant-sheet-dark-200.png
+# + docs/planning/evidence/C29/native/captures/add-tenant-sheet-light-100.png
+# + docs/planning/evidence/C29/native/captures/add-tenant-sheet-light-200.png
+# + docs/planning/evidence/C29/native/captures/done-dark-100.png
+# + docs/planning/evidence/C29/native/captures/done-dark-200.png
+# + docs/planning/evidence/C29/native/captures/done-light-100.png
+# + docs/planning/evidence/C29/native/captures/done-light-200.png
+# + docs/planning/evidence/C29/native/captures/home-after-wizard.png
+# + docs/planning/evidence/C29/native/captures/packs-dark-100.png
+# + docs/planning/evidence/C29/native/captures/packs-dark-200.png
+# + docs/planning/evidence/C29/native/captures/packs-light-100.png
+# + docs/planning/evidence/C29/native/captures/packs-light-200.png
+# + docs/planning/evidence/C29/native/captures/products-dark-100.png
+# + docs/planning/evidence/C29/native/captures/products-dark-200.png
+# + docs/planning/evidence/C29/native/captures/products-light-100.png
+# + docs/planning/evidence/C29/native/captures/products-light-200.png
+# + docs/planning/evidence/C29/native/captures/tenant-dark-100.png
+# + docs/planning/evidence/C29/native/captures/tenant-dark-200.png
+# + docs/planning/evidence/C29/native/captures/tenant-light-100.png
+# + docs/planning/evidence/C29/native/captures/tenant-light-200.png
+# + docs/planning/evidence/C29/native/captures/verify-dark-100.png
+# + docs/planning/evidence/C29/native/captures/verify-dark-200.png
+# + docs/planning/evidence/C29/native/captures/verify-light-100.png
+# + docs/planning/evidence/C29/native/captures/verify-light-200.png
+# + docs/planning/evidence/C29/native/captures/welcome-dark-100.png
+# + docs/planning/evidence/C29/native/captures/welcome-dark-200.png
+# + docs/planning/evidence/C29/native/captures/welcome-light-100.png
+# + docs/planning/evidence/C29/native/captures/welcome-light-200.png
+# + docs/planning/evidence/C29/native/observations.json
+# + docs/planning/evidence/C29/native/tree-add-tenant-sheet.json
+# + docs/planning/evidence/C29/native/tree-library.json
+# + docs/planning/evidence/C29/native/tree-products.json
+# + docs/planning/evidence/C29/native/tree-switcher-after-sheet.json
+# + docs/planning/evidence/C29/native/tree-tenant-edited.json
+# + docs/planning/evidence/C29/native/tree-tenant-gateway-key.json
+# + docs/planning/evidence/C29/native/tree-tenant-gateway-section.json
+# + docs/planning/evidence/C29/native/tree-tenant-invalid.json
+# + docs/planning/evidence/C29/native/tree-tenant-key-saved.json
+# + docs/planning/evidence/C29/native/tree-verify-fail.json
+# + docs/planning/evidence/C29/native/tree-verify-pass.json
+# + docs/planning/evidence/C29/native/tree-verify-planned.json
+# + docs/planning/evidence/C29/native/tree-verify-stale.json
+# + docs/planning/evidence/C29/native/tree-welcome.json
+# + docs/planning/evidence/C29/runs/bindings.exit
+# + docs/planning/evidence/C29/runs/bindings.log
+# + docs/planning/evidence/C29/runs/clippy-default.exit
+# + docs/planning/evidence/C29/runs/clippy-default.log
+# + docs/planning/evidence/C29/runs/clippy.exit
+# + docs/planning/evidence/C29/runs/clippy.log
+# + docs/planning/evidence/C29/runs/contracts-typecheck.exit
+# + docs/planning/evidence/C29/runs/contracts-typecheck.log
+# + docs/planning/evidence/C29/runs/core-fixtures.exit
+# + docs/planning/evidence/C29/runs/core-fixtures.flake-1.log
+# + docs/planning/evidence/C29/runs/core-fixtures.flake-2.log
+# + docs/planning/evidence/C29/runs/core-fixtures.log
+# + docs/planning/evidence/C29/runs/core-lib.exit
+# + docs/planning/evidence/C29/runs/core-lib.log
+# + docs/planning/evidence/C29/runs/desktop-build.exit
+# + docs/planning/evidence/C29/runs/desktop-build.log
+# + docs/planning/evidence/C29/runs/desktop-typecheck.exit
+# + docs/planning/evidence/C29/runs/desktop-typecheck.log
+# + docs/planning/evidence/C29/runs/hash-inputs.sh
+# + docs/planning/evidence/C29/runs/host.exit
+# + docs/planning/evidence/C29/runs/host.log
+# + docs/planning/evidence/C29/runs/inputs-after.sha256
+# + docs/planning/evidence/C29/runs/inputs-before.sha256
+# + docs/planning/evidence/C29/runs/notices.exit
+# + docs/planning/evidence/C29/runs/notices.log
+# + docs/planning/evidence/C29/runs/run-attempt-01.json
+# + docs/planning/evidence/C29/runs/run-attempt-02.json
+# + docs/planning/evidence/C29/runs/run-attempt-03.json
+# + docs/planning/evidence/C29/runs/run-attempt-04.json
+# + docs/planning/evidence/C29/runs/run-checks.sh
+# + docs/planning/evidence/C29/runs/rustfmt.exit
+# + docs/planning/evidence/C29/runs/rustfmt.log
+# + docs/planning/evidence/C29/runs/shell-controller.exit
+# + docs/planning/evidence/C29/runs/shell-controller.log
+# + docs/planning/evidence/C29/runs/vitest-truth.exit
+# + docs/planning/evidence/C29/runs/vitest-truth.log
+# + docs/planning/evidence/C29/runs/vitest.exit
+# + docs/planning/evidence/C29/runs/vitest.log
+# + docs/planning/evidence/C29/runs/xtask-lib.exit
+# + docs/planning/evidence/C29/runs/xtask-lib.log
+# + docs/planning/evidence/C29/screens/academy-dark-100.png
+# + docs/planning/evidence/C29/screens/academy-dark-200.png
+# + docs/planning/evidence/C29/screens/academy-light-100.png
+# + docs/planning/evidence/C29/screens/academy-light-200.png
+# + docs/planning/evidence/C29/screens/done-dark-100.png
+# + docs/planning/evidence/C29/screens/done-dark-200.png
+# + docs/planning/evidence/C29/screens/done-light-100.png
+# + docs/planning/evidence/C29/screens/done-light-200.png
+# + docs/planning/evidence/C29/screens/home-light-100.png
+# + docs/planning/evidence/C29/screens/packs-dark-100.png
+# + docs/planning/evidence/C29/screens/packs-dark-200.png
+# + docs/planning/evidence/C29/screens/packs-light-100.png
+# + docs/planning/evidence/C29/screens/packs-light-200.png
+# + docs/planning/evidence/C29/screens/products-dark-100.png
+# + docs/planning/evidence/C29/screens/products-dark-200.png
+# + docs/planning/evidence/C29/screens/products-light-100.png
+# + docs/planning/evidence/C29/screens/products-light-200.png
+# + docs/planning/evidence/C29/screens/sheet-900-light-100.png
+# + docs/planning/evidence/C29/screens/sheet-dark-100.png
+# + docs/planning/evidence/C29/screens/sheet-dark-200.png
+# + docs/planning/evidence/C29/screens/sheet-light-100.png
+# + docs/planning/evidence/C29/screens/sheet-light-200.png
+# + docs/planning/evidence/C29/screens/tenant-dark-100.png
+# + docs/planning/evidence/C29/screens/tenant-dark-200.png
+# + docs/planning/evidence/C29/screens/tenant-light-100.png
+# + docs/planning/evidence/C29/screens/tenant-light-200.png
+# + docs/planning/evidence/C29/screens/verify-dark-100.png
+# + docs/planning/evidence/C29/screens/verify-dark-200.png
+# + docs/planning/evidence/C29/screens/verify-light-100.png
+# + docs/planning/evidence/C29/screens/verify-light-200.png
+# + docs/planning/evidence/C29/screens/welcome-dark-100.png
+# + docs/planning/evidence/C29/screens/welcome-dark-200.png
+# + docs/planning/evidence/C29/screens/welcome-light-100.png
+# + docs/planning/evidence/C29/screens/welcome-light-200.png
+# + docs/planning/reviews/C29/attempt-01/diff.patch
+# + docs/planning/reviews/C29/attempt-01/message.txt
+# + docs/planning/reviews/C29/attempt-01/request.json
+# + docs/planning/reviews/C29/attempt-01/source-inventory.json
+# + docs/planning/reviews/C29/attempt-01/thread-reply.log
+# + docs/planning/reviews/C29/attempt-01/verdict-returned.json
+# + docs/planning/reviews/C29/attempt-02/diff.patch
+# + docs/planning/reviews/C29/attempt-02/message.txt
+# + docs/planning/reviews/C29/attempt-02/request.json
+# + docs/planning/reviews/C29/attempt-02/source-inventory.json
+# + docs/planning/reviews/C29/attempt-02/thread-reply.log
+# + docs/planning/reviews/C29/attempt-02/verdict-returned.json
+# + docs/planning/reviews/C29/attempt-03/diff.patch
+# + docs/planning/reviews/C29/attempt-03/message.txt
+# + docs/planning/reviews/C29/attempt-03/request.json
+# + docs/planning/reviews/C29/attempt-03/source-inventory.json
+# + docs/planning/reviews/C29/attempt-03/thread-reply.log
+# + docs/planning/reviews/C29/attempt-03/verdict-returned.json
+# + docs/planning/reviews/C29/remediation-attempt-01.md
+# + docs/planning/reviews/C29/remediation-attempt-02.md
+# + docs/planning/reviews/C29/remediation-attempt-03.md
+# + packages/desktop-contracts/src/generated/PackView.ts
+# + packages/desktop-contracts/src/generated/ProductId.ts
+# + packages/desktop-contracts/src/generated/SetupMode.ts
+# + packages/desktop-contracts/src/generated/SetupView.ts
+# + packages/desktop-contracts/src/generated/SetupWarning.ts
+# + packages/desktop-contracts/src/generated/TenantEnvironment.ts
+# + packages/desktop-contracts/src/generated/VerifyLine.ts
+# + packages/desktop-contracts/src/generated/VerifyState.ts
+# + packages/desktop-contracts/src/generated/VerifyStep.ts
+# + packages/desktop-contracts/src/generated/VerifyView.ts
+# + packages/desktop-contracts/src/generated/VerifyWarning.ts
+# + tools/native-acceptance/acceptance_c29.py

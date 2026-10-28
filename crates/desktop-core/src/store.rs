@@ -205,6 +205,40 @@ pub struct PersistedState {
     /// "Show the calls" preference (C28; absent before = on).
     #[serde(default = "show_calls_default")]
     pub show_calls: bool,
+    /// Each tenant's chosen products (C29; absent before = Runtime only).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tenant_products: Vec<TenantProducts>,
+    /// Verify warnings recorded at wizard completion (C29; Inbox items in C30).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tenant_warnings: Vec<TenantWarnings>,
+    /// A tenant setup in progress when the document was written (C29). It
+    /// is not restored: its credentials are cleaned up on the next load.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tenant_draft: Option<StoredDraft>,
+}
+
+/// The draft a wizard was working on (C29).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredDraft {
+    pub profile: TenantProfile,
+    pub mode: crate::features::SetupMode,
+}
+
+/// One tenant's recorded setup warnings (C29).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TenantWarnings {
+    pub tenant: TenantId,
+    pub warnings: Vec<crate::features::SetupWarning>,
+}
+
+/// The products one tenant reads (C29).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TenantProducts {
+    pub tenant: TenantId,
+    pub products: Vec<crate::features::ProductId>,
 }
 
 fn show_calls_default() -> bool {
@@ -231,6 +265,9 @@ impl Default for PersistedState {
             ui_variant: crate::features::UiVariant::Legacy,
             onboarding: crate::features::OnboardingState::Needed,
             show_calls: true,
+            tenant_products: Vec::new(),
+            tenant_warnings: Vec::new(),
+            tenant_draft: None,
         }
     }
 }
@@ -246,12 +283,20 @@ impl PersistedState {
                     label: t.label.clone(),
                     tsg_id: t.tsg_id.clone(),
                     destination: t.destination.clone(),
+                    environment: t.environment,
                 }
                 .validate()
                 .is_some_and(|d| {
                     d.label == t.label && d.tsg_id == t.tsg_id && d.destination == t.destination
                 })
         });
+        // A credential belongs to a tenant, or to the setup draft that was
+        // in progress (C29): its records are cleaned up on the next load.
+        let owners: Vec<&TenantProfile> = self
+            .tenants
+            .iter()
+            .chain(self.tenant_draft.as_ref().map(|d| &d.profile))
+            .collect();
         let mut records = BTreeSet::new();
         let credentials_ok = self.credentials.iter().all(|c| {
             records.insert(c.record.clone())
@@ -259,7 +304,7 @@ impl PersistedState {
                     CredentialClass::Scan => {
                         c.client_id.is_none()
                             && c.inference.is_none()
-                            && self.tenants.iter().any(|t| {
+                            && owners.iter().any(|t| {
                                 t.id == c.tenant && t.destination.origin() == c.destination
                             })
                     }
@@ -271,8 +316,7 @@ impl PersistedState {
                                 .as_deref()
                                 .is_some_and(crate::management::client_id_is_valid)
                             && crate::management::is_origin(&c.destination)
-                            && self
-                                .tenants
+                            && owners
                                 .iter()
                                 .any(|t| t.id == c.tenant && t.tsg_id.is_some())
                     }
@@ -283,9 +327,20 @@ impl PersistedState {
                             && c.inference
                                 .as_ref()
                                 .is_some_and(|t| t.is_valid() && t.endpoint == c.destination)
-                            && self.tenants.iter().any(|t| t.id == c.tenant)
+                            && owners.iter().any(|t| t.id == c.tenant)
                     }
                 }
+        });
+        let draft_ok = self.tenant_draft.as_ref().is_none_or(|d| {
+            !ids.contains(&d.profile.id)
+                && crate::tenants::ProfileDraft {
+                    label: d.profile.label.clone(),
+                    tsg_id: d.profile.tsg_id.clone(),
+                    destination: d.profile.destination.clone(),
+                    environment: d.profile.environment,
+                }
+                .validate()
+                .is_some()
         });
         let one_per_tenant = {
             let mut seen = BTreeSet::new();
@@ -392,6 +447,7 @@ impl PersistedState {
             && learner_ok
             && gateway_ok
             && tenants_ok
+            && draft_ok
             && credentials_ok
             && one_per_tenant
             && self.active_tenant.as_ref().is_none_or(|a| ids.contains(a))
@@ -651,6 +707,7 @@ mod tests {
                 destination: Destination::Region {
                     region: Region::Europe,
                 },
+                environment: Default::default(),
             }],
             active_tenant: Some(id.clone()),
             credentials: vec![StoredCredential {
@@ -686,6 +743,52 @@ mod tests {
         assert_eq!(store.load(), Ok(None));
         drop(store);
         fs::remove_dir_all(&dir).expect("cleanup");
+    }
+
+    #[test]
+    fn a_setup_draft_and_its_credential_round_trip_through_the_file_store() {
+        // C29: a keyed draft is written so its records are known; the
+        // production store accepts the document (the draft owns the record)
+        // and the next load cleans it up.
+        let dir = scratch("draft");
+        let store = FileStore::open(&dir).expect("open");
+        let mut doc = sample();
+        let draft_id = TenantId::parse("tn-00000000d4af7001").expect("id");
+        doc.tenant_draft = Some(StoredDraft {
+            profile: TenantProfile {
+                id: draft_id.clone(),
+                label: "Drafted".into(),
+                tsg_id: Some("1234567890".into()),
+                destination: Destination::Region {
+                    region: Region::UnitedStates,
+                },
+                environment: crate::features::TenantEnvironment::Staging,
+            },
+            mode: crate::features::SetupMode::Add,
+        });
+        doc.credentials.push(StoredCredential {
+            record: RecordId::parse("cr-00000000d4af7001").expect("record"),
+            tenant: draft_id.clone(),
+            destination: Region::UnitedStates.origin().into(),
+            class: CredentialClass::Scan,
+            client_id: None,
+            inference: None,
+        });
+        assert!(doc.is_consistent(), "a draft may own a credential");
+        store.save(&doc).expect("save");
+        assert_eq!(store.load(), Ok(Some(doc.clone())));
+        // A draft colliding with a tenant id, or an orphan record, is not.
+        let mut colliding = doc.clone();
+        colliding.tenant_draft.as_mut().expect("draft").profile.id = doc.tenants[0].id.clone();
+        assert!(!colliding.is_consistent());
+        let mut orphan = doc.clone();
+        orphan.tenant_draft = None;
+        assert!(
+            !orphan.is_consistent(),
+            "without the draft its record has no owner"
+        );
+        drop(store);
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

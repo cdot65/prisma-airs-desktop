@@ -546,3 +546,110 @@ fn the_go_menu_is_reconciled_on_every_shell_subscription() {
     );
     let _ = &h.adapters;
 }
+
+/// C29: the setup draft's credential intents cross IPC under the draft's own
+/// context; no receipt, snapshot or Keychain call echoes a secret, nothing
+/// becomes a tenant before completion, and a discard leaves no draft behind.
+#[test]
+fn setup_draft_intents_cross_ipc_without_echoing_secrets_or_creating_tenants() {
+    let h = harness();
+    let session = register(&h);
+    let begun = send(
+        &h,
+        &session,
+        1,
+        json!({"kind": "beginTenantSetup", "mode": "add", "profile": {
+        "label": "Drafted", "tsgId": "1234567890", "destination": {"kind": "region", "region": "europe"},
+        "environment": "staging"}}),
+    );
+    assert_eq!(begun.expect("begun")["outcome"], "receipt");
+    let snap = snapshot(&h, 20);
+    assert_eq!(
+        snap["tenants"].as_array().map(Vec::len),
+        Some(0),
+        "a draft is not a tenant"
+    );
+    assert!(snap["active"].is_null());
+    let setup = &snap["setup"];
+    assert_eq!(setup["mode"], "add");
+    assert_eq!(setup["tenant"]["environment"], "staging");
+    assert_eq!(setup["scanRequired"], false);
+    let context = setup["context"].as_str().expect("draft context").to_owned();
+    let key = "synthetic-ipc-draft-scan-key-0042";
+    let secret = "synthetic-ipc-draft-client-secret-0042";
+    let stored = send(
+        &h,
+        &session,
+        2,
+        json!({"kind": "configureScanCredential", "context": context, "mode": "session", "key": key}),
+    )
+    .expect("admitted");
+    assert_eq!(stored["outcome"], "receipt");
+    assert!(!stored.to_string().contains(key));
+    // The scan key retired the draft's context (a credential change always does).
+    let context = snapshot(&h, 21)["setup"]["context"]
+        .as_str()
+        .expect("fresh draft context")
+        .to_owned();
+    let client = send(
+        &h,
+        &session,
+        3,
+        json!({"kind": "configureManagementCredential", "context": context, "mode": "session",
+        "clientId": "svc@1234567890.iam.example", "secret": secret}),
+    )
+    .expect("admitted");
+    assert!(!client.to_string().contains(secret));
+    assert!(eventually(|| {
+        let s = snapshot(&h, 21);
+        s["setup"]["tenant"]["scan"]["state"] == "ready"
+            && s["setup"]["tenant"]["management"]["state"] == "ready"
+    }));
+    let snap = snapshot(&h, 22);
+    let text = snap.to_string();
+    assert!(
+        !text.contains(key) && !text.contains(secret),
+        "no snapshot carries a secret"
+    );
+    assert_eq!(
+        snap["setup"]["tenant"]["management"]["clientId"],
+        "svc@1234567890.iam.example"
+    );
+    assert_eq!(
+        snap["tenants"].as_array().map(Vec::len),
+        Some(0),
+        "still not a tenant"
+    );
+    assert!(
+        h.adapters.vault.calls().is_empty(),
+        "session-only never reaches the Keychain"
+    );
+    // (Verification is not run here: the fixture host has no synthetic management plane,
+    // and a routine host test must never reach a product service; the core and reads
+    // suites cover it.) Each credential change retired the draft's context: re-read it.
+    let context = snapshot(&h, 24)["setup"]["context"]
+        .as_str()
+        .expect("fresh draft context")
+        .to_owned();
+    let discarded = send(
+        &h,
+        &session,
+        4,
+        json!({"kind": "discardTenantSetup", "context": context}),
+    )
+    .expect("discard");
+    assert_eq!(discarded["outcome"], "receipt");
+    let snap = snapshot(&h, 25);
+    assert!(snap["setup"].is_null());
+    assert_eq!(snap["tenants"].as_array().map(Vec::len), Some(0));
+    let stale = send(
+        &h,
+        &session,
+        5,
+        json!({"kind": "verifyTenantSetup", "context": context}),
+    );
+    assert_eq!(
+        stale.expect("refusal"),
+        json!({"outcome": "refusal", "refusal": "staleContext"})
+    );
+}

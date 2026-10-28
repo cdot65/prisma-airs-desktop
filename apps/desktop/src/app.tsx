@@ -12,6 +12,8 @@ import { followAppearance } from './shell/appearance'
 import type { DispatchOutcome } from './features/tenants/dispatch'
 import { DesktopShell } from './shell/desktop-shell'
 import { V2Shell } from './v2/v2-shell'
+import { Wizard } from './v2/wizard/wizard'
+import { ImportView } from './features/import-v1/import-view'
 import { useShellStore } from './v2/store'
 import { SHELL_COPY } from './v2/copy'
 import { forgetAcademyPresentation } from './features/academy/presentation-storage'
@@ -166,6 +168,40 @@ export function App({ client }: { client: DesktopClient }) {
             <main role='status' aria-live='polite' className='text-academy-ink-soft p-8'>
                 Starting Prisma AIRS Desktop…
             </main>
+        )
+    }
+    if (snapshot.uiVariant === 'v2' && snapshot.onboarding !== 'done') {
+        // First run: the wizard owns the window. "Import from v1" is the one
+        // way out of it before a tenant exists: the reviewed C23 import renders
+        // on its own, and Home brings the wizard back (R5).
+        if (snapshot.activeFeature === 'import') {
+            return (
+                <div data-v2-shell='' data-slot='first-run-import' className='flex min-h-screen flex-col' style={{ background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
+                    <div className='flex items-center gap-3 border-b px-6 py-3' style={{ borderColor: 'var(--v2-rule)' }}>
+                        <button type='button' onClick={() => void v2Navigate('home')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                            {SHELL_COPY.backToSetup}
+                        </button>
+                        <span className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+                            {SHELL_COPY.importDuringSetup}
+                        </span>
+                    </div>
+                    <main className='flex-grow p-6'>
+                        <ImportView snapshot={snapshot} dispatch={dispatch} />
+                    </main>
+                </div>
+            )
+        }
+        return (
+            <div data-v2-shell=''>
+                <Wizard
+                    snapshot={snapshot}
+                    dispatch={dispatch}
+                    observeManagement={(operation) => client.observeManagement(operation)}
+                    mode='firstRun'
+                    onClose={() => undefined}
+                    onNavigate={(feature) => void v2Navigate(feature)}
+                />
+            </div>
         )
     }
     if (snapshot.uiVariant === 'v2') {

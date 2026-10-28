@@ -436,6 +436,7 @@ pub(super) async fn write(
                 label,
                 tsg_id,
                 destination,
+                environment: Default::default(),
             }
             .validate()
             .ok_or(fail(Problem::Corrupt))?;
@@ -474,8 +475,13 @@ pub(super) async fn write(
                     label: profile.label,
                     tsg_id: profile.tsg_id,
                     destination: profile.destination,
+                    environment: profile.environment,
                 }));
             s.v1_import.staged.push(entry.clone());
+            // A first-run draft is over once a tenant exists (C29); its
+            // Keychain records join the cleanup queue (session records of a
+            // draft are not expected during an import).
+            let _ = s.end_first_run_setup();
             s.save_with(&before)
                 .map_err(|_| fail(Problem::AccessDenied))?;
             s.changed();
@@ -1054,6 +1060,7 @@ pub(super) async fn revert(inner: &Arc<Inner>, receipt: &str, w: &Written) -> Re
                         label: t.profile.label.clone(),
                         tsg_id: t.profile.tsg_id.clone(),
                         destination: t.profile.destination.clone(),
+                        environment: t.profile.environment,
                     }) == *hash
                 })
             });

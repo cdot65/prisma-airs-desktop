@@ -2,10 +2,17 @@
 import type { Destination } from "./Destination";
 import type { InferenceKeyView } from "./InferenceKeyView";
 import type { ManagementView } from "./ManagementView";
+import type { ProductId } from "./ProductId";
 import type { ScanView } from "./ScanView";
+import type { SetupWarning } from "./SetupWarning";
+import type { TenantEnvironment } from "./TenantEnvironment";
 import type { TenantId } from "./TenantId";
 
 export type TenantView = { id: TenantId, label: string, tsgId: string | null, destination: Destination, 
+/**
+ * Production / staging / other (C29).
+ */
+environment: TenantEnvironment, 
 /**
  * The exact origin the scan key may be sent to.
  */
@@ -17,4 +24,13 @@ management: ManagementView,
 /**
  * The Gateway workspace inference key (C18; no secret material).
  */
-inference: InferenceKeyView, };
+inference: InferenceKeyView, 
+/**
+ * The products this tenant reads (C29); Runtime Security until set.
+ */
+products: Array<ProductId>, 
+/**
+ * Verify warnings recorded at wizard completion (C29); the Inbox
+ * renders them (C30).
+ */
+setupWarnings: Array<SetupWarning>, };

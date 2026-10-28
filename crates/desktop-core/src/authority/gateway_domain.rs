@@ -18,6 +18,7 @@ use super::{Refusal, State, StorageHealth};
 use crate::context::{ContextRef, WorkspaceRef};
 use crate::gateway::{GatewayList, GatewayRead, GatewayResource, ListedWorkspace, WorkspaceScope};
 use crate::management::ManagementRequest;
+use crate::tenants::TenantId;
 
 /// The chosen workspace and the reference reads use.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -61,11 +62,21 @@ struct Listing {
     complete: bool,
 }
 
-struct Selection {
-    reference: WorkspaceRef,
-    context: ContextRef,
-    workspace: ListedWorkspace,
-    restored: bool,
+#[derive(Clone, Debug)]
+pub(super) struct Selection {
+    pub(super) reference: WorkspaceRef,
+    pub(super) context: ContextRef,
+    pub(super) workspace: ListedWorkspace,
+    pub(super) restored: bool,
+}
+
+/// A setup draft's own Gateway listing and choice (C29): kept apart from
+/// the active tenant's, so a draft never clears or replaces the shell's
+/// selection and its late replies never reach the active tenant.
+#[derive(Clone, Debug, Default)]
+pub(super) struct SetupGateway {
+    pub(super) workspaces: Option<Vec<ListedWorkspace>>,
+    pub(super) selection: Option<Selection>,
 }
 
 /// Where a Gateway read is admitted: its operations domain (the tenant
@@ -161,6 +172,9 @@ impl State {
         workspace: &str,
     ) -> Result<Vec<crate::runtime::Start>, Refusal> {
         let tenant = self.check_context(context)?;
+        if self.is_setup_context(context) {
+            return self.select_setup_workspace(context, &tenant, workspace);
+        }
         if self
             .gateway
             .selection
@@ -182,12 +196,8 @@ impl State {
             .and_then(|t| t.gateway_workspace.clone());
         if remembered.as_deref() != Some(workspace) {
             let before = self.data.clone();
-            if let Some(t) = self
-                .data
-                .tenants
-                .iter_mut()
-                .find(|t| t.profile.id == tenant)
-            {
+            // A setup draft (C29) remembers it too and carries it into the tenant.
+            if let Some(t) = self.tenant_mut(&tenant) {
                 t.gateway_workspace = Some(workspace.to_owned());
             }
             if self.storage == StorageHealth::Ready {
@@ -195,6 +205,37 @@ impl State {
             }
         }
         Ok(self.choose(context.clone(), listed, false))
+    }
+
+    /// The draft's choice: from its own listing, remembered on the draft,
+    /// touching nothing of the active tenant's (no retirements).
+    fn select_setup_workspace(
+        &mut self,
+        context: &ContextRef,
+        tenant: &TenantId,
+        workspace: &str,
+    ) -> Result<Vec<crate::runtime::Start>, Refusal> {
+        let listed = self
+            .data
+            .setup
+            .as_ref()
+            .and_then(|s| s.gateway.workspaces.as_ref())
+            .and_then(|w| w.iter().find(|w| w.id == workspace))
+            .cloned()
+            .ok_or(Refusal::InvalidInput)?;
+        if let Some(t) = self.tenant_mut(tenant) {
+            t.gateway_workspace = Some(workspace.to_owned());
+        }
+        let reference = self.issue_workspace();
+        if let Some(setup) = self.data.setup.as_mut() {
+            setup.gateway.selection = Some(Selection {
+                reference,
+                context: context.clone(),
+                workspace: listed,
+                restored: false,
+            });
+        }
+        Ok(Vec::new())
     }
 
     fn choose(
@@ -219,6 +260,41 @@ impl State {
     /// cleared; the tenant's remembered workspace is restored when listed.
     pub(super) fn gateway_listed(&mut self, context: &ContextRef, list: &GatewayList) {
         let workspaces = crate::gateway::listed_workspaces(list);
+        if self.is_setup_context(context) {
+            // The draft's listing: its own choice is reconciled, or restored
+            // from the draft's remembered workspace (a credential change
+            // retired the earlier choice with its context); the active
+            // tenant's listing and choice are untouched.
+            let reference = self.issue_workspace();
+            if let Some(setup) = self.data.setup.as_mut() {
+                match setup.gateway.selection.as_mut() {
+                    Some(selection) => {
+                        match workspaces.iter().find(|w| w.id == selection.workspace.id) {
+                            Some(listed) => selection.workspace = listed.clone(),
+                            None if list.complete => setup.gateway.selection = None,
+                            None => {}
+                        }
+                    }
+                    None => {
+                        if let Some(listed) = setup
+                            .tenant
+                            .gateway_workspace
+                            .as_deref()
+                            .and_then(|id| workspaces.iter().find(|w| w.id == id))
+                        {
+                            setup.gateway.selection = Some(Selection {
+                                reference,
+                                context: context.clone(),
+                                workspace: listed.clone(),
+                                restored: true,
+                            });
+                        }
+                    }
+                }
+                setup.gateway.workspaces = Some(workspaces);
+            }
+            return;
+        }
         let mut starts = Vec::new();
         if let Some(selection) = self.gateway.selection.as_mut() {
             match workspaces.iter().find(|w| w.id == selection.workspace.id) {
@@ -251,6 +327,11 @@ impl State {
         self.gateway.pending.extend(starts);
     }
 
+    /// Queues work freed by a retirement for the next `take_gateway_starts`.
+    pub(super) fn queue_gateway_starts(&mut self, starts: Vec<crate::runtime::Start>) {
+        self.gateway.pending.extend(starts);
+    }
+
     /// Work freed by retirements inside settlements.
     pub(super) fn take_gateway_starts(&mut self) -> Vec<crate::runtime::Start> {
         std::mem::take(&mut self.gateway.pending)
@@ -274,17 +355,49 @@ impl State {
                 scope: None,
             }));
         }
+        // The selection under this context: the active tenant's or the
+        // setup draft's (each keeps its own).
         let selection = self
-            .gateway
-            .selection
-            .as_ref()
-            .filter(|s| &s.context == context && Some(&s.reference) == workspace.as_ref())
+            .selection_under(context)
+            .filter(|s| Some(&s.reference) == workspace.as_ref())
             .ok_or(Refusal::StaleContext)?;
         Ok(Some(GatewayAdmission {
             domain: selection.reference.as_str().to_owned(),
             workspace: Some(selection.reference.clone()),
             scope: Some(WorkspaceScope::from(&selection.workspace)),
         }))
+    }
+
+    /// The workspace chosen under a setup draft's context (C29), for the
+    /// draft's view.
+    pub(super) fn setup_workspace(&self, context: &ContextRef) -> Option<SelectedWorkspace> {
+        self.data
+            .setup
+            .as_ref()
+            .and_then(|s| s.gateway.selection.as_ref())
+            .filter(|s| &s.context == context)
+            .map(|s| SelectedWorkspace {
+                reference: s.reference.clone(),
+                workspace: s.workspace.clone(),
+                restored: s.restored,
+            })
+    }
+
+    /// The workspace selection made under `context`: the active tenant's
+    /// or the setup draft's (C29); never the other one's.
+    fn selection_under(&self, context: &ContextRef) -> Option<&Selection> {
+        if self.is_setup_context(context) {
+            self.data
+                .setup
+                .as_ref()
+                .and_then(|s| s.gateway.selection.as_ref())
+                .filter(|s| &s.context == context)
+        } else {
+            self.gateway
+                .selection
+                .as_ref()
+                .filter(|s| &s.context == context)
+        }
     }
 
     /// The current selection's reference.
@@ -299,10 +412,8 @@ impl State {
         context: &ContextRef,
         reference: &WorkspaceRef,
     ) -> Option<ListedWorkspace> {
-        self.gateway
-            .selection
-            .as_ref()
-            .filter(|s| &s.context == context && &s.reference == reference)
+        self.selection_under(context)
+            .filter(|s| &s.reference == reference)
             .map(|s| s.workspace.clone())
     }
 
@@ -326,7 +437,17 @@ impl State {
                 .selection
                 .as_ref()
                 .is_some_and(|s| &s.reference == w)
+                || self.setup_workspace_reference().as_ref() == Some(w)
         })
+    }
+
+    /// The draft's chosen workspace reference (C29), if any.
+    pub(super) fn setup_workspace_reference(&self) -> Option<WorkspaceRef> {
+        self.data
+            .setup
+            .as_ref()
+            .and_then(|s| s.gateway.selection.as_ref())
+            .map(|s| s.reference.clone())
     }
 }
 

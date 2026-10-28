@@ -303,6 +303,16 @@ impl Operations {
         now: Instant,
     ) -> Vec<Start> {
         let retired = |context: &str| context.starts_with(domain) && keep != Some(context);
+        self.retire_where(retired, now)
+    }
+
+    /// Retires exactly one context (C29: a setup draft's), leaving every
+    /// other domain untouched.
+    pub fn retire_context(&mut self, context: &str, now: Instant) -> Vec<Start> {
+        self.retire_where(|c| c == context, now)
+    }
+
+    fn retire_where(&mut self, retired: impl Fn(&str) -> bool, now: Instant) -> Vec<Start> {
         for queued in self.queue.iter_mut() {
             if retired(&queued.context) {
                 queued.cancelled.get_or_insert(StopReason::ContextRetired);

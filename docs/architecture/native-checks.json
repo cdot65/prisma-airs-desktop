@@ -10,7 +10,7 @@
       },
       {
         "id": "C01-N02",
-        "check": "Native menus: app menu (About, Settings… Cmd+,, Hide, Quit), Edit, View (Command Palette… Cmd+K, Appearance, zoom), Go (destinations Cmd+1–Cmd+9), Window."
+        "check": "Native menus: app menu (About, Settings\u2026 Cmd+,, Hide, Quit), Edit, View (Command Palette\u2026 Cmd+K, Appearance, zoom), Go (destinations Cmd+1\u2013Cmd+9), Window."
       },
       {
         "id": "C01-N03",
@@ -96,7 +96,7 @@
       },
       {
         "id": "C02-N10",
-        "check": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make … active', 'Delete …'); a refusal is exposed as an alert."
+        "check": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make \u2026 active', 'Delete \u2026'); a refusal is exposed as an alert."
       },
       {
         "id": "C02-N11",
@@ -114,7 +114,7 @@
       },
       {
         "id": "C03-N02",
-        "check": "Real UI submission through Tauri → Rust → SDK to the synthetic TLS endpoint: the endpoint receives exactly one POST /v1/scan/sync/request (application/json, x-pan-token equal to the synthetic key, x-payload-hash the HMAC-SHA256 of the received body, no Authorization header) carrying the entered profile name, prompt and application name; the window shows 'Blocked' with the verbatim action 'block', category 'malicious' and the reported detectors (including an unrecognized one)."
+        "check": "Real UI submission through Tauri \u2192 Rust \u2192 SDK to the synthetic TLS endpoint: the endpoint receives exactly one POST /v1/scan/sync/request (application/json, x-pan-token equal to the synthetic key, x-payload-hash the HMAC-SHA256 of the received body, no Authorization header) carrying the entered profile name, prompt and application name; the window shows 'Blocked' with the verbatim action 'block', category 'malicious' and the reported detectors (including an unrecognized one)."
       },
       {
         "id": "C03-N03",
@@ -168,7 +168,7 @@
       },
       {
         "id": "C04-N02",
-        "check": "Starting sign-in shows the device code (accessible name 'Sign-in code …') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL."
+        "check": "Starting sign-in shows the device code (accessible name 'Sign-in code \u2026') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL."
       },
       {
         "id": "C04-N03",
@@ -222,7 +222,7 @@
       },
       {
         "id": "C05-N03",
-        "check": "From the catalog's Courses filter, the course page and its module units open; a lesson exposes its heading and first paragraph and all section headings of a 50 KiB lesson; the trail 'Learn › <course>' links back to the course."
+        "check": "From the catalog's Courses filter, the course page and its module units open; a lesson exposes its heading and first paragraph and all section headings of a 50 KiB lesson; the trail 'Learn \u203a <course>' links back to the course."
       },
       {
         "id": "C05-N04",
@@ -246,7 +246,7 @@
       },
       {
         "id": "C05-N09",
-        "check": "Navigating Academy → Runtime Security → Harness placeholder shows no learner chrome or effects (XP, trail, reading progress, knowledge check, lab, guest note, probe) outside Academy, and no learner request is made while away."
+        "check": "Navigating Academy \u2192 Runtime Security \u2192 Harness placeholder shows no learner chrome or effects (XP, trail, reading progress, knowledge check, lab, guest note, probe) outside Academy, and no learner request is made while away."
       },
       {
         "id": "C05-N10",
@@ -392,11 +392,11 @@
       },
       {
         "id": "C08-N04",
-        "check": "Profiles open at 'Items 1–25 of 25+' with rows Profile 00–24 and a note that unread rows are not assumed absent; Next page reads offset 25 (limit 25, issued bearer token) and shows 'Items 26–30 of 30' with Next page disabled and no partial note; exactly those two profile reads were made."
+        "check": "Profiles open at 'Items 1\u201325 of 25+' with rows Profile 00\u201324 and a note that unread rows are not assumed absent; Next page reads offset 25 (limit 25, issued bearer token) and shows 'Items 26\u201330 of 30' with Next page disabled and no partial note; exactly those two profile reads were made."
       },
       {
         "id": "C08-N05",
-        "check": "A profile's details show its fields and say directional and customized prompt-injection settings were local previews and are not sent; an API key's details show its unknown status value 'FUTURE_STATUS' and last8 while none of the service's secret field values (api_key, auth_code) appear anywhere in the window; deployment profiles (local paging, 1–3 of 3) and DLP data patterns (Spring paging, 1–1 of 2) are listed."
+        "check": "A profile's details show its fields and say directional and customized prompt-injection settings were local previews and are not sent; an API key's details show its unknown status value 'FUTURE_STATUS' and last8 while none of the service's secret field values (api_key, auth_code) appear anywhere in the window; deployment profiles (local paging, 1\u20133 of 3) and DLP data patterns (Spring paging, 1\u20131 of 2) are listed."
       },
       {
         "id": "C08-N06",
@@ -408,7 +408,7 @@
       },
       {
         "id": "C08-N08",
-        "check": "Replacing the management client in Settings while page 2 of profiles is delayed in flight: back in Administration the inventory restarts at 'Items 1–25 of 25+', the delayed reply for the retired credential neither shows its page nor an alert after it arrives, and exactly one new token grant is made for the new credential."
+        "check": "Replacing the management client in Settings while page 2 of profiles is delayed in flight: back in Administration the inventory restarts at 'Items 1\u201325 of 25+', the delayed reply for the retired credential neither shows its page nor an alert after it arrives, and exactly one new token grant is made for the new credential."
       },
       {
         "id": "C08-N09",
@@ -430,11 +430,11 @@
     "C09": [
       {
         "id": "C09-N01",
-        "check": "Editing a custom topic in Administration: Edit… opens the item as a JSON draft; Review change reads the current item and shows its current and expected JSON with v1's impact text and the typed confirmation (the topic name); nothing is written by reviewing."
+        "check": "Editing a custom topic in Administration: Edit\u2026 opens the item as a JSON draft; Review change reads the current item and shows its current and expected JSON with v1's impact text and the typed confirmation (the topic name); nothing is written by reviewing."
       },
       {
         "id": "C09-N02",
-        "check": "Apply… opens a native AppKit sheet on the main window (not a WebView dialog) titled with Rust's stored summary (action, kind and name) and the tenant; while it is open the main window takes no input; Escape cancels it and nothing is written; a second Apply… and Return (the default for a non-destructive change) apply it: exactly one PUT with the management client as author, and the window says it was applied and read back."
+        "check": "Apply\u2026 opens a native AppKit sheet on the main window (not a WebView dialog) titled with Rust's stored summary (action, kind and name) and the tenant; while it is open the main window takes no input; Escape cancels it and nothing is written; a second Apply\u2026 and Return (the default for a non-destructive change) apply it: exactly one PUT with the management client as author, and the window says it was applied and read back."
       },
       {
         "id": "C09-N03",
@@ -450,7 +450,7 @@
       },
       {
         "id": "C09-N06",
-        "check": "Show new key… opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; the key is then shown once and no longer offered (the desktop keeps no copy); another key's sheet left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied."
+        "check": "Show new key\u2026 opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; the key is then shown once and no longer offered (the desktop keeps no copy); another key's sheet left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied."
       },
       {
         "id": "C09-N07",
@@ -480,15 +480,15 @@
     "C10": [
       {
         "id": "C10-N01",
-        "check": "Editing a data pattern: Edit… opens it as a JSON draft; Review change reads it by its own get; Apply… opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-patterns/<id> with the draft (no authorship added) and the window says it was read back."
+        "check": "Editing a data pattern: Edit\u2026 opens it as a JSON draft; Review change reads it by its own get; Apply\u2026 opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-patterns/<id> with the draft (no authorship added) and the window says it was read back."
       },
       {
         "id": "C10-N02",
-        "check": "Creating a dictionary from typed keywords: the endpoint receives exactly one multipart/form-data POST (boundary scm-sdk-…) with a json part (metadata.json, application/json) holding the metadata and a file part named by original_file_name (text/plain) whose bytes are exactly the typed keywords; the window says it was read back."
+        "check": "Creating a dictionary from typed keywords: the endpoint receives exactly one multipart/form-data POST (boundary scm-sdk-\u2026) with a json part (metadata.json, application/json) holding the metadata and a file part named by original_file_name (text/plain) whose bytes are exactly the typed keywords; the window says it was read back."
       },
       {
         "id": "C10-N03",
-        "check": "Native file selection: Choose keyword file… reads the staged text file (the window shows its name, size and line count), Use the chosen file and Review/Apply upload exactly its bytes as the file part; the source file is unchanged afterwards and no AX snapshot holds its path."
+        "check": "Native file selection: Choose keyword file\u2026 reads the staged text file (the window shows its name, size and line count), Use the chosen file and Review/Apply upload exactly its bytes as the file part; the source file is unchanged afterwards and no AX snapshot holds its path."
       },
       {
         "id": "C10-N04",
@@ -496,7 +496,7 @@
       },
       {
         "id": "C10-N05",
-        "check": "Unavailable operations are not offered: data profiles have Edit… but no Delete…, data filtering profiles have no New, and deployment profiles say they are read only."
+        "check": "Unavailable operations are not offered: data profiles have Edit\u2026 but no Delete\u2026, data filtering profiles have no New, and deployment profiles say they are read only."
       },
       {
         "id": "C10-N06",
@@ -512,17 +512,17 @@
       },
       {
         "id": "C10-N09",
-        "check": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file… and Review change inside the window and clear of the bottom fade."
+        "check": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file\u2026 and Review change inside the window and clear of the bottom fade."
       },
       {
         "id": "C10-N10",
-        "check": "The production NSOpenPanel (rfd) opens from Choose keyword file…: the file chosen through it is staged by name and line count, and Use the chosen file, Review and Apply with the native confirmation upload exactly its bytes as the multipart file part and read the dictionary back, with the source file unchanged and focus returned to the window; Cancel stages nothing; a file over the 256 KiB read bound is refused as too large."
+        "check": "The production NSOpenPanel (rfd) opens from Choose keyword file\u2026: the file chosen through it is staged by name and line count, and Use the chosen file, Review and Apply with the native confirmation upload exactly its bytes as the multipart file part and read the dictionary back, with the source file unchanged and focus returned to the window; Cancel stages nothing; a file over the 256 KiB read bound is refused as too large."
       }
     ],
     "C11": [
       {
         "id": "C11-N01",
-        "check": "Sessions lists the last 24 hours in pages of 25 ('Sessions 1–25 of 60', Next page 'Sessions 26–50 of 60'); every inventory read asks for time_interval=1, time_unit=day, limit=25; the Malicious filter shows only this page's malicious sessions."
+        "check": "Sessions lists the last 24 hours in pages of 25 ('Sessions 1\u201325 of 60', Next page 'Sessions 26\u201350 of 60'); every inventory read asks for time_interval=1, time_unit=day, limit=25; the Malicious filter shows only this page's malicious sessions."
       },
       {
         "id": "C11-N02",
@@ -534,7 +534,7 @@
       },
       {
         "id": "C11-N04",
-        "check": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV… saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response."
+        "check": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV\u2026 saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response."
       },
       {
         "id": "C11-N05",
@@ -542,7 +542,7 @@
       },
       {
         "id": "C11-N06",
-        "check": "Export metadata… saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again."
+        "check": "Export metadata\u2026 saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again."
       },
       {
         "id": "C11-N07",
@@ -550,7 +550,7 @@
       },
       {
         "id": "C11-N08",
-        "check": "Exception patterns is labelled 'Synthetic data · Memory only · No live integrations' and opening it sends no request."
+        "check": "Exception patterns is labelled 'Synthetic data \u00b7 Memory only \u00b7 No live integrations' and opening it sends no request."
       },
       {
         "id": "C11-N09",
@@ -558,7 +558,7 @@
       },
       {
         "id": "C11-N10",
-        "check": "The production NSSavePanel (rfd) opens from Export CSV…: saving writes an owner-only file; a second export into the same folder is confirmed with Replace and the file is replaced owner-only; Cancel saves nothing and says so; focus returns to the window."
+        "check": "The production NSSavePanel (rfd) opens from Export CSV\u2026: saving writes an owner-only file; a second export into the same folder is confirmed with Replace and the file is replaced owner-only; Cancel saves nothing and says so; focus returns to the window."
       },
       {
         "id": "C11-N11",
@@ -580,7 +580,7 @@
       },
       {
         "id": "C12-N04",
-        "check": "Export library… saves an owner-only version 2 file; after a case is removed, Import cases… restores it from that file; another tenant's file is refused with v1's message."
+        "check": "Export library\u2026 saves an owner-only version 2 file; after a case is removed, Import cases\u2026 restores it from that file; another tenant's file is refused with v1's message."
       },
       {
         "id": "C12-N05",
@@ -592,7 +592,7 @@
       },
       {
         "id": "C12-N07",
-        "check": "A failed chart read is stated as Runtime activity unavailable and Can’t confirm all clear (never zeros); with the endpoint stopped a refresh failure is reported while the last read stays visible, and nothing is sent within 6 s after the endpoint returns."
+        "check": "A failed chart read is stated as Runtime activity unavailable and Can\u2019t confirm all clear (never zeros); with the endpoint stopped a refresh failure is reported while the last read stays visible, and nothing is sent within 6 s after the endpoint returns."
       },
       {
         "id": "C12-N08",
@@ -604,7 +604,7 @@
       },
       {
         "id": "C12-N10",
-        "check": "The production panels for the Library: Export library… saves an owner-only file through NSSavePanel, Import cases… restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window."
+        "check": "The production panels for the Library: Export library\u2026 saves an owner-only file through NSSavePanel, Import cases\u2026 restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window."
       },
       {
         "id": "C12-N11",
@@ -790,15 +790,15 @@
       },
       {
         "id": "C17-N02",
-        "check": "Choosing another workspace while a change is prepared in the first closes it (no Review again or Apply… remains) and nothing is written."
+        "check": "Choosing another workspace while a change is prepared in the first closes it (no Review again or Apply\u2026 remains) and nothing is written."
       },
       {
         "id": "C17-N03",
-        "check": "A provider a route still references lists that route in its review and Apply… is disabled; an unreferenced provider's delete names the workspace in a destructive sheet whose Return cancels, and Delete sends exactly one DELETE, read back as absent."
+        "check": "A provider a route still references lists that route in its review and Apply\u2026 is disabled; an unreferenced provider's delete names the workspace in a destructive sheet whose Return cancels, and Delete sends exactly one DELETE, read back as absent."
       },
       {
         "id": "C17-N04",
-        "check": "A new service key is created in the chosen workspace and tenant; its one-time value is held in memory, appears in no Accessibility snapshot, is shown once in the native secret sheet (matching the issued key) and is no longer held afterwards; closing the change returns focus to New service key…."
+        "check": "A new service key is created in the chosen workspace and tenant; its one-time value is held in memory, appears in no Accessibility snapshot, is shown once in the native secret sheet (matching the issued key) and is no longer held afterwards; closing the change returns focus to New service key\u2026."
       },
       {
         "id": "C17-N05",
@@ -818,7 +818,7 @@
       },
       {
         "id": "C17-N09",
-        "check": "At 200% zoom and at the minimum window size Provision workspace… and Edit workspace… are reached by keyboard inside the window."
+        "check": "At 200% zoom and at the minimum window size Provision workspace\u2026 and Edit workspace\u2026 are reached by keyboard inside the window."
       },
       {
         "id": "C17-N10",
@@ -972,7 +972,7 @@
       },
       {
         "id": "C20-N11",
-        "check": "An unreadable saved conversation (a record that does not open with its workspace's key) is deleted only when confirmed, by keyboard: activating Delete unreadable conversation… only asks, Keep it keeps the file, and Delete permanently removes it while the readable record stays."
+        "check": "An unreadable saved conversation (a record that does not open with its workspace's key) is deleted only when confirmed, by keyboard: activating Delete unreadable conversation\u2026 only asks, Keep it keeps the file, and Delete permanently removes it while the readable record stays."
       },
       {
         "id": "C20-N12",
@@ -1082,13 +1082,13 @@
       },
       {
         "id": "C23-N09",
-        "check": "Lost import records fail closed and are said: with a receipt damaged in both of its files the import view names it in an alert, Remove damaged record … is reached by Tab and pressed with Space, both files are removed, the alert clears and focus stays in the window; with neither receipt folder readable the view says the records can't be read and to restore access and reopen the app."
+        "check": "Lost import records fail closed and are said: with a receipt damaged in both of its files the import view names it in an alert, Remove damaged record \u2026 is reached by Tab and pressed with Space, both files are removed, the alert clears and focus stays in the window; with neither receipt folder readable the view says the records can't be read and to restore access and reopen the app."
       }
     ],
     "C24": [
       {
         "id": "C24-N01",
-        "check": "Settings › Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only; in the fixture build without a sheet, into its data root), and Clear diagnostics leaves only the record of clearing."
+        "check": "Settings \u203a Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only; in the fixture build without a sheet, into its data root), and Clear diagnostics leaves only the record of clearing."
       },
       {
         "id": "C24-N02",
@@ -1108,17 +1108,17 @@
       },
       {
         "id": "C24-N06",
-        "check": "The cumulative T09 matrix: every earlier chunk's native acceptance (C01–C23) passes again on this bundle (their records under this chunk's evidence), covering menus, shortcuts, keyboard and focus, Accessibility roles and names, zoom, minimum window size, themes and reduced motion for every workflow."
+        "check": "The cumulative T09 matrix: every earlier chunk's native acceptance (C01\u2013C23) passes again on this bundle (their records under this chunk's evidence), covering menus, shortcuts, keyboard and focus, Accessibility roles and names, zoom, minimum window size, themes and reduced motion for every workflow."
       },
       {
         "id": "C24-N07",
-        "check": "Diagnostics by keyboard alone: Export diagnostics… is reached by Tab and pressed with Space, the production save sheet (NSSavePanel) saves the document into a chosen folder and Diagnostics saved. is announced; a second export cancelled in the sheet saves nothing and Nothing was saved. is announced; focus returns to Export diagnostics… each time; Clear diagnostics is reached and pressed the same way and Diagnostics cleared. is announced; both controls are reachable and clear at 200% zoom and at the minimum window size."
+        "check": "Diagnostics by keyboard alone: Export diagnostics\u2026 is reached by Tab and pressed with Space, the production save sheet (NSSavePanel) saves the document into a chosen folder and Diagnostics saved. is announced; a second export cancelled in the sheet saves nothing and Nothing was saved. is announced; focus returns to Export diagnostics\u2026 each time; Clear diagnostics is reached and pressed the same way and Diagnostics cleared. is announced; both controls are reachable and clear at 200% zoom and at the minimum window size."
       }
     ],
     "C25": [
       {
         "id": "C25-N01",
-        "check": "Editing a data filtering profile as read (unset fields null, plus the service's own id, name, tenant_id, type, version, audit_metadata and is_parent_managed): Edit… opens it as a JSON draft, Review change accepts it unchanged, Apply… opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-filtering-profiles/<id> whose body holds the draft without the nulls or the service's own fields, and the window says it was read back."
+        "check": "Editing a data filtering profile as read (unset fields null, plus the service's own id, name, tenant_id, type, version, audit_metadata and is_parent_managed): Edit\u2026 opens it as a JSON draft, Review change accepts it unchanged, Apply\u2026 opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-filtering-profiles/<id> whose body holds the draft without the nulls or the service's own fields, and the window says it was read back."
       },
       {
         "id": "C25-N02",
@@ -1130,21 +1130,21 @@
       },
       {
         "id": "C25-N04",
-        "check": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply… in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent."
+        "check": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply\u2026 in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent."
       }
     ],
     "C28": [
       {
         "id": "C28-N01",
-        "check": "Settings › Interface › 'Use the new interface' switches the window to the v2 shell without a relaunch: the rail named 'Destinations' lists Home ⌘1, Inbox ⌘2, Harness ⌘3, Academy ⌘4, Test Cases ⌘5, API Client ⌘6, Administration ⌘7 in that order (the Rust catalogue), the tenant switcher is above it, and the Home heading receives the page; the preference survives a relaunch and 'Return to the classic interface' restores the legacy rail named 'Features'."
+        "check": "Settings \u203a Interface \u203a 'Use the new interface' switches the window to the v2 shell without a relaunch: the rail named 'Destinations' lists Home \u23181, Inbox \u23182, Harness \u23183, Academy \u23184, Test Cases \u23185, API Client \u23186, Administration \u23187 in that order (the Rust catalogue), the tenant switcher is above it, and the Home heading receives the page; the preference survives a relaunch and 'Return to the classic interface' restores the legacy rail named 'Features'."
       },
       {
         "id": "C28-N02",
-        "check": "The native Go menu follows the presentation: in v2 it offers Switch Tenant… (⌘T) and then Home (⌘1) … Administration (⌘7) followed by the non-sidebar destinations without accelerators; Go › Harness moves the page (a `navigate` intent; the sidebar marks Harness current) and Go › Home returns; after returning to classic the Go menu is the legacy one again (Runtime Security ⌘1)."
+        "check": "The native Go menu follows the presentation: in v2 it offers Switch Tenant\u2026 (\u2318T) and then Home (\u23181) \u2026 Administration (\u23187) followed by the non-sidebar destinations without accelerators; Go \u203a Harness moves the page (a `navigate` intent; the sidebar marks Harness current) and Go \u203a Home returns; after returning to classic the Go menu is the legacy one again (Runtime Security \u23181)."
       },
       {
         "id": "C28-N03",
-        "check": "Keyboard only (I8): Tab reaches the tenant switcher, every rail destination, the palette trigger, the three appearance toggles, 'Show the calls' and the classic-interface control, each with a visible focus ring (band pixels change when focused, for the selected Home too); Enter on the trigger opens the command palette as the one topmost modal with focus in its field and Tab contained; ArrowDown traverses to the last entry with the active row inside the dialog and Enter dispatches only that row; Escape returns focus to the trigger; Go › Switch Tenant… while the palette is open closes it and leaves focus in the tenant list, and Escape returns focus to the switcher without selecting; the unavailable Inbox destination is disabled."
+        "check": "Keyboard only (I8): Tab reaches the tenant switcher, every rail destination, the palette trigger, the three appearance toggles, 'Show the calls' and the classic-interface control, each with a visible focus ring (band pixels change when focused, for the selected Home too); Enter on the trigger opens the command palette as the one topmost modal with focus in its field and Tab contained; ArrowDown traverses to the last entry with the active row inside the dialog and Enter dispatches only that row; Escape returns focus to the trigger; Go \u203a Switch Tenant\u2026 while the palette is open closes it and leaves focus in the tenant list, and Escape returns focus to the switcher without selecting; the unavailable Inbox destination is disabled."
       },
       {
         "id": "C28-N04",
@@ -1152,7 +1152,7 @@
       },
       {
         "id": "C28-N05",
-        "check": "Toasts (I10): a refused navigation (Go › Inbox, catalogued but unavailable, refused by the core) shows one warn toast naming the refusal that expires within 6 s; with macOS Reduce Motion enabled and the app relaunched the same toast persists past 8 s until dismissed; the setting is restored afterwards."
+        "check": "Toasts (I10): a refused navigation (Go \u203a Inbox, catalogued but unavailable, refused by the core) shows one warn toast naming the refusal that expires within 6 s; with macOS Reduce Motion enabled and the app relaunched the same toast persists past 8 s until dismissed; the setting is restored afterwards."
       },
       {
         "id": "C28-N06",
@@ -1160,7 +1160,33 @@
       },
       {
         "id": "C28-N07",
-        "check": "At the interim 900×600 minimum and at 200% zoom in both themes the v2 shell shows no horizontal scroll (no node past the window's right edge, no horizontal scrollbar), the rail collapses to one 32px control per row with every control's frame inside the rail's frame (nothing clipped), focusing the last appearance toggle does not scroll the rail, destination labels stay in the accessible names, and the page heading stays reachable; with a configured tenant the collapsed switcher still names the tenant."
+        "check": "At the interim 900\u00d7600 minimum and at 200% zoom in both themes the v2 shell shows no horizontal scroll (no node past the window's right edge, no horizontal scrollbar), the rail collapses to one 32px control per row with every control's frame inside the rail's frame (nothing clipped), focusing the last appearance toggle does not scroll the rail, destination labels stay in the accessible names, and the page heading stays reachable; with a configured tenant the collapsed switcher still names the tenant."
+      }
+    ],
+    "C29": [
+      {
+        "id": "C29-N01",
+        "check": "First run in the v2 presentation (onboarding needed, no tenant) opens on Welcome with the API-builder framing and three cards, no shell rail and no Back; it opens again after a relaunch; 'Set up a tenant' moves to the Tenant step, the heading takes focus, the rail marks the step current, and Continue is disabled naming what is missing ('Create the tenant to continue')."
+      },
+      {
+        "id": "C29-N02",
+        "check": "Tenant step: Create tenant with an empty name and a 9-digit TSG marks each field aria-invalid with its message and drafts nothing; a valid name and TSG draft the tenant in the core (status, rail 'Name \u00b7 Environment \u00b7 TSG \u2026', the profile stays editable with 'Save changes', Continue reads 'Save the scan key to continue'); the scan key is typed once into a secure field and attaches to the draft (Saved, Replace/Remove offered, Continue enabled); the management client saves; the Gateway section reads the workspaces through the client, chooses one and saves its key; editing the name updates the rail and keeps the credentials; no secret appears in any AX tree or in a data file outside the Keychain."
+      },
+      {
+        "id": "C29-N03",
+        "check": "Products step: Runtime Security is checked and not uncheckable ('Always on'), AIS and AES are 'Not available in this release' with disabled checkboxes, the licence note is shown; Verify shows planned rows ('Not run yet'; AIS/AES 'Not available') with Continue disabled; with the management client replaced by a rejected secret the core-owned run fails that optional line (scan key reported Stored, never Pass) and offers both 'Continue with warnings' and 'Fix and verify again', which returns to the editable Tenant step where the client is replaced; the rerun authenticates with the new secret (management Pass) and reads the chosen workspace's prerequisites (Pass); changing the products afterwards marks the run stale (Continue closed, Done unreachable) until a rerun finishes clean."
+      },
+      {
+        "id": "C29-N04",
+        "check": "Starter cases lists one pack per chosen product with its case count, checked; the Academy step is the reviewed account component (sign-in offered, 'syncs your Academy progress only'); Done summarises the draft; 'Open Prisma AIRS' sends one completion intent, after which Home shows the new tenant in the switcher and Test Cases lists the imported cases; a relaunch shows Home, not the wizard."
+      },
+      {
+        "id": "C29-N05",
+        "check": "Add a tenant\u2026 from the switcher opens the sheet as the one topmost modal (244px rail, no Welcome, Academy or Back), keyboard traversal stays inside it; Cancel before a draft changes nothing; a drafted and keyed tenant cancelled leaves the tenant list and the active tenant unchanged and its key gone; a draft without a key (optional in add mode) verifies with a warning, and Finish commits it once, makes it active with a toast and lists it beside the first."
+      },
+      {
+        "id": "C29-N06",
+        "check": "T09 matrix: every wizard step and the add sheet captured in light and dark at 100% and 200% zoom; Tab reaches each step's controls; at the 900\u00d7600 minimum the sheet's Cancel is inside the window once focused (the dialog scrolls within the viewport)."
       }
     ]
   }

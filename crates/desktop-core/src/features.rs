@@ -30,6 +30,151 @@ pub enum OnboardingState {
     Done,
 }
 
+/// A product a tenant reads (C29, DESIGN-V2 §6): only products with an
+/// admitted service exist here; AIS and AES are not admitted and have no id.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ProductId {
+    RuntimeSecurity,
+    Gateway,
+    RedTeam,
+    ModelSkill,
+}
+
+/// A tenant's environment, chosen at setup (C29; prototype `env`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum TenantEnvironment {
+    #[default]
+    Production,
+    Staging,
+    Other,
+}
+
+/// Which wizard a setup runs in (C29).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum SetupMode {
+    FirstRun,
+    Add,
+}
+
+/// One verification line (C29, screens/wizard.md "Verify").
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum VerifyLine {
+    ScanKey,
+    ManagementClient,
+    Gateway,
+    RedTeam,
+    ModelSkill,
+    /// Agentic Identity Security: listed as not available, never checked.
+    Ais,
+    /// Agentic Endpoint Security: listed as not available, never checked.
+    Aes,
+}
+
+/// How a verification line ended. `Stored` is an explicit non-result: the
+/// credential exists but no admitted read exercises it here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum VerifyState {
+    Pending,
+    Pass,
+    Warning,
+    Fail,
+    Stored,
+    Skipped,
+    /// No admitted service exists for this line (AIS, AES); never a result.
+    Unavailable,
+}
+
+/// One streamed verification result (core-owned).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyStep {
+    pub line: VerifyLine,
+    /// The admitted product the line reports on; none for an unavailable
+    /// product's line.
+    pub product: Option<ProductId>,
+    pub state: VerifyState,
+    pub reason: String,
+}
+
+/// A warning a verification run produced for an admitted product.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyWarning {
+    pub product: ProductId,
+    pub reason: String,
+}
+
+/// The current verification run as the shell shows it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyView {
+    /// Counts runs; a later run replaces an earlier one's lines.
+    pub generation: u32,
+    pub steps: Vec<VerifyStep>,
+    /// Every line has settled.
+    pub done: bool,
+    /// Some line failed.
+    pub failed: bool,
+    /// A required line failed (the scan key on first run): completion is
+    /// refused. An optional line's failure is carried as a warning instead.
+    pub blocking: bool,
+    /// The inputs changed since this run started: it no longer counts.
+    pub stale: bool,
+    /// What completion records as the tenant's setup warnings: warning
+    /// lines and failed optional lines.
+    pub warnings: Vec<VerifyWarning>,
+}
+
+/// A starter pack: the bundled cases for one chosen product.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct PackView {
+    pub product: ProductId,
+    pub count: u32,
+}
+
+/// The tenant under setup (C29): a draft with its own context, not yet a
+/// tenant. Absent when no wizard is open.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupView {
+    pub mode: SetupMode,
+    /// The context credential and verify intents use for the draft.
+    pub context: crate::context::ContextRef,
+    /// The draft's profile and credential states (no secret material).
+    pub tenant: crate::TenantView,
+    pub products: Vec<ProductId>,
+    /// First run requires the scan key; the add sheet does not.
+    pub scan_required: bool,
+    pub packs: Vec<PackView>,
+    /// The Gateway workspace chosen for the draft, with the reference its
+    /// inference key is configured under.
+    pub workspace: Option<crate::authority::SelectedWorkspace>,
+    pub verify: Option<VerifyView>,
+    /// The current inputs were verified without a blocking failure:
+    /// completion is admitted (optional failures travel as warnings).
+    pub completable: bool,
+}
+
+/// A recorded verify warning for one tenant: the Inbox item type C29
+/// defines and C30 renders (`InboxItem` kind `setupWarning`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupWarning {
+    /// `vw-<n>`, unique within the tenant.
+    pub id: String,
+    pub product: ProductId,
+    pub reason: String,
+    /// Wall-clock seconds since the Unix epoch when it was recorded
+    /// (`u32`: a JSON number, never a bigint, on the TypeScript side).
+    pub recorded_secs: u32,
+}
+
 /// Stable identifier of a top-level desktop feature destination.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]

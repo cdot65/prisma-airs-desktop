@@ -1390,6 +1390,7 @@ fn persisted_state_rejects_dangling_references() {
             destination: Destination::Region {
                 region: Region::India,
             },
+            environment: Default::default(),
         }],
         credentials: vec![StoredCredential {
             record: RecordId::parse("cr-0123456789abcdef").expect("record"),

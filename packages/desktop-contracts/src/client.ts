@@ -91,6 +91,11 @@ const FEATURE_IDS: readonly string[] = [
     'settings',
 ]
 const THEMES: readonly string[] = ['system', 'light', 'dark']
+const PRODUCT_IDS: readonly string[] = ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill']
+const ENVIRONMENTS: readonly string[] = ['production', 'staging', 'other']
+const SETUP_MODES: readonly string[] = ['firstRun', 'add']
+const VERIFY_LINES: readonly string[] = ['scanKey', 'managementClient', 'gateway', 'redTeam', 'modelSkill', 'ais', 'aes']
+const VERIFY_STATES: readonly string[] = ['pending', 'pass', 'warning', 'fail', 'stored', 'skipped', 'unavailable']
 const UI_VARIANTS: readonly string[] = ['legacy', 'v2']
 const ONBOARDING_STATES: readonly string[] = ['needed', 'inProgress', 'done']
 const STORAGE: readonly string[] = ['ready', 'corrupt', 'unavailable', 'resetting']
@@ -305,6 +310,8 @@ function isTenant(value: unknown): boolean {
         isRecord(value) &&
         typeof value.id === 'string' &&
         TENANT_ID.test(value.id) &&
+        // C29: the environment chosen at setup.
+        oneOf(ENVIRONMENTS, value.environment) &&
         isString(value.label) &&
         optional(isString, value.tsgId) &&
         isDestination(value.destination) &&
@@ -314,7 +321,76 @@ function isTenant(value: unknown): boolean {
         optional((m) => oneOf(MODES, m), value.scan.mode) &&
         optional((f) => oneOf(VAULT_ERRORS, f), value.scan.failure) &&
         isManagementView(value.management) &&
-        isInferenceKeyView(value.inference)
+        isInferenceKeyView(value.inference) &&
+        // C29: the products a tenant reads; Runtime Security is always first.
+        Array.isArray(value.products) &&
+        value.products.length >= 1 &&
+        value.products[0] === 'runtimeSecurity' &&
+        value.products.every((p: unknown) => typeof p === 'string' && PRODUCT_IDS.includes(p)) &&
+        new Set(value.products as string[]).size === value.products.length &&
+        // C29: verify warnings recorded at completion (Inbox items in C30).
+        Array.isArray(value.setupWarnings) &&
+        value.setupWarnings.every(isSetupWarning)
+    )
+}
+
+function isProductList(value: unknown): boolean {
+    return (
+        Array.isArray(value) &&
+        value.length >= 1 &&
+        value[0] === 'runtimeSecurity' &&
+        value.every((p: unknown) => typeof p === 'string' && PRODUCT_IDS.includes(p)) &&
+        new Set(value as string[]).size === value.length
+    )
+}
+
+/** The setup in progress (C29): a core-owned draft, never listed as a tenant. */
+function isSetupView(value: unknown): boolean {
+    if (
+        !isRecord(value) ||
+        !oneOf(SETUP_MODES, value.mode) ||
+        typeof value.context !== 'string' ||
+        !CONTEXT_REF.test(value.context) ||
+        !isTenant(value.tenant) ||
+        !isProductList(value.products) ||
+        typeof value.scanRequired !== 'boolean' ||
+        !optional((w) => isRecord(w) && typeof w.reference === 'string' && w.reference.length > 0 && isListedWorkspace(w.workspace) && typeof w.restored === 'boolean', value.workspace) ||
+        !Array.isArray(value.packs) ||
+        !value.packs.every((p: unknown) => isRecord(p) && oneOf(PRODUCT_IDS, p.product) && typeof p.count === 'number' && Number.isInteger(p.count) && p.count >= 0) ||
+        typeof value.completable !== 'boolean'
+    ) {
+        return false
+    }
+    const verify = value.verify
+    if (verify === null) return true
+    return (
+        isRecord(verify) &&
+        typeof verify.generation === 'number' &&
+        Number.isInteger(verify.generation) &&
+        verify.generation >= 1 &&
+        Array.isArray(verify.steps) &&
+        verify.steps.every((s: unknown) => isRecord(s) && oneOf(VERIFY_LINES, s.line) && (s.product === null || oneOf(PRODUCT_IDS, s.product)) && oneOf(VERIFY_STATES, s.state) && typeof s.reason === 'string') &&
+        typeof verify.done === 'boolean' &&
+        typeof verify.failed === 'boolean' &&
+        typeof verify.blocking === 'boolean' &&
+        typeof verify.stale === 'boolean' &&
+        Array.isArray(verify.warnings) &&
+        verify.warnings.every((w: unknown) => isRecord(w) && oneOf(PRODUCT_IDS, w.product) && typeof w.reason === 'string' && w.reason.length > 0)
+    )
+}
+
+const SETUP_WARNING_ID = /^vw-[0-9]{1,20}$/
+function isSetupWarning(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        SETUP_WARNING_ID.test(value.id) &&
+        oneOf(PRODUCT_IDS, value.product) &&
+        typeof value.reason === 'string' &&
+        value.reason.length > 0 &&
+        typeof value.recordedSecs === 'number' &&
+        Number.isInteger(value.recordedSecs) &&
+        value.recordedSecs >= 0
     )
 }
 
@@ -2543,6 +2619,8 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
                 g.pending.decision.length > 0,
             value.switchBlocked
         ) ||
+        // C29: the tenant setup in progress, with its draft and verification.
+        !optional(isSetupView, value.setup) ||
         !Array.isArray(value.features) ||
         typeof value.fixtureBuild !== 'boolean' ||
         !oneOf(STORAGE, value.storage) ||

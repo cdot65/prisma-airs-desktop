@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { FeatureEntry, FeatureId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
-import { SHELL_COPY } from './copy'
+import { ENVIRONMENT_LABELS, SHELL_COPY } from './copy'
 import { Modal } from './modal'
 
 export type PaletteEntry =
@@ -30,7 +30,7 @@ export function paletteEntries(snapshot: ShellSnapshot): PaletteEntry[] {
         .map((t) => ({
             kind: 'switch',
             id: `tenant:${t.id}`,
-            label: SHELL_COPY.paletteSwitch(`${t.label} · ${t.destination.kind === 'region' ? t.destination.region : 'custom'}${t.tsgId ? ` · TSG ${t.tsgId}` : ''}`),
+            label: SHELL_COPY.paletteSwitch(`${t.label} · ${ENVIRONMENT_LABELS[t.environment]}${t.tsgId ? ` · TSG ${t.tsgId}` : ''}`),
             tenant: t.id,
         }))
     const actions: PaletteEntry[] = snapshot.active ? [{ kind: 'readNow', id: 'action:read', label: SHELL_COPY.paletteReadNow }] : []

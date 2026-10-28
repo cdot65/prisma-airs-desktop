@@ -131,6 +131,9 @@ pub struct ProfileDraft {
     pub label: String,
     pub tsg_id: Option<String>,
     pub destination: Destination,
+    /// Production / staging / other (C29); production when absent.
+    #[serde(default)]
+    pub environment: crate::features::TenantEnvironment,
 }
 
 impl ProfileDraft {
@@ -153,6 +156,7 @@ impl ProfileDraft {
             label,
             tsg_id,
             destination,
+            environment: self.environment,
         })
     }
 }
@@ -165,6 +169,9 @@ pub struct TenantProfile {
     pub label: String,
     pub tsg_id: Option<String>,
     pub destination: Destination,
+    /// Production / staging / other (C29); production for older documents.
+    #[serde(default)]
+    pub environment: crate::features::TenantEnvironment,
 }
 
 #[cfg(test)]
@@ -204,6 +211,7 @@ mod tests {
             destination: Destination::Region {
                 region: Region::Europe,
             },
+            environment: Default::default(),
         };
         let ok = draft("  Prod EU ", Some(" 1234567890 "))
             .validate()

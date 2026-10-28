@@ -1,3 +1,8 @@
+import type { TenantEnvironment } from '@prisma-airs/desktop-contracts'
+
+/** A tenant's environment as the shell names it (C29). */
+export const ENVIRONMENT_LABELS: Record<TenantEnvironment, string> = { production: 'Production', staging: 'Staging', other: 'Other' }
+
 /** Every string the v2 shell shows (DESIGN-V2 §3: one copy file per screen family). */
 export const SHELL_COPY = {
     brand: 'Prisma AIRS',
@@ -6,6 +11,9 @@ export const SHELL_COPY = {
     tenantSwitcher: 'Switch tenant',
     tenantNone: 'No tenant yet',
     addTenant: 'Add a tenant…',
+    tenantAdded: (tenant: string) => `${tenant} is set up and active.`,
+    backToSetup: 'Back to setup',
+    importDuringSetup: 'Importing a v1 profile creates its tenant and opens Prisma AIRS on it; add its scan key in Administration. Secrets are always entered again.',
     palette: 'Go to…',
     paletteLabel: 'Command palette',
     paletteInput: 'Go to a destination, tenant or action',

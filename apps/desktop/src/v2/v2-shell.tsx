@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Eye, Moon, Sun, SunMoon, Undo2 } from 'lucide-react'
 import type { DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../features/tenants/dispatch'
@@ -10,7 +10,8 @@ import { Palette } from './palette'
 import { useShellStore } from './store'
 import { TenantSwitcher } from './tenant-switcher'
 import { Toasts } from './toasts'
-import { useModalsOpen } from './modal'
+import { Modal, useModalsOpen } from './modal'
+import { Wizard } from './wizard/wizard'
 
 export interface V2ShellProps {
     snapshot: ShellSnapshot
@@ -52,6 +53,16 @@ export function V2Shell(props: V2ShellProps) {
     const modalOpen = useModalsOpen()
     const heading = useRef<HTMLHeadingElement>(null)
     const firstRender = useRef(true)
+    const [adding, setAdding] = useState(false)
+    // The sheet closes only when the wizard says so: a committed tenant (toast)
+    // or a discard the core admitted. Escape and the scrim are close requests
+    // the wizard answers with the same Cancel as its button.
+    const [closeRequests, setCloseRequests] = useState(0)
+    const closeSheet = (added?: string) => {
+        setAdding(false)
+        setCloseRequests(0)
+        if (added) useShellStore.getState().toast(SHELL_COPY.tenantAdded(added), 'ok')
+    }
     const active = snapshot.activeFeature
     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
 
@@ -75,7 +86,7 @@ export function V2Shell(props: V2ShellProps) {
                 className='sticky top-0 flex h-screen shrink-0 flex-col gap-2 overflow-y-auto p-3'
                 style={{ width: 'var(--v2-rail)', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}
             >
-                <TenantSwitcher snapshot={snapshot} onSwitch={props.onSwitchTenant} onAdd={() => props.onNavigate('settings')} />
+                <TenantSwitcher snapshot={snapshot} onSwitch={props.onSwitchTenant} onAdd={() => setAdding(true)} />
                 <ul className='mt-2 flex flex-col gap-0.5'>
                     {snapshot.features
                         .filter((f) => f.sidebar)
@@ -235,6 +246,22 @@ export function V2Shell(props: V2ShellProps) {
             </main>
             {paletteOpen && (
                 <Palette snapshot={snapshot} onNavigate={props.onNavigate} onSwitchTenant={props.onSwitchTenant} onReadNow={props.onReadNow} onClose={closePalette} />
+            )}
+            {adding && (
+                <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} data-slot='add-tenant-sheet'>
+                    <Wizard
+                        snapshot={snapshot}
+                        dispatch={props.dispatch}
+                        observeManagement={(operation) => props.client.observeManagement(operation)}
+                        mode='add'
+                        onClose={closeSheet}
+                        closeRequests={closeRequests}
+                        onNavigate={(feature) => {
+                            setAdding(false)
+                            props.onNavigate(feature)
+                        }}
+                    />
+                </Modal>
             )}
             {/* Toasts are background siblings of a modal too (I8): inert and hidden while one is open. */}
             <div aria-hidden={modalOpen ? true : undefined} inert={modalOpen ? true : undefined}>

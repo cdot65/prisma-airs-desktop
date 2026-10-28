@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
 import type { ShellSnapshot } from '@prisma-airs/desktop-contracts'
-import { SHELL_COPY } from './copy'
+import { ENVIRONMENT_LABELS, SHELL_COPY } from './copy'
 import { useShellStore } from './store'
 import { useModalsOpen } from './modal'
 
@@ -16,7 +16,7 @@ export interface TenantSwitcherProps {
 function environment(snapshot: ShellSnapshot, id: string | undefined): string {
     const tenant = snapshot.tenants.find((t) => t.id === id)
     if (!tenant) return ''
-    return tenant.destination.kind === 'region' ? tenant.destination.region : 'custom'
+    return ENVIRONMENT_LABELS[tenant.environment]
 }
 
 /** The identity a tenant is told apart by: label, environment and TSG (labels may repeat). */

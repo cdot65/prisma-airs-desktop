@@ -94,7 +94,7 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
 
     return (
         <div
-            className='fixed inset-0 z-50 grid place-items-start justify-center pt-[10vh]'
+            className='fixed inset-0 z-50 grid place-items-start justify-center pt-[4vh]'
             data-v2-scrim=''
             aria-hidden={topmost ? undefined : true}
             inert={topmost ? undefined : true}
@@ -111,7 +111,9 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
                 onKeyDown={onKeyDown}
                 onMouseDown={(e) => e.stopPropagation()}
                 className='rounded-[12px] border p-5 shadow-2xl'
-                style={{ width: `min(${width}px, 92vw)`, background: 'var(--v2-paper)', borderColor: 'var(--v2-rule)', color: 'var(--v2-ink)' }}
+                // Bounded to the viewport: a tall dialog scrolls inside itself, so its
+                // actions stay reachable at the minimum window size and 200% zoom.
+                style={{ width: `min(${width}px, 92vw)`, maxHeight: '92vh', overflowY: 'auto', background: 'var(--v2-paper)', borderColor: 'var(--v2-rule)', color: 'var(--v2-ink)' }}
             >
                 {children}
             </div>
