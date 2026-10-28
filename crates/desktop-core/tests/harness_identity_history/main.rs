@@ -959,6 +959,7 @@ async fn history_saves_racing_tenant_removal_or_reset_never_outlive_them() {
         runtime_root: Some(desk.runtime_root.clone()),
         history_root: Some(desk.history_root.clone()),
         fixture: None,
+        save_gate: None,
     };
     let relaunched = Core::new(CoreConfig::default(), adapters);
     assert!(!stray.exists());

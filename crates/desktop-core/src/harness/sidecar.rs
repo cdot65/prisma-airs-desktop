@@ -62,6 +62,11 @@ pub struct HarnessAdapters {
     /// bootstrap bound. Shipping builds always use the compiled pin.
     #[cfg(feature = "test-fixtures")]
     pub fixture: Option<FixtureEngine>,
+    /// Fixture builds only: a gate every history save passes after it is
+    /// admitted and before it writes, so a test can hold a save open there
+    /// (C30: a discard racing an admitted save).
+    #[cfg(feature = "test-fixtures")]
+    pub save_gate: Option<std::sync::Arc<std::sync::Mutex<()>>>,
 }
 
 /// A stand-in engine for fixture tests.
@@ -81,6 +86,8 @@ impl HarnessAdapters {
             history_root: None,
             #[cfg(feature = "test-fixtures")]
             fixture: None,
+            #[cfg(feature = "test-fixtures")]
+            save_gate: None,
         }
     }
 

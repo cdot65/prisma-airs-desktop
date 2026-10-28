@@ -41,7 +41,9 @@ Home skeleton), C30 (Home attention list backed by Inbox scope).
 - `switchTenant{tenant_id, resolution?}`; the core refuses with
   `SwitchBlocked{pending: {conversation, decision}}` when a Harness decision is
   pending. The UI renders the guard dialog (Archive and switch / Discard and
-  switch / Stay) from that payload and re-dispatches with `resolution`.
+  switch / Stay) from that payload and re-dispatches with `resolution`. Initial
+  focus is on Stay, the safe default (Enter on arrival never ends the
+  conversation); Archive and switch stays the visually primary action.
 - Every entry point (switcher, palette, menu, wizard completion) uses the same
   intent. After a switch the new tenant's Home renders from cached scopes within
   100 ms with read status pending until the read lands.

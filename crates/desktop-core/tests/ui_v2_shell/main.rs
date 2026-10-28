@@ -168,12 +168,12 @@ async fn navigate_accepts_only_catalogued_destinations_and_is_session_scoped() {
         FeatureId::Home,
         "variant change resets navigation"
     );
-    // Listed but unavailable until C30: refused, never a blank page.
-    assert_eq!(
-        desk.send(json!({"kind": "navigate", "feature": "inbox"}))
-            .await,
-        Err(Refusal::InvalidInput)
-    );
+    // The Inbox arrived in C30: listed and available (an unlisted destination
+    // stays refused, never a blank page).
+    desk.send(json!({"kind": "navigate", "feature": "inbox"}))
+        .await
+        .expect("inbox");
+    assert_eq!(desk.snap().active_feature, FeatureId::Inbox);
     desk.send(json!({"kind": "navigate", "feature": "administration"}))
         .await
         .expect("administration");

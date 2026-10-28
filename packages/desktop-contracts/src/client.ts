@@ -70,6 +70,7 @@ const REFUSALS: readonly Refusal[] = [
     'alreadyProcessed',
     'sequenceGap',
     'shuttingDown',
+    'decisionPending',
 ]
 
 const DECIMAL_U64 = /^(0|[1-9][0-9]{0,19})$/
@@ -2093,10 +2094,66 @@ function isOverviewView(value: unknown): boolean {
         Array.isArray(value.attention) &&
         value.attention.every(isInboxItem) &&
         Array.isArray(value.held) &&
-        value.held.every((h) => isRecord(h) && isInboxItem(h.item) && oneOf(HOLD_KINDS, h.kind)) &&
+        value.held.every((h) => isRecord(h) && isInboxItem(h.item) && oneOf(HOLD_KINDS, h.kind) && optional(isCount, h.returnsAt) && (h.kind !== 'snooze' || h.returnsAt !== null)) &&
         oneOf(FACES, value.face) &&
         // All clear only from a fresh read with nothing open.
         (value.face !== 'allClear' || (value.fresh === true && value.attention.length === 0))
+    )
+}
+
+const INBOX_KINDS: readonly string[] = ['runtime', 'gateway', 'setupWarning']
+const READ_STATES: readonly string[] = ['pending', 'reading', 'done', 'failed']
+const PRODUCT_READ_STATES: readonly string[] = ['pending', 'ok', 'incomplete', 'needsRole', 'failed', 'notRead']
+/** The active tenant's Inbox and read status (C30): entries with their core-computed holds. */
+function isInboxView(value: unknown): boolean {
+    if (!isRecord(value) || !Array.isArray(value.items) || !isRecord(value.read)) return false
+    const entries = value.items.every(
+        (e: unknown) =>
+            isRecord(e) &&
+            isString(e.id) &&
+            oneOf(INBOX_KINDS, e.kind) &&
+            typeof e.needsAction === 'boolean' &&
+            oneOf(TONES, e.severity) &&
+            isString(e.title) &&
+            typeof e.detail === 'string' &&
+            typeof e.source === 'string' &&
+            optional((p) => oneOf(PRODUCT_IDS, p), e.product) &&
+            optional(
+                (t) =>
+                    isRecord(t) &&
+                    FEATURE_IDS.includes(t.feature as string) &&
+                    optional((p) => oneOf(PRODUCT_IDS, p), t.product) &&
+                    optional((r) => oneOf(MANAGEMENT_RESOURCES, r), t.resource) &&
+                    optional((i) => typeof i === 'string', t.item),
+                e.target
+            ) &&
+            optional((a) => typeof a === 'string', e.actionLabel) &&
+            Array.isArray(e.facts) &&
+            e.facts.every((f: unknown) => isRecord(f) && typeof f.label === 'string' && typeof f.value === 'string') &&
+            isCount(e.when) &&
+            optional((h) => isRecord(h) && oneOf(HOLD_KINDS, h.kind) && optional(isCount, h.returnsAt) && (h.kind !== 'snooze' || h.returnsAt !== null), e.hold)
+    )
+    const read = value.read
+    return (
+        entries &&
+        oneOf(READ_STATES, read.state) &&
+        optional(isCount, read.lastReadAt) &&
+        optional(isCount, read.failedAt) &&
+        optional(isCount, read.settledAt) &&
+        // A read that is done or failed settled at some time.
+        (read.state === 'pending' || read.state === 'reading' || read.settledAt !== null) &&
+        // A failed read names when it failed; never attempted means neither time.
+        (read.state !== 'failed' || read.failedAt !== null) &&
+        Array.isArray(read.products) &&
+        read.products.every((p: unknown) => isRecord(p) && oneOf(PRODUCT_IDS, p.product) && oneOf(PRODUCT_READ_STATES, p.state) && isCount(p.sourcesRead) && isCount(p.sourcesTotal) && optional((d) => typeof d === 'string', p.detail)) &&
+        Array.isArray(read.sourcesMissing) &&
+        read.sourcesMissing.every((s: unknown) => typeof s === 'string') &&
+        isCount(read.generation) &&
+        optional((p) => oneOf(PRODUCT_IDS, p), read.rechecking) &&
+        // Nothing read yet means no last-read time and no product result.
+        (read.state !== 'pending' || read.lastReadAt === null) &&
+        // The last snooze placed this session: the receipt the shell announces once.
+        optional((r) => isRecord(r) && isString(r.id) && typeof r.title === 'string' && isCount(r.returnsAt) && isCount(r.sequence), value.lastSnooze)
     )
 }
 
@@ -2616,7 +2673,8 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
                 typeof g.pending.conversation === 'string' &&
                 g.pending.conversation.length > 0 &&
                 typeof g.pending.decision === 'string' &&
-                g.pending.decision.length > 0,
+                g.pending.decision.length > 0 &&
+                typeof g.completion === 'boolean',
             value.switchBlocked
         ) ||
         // C29: the tenant setup in progress, with its draft and verification.
@@ -2660,6 +2718,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isSessionsView(value.sessions) ||
         !isLibraryView(value.library) ||
         !isOverviewView(value.overview) ||
+        !isInboxView(value.inbox) ||
         !isWorkbenchView(value.workbench) ||
         !isGatewayView(value.gateway) ||
         !isHarnessView(value.harness) ||

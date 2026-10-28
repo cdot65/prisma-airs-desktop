@@ -257,7 +257,7 @@ function TenantList({ snapshot, dispatch }: { snapshot: ShellSnapshot; dispatch:
                                         size='sm'
                                         disabled={busy}
                                         aria-label={`Make ${tenant.label} active`}
-                                        onClick={() => void run({ kind: 'selectTenant', tenant: tenant.id })}
+                                        onClick={() => void run({ kind: 'selectTenant', tenant: tenant.id, resolution: null })}
                                     >
                                         Make active
                                     </Button>

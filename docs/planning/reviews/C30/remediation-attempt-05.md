@@ -1,0 +1,9 @@
+# C30 remediation after attempt-05 (9/8/9/8/8, fail)
+
+| Finding | Remediation | Where |
+|---|---|---|
+| R1 Inbox hid supplied entries behind "first read pending" | The empty states (pending, reading, failed, settled-unread) apply only when the core supplies no entries; a setup warning recorded before any read is listed with its contextual action, Acknowledge, Snooze and Unsnooze, while a truly empty fresh tenant still shows the pending state. Test: `inbox.test` (a `vw-1` warning on a never-read tenant: tabs, selection, Open AI Gateway, acknowledge, snooze, unsnooze; Home still says first read pending with the warning on its attention list; without entries the pending state) | `inbox.tsx` |
+| R2 expired coverage presented as healthy | A done read whose overview is no longer `fresh` (older than ten minutes, C12) is named as such: Home's line "Read at HH:MM · more than 10 minutes old; read again to confirm" (flagged), the attention list's all-clear qualified by the read's age, the Inbox empty state and status line naming the age; the cached read is kept and nothing re-reads on its own. Tests: `ui_v2_inbox::an_expired_read_is_a_gap_not_an_all_clear_and_stays_so_across_a_switch` (fixture clock advanced past the window; switch away and back); `inbox.test` (fresh healthy-empty vs expired on Home and in the Inbox, no read dispatched) | `home.tsx`, `inbox.tsx`, `copy.ts` |
+| Optional: context-bound toasts | Toasts raised for a context-bound action carry the context too; insertion, retirement and rendering check it as the unconfirmed strip does. Test: extension of the late-notification test (a refusal answered after A → B → A in A's new context is never surfaced) | `store.ts`, `toasts.tsx`, `app.tsx`, `v2-shell.tsx`, `home.tsx` |
+
+B1/E1 (the C29 live Vulture verification receipt) stay owner-gated (`evidence/C29/live-scope-request.md`).

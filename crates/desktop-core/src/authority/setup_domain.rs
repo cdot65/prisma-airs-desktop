@@ -809,12 +809,14 @@ impl State {
     /// verify warnings, is made active, and a first run's onboarding is
     /// done. Refused unless the current inputs were verified without a
     /// failure (the presentation cannot skip or forge a check).
-    pub(super) fn complete_setup(
-        &mut self,
+    /// Whether the draft under `context` may complete with `packs` now (the
+    /// checks of [`State::complete_setup`], without changing anything):
+    /// the draft tenant's id when it may.
+    pub(super) fn completable_setup(
+        &self,
         context: &ContextRef,
-        packs: Vec<ProductId>,
-        recorded_secs: u32,
-    ) -> Result<Completed, Refusal> {
+        packs: &[ProductId],
+    ) -> Result<TenantId, Refusal> {
         let setup = self.setup_for(context)?;
         let view = Self::verify_view(setup).ok_or(Refusal::InvalidInput)?;
         if !view.done || view.blocking || view.stale {
@@ -831,6 +833,18 @@ impl State {
         if self.data.tenants.len() >= MAX_TENANTS {
             return Err(Refusal::Busy);
         }
+        Ok(setup.tenant.profile.id.clone())
+    }
+
+    pub(super) fn complete_setup(
+        &mut self,
+        context: &ContextRef,
+        packs: Vec<ProductId>,
+        recorded_secs: u32,
+    ) -> Result<Completed, Refusal> {
+        self.completable_setup(context, &packs)?;
+        let setup = self.setup_for(context)?;
+        let view = Self::verify_view(setup).ok_or(Refusal::InvalidInput)?;
         // The draft's authority ends with it: the tenant gets a fresh active
         // context and its own binding.
         self.retire_setup_authority();

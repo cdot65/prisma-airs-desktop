@@ -31,6 +31,8 @@ interface Props {
     dispatch: Dispatch
     observe: ObserveManagement
     onNavigate: (id: FeatureId) => void
+    /** The inventory and item a contextual action asked for (C30): selected on arrival. */
+    arrival?: { resource: ManagementResource | null; item: string | null; sequence: number } | null
 }
 
 type Item = Record<string, unknown>
@@ -66,18 +68,30 @@ function rangeText(page: ManagementPage): string {
  * an inventory is called empty or complete only when the service said so.
  */
 export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function AdministrationView(
-    { snapshot, dispatch, observe, onNavigate },
+    { snapshot, dispatch, observe, onNavigate, arrival = null },
     ref
 ) {
     const ids = useId()
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
     const context: ContextRef | null = snapshot.active?.context ?? null
     const ready = tenant?.management.state === 'ready'
-    const [resource, setResource] = useState<ManagementResource>('profiles')
+    const [resource, setResource] = useState<ManagementResource>(arrival?.resource ?? 'profiles')
     const [shown, setShown] = useState<Shown | null>(null)
     const [failure, setFailure] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
-    const [filter, setFilter] = useState('')
+    const [filter, setFilter] = useState(arrival?.item ?? '')
+    // A contextual action's item survives the inventory reset that its
+    // arrival (or a resource change it asks for) triggers; a contextual
+    // action while the view is already open selects its target too.
+    const arrivalItem = useRef<string | null>(arrival?.item ?? null)
+    const seenArrival = useRef(arrival?.sequence ?? 0)
+    useEffect(() => {
+        if (!arrival || arrival.sequence === seenArrival.current) return
+        seenArrival.current = arrival.sequence
+        arrivalItem.current = arrival.item
+        if (arrival.resource) setResource(arrival.resource)
+        setFilter(arrival.item ?? '')
+    }, [arrival])
     const [detail, setDetail] = useState<DetailState | null>(null)
     const [change, setChange] = useState<ChangeTarget | null>(null)
     // A Harness proposal the operator opened into the review (C21) is shown
@@ -160,7 +174,8 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
         setShown(null)
         setFailure(null)
         setDetail(null)
-        setFilter('')
+        setFilter(arrivalItem.current ?? '')
+        arrivalItem.current = null
         setLoading(false)
         if (ready) void load(0)
     }, [context, resource, ready])

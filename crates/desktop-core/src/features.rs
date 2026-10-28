@@ -245,16 +245,7 @@ pub fn catalogue_for(variant: UiVariant) -> Vec<FeatureEntry> {
             FeatureEntry::available(FeatureId::Home, "Home", Some(1), true),
             // Listed with its shortcut from the start so ⌘2 never moves; the
             // Inbox view itself lands in C30 and is unavailable until then.
-            FeatureEntry {
-                id: FeatureId::Inbox,
-                label: "Inbox".to_owned(),
-                availability: Availability::Unavailable {
-                    reason: "The Inbox arrives in C30".to_owned(),
-                    planned_chunk: "C30".to_owned(),
-                },
-                shortcut: Some(2),
-                sidebar: true,
-            },
+            FeatureEntry::available(FeatureId::Inbox, "Inbox", Some(2), true),
             FeatureEntry::available(FeatureId::Harness, "Harness", Some(3), true),
             FeatureEntry::available(FeatureId::Academy, "Academy", Some(4), true),
             FeatureEntry::available(FeatureId::Library, "Test Cases", Some(5), true),

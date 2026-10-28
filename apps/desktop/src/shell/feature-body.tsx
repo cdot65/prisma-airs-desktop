@@ -11,6 +11,7 @@ import { ImportView } from '../features/import-v1/import-view'
 import { RuntimeView } from '../features/runtime/runtime-view'
 import { WorkbenchView } from '../features/workbench/workbench-view'
 import type { Dispatch } from '../features/tenants/dispatch'
+import type { Arrival } from '../v2/store'
 import { SettingsView, UnavailableView } from './feature-view'
 
 export interface FeatureBodyProps {
@@ -22,6 +23,8 @@ export interface FeatureBodyProps {
     dispatch: Dispatch
     /** The native client, for the Academy learner transport and observations. */
     client: DesktopClient
+    /** What a contextual action asked this destination to select (C30); v2 only. */
+    arrival?: Arrival | null
 }
 
 /**
@@ -64,6 +67,7 @@ export const FeatureBody = forwardRef<HTMLHeadingElement, FeatureBodyProps>(func
                     dispatch={props.dispatch}
                     observe={observeManagement}
                     onNavigate={props.onNavigate}
+                    arrival={props.arrival ?? null}
                 />
             ) : feature.id === 'sessions' && feature.availability.state === 'available' ? (
                 <SessionsView

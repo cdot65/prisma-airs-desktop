@@ -5,11 +5,12 @@ import {
     type FeatureId,
     type Intent,
     type MenuCommand,
+    type Refusal,
     type ShellSnapshot,
     type Theme,
 } from '@prisma-airs/desktop-contracts'
 import { followAppearance } from './shell/appearance'
-import type { DispatchOutcome } from './features/tenants/dispatch'
+import { type DispatchOutcome, outcomeMessage } from './features/tenants/dispatch'
 import { DesktopShell } from './shell/desktop-shell'
 import { V2Shell } from './v2/v2-shell'
 import { Wizard } from './v2/wizard/wizard'
@@ -21,6 +22,8 @@ import { SAVE_DOCUMENT_EVENT } from './features/workbench/document-editor'
 
 export function App({ client }: { client: DesktopClient }) {
     const [snapshot, setSnapshot] = useState<ShellSnapshot | null>(null)
+    const snapshotRef = useRef<ShellSnapshot | null>(null)
+    snapshotRef.current = snapshot
     const [failure, setFailure] = useState<string | null>(null)
     const [active, setActive] = useState<FeatureId | null>(null)
     const [paletteOpen, setPaletteOpen] = useState(false)
@@ -78,14 +81,28 @@ export function App({ client }: { client: DesktopClient }) {
         },
         [dispatch]
     )
-    const v2Preference = useCallback(
-        async (what: string, intent: Intent) => {
+    // Every v2 action's outcome reaches the shell's surfaces (DESIGN-V2 §7):
+    // a refusal or failed delivery as a warn toast naming what was asked, an
+    // unconfirmed delivery inline with Retry, never replayed on its own.
+    const v2Act = useCallback(
+        async (what: string, intent: Intent, quiet: Refusal[] = []): Promise<DispatchOutcome> => {
+            // A context-bound action speaks for the tenant it was sent in (I2).
+            const boundContext = typeof (intent as { context?: unknown }).context === 'string' ? (intent as { context: string }).context : null
+            const bound = boundContext !== null ? (snapshotRef.current?.active?.tenant ?? null) : null
             const outcome = await dispatch(intent)
-            if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused(what, outcome.refusal), 'warn')
+            if (outcome.kind === 'refused' && quiet.includes(outcome.refusal)) return outcome
+            if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused(what, outcome.refusal, outcomeMessage(outcome)), 'warn', undefined, bound, boundContext)
             else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed(what, intent)
-            else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed(what), 'warn')
+            else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed(what), 'warn', undefined, bound, boundContext)
+            return outcome
         },
         [dispatch]
+    )
+    const v2Preference = useCallback(
+        async (what: string, intent: Intent, quiet: Refusal[] = []) => {
+            await v2Act(what, intent, quiet)
+        },
+        [v2Act]
     )
 
     const onMenu = useRef<(command: MenuCommand) => void>(() => undefined)
@@ -122,7 +139,12 @@ export function App({ client }: { client: DesktopClient }) {
         let cancelled = false
         client
             .observeShell({
-                onSnapshot: (next) => setSnapshot(next),
+                onSnapshot: (next) => {
+                    // The shell's scope follows the snapshot before it renders: a
+                    // notification for another tenant or context is never surfaced.
+                    useShellStore.getState().setScope(next.active?.tenant ?? null, next.active?.context ?? null)
+                    setSnapshot(next)
+                },
                 onMenu: (command) => onMenu.current(command),
                 onError: () => setFailure('The desktop sent an unexpected update.'),
             })
@@ -214,18 +236,22 @@ export function App({ client }: { client: DesktopClient }) {
                 onSetAppearance={(theme) => void v2Preference('The appearance change', { kind: 'setAppearance', theme })}
                 onSetShowCalls={(on) => void v2Preference('The preference change', { kind: 'setShowCalls', on })}
                 onReturnToClassic={() => void v2Preference('The interface change', { kind: 'setUiVariant', variant: 'legacy' })}
-                onSwitchTenant={(tenant) => {
-                    // The target is captured now: a late refusal still names it.
+                onSwitchTenant={(tenant, resolution) => {
+                    // The target is captured now: a late refusal still names it. A
+                    // pending-decision refusal is not a toast: the snapshot carries
+                    // the guard the shell renders (I1).
                     const label = snapshot.tenants.find((t) => t.id === tenant)?.label ?? tenant
-                    void v2Preference(SHELL_COPY.switchTo(label), { kind: 'selectTenant', tenant })
+                    void v2Preference(SHELL_COPY.switchTo(label), { kind: 'selectTenant', tenant, resolution: resolution ?? null }, ['decisionPending'])
                 }}
                 onReadNow={() => {
+                    // The palette's Read now is the same finite read of every chosen product (I4).
                     const active = snapshot.active
                     if (!active) return
                     const label = snapshot.tenants.find((t) => t.id === active.tenant)?.label ?? active.tenant
-                    void v2Preference(SHELL_COPY.readOf(label), { kind: 'management', context: active.context, request: { kind: 'overview' } })
+                    void v2Preference(SHELL_COPY.readOf(label), { kind: 'readTenant', context: active.context })
                 }}
                 onRetry={(what, intent) => void v2Preference(what, intent)}
+                onAct={v2Act}
                 dispatch={dispatch}
                 client={client}
             />

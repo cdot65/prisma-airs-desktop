@@ -1,0 +1,114 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C30",
+  "recorded_utc": "2026-10-28T19:02:48Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c30.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "ab1f940ef078fae3476fd15290489fab1138fbc9eb613fe4db4890297432f85e",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C30-N01",
+      "description": "With a Harness conversation waiting for the operator's approval (the real pinned engine against the synthetic Gateway), switching tenants through the switcher, through the palette's 'Switch to \u2026' entry and through Go \u203a Switch Tenant\u2026 each shows the one guard dialog ('A Harness decision is waiting') rendered from the core's refusal; Stay keeps the tenant and the approval; 'Archive and switch' ends the conversation and makes the other tenant active; the decision was never taken for the operator.",
+      "result": "pass",
+      "observation": "Harness ready True, approval pending True; guard via switcher True naming the target True with ['Stay', 'Discard and switch', 'Archive and switch']; Stay closed it True, Tenant A kept True, approval kept True; via palette True; via Go \u203a Switch Tenant\u2026 True; Archive and switch \u2192 Tenant B True, no further model turns True, engine gone True",
+      "evidence": [
+        "docs/planning/evidence/C30/native/observations.json",
+        "docs/planning/evidence/C30/native/tree-harness-approval.json",
+        "docs/planning/evidence/C30/native/tree-guard-switcher.json",
+        "docs/planning/evidence/C30/native/captures/guard-light-100.png",
+        "docs/planning/evidence/C30/native/captures/guard-dark-100.png",
+        "docs/planning/evidence/C30/native/captures/guard-dark-200.png",
+        "docs/planning/evidence/C30/native/captures/guard-light-200.png"
+      ]
+    },
+    {
+      "id": "C30-N02",
+      "description": "A tenant that was never read shows 'First read pending' on Home and an empty Inbox saying the same (never sample data); 'Read now' runs the core's read against the synthetic endpoint and announces its completion from the core's read status (all sources complete, or the partial sources named); the Inbox then lists the read's items in tabs with counts and a detail pane whose action navigates with context.",
+      "result": "pass",
+      "observation": "fresh tenant: Home pending True, Inbox pending True and empty True; Read now \u2192 'Read finished at 14:58 \u00b7 all sources complete', toast 'Read finished at 14:58 \u00b7 all sources complete' (2 synthetic reads); Inbox tabs ['All 1', 'Needs action 1', 'Updates 0', 'Snoozed 0'] rows ['Warning 3 violating sessions to investigate AI Runtime Secur']; detail True; action 'Inspect sessions' navigated True to 'Investigate sessions'",
+      "evidence": [
+        "docs/planning/evidence/C30/native/observations.json",
+        "docs/planning/evidence/C30/native/tree-home-fresh.json",
+        "docs/planning/evidence/C30/native/tree-inbox-fresh.json",
+        "docs/planning/evidence/C30/native/tree-home-read.json",
+        "docs/planning/evidence/C30/native/tree-inbox.json",
+        "docs/planning/evidence/C30/native/captures/home-fresh-light-100.png",
+        "docs/planning/evidence/C30/native/captures/home-fresh-dark-100.png",
+        "docs/planning/evidence/C30/native/captures/home-fresh-dark-200.png",
+        "docs/planning/evidence/C30/native/captures/home-fresh-light-200.png",
+        "docs/planning/evidence/C30/native/captures/home-read-light-100.png",
+        "docs/planning/evidence/C30/native/captures/home-read-dark-100.png",
+        "docs/planning/evidence/C30/native/captures/home-read-dark-200.png",
+        "docs/planning/evidence/C30/native/captures/home-read-light-200.png",
+        "docs/planning/evidence/C30/native/captures/inbox-light-100.png",
+        "docs/planning/evidence/C30/native/captures/inbox-dark-100.png",
+        "docs/planning/evidence/C30/native/captures/inbox-dark-200.png",
+        "docs/planning/evidence/C30/native/captures/inbox-light-200.png"
+      ]
+    },
+    {
+      "id": "C30-N03",
+      "description": "Snooze is a core intent: snoozing an item from Home and reading its return time in the Inbox row, the Inbox detail pane and the toast all state the same core-computed time; Acknowledge marks the item and takes it off Home; Unsnooze brings it back; every step captured in light and dark at 100% and 200%.",
+      "result": "pass",
+      "observation": "snooze offered on Home True for '3 violating sessions to investigate'; toast True returns 'tomorrow 15:00', row 'tomorrow 15:00', pane 'tomorrow 15:00' all equal True; off Home True; Unsnooze True; Acknowledge True and off Home True",
+      "evidence": [
+        "docs/planning/evidence/C30/native/observations.json",
+        "docs/planning/evidence/C30/native/tree-inbox-snoozed.json",
+        "docs/planning/evidence/C30/native/captures/inbox-snoozed-light-100.png",
+        "docs/planning/evidence/C30/native/captures/inbox-snoozed-dark-100.png",
+        "docs/planning/evidence/C30/native/captures/inbox-snoozed-dark-200.png",
+        "docs/planning/evidence/C30/native/captures/inbox-snoozed-light-200.png"
+      ]
+    },
+    {
+      "id": "C30-N04",
+      "description": "The accessibility additions (DESIGN-V2 \u00a78, T09) on the changed UI: from Read now, Tab reaches the Inbox tabs, the rows and the detail actions with every focused frame inside the window and Enter opens a row's detail; the read-status line is in the tree; the guard is the one topmost modal (the rail and page hidden beneath it, initial focus on Stay, the safe default, so Enter on arrival ends nothing) and Escape (Stay) returns focus to the switcher that asked; with macOS Reduce Motion on and the app relaunched a snooze toast persists past 8 s until dismissed (setting restored); at the 900\u00d7600 minimum and 200% zoom in both themes the Inbox columns stack so rows, the detail text and facts and every action stay inside the window with no horizontal scroll.",
+      "result": "pass",
+      "observation": "keyboard: Tab from Read now reached the tabs True, a row True and the detail actions True, every focused frame inside the window True, Enter opened the row's detail True; read status in the tree True; guard: siblings hidden beneath it True, modal True, initial focus 'Stay' (Stay, the safe default: True), Escape returned focus to 'Switch tenant: Tenant A \u00b7 Production \u00b7 TSG 1234567890' (True), siblings back True; at [900, 600] and 200%: light overflow 0 px, dark 0 px, pane right 907 vs window 995, actions within the width and fully inside once focused [(True, True), (True, True)]; Reduce Motion active True: snooze toast persisted past 8 s True, dismissed on request True, setting restored True",
+      "evidence": [
+        "docs/planning/evidence/C30/native/observations.json",
+        "docs/planning/evidence/C30/native/tree-guard-switcher.json",
+        "docs/planning/evidence/C30/native/tree-reduce-motion-home.json",
+        "docs/planning/evidence/C30/native/tree-inbox-min-200-light.json",
+        "docs/planning/evidence/C30/native/tree-inbox-min-200-dark.json",
+        "docs/planning/evidence/C30/native/captures/inbox-min-200-light.png",
+        "docs/planning/evidence/C30/native/captures/inbox-min-200-dark.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; menus and dialogs are verified through System Events and the accessibility tree.",
+    "Reads run against the synthetic management endpoint (tools/native-acceptance/mgmt_server.py); the Harness approval is raised by the real pinned engine against the same synthetic Gateway playing the model.",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "guard-dark-100.png",
+    "guard-dark-200.png",
+    "guard-light-100.png",
+    "guard-light-200.png",
+    "home-fresh-dark-100.png",
+    "home-fresh-dark-200.png",
+    "home-fresh-light-100.png",
+    "home-fresh-light-200.png",
+    "home-read-dark-100.png",
+    "home-read-dark-200.png",
+    "home-read-light-100.png",
+    "home-read-light-200.png",
+    "inbox-dark-100.png",
+    "inbox-dark-200.png",
+    "inbox-light-100.png",
+    "inbox-light-200.png",
+    "inbox-min-200-dark.png",
+    "inbox-min-200-light.png",
+    "inbox-snoozed-dark-100.png",
+    "inbox-snoozed-dark-200.png",
+    "inbox-snoozed-light-100.png",
+    "inbox-snoozed-light-200.png"
+  ]
+}

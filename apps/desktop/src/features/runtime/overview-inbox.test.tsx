@@ -159,7 +159,7 @@ describe('Runtime Overview & Inbox', () => {
                         gaps: ['Runtime activity unavailable'],
                     }),
                     attention: [],
-                    held: [{ item: KEY, kind: 'snooze' }],
+                    held: [{ returnsAt: 1_761_576_400, item: KEY, kind: 'snooze' }],
                     face: 'gap',
                 })
             )
@@ -183,7 +183,7 @@ describe('Runtime Overview & Inbox', () => {
             { kind: 'holdInsight', context: CONTEXT, id: KEY.id, hold: 'acknowledge' },
             { kind: 'holdInsight', context: CONTEXT, id: KEY.id, hold: 'snooze' },
         ])
-        await native.push(ready(overview({ attention: [], held: [{ item: KEY, kind: 'acknowledge' }], face: 'allClear' })))
+        await native.push(ready(overview({ attention: [], held: [{ returnsAt: null, item: KEY, kind: 'acknowledge' }], face: 'allClear' })))
         expect(screen.getByText('Nothing open: what still needs attention is acknowledged or snoozed')).toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: `Restore ${KEY.title}` }))
         expect(native.dispatched.filter((i) => i.kind === 'restoreInsight')).toEqual([{ kind: 'restoreInsight', context: CONTEXT, id: KEY.id }])

@@ -47,11 +47,11 @@ and reconciled by hand; a key missing here is a specification defect.
 | `s.wizard`, `s.added` | first-run wizard open; add-tenant sheet result | Core / UI | `ShellSnapshot.onboarding`; sheet result is a toast | — | kept |
 | `s.overlayDone` | prototype overlay bookkeeping | **Dropped** | canvas-only | — | dropped |
 | `s.palette`, `s.pq` | palette open, query | UI | shell store | transient | kept |
-| `s.tenantOpen`, `s.guard` | switcher open; switch guard | UI | shell store; guard content from the `SwitchBlocked` refusal | transient | kept (I1) |
+| `s.tenantOpen`, `s.guard` | switcher open; switch guard | UI | shell store; guard content from the `SwitchBlocked` refusal (`to`, `pending`, `completion`), rendered by the shell for a switch and by the wizard for a setup completion | transient | kept (I1); completion is the same guarded path (P36) |
 | `s.toast`, `s.toastKind`, `s.undo` | toast text, kind, undo target | UI | shell store, timer | ≤ 6 s | kept (I10) |
 | `s.detail`, `s.sheet` | detail sheet; confirm sheet | UI | shell store modal stack | transient | kept (I8) |
 | `s.explain` | explain-mode toggle | UI | shell store | transient | kept |
-| `s.sel`, `s.itab` | Inbox selection, tab | UI | inbox store | transient | kept |
+| `s.sel`, `s.itab` | Inbox selection, tab | UI | shell store, keyed by tenant id | transient; a switch round trip keeps it (I2) | kept |
 | `s.product`, `s.exp`, `s.ptab`, `s.allOpen`, `s.adminNav`, `s.adminQ`, `s.tree` | Administration product, expanded set, tab per product, expand-all, nav mode, search, tree | UI | admin store | transient | kept |
 | `s.review`, `s.reviewKind`, `s.reviewFrom`, `s.reviewTenant`, `s.reviewApplied` | review open, kind, origin, bound tenant, applied | Core | `Review` scope (tenant-bound, invalidated on context change) | session | kept; the UI holds only "open" |
 | `s.typed` | typed confirmation | UI | admin store | until review exit | kept (I3) |
@@ -68,8 +68,8 @@ and reconciled by hand; a key missing here is a specification defect.
 
 | Prototype key | Meaning | Owner | Where | Lifetime | Disposition |
 |---|---|---|---|---|---|
-| `ts.reading`, `ts.reads`, `ts.firstRead`, `ts.lastRead`, `ts.warnCleared`, `ts.capsScan` | read in progress, count, first read done, last-read time, warning cleared, scan capability | Core | `ReadStatus` scope | session | kept (I4); `reads` count is not shown and never feeds a timestamp |
-| `ts.ack`, `ts.snoozed` | acknowledgments, snoozes with return | Core | `InboxItem.acknowledged`, `snooze_return` | persisted | kept (I11) |
+| `ts.reading`, `ts.reads`, `ts.firstRead`, `ts.lastRead`, `ts.warnCleared`, `ts.capsScan` | read in progress, count, first read done, last-read time, warning cleared, scan capability | Core | `ReadStatus` scope, from the tenant's read record (one per opened tenant, kept across a switch round trip, P37) | session, per tenant | kept (I4); `reads` count is not shown and never feeds a timestamp |
+| `ts.ack`, `ts.snoozed` | acknowledgments, snoozes with return | Core | `InboxEntry.hold` (`acknowledge`, or `snooze` with `returnsAt` computed in the core); intents `acknowledgeItem`/`snoozeItem`/`unsnoozeItem`; the last snooze's `SnoozeReceipt` on the Inbox scope is what the toast announces, once (P38) | session, per tenant (as v1's holds) | kept (I11); not persisted across a relaunch, as the retained holds were not |
 | `ts.prompt`, `ts.dir`, `ts.profile`, `ts.model`, `ts.app`, `ts.kind`, `ts.scanned`, `ts.scanDir`, `ts.scanProfile`, `ts.results`, `ts.activeCase`, `ts.activeInput`, `ts.activeDir` | Playground prompt, direction, profile, model, app, classified kind, scanned flag, scan selectors, per-case results, active case | prompt/dir/profile/model/app: UI; scan result + per-case results: Core | workbench store; `ScanRecordView` (existing) and library case results | prompt transient; results persisted per tenant | kept; verdict computed by the existing scan path, never by a UI classifier (the prototype's `classify` is fixture-only) |
 | `ts.extraCases`, `ts.packs` | user-created cases, packs | Core | library | persisted | kept |
 | `ts.hist` | API responses | Core | workbench history | persisted | kept (I5) |

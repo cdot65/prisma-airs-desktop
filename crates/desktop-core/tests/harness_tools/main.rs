@@ -1026,3 +1026,636 @@ async fn nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_re
     desk.end(&id).await;
     std::fs::remove_dir_all(&dir).expect("cleanup");
 }
+
+/// C30 (I1): the one tenant-switch path refuses while the operator has a
+/// Harness decision pending; the refusal carries the guard, and the
+/// operator's resolution ends the conversation (kept or dropped) and switches.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pending_decision_refuses_a_tenant_switch_until_it_is_resolved() {
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let id = ready(&mut desk).await;
+    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.").await.expect("sent");
+    let c = answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let token = c["approvals"][0]["id"].as_str().expect("id").to_owned();
+    // Another tenant to switch to.
+    let a = desk.json()["active"]["tenant"]
+        .as_str()
+        .expect("A")
+        .to_owned();
+    let origin = desk.json()["tenants"][0]["origin"]
+        .as_str()
+        .expect("origin")
+        .to_owned();
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": "1234567890",
+        "destination": {"kind": "custom", "origin": origin}}}),
+    )
+    .await
+    .expect("B");
+    let b = desk.json()["tenants"]
+        .as_array()
+        .expect("tenants")
+        .iter()
+        .find(|t| t["label"] == "Tenant B")
+        .and_then(|t| t["id"].as_str())
+        .expect("B id")
+        .to_owned();
+    // Without a resolution the switch is refused and the guard is published.
+    assert_eq!(
+        desk.send(json!({"kind": "selectTenant", "tenant": b}))
+            .await,
+        Err(desktop_core::Refusal::DecisionPending)
+    );
+    let s = desk.json();
+    assert_eq!(s["active"]["tenant"], a, "still on A");
+    assert_eq!(s["switchBlocked"]["to"], b);
+    assert_eq!(s["switchBlocked"]["pending"]["conversation"], id);
+    assert_eq!(s["switchBlocked"]["pending"]["decision"], token);
+    assert!(
+        s["harness"]["conversation"]["approvals"]
+            .as_array()
+            .is_some_and(|x| !x.is_empty()),
+        "nothing was decided for the operator"
+    );
+    // Stay: the guard closes, nothing else changes.
+    desk.send(json!({"kind": "dismissSwitchGuard"}))
+        .await
+        .expect("dismissed");
+    assert!(desk.json()["switchBlocked"].is_null());
+    assert_eq!(desk.json()["active"]["tenant"], a);
+    // Archive and switch: the conversation is ended (kept) and B is active.
+    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "archive"}))
+        .await
+        .expect("switched");
+    let s = desk.json();
+    assert_eq!(s["active"]["tenant"], b);
+    assert!(s["switchBlocked"].is_null());
+    assert!(
+        s["harness"]["conversation"].is_null(),
+        "another tenant's conversation is never shown"
+    );
+    // A plain switch with nothing pending needs no resolution.
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("back to A");
+    assert!(
+        settle_for(30, || {
+            let c = desk.conversation();
+            c.is_null() || c["phase"] == "ended" || c["phase"] == "ending"
+        })
+        .await
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn discard_and_switch_drops_the_pending_conversation() {
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let id = ready(&mut desk).await;
+    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let a = desk.json()["active"]["tenant"]
+        .as_str()
+        .expect("A")
+        .to_owned();
+    let origin = desk.json()["tenants"][0]["origin"]
+        .as_str()
+        .expect("origin")
+        .to_owned();
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": "1234567890",
+        "destination": {"kind": "custom", "origin": origin}}}),
+    )
+    .await
+    .expect("B");
+    let b = desk.json()["tenants"]
+        .as_array()
+        .expect("tenants")
+        .iter()
+        .find(|t| t["label"] == "Tenant B")
+        .and_then(|t| t["id"].as_str())
+        .expect("B id")
+        .to_owned();
+    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
+        .await
+        .expect("switched");
+    assert_eq!(desk.json()["active"]["tenant"], b);
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("back to A");
+    assert!(
+        settle_for(30, || desk.conversation().is_null()).await,
+        "dropped once its task returned"
+    );
+}
+
+/// The saved conversations of the active tenant's last chosen workspace,
+/// read from this Mac, by id.
+async fn history_ids(desk: &mut Desk) -> Vec<String> {
+    let context = desk.context();
+    // The chosen workspace's history when one is chosen under this context,
+    // else the tenant's last chosen workspace from this Mac.
+    let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+    desk.send(json!({"kind": "listHarnessHistory", "context": context, "workspace": workspace}))
+        .await
+        .expect("list");
+    assert!(
+        settle(|| desk.json()["harness"]["history"]["state"] == "ready").await,
+        "{}",
+        desk.json()["harness"]["history"]
+    );
+    desk.json()["harness"]["history"]["conversations"]
+        .as_array()
+        .expect("conversations")
+        .iter()
+        .filter_map(|c| c["id"].as_str().map(str::to_owned))
+        .collect()
+}
+
+/// C30 (I1, P35): "Discard and switch" drops the transcript as the dialog
+/// promises: the record its earlier turn saved is removed, the turn the
+/// stop cuts short is never saved, and the conversation is absent from the
+/// workspace's history when the operator comes back; "Archive and switch"
+/// keeps it readable.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn discard_removes_the_saved_transcript_and_archive_keeps_it() {
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let id = ready(&mut desk).await;
+    // A first turn that completes is saved; then a turn waits for approval.
+    desk.say(&id, "Say hello.").await.expect("sent");
+    desk.answered().await;
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("history id")
+        .to_owned();
+    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let a = desk.json()["active"]["tenant"]
+        .as_str()
+        .expect("A")
+        .to_owned();
+    let origin = desk.json()["tenants"][0]["origin"]
+        .as_str()
+        .expect("origin")
+        .to_owned();
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": "1234567890",
+        "destination": {"kind": "custom", "origin": origin}}}),
+    )
+    .await
+    .expect("B");
+    let b = desk.json()["tenants"]
+        .as_array()
+        .expect("tenants")
+        .iter()
+        .find(|t| t["label"] == "Tenant B")
+        .and_then(|t| t["id"].as_str())
+        .expect("B id")
+        .to_owned();
+    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
+        .await
+        .expect("switched");
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("back to A");
+    assert!(
+        settle_for(30, || desk.conversation().is_null()).await,
+        "dropped once its task returned (its cut-short save refused)"
+    );
+    let ids = history_ids(&mut desk).await;
+    assert!(
+        !ids.contains(&history),
+        "the discarded conversation is gone from the saved history: {ids:?}"
+    );
+    assert!(
+        !files_under(&desk.history_root)
+            .iter()
+            .any(|f| f.to_string_lossy().contains(&history)),
+        "and its record file was removed"
+    );
+    // The same with Archive: the conversation stays readable. (The dropped
+    // conversation's engine may still be reaped: a start waits for it.)
+    let reference = desk.choose(WS_A).await;
+    desk.store_key(&reference, KEY, None).await;
+    let id = start_when_free(&mut desk, &reference).await;
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    // (The synthetic model still proposes the command.) The turn the stop
+    // cuts short is saved as it stood: that is what Archive keeps.
+    desk.say(&id, "List the files.").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let kept = desk.conversation()["historyId"]
+        .as_str()
+        .expect("history id")
+        .to_owned();
+    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "archive"}))
+        .await
+        .expect("switched");
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("back to A");
+    assert!(
+        settle_for(30, || {
+            let c = desk.conversation();
+            c.is_null() || c["phase"] == "ended"
+        })
+        .await
+    );
+    // Its cut-short save lands after the stop: listed once it has.
+    let mut ids = history_ids(&mut desk).await;
+    for _ in 0..60 {
+        if ids.contains(&kept) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        ids = history_ids(&mut desk).await;
+    }
+    assert!(ids.contains(&kept), "archived, it is listed: {ids:?}");
+    assert!(!ids.contains(&history), "the discarded one stays gone");
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+/// C30 (P35): when a discarded conversation's record cannot be removed
+/// (here: its folder made read-only), the discard is not implied to have
+/// succeeded: the record stays listed, the workspace's history reports the
+/// failure after switching back, and the operator's own removal, once
+/// possible, is the recovery that clears it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_discard_whose_removal_fails_is_reported_until_the_record_is_removed() {
+    use std::os::unix::fs::PermissionsExt;
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let id = ready(&mut desk).await;
+    desk.say(&id, "Say hello.").await.expect("sent");
+    desk.answered().await;
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("history id")
+        .to_owned();
+    let record = files_under(&desk.history_root)
+        .into_iter()
+        .find(|f| f.to_string_lossy().contains(&history))
+        .unwrap_or_else(|| {
+            panic!(
+                "no record for {history} under {:?}: {:?}",
+                desk.history_root,
+                files_under(&desk.history_root)
+            )
+        });
+    let folder = record.parent().expect("scope folder").to_path_buf();
+    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let a = desk.json()["active"]["tenant"]
+        .as_str()
+        .expect("A")
+        .to_owned();
+    let origin = desk.json()["tenants"][0]["origin"]
+        .as_str()
+        .expect("origin")
+        .to_owned();
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": "1234567890",
+        "destination": {"kind": "custom", "origin": origin}}}),
+    )
+    .await
+    .expect("B");
+    let b = desk.json()["tenants"]
+        .as_array()
+        .expect("tenants")
+        .iter()
+        .find(|t| t["label"] == "Tenant B")
+        .and_then(|t| t["id"].as_str())
+        .expect("B id")
+        .to_owned();
+    // Removal cannot happen: the folder refuses it.
+    std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o555)).expect("chmod");
+    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
+        .await
+        .expect("switched");
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("back to A");
+    assert!(settle_for(30, || desk.conversation().is_null()).await);
+    let mut ids = history_ids(&mut desk).await;
+    for _ in 0..40 {
+        if desk.json()["harness"]["history"]["problem"] == "unavailable" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        ids = history_ids(&mut desk).await;
+    }
+    assert!(
+        ids.contains(&history),
+        "the record is still there and listed: {ids:?}"
+    );
+    assert_eq!(
+        desk.json()["harness"]["history"]["problem"],
+        "unavailable",
+        "the failed removal is reported: {}",
+        desk.json()["harness"]["history"]
+    );
+    assert!(record.exists());
+    // Unrelated history work leaves the unresolved failure reported (P35):
+    // opening the record and deleting another saved conversation.
+    std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+    let reference = desk.choose(WS_A).await;
+    desk.store_key(&reference, KEY, None).await;
+    let other_id = start_when_free(&mut desk, &reference).await;
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    // (The synthetic model still proposes the command: the ended turn's
+    // cut-short save is the other record.)
+    desk.say(&other_id, "List the files.").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let other = desk.conversation()["historyId"]
+        .as_str()
+        .expect("history id")
+        .to_owned();
+    desk.end(&other_id).await;
+    let mut ids = history_ids(&mut desk).await;
+    for _ in 0..60 {
+        if ids.contains(&other) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        ids = history_ids(&mut desk).await;
+    }
+    assert!(ids.contains(&other), "the other record is saved: {ids:?}");
+    let opened = history_open(&mut desk, &history).await;
+    assert_eq!(opened["id"], history, "readable");
+    assert_eq!(
+        desk.json()["harness"]["history"]["problem"],
+        "unavailable",
+        "still reported after an open"
+    );
+    let context = desk.context();
+    let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+    desk.send(json!({"kind": "closeHarnessHistory", "context": context, "workspace": workspace}))
+        .await
+        .expect("close");
+    let mut removed_other = Err(desktop_core::Refusal::Busy);
+    for _ in 0..60 {
+        let context = desk.context();
+        let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+        removed_other = desk
+            .send(json!({"kind": "deleteHarnessHistory", "context": context, "workspace": workspace, "id": other}))
+            .await;
+        if removed_other != Err(desktop_core::Refusal::Busy) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+    removed_other.expect("delete other");
+    assert!(settle(|| desk.json()["harness"]["history"]["busy"] == false).await);
+    assert_eq!(
+        desk.json()["harness"]["history"]["problem"],
+        "unavailable",
+        "still reported after deleting another record"
+    );
+    // Recovery: the operator removes the failed record itself.
+    // (Its engine may still be being reaped: a delete of a live id is busy.)
+    let mut deleted = Err(desktop_core::Refusal::Busy);
+    for _ in 0..60 {
+        let context = desk.context();
+        let workspace = desk.json()["gateway"]["selected"]["reference"].clone();
+        deleted = desk
+            .send(json!({"kind": "deleteHarnessHistory", "context": context, "workspace": workspace, "id": history}))
+            .await;
+        if deleted != Err(desktop_core::Refusal::Busy) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+    deleted.expect("delete");
+    assert!(settle(|| desk.json()["harness"]["history"]["busy"] == false).await);
+    let ids = history_ids(&mut desk).await;
+    assert!(!ids.contains(&history), "removed: {ids:?}");
+    assert!(
+        desk.json()["harness"]["history"]["problem"].is_null(),
+        "{}",
+        desk.json()["harness"]["history"]
+    );
+    assert!(!record.exists());
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+/// C30 (P35): a save admitted before a discard, held between its
+/// admission and its write (the engine ended with the approval pending, its
+/// interrupted turn being saved), cannot write the discarded transcript
+/// after the discard removed it: the write re-checks the tombstone under the
+/// history hold. The record stays absent after the save settles.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+// The gate is held across the awaits on purpose: that is the race.
+#[allow(clippy::await_holding_lock)]
+async fn a_save_admitted_before_a_discard_never_writes_the_discarded_transcript() {
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let id = ready(&mut desk).await;
+    desk.say(&id, "Say hello.").await.expect("sent");
+    desk.answered().await;
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("history id")
+        .to_owned();
+    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.").await.expect("sent");
+    answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let a = desk.json()["active"]["tenant"]
+        .as_str()
+        .expect("A")
+        .to_owned();
+    let origin = desk.json()["tenants"][0]["origin"]
+        .as_str()
+        .expect("origin")
+        .to_owned();
+    desk.send(
+        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": "1234567890",
+        "destination": {"kind": "custom", "origin": origin}}}),
+    )
+    .await
+    .expect("B");
+    let b = desk.json()["tenants"]
+        .as_array()
+        .expect("tenants")
+        .iter()
+        .find(|t| t["label"] == "Tenant B")
+        .and_then(|t| t["id"].as_str())
+        .expect("B id")
+        .to_owned();
+    // The engine ends on its own with the approval pending: its interrupted
+    // turn's save is admitted and then held at the gate, before it writes.
+    let gate = Arc::clone(&desk.save_gate);
+    let held = gate.lock().expect("gate");
+    let pid = desk.last_pid().expect("engine pid");
+    let _ = std::process::Command::new("kill")
+        .args(["-9", &pid.to_string()])
+        .status();
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    // The guard is still actionable: Discard removes the earlier record and
+    // tombstones the conversation while the save waits.
+    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
+        .await
+        .expect("switched");
+    assert!(
+        settle_for(20, || !files_under(&desk.history_root)
+            .iter()
+            .any(|f| f.to_string_lossy().contains(&history)))
+        .await,
+        "the discard removed the saved record"
+    );
+    drop(held);
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("back to A");
+    assert!(settle_for(30, || desk.conversation().is_null()).await);
+    let ids = history_ids(&mut desk).await;
+    assert!(!ids.contains(&history), "never written again: {ids:?}");
+    assert!(
+        !files_under(&desk.history_root)
+            .iter()
+            .any(|f| f.to_string_lossy().contains(&history)),
+        "and no record file"
+    );
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+/// C30 (I1): completing an Add-a-tenant draft makes the new tenant active,
+/// so it is the same guarded switch: a pending Harness decision refuses it
+/// with the guard naming the draft, nothing is committed or retired until
+/// the operator resolves the conversation, and the resolution completes it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let id = ready(&mut desk).await;
+    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.").await.expect("sent");
+    let c = answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let token = c["approvals"][0]["id"].as_str().expect("id").to_owned();
+    let a = desk.json()["active"]["tenant"]
+        .as_str()
+        .expect("A")
+        .to_owned();
+    let origin = desk.json()["tenants"][0]["origin"]
+        .as_str()
+        .expect("origin")
+        .to_owned();
+    desk.send(json!({"kind": "beginTenantSetup", "mode": "add", "profile": {"label": "Tenant C", "tsgId": "1234567890",
+        "destination": {"kind": "custom", "origin": origin}}}))
+        .await
+        .expect("draft");
+    let setup = desk.json()["setup"].clone();
+    let draft = setup["context"].as_str().expect("draft context").to_owned();
+    let draft_id = setup["tenant"]["id"].as_str().expect("draft id").to_owned();
+    desk.send(json!({"kind": "verifyTenantSetup", "context": draft}))
+        .await
+        .expect("verify");
+    assert!(settle(|| desk.json()["setup"]["verify"]["done"] == true).await);
+    assert_eq!(
+        desk.send(json!({"kind": "completeTenantSetup", "context": draft, "packs": []}))
+            .await,
+        Err(desktop_core::Refusal::DecisionPending)
+    );
+    let s = desk.json();
+    assert_eq!(s["active"]["tenant"], a, "still on A");
+    assert_eq!(
+        s["switchBlocked"]["to"], draft_id,
+        "the guard names the draft"
+    );
+    assert_eq!(s["switchBlocked"]["completion"], true);
+    assert_eq!(s["switchBlocked"]["pending"]["conversation"], id);
+    assert_eq!(s["switchBlocked"]["pending"]["decision"], token);
+    assert_eq!(s["setup"]["context"], draft, "the draft is untouched");
+    assert!(
+        s["harness"]["conversation"]["approvals"]
+            .as_array()
+            .is_some_and(|x| !x.is_empty()),
+        "nothing was decided for the operator"
+    );
+    assert!(
+        s["tenants"]
+            .as_array()
+            .expect("tenants")
+            .iter()
+            .all(|t| t["label"] != "Tenant C"),
+        "nothing was committed"
+    );
+    // Stay: the guard closes; the draft, the tenant and the decision remain.
+    desk.send(json!({"kind": "dismissSwitchGuard"}))
+        .await
+        .expect("dismissed");
+    let s = desk.json();
+    assert!(s["switchBlocked"].is_null());
+    assert_eq!(s["setup"]["context"], draft);
+    assert_eq!(s["active"]["tenant"], a);
+    // Archive and complete: the conversation ends (kept), the tenant is
+    // committed and active, the draft is gone.
+    desk.send(json!({"kind": "completeTenantSetup", "context": draft, "packs": [], "resolution": "archive"}))
+        .await
+        .expect("completed");
+    let s = desk.json();
+    assert!(s["setup"].is_null());
+    assert!(s["switchBlocked"].is_null());
+    let c_id = s["tenants"]
+        .as_array()
+        .expect("tenants")
+        .iter()
+        .find(|t| t["label"] == "Tenant C")
+        .and_then(|t| t["id"].as_str())
+        .expect("committed")
+        .to_owned();
+    assert_eq!(s["active"]["tenant"], c_id);
+    assert!(
+        s["harness"]["conversation"].is_null(),
+        "another tenant's conversation is never shown"
+    );
+    desk.send(json!({"kind": "selectTenant", "tenant": a}))
+        .await
+        .expect("back to A");
+    assert!(
+        settle_for(30, || {
+            let c = desk.conversation();
+            c.is_null() || c["phase"] == "ended" || c["phase"] == "ending"
+        })
+        .await
+    );
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}

@@ -17,10 +17,12 @@ const COLORS = { ok: 'var(--v2-ok)', info: 'var(--v2-get)', warn: 'var(--v2-flag
  */
 export function Toasts() {
     const toasts = useShellStore((s) => s.toasts)
+    const scope = useShellStore((s) => s.scope)
     const dismiss = useShellStore((s) => s.dismissToast)
     return (
         <div data-slot='toasts' className='pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4'>
-            {toasts.map((toast) => (
+            {/* Only what speaks for the shown tenant (I2), whatever reached the store. */}
+            {toasts.filter((t) => (t.tenant === null || t.tenant === scope.tenant) && (t.context === null || t.context === scope.context)).map((toast) => (
                 <ToastView key={toast.id} toast={toast} onDismiss={() => dismiss(toast.id)} />
             ))}
         </div>

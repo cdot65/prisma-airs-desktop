@@ -2,4 +2,9 @@
 import type { HoldKind } from "./HoldKind";
 import type { InboxItem } from "./InboxItem";
 
-export type HeldItem = { item: InboxItem, kind: HoldKind, };
+export type HeldItem = { item: InboxItem, kind: HoldKind, 
+/**
+ * When a snoozed item returns (seconds since the epoch), computed
+ * here (C30, I11); none for an acknowledgment.
+ */
+returnsAt: number | null, };

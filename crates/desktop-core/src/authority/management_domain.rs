@@ -67,6 +67,9 @@ pub(super) struct ManagementRecord {
     workspace: Option<WorkspaceRef>,
     /// A Gateway Workspaces listing: its result updates the choice.
     lists_workspaces: bool,
+    /// One product's part of the tenant's Home read (C30, I4): its result
+    /// settles into the tenant's read record as a finite outcome.
+    read_part: Option<crate::features::ProductId>,
 }
 
 /// The binding of one credential generation (context): its session and
@@ -270,6 +273,7 @@ impl State {
             overview,
             workspace,
             lists_workspaces,
+            read_part: None,
         });
         if overview {
             let context = self.management_calls.last().map(|r| r.context.clone());
@@ -280,10 +284,36 @@ impl State {
         Ok((operation, starts))
     }
 
+    /// Admits one product's part of the tenant's Home read (C30, I4): the
+    /// Red Team scans and statistics over the last week, or the model and
+    /// skill scans. The result is observed by the read record, never by a
+    /// presentation observation.
+    pub(super) fn admit_read_part(
+        &mut self,
+        context: ContextRef,
+        product: crate::features::ProductId,
+        keychain: Arc<dyn super::CredentialStore>,
+        session_vault: Arc<SessionVault>,
+    ) -> Result<(OperationId, Vec<crate::runtime::Start>), Refusal> {
+        let request = match product {
+            crate::features::ProductId::RedTeam => ManagementRequest::RedTeam { window: 7 },
+            crate::features::ProductId::ModelSkill => ManagementRequest::SupplyChain,
+            _ => return Err(Refusal::InvalidInput),
+        };
+        let admitted = self.admit_management(context.clone(), request, keychain, session_vault)?;
+        if let Some(record) = self.management_calls.last_mut() {
+            record.read_part = Some(product);
+            record.observed = true;
+        }
+        self.read_part_started(&context);
+        Ok(admitted)
+    }
+
     /// Delivers settled management results to their single observation.
     pub(super) fn sync_management_calls(&mut self) {
         let current = self.active_ref.clone();
         let mut overviews = Vec::new();
+        let mut parts = Vec::new();
         let mut listings = Vec::new();
         // A setup's verify reads (C29) belong to the draft's context and
         // settle into its lines instead of an observation.
@@ -323,6 +353,9 @@ impl State {
             if record.overview {
                 overviews.push((record.context.clone(), result.clone()));
             }
+            if let Some(product) = record.read_part {
+                parts.push((record.context.clone(), product, result.clone()));
+            }
             if record.lists_workspaces
                 && let ManagementResult::Gateway {
                     gateway: crate::gateway::GatewayResult::List { list },
@@ -345,6 +378,9 @@ impl State {
         }
         for (context, result) in overviews {
             self.overview_settled(&context, result);
+        }
+        for (context, product, result) in parts {
+            self.product_read_settled(&context, product, &result);
         }
         for (context, list) in listings {
             self.gateway_listed(&context, &list);

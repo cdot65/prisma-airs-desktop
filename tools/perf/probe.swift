@@ -12,7 +12,9 @@
 //       can reach no other application) and polls the focused element's
 //       AXValue every 0.5 ms until the character arrived. Prints
 //       {"samples": [ms, ...]}.
-//   probe activate <pid> <role> <label prefix> <heading> <text prefix> <timeout ms>
+//   probe activate <pid> <role> <label prefix> <heading> <text prefix> <timeout ms> [<status prefix>]
+//     (with a status prefix, the destination counts as shown only once a static text with
+//      that prefix is present too: the cached read status of the tenant switched to)
 //       AXPresses the first element with that role whose label starts with
 //       the prefix, then polls the Accessibility tree every 2 ms until an
 //       AXHeading titled exactly <heading> and an AXStaticText whose value
@@ -113,9 +115,10 @@ case "type":
     }
     emit(["samples": samples])
 case "activate":
-    guard args.count == 8, let pid = pid_t(args[2]), let timeout = Double(args[7]) else {
-        fail("activate <pid> <role> <label prefix> <heading> <text prefix> <timeout ms>")
+    guard args.count == 8 || args.count == 9, let pid = pid_t(args[2]), let timeout = Double(args[7]) else {
+        fail("activate <pid> <role> <label prefix> <heading> <text prefix> <timeout ms> [<status prefix>]")
     }
+    let statusPrefix: String? = args.count == 9 ? args[8] : nil
     let app = AXUIElementCreateApplication(pid)
     func elements() -> [AXUIElement] {
         var out: [AXUIElement] = []
@@ -136,13 +139,17 @@ case "activate":
         polls += 1
         var heading = false
         var text = false
+        var status = statusPrefix == nil
         for el in elements() {
             let role = attr(el, kAXRoleAttribute) as? String
             if role == "AXHeading", label(el) == args[5] { heading = true }
-            if role == "AXStaticText", (attr(el, kAXValueAttribute) as? String)?.hasPrefix(args[6]) == true { text = true }
-            if heading && text { break }
+            if role == "AXStaticText", let value = attr(el, kAXValueAttribute) as? String {
+                if value.hasPrefix(args[6]) { text = true }
+                if let prefix = statusPrefix, value.hasPrefix(prefix) { status = true }
+            }
+            if heading && text && status { break }
         }
-        if heading && text {
+        if heading && text && status {
             emit(["ms": ms(since: start), "polls": polls])
             exit(0)
         }

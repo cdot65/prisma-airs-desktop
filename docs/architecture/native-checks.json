@@ -1188,6 +1188,24 @@
         "id": "C29-N06",
         "check": "T09 matrix: every wizard step and the add sheet captured in light and dark at 100% and 200% zoom; Tab reaches each step's controls; at the 900\u00d7600 minimum the sheet's Cancel is inside the window once focused (the dialog scrolls within the viewport)."
       }
+    ],
+    "C30": [
+      {
+        "id": "C30-N01",
+        "check": "With a Harness conversation waiting for the operator's approval (the real pinned engine against the synthetic Gateway), switching tenants through the switcher, through the palette's 'Switch to \u2026' entry and through Go \u203a Switch Tenant\u2026 each shows the one guard dialog ('A Harness decision is waiting') rendered from the core's refusal; Stay keeps the tenant and the approval; 'Archive and switch' ends the conversation and makes the other tenant active; the decision was never taken for the operator."
+      },
+      {
+        "id": "C30-N02",
+        "check": "A tenant that was never read shows 'First read pending' on Home and an empty Inbox saying the same (never sample data); 'Read now' runs the core's read against the synthetic endpoint and announces its completion from the core's read status (all sources complete, or the partial sources named); the Inbox then lists the read's items in tabs with counts and a detail pane whose action navigates with context."
+      },
+      {
+        "id": "C30-N03",
+        "check": "Snooze is a core intent: snoozing an item from Home and reading its return time in the Inbox row, the Inbox detail pane and the toast all state the same core-computed time; Acknowledge marks the item and takes it off Home; Unsnooze brings it back; every step captured in light and dark at 100% and 200%."
+      },
+      {
+        "id": "C30-N04",
+        "check": "The accessibility additions (DESIGN-V2 \u00a78, T09) on the changed UI: from Read now, Tab reaches the Inbox tabs, the rows and the detail actions with every focused frame inside the window and Enter opens a row's detail; the read-status line is in the tree; the guard is the one topmost modal (the rail and page hidden beneath it, initial focus on Stay, the safe default, so Enter on arrival ends nothing) and Escape (Stay) returns focus to the switcher that asked; with macOS Reduce Motion on and the app relaunched a snooze toast persists past 8 s until dismissed (setting restored); at the 900\u00d7600 minimum and 200% zoom in both themes the Inbox columns stack so rows, the detail text and facts and every action stay inside the window with no horizontal scroll."
+      }
     ]
   }
 }

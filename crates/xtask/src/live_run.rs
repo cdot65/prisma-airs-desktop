@@ -681,8 +681,11 @@ impl Desk {
             .find(|t| t.label == label)
             .map(|t| t.id.clone())
             .ok_or_else(|| invalid("the created tenant is not listed"))?;
-        self.send(Intent::SelectTenant { tenant: id.clone() })
-            .await?;
+        self.send(Intent::SelectTenant {
+            tenant: id.clone(),
+            resolution: None,
+        })
+        .await?;
         self.wait(|s| s.active.as_ref().is_some_and(|a| a.tenant == id))
             .await?;
         Ok(())

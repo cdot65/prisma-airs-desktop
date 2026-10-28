@@ -401,6 +401,8 @@ pub struct Desk {
     pub launcher: Arc<ProcessLauncher>,
     pub runtime_root: PathBuf,
     pub history_root: PathBuf,
+    /// Held by a test to keep an admitted history save open before it writes.
+    pub save_gate: Arc<Mutex<()>>,
 }
 
 /// Waits up to `secs` for `condition`.
@@ -444,6 +446,7 @@ pub async fn desk_with(engine: Option<Engine>, fixture: Option<Pin>) -> Desk {
         .join(format!("airs-c19-desk-{}", hex::encode(rand_bytes())))
         .join("harness-runtime");
     let history_root = runtime_root.with_file_name("harness-history");
+    let save_gate: Arc<Mutex<()>> = Arc::default();
     adapters.harness = HarnessAdapters {
         launcher: launcher.clone(),
         engine,
@@ -453,6 +456,7 @@ pub async fn desk_with(engine: Option<Engine>, fixture: Option<Pin>) -> Desk {
             pin,
             bootstrap_timeout: Duration::from_secs(1),
         }),
+        save_gate: Some(Arc::clone(&save_gate)),
     };
     let core = Core::new(
         CoreConfig {
@@ -482,6 +486,7 @@ pub async fn desk_with(engine: Option<Engine>, fixture: Option<Pin>) -> Desk {
         launcher,
         runtime_root,
         history_root,
+        save_gate,
     };
     desk.send(
         json!({"kind": "createTenant", "profile": {"label": "Tenant A", "tsgId": TSG,
@@ -519,6 +524,7 @@ pub async fn relaunch_from(old: Desk, online: bool, real: bool, crashed: bool) -
         launcher,
         runtime_root,
         history_root,
+        save_gate,
         ..
     } = old;
     drop(core);
@@ -546,6 +552,7 @@ pub async fn relaunch_from(old: Desk, online: bool, real: bool, crashed: bool) -
             pin,
             bootstrap_timeout: Duration::from_secs(1),
         }),
+        save_gate: Some(Arc::clone(&save_gate)),
     };
     let origin = if online {
         format!("https://localhost:{}", server.port)
@@ -582,6 +589,7 @@ pub async fn relaunch_from(old: Desk, online: bool, real: bool, crashed: bool) -
         launcher,
         runtime_root,
         history_root,
+        save_gate,
     }
 }
 

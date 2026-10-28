@@ -121,7 +121,7 @@ describe('R2Onboard boards', () => {
         expect(screen.getByRole('heading', { level: 1, name: 'Ready' })).toBeInTheDocument()
         expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Products: AI Runtime Security')
         await user.click(screen.getByRole('button', { name: 'Open Prisma AIRS' }))
-        expect(dispatch).toHaveBeenCalledWith({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'] })
+        expect(dispatch).toHaveBeenCalledWith({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'], resolution: null })
         expect(screen.getByRole('button', { name: 'Opening…' })).toBeDisabled()
     })
     it('R2AddTenant: no Welcome or Academy step, a 244px rail, Cancel on every step and no Back on the first', () => {

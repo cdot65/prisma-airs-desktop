@@ -4,4 +4,4 @@
  * Native rejection of an Intent before admission. Sanitized: it names the
  * class of refusal only, never secret or remote content.
  */
-export type Refusal = "staleContext" | "capabilityMissing" | "invalidInput" | "reviewInvalid" | "reviewConsumed" | "busy" | "lockedStore" | "deniedStore" | "alreadyProcessed" | "sequenceGap" | "shuttingDown";
+export type Refusal = "staleContext" | "capabilityMissing" | "invalidInput" | "reviewInvalid" | "reviewConsumed" | "busy" | "lockedStore" | "deniedStore" | "alreadyProcessed" | "sequenceGap" | "shuttingDown" | "decisionPending";

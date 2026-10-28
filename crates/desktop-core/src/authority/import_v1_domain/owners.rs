@@ -1017,7 +1017,7 @@ async fn save_conversation(
     let scope = history_scope(inner, tenant, workspace)?;
     {
         let mut s = lock(inner).map_err(|_| Problem::AccessDenied)?;
-        if !s.admit_history_write(tenant, workspace, &scope) {
+        if !s.admit_history_write(tenant, workspace, &scope, &record.id) {
             return Err(Problem::AccessDenied);
         }
     }

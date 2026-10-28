@@ -7,7 +7,7 @@ import type { RuntimeOverview } from "./RuntimeOverview";
 
 export type OverviewView = { 
 /**
- * The last overview read for this context (kept when a refresh fails).
+ * The last overview read for this tenant (kept when a refresh fails).
  */
 read: RuntimeOverview | null, refreshing: boolean, 
 /**

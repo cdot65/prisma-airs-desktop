@@ -1,0 +1,373 @@
+{
+ "observations": {
+  "captures": {
+   "guard": {
+    "light-100": "docs/planning/evidence/C30/native/captures/guard-light-100.png",
+    "dark-100": "docs/planning/evidence/C30/native/captures/guard-dark-100.png",
+    "dark-200": "docs/planning/evidence/C30/native/captures/guard-dark-200.png",
+    "light-200": "docs/planning/evidence/C30/native/captures/guard-light-200.png"
+   },
+   "home-fresh": {
+    "light-100": "docs/planning/evidence/C30/native/captures/home-fresh-light-100.png",
+    "dark-100": "docs/planning/evidence/C30/native/captures/home-fresh-dark-100.png",
+    "dark-200": "docs/planning/evidence/C30/native/captures/home-fresh-dark-200.png",
+    "light-200": "docs/planning/evidence/C30/native/captures/home-fresh-light-200.png"
+   },
+   "home-read": {
+    "light-100": "docs/planning/evidence/C30/native/captures/home-read-light-100.png",
+    "dark-100": "docs/planning/evidence/C30/native/captures/home-read-dark-100.png",
+    "dark-200": "docs/planning/evidence/C30/native/captures/home-read-dark-200.png",
+    "light-200": "docs/planning/evidence/C30/native/captures/home-read-light-200.png"
+   },
+   "inbox": {
+    "light-100": "docs/planning/evidence/C30/native/captures/inbox-light-100.png",
+    "dark-100": "docs/planning/evidence/C30/native/captures/inbox-dark-100.png",
+    "dark-200": "docs/planning/evidence/C30/native/captures/inbox-dark-200.png",
+    "light-200": "docs/planning/evidence/C30/native/captures/inbox-light-200.png"
+   },
+   "inbox-snoozed": {
+    "light-100": "docs/planning/evidence/C30/native/captures/inbox-snoozed-light-100.png",
+    "dark-100": "docs/planning/evidence/C30/native/captures/inbox-snoozed-dark-100.png",
+    "dark-200": "docs/planning/evidence/C30/native/captures/inbox-snoozed-dark-200.png",
+    "light-200": "docs/planning/evidence/C30/native/captures/inbox-snoozed-light-200.png"
+   },
+   "inbox-min-200": {
+    "light": "docs/planning/evidence/C30/native/captures/inbox-min-200-light.png",
+    "dark": "docs/planning/evidence/C30/native/captures/inbox-min-200-dark.png"
+   }
+  },
+  "harness_ready": true,
+  "approval_pending": true,
+  "tree_approval": "docs/planning/evidence/C30/native/tree-harness-approval.json",
+  "guard_switcher": {
+   "shown": true,
+   "body_names_target": true,
+   "buttons": [
+    "Stay",
+    "Discard and switch",
+    "Archive and switch"
+   ],
+   "siblings_hidden": true,
+   "modal": true,
+   "initial_focus": "Stay",
+   "initial_focus_stay": true,
+   "stay_closed": true,
+   "focus_after": "Switch tenant: Tenant A \u00b7 Production \u00b7 TSG 1234567890",
+   "focus_returned": true,
+   "siblings_back": true,
+   "still_tenant_a": true,
+   "approval_kept": true
+  },
+  "tree_guard": "docs/planning/evidence/C30/native/tree-guard-switcher.json",
+  "guard_palette": {
+   "shown": true
+  },
+  "guard_menu": {
+   "shown": true
+  },
+  "archive_switch": {
+   "switched": true,
+   "lands_on_home": true,
+   "runs_after": 0,
+   "engine_gone": true
+  },
+  "tree_home_fresh": "docs/planning/evidence/C30/native/tree-home-fresh.json",
+  "fresh": {
+   "home_pending": true,
+   "no_attention": true,
+   "inbox_pending": true,
+   "inbox_empty": true
+  },
+  "tree_inbox_fresh": "docs/planning/evidence/C30/native/tree-inbox-fresh.json",
+  "read": {
+   "done": true,
+   "status": "Read finished at 14:58 \u00b7 all sources complete",
+   "toast": "Read finished at 14:58 \u00b7 all sources complete",
+   "requests": 2
+  },
+  "tree_home_read": "docs/planning/evidence/C30/native/tree-home-read.json",
+  "inbox": {
+   "tabs": [
+    "All 1",
+    "Needs action 1",
+    "Updates 0",
+    "Snoozed 0"
+   ],
+   "rows": [
+    "Warning 3 violating sessions to investigate AI Runtime Secur"
+   ],
+   "detail": true,
+   "action": "Inspect sessions",
+   "navigated": true,
+   "destination_heading": "Investigate sessions"
+  },
+  "tree_inbox": "docs/planning/evidence/C30/native/tree-inbox.json",
+  "snooze": {
+   "offered_on_home": true,
+   "title": "3 violating sessions to investigate",
+   "toast": true,
+   "returns_toast": "tomorrow 15:00",
+   "off_home": true,
+   "returns_row": "tomorrow 15:00",
+   "returns_pane": "tomorrow 15:00",
+   "all_equal": true,
+   "unsnoozed": true,
+   "acknowledged": true,
+   "ack_off_home": true
+  },
+  "tree_snoozed": "docs/planning/evidence/C30/native/tree-inbox-snoozed.json",
+  "a11y": {
+   "walk": [
+    {
+     "role": "AXRadioButton",
+     "label": "All 1",
+     "inside": true
+    },
+    {
+     "role": "AXRadioButton",
+     "label": "Needs action 0",
+     "inside": true
+    },
+    {
+     "role": "AXRadioButton",
+     "label": "Updates 1",
+     "inside": true
+    },
+    {
+     "role": "AXRadioButton",
+     "label": "Snoozed 0",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Warning 3 violating sessions to investigate Acknowledged AI ",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Inspect sessions",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Mark as needing action",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Snooze 24 hours: 3 violating sessions to investigate",
+     "inside": true
+    },
+    {
+     "role": null,
+     "label": "",
+     "inside": false
+    },
+    {
+     "role": "AXPopUpButton",
+     "label": "Switch tenant: Tenant B \u00b7 Production \u00b7 TSG 1234567890",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Home Command 1",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Inbox Command 2",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Harness Command 3",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Academy Command 4",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "Test Cases Command 5",
+     "inside": true
+    },
+    {
+     "role": "AXButton",
+     "label": "API Client Command 6",
+     "inside": true
+    }
+   ],
+   "keyboard": {
+    "tabs": true,
+    "row": true,
+    "detail_actions": true,
+    "all_inside": true,
+    "enter_opens_detail": true
+   },
+   "status_line_present": true,
+   "zoom": {
+    "light": {
+     "window": [
+      900,
+      600
+     ],
+     "extent": {
+      "window_right": 995,
+      "content_right": 995,
+      "overflow_px": 0
+     },
+     "horizontal_scrollbars": 0,
+     "pane_inside": true,
+     "pane_right": 907,
+     "window_right": 995,
+     "actions": [
+      {
+       "label": "Mark as needing action",
+       "inside_x": true,
+       "inside_when_focused": true
+      },
+      {
+       "label": "Snooze 24 hours: 3 violating sessions to",
+       "inside_x": true,
+       "inside_when_focused": true
+      }
+     ],
+     "texts_inside": true,
+     "why_present": true,
+     "rows_inside": true,
+     "capture": "docs/planning/evidence/C30/native/captures/inbox-min-200-light.png",
+     "tree": "docs/planning/evidence/C30/native/tree-inbox-min-200-light.json"
+    },
+    "dark": {
+     "window": [
+      900,
+      600
+     ],
+     "extent": {
+      "window_right": 995,
+      "content_right": 995,
+      "overflow_px": 0
+     },
+     "horizontal_scrollbars": 0,
+     "pane_inside": true,
+     "pane_right": 907,
+     "window_right": 995,
+     "actions": [
+      {
+       "label": "Mark as needing action",
+       "inside_x": true,
+       "inside_when_focused": true
+      },
+      {
+       "label": "Snooze 24 hours: 3 violating sessions to",
+       "inside_x": true,
+       "inside_when_focused": true
+      }
+     ],
+     "texts_inside": true,
+     "why_present": true,
+     "rows_inside": true,
+     "capture": "docs/planning/evidence/C30/native/captures/inbox-min-200-dark.png",
+     "tree": "docs/planning/evidence/C30/native/tree-inbox-min-200-dark.json"
+    }
+   },
+   "reduce_motion": {
+    "active": true,
+    "read_again": true,
+    "offered": true,
+    "tree": "docs/planning/evidence/C30/native/tree-reduce-motion-home.json",
+    "persists": true,
+    "dismissed": true,
+    "restored": true
+   }
+  }
+ },
+ "log": [
+  {
+   "t": "14:55:41",
+   "step": "typed",
+   "field": "TSG ID (optional)",
+   "attempts": 1
+  },
+  {
+   "t": "14:55:43",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "14:55:45",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  },
+  {
+   "t": "14:55:48",
+   "step": "typed",
+   "field": "AIRS API key",
+   "attempts": 1
+  },
+  {
+   "t": "14:55:50",
+   "step": "typed",
+   "field": "Client ID",
+   "attempts": 1
+  },
+  {
+   "t": "14:55:52",
+   "step": "typed",
+   "field": "Client secret",
+   "attempts": 1
+  },
+  {
+   "t": "14:55:55",
+   "step": "typed",
+   "field": "TSG ID (optional)",
+   "attempts": 1
+  },
+  {
+   "t": "14:55:57",
+   "step": "typed",
+   "field": "Label",
+   "attempts": 1
+  },
+  {
+   "t": "14:55:59",
+   "step": "typed",
+   "field": "Endpoint origin",
+   "attempts": 1
+  },
+  {
+   "t": "14:56:04",
+   "step": "typed",
+   "field": "Runtime endpoint",
+   "attempts": 1
+  },
+  {
+   "t": "14:56:06",
+   "step": "typed",
+   "field": "Workspace API key with completions access",
+   "attempts": 1
+  },
+  {
+   "t": "14:56:18",
+   "step": "typed",
+   "field": "Message",
+   "attempts": 1
+  },
+  {
+   "t": "14:58:11",
+   "step": "typed",
+   "field": "Client ID",
+   "attempts": 1
+  },
+  {
+   "t": "14:58:13",
+   "step": "typed",
+   "field": "Client secret",
+   "attempts": 1
+  }
+ ]
+}

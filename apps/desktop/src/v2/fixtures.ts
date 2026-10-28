@@ -3,15 +3,13 @@
  * prototype state as a native snapshot the real DesktopClient parses. Built
  * from the wire fixture so a drifted contract fails here first.
  */
-import type { FeatureEntry, ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import type { FeatureEntry, InboxEntry, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
 import { baseSnapshot, tenant, withTenant } from '../test/native'
-
-const unavailable = (reason: string, plannedChunk: string): FeatureEntry['availability'] => ({ state: 'unavailable', reason, plannedChunk })
 
 /** The v2 catalogue exactly as desktop-core's `catalogue_for(V2)` lists it (C28). */
 export const V2_FEATURES: FeatureEntry[] = [
     { id: 'home', label: 'Home', availability: { state: 'available' }, shortcut: 1, sidebar: true },
-    { id: 'inbox', label: 'Inbox', availability: unavailable('The Inbox arrives in C30', 'C30'), shortcut: 2, sidebar: true },
+    { id: 'inbox', label: 'Inbox', availability: { state: 'available' }, shortcut: 2, sidebar: true },
     { id: 'harness', label: 'Harness', availability: { state: 'available' }, shortcut: 3, sidebar: true },
     { id: 'academy', label: 'Academy', availability: { state: 'available' }, shortcut: 4, sidebar: true },
     { id: 'library', label: 'Test Cases', availability: { state: 'available' }, shortcut: 5, sidebar: true },
@@ -45,3 +43,104 @@ export function fxSwitcher(): ShellSnapshot {
 
 /** fx.palette: Home with the palette opened by the native menu in the test. */
 export const fxPalette = fxSwitcher
+
+const KEY_ITEM: InboxEntry = {
+    id: 'runtime-key:k1',
+    kind: 'runtime',
+    needsAction: true,
+    severity: 'warn',
+    title: 'Runtime expires in 5 days',
+    detail: 'The API key "Runtime" expires on 1 November.',
+    source: 'API keys · read 07:45',
+    product: 'runtimeSecurity',
+    target: { feature: 'administration', product: 'runtimeSecurity', resource: 'apiKeys', item: 'Runtime' },
+    actionLabel: 'Open API keys',
+    facts: [{ label: 'Key', value: 'Runtime' }, { label: 'Expires', value: '2026-11-01' }],
+    when: 1_761_490_000,
+    hold: null,
+}
+const ACTIVITY_ITEM: InboxEntry = {
+    id: 'runtime-activity',
+    kind: 'runtime',
+    needsAction: false,
+    severity: 'ok',
+    title: '15 sessions in the last day, 3 violating',
+    detail: 'Runtime Security scanned 15 sessions.',
+    source: 'Sessions chart · read 07:45',
+    product: 'runtimeSecurity',
+    target: { feature: 'sessions', product: 'runtimeSecurity', resource: null, item: null },
+    actionLabel: 'Open Sessions',
+    facts: [],
+    when: 1_761_490_000,
+    hold: null,
+}
+const SNOOZED_ITEM: InboxEntry = {
+    id: 'gateway-ws-1',
+    kind: 'gateway',
+    needsAction: true,
+    severity: 'bad',
+    title: 'Gateway workspace Team A over quota',
+    detail: 'The day is over its quota; requests are refused.',
+    source: 'Gateway usage · read 07:45',
+    product: 'gateway',
+    target: { feature: 'gateway', product: 'gateway', resource: null, item: null },
+    actionLabel: 'Open AI Gateway',
+    facts: [],
+    when: 1_761_490_000,
+    hold: { kind: 'snooze', returnsAt: 1_761_576_400 },
+}
+const SETUP_ITEM: InboxEntry = {
+    id: 'vw-1',
+    kind: 'setupWarning',
+    needsAction: true,
+    severity: 'warn',
+    title: 'AI Gateway: setup warning',
+    detail: 'Needs the management client; not checked.',
+    source: 'Setup · verify',
+    product: 'gateway',
+    target: { feature: 'gateway', product: 'gateway', resource: null, item: null },
+    actionLabel: 'Open AI Gateway',
+    facts: [{ label: 'Product', value: 'AI Gateway' }],
+    when: 1_761_480_000,
+    hold: null,
+}
+
+/** fx.inbox (R2Inbox): Northwind read with partial coverage; items of every kind, one snoozed. */
+export function fxInbox(): ShellSnapshot {
+    const base = fxSwitcher()
+    const nw = tenant({ id: 'tn-0123456789abcdef', label: 'Northwind Health', tsgId: '1762204418', products: ['runtimeSecurity', 'gateway'] })
+    return {
+        ...base,
+        tenants: [nw, base.tenants[1] as TenantView],
+        activeFeature: 'inbox',
+        // The read the entries came from, fresh at fixture time (within the ten-minute window); partial, so a gap.
+        overview: {
+            ...base.overview,
+            read: { readAt: 1_761_490_000, chart: { bucketSeconds: 3600, buckets: [] }, chartFailure: null, summary: { sessions: 15, violating: 3, benign: 12, detectionEvents: 3 }, keysComplete: true, keysFailure: null, items: [], gaps: ['Gateway limit policies unavailable'], gateway: null },
+            fresh: true,
+            face: 'gap',
+        },
+        inbox: {
+            items: [KEY_ITEM, ACTIVITY_ITEM, SNOOZED_ITEM, SETUP_ITEM],
+            read: {
+                state: 'done',
+                lastReadAt: 1_761_490_000,
+                failedAt: null,
+                settledAt: 1_761_490_000,
+                products: [
+                    { product: 'runtimeSecurity', state: 'ok', sourcesRead: 2, sourcesTotal: 2, detail: null },
+                    { product: 'gateway', state: 'incomplete', sourcesRead: 1, sourcesTotal: 2, detail: 'workspace Team A' },
+                ],
+                sourcesMissing: ['Gateway limits'],
+                generation: 1,
+                rechecking: null,
+            },
+            lastSnooze: null,
+        },
+    }
+}
+
+/** fx.fresh: a tenant that has never been read (I12). */
+export function fxFresh(): ShellSnapshot {
+    return { ...fxSwitcher(), activeFeature: 'home' }
+}

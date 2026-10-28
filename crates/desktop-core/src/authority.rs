@@ -28,6 +28,7 @@ mod harness_identity;
 mod harness_mcp;
 mod harness_tools;
 mod import_v1_domain;
+mod inbox_domain;
 mod inference_domain;
 mod learner_domain;
 mod library_domain;
@@ -47,7 +48,13 @@ pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
 use learner_domain::{LearnerPhase, LearnerSession};
 pub use library_domain::{CatalogSource, LibraryNotice, LibraryState, LibraryView};
 pub use management_domain::ManagementHandle;
-pub use observation_domain::{AttentionFace, HeldItem, HoldKind, OverviewView};
+// Re-exported for the host and tests; the snapshot and intents name them by path.
+#[allow(unused_imports)]
+pub use inbox_domain::{
+    InboxEntry, InboxKind, InboxTarget, InboxView, ProductRead, ProductReadState, ReadState,
+    ReadStatus, SwitchResolution,
+};
+pub use observation_domain::{AttentionFace, HeldItem, HoldKind, OverviewView, SnoozeReceipt};
 pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineState, OfflineView};
 pub use sessions_domain::{
     ExportKind, ExportState, ExportView, InvestigationView, ReportTarget, ReportUndoView,
@@ -158,6 +165,10 @@ pub enum Intent {
     CompleteTenantSetup {
         context: ContextRef,
         packs: Vec<features::ProductId>,
+        /// Completion is a tenant switch (I1): a pending Harness decision
+        /// refuses it until the operator resolves the conversation.
+        #[serde(default)]
+        resolution: Option<inbox_domain::SwitchResolution>,
     },
     /// Drop the draft and clean up its credentials. Nothing else changes.
     DiscardTenantSetup {
@@ -170,6 +181,40 @@ pub enum Intent {
     /// Make a tenant active; issues a new context reference.
     SelectTenant {
         tenant: TenantId,
+        /// How a switch blocked by a pending Harness decision proceeds
+        /// (C30, I1); absent, a pending decision refuses the switch.
+        #[serde(default)]
+        resolution: Option<inbox_domain::SwitchResolution>,
+    },
+    /// Close the switch guard without switching (C30).
+    DismissSwitchGuard,
+    /// Read the active tenant now: a finite read of every chosen product
+    /// (the Runtime overview with the chosen Gateway workspace's day, the
+    /// Red Team scans and statistics, the model and skill scans) (C30, I4).
+    ReadTenant {
+        context: ContextRef,
+    },
+    /// Read one chosen product again after a role was granted; the
+    /// completion names the product (C30).
+    RecheckProduct {
+        context: ContextRef,
+        product: features::ProductId,
+    },
+    /// Set an Inbox entry aside until its level rises (C30, I11).
+    AcknowledgeItem {
+        context: ContextRef,
+        id: String,
+    },
+    /// Set an Inbox entry aside for 24 hours; the return time is computed
+    /// here and shown wherever the entry appears (C30, I11).
+    SnoozeItem {
+        context: ContextRef,
+        id: String,
+    },
+    /// Bring a held entry back.
+    UnsnoozeItem {
+        context: ContextRef,
+        id: String,
     },
     /// Remove a tenant profile and clean up its credential.
     DeleteTenant {
@@ -738,6 +783,12 @@ intent_kinds! {
     DiscardTenantSetup => "discardTenantSetup",
     CreateTenant => "createTenant",
     SelectTenant => "selectTenant",
+    DismissSwitchGuard => "dismissSwitchGuard",
+    ReadTenant => "readTenant",
+    RecheckProduct => "recheckProduct",
+    AcknowledgeItem => "acknowledgeItem",
+    SnoozeItem => "snoozeItem",
+    UnsnoozeItem => "unsnoozeItem",
     DeleteTenant => "deleteTenant",
     ConfigureScanCredential => "configureScanCredential",
     RemoveScanCredential => "removeScanCredential",
@@ -845,7 +896,7 @@ intent_kinds! {
 }
 
 /// Every refusal (a new one fails to build until it is listed here).
-const REFUSALS: [Refusal; 11] = [
+const REFUSALS: [Refusal; 12] = [
     Refusal::StaleContext,
     Refusal::CapabilityMissing,
     Refusal::InvalidInput,
@@ -857,6 +908,7 @@ const REFUSALS: [Refusal; 11] = [
     Refusal::AlreadyProcessed,
     Refusal::SequenceGap,
     Refusal::ShuttingDown,
+    Refusal::DecisionPending,
 ];
 const _: fn(Refusal) = |r| match r {
     Refusal::StaleContext
@@ -869,7 +921,8 @@ const _: fn(Refusal) = |r| match r {
     | Refusal::DeniedStore
     | Refusal::AlreadyProcessed
     | Refusal::SequenceGap
-    | Refusal::ShuttingDown => {}
+    | Refusal::ShuttingDown
+    | Refusal::DecisionPending => {}
 };
 const HEALTHS: [StorageHealth; 4] = [
     StorageHealth::Ready,
@@ -962,6 +1015,10 @@ pub enum Refusal {
     SequenceGap,
     #[error("the desktop is shutting down")]
     ShuttingDown,
+    /// A Harness decision is pending: the tenant switch waits for the
+    /// operator's resolution (I1); the snapshot's `switch_blocked` says which.
+    #[error("a Harness decision is pending")]
+    DecisionPending,
 }
 
 /// The product context a caller asks to observe.
@@ -1120,9 +1177,13 @@ pub struct ResetFailure {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct SwitchBlocked {
-    /// The tenant the switch was asked for.
+    /// The tenant the switch was asked for (a setup draft's id when the
+    /// switch is its completion).
     pub to: TenantId,
     pub pending: PendingDecisionRef,
+    /// The switch is the completion of the tenant setup draft `to`: the
+    /// resolution is re-sent with `completeTenantSetup` (C30, I1).
+    pub completion: bool,
 }
 
 /// The conversation and decision that hold a switch (ids only; no content).
@@ -1189,6 +1250,8 @@ pub struct ShellSnapshot {
     pub library: LibraryView,
     /// The active context's Runtime Home/Inbox observations.
     pub overview: OverviewView,
+    /// The active tenant's Inbox and read status (C30).
+    pub inbox: inbox_domain::InboxView,
     /// API Client projects on this Mac (C14).
     pub workbench: WorkbenchView,
     /// The active context's Gateway workspaces and choice (C16).
@@ -1659,14 +1722,29 @@ struct State {
     /// Every opened tenant's case Library (C12).
     libraries: Vec<library_domain::Library>,
     case_catalog: url::Url,
-    /// The active context's last Runtime overview (C12).
-    overview: Option<observation_domain::OverviewRecord>,
+    /// Every opened tenant's Home reads (C12, C30): kept across a switch
+    /// away and back; a retired context's reply is never recorded.
+    overviews: Vec<observation_domain::OverviewRecord>,
     /// Attention holds per tenant (memory only, like v1).
     holds: Vec<(TenantId, Vec<observation_domain::Hold>)>,
     /// Seconds added to the wall clock (fixture builds only move it).
     clock_offset: u32,
+    /// A tenant switch held by a pending Harness decision (C30, I1).
+    switch_blocked: Option<SwitchBlocked>,
+    /// Conversations the operator discarded (C30): their records are
+    /// removed and no later save of theirs is admitted.
+    history_discarded: Vec<(crate::harness::history::Scope, String)>,
+    /// History work a resolution queued, taken by the intent's effects.
+    history_jobs: Vec<harness_history::HistoryJob>,
+    /// Discards whose record removal failed (C30): shown on the workspace's
+    /// history until the operator removes the record.
+    history_discard_failures: Vec<(
+        crate::harness::history::Scope,
+        String,
+        crate::harness::history::HistoryFailure,
+    )>,
     /// The overview's time-dependent state at the last deadline tick.
-    overview_published: Option<(bool, observation_domain::AttentionFace, Vec<String>)>,
+    overview_published: Option<observation_domain::OverviewSignature>,
     deadline_tick: std::time::Duration,
     /// API Client projects and documents (C14).
     workbench: workbench_domain::Workbench,
@@ -1766,7 +1844,7 @@ impl State {
             onboarding: self.shown_onboarding(),
             active_feature: self.active_feature(),
             show_calls: self.show_calls(),
-            switch_blocked: None,
+            switch_blocked: self.switch_blocked.clone(),
             setup: self.setup_view(),
             features: features::catalogue_for(self.ui_variant()),
             fixture_build: cfg!(feature = "test-fixtures"),
@@ -1835,6 +1913,7 @@ impl State {
             sessions: self.sessions_view(),
             library: self.library_view(),
             overview: self.overview_view(),
+            inbox: self.inbox_view(&self.overview_view()),
             workbench: self.workbench_view(),
             gateway: self.gateway_view(),
             harness: self.harness_view(self.harness_engine),
@@ -2640,9 +2719,13 @@ impl Core {
             library_root: adapters.library_root.clone(),
             libraries: Vec::new(),
             case_catalog: config.case_catalog.clone(),
-            overview: None,
+            overviews: Vec::new(),
             holds: Vec::new(),
             clock_offset: 0,
+            switch_blocked: None,
+            history_discarded: Vec::new(),
+            history_jobs: Vec::new(),
+            history_discard_failures: Vec::new(),
             overview_published: None,
             deadline_tick: config.deadline_tick,
             workbench: workbench_domain::Workbench::default(),
@@ -3475,8 +3558,21 @@ fn admit(
             effects.push(Effect::Start(state.take_gateway_starts()));
             state.changed();
         }
-        Intent::CompleteTenantSetup { context, packs } => {
+        Intent::CompleteTenantSetup {
+            context,
+            packs,
+            resolution,
+        } => {
             state.require_storage()?;
+            let draft = state.completable_setup(&context, &packs)?;
+            // Completion makes the new tenant active: the one guarded switch
+            // path (I1). A pending Harness decision refuses it, with the
+            // draft, the active tenant and the decision all untouched.
+            if let Err(refusal) = state.guard_switch(&draft, resolution, true) {
+                state.changed();
+                return Err(refusal);
+            }
+            effects.extend(state.take_history_jobs());
             let before = state.data.clone();
             let recorded_secs = wall_secs(state.clock_offset);
             let done = state.complete_setup(&context, packs, recorded_secs)?;
@@ -3542,17 +3638,105 @@ fn admit(
             }
             state.changed();
         }
-        Intent::SelectTenant { tenant } => {
+        Intent::SelectTenant { tenant, resolution } => {
             state.require_storage()?;
             // A tenant an unsettled import wrote is not there yet (D050); a
             // setup draft is not a tenant until it completes (C29).
             if !state.committed_tenant(&tenant) || state.v1_hides_tenant(&tenant) {
                 return Err(Refusal::InvalidInput);
             }
+            // The one switch path (I1): a pending Harness decision refuses
+            // it until the operator resolves the conversation.
+            if let Err(refusal) = state.guard_switch(&tenant, resolution, false) {
+                state.changed();
+                return Err(refusal);
+            }
+            effects.extend(state.take_history_jobs());
             let before = state.data.clone();
             state.data.active = Some(tenant);
             state.save_with(&before)?;
             effects.push(Effect::Start(state.reissue_context()));
+            // The new tenant's Home is what a switch shows (C30, shell.md).
+            if state.ui_variant() == features::UiVariant::V2 {
+                state.active_feature = Some(FeatureId::Home);
+            }
+            state.changed();
+        }
+        Intent::DismissSwitchGuard => {
+            state.switch_blocked = None;
+            state.changed();
+        }
+        Intent::ReadTenant { context } => {
+            let tenant = state.check_context(&context)?;
+            let products = state.selected_products(&tenant);
+            // The overview (Runtime sources and the chosen Gateway workspace)
+            // is admitted first; the other chosen products' reads follow,
+            // each a finite part of the same read.
+            let (operation, mut starts) = state.admit_management(
+                context.clone(),
+                ManagementRequest::Overview,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            for product in products.into_iter().filter(|p| {
+                matches!(
+                    p,
+                    features::ProductId::RedTeam | features::ProductId::ModelSkill
+                )
+            }) {
+                match state.admit_read_part(
+                    context.clone(),
+                    product,
+                    Arc::clone(&adapters.keychain),
+                    Arc::clone(session),
+                ) {
+                    Ok((_, more)) => starts.extend(more),
+                    Err(refusal) => state.product_read_refused(&tenant, product, refusal),
+                }
+            }
+            state.set_rechecking(&tenant, None);
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+            effects.push(Effect::Start(state.take_gateway_starts()));
+            state.changed();
+        }
+        Intent::RecheckProduct { context, product } => {
+            let tenant = state.check_context(&context)?;
+            if !state.selected_products(&tenant).contains(&product) {
+                return Err(Refusal::InvalidInput);
+            }
+            let (operation, starts) = match product {
+                features::ProductId::RuntimeSecurity | features::ProductId::Gateway => state
+                    .admit_management(
+                        context,
+                        ManagementRequest::Overview,
+                        Arc::clone(&adapters.keychain),
+                        Arc::clone(session),
+                    )?,
+                features::ProductId::RedTeam | features::ProductId::ModelSkill => state
+                    .admit_read_part(
+                        context,
+                        product,
+                        Arc::clone(&adapters.keychain),
+                        Arc::clone(session),
+                    )?,
+            };
+            state.set_rechecking(&tenant, Some(product));
+            operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+            effects.push(Effect::Start(state.take_gateway_starts()));
+            state.changed();
+        }
+        Intent::AcknowledgeItem { context, id } => {
+            state.hold_insight(&context, &id, HoldKind::Acknowledge)?;
+            state.changed();
+        }
+        Intent::SnoozeItem { context, id } => {
+            state.hold_insight(&context, &id, HoldKind::Snooze)?;
+            state.changed();
+        }
+        Intent::UnsnoozeItem { context, id } => {
+            state.restore_insight(&context, &id)?;
             state.changed();
         }
         Intent::DeleteTenant { tenant } => {
@@ -4490,7 +4674,7 @@ fn admit(
             state.workbench.clear();
             state.forget_all_gateway_local();
             state.holds.clear();
-            state.overview = None;
+            state.overviews.clear();
             state.export = None;
             effects.push(Effect::Start(state.retire_all_contexts()));
             effects.push(Effect::Reset);

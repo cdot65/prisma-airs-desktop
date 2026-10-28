@@ -9,6 +9,7 @@ import type { FeatureId } from "./FeatureId";
 import type { GatewayView } from "./GatewayView";
 import type { HarnessView } from "./HarnessView";
 import type { ImportView } from "./ImportView";
+import type { InboxView } from "./InboxView";
 import type { LearnerRef } from "./LearnerRef";
 import type { LibraryView } from "./LibraryView";
 import type { OfflineView } from "./OfflineView";
@@ -113,6 +114,10 @@ library: LibraryView,
  * The active context's Runtime Home/Inbox observations.
  */
 overview: OverviewView, 
+/**
+ * The active tenant's Inbox and read status (C30).
+ */
+inbox: InboxView, 
 /**
  * API Client projects on this Mac (C14).
  */

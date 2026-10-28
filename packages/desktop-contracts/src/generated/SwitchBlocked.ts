@@ -10,6 +10,12 @@ import type { TenantId } from "./TenantId";
  */
 export type SwitchBlocked = { 
 /**
- * The tenant the switch was asked for.
+ * The tenant the switch was asked for (a setup draft's id when the
+ * switch is its completion).
  */
-to: TenantId, pending: PendingDecisionRef, };
+to: TenantId, pending: PendingDecisionRef, 
+/**
+ * The switch is the completion of the tenant setup draft `to`: the
+ * resolution is re-sent with `completeTenantSetup` (C30, I1).
+ */
+completion: boolean, };

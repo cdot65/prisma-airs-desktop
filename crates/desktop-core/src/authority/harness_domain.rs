@@ -696,6 +696,49 @@ impl State {
             .map_err(|_| Refusal::Busy)
     }
 
+    /// The bound conversation that is still running, if any (C30 guard).
+    pub(super) fn live_bound_harness(&self) -> Option<OperationId> {
+        self.harness
+            .as_ref()
+            .filter(|c| c.ended.is_none() && c.stop.is_none() && self.harness_bound(c))
+            .map(|c| c.id.clone())
+    }
+
+    /// The approvals the live bound conversation waits for (C30 guard).
+    pub(super) fn bound_approvals(&self) -> Vec<crate::harness::HarnessApproval> {
+        self.harness
+            .as_ref()
+            .filter(|c| c.ended.is_none() && c.stop.is_none() && self.harness_bound(c))
+            .map(|c| c.progress_approvals())
+            .unwrap_or_default()
+    }
+
+    /// Ends the conversation and drops it: nothing of it is shown or kept
+    /// (C30 "discard and switch"). Its protected history record is removed
+    /// and no later save of it (the turn the stop cuts short) is admitted.
+    pub(super) fn discard_harness(&mut self, id: &OperationId) -> Result<(), Refusal> {
+        let root = self.history_root();
+        let conversation = self.live_harness(id)?;
+        if let Some(job) = conversation.write_confirm.take() {
+            conversation.keep_unsent(job);
+        }
+        conversation.stop = Some(HarnessStop::Ended);
+        conversation.retired = true;
+        conversation.cancel.cancel();
+        let history_id = conversation.history_id.clone();
+        let scope = root.map(|root| {
+            Scope::new(
+                &root,
+                conversation.tenant.as_str(),
+                &conversation.workspace.id,
+            )
+        });
+        if let Some(scope) = scope {
+            self.discard_history(scope, history_id);
+        }
+        Ok(())
+    }
+
     /// Ends the conversation: the engine is stopped and reaped.
     pub(super) fn end_harness(&mut self, id: &OperationId) -> Result<(), Refusal> {
         let conversation = self.live_harness(id)?;

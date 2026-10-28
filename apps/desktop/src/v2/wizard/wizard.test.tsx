@@ -166,7 +166,7 @@ describe('first-run wizard', () => {
         expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Starter cases: AI Runtime Security')
         // Completion is one intent; the shell takes over when the core confirms.
         await user.click(screen.getByRole('button', { name: 'Open Prisma AIRS' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'] })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'], resolution: null })
         expect(screen.getByRole('button', { name: 'Opening…' })).toBeDisabled()
         const nw = tenant({ id: 'tn-0123456789abcdef', label: 'Northwind Health', tsgId: '1762204418', environment: 'staging', products: ['runtimeSecurity', 'gateway'] })
         await native.push(withTenant({ ...native.current, onboarding: 'done', setup: null }, nw))
@@ -193,7 +193,7 @@ describe('first-run wizard', () => {
         const sent = native.dispatched.length
         await user.click(screen.getByRole('button', { name: 'Retry' }))
         expect(native.dispatched.length).toBe(sent + 1)
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'] })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'], resolution: null })
     })
 
     it('reaches the reviewed v1 import from the tenant step and comes back to the setup', async () => {
@@ -407,9 +407,39 @@ describe('add-tenant sheet', () => {
         await user.click(within(sheet).getByRole('button', { name: 'Continue with warnings' }))
         await user.click(within(sheet).getByRole('button', { name: 'Skip' }))
         await user.click(within(sheet).getByRole('button', { name: 'Finish' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: [] })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: [], resolution: null })
         expect(screen.queryByRole('dialog')).toBeNull()
         expect(native.dispatched.filter((i) => i.kind === 'discardTenantSetup')).toHaveLength(0)
+        expect(await screen.findByText(/Coastal Bank is set up and active\./)).toBeInTheDocument()
+    })
+
+    it('completion is the guarded switch path (I1): a pending Harness decision shows the guard in the sheet and the resolution re-sends the completion', async () => {
+        const user = userEvent.setup()
+        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key saved; scans stay unavailable until one is added in Administration.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'skipped', reason: 'No client.' }])
+        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001' }), verify: verified }) })
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
+        const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })
+        for (const step of ['Continue', 'Continue', 'Continue with warnings', 'Skip']) await user.click(within(sheet).getByRole('button', { name: step }))
+        native.respond = () => ({ outcome: 'refusal', refusal: 'decisionPending' })
+        await user.click(within(sheet).getByRole('button', { name: 'Finish' }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: [], resolution: null })
+        // Not a status line: the sheet stays, the draft stays, nothing was decided.
+        expect(screen.getByRole('dialog', { name: 'Add a tenant' })).toBeInTheDocument()
+        expect(document.querySelector('[data-slot="wizard-status"]')?.textContent).toBe('')
+        const draftId = native.current.setup?.tenant.id as string
+        await native.push({ ...native.current, switchBlocked: { to: draftId, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: true } })
+        const guard = await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })
+        expect(within(guard).getByText(/Finishing the setup of Coastal Bank makes it active/)).toBeInTheDocument()
+        native.respond = () => admitted()
+        await user.click(within(guard).getByRole('button', { name: 'Stay' }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'dismissSwitchGuard' })
+        await native.push({ ...native.current, switchBlocked: null })
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'A Harness decision is waiting' })).toBeNull())
+        expect(screen.getByRole('dialog', { name: 'Add a tenant' })).toBeInTheDocument()
+        await native.push({ ...native.current, switchBlocked: { to: draftId, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: true } })
+        await user.click(within(await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: 'Archive and switch' }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: [], resolution: 'archive' })
         expect(await screen.findByText(/Coastal Bank is set up and active\./)).toBeInTheDocument()
     })
 })

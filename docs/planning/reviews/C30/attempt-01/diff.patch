@@ -1,0 +1,1627 @@
+diff --git a/apps/desktop/src/app.tsx b/apps/desktop/src/app.tsx
+index a05ddd25..eae7ecdc 100644
+--- a/apps/desktop/src/app.tsx
++++ b/apps/desktop/src/app.tsx
+@@ -5,6 +5,7 @@ import {
+     type FeatureId,
+     type Intent,
+     type MenuCommand,
++    type Refusal,
+     type ShellSnapshot,
+     type Theme,
+ } from '@prisma-airs/desktop-contracts'
+@@ -79,8 +80,9 @@ export function App({ client }: { client: DesktopClient }) {
+         [dispatch]
+     )
+     const v2Preference = useCallback(
+-        async (what: string, intent: Intent) => {
++        async (what: string, intent: Intent, quiet: Refusal[] = []) => {
+             const outcome = await dispatch(intent)
++            if (outcome.kind === 'refused' && quiet.includes(outcome.refusal)) return
+             if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused(what, outcome.refusal), 'warn')
+             else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed(what, intent)
+             else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed(what), 'warn')
+@@ -214,10 +216,12 @@ export function App({ client }: { client: DesktopClient }) {
+                 onSetAppearance={(theme) => void v2Preference('The appearance change', { kind: 'setAppearance', theme })}
+                 onSetShowCalls={(on) => void v2Preference('The preference change', { kind: 'setShowCalls', on })}
+                 onReturnToClassic={() => void v2Preference('The interface change', { kind: 'setUiVariant', variant: 'legacy' })}
+-                onSwitchTenant={(tenant) => {
+-                    // The target is captured now: a late refusal still names it.
++                onSwitchTenant={(tenant, resolution) => {
++                    // The target is captured now: a late refusal still names it. A
++                    // pending-decision refusal is not a toast: the snapshot carries
++                    // the guard the shell renders (I1).
+                     const label = snapshot.tenants.find((t) => t.id === tenant)?.label ?? tenant
+-                    void v2Preference(SHELL_COPY.switchTo(label), { kind: 'selectTenant', tenant })
++                    void v2Preference(SHELL_COPY.switchTo(label), { kind: 'selectTenant', tenant, resolution: resolution ?? null }, ['decisionPending'])
+                 }}
+                 onReadNow={() => {
+                     const active = snapshot.active
+diff --git a/apps/desktop/src/features/runtime/overview-inbox.test.tsx b/apps/desktop/src/features/runtime/overview-inbox.test.tsx
+index 2d235f65..41a5faad 100644
+--- a/apps/desktop/src/features/runtime/overview-inbox.test.tsx
++++ b/apps/desktop/src/features/runtime/overview-inbox.test.tsx
+@@ -159,7 +159,7 @@ describe('Runtime Overview & Inbox', () => {
+                         gaps: ['Runtime activity unavailable'],
+                     }),
+                     attention: [],
+-                    held: [{ item: KEY, kind: 'snooze' }],
++                    held: [{ returnsAt: 1_761_576_400, item: KEY, kind: 'snooze' }],
+                     face: 'gap',
+                 })
+             )
+@@ -183,7 +183,7 @@ describe('Runtime Overview & Inbox', () => {
+             { kind: 'holdInsight', context: CONTEXT, id: KEY.id, hold: 'acknowledge' },
+             { kind: 'holdInsight', context: CONTEXT, id: KEY.id, hold: 'snooze' },
+         ])
+-        await native.push(ready(overview({ attention: [], held: [{ item: KEY, kind: 'acknowledge' }], face: 'allClear' })))
++        await native.push(ready(overview({ attention: [], held: [{ returnsAt: null, item: KEY, kind: 'acknowledge' }], face: 'allClear' })))
+         expect(screen.getByText('Nothing open: what still needs attention is acknowledged or snoozed')).toBeInTheDocument()
+         await user.click(screen.getByRole('button', { name: `Restore ${KEY.title}` }))
+         expect(native.dispatched.filter((i) => i.kind === 'restoreInsight')).toEqual([{ kind: 'restoreInsight', context: CONTEXT, id: KEY.id }])
+diff --git a/apps/desktop/src/features/tenants/dispatch.ts b/apps/desktop/src/features/tenants/dispatch.ts
+index d8e7f3ab..e99c78b2 100644
+--- a/apps/desktop/src/features/tenants/dispatch.ts
++++ b/apps/desktop/src/features/tenants/dispatch.ts
+@@ -23,6 +23,7 @@ const REFUSAL_TEXT: Record<Refusal, string> = {
+     alreadyProcessed: 'That request was already processed.',
+     sequenceGap: 'The request was not delivered in order. Try again.',
+     shuttingDown: 'The desktop is shutting down.',
++    decisionPending: 'A Harness decision is pending; resolve it before switching tenants.',
+ }
+ 
+ /** Sanitized operator text for an outcome that did not apply. */
+diff --git a/apps/desktop/src/features/tenants/tenants-settings.tsx b/apps/desktop/src/features/tenants/tenants-settings.tsx
+index 8dff85ba..61a63781 100644
+--- a/apps/desktop/src/features/tenants/tenants-settings.tsx
++++ b/apps/desktop/src/features/tenants/tenants-settings.tsx
+@@ -257,7 +257,7 @@ function TenantList({ snapshot, dispatch }: { snapshot: ShellSnapshot; dispatch:
+                                         size='sm'
+                                         disabled={busy}
+                                         aria-label={`Make ${tenant.label} active`}
+-                                        onClick={() => void run({ kind: 'selectTenant', tenant: tenant.id })}
++                                        onClick={() => void run({ kind: 'selectTenant', tenant: tenant.id, resolution: null })}
+                                     >
+                                         Make active
+                                     </Button>
+diff --git a/apps/desktop/src/v2/copy.ts b/apps/desktop/src/v2/copy.ts
+index 8f49ebb3..e7683eed 100644
+--- a/apps/desktop/src/v2/copy.ts
++++ b/apps/desktop/src/v2/copy.ts
+@@ -41,6 +41,82 @@ export const SHELL_COPY = {
+     dismiss: 'Dismiss',
+ } as const
+ 
++/** Wall-clock HH:MM for a seconds-since-epoch stamp. */
++export function clockOf(seconds: number): string {
++    const d = new Date(seconds * 1000)
++    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
++}
++
++/** Day-relative wording for a return time (today, tomorrow, or the date). */
++export function returnsWording(seconds: number): string {
++    const d = new Date(seconds * 1000)
++    const today = new Date()
++    const dayOf = (x: Date) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`
++    const tomorrow = new Date(today.getTime() + 86_400_000)
++    const day = dayOf(d) === dayOf(today) ? 'today' : dayOf(d) === dayOf(tomorrow) ? 'tomorrow' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
++    return `${day} ${clockOf(seconds)}`
++}
++
++/**
++ * The one snooze label (I11): the core computes the return time; Home, the
++ * Inbox row, the detail pane and the toast all say exactly this.
++ */
++export const SNOOZE_COPY = {
++    /** Before snoozing: what a snooze will do (24 hours, per P20). */
++    offer: 'Snooze 24 hours',
++    /** After snoozing: when the core says it returns. */
++    returns: (returnsAt: number) => `Returns ${returnsWording(returnsAt)}`,
++    toast: (title: string, returnsAt: number) => `${title} snoozed · returns ${returnsWording(returnsAt)}`,
++}
++
++export const INBOX_COPY = {
++    title: 'Inbox',
++    tabs: { all: 'All', action: 'Needs action', updates: 'Updates', snoozed: 'Snoozed' } as const,
++    severity: { bad: 'Critical', warn: 'Warning', ok: 'Info' } as Record<'bad' | 'warn' | 'ok', string>,
++    kind: { runtime: 'AI Runtime Security', gateway: 'AI Gateway', setupWarning: 'Setup' } as Record<'runtime' | 'gateway' | 'setupWarning', string>,
++    emptyPending: 'First read pending. Nothing has been read for this tenant yet.',
++    emptyReading: 'Reading this tenant…',
++    emptyClear: 'Nothing needs action.',
++    emptyTab: 'Nothing here.',
++    partial: (read: number, total: number, when: string) => `${read} of ${total} sources were read at ${when}.`,
++    acknowledged: 'Acknowledged',
++    acknowledge: 'Acknowledge',
++    needsAction: 'Mark as needing action',
++    unsnooze: 'Unsnooze',
++    why: 'Why this matters',
++    facts: 'Facts',
++    whyText: {
++        runtime: 'Runtime Security reads this from the tenant’s sessions and API keys; an item here changes what the scan key can do or how prompts are being handled.',
++        gateway: 'The chosen AI Gateway workspace reported errors or a quota for the day; routes and keys depend on it.',
++        setupWarning: 'A check during setup did not pass. The product reads only partially until it is fixed in Administration.',
++    } as Record<'runtime' | 'gateway' | 'setupWarning', string>,
++    readNow: 'Read now',
++    detail: 'Details',
++    selectHint: 'Select an item to see its details.',
++    ariaList: 'Inbox items',
++}
++
++export const READ_COPY = {
++    finished: (when: string) => `Read finished at ${when} · all sources complete`,
++    finishedIncomplete: (when: string, partial: number) => `Read finished at ${when} · ${partial} source${partial === 1 ? '' : 's'} partial`,
++    finishedNeedsRole: (when: string, products: number) => `Read finished at ${when} · ${products} product${products === 1 ? '' : 's'} still need${products === 1 ? 's' : ''} a role`,
++    finishedNoActivity: (when: string, tenant: string) => `Read finished at ${when} · no activity yet in ${tenant}`,
++    failed: (when: string) => `Read failed at ${when}`,
++    recheck: (product: string) => `Rechecking ${product}…`,
++    rechecked: (product: string) => `${product} read again.`,
++    productState: { pending: 'Pending', ok: 'Read', incomplete: 'Incomplete', needsRole: 'Needs a role', failed: 'Failed', notRead: 'Not read here' } as Record<string, string>,
++    products: { runtimeSecurity: 'AI Runtime Security', gateway: 'AI Gateway', redTeam: 'AI Red Teaming', modelSkill: 'Model and skill scans' } as Record<string, string>,
++    sources: (read: number, total: number) => (total === 0 ? '' : `${read} of ${total} sources`),
++}
++
++export const GUARD_COPY = {
++    title: 'A Harness decision is waiting',
++    body: (tenant: string) => `The conversation in this tenant is waiting for your approval. Switching to ${tenant} ends it. Keep its transcript, drop it, or stay.`,
++    archive: 'Archive and switch',
++    discard: 'Discard and switch',
++    stay: 'Stay',
++}
++
+ export const HOME_COPY = {
+     title: 'Home',
+     noTenant: 'Add a tenant to start reading it.',
+@@ -51,6 +127,9 @@ export const HOME_COPY = {
+     attention: 'Needs attention',
+     allClear: 'Nothing needs action.',
+     inboxSoon: 'Items that need action appear here once the Inbox is available.',
++    openInbox: 'Open the Inbox',
++    products: 'Products',
++    readNow: 'Read now',
+     capabilities: 'Capabilities in this tenant',
+     scan: 'Runtime Security scan key',
+     management: 'Management client',
+diff --git a/apps/desktop/src/v2/fixtures.ts b/apps/desktop/src/v2/fixtures.ts
+index cf7cec95..be95ef80 100644
+--- a/apps/desktop/src/v2/fixtures.ts
++++ b/apps/desktop/src/v2/fixtures.ts
+@@ -3,7 +3,7 @@
+  * prototype state as a native snapshot the real DesktopClient parses. Built
+  * from the wire fixture so a drifted contract fails here first.
+  */
+-import type { FeatureEntry, ShellSnapshot } from '@prisma-airs/desktop-contracts'
++import type { FeatureEntry, InboxEntry, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
+ import { baseSnapshot, tenant, withTenant } from '../test/native'
+ 
+ const unavailable = (reason: string, plannedChunk: string): FeatureEntry['availability'] => ({ state: 'unavailable', reason, plannedChunk })
+@@ -45,3 +45,94 @@ export function fxSwitcher(): ShellSnapshot {
+ 
+ /** fx.palette: Home with the palette opened by the native menu in the test. */
+ export const fxPalette = fxSwitcher
++
++const KEY_ITEM: InboxEntry = {
++    id: 'runtime-key:k1',
++    kind: 'runtime',
++    needsAction: true,
++    severity: 'warn',
++    title: 'Runtime expires in 5 days',
++    detail: 'The API key "Runtime" expires on 1 November.',
++    source: 'API keys · read 07:45',
++    product: 'runtimeSecurity',
++    destination: 'apiKeys',
++    actionLabel: 'Open API keys',
++    facts: [{ label: 'Key', value: 'Runtime' }, { label: 'Expires', value: '2026-11-01' }],
++    when: 1_761_490_000,
++    hold: null,
++}
++const ACTIVITY_ITEM: InboxEntry = {
++    id: 'runtime-activity',
++    kind: 'runtime',
++    needsAction: false,
++    severity: 'ok',
++    title: '15 sessions in the last day, 3 violating',
++    detail: 'Runtime Security scanned 15 sessions.',
++    source: 'Sessions chart · read 07:45',
++    product: 'runtimeSecurity',
++    destination: 'sessions',
++    actionLabel: 'Open Sessions',
++    facts: [],
++    when: 1_761_490_000,
++    hold: null,
++}
++const SNOOZED_ITEM: InboxEntry = {
++    id: 'gateway-ws-1',
++    kind: 'gateway',
++    needsAction: true,
++    severity: 'bad',
++    title: 'Gateway workspace Team A over quota',
++    detail: 'The day is over its quota; requests are refused.',
++    source: 'Gateway usage · read 07:45',
++    product: 'gateway',
++    destination: 'gateway',
++    actionLabel: 'Open AI Gateway',
++    facts: [],
++    when: 1_761_490_000,
++    hold: { kind: 'snooze', returnsAt: 1_761_576_400 },
++}
++const SETUP_ITEM: InboxEntry = {
++    id: 'vw-1',
++    kind: 'setupWarning',
++    needsAction: true,
++    severity: 'warn',
++    title: 'AI Gateway: setup warning',
++    detail: 'Needs the management client; not checked.',
++    source: 'Setup · verify',
++    product: 'gateway',
++    destination: 'gateway',
++    actionLabel: 'Open Administration',
++    facts: [{ label: 'Product', value: 'AI Gateway' }],
++    when: 1_761_480_000,
++    hold: null,
++}
++
++/** fx.inbox (R2Inbox): Northwind read with partial coverage; items of every kind, one snoozed. */
++export function fxInbox(): ShellSnapshot {
++    const base = fxSwitcher()
++    const nw = tenant({ id: 'tn-0123456789abcdef', label: 'Northwind Health', tsgId: '1762204418', products: ['runtimeSecurity', 'gateway'] })
++    return {
++        ...base,
++        tenants: [nw, base.tenants[1] as TenantView],
++        activeFeature: 'inbox',
++        inbox: {
++            items: [KEY_ITEM, ACTIVITY_ITEM, SNOOZED_ITEM, SETUP_ITEM],
++            read: {
++                state: 'done',
++                lastReadAt: 1_761_490_000,
++                products: [
++                    { product: 'runtimeSecurity', state: 'ok', sourcesRead: 2, sourcesTotal: 2, detail: null },
++                    { product: 'gateway', state: 'incomplete', sourcesRead: 1, sourcesTotal: 2, detail: 'workspace Team A' },
++                ],
++                sourcesMissing: ['Gateway limits'],
++                generation: 1,
++                rechecking: null,
++            },
++        },
++    }
++}
++
++/** fx.fresh: a tenant that has never been read (I12). */
++export function fxFresh(): ShellSnapshot {
++    return { ...fxSwitcher(), activeFeature: 'home' }
++}
+diff --git a/apps/desktop/src/v2/home.tsx b/apps/desktop/src/v2/home.tsx
+index 1be0bb86..d71d7f21 100644
+--- a/apps/desktop/src/v2/home.tsx
++++ b/apps/desktop/src/v2/home.tsx
+@@ -1,45 +1,47 @@
+ import { forwardRef } from 'react'
+ import type { FeatureId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
++import type { Dispatch } from '../features/tenants/dispatch'
+ import { FEATURE_ICONS } from '../shell/icons'
+-import { HOME_COPY } from './copy'
++import { ENVIRONMENT_LABELS, HOME_COPY, READ_COPY, SNOOZE_COPY, clockOf } from './copy'
++import { destinationFeature, toneOf } from './inbox/inbox'
+ import { Verdict } from './verdict'
+ 
+ export interface HomeProps {
+     snapshot: ShellSnapshot
++    dispatch: Dispatch
+     onNavigate: (id: FeatureId) => void
+ }
+ 
+-function clock(seconds: number): string {
+-    const d = new Date(seconds * 1000)
+-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
++/** The read-status line (I4): first read pending, reading, finished (with partial coverage), or failed. */
++export function readLine(snapshot: ShellSnapshot, tenant: string | null): { text: string; tone: 'info' | 'flagged' | 'allowed' | 'blocked' } {
++    const read = snapshot.inbox.read
++    if (!tenant) return { text: HOME_COPY.noTenant, tone: 'info' }
++    if (read.state === 'reading' && read.lastReadAt === null) return { text: HOME_COPY.reading, tone: 'info' }
++    if (read.state === 'pending' || read.lastReadAt === null) return { text: HOME_COPY.firstRead, tone: 'info' }
++    const when = clockOf(read.lastReadAt)
++    if (read.state === 'failed' && snapshot.overview.failedAt) return { text: READ_COPY.failed(clockOf(snapshot.overview.failedAt)), tone: 'blocked' }
++    const needsRole = read.products.filter((p) => p.state === 'needsRole').length
++    if (needsRole > 0) return { text: READ_COPY.finishedNeedsRole(when, needsRole), tone: 'flagged' }
++    if (read.sourcesMissing.length > 0) return { text: READ_COPY.finishedIncomplete(when, read.sourcesMissing.length), tone: 'flagged' }
++    const activity = snapshot.overview.read?.summary.sessions
++    if (activity === 0 && snapshot.inbox.items.length === 0) return { text: READ_COPY.finishedNoActivity(when, tenant), tone: 'allowed' }
++    return { text: READ_COPY.finished(when), tone: 'allowed' }
+ }
+ 
+ /**
+- * Home (C28 skeleton; attention items and product read cards land in C30):
+- * the destination title row, the tenant line, the one read-status line
+- * derived from the observed overview, the tenant's capabilities, and the
+- * destinations. Nothing here is invented: every line reads the snapshot.
++ * Home (C28 skeleton, C30 attention and reads): the destination title row,
++ * the tenant line, the one read-status line from the core's ReadStatus, up
++ * to five items needing attention with their contextual action, Acknowledge
++ * and Snooze (whose label is the Inbox's, I11), one card per chosen product
++ * with its read state, and the destinations. Nothing here is invented:
++ * every line reads the snapshot.
+  */
+-export const Home = forwardRef<HTMLHeadingElement, HomeProps>(function Home({ snapshot, onNavigate }, ref) {
++export const Home = forwardRef<HTMLHeadingElement, HomeProps>(function Home({ snapshot, dispatch, onNavigate }, ref) {
+     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) ?? null
+-    const overview = snapshot.overview
+-    const readLine = !tenant
+-        ? HOME_COPY.noTenant
+-        : overview.refreshing && !overview.read
+-          ? HOME_COPY.reading
+-          : overview.face === 'firstLaunch' || !overview.read
+-            ? HOME_COPY.firstRead
+-            : overview.failure && overview.failedAt
+-              ? HOME_COPY.readFailed(clock(overview.failedAt))
+-              : HOME_COPY.readAt(clock(overview.read.readAt))
+-    const readTone = !tenant || overview.face === 'firstLaunch' || !overview.read ? 'info' : overview.failure ? 'flagged' : 'allowed'
+-    const capabilities = tenant
+-        ? [
+-              { label: HOME_COPY.scan, state: tenant.scan.state },
+-              { label: HOME_COPY.management, state: tenant.management.state },
+-              { label: HOME_COPY.inference, state: tenant.inference.state },
+-          ]
+-        : []
++    const context = snapshot.active?.context ?? null
++    const status = readLine(snapshot, tenant?.label ?? null)
++    const attention = snapshot.inbox.items.filter((e) => e.needsAction && !e.hold).slice(0, 5)
++    const read = snapshot.inbox.read
+     return (
+         <section aria-labelledby='home-heading' data-slot='home' style={{ maxWidth: 'var(--v2-reading)' }}>
+             <div className='flex flex-col gap-1'>
+@@ -48,33 +50,78 @@ export const Home = forwardRef<HTMLHeadingElement, HomeProps>(function Home({ sn
+                 </h1>
+                 {tenant && (
+                     <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+-                        {tenant.label}
++                        {tenant.label} · {ENVIRONMENT_LABELS[tenant.environment]}
+                         {tenant.tsgId ? ` · TSG ${tenant.tsgId}` : ''}
+                     </p>
+                 )}
+-                <p role='status' aria-live='polite' data-slot='read-status' className='mt-1 text-[13px]'>
+-                    <Verdict tone={readTone} word={readLine} />
++                <p role='status' aria-live='polite' data-slot='read-status' className='mt-1 flex items-center gap-3 text-[13px]'>
++                    <Verdict tone={status.tone} word={status.text} />
++                    {context && (
++                        <button type='button' onClick={() => void dispatch({ kind: 'readTenant', context })} disabled={read.state === 'reading'} className='h-7 rounded-[7px] border px-2.5 text-[12px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
++                            {HOME_COPY.readNow}
++                        </button>
++                    )}
+                 </p>
+             </div>
+             <div className='mt-6 rounded-[12px] border p-5' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+-                <h2 className='text-[15px] font-semibold'>{HOME_COPY.attention}</h2>
+-                <p className='mt-2 text-[13px]' style={{ color: 'var(--v2-faint)' }}>
+-                    {overview.attention.length === 0 ? HOME_COPY.allClear : HOME_COPY.inboxSoon}
+-                </p>
++                <div className='flex items-center justify-between'>
++                    <h2 className='text-[15px] font-semibold'>{HOME_COPY.attention}</h2>
++                    <button type='button' onClick={() => onNavigate('inbox')} className='text-[12px] underline' style={{ color: 'var(--v2-acc)' }}>
++                        {HOME_COPY.openInbox}
++                    </button>
++                </div>
++                {attention.length === 0 ? (
++                    <p className='mt-2 text-[13px]' style={{ color: 'var(--v2-faint)' }}>
++                        {read.state === 'pending' ? HOME_COPY.firstRead : HOME_COPY.allClear}
++                    </p>
++                ) : (
++                    <ul data-slot='attention' className='mt-3 flex flex-col gap-2'>
++                        {attention.map((e) => (
++                            <li key={e.id} className='flex flex-wrap items-center gap-2 rounded-[10px] border px-3 py-2' style={{ borderColor: 'var(--v2-rule)' }}>
++                                <Verdict tone={toneOf(e.severity)} word={e.severity === 'bad' ? 'Critical' : e.severity === 'warn' ? 'Warning' : 'Info'} />
++                                <span className='flex-grow text-[13px] font-medium'>{e.title}</span>
++                                <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
++                                    {e.product ? READ_COPY.products[e.product] : ''}
++                                </span>
++                                {destinationFeature(e) && e.actionLabel && (
++                                    <button type='button' onClick={() => onNavigate(destinationFeature(e) as FeatureId)} className='h-7 rounded-[7px] px-2.5 text-[12px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
++                                        {e.actionLabel}
++                                    </button>
++                                )}
++                                <button type='button' onClick={() => context && void dispatch({ kind: 'acknowledgeItem', context, id: e.id })} className='h-7 rounded-[7px] border px-2.5 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                                    Acknowledge
++                                </button>
++                                <button type='button' title={SNOOZE_COPY.offer} aria-label={`${SNOOZE_COPY.offer}: ${e.title}`} onClick={() => context && void dispatch({ kind: 'snoozeItem', context, id: e.id })} className='h-7 rounded-[7px] border px-2.5 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                                    {SNOOZE_COPY.offer}
++                                </button>
++                            </li>
++                        ))}
++                    </ul>
++                )}
+             </div>
+-            {capabilities.length > 0 && (
++            {tenant && read.products.length > 0 && (
+                 <div className='mt-6'>
+-                    <h2 className='text-[15px] font-semibold'>{HOME_COPY.capabilities}</h2>
+-                    <ul className='mt-3 grid gap-3' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+-                        {capabilities.map((c) => (
+-                            <li key={c.label} className='rounded-[12px] border p-4' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+-                                <p className='text-[13px] font-semibold'>{c.label}</p>
+-                                <p className='mt-2'>
+-                                    <Verdict
+-                                        tone={c.state === 'ready' ? 'allowed' : c.state === 'failed' ? 'blocked' : 'info'}
+-                                        word={HOME_COPY.state[c.state] ?? c.state}
+-                                    />
++                    <h2 className='text-[15px] font-semibold'>{HOME_COPY.products}</h2>
++                    <ul data-slot='products' className='mt-3 grid gap-3' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
++                        {read.products.map((p) => (
++                            <li key={p.product} className='rounded-[12px] border p-4' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                                <p className='text-[13px] font-semibold'>{READ_COPY.products[p.product]}</p>
++                                <p className='mt-2 flex flex-wrap items-center gap-2'>
++                                    <Verdict tone={p.state === 'ok' ? 'allowed' : p.state === 'failed' ? 'blocked' : p.state === 'incomplete' || p.state === 'needsRole' ? 'flagged' : 'info'} word={READ_COPY.productState[p.state] ?? p.state} />
++                                    <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
++                                        {READ_COPY.sources(p.sourcesRead, p.sourcesTotal)}
++                                    </span>
+                                 </p>
++                                {p.detail && (
++                                    <p className='mt-1 text-[12px]' style={{ color: 'var(--v2-soft)' }}>
++                                        {p.detail}
++                                    </p>
++                                )}
++                                {p.state === 'needsRole' && context && (
++                                    <button type='button' onClick={() => void dispatch({ kind: 'recheckProduct', context, product: p.product })} className='mt-2 h-7 rounded-[7px] border px-2.5 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                                        Recheck
++                                    </button>
++                                )}
+                             </li>
+                         ))}
+                     </ul>
+diff --git a/apps/desktop/src/v2/store.ts b/apps/desktop/src/v2/store.ts
+index 316cc390..89fa276a 100644
+--- a/apps/desktop/src/v2/store.ts
++++ b/apps/desktop/src/v2/store.ts
+@@ -30,6 +30,9 @@ interface ShellStore {
+     toasts: Toast[]
+     /** Open modal ids, bottom to top; only the last is interactive (I8). */
+     modals: string[]
++    /** The Inbox tab and item per tenant (I2: a switch round trip keeps it). */
++    inboxSelection: Record<string, { tab: 'all' | 'action' | 'updates' | 'snoozed'; item: string | null }>
++    selectInbox(tenant: string, selection: { tab: 'all' | 'action' | 'updates' | 'snoozed'; item: string | null }): void
+     unconfirmed: Unconfirmed[]
+     /** Toast lifetime in ms (6 s; tests shorten it). */
+     toastMs: number
+@@ -51,6 +54,8 @@ export const useShellStore = create<ShellStore>((set) => ({
+     switcherOpen: false,
+     toasts: [],
+     modals: [],
++    inboxSelection: {},
++    selectInbox: (tenant, selection) => set((s) => ({ inboxSelection: { ...s.inboxSelection, [tenant]: selection } })),
+     unconfirmed: [],
+     toastMs: 6000,
+     addUnconfirmed: (what, intent) => {
+@@ -75,5 +80,5 @@ export const useShellStore = create<ShellStore>((set) => ({
+ 
+ /** Test seam: forget everything (each test starts from an empty store). */
+ export function resetShellStore() {
+-    useShellStore.setState({ paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000 })
++    useShellStore.setState({ paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {} })
+ }
+diff --git a/apps/desktop/src/v2/v2-shell.test.tsx b/apps/desktop/src/v2/v2-shell.test.tsx
+index 90ff5215..62fcd193 100644
+--- a/apps/desktop/src/v2/v2-shell.test.tsx
++++ b/apps/desktop/src/v2/v2-shell.test.tsx
+@@ -96,7 +96,7 @@ describe('v2 shell', () => {
+         await user.keyboard('{Home}')
+         expect(within(dialog).getByRole('combobox')).toHaveAttribute('aria-activedescendant', expect.stringContaining('go:home'))
+         await user.type(within(dialog).getByRole('combobox'), 'meridian{Enter}')
+-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210' })
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
+         expect(screen.queryByRole('dialog')).toBeNull()
+         await user.click(rail().getByRole('button', { name: /Go to…/ }))
+         await user.type(screen.getByRole('combobox'), 'read{Enter}')
+@@ -117,7 +117,7 @@ describe('v2 shell', () => {
+             'Add a tenant…',
+         ])
+         await user.click(within(list).getByRole('button', { name: /Meridian Retail/ }))
+-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210' })
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
+         expect(screen.queryByRole('group', { name: 'Switch tenant' })).toBeNull()
+     })
+ 
+@@ -154,8 +154,13 @@ describe('v2 shell', () => {
+             gaps: [],
+             gateway: null,
+         }
+-        await native.push({ ...native.current, overview: { ...native.current.overview, face: 'allClear', read, fresh: true } })
+-        expect(document.querySelector('[data-slot="read-status"]')?.textContent).toMatch(/Read finished at \d\d:\d\d/)
++        await native.push({
++            ...native.current,
++            overview: { ...native.current.overview, face: 'allClear', read, fresh: true },
++            inbox: { items: [], read: { state: 'done', lastReadAt: 1_761_490_000, products: [{ product: 'runtimeSecurity', state: 'ok', sourcesRead: 2, sourcesTotal: 2, detail: null }], sourcesMissing: [], generation: 1, rechecking: null } },
++        })
++        // A read that found no sessions says so (I4), rather than claiming activity.
++        expect(document.querySelector('[data-slot="read-status"]')?.textContent).toMatch(/Read finished at \d\d:\d\d · no activity yet in Northwind Health/)
+     })
+ 
+     it('keeps one topmost modal: the palette over the switcher, Escape closes only the top, focus returns', async () => {
+@@ -392,7 +397,7 @@ describe('v2 shell', () => {
+         for (let i = 0; i < 19; i += 1) await user.tab()
+         expect(buttons[19]).toHaveFocus()
+         await user.keyboard('{Enter}')
+-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: many[19]!.id })
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: many[19]!.id, resolution: null })
+     })
+ 
+     it('names the intended tenant in a refused switch and the read tenant in a refused read, even after the context changes', async () => {
+@@ -425,7 +430,7 @@ describe('v2 shell', () => {
+         const rows = within(screen.getByRole('group', { name: 'Switch tenant' })).getAllByRole('button')
+         expect(rows.map((r) => r.textContent)).toEqual(['AcmeProduction · TSG 1111111111', 'AcmeProduction · TSG 2222222222', 'Add a tenant…'])
+         await user.click(rows[1]!)
+-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id })
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id, resolution: null })
+         await native.push({ ...native.current, active: { tenant: b.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
+         expect(screen.getByRole('button', { name: 'Switch tenant: Acme · Production · TSG 2222222222' })).toBeInTheDocument()
+     })
+@@ -447,6 +452,6 @@ describe('v2 shell', () => {
+         await user.keyboard('{ArrowDown}{ArrowDown}')
+         expect(current()).toBe('Harness⌘3')
+         await user.type(within(dialog).getByRole('combobox'), '2222{Enter}')
+-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id })
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id, resolution: null })
+     })
+ })
+diff --git a/apps/desktop/src/v2/v2-shell.tsx b/apps/desktop/src/v2/v2-shell.tsx
+index b3be4b3c..7f65f06a 100644
+--- a/apps/desktop/src/v2/v2-shell.tsx
++++ b/apps/desktop/src/v2/v2-shell.tsx
+@@ -1,10 +1,12 @@
+ import { useEffect, useRef, useState } from 'react'
+ import { Eye, Moon, Sun, SunMoon, Undo2 } from 'lucide-react'
+-import type { DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
++import type { SwitchResolution, DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+ import type { Dispatch } from '../features/tenants/dispatch'
+ import { FeatureBody } from '../shell/feature-body'
++import { Inbox } from './inbox/inbox'
+ import { FEATURE_ICONS } from '../shell/icons'
+-import { SHELL_COPY } from './copy'
++import { GUARD_COPY, SHELL_COPY, SNOOZE_COPY } from './copy'
++import { readLine } from './home'
+ import { Home } from './home'
+ import { Palette } from './palette'
+ import { useShellStore } from './store'
+@@ -21,7 +23,7 @@ export interface V2ShellProps {
+     onSetAppearance: (theme: Theme) => void
+     onSetShowCalls: (on: boolean) => void
+     onReturnToClassic: () => void
+-    onSwitchTenant: (tenant: string) => void
++    onSwitchTenant: (tenant: string, resolution?: SwitchResolution) => void
+     onReadNow: () => void
+     /** Re-sends a delivery the desktop did not confirm, only on the operator's click. */
+     onRetry: (what: string, intent: Intent) => void
+@@ -65,6 +67,43 @@ export function V2Shell(props: V2ShellProps) {
+     }
+     const active = snapshot.activeFeature
+     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
++    // Completion toasts are derived from the core's ReadStatus (I4): a new
++    // generation is one finished read; its kind follows the coverage.
++    const read = snapshot.inbox.read
++    const seenGeneration = useRef(read.generation)
++    const seenTenant = useRef(snapshot.active?.tenant ?? null)
++    useEffect(() => {
++        const tenantNow = snapshot.active?.tenant ?? null
++        if (tenantNow !== seenTenant.current) {
++            seenTenant.current = tenantNow
++            seenGeneration.current = read.generation
++            return
++        }
++        if (read.generation === seenGeneration.current) return
++        seenGeneration.current = read.generation
++        const tenant = snapshot.tenants.find((t) => t.id === tenantNow)
++        const line = readLine(snapshot, tenant?.label ?? null)
++        useShellStore.getState().toast(line.text, line.tone === 'allowed' ? 'ok' : 'warn')
++    }, [read.generation, snapshot])
++    // A snooze's return time is the core's: the toast states it once the
++    // snapshot carries it, wherever the snooze was asked for (Home or Inbox).
++    const seenReturns = useRef<Map<string, number> | null>(null)
++    useEffect(() => {
++        const next = new Map<string, number>()
++        for (const e of snapshot.inbox.items) {
++            if (e.hold?.kind === 'snooze' && e.hold.returnsAt !== null) next.set(e.id, e.hold.returnsAt)
++        }
++        const previous = seenReturns.current
++        seenReturns.current = next
++        // The first snapshot of a tenant is a baseline, not a change.
++        if (previous === null || (snapshot.active?.tenant ?? null) !== seenTenant.current) return
++        for (const e of snapshot.inbox.items) {
++            const returnsAt = next.get(e.id)
++            if (returnsAt !== undefined && previous.get(e.id) !== returnsAt) useShellStore.getState().toast(SNOOZE_COPY.toast(e.title, returnsAt), 'info')
++        }
++    }, [snapshot.inbox.items, snapshot.active])
++    const guard = snapshot.switchBlocked
++    const guardTarget = guard ? snapshot.tenants.find((t) => t.id === guard.to)?.label ?? guard.to : null
+ 
+     useEffect(() => {
+         // Move focus to the new page heading after navigation (not on launch).
+@@ -227,7 +266,9 @@ export function V2Shell(props: V2ShellProps) {
+                     </ul>
+                 )}
+                 {feature.id === 'home' ? (
+-                    <Home ref={heading} snapshot={snapshot} onNavigate={props.onNavigate} />
++                    <Home ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
++                ) : feature.id === 'inbox' ? (
++                    <Inbox ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
+                 ) : (
+                     <FeatureBody
+                         ref={heading}
+@@ -247,6 +288,25 @@ export function V2Shell(props: V2ShellProps) {
+             {paletteOpen && (
+                 <Palette snapshot={snapshot} onNavigate={props.onNavigate} onSwitchTenant={props.onSwitchTenant} onReadNow={props.onReadNow} onClose={closePalette} />
+             )}
++            {guard && guardTarget && (
++                <Modal label={GUARD_COPY.title} onClose={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} width={520} data-slot='switch-guard'>
++                    <h2 className='text-[16px] font-semibold'>{GUARD_COPY.title}</h2>
++                    <p className='mt-2 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
++                        {GUARD_COPY.body(guardTarget)}
++                    </p>
++                    <div className='mt-4 flex flex-wrap justify-end gap-2'>
++                        <button type='button' onClick={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                            {GUARD_COPY.stay}
++                        </button>
++                        <button type='button' onClick={() => props.onSwitchTenant(guard.to, 'discard')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                            {GUARD_COPY.discard}
++                        </button>
++                        <button type='button' autoFocus onClick={() => props.onSwitchTenant(guard.to, 'archive')} className='h-8 rounded-[7px] px-3 text-[13px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
++                            {GUARD_COPY.archive}
++                        </button>
++                    </div>
++                </Modal>
++            )}
+             {adding && (
+                 <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} data-slot='add-tenant-sheet'>
+                     <Wizard
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 8558909b..2aa45264 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -28,6 +28,7 @@ mod harness_identity;
+ mod harness_mcp;
+ mod harness_tools;
+ mod import_v1_domain;
++mod inbox_domain;
+ mod inference_domain;
+ mod learner_domain;
+ mod library_domain;
+@@ -47,6 +48,12 @@ pub use learner_domain::{AcademyCallHandle, AcademyCallResult};
+ use learner_domain::{LearnerPhase, LearnerSession};
+ pub use library_domain::{CatalogSource, LibraryNotice, LibraryState, LibraryView};
+ pub use management_domain::ManagementHandle;
++// Re-exported for the host and tests; the snapshot and intents name them by path.
++#[allow(unused_imports)]
++pub use inbox_domain::{
++    InboxEntry, InboxKind, InboxView, ProductRead, ProductReadState, ReadState, ReadStatus,
++    SwitchResolution,
++};
+ pub use observation_domain::{AttentionFace, HeldItem, HoldKind, OverviewView};
+ pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineState, OfflineView};
+ pub use sessions_domain::{
+@@ -170,6 +177,39 @@ pub enum Intent {
+     /// Make a tenant active; issues a new context reference.
+     SelectTenant {
+         tenant: TenantId,
++        /// How a switch blocked by a pending Harness decision proceeds
++        /// (C30, I1); absent, a pending decision refuses the switch.
++        #[serde(default)]
++        resolution: Option<inbox_domain::SwitchResolution>,
++    },
++    /// Close the switch guard without switching (C30).
++    DismissSwitchGuard,
++    /// Read the active tenant now: the Runtime overview (sessions, keys)
++    /// and the chosen Gateway workspace's day (C30, I4).
++    ReadTenant {
++        context: ContextRef,
++    },
++    /// Read again after a role was granted; the read is the same, the
++    /// completion names the product (C30).
++    RecheckProduct {
++        context: ContextRef,
++        product: features::ProductId,
++    },
++    /// Set an Inbox entry aside until its level rises (C30, I11).
++    AcknowledgeItem {
++        context: ContextRef,
++        id: String,
++    },
++    /// Set an Inbox entry aside for 24 hours; the return time is computed
++    /// here and shown wherever the entry appears (C30, I11).
++    SnoozeItem {
++        context: ContextRef,
++        id: String,
++    },
++    /// Bring a held entry back.
++    UnsnoozeItem {
++        context: ContextRef,
++        id: String,
+     },
+     /// Remove a tenant profile and clean up its credential.
+     DeleteTenant {
+@@ -738,6 +778,12 @@ intent_kinds! {
+     DiscardTenantSetup => "discardTenantSetup",
+     CreateTenant => "createTenant",
+     SelectTenant => "selectTenant",
++    DismissSwitchGuard => "dismissSwitchGuard",
++    ReadTenant => "readTenant",
++    RecheckProduct => "recheckProduct",
++    AcknowledgeItem => "acknowledgeItem",
++    SnoozeItem => "snoozeItem",
++    UnsnoozeItem => "unsnoozeItem",
+     DeleteTenant => "deleteTenant",
+     ConfigureScanCredential => "configureScanCredential",
+     RemoveScanCredential => "removeScanCredential",
+@@ -845,7 +891,7 @@ intent_kinds! {
+ }
+ 
+ /// Every refusal (a new one fails to build until it is listed here).
+-const REFUSALS: [Refusal; 11] = [
++const REFUSALS: [Refusal; 12] = [
+     Refusal::StaleContext,
+     Refusal::CapabilityMissing,
+     Refusal::InvalidInput,
+@@ -857,6 +903,7 @@ const REFUSALS: [Refusal; 11] = [
+     Refusal::AlreadyProcessed,
+     Refusal::SequenceGap,
+     Refusal::ShuttingDown,
++    Refusal::DecisionPending,
+ ];
+ const _: fn(Refusal) = |r| match r {
+     Refusal::StaleContext
+@@ -869,7 +916,8 @@ const _: fn(Refusal) = |r| match r {
+     | Refusal::DeniedStore
+     | Refusal::AlreadyProcessed
+     | Refusal::SequenceGap
+-    | Refusal::ShuttingDown => {}
++    | Refusal::ShuttingDown
++    | Refusal::DecisionPending => {}
+ };
+ const HEALTHS: [StorageHealth; 4] = [
+     StorageHealth::Ready,
+@@ -962,6 +1010,10 @@ pub enum Refusal {
+     SequenceGap,
+     #[error("the desktop is shutting down")]
+     ShuttingDown,
++    /// A Harness decision is pending: the tenant switch waits for the
++    /// operator's resolution (I1); the snapshot's `switch_blocked` says which.
++    #[error("a Harness decision is pending")]
++    DecisionPending,
+ }
+ 
+ /// The product context a caller asks to observe.
+@@ -1189,6 +1241,8 @@ pub struct ShellSnapshot {
+     pub library: LibraryView,
+     /// The active context's Runtime Home/Inbox observations.
+     pub overview: OverviewView,
++    /// The active tenant's Inbox and read status (C30).
++    pub inbox: inbox_domain::InboxView,
+     /// API Client projects on this Mac (C14).
+     pub workbench: WorkbenchView,
+     /// The active context's Gateway workspaces and choice (C16).
+@@ -1665,6 +1719,10 @@ struct State {
+     holds: Vec<(TenantId, Vec<observation_domain::Hold>)>,
+     /// Seconds added to the wall clock (fixture builds only move it).
+     clock_offset: u32,
++    /// A tenant switch held by a pending Harness decision (C30, I1).
++    switch_blocked: Option<SwitchBlocked>,
++    /// Per-session read bookkeeping for the active tenant (C30).
++    reads: inbox_domain::ReadBookkeeping,
+     /// The overview's time-dependent state at the last deadline tick.
+     overview_published: Option<(bool, observation_domain::AttentionFace, Vec<String>)>,
+     deadline_tick: std::time::Duration,
+@@ -1766,7 +1824,7 @@ impl State {
+             onboarding: self.shown_onboarding(),
+             active_feature: self.active_feature(),
+             show_calls: self.show_calls(),
+-            switch_blocked: None,
++            switch_blocked: self.switch_blocked.clone(),
+             setup: self.setup_view(),
+             features: features::catalogue_for(self.ui_variant()),
+             fixture_build: cfg!(feature = "test-fixtures"),
+@@ -1835,6 +1893,7 @@ impl State {
+             sessions: self.sessions_view(),
+             library: self.library_view(),
+             overview: self.overview_view(),
++            inbox: self.inbox_view(&self.overview_view()),
+             workbench: self.workbench_view(),
+             gateway: self.gateway_view(),
+             harness: self.harness_view(self.harness_engine),
+@@ -2643,6 +2702,8 @@ impl Core {
+             overview: None,
+             holds: Vec::new(),
+             clock_offset: 0,
++            switch_blocked: None,
++            reads: inbox_domain::ReadBookkeeping::default(),
+             overview_published: None,
+             deadline_tick: config.deadline_tick,
+             workbench: workbench_domain::Workbench::default(),
+@@ -3542,17 +3603,69 @@ fn admit(
+             }
+             state.changed();
+         }
+-        Intent::SelectTenant { tenant } => {
++        Intent::SelectTenant { tenant, resolution } => {
+             state.require_storage()?;
+             // A tenant an unsettled import wrote is not there yet (D050); a
+             // setup draft is not a tenant until it completes (C29).
+             if !state.committed_tenant(&tenant) || state.v1_hides_tenant(&tenant) {
+                 return Err(Refusal::InvalidInput);
+             }
++            // The one switch path (I1): a pending Harness decision refuses
++            // it until the operator resolves the conversation.
++            if let Err(refusal) = state.guard_switch(&tenant, resolution) {
++                state.changed();
++                return Err(refusal);
++            }
+             let before = state.data.clone();
+             state.data.active = Some(tenant);
+             state.save_with(&before)?;
+             effects.push(Effect::Start(state.reissue_context()));
++            // The new tenant's Home is what a switch shows (C30, shell.md).
++            if state.ui_variant() == features::UiVariant::V2 {
++                state.active_feature = Some(FeatureId::Home);
++            }
++            state.changed();
++        }
++        Intent::DismissSwitchGuard => {
++            state.switch_blocked = None;
++            state.changed();
++        }
++        Intent::ReadTenant { context } => {
++            let (operation, starts) = state.admit_management(
++                context,
++                ManagementRequest::Overview,
++                Arc::clone(&adapters.keychain),
++                Arc::clone(session),
++            )?;
++            state.reads.rechecking = None;
++            operation_ref = Some(operation);
++            effects.push(Effect::Start(starts));
++            effects.push(Effect::Start(state.take_gateway_starts()));
++            state.changed();
++        }
++        Intent::RecheckProduct { context, product } => {
++            let (operation, starts) = state.admit_management(
++                context,
++                ManagementRequest::Overview,
++                Arc::clone(&adapters.keychain),
++                Arc::clone(session),
++            )?;
++            state.reads.rechecking = Some(product);
++            operation_ref = Some(operation);
++            effects.push(Effect::Start(starts));
++            effects.push(Effect::Start(state.take_gateway_starts()));
++            state.changed();
++        }
++        Intent::AcknowledgeItem { context, id } => {
++            state.hold_insight(&context, &id, HoldKind::Acknowledge)?;
++            state.changed();
++        }
++        Intent::SnoozeItem { context, id } => {
++            state.hold_insight(&context, &id, HoldKind::Snooze)?;
++            state.changed();
++        }
++        Intent::UnsnoozeItem { context, id } => {
++            state.restore_insight(&context, &id)?;
+             state.changed();
+         }
+         Intent::DeleteTenant { tenant } => {
+diff --git a/crates/desktop-core/src/authority/harness_domain.rs b/crates/desktop-core/src/authority/harness_domain.rs
+index d78cdbb8..32ab16d5 100644
+--- a/crates/desktop-core/src/authority/harness_domain.rs
++++ b/crates/desktop-core/src/authority/harness_domain.rs
+@@ -696,6 +696,36 @@ impl State {
+             .map_err(|_| Refusal::Busy)
+     }
+ 
++    /// The bound conversation that is still running, if any (C30 guard).
++    pub(super) fn live_bound_harness(&self) -> Option<OperationId> {
++        self.harness
++            .as_ref()
++            .filter(|c| c.ended.is_none() && c.stop.is_none() && self.harness_bound(c))
++            .map(|c| c.id.clone())
++    }
++
++    /// The approvals the live bound conversation waits for (C30 guard).
++    pub(super) fn bound_approvals(&self) -> Vec<crate::harness::HarnessApproval> {
++        self.harness
++            .as_ref()
++            .filter(|c| c.ended.is_none() && c.stop.is_none() && self.harness_bound(c))
++            .map(|c| c.progress_approvals())
++            .unwrap_or_default()
++    }
++
++    /// Ends the conversation and drops it once its task returns: nothing
++    /// of it is shown or kept in the shell (C30 "discard and switch").
++    pub(super) fn discard_harness(&mut self, id: &OperationId) -> Result<(), Refusal> {
++        let conversation = self.live_harness(id)?;
++        if let Some(job) = conversation.write_confirm.take() {
++            conversation.keep_unsent(job);
++        }
++        conversation.stop = Some(HarnessStop::Ended);
++        conversation.retired = true;
++        conversation.cancel.cancel();
++        Ok(())
++    }
++
+     /// Ends the conversation: the engine is stopped and reaped.
+     pub(super) fn end_harness(&mut self, id: &OperationId) -> Result<(), Refusal> {
+         let conversation = self.live_harness(id)?;
+diff --git a/crates/desktop-core/src/authority/observation_domain.rs b/crates/desktop-core/src/authority/observation_domain.rs
+index 4942815f..60bcdf10 100644
+--- a/crates/desktop-core/src/authority/observation_domain.rs
++++ b/crates/desktop-core/src/authority/observation_domain.rs
+@@ -26,10 +26,10 @@ pub enum HoldKind {
+ 
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub(super) struct Hold {
+-    id: String,
+-    kind: HoldKind,
+-    level: u8,
+-    until: u32,
++    pub(super) id: String,
++    pub(super) kind: HoldKind,
++    pub(super) level: u8,
++    pub(super) until: u32,
+ }
+ 
+ /// What Needs attention can say (v1 faces, Runtime only).
+@@ -51,6 +51,9 @@ pub enum AttentionFace {
+ pub struct HeldItem {
+     pub item: InboxItem,
+     pub kind: HoldKind,
++    /// When a snoozed item returns (seconds since the epoch), computed
++    /// here (C30, I11); none for an acknowledgment.
++    pub returns_at: Option<u32>,
+ }
+ 
+ #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+@@ -129,6 +132,11 @@ impl State {
+         let clock = self.clock();
+         let record = self.overview_record(context);
+         record.refreshing = false;
++        // A completed read of the current context: the presentation may
++        // announce it (C30, I4), and a recheck is answered by it.
++        self.reads.generation = self.reads.generation.wrapping_add(1);
++        self.reads.rechecking = None;
++        let record = self.overview_record(context);
+         match result {
+             // Every source failed: a failed refresh. The last read stays
+             // (marked by the failure); with none, the failed read is shown.
+@@ -171,6 +179,9 @@ impl State {
+                 {
+                     holds.retain(|h| {
+                         reported.contains(&h.id)
++                            // A setup warning (C29) is not reported by reads:
++                            // its hold stays until the operator lifts it.
++                            || h.id.starts_with("vw-")
+                             || if h.id.starts_with("gateway-") {
+                                 gateway_known.as_ref() != Some(&h.id)
+                             } else {
+@@ -190,13 +201,29 @@ impl State {
+         }
+     }
+ 
++    /// The items the current read reports, plus the active tenant's setup
++    /// warnings (C29), which holds address like any other item.
+     fn current_items(&self, context: &ContextRef) -> Vec<InboxItem> {
+-        self.overview
++        let mut items: Vec<InboxItem> = self
++            .overview
+             .as_ref()
+             .filter(|o| &o.context == context)
+             .and_then(|o| o.read.as_ref())
+             .map(|r| r.items.clone())
+-            .unwrap_or_default()
++            .unwrap_or_default();
++        if self.active_ref.as_ref() == Some(context) {
++            items.extend(self.setup_warning_items());
++        }
++        items
++    }
++
++    /// The active tenant's holds.
++    pub(super) fn active_holds(&self) -> &[Hold] {
++        self.data
++            .active
++            .as_ref()
++            .and_then(|t| self.holds.iter().find(|(h, _)| h == t))
++            .map_or(&[], |(_, h)| h.as_slice())
+     }
+ 
+     /// Acknowledges or snoozes an attention item the current read reports.
+@@ -273,7 +300,12 @@ impl State {
+             .map_or(&[], |(_, h)| h.as_slice());
+         let mut attention = Vec::new();
+         let mut held = Vec::new();
+-        for item in read.iter().flat_map(|r| r.items.iter()) {
++        let warnings = self.setup_warning_items();
++        for item in read
++            .iter()
++            .flat_map(|r| r.items.iter())
++            .chain(warnings.iter())
++        {
+             if !(item.action && level(item) > 0) {
+                 continue;
+             }
+@@ -288,6 +320,7 @@ impl State {
+                 Some(h) => held.push(HeldItem {
+                     item: item.clone(),
+                     kind: h.kind,
++                    returns_at: (h.kind == HoldKind::Snooze).then_some(h.until),
+                 }),
+                 None => attention.push(item.clone()),
+             }
+diff --git a/crates/desktop-core/src/features.rs b/crates/desktop-core/src/features.rs
+index 93f8cf8c..ead45ebe 100644
+--- a/crates/desktop-core/src/features.rs
++++ b/crates/desktop-core/src/features.rs
+@@ -245,16 +245,7 @@ pub fn catalogue_for(variant: UiVariant) -> Vec<FeatureEntry> {
+             FeatureEntry::available(FeatureId::Home, "Home", Some(1), true),
+             // Listed with its shortcut from the start so ⌘2 never moves; the
+             // Inbox view itself lands in C30 and is unavailable until then.
+-            FeatureEntry {
+-                id: FeatureId::Inbox,
+-                label: "Inbox".to_owned(),
+-                availability: Availability::Unavailable {
+-                    reason: "The Inbox arrives in C30".to_owned(),
+-                    planned_chunk: "C30".to_owned(),
+-                },
+-                shortcut: Some(2),
+-                sidebar: true,
+-            },
++            FeatureEntry::available(FeatureId::Inbox, "Inbox", Some(2), true),
+             FeatureEntry::available(FeatureId::Harness, "Harness", Some(3), true),
+             FeatureEntry::available(FeatureId::Academy, "Academy", Some(4), true),
+             FeatureEntry::available(FeatureId::Library, "Test Cases", Some(5), true),
+diff --git a/crates/desktop-core/src/lib.rs b/crates/desktop-core/src/lib.rs
+index bf2556fd..6d925852 100644
+--- a/crates/desktop-core/src/lib.rs
++++ b/crates/desktop-core/src/lib.rs
+@@ -49,13 +49,14 @@ pub use authority::{
+     ChangeReviewView, ChangesView, ConfirmationRequest, Core, CoreConfig, CredentialStore,
+     DownloadStatus, DownloadView, EndpointReviewView, ExportKind, ExportState, ExportView,
+     FileSaver, GatewayView, HeldItem, HoldKind, ImagePicker, ImportFile, ImportPicker, ImportView,
+-    Intent, InvestigationView, LibraryNotice, LibraryState, LibraryView, LocalDraftView,
+-    MAX_TENANTS, Observation, OfflineState, OfflineView, OperatorConfirmation, OverviewView,
+-    PagePrinter, Principal, Readback, Receipt, Refusal, ReportTarget, ReportUndoView, ReportsState,
++    InboxEntry, InboxKind, InboxView, Intent, InvestigationView, LibraryNotice, LibraryState,
++    LibraryView, LocalDraftView, MAX_TENANTS, Observation, OfflineState, OfflineView,
++    OperatorConfirmation, OverviewView, PagePrinter, Principal, ProductRead, ProductReadState,
++    ReadState, ReadStatus, Readback, Receipt, Refusal, ReportTarget, ReportUndoView, ReportsState,
+     ReportsView, ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView,
+     SecretPresenter, SecretState, SelectedWorkspace, SessionsView, ShellSnapshot,
+-    StagedFileFailure, StagedFileState, StagedFileView, StorageHealth, TenantView, UrlOpener,
+-    ViewScope,
++    StagedFileFailure, StagedFileState, StagedFileView, StorageHealth, SwitchResolution,
++    TenantView, UrlOpener, ViewScope,
+ };
+ pub use authority::{
+     CollectionView, ConflictKind, DocumentView, EnvironmentView, FolderPicker, RecentView,
+diff --git a/crates/desktop-core/tests/harness_tools/main.rs b/crates/desktop-core/tests/harness_tools/main.rs
+index 0137f245..fbfc406f 100644
+--- a/crates/desktop-core/tests/harness_tools/main.rs
++++ b/crates/desktop-core/tests/harness_tools/main.rs
+@@ -1026,3 +1026,136 @@ async fn nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_re
+     desk.end(&id).await;
+     std::fs::remove_dir_all(&dir).expect("cleanup");
+ }
++
++/// C30 (I1): the one tenant-switch path refuses while the operator has a
++/// Harness decision pending; the refusal carries the guard, and the
++/// operator's resolution ends the conversation (kept or dropped) and switches.
++#[tokio::test(flavor = "multi_thread")]
++async fn a_pending_decision_refuses_a_tenant_switch_until_it_is_resolved() {
++    let mut desk = desk().await;
++    let dir = project();
++    choose_project(&mut desk, &dir).await;
++    let id = ready(&mut desk).await;
++    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
++    desk.say(&id, "List the files.").await.expect("sent");
++    let c = answered_with(&mut desk, |c| {
++        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
++    })
++    .await;
++    let token = c["approvals"][0]["id"].as_str().expect("id").to_owned();
++    // Another tenant to switch to.
++    let a = desk.json()["active"]["tenant"]
++        .as_str()
++        .expect("A")
++        .to_owned();
++    let origin = desk.json()["tenants"][0]["origin"]
++        .as_str()
++        .expect("origin")
++        .to_owned();
++    desk.send(
++        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": "1234567890",
++        "destination": {"kind": "custom", "origin": origin}}}),
++    )
++    .await
++    .expect("B");
++    let b = desk.json()["tenants"]
++        .as_array()
++        .expect("tenants")
++        .iter()
++        .find(|t| t["label"] == "Tenant B")
++        .and_then(|t| t["id"].as_str())
++        .expect("B id")
++        .to_owned();
++    // Without a resolution the switch is refused and the guard is published.
++    assert_eq!(
++        desk.send(json!({"kind": "selectTenant", "tenant": b}))
++            .await,
++        Err(desktop_core::Refusal::DecisionPending)
++    );
++    let s = desk.json();
++    assert_eq!(s["active"]["tenant"], a, "still on A");
++    assert_eq!(s["switchBlocked"]["to"], b);
++    assert_eq!(s["switchBlocked"]["pending"]["conversation"], id);
++    assert_eq!(s["switchBlocked"]["pending"]["decision"], token);
++    assert!(
++        s["harness"]["conversation"]["approvals"]
++            .as_array()
++            .is_some_and(|x| !x.is_empty()),
++        "nothing was decided for the operator"
++    );
++    // Stay: the guard closes, nothing else changes.
++    desk.send(json!({"kind": "dismissSwitchGuard"}))
++        .await
++        .expect("dismissed");
++    assert!(desk.json()["switchBlocked"].is_null());
++    assert_eq!(desk.json()["active"]["tenant"], a);
++    // Archive and switch: the conversation is ended (kept) and B is active.
++    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "archive"}))
++        .await
++        .expect("switched");
++    let s = desk.json();
++    assert_eq!(s["active"]["tenant"], b);
++    assert!(s["switchBlocked"].is_null());
++    assert!(
++        s["harness"]["conversation"].is_null(),
++        "another tenant's conversation is never shown"
++    );
++    // A plain switch with nothing pending needs no resolution.
++    desk.send(json!({"kind": "selectTenant", "tenant": a}))
++        .await
++        .expect("back to A");
++    assert!(
++        settle_for(30, || {
++            let c = desk.conversation();
++            c.is_null() || c["phase"] == "ended" || c["phase"] == "ending"
++        })
++        .await
++    );
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn discard_and_switch_drops_the_pending_conversation() {
++    let mut desk = desk().await;
++    let dir = project();
++    choose_project(&mut desk, &dir).await;
++    let id = ready(&mut desk).await;
++    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
++    desk.say(&id, "List the files.").await.expect("sent");
++    answered_with(&mut desk, |c| {
++        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
++    })
++    .await;
++    let a = desk.json()["active"]["tenant"]
++        .as_str()
++        .expect("A")
++        .to_owned();
++    let origin = desk.json()["tenants"][0]["origin"]
++        .as_str()
++        .expect("origin")
++        .to_owned();
++    desk.send(
++        json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": "1234567890",
++        "destination": {"kind": "custom", "origin": origin}}}),
++    )
++    .await
++    .expect("B");
++    let b = desk.json()["tenants"]
++        .as_array()
++        .expect("tenants")
++        .iter()
++        .find(|t| t["label"] == "Tenant B")
++        .and_then(|t| t["id"].as_str())
++        .expect("B id")
++        .to_owned();
++    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
++        .await
++        .expect("switched");
++    assert_eq!(desk.json()["active"]["tenant"], b);
++    desk.send(json!({"kind": "selectTenant", "tenant": a}))
++        .await
++        .expect("back to A");
++    assert!(
++        settle_for(30, || desk.conversation().is_null()).await,
++        "dropped once its task returned"
++    );
++}
+diff --git a/crates/desktop-core/tests/ui_v2_shell/main.rs b/crates/desktop-core/tests/ui_v2_shell/main.rs
+index 39cbfaa0..fd22408c 100644
+--- a/crates/desktop-core/tests/ui_v2_shell/main.rs
++++ b/crates/desktop-core/tests/ui_v2_shell/main.rs
+@@ -168,12 +168,12 @@ async fn navigate_accepts_only_catalogued_destinations_and_is_session_scoped() {
+         FeatureId::Home,
+         "variant change resets navigation"
+     );
+-    // Listed but unavailable until C30: refused, never a blank page.
+-    assert_eq!(
+-        desk.send(json!({"kind": "navigate", "feature": "inbox"}))
+-            .await,
+-        Err(Refusal::InvalidInput)
+-    );
++    // The Inbox arrived in C30: listed and available (an unlisted destination
++    // stays refused, never a blank page).
++    desk.send(json!({"kind": "navigate", "feature": "inbox"}))
++        .await
++        .expect("inbox");
++    assert_eq!(desk.snap().active_feature, FeatureId::Inbox);
+     desk.send(json!({"kind": "navigate", "feature": "administration"}))
+         .await
+         .expect("administration");
+diff --git a/crates/xtask/src/live_run.rs b/crates/xtask/src/live_run.rs
+index 798d68d7..08176273 100644
+--- a/crates/xtask/src/live_run.rs
++++ b/crates/xtask/src/live_run.rs
+@@ -681,8 +681,11 @@ impl Desk {
+             .find(|t| t.label == label)
+             .map(|t| t.id.clone())
+             .ok_or_else(|| invalid("the created tenant is not listed"))?;
+-        self.send(Intent::SelectTenant { tenant: id.clone() })
+-            .await?;
++        self.send(Intent::SelectTenant {
++            tenant: id.clone(),
++            resolution: None,
++        })
++        .await?;
+         self.wait(|s| s.active.as_ref().is_some_and(|a| a.tenant == id))
+             .await?;
+         Ok(())
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index eea5ccef..e7e805fa 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1188,6 +1188,20 @@
+         "id": "C29-N06",
+         "check": "T09 matrix: every wizard step and the add sheet captured in light and dark at 100% and 200% zoom; Tab reaches each step's controls; at the 900\u00d7600 minimum the sheet's Cancel is inside the window once focused (the dialog scrolls within the viewport)."
+       }
++    ],
++    "C30": [
++      {
++        "id": "C30-N01",
++        "check": "With a Harness conversation waiting for the operator's approval (the real pinned engine against the synthetic Gateway), switching tenants through the switcher, through the palette's 'Switch to \u2026' entry and through Go \u203a Switch Tenant\u2026 each shows the one guard dialog ('A Harness decision is waiting') rendered from the core's refusal; Stay keeps the tenant and the approval; 'Archive and switch' ends the conversation and makes the other tenant active; the decision was never taken for the operator."
++      },
++      {
++        "id": "C30-N02",
++        "check": "A tenant that was never read shows 'First read pending' on Home and an empty Inbox saying the same (never sample data); 'Read now' runs the core's read against the synthetic endpoint and announces its completion from the core's read status (all sources complete, or the partial sources named); the Inbox then lists the read's items in tabs with counts and a detail pane whose action navigates with context."
++      },
++      {
++        "id": "C30-N03",
++        "check": "Snooze is a core intent: snoozing an item from Home and reading its return time in the Inbox row, the Inbox detail pane and the toast all state the same core-computed time; Acknowledge marks the item and takes it off Home; Unsnooze brings it back; every step captured in light and dark at 100% and 200%."
++      }
+     ]
+   }
+ }
+diff --git a/docs/architecture/ui-v2/provenance.md b/docs/architecture/ui-v2/provenance.md
+index 4980a4f7..4e4e37cb 100644
+--- a/docs/architecture/ui-v2/provenance.md
++++ b/docs/architecture/ui-v2/provenance.md
+@@ -43,7 +43,10 @@ page "Refined Native v2", version 134 (version id 1793059808-4929, published
+ | P30 | The wizard opens whenever onboarding is not done | The shell shows onboarding as done whenever a tenant already exists (an upgrade, or a tenant created before the v2 shell was chosen); the stored state is untouched. A first run is one with no tenant yet; a relaunch mid-setup reopens at the Tenant step with a fresh draft (the previous draft's credentials are cleaned up) | Existing users must never be sent through the wizard; a half-made draft is never a tenant |
+ | P31 | Products step shows licence state read from the tenant | No admitted service reports licensing (DESIGN-V2 §6); each card shows what it reads with (scan key / management client, saved or not) and, once verified, that product's verify result; a note says licence state is not readable through the public APIs | Nothing may be inferred about licensing from reads that do not report it |
+ | P32 | First-run import returns to the wizard | A v1 import during first run commits its tenants through the reviewed C23 flow; the desktop then has a tenant, so the first-run draft ends (its credentials are cleaned up) and the shell opens on the imported tenant; its scan key is added in Administration (the reviewed C08/C09 credential setup) | A tenant that exists is never sent back through a first-run wizard (P30), and the wizard cannot wrap an existing tenant without duplicating it |
++| P33 | `ReadStatus` as its own core scope with per-product states from dedicated reads | Derived in the core from the Runtime overview read the shell already owns: Runtime Security from the sessions chart and the key inventory, AI Gateway from the chosen workspace's usage and limits (not read when no workspace is chosen, and said so), Red Team and model/skill reads are `notRead` on Home (their destinations read them); partial sources are named; a completed read bumps a generation the presentation announces | No second read pipeline: Home never claims coverage a read did not establish (I4) |
++| P34 | Inbox items with `kind`, `severity` and `explanation` per item | `InboxEntry` carries the overview item (Runtime, Gateway) or the C29 setup warning with its hold; the explanation is per kind in the presentation's copy, not invented per item; `deadline` is absent (P20) | The admitted reads report no per-item explanation or deadline |
++| P35 | Guard offers "Archive and switch" / "Discard and switch" | Archive ends the conversation (its protected history stays as C20 saved it); Discard ends it and drops it once its task returns; both then switch once; the pending approval is never decided for the operator | The engine is stopped either way: a switch retires its binding (C20); the difference is only whether the transcript is kept |
+ 
+ P10–P14 are the five round-16 Codex items carried as known gaps (see
+ [DESIGN-V2.md](DESIGN-V2.md) "Known gaps"). P16–P21 were added after the C27
+-attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b); P24–P25 were recorded in C28 and P26–P32 in C29 when implementation met the host as it is (P26–P28 revised after the C29 attempt-01 review; P26–P27 again, and P32 added, after attempt-02).
++attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b); P24–P25 were recorded in C28 and P26–P32 in C29 and P33–P35 in C30 when implementation met the host as it is (P26–P28 revised after the C29 attempt-01 review; P26–P27 again, and P32 added, after attempt-02).
+diff --git a/docs/architecture/ui-v2/screens/boards.md b/docs/architecture/ui-v2/screens/boards.md
+index d4c94544..45f53fda 100644
+--- a/docs/architecture/ui-v2/screens/boards.md
++++ b/docs/architecture/ui-v2/screens/boards.md
+@@ -27,6 +27,7 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
+ | R2On06 Academy | R2Onboard | step=academy | `fx.on.academy` | hosted sign-in or skip (P19) | C29 |
+ | R2On07 Done | R2Onboard | step=done | `fx.on.done` | finite open, `onboarding=done` | C29 |
+ | R2Inbox | R2App | start=inbox | `fx.inbox` | V2-T04, T12, T13 | C30 |
++| R2Fresh | R2App | start=home, tenant never read | `fx.fresh` | first read pending, empty Inbox (I12) | C30 |
+ | R2Admin | R2App | start=admin | `fx.admin` | V2-T19, per-tab labels | C31 |
+ | R2Review | R2App | start=admin, overlay=review | `fx.review` | V2-T03, T06, T07, T08 | C31 |
+ | R2Harness | R2App | start=harness, convo=blocks | `fx.harness.blocks` | V2-T17 | C32 |
+diff --git a/docs/architecture/ui-v2/state-ownership.md b/docs/architecture/ui-v2/state-ownership.md
+index fa0203a1..95cbcf7d 100644
+--- a/docs/architecture/ui-v2/state-ownership.md
++++ b/docs/architecture/ui-v2/state-ownership.md
+@@ -51,7 +51,7 @@ and reconciled by hand; a key missing here is a specification defect.
+ | `s.toast`, `s.toastKind`, `s.undo` | toast text, kind, undo target | UI | shell store, timer | ≤ 6 s | kept (I10) |
+ | `s.detail`, `s.sheet` | detail sheet; confirm sheet | UI | shell store modal stack | transient | kept (I8) |
+ | `s.explain` | explain-mode toggle | UI | shell store | transient | kept |
+-| `s.sel`, `s.itab` | Inbox selection, tab | UI | inbox store | transient | kept |
++| `s.sel`, `s.itab` | Inbox selection, tab | UI | shell store, keyed by tenant id | transient; a switch round trip keeps it (I2) | kept |
+ | `s.product`, `s.exp`, `s.ptab`, `s.allOpen`, `s.adminNav`, `s.adminQ`, `s.tree` | Administration product, expanded set, tab per product, expand-all, nav mode, search, tree | UI | admin store | transient | kept |
+ | `s.review`, `s.reviewKind`, `s.reviewFrom`, `s.reviewTenant`, `s.reviewApplied` | review open, kind, origin, bound tenant, applied | Core | `Review` scope (tenant-bound, invalidated on context change) | session | kept; the UI holds only "open" |
+ | `s.typed` | typed confirmation | UI | admin store | until review exit | kept (I3) |
+@@ -69,7 +69,7 @@ and reconciled by hand; a key missing here is a specification defect.
+ | Prototype key | Meaning | Owner | Where | Lifetime | Disposition |
+ |---|---|---|---|---|---|
+ | `ts.reading`, `ts.reads`, `ts.firstRead`, `ts.lastRead`, `ts.warnCleared`, `ts.capsScan` | read in progress, count, first read done, last-read time, warning cleared, scan capability | Core | `ReadStatus` scope | session | kept (I4); `reads` count is not shown and never feeds a timestamp |
+-| `ts.ack`, `ts.snoozed` | acknowledgments, snoozes with return | Core | `InboxItem.acknowledged`, `snooze_return` | persisted | kept (I11) |
++| `ts.ack`, `ts.snoozed` | acknowledgments, snoozes with return | Core | `InboxEntry.hold` (`acknowledge`, or `snooze` with `returnsAt` computed in the core); intents `acknowledgeItem`/`snoozeItem`/`unsnoozeItem` | session, per tenant (as v1's holds) | kept (I11); not persisted across a relaunch, as the retained holds were not |
+ | `ts.prompt`, `ts.dir`, `ts.profile`, `ts.model`, `ts.app`, `ts.kind`, `ts.scanned`, `ts.scanDir`, `ts.scanProfile`, `ts.results`, `ts.activeCase`, `ts.activeInput`, `ts.activeDir` | Playground prompt, direction, profile, model, app, classified kind, scanned flag, scan selectors, per-case results, active case | prompt/dir/profile/model/app: UI; scan result + per-case results: Core | workbench store; `ScanRecordView` (existing) and library case results | prompt transient; results persisted per tenant | kept; verdict computed by the existing scan path, never by a UI classifier (the prototype's `classify` is fixture-only) |
+ | `ts.extraCases`, `ts.packs` | user-created cases, packs | Core | library | persisted | kept |
+ | `ts.hist` | API responses | Core | workbench history | persisted | kept (I5) |
+diff --git a/packages/desktop-contracts/fixtures/wire/observe-shell-response.json b/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
+index 5e74ad99..95003776 100644
+--- a/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
++++ b/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
+@@ -1 +1 @@
+-{"kind":"shell","snapshot":{"revision":"1","appearance":"system","uiVariant":"legacy","onboarding":"needed","activeFeature":"runtime","showCalls":true,"switchBlocked":null,"setup":null,"features":[{"id":"runtime","label":"Runtime Security","availability":{"state":"available"},"shortcut":1,"sidebar":true},{"id":"academy","label":"Academy","availability":{"state":"available"},"shortcut":2,"sidebar":true},{"id":"administration","label":"Administration","availability":{"state":"available"},"shortcut":3,"sidebar":true},{"id":"sessions","label":"Sessions & Reports","availability":{"state":"available"},"shortcut":4,"sidebar":true},{"id":"library","label":"Case Library","availability":{"state":"available"},"shortcut":5,"sidebar":true},{"id":"redTeam","label":"Red Team & Models","availability":{"state":"available"},"shortcut":6,"sidebar":true},{"id":"apiClient","label":"API Client","availability":{"state":"available"},"shortcut":7,"sidebar":true},{"id":"gateway","label":"AI Gateway","availability":{"state":"available"},"shortcut":8,"sidebar":true},{"id":"harness","label":"Harness","availability":{"state":"available"},"shortcut":9,"sidebar":true},{"id":"import","label":"Import from v1","availability":{"state":"available"},"shortcut":null,"sidebar":true},{"id":"settings","label":"Settings","availability":{"state":"available"},"shortcut":null,"sidebar":true}],"fixtureBuild":true,"storage":"ready","tenants":[],"active":null,"endpointReview":null,"import":{"state":"idle"},"resetFailure":null,"durabilityUnconfirmed":false,"scans":[],"academy":{"state":"signedOut"},"learner":"lx-000000000000000000000000","academyOrigin":"https://academy.cdot.io","academyOffline":{"state":"signedOut","reachable":true,"downloads":[],"localDrafts":[]},"changes":{"review":null,"staged":null,"results":[]},"sessions":{"reports":{"state":"idle","failure":null,"items":[],"undo":null,"problem":null,"unsaved":false},"investigation":null,"export":null},"library":{"state":"idle","failure":null,"cases":[],"problem":null,"unsaved":null,"notice":null,"choosing":false,"fetching":false,"export":null},"overview":{"read":null,"refreshing":false,"failure":null,"failedAt":null,"fresh":false,"attention":[],"held":[],"face":"firstLaunch"},"workbench":{"available":true,"loaded":false,"failure":null,"recent":[],"collection":null,"import":null,"adoption":null,"adoptionSettled":false,"git":null,"busy":false,"unprotected":false,"running":[],"review":null,"network":"loopbackOnly"},"gateway":{"workspaces":null,"complete":false,"selected":null,"remembered":null,"rememberedMissing":false,"local":{"state":"idle","failure":null,"drafts":[],"records":[],"playground":[],"runs":[],"files":[],"problem":null,"unsaved":false},"playground":null,"files":null},"harness":{"engine":{"available":false,"protocol":"airs-desktop/1","runtimeVersion":"0.1.7-desktop.2","engineCommit":"9331a5839bc6a763d94dee7584746f58bbbe1181"},"conversation":null,"signIn":null,"history":null,"project":null,"projectRefused":null,"mcp":null},"v1Import":{"available":true,"source":null,"tenants":[],"categories":[],"notMapped":[],"plan":null,"activity":null,"receipts":[],"damagedReceipts":[],"receiptsUnreadable":false,"problem":null},"diagnostics":{"available":true,"events":0,"retentionDays":14,"export":null,"clear":null}}}
++{"kind":"shell","snapshot":{"revision":"1","appearance":"system","uiVariant":"legacy","onboarding":"needed","activeFeature":"runtime","showCalls":true,"switchBlocked":null,"setup":null,"features":[{"id":"runtime","label":"Runtime Security","availability":{"state":"available"},"shortcut":1,"sidebar":true},{"id":"academy","label":"Academy","availability":{"state":"available"},"shortcut":2,"sidebar":true},{"id":"administration","label":"Administration","availability":{"state":"available"},"shortcut":3,"sidebar":true},{"id":"sessions","label":"Sessions & Reports","availability":{"state":"available"},"shortcut":4,"sidebar":true},{"id":"library","label":"Case Library","availability":{"state":"available"},"shortcut":5,"sidebar":true},{"id":"redTeam","label":"Red Team & Models","availability":{"state":"available"},"shortcut":6,"sidebar":true},{"id":"apiClient","label":"API Client","availability":{"state":"available"},"shortcut":7,"sidebar":true},{"id":"gateway","label":"AI Gateway","availability":{"state":"available"},"shortcut":8,"sidebar":true},{"id":"harness","label":"Harness","availability":{"state":"available"},"shortcut":9,"sidebar":true},{"id":"import","label":"Import from v1","availability":{"state":"available"},"shortcut":null,"sidebar":true},{"id":"settings","label":"Settings","availability":{"state":"available"},"shortcut":null,"sidebar":true}],"fixtureBuild":true,"storage":"ready","tenants":[],"active":null,"endpointReview":null,"import":{"state":"idle"},"resetFailure":null,"durabilityUnconfirmed":false,"scans":[],"academy":{"state":"signedOut"},"learner":"lx-000000000000000000000000","academyOrigin":"https://academy.cdot.io","academyOffline":{"state":"signedOut","reachable":true,"downloads":[],"localDrafts":[]},"changes":{"review":null,"staged":null,"results":[]},"sessions":{"reports":{"state":"idle","failure":null,"items":[],"undo":null,"problem":null,"unsaved":false},"investigation":null,"export":null},"library":{"state":"idle","failure":null,"cases":[],"problem":null,"unsaved":null,"notice":null,"choosing":false,"fetching":false,"export":null},"inbox":{"items":[],"read":{"state":"pending","lastReadAt":null,"products":[],"sourcesMissing":[],"generation":0,"rechecking":null}},"overview":{"read":null,"refreshing":false,"failure":null,"failedAt":null,"fresh":false,"attention":[],"held":[],"face":"firstLaunch"},"workbench":{"available":true,"loaded":false,"failure":null,"recent":[],"collection":null,"import":null,"adoption":null,"adoptionSettled":false,"git":null,"busy":false,"unprotected":false,"running":[],"review":null,"network":"loopbackOnly"},"gateway":{"workspaces":null,"complete":false,"selected":null,"remembered":null,"rememberedMissing":false,"local":{"state":"idle","failure":null,"drafts":[],"records":[],"playground":[],"runs":[],"files":[],"problem":null,"unsaved":false},"playground":null,"files":null},"harness":{"engine":{"available":false,"protocol":"airs-desktop/1","runtimeVersion":"0.1.7-desktop.2","engineCommit":"9331a5839bc6a763d94dee7584746f58bbbe1181"},"conversation":null,"signIn":null,"history":null,"project":null,"projectRefused":null,"mcp":null},"v1Import":{"available":true,"source":null,"tenants":[],"categories":[],"notMapped":[],"plan":null,"activity":null,"receipts":[],"damagedReceipts":[],"receiptsUnreadable":false,"problem":null},"diagnostics":{"available":true,"events":0,"retentionDays":14,"export":null,"clear":null}}}
+diff --git a/packages/desktop-contracts/src/client.ts b/packages/desktop-contracts/src/client.ts
+index 917fa176..33cbc8d1 100644
+--- a/packages/desktop-contracts/src/client.ts
++++ b/packages/desktop-contracts/src/client.ts
+@@ -70,6 +70,7 @@ const REFUSALS: readonly Refusal[] = [
+     'alreadyProcessed',
+     'sequenceGap',
+     'shuttingDown',
++    'decisionPending',
+ ]
+ 
+ const DECIMAL_U64 = /^(0|[1-9][0-9]{0,19})$/
+@@ -2093,13 +2094,53 @@ function isOverviewView(value: unknown): boolean {
+         Array.isArray(value.attention) &&
+         value.attention.every(isInboxItem) &&
+         Array.isArray(value.held) &&
+-        value.held.every((h) => isRecord(h) && isInboxItem(h.item) && oneOf(HOLD_KINDS, h.kind)) &&
++        value.held.every((h) => isRecord(h) && isInboxItem(h.item) && oneOf(HOLD_KINDS, h.kind) && optional(isCount, h.returnsAt) && (h.kind !== 'snooze' || h.returnsAt !== null)) &&
+         oneOf(FACES, value.face) &&
+         // All clear only from a fresh read with nothing open.
+         (value.face !== 'allClear' || (value.fresh === true && value.attention.length === 0))
+     )
+ }
+ 
++const INBOX_KINDS: readonly string[] = ['runtime', 'gateway', 'setupWarning']
++const READ_STATES: readonly string[] = ['pending', 'reading', 'done', 'failed']
++const PRODUCT_READ_STATES: readonly string[] = ['pending', 'ok', 'incomplete', 'needsRole', 'failed', 'notRead']
++/** The active tenant's Inbox and read status (C30): entries with their core-computed holds. */
++function isInboxView(value: unknown): boolean {
++    if (!isRecord(value) || !Array.isArray(value.items) || !isRecord(value.read)) return false
++    const entries = value.items.every(
++        (e: unknown) =>
++            isRecord(e) &&
++            isString(e.id) &&
++            oneOf(INBOX_KINDS, e.kind) &&
++            typeof e.needsAction === 'boolean' &&
++            oneOf(TONES, e.severity) &&
++            isString(e.title) &&
++            typeof e.detail === 'string' &&
++            typeof e.source === 'string' &&
++            optional((p) => oneOf(PRODUCT_IDS, p), e.product) &&
++            optional((d) => oneOf(INBOX_DESTINATIONS, d), e.destination) &&
++            optional((a) => typeof a === 'string', e.actionLabel) &&
++            Array.isArray(e.facts) &&
++            e.facts.every((f: unknown) => isRecord(f) && typeof f.label === 'string' && typeof f.value === 'string') &&
++            isCount(e.when) &&
++            optional((h) => isRecord(h) && oneOf(HOLD_KINDS, h.kind) && optional(isCount, h.returnsAt) && (h.kind !== 'snooze' || h.returnsAt !== null), e.hold)
++    )
++    const read = value.read
++    return (
++        entries &&
++        oneOf(READ_STATES, read.state) &&
++        optional(isCount, read.lastReadAt) &&
++        Array.isArray(read.products) &&
++        read.products.every((p: unknown) => isRecord(p) && oneOf(PRODUCT_IDS, p.product) && oneOf(PRODUCT_READ_STATES, p.state) && isCount(p.sourcesRead) && isCount(p.sourcesTotal) && optional((d) => typeof d === 'string', p.detail)) &&
++        Array.isArray(read.sourcesMissing) &&
++        read.sourcesMissing.every((s: unknown) => typeof s === 'string') &&
++        isCount(read.generation) &&
++        optional((p) => oneOf(PRODUCT_IDS, p), read.rechecking) &&
++        // Nothing read yet means no last-read time and no product result.
++        (read.state !== 'pending' || read.lastReadAt === null)
++    )
++}
++
+ function isChangesView(value: unknown): boolean {
+     return (
+         isRecord(value) &&
+@@ -2660,6 +2701,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
+         !isSessionsView(value.sessions) ||
+         !isLibraryView(value.library) ||
+         !isOverviewView(value.overview) ||
++        !isInboxView(value.inbox) ||
+         !isWorkbenchView(value.workbench) ||
+         !isGatewayView(value.gateway) ||
+         !isHarnessView(value.harness) ||
+diff --git a/packages/desktop-contracts/src/generated/HeldItem.ts b/packages/desktop-contracts/src/generated/HeldItem.ts
+index beec7074..3468ae60 100644
+--- a/packages/desktop-contracts/src/generated/HeldItem.ts
++++ b/packages/desktop-contracts/src/generated/HeldItem.ts
+@@ -2,4 +2,9 @@
+ import type { HoldKind } from "./HoldKind";
+ import type { InboxItem } from "./InboxItem";
+ 
+-export type HeldItem = { item: InboxItem, kind: HoldKind, };
++export type HeldItem = { item: InboxItem, kind: HoldKind, 
++/**
++ * When a snoozed item returns (seconds since the epoch), computed
++ * here (C30, I11); none for an acknowledgment.
++ */
++returnsAt: number | null, };
+diff --git a/packages/desktop-contracts/src/generated/Intent.ts b/packages/desktop-contracts/src/generated/Intent.ts
+index ceb9eca3..f70958ae 100644
+--- a/packages/desktop-contracts/src/generated/Intent.ts
++++ b/packages/desktop-contracts/src/generated/Intent.ts
+@@ -26,6 +26,7 @@ import type { ReviewId } from "./ReviewId";
+ import type { ScanDraft } from "./ScanDraft";
+ import type { SetupMode } from "./SetupMode";
+ import type { StorageMode } from "./StorageMode";
++import type { SwitchResolution } from "./SwitchResolution";
+ import type { TenantId } from "./TenantId";
+ import type { TenantTarget } from "./TenantTarget";
+ import type { Theme } from "./Theme";
+@@ -40,4 +41,9 @@ import type { WorkspaceRef } from "./WorkspaceRef";
+  * instructions; it never carries method names or arbitrary SDK payloads.
+  * Tenant-scoped instructions carry the ContextRef the caller was viewing.
+  */
+-export type Intent = { "kind": "setAppearance", theme: Theme, } | { "kind": "setUiVariant", variant: UiVariant, } | { "kind": "navigate", feature: FeatureId, } | { "kind": "setOnboarding", state: OnboardingState, } | { "kind": "setShowCalls", on: boolean, } | { "kind": "beginTenantSetup", mode: SetupMode, profile: ProfileDraft, } | { "kind": "updateTenantSetup", context: ContextRef, profile: ProfileDraft, } | { "kind": "chooseSetupProducts", context: ContextRef, products: Array<ProductId>, } | { "kind": "verifyTenantSetup", context: ContextRef, } | { "kind": "completeTenantSetup", context: ContextRef, packs: Array<ProductId>, } | { "kind": "discardTenantSetup", context: ContextRef, } | { "kind": "createTenant", profile: ProfileDraft, } | { "kind": "selectTenant", tenant: TenantId, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "configureManagementCredential", context: ContextRef, mode: StorageMode, clientId: string, secret: EnteredSecret, } | { "kind": "removeManagementCredential", context: ContextRef, } | { "kind": "management", context: ContextRef, request: ManagementRequest, } | { "kind": "selectGatewayWorkspace", context: ContextRef, workspace: string, } | { "kind": "reviewChange", context: ContextRef, draft: ChangeDraft, } | { "kind": "requestApply", review: ReviewId, draft: ChangeDraft, confirmation: string, } | { "kind": "discardChange", review: ReviewId, } | { "kind": "chooseDictionaryFile", context: ContextRef, } | { "kind": "revealSecret", operation: OperationId, } | { "kind": "forgetSecret", operation: OperationId, } | { "kind": "cancelChange", operation: OperationId, } | { "kind": "openGatewayLocal", context: ContextRef, } | { "kind": "saveGatewayDraft", context: ContextRef, draft: GatewayDraftInput, } | { "kind": "discardGatewayLocal", context: ContextRef, id: string, } | { "kind": "configureInferenceCredential", context: ContextRef, mode: StorageMode, workspace: WorkspaceRef, endpoint: string, secret: EnteredSecret, } | { "kind": "removeInferenceCredential", context: ContextRef, } | { "kind": "runInference", context: ContextRef, workspace: WorkspaceRef, run: InferenceRun, } | { "kind": "stopInference", operation: OperationId, } | { "kind": "clearInference", operation: OperationId, } | { "kind": "startHarness", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "configureHarnessSignIn", context: ContextRef, workspace: WorkspaceRef, endpoint: string, issuer: string, clientId: string, audience: string, } | { "kind": "removeHarnessSignIn", context: ContextRef, } | { "kind": "chooseHarnessCredential", context: ContextRef, source: CredentialSource, } | { "kind": "signInHarness", context: ContextRef, } | { "kind": "cancelHarnessSignIn", context: ContextRef, } | { "kind": "signOutHarness", context: ContextRef, } | { "kind": "chooseHarnessProject", context: ContextRef, } | { "kind": "clearHarnessProject", context: ContextRef, } | { "kind": "setHarnessWrite", context: ContextRef, write: boolean, } | { "kind": "decideHarnessApproval", conversation: OperationId, approval: string, allow: boolean, } | { "kind": "reviewHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "dismissHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "confirmHarnessWrite", conversation: OperationId, allow: boolean, } | { "kind": "listMcpServers", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "enableMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, enabled: boolean, } | { "kind": "signInMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "cancelMcpSignIn", context: ContextRef, } | { "kind": "signOutMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "listHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "openHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "closeHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "deleteHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "exportHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, format: HistoryFormat, } | { "kind": "resumeHarness", context: ContextRef, workspace: WorkspaceRef, id: string, } | { "kind": "sendHarness", conversation: OperationId, prompt: string, } | { "kind": "interruptHarness", conversation: OperationId, } | { "kind": "endHarness", conversation: OperationId, } | { "kind": "clearHarness", conversation: OperationId, } | { "kind": "readGatewayFiles", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "chooseGatewayFile", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "uploadGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "deleteGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "savePlaygroundDraft", context: ContextRef, workspace?: WorkspaceRef, draft: PlaygroundDraftInput, } | { "kind": "openReports", context: ContextRef, } | { "kind": "saveReport", context: ContextRef, target: ReportTarget, input: ReportInput, } | { "kind": "removeReport", context: ContextRef, scanId: string, subRequest: number, } | { "kind": "undoReport", context: ContextRef, } | { "kind": "exportReports", context: ContextRef, } | { "kind": "clearInvestigation", context: ContextRef, } | { "kind": "exportInvestigation", context: ContextRef, } | { "kind": "openLibrary", context: ContextRef, } | { "kind": "saveCase", context: ContextRef, draft: CaseDraft, } | { "kind": "deleteCase", context: ContextRef, id: string, } | { "kind": "importCases", context: ContextRef, } | { "kind": "importExamples", context: ContextRef, source: CatalogSource, } | { "kind": "copyCase", context: ContextRef, id: string, tenant: TenantId, } | { "kind": "exportCases", context: ContextRef, } | { "kind": "saveLibraryAgain", context: ContextRef, } | { "kind": "workbench", request: WorkbenchRequest, } | { "kind": "holdInsight", context: ContextRef, id: string, hold: HoldKind, } | { "kind": "restoreInsight", context: ContextRef, id: string, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "inspectV1Import" } | { "kind": "planV1Import", categories: Array<Category>, targets: Array<TenantTarget>, } | { "kind": "confirmV1Import", review: ReviewId, items: Array<number>, } | { "kind": "resumeV1Import", receipt: string, } | { "kind": "rollBackV1Import", receipt: string, } | { "kind": "forgetV1ImportReceipt", receipt: string, } | { "kind": "dismissV1Import" } | { "kind": "exportDiagnostics" } | { "kind": "clearDiagnostics" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, } | { "kind": "startAcademySignIn" } | { "kind": "cancelAcademySignIn" } | { "kind": "openAcademyVerification" } | { "kind": "signOutAcademy" } | { "kind": "printPage", learner: LearnerRef, } | { "kind": "uploadAvatar", learner: LearnerRef, } | { "kind": "loadAcademyImage", learner: LearnerRef, url: string, } | { "kind": "downloadCourse", learner: LearnerRef, courseId: string, } | { "kind": "removeDownload", learner: LearnerRef, courseId: string, } | { "kind": "saveLocalDraft", learner: LearnerRef, attemptId: string, baseVersion: number, draft: string, } | { "kind": "loadLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "clearLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "academyCall", learner: LearnerRef, procedure: string, procedureKind: ProcedureKind, input: string | null, };
++export type Intent = { "kind": "setAppearance", theme: Theme, } | { "kind": "setUiVariant", variant: UiVariant, } | { "kind": "navigate", feature: FeatureId, } | { "kind": "setOnboarding", state: OnboardingState, } | { "kind": "setShowCalls", on: boolean, } | { "kind": "beginTenantSetup", mode: SetupMode, profile: ProfileDraft, } | { "kind": "updateTenantSetup", context: ContextRef, profile: ProfileDraft, } | { "kind": "chooseSetupProducts", context: ContextRef, products: Array<ProductId>, } | { "kind": "verifyTenantSetup", context: ContextRef, } | { "kind": "completeTenantSetup", context: ContextRef, packs: Array<ProductId>, } | { "kind": "discardTenantSetup", context: ContextRef, } | { "kind": "createTenant", profile: ProfileDraft, } | { "kind": "selectTenant", tenant: TenantId, 
++/**
++ * How a switch blocked by a pending Harness decision proceeds
++ * (C30, I1); absent, a pending decision refuses the switch.
++ */
++resolution: SwitchResolution | null, } | { "kind": "dismissSwitchGuard" } | { "kind": "readTenant", context: ContextRef, } | { "kind": "recheckProduct", context: ContextRef, product: ProductId, } | { "kind": "acknowledgeItem", context: ContextRef, id: string, } | { "kind": "snoozeItem", context: ContextRef, id: string, } | { "kind": "unsnoozeItem", context: ContextRef, id: string, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "configureManagementCredential", context: ContextRef, mode: StorageMode, clientId: string, secret: EnteredSecret, } | { "kind": "removeManagementCredential", context: ContextRef, } | { "kind": "management", context: ContextRef, request: ManagementRequest, } | { "kind": "selectGatewayWorkspace", context: ContextRef, workspace: string, } | { "kind": "reviewChange", context: ContextRef, draft: ChangeDraft, } | { "kind": "requestApply", review: ReviewId, draft: ChangeDraft, confirmation: string, } | { "kind": "discardChange", review: ReviewId, } | { "kind": "chooseDictionaryFile", context: ContextRef, } | { "kind": "revealSecret", operation: OperationId, } | { "kind": "forgetSecret", operation: OperationId, } | { "kind": "cancelChange", operation: OperationId, } | { "kind": "openGatewayLocal", context: ContextRef, } | { "kind": "saveGatewayDraft", context: ContextRef, draft: GatewayDraftInput, } | { "kind": "discardGatewayLocal", context: ContextRef, id: string, } | { "kind": "configureInferenceCredential", context: ContextRef, mode: StorageMode, workspace: WorkspaceRef, endpoint: string, secret: EnteredSecret, } | { "kind": "removeInferenceCredential", context: ContextRef, } | { "kind": "runInference", context: ContextRef, workspace: WorkspaceRef, run: InferenceRun, } | { "kind": "stopInference", operation: OperationId, } | { "kind": "clearInference", operation: OperationId, } | { "kind": "startHarness", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "configureHarnessSignIn", context: ContextRef, workspace: WorkspaceRef, endpoint: string, issuer: string, clientId: string, audience: string, } | { "kind": "removeHarnessSignIn", context: ContextRef, } | { "kind": "chooseHarnessCredential", context: ContextRef, source: CredentialSource, } | { "kind": "signInHarness", context: ContextRef, } | { "kind": "cancelHarnessSignIn", context: ContextRef, } | { "kind": "signOutHarness", context: ContextRef, } | { "kind": "chooseHarnessProject", context: ContextRef, } | { "kind": "clearHarnessProject", context: ContextRef, } | { "kind": "setHarnessWrite", context: ContextRef, write: boolean, } | { "kind": "decideHarnessApproval", conversation: OperationId, approval: string, allow: boolean, } | { "kind": "reviewHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "dismissHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "confirmHarnessWrite", conversation: OperationId, allow: boolean, } | { "kind": "listMcpServers", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "enableMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, enabled: boolean, } | { "kind": "signInMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "cancelMcpSignIn", context: ContextRef, } | { "kind": "signOutMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "listHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "openHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "closeHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "deleteHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "exportHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, format: HistoryFormat, } | { "kind": "resumeHarness", context: ContextRef, workspace: WorkspaceRef, id: string, } | { "kind": "sendHarness", conversation: OperationId, prompt: string, } | { "kind": "interruptHarness", conversation: OperationId, } | { "kind": "endHarness", conversation: OperationId, } | { "kind": "clearHarness", conversation: OperationId, } | { "kind": "readGatewayFiles", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "chooseGatewayFile", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "uploadGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "deleteGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "savePlaygroundDraft", context: ContextRef, workspace?: WorkspaceRef, draft: PlaygroundDraftInput, } | { "kind": "openReports", context: ContextRef, } | { "kind": "saveReport", context: ContextRef, target: ReportTarget, input: ReportInput, } | { "kind": "removeReport", context: ContextRef, scanId: string, subRequest: number, } | { "kind": "undoReport", context: ContextRef, } | { "kind": "exportReports", context: ContextRef, } | { "kind": "clearInvestigation", context: ContextRef, } | { "kind": "exportInvestigation", context: ContextRef, } | { "kind": "openLibrary", context: ContextRef, } | { "kind": "saveCase", context: ContextRef, draft: CaseDraft, } | { "kind": "deleteCase", context: ContextRef, id: string, } | { "kind": "importCases", context: ContextRef, } | { "kind": "importExamples", context: ContextRef, source: CatalogSource, } | { "kind": "copyCase", context: ContextRef, id: string, tenant: TenantId, } | { "kind": "exportCases", context: ContextRef, } | { "kind": "saveLibraryAgain", context: ContextRef, } | { "kind": "workbench", request: WorkbenchRequest, } | { "kind": "holdInsight", context: ContextRef, id: string, hold: HoldKind, } | { "kind": "restoreInsight", context: ContextRef, id: string, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "inspectV1Import" } | { "kind": "planV1Import", categories: Array<Category>, targets: Array<TenantTarget>, } | { "kind": "confirmV1Import", review: ReviewId, items: Array<number>, } | { "kind": "resumeV1Import", receipt: string, } | { "kind": "rollBackV1Import", receipt: string, } | { "kind": "forgetV1ImportReceipt", receipt: string, } | { "kind": "dismissV1Import" } | { "kind": "exportDiagnostics" } | { "kind": "clearDiagnostics" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, } | { "kind": "startAcademySignIn" } | { "kind": "cancelAcademySignIn" } | { "kind": "openAcademyVerification" } | { "kind": "signOutAcademy" } | { "kind": "printPage", learner: LearnerRef, } | { "kind": "uploadAvatar", learner: LearnerRef, } | { "kind": "loadAcademyImage", learner: LearnerRef, url: string, } | { "kind": "downloadCourse", learner: LearnerRef, courseId: string, } | { "kind": "removeDownload", learner: LearnerRef, courseId: string, } | { "kind": "saveLocalDraft", learner: LearnerRef, attemptId: string, baseVersion: number, draft: string, } | { "kind": "loadLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "clearLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "academyCall", learner: LearnerRef, procedure: string, procedureKind: ProcedureKind, input: string | null, };
+diff --git a/packages/desktop-contracts/src/generated/Refusal.ts b/packages/desktop-contracts/src/generated/Refusal.ts
+index a73992c3..5fb893c3 100644
+--- a/packages/desktop-contracts/src/generated/Refusal.ts
++++ b/packages/desktop-contracts/src/generated/Refusal.ts
+@@ -4,4 +4,4 @@
+  * Native rejection of an Intent before admission. Sanitized: it names the
+  * class of refusal only, never secret or remote content.
+  */
+-export type Refusal = "staleContext" | "capabilityMissing" | "invalidInput" | "reviewInvalid" | "reviewConsumed" | "busy" | "lockedStore" | "deniedStore" | "alreadyProcessed" | "sequenceGap" | "shuttingDown";
++export type Refusal = "staleContext" | "capabilityMissing" | "invalidInput" | "reviewInvalid" | "reviewConsumed" | "busy" | "lockedStore" | "deniedStore" | "alreadyProcessed" | "sequenceGap" | "shuttingDown" | "decisionPending";
+diff --git a/packages/desktop-contracts/src/generated/ShellSnapshot.ts b/packages/desktop-contracts/src/generated/ShellSnapshot.ts
+index 7faf3b77..4a08a991 100644
+--- a/packages/desktop-contracts/src/generated/ShellSnapshot.ts
++++ b/packages/desktop-contracts/src/generated/ShellSnapshot.ts
+@@ -9,6 +9,7 @@ import type { FeatureId } from "./FeatureId";
+ import type { GatewayView } from "./GatewayView";
+ import type { HarnessView } from "./HarnessView";
+ import type { ImportView } from "./ImportView";
++import type { InboxView } from "./InboxView";
+ import type { LearnerRef } from "./LearnerRef";
+ import type { LibraryView } from "./LibraryView";
+ import type { OfflineView } from "./OfflineView";
+@@ -113,6 +114,10 @@ library: LibraryView,
+  * The active context's Runtime Home/Inbox observations.
+  */
+ overview: OverviewView, 
++/**
++ * The active tenant's Inbox and read status (C30).
++ */
++inbox: InboxView, 
+ /**
+  * API Client projects on this Mac (C14).
+  */
+diff --git a/packages/desktop-contracts/src/index.ts b/packages/desktop-contracts/src/index.ts
+index 99f0b2fd..c1a5699c 100644
+--- a/packages/desktop-contracts/src/index.ts
++++ b/packages/desktop-contracts/src/index.ts
+@@ -304,3 +304,12 @@ export type { VerifyLine } from './generated/VerifyLine'
+ export type { VerifyState } from './generated/VerifyState'
+ export type { PackView } from './generated/PackView'
+ export type { TenantEnvironment } from './generated/TenantEnvironment'
++export type { InboxView } from './generated/InboxView'
++export type { InboxEntry } from './generated/InboxEntry'
++export type { InboxKind } from './generated/InboxKind'
++export type { HoldView } from './generated/HoldView'
++export type { ReadStatus } from './generated/ReadStatus'
++export type { ReadState } from './generated/ReadState'
++export type { ProductRead } from './generated/ProductRead'
++export type { ProductReadState } from './generated/ProductReadState'
++export type { SwitchResolution } from './generated/SwitchResolution'
+
+# Untracked files in scope:
+# + apps/desktop/src/v2/inbox/inbox.test.tsx
+# + apps/desktop/src/v2/inbox/inbox.tsx
+# + crates/desktop-core/src/authority/inbox_domain.rs
+# + crates/desktop-core/tests/ui_v2_inbox/main.rs
+# + docs/planning/evidence/C30/native-acceptance.json
+# + docs/planning/evidence/C30/native-prepare.json
+# + docs/planning/evidence/C30/native/captures/guard-dark-100.png
+# + docs/planning/evidence/C30/native/captures/guard-dark-200.png
+# + docs/planning/evidence/C30/native/captures/guard-light-100.png
+# + docs/planning/evidence/C30/native/captures/guard-light-200.png
+# + docs/planning/evidence/C30/native/captures/home-fresh-dark-100.png
+# + docs/planning/evidence/C30/native/captures/home-fresh-dark-200.png
+# + docs/planning/evidence/C30/native/captures/home-fresh-light-100.png
+# + docs/planning/evidence/C30/native/captures/home-fresh-light-200.png
+# + docs/planning/evidence/C30/native/captures/home-read-dark-100.png
+# + docs/planning/evidence/C30/native/captures/home-read-dark-200.png
+# + docs/planning/evidence/C30/native/captures/home-read-light-100.png
+# + docs/planning/evidence/C30/native/captures/home-read-light-200.png
+# + docs/planning/evidence/C30/native/captures/inbox-dark-100.png
+# + docs/planning/evidence/C30/native/captures/inbox-dark-200.png
+# + docs/planning/evidence/C30/native/captures/inbox-light-100.png
+# + docs/planning/evidence/C30/native/captures/inbox-light-200.png
+# + docs/planning/evidence/C30/native/captures/inbox-snoozed-dark-100.png
+# + docs/planning/evidence/C30/native/captures/inbox-snoozed-dark-200.png
+# + docs/planning/evidence/C30/native/captures/inbox-snoozed-light-100.png
+# + docs/planning/evidence/C30/native/captures/inbox-snoozed-light-200.png
+# + docs/planning/evidence/C30/native/observations.json
+# + docs/planning/evidence/C30/native/tree-guard-switcher.json
+# + docs/planning/evidence/C30/native/tree-harness-approval.json
+# + docs/planning/evidence/C30/native/tree-home-fresh.json
+# + docs/planning/evidence/C30/native/tree-home-read.json
+# + docs/planning/evidence/C30/native/tree-inbox-fresh.json
+# + docs/planning/evidence/C30/native/tree-inbox-snoozed.json
+# + docs/planning/evidence/C30/native/tree-inbox.json
+# + docs/planning/evidence/C30/runs/bindings.exit
+# + docs/planning/evidence/C30/runs/bindings.log
+# + docs/planning/evidence/C30/runs/clippy-default.exit
+# + docs/planning/evidence/C30/runs/clippy-default.log
+# + docs/planning/evidence/C30/runs/clippy.exit
+# + docs/planning/evidence/C30/runs/clippy.log
+# + docs/planning/evidence/C30/runs/contracts-typecheck.exit
+# + docs/planning/evidence/C30/runs/contracts-typecheck.log
+# + docs/planning/evidence/C30/runs/core-fixtures.exit
+# + docs/planning/evidence/C30/runs/core-fixtures.log
+# + docs/planning/evidence/C30/runs/core-lib.exit
+# + docs/planning/evidence/C30/runs/core-lib.log
+# + docs/planning/evidence/C30/runs/desktop-build.exit
+# + docs/planning/evidence/C30/runs/desktop-build.log
+# + docs/planning/evidence/C30/runs/desktop-typecheck.exit
+# + docs/planning/evidence/C30/runs/desktop-typecheck.log
+# + docs/planning/evidence/C30/runs/hash-inputs.sh
+# + docs/planning/evidence/C30/runs/host.exit
+# + docs/planning/evidence/C30/runs/host.log
+# + docs/planning/evidence/C30/runs/inputs-after.sha256
+# + docs/planning/evidence/C30/runs/inputs-before.sha256
+# + docs/planning/evidence/C30/runs/notices.exit
+# + docs/planning/evidence/C30/runs/notices.log
+# + docs/planning/evidence/C30/runs/run-attempt-01.json
+# + docs/planning/evidence/C30/runs/run-checks.sh
+# + docs/planning/evidence/C30/runs/rustfmt.exit
+# + docs/planning/evidence/C30/runs/rustfmt.log
+# + docs/planning/evidence/C30/runs/shell-controller.exit
+# + docs/planning/evidence/C30/runs/shell-controller.log
+# + docs/planning/evidence/C30/runs/vitest-truth.exit
+# + docs/planning/evidence/C30/runs/vitest-truth.log
+# + docs/planning/evidence/C30/runs/vitest.exit
+# + docs/planning/evidence/C30/runs/vitest.log
+# + docs/planning/evidence/C30/runs/xtask-lib.exit
+# + docs/planning/evidence/C30/runs/xtask-lib.log
+# + docs/planning/evidence/C30/screens/guard-dark-100.png
+# + docs/planning/evidence/C30/screens/guard-dark-200.png
+# + docs/planning/evidence/C30/screens/guard-light-100.png
+# + docs/planning/evidence/C30/screens/guard-light-200.png
+# + docs/planning/evidence/C30/screens/home-fresh-dark-100.png
+# + docs/planning/evidence/C30/screens/home-fresh-dark-200.png
+# + docs/planning/evidence/C30/screens/home-fresh-light-100.png
+# + docs/planning/evidence/C30/screens/home-fresh-light-200.png
+# + docs/planning/evidence/C30/screens/home-read-dark-100.png
+# + docs/planning/evidence/C30/screens/home-read-dark-200.png
+# + docs/planning/evidence/C30/screens/home-read-light-100.png
+# + docs/planning/evidence/C30/screens/home-read-light-200.png
+# + docs/planning/evidence/C30/screens/inbox-dark-100.png
+# + docs/planning/evidence/C30/screens/inbox-dark-200.png
+# + docs/planning/evidence/C30/screens/inbox-light-100.png
+# + docs/planning/evidence/C30/screens/inbox-light-200.png
+# + docs/planning/evidence/C30/screens/inbox-snoozed-dark-100.png
+# + docs/planning/evidence/C30/screens/inbox-snoozed-dark-200.png
+# + docs/planning/evidence/C30/screens/inbox-snoozed-light-100.png
+# + docs/planning/evidence/C30/screens/inbox-snoozed-light-200.png
+# + docs/planning/evidence/C30/workload-budget-registration.json
+# + docs/planning/evidence/C30/workload-budget.md
+# + docs/planning/evidence/C30/workload-perf.json
+# + packages/desktop-contracts/src/generated/HoldView.ts
+# + packages/desktop-contracts/src/generated/InboxEntry.ts
+# + packages/desktop-contracts/src/generated/InboxKind.ts
+# + packages/desktop-contracts/src/generated/InboxView.ts
+# + packages/desktop-contracts/src/generated/ProductRead.ts
+# + packages/desktop-contracts/src/generated/ProductReadState.ts
+# + packages/desktop-contracts/src/generated/ReadState.ts
+# + packages/desktop-contracts/src/generated/ReadStatus.ts
+# + packages/desktop-contracts/src/generated/SwitchResolution.ts
+# + tools/native-acceptance/acceptance_c30.py
+# + tools/perf/measure_c30.py

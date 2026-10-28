@@ -23,6 +23,11 @@ async function launch(snapshot = fxHome()): Promise<Native> {
 }
 
 const rail = () => within(screen.getByRole('navigation', { name: 'Destinations' }))
+/** The catalogue as a build without the Inbox would list it (an unavailable destination). */
+const withUnavailableInbox = (snapshot: ReturnType<typeof fxHome>) => ({
+    ...snapshot,
+    features: snapshot.features.map((f) => (f.id === 'inbox' ? { ...f, availability: { state: 'unavailable' as const, reason: 'The Inbox arrives in C30', plannedChunk: 'C30' } } : f)),
+})
 const intents = (native: Native) => native.dispatched.map((i) => i.kind)
 
 beforeEach(() => {
@@ -31,8 +36,8 @@ beforeEach(() => {
 })
 
 describe('v2 shell', () => {
-    it('renders the sidebar from the Rust catalogue with the menu shortcuts and marks the unavailable Inbox', async () => {
-        await launch()
+    it('renders the sidebar from the Rust catalogue with the menu shortcuts and marks an unavailable destination', async () => {
+        await launch(withUnavailableInbox(fxHome()))
         const items = rail().getAllByRole('button').filter((b) => b.hasAttribute('data-inset-focus'))
         expect(items.map((b) => b.textContent)).toEqual([
             'Home⌘1',
@@ -52,7 +57,7 @@ describe('v2 shell', () => {
 
     it('dispatches navigate for the sidebar, the native menu and Home cards, never local state', async () => {
         const user = userEvent.setup()
-        const native = await launch()
+        const native = await launch(withUnavailableInbox(fxHome()))
         await user.click(rail().getByRole('button', { name: /Harness/ }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'harness' })
         // The page changes only when the core reports it.
@@ -87,7 +92,7 @@ describe('v2 shell', () => {
         const dialog = screen.getByRole('dialog', { name: 'Command palette' })
         expect(dialog).toHaveAttribute('aria-modal', 'true')
         const options = within(dialog).getAllByRole('option').map((o) => o.textContent)
-        expect(options.slice(0, 2)).toEqual(['Home⌘1', 'Inbox⌘2C30'])
+        expect(options.slice(0, 2)).toEqual(['Home⌘1', 'Inbox⌘2'])
         expect(options).toContain('Switch to Meridian Retail · Production · TSG 1001464285')
         expect(options).toContain('Read now')
         // End and Home jump to the last and first entries.
@@ -96,11 +101,11 @@ describe('v2 shell', () => {
         await user.keyboard('{Home}')
         expect(within(dialog).getByRole('combobox')).toHaveAttribute('aria-activedescendant', expect.stringContaining('go:home'))
         await user.type(within(dialog).getByRole('combobox'), 'meridian{Enter}')
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210' })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
         expect(screen.queryByRole('dialog')).toBeNull()
         await user.click(rail().getByRole('button', { name: /Go to…/ }))
         await user.type(screen.getByRole('combobox'), 'read{Enter}')
-        expect(native.dispatched.at(-1)).toMatchObject({ kind: 'management', request: { kind: 'overview' } })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'readTenant', context: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' })
     })
 
     it('switches tenants from the rail switcher with one selectTenant intent and lists Add a tenant', async () => {
@@ -117,7 +122,7 @@ describe('v2 shell', () => {
             'Add a tenant…',
         ])
         await user.click(within(list).getByRole('button', { name: /Meridian Retail/ }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210' })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
         expect(screen.queryByRole('group', { name: 'Switch tenant' })).toBeNull()
     })
 
@@ -154,8 +159,13 @@ describe('v2 shell', () => {
             gaps: [],
             gateway: null,
         }
-        await native.push({ ...native.current, overview: { ...native.current.overview, face: 'allClear', read, fresh: true } })
-        expect(document.querySelector('[data-slot="read-status"]')?.textContent).toMatch(/Read finished at \d\d:\d\d/)
+        await native.push({
+            ...native.current,
+            overview: { ...native.current.overview, face: 'allClear', read, fresh: true },
+            inbox: { items: [], read: { state: 'done', lastReadAt: 1_761_490_000, failedAt: null, settledAt: 1_761_490_000, products: [{ product: 'runtimeSecurity', state: 'ok', sourcesRead: 2, sourcesTotal: 2, detail: null }], sourcesMissing: [], generation: 1, rechecking: null }, lastSnooze: null },
+        })
+        // A read that found no sessions says so (I4), rather than claiming activity.
+        expect(document.querySelector('[data-slot="read-status"]')?.textContent).toMatch(/Read finished at \d\d:\d\d · no activity yet in Northwind Health/)
     })
 
     it('keeps one topmost modal: the palette over the switcher, Escape closes only the top, focus returns', async () => {
@@ -281,7 +291,7 @@ describe('v2 shell', () => {
         native.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
         await user.click(screen.getByRole('button', { name: 'Dark' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'dark' })
-        const toast = await screen.findByText('The appearance change was refused (deniedStore).')
+        const toast = await screen.findByText(/^The appearance change was refused \(deniedStore\)\./)
         expect(toast.closest('[data-slot="toast"]')).toHaveAttribute('data-kind', 'warn')
         // The observed selection stays authoritative: still 'system'.
         expect(screen.getByRole('button', { name: 'Match system' })).toHaveAttribute('aria-pressed', 'true')
@@ -392,16 +402,16 @@ describe('v2 shell', () => {
         for (let i = 0; i < 19; i += 1) await user.tab()
         expect(buttons[19]).toHaveFocus()
         await user.keyboard('{Enter}')
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: many[19]!.id })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: many[19]!.id, resolution: null })
     })
 
-    it('names the intended tenant in a refused switch and the read tenant in a refused read, even after the context changes', async () => {
+    it('names the intended tenant in a refused switch; a late refusal of a read for a tenant no longer shown is never surfaced (I2)', async () => {
         const user = userEvent.setup()
         const native = await launch(fxSwitcher())
         native.respond = () => ({ outcome: 'refusal', refusal: 'invalidInput' })
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         await user.click(screen.getByRole('button', { name: /Meridian Retail/ }))
-        expect(await screen.findByText('The switch to Meridian Retail was refused (invalidInput).')).toBeInTheDocument()
+        expect(await screen.findByText(/^The switch to Meridian Retail was refused \(invalidInput\)\./)).toBeInTheDocument()
         // Palette: Read now with a late refusal after the active context moved on.
         let answer: (value: unknown) => void = () => undefined
         native.respond = () => new Promise((resolve) => (answer = resolve))
@@ -412,7 +422,15 @@ describe('v2 shell', () => {
             answer({ outcome: 'refusal', refusal: 'deniedStore' })
             await new Promise((resolve) => setTimeout(resolve, 0))
         })
-        expect(await screen.findByText('The read of Northwind Health was refused (deniedStore).')).toBeInTheDocument()
+        // Meridian is shown now: Northwind's late refusal does not speak here.
+        expect(screen.queryByText(/The read of Northwind Health was refused/)).toBeNull()
+        // (The switch refusal, which names no shown tenant's state, is still the one toast.)
+        expect(Array.from(document.querySelectorAll('[data-slot="toast"]')).map((t) => t.textContent)).toEqual([expect.stringContaining('The switch to Meridian Retail was refused')])
+        // A refusal that arrives while its tenant is still shown is reported.
+        native.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
+        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.type(screen.getByRole('combobox'), 'read{Enter}')
+        expect(await screen.findByText(/^The read of Meridian Retail was refused \(deniedStore\)\./)).toBeInTheDocument()
     })
 
     it('tells two tenants with the same label and region apart by TSG, and names the current tenant on the trigger away from Home', async () => {
@@ -425,7 +443,7 @@ describe('v2 shell', () => {
         const rows = within(screen.getByRole('group', { name: 'Switch tenant' })).getAllByRole('button')
         expect(rows.map((r) => r.textContent)).toEqual(['AcmeProduction · TSG 1111111111', 'AcmeProduction · TSG 2222222222', 'Add a tenant…'])
         await user.click(rows[1]!)
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id, resolution: null })
         await native.push({ ...native.current, active: { tenant: b.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
         expect(screen.getByRole('button', { name: 'Switch tenant: Acme · Production · TSG 2222222222' })).toBeInTheDocument()
     })
@@ -447,6 +465,6 @@ describe('v2 shell', () => {
         await user.keyboard('{ArrowDown}{ArrowDown}')
         expect(current()).toBe('Harness⌘3')
         await user.type(within(dialog).getByRole('combobox'), '2222{Enter}')
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id, resolution: null })
     })
 })

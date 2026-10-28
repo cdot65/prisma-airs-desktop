@@ -150,7 +150,17 @@ pub(super) enum HistoryJob {
         scope: Scope,
         id: String,
     },
+    /// A discarded conversation's record is removed (C30), after any save
+    /// of it under way, and the scope's list refreshed.
+    Discard {
+        scope: Scope,
+        id: String,
+    },
 }
+
+/// At most this many discards are remembered per session (each a
+/// conversation the operator dropped; the list is tiny in practice).
+const MAX_DISCARDS: usize = 64;
 
 impl State {
     pub(super) fn history_root(&self) -> Option<std::path::PathBuf> {
@@ -217,9 +227,14 @@ impl State {
     ) -> Result<Effect, Refusal> {
         let lease = self.lease();
         let h = self.history_for(context, reference)?;
-        // Shown as reading until this request's own answer.
+        let scope = h.scope.clone();
+        let problem = self.discard_problem(&scope);
+        let h = self.history_for(context, reference)?;
+        // Shown as reading until this request's own answer; a discard whose
+        // removal failed is reported on the workspace until the record goes.
         h.list_lease = lease;
         h.list = None;
+        h.problem = h.problem.or(problem);
         Ok(Effect::HarnessHistory(HistoryJob::List {
             lease,
             scope: h.scope.clone(),
@@ -422,6 +437,10 @@ impl State {
 
     /// A job's result, applied while it is still current.
     fn history_done(&mut self, lease: u64, scope: &Scope, result: JobResult) {
+        if let JobResult::Discarded(id, deleted, _) = &result {
+            self.discard_settled(scope, id, deleted);
+        }
+        let problem = self.discard_problem(scope);
         let Some(h) = self.harness_history.as_mut().filter(|h| &h.scope == scope) else {
             return;
         };
@@ -437,7 +456,9 @@ impl State {
                     match record {
                         Ok(record) => {
                             h.opened = Some(Arc::new(*record));
-                            h.problem = None;
+                            // An unresolved discard failure outlives
+                            // unrelated operations (P35).
+                            h.problem = problem;
                         }
                         Err(failure) => h.problem = Some(failure),
                     }
@@ -445,14 +466,83 @@ impl State {
             }
             JobResult::Deleted(id, deleted, list) => {
                 h.busy = false;
-                h.problem = deleted.err();
+                if deleted.is_ok() {
+                    self.history_discard_failures
+                        .retain(|(s, i, _)| !(s == scope && i == &id));
+                }
+                let problem = self.discard_problem(scope);
+                let h = self
+                    .harness_history
+                    .as_mut()
+                    .filter(|h| &h.scope == scope)
+                    .expect("checked above");
+                h.problem = deleted.err().or(problem);
                 if h.opened.as_ref().is_some_and(|r| r.id == id) {
                     h.opened = None;
                 }
                 h.list = Some(list);
             }
+            JobResult::Discarded(id, _, list) => {
+                if h.opened.as_ref().is_some_and(|r| r.id == id) {
+                    h.opened = None;
+                }
+                if h.list.is_some() {
+                    h.list = Some(list);
+                }
+                h.problem = problem;
+            }
         }
         self.changed();
+    }
+
+    /// A discard's removal did not happen (storage unavailable, access
+    /// denied): the record stays readable, so the failure is kept and shown
+    /// on that workspace's history until the operator removes the record
+    /// (its saves stay refused either way). An absent record is already
+    /// removed.
+    fn discard_settled(&mut self, scope: &Scope, id: &str, deleted: &Result<(), HistoryFailure>) {
+        self.history_discard_failures
+            .retain(|(s, i, _)| !(s == scope && i == id));
+        if let Err(failure) = deleted
+            && *failure != HistoryFailure::Missing
+        {
+            self.history_discard_failures
+                .push((scope.clone(), id.to_owned(), *failure));
+        }
+    }
+
+    /// The failure of a discard still pending in `scope`, if any.
+    fn discard_problem(&self, scope: &Scope) -> Option<HistoryFailure> {
+        self.history_discard_failures
+            .iter()
+            .find(|(s, _, _)| s == scope)
+            .map(|(_, _, f)| *f)
+    }
+
+    /// Remembers a discarded conversation (C30): no save of it is admitted
+    /// from now on, and its record is removed off the lock, after any save
+    /// already under way.
+    pub(super) fn discard_history(&mut self, scope: Scope, id: String) {
+        if self.history_discarded.len() >= MAX_DISCARDS {
+            self.history_discarded.remove(0);
+        }
+        self.history_discarded.push((scope.clone(), id.clone()));
+        self.history_jobs.push(HistoryJob::Discard { scope, id });
+    }
+
+    /// The history work a resolution queued, as effects.
+    pub(super) fn take_history_jobs(&mut self) -> Vec<Effect> {
+        std::mem::take(&mut self.history_jobs)
+            .into_iter()
+            .map(Effect::HarnessHistory)
+            .collect()
+    }
+
+    /// Whether a conversation was discarded: its saves are refused.
+    fn history_discarded(&self, scope: &Scope, id: &str) -> bool {
+        self.history_discarded
+            .iter()
+            .any(|(s, i)| s == scope && i == id)
     }
 
     /// A save landed: the list shows it at once.
@@ -505,13 +595,16 @@ impl State {
         tenant: &TenantId,
         workspace: &str,
         scope: &Scope,
+        id: &str,
     ) -> bool {
         // The scope's note must be durable before its key may be made:
         // an unconfirmed note (this save's, or an earlier one still known
         // only in memory) is confirmed first or nothing is written, so a
         // crash can never lose the ledger of a key it made (C20 review R2).
+        // A discarded conversation (C30) is never saved again.
         if self.storage != super::StorageHealth::Ready
             || self.tenant(tenant).is_none()
+            || self.history_discarded(scope, id)
             || !self.note_history_scope(tenant, workspace)
             || (self.durability_unconfirmed && !self.confirm_durable())
         {
@@ -678,10 +771,19 @@ enum JobResult {
         Result<(), HistoryFailure>,
         Result<Vec<Listed>, HistoryFailure>,
     ),
+    Discarded(
+        String,
+        Result<(), HistoryFailure>,
+        Result<Vec<Listed>, HistoryFailure>,
+    ),
 }
 
 pub(super) async fn run_job(inner: Arc<Inner>, job: HistoryJob) {
     let vault = Arc::clone(&inner.adapters.keychain);
+    let hold = match lock(&inner) {
+        Ok(state) => Arc::clone(&state.history_hold),
+        Err(_) => return,
+    };
     let (lease, scope, result) = tokio::task::spawn_blocking(move || match job {
         HistoryJob::List { lease, scope } => {
             let list = history::list(&*vault, &scope);
@@ -695,6 +797,14 @@ pub(super) async fn run_job(inner: Arc<Inner>, job: HistoryJob) {
             let deleted = history::delete(&scope, &id);
             let list = history::list(&*vault, &scope);
             (lease, scope, JobResult::Deleted(id, deleted, list))
+        }
+        HistoryJob::Discard { scope, id } => {
+            // After any save of it under way (the sink holds the same lock
+            // while it writes); a record never saved is simply absent.
+            let _held = hold.blocking_lock();
+            let deleted = history::delete(&scope, &id);
+            let list = history::list(&*vault, &scope);
+            (0, scope, JobResult::Discarded(id, deleted, list))
         }
     })
     .await
@@ -721,15 +831,29 @@ pub(super) fn sink(inner: &Arc<Inner>, plan: HistoryPlan) -> HistorySink {
             .ok()
             .and_then(|mut state| {
                 state
-                    .admit_history_write(&tenant, &workspace, &scope)
+                    .admit_history_write(&tenant, &workspace, &scope, &id)
                     .then(|| Arc::clone(&state.history_hold))
             })
             .ok_or(HistoryFailure::Unavailable)?;
+        #[cfg(feature = "test-fixtures")]
+        if let Some(gate) = inner.adapters.harness.save_gate.as_ref() {
+            // A test may hold the save open here, between admission and the write.
+            drop(gate.lock());
+        }
         let saved = {
             let _held = hold.blocking_lock();
-            save_record(
-                &inner, &scope, &id, created, &binding, entries, usage, export,
-            )
+            // Admission was under the state lock, the write is under the
+            // history hold: a discard between the two (its tombstone first,
+            // then its removal under this same hold) must win, or the
+            // discarded transcript would be written again (C30).
+            let discarded = lock(&inner).is_ok_and(|state| state.history_discarded(&scope, &id));
+            if discarded {
+                Err(HistoryFailure::Unavailable)
+            } else {
+                save_record(
+                    &inner, &scope, &id, created, &binding, entries, usage, export,
+                )
+            }
         };
         if let Ok(mut state) = lock(&inner) {
             state.history_written(&tenant, &scope);

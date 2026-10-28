@@ -170,6 +170,8 @@ fn harness<R: Runtime>(
         history_root: root.map(|r| r.join("harness-history")),
         #[cfg(feature = "test-fixtures")]
         fixture: None,
+        #[cfg(feature = "test-fixtures")]
+        save_gate: None,
     }
 }
 

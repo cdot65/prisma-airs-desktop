@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { Eye, Moon, Sun, SunMoon, Undo2 } from 'lucide-react'
-import type { DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import type { SwitchResolution, DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { FeatureBody } from '../shell/feature-body'
+import { type Act, Inbox } from './inbox/inbox'
 import { FEATURE_ICONS } from '../shell/icons'
-import { SHELL_COPY } from './copy'
+import { SHELL_COPY, SNOOZE_COPY } from './copy'
+import { readLine } from './home'
 import { Home } from './home'
 import { Palette } from './palette'
 import { useShellStore } from './store'
+import { SwitchGuard } from './switch-guard'
 import { TenantSwitcher } from './tenant-switcher'
 import { Toasts } from './toasts'
 import { Modal, useModalsOpen } from './modal'
@@ -21,10 +24,12 @@ export interface V2ShellProps {
     onSetAppearance: (theme: Theme) => void
     onSetShowCalls: (on: boolean) => void
     onReturnToClassic: () => void
-    onSwitchTenant: (tenant: string) => void
+    onSwitchTenant: (tenant: string, resolution?: SwitchResolution) => void
     onReadNow: () => void
     /** Re-sends a delivery the desktop did not confirm, only on the operator's click. */
     onRetry: (what: string, intent: Intent) => void
+    /** Sends one intent and reports its outcome on the shell's surfaces (Home and Inbox actions). */
+    onAct: Act
     dispatch: Dispatch
     client: DesktopClient
 }
@@ -48,8 +53,11 @@ export function V2Shell(props: V2ShellProps) {
     const paletteOpen = useShellStore((s) => s.paletteOpen)
     const openPalette = useShellStore((s) => s.openPalette)
     const closePalette = useShellStore((s) => s.closePalette)
-    const unconfirmed = useShellStore((s) => s.unconfirmed)
+    const unconfirmedAll = useShellStore((s) => s.unconfirmed)
+    // Only deliveries bound to the shown context, or to none (I2).
+    const unconfirmed = unconfirmedAll.filter((u) => u.context === null || u.context === (snapshot.active?.context ?? null))
     const clearUnconfirmed = useShellStore((s) => s.clearUnconfirmed)
+    const arrival = useShellStore((s) => s.arrival)
     const modalOpen = useModalsOpen()
     const heading = useRef<HTMLHeadingElement>(null)
     const firstRender = useRef(true)
@@ -65,6 +73,47 @@ export function V2Shell(props: V2ShellProps) {
     }
     const active = snapshot.activeFeature
     const feature = snapshot.features.find((f) => f.id === active) ?? snapshot.features[0]
+    // Completion toasts are derived from the core's ReadStatus (I4): a new
+    // generation is one finished read; its kind follows the coverage. A
+    // tenant change re-baselines (the other tenant's generation is its own).
+    const read = snapshot.inbox.read
+    const tenantNow = snapshot.active?.tenant ?? null
+    const seenGeneration = useRef<{ tenant: string | null; generation: number }>({ tenant: tenantNow, generation: read.generation })
+    useEffect(() => {
+        const seen = seenGeneration.current
+        seenGeneration.current = { tenant: tenantNow, generation: read.generation }
+        if (seen.tenant !== tenantNow || read.generation === seen.generation) return
+        const tenant = snapshot.tenants.find((t) => t.id === tenantNow)
+        const line = readLine(snapshot, tenant?.label ?? null)
+        useShellStore.getState().toast(line.text, line.tone === 'allowed' ? 'ok' : 'warn', undefined, tenantNow, snapshot.active?.context ?? null)
+    }, [read.generation, tenantNow, snapshot])
+    // A snooze is announced once, from the receipt the core issues for it
+    // (I11): the return time is the core's, wherever the snooze was asked
+    // for. Holds a tenant already had, or a read rediscovers, are not news.
+    const lastSnooze = snapshot.inbox.lastSnooze
+    const seenSnooze = useRef<{ tenant: string | null; sequence: number }>({ tenant: tenantNow, sequence: lastSnooze?.sequence ?? 0 })
+    useEffect(() => {
+        const seen = seenSnooze.current
+        const sequence = lastSnooze?.sequence ?? 0
+        seenSnooze.current = { tenant: tenantNow, sequence }
+        if (seen.tenant !== tenantNow || !lastSnooze || sequence === seen.sequence) return
+        useShellStore.getState().toast(SNOOZE_COPY.toast(lastSnooze.title, lastSnooze.returnsAt), 'info', undefined, tenantNow, snapshot.active?.context ?? null)
+    }, [lastSnooze, tenantNow, snapshot.active])
+    // Presentation state follows its tenant (I2): an arrival another tenant
+    // asked for is forgotten, a toast that spoke for another tenant's item or
+    // read is retired (however long Reduce Motion would have kept it), and an
+    // unconfirmed delivery bound to a retired context is dropped (it can
+    // never be revived, let alone rebound).
+    const contextNow = snapshot.active?.context ?? null
+    useEffect(() => {
+        useShellStore.getState().scopeArrival(tenantNow)
+        useShellStore.getState().retireToasts(tenantNow)
+        useShellStore.getState().retireUnconfirmed(contextNow)
+    }, [tenantNow, contextNow])
+    // The guard for a switch asked here (I1); a setup draft's completion
+    // renders the same guard inside the wizard, which re-sends the completion.
+    const guard = snapshot.switchBlocked && !snapshot.switchBlocked.completion ? snapshot.switchBlocked : null
+    const guardTarget = guard ? snapshot.tenants.find((t) => t.id === guard.to)?.label ?? guard.to : null
 
     useEffect(() => {
         // Move focus to the new page heading after navigation (not on launch).
@@ -227,7 +276,9 @@ export function V2Shell(props: V2ShellProps) {
                     </ul>
                 )}
                 {feature.id === 'home' ? (
-                    <Home ref={heading} snapshot={snapshot} onNavigate={props.onNavigate} />
+                    <Home ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
+                ) : feature.id === 'inbox' ? (
+                    <Inbox ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
                 ) : (
                     <FeatureBody
                         ref={heading}
@@ -238,6 +289,7 @@ export function V2Shell(props: V2ShellProps) {
                         onNavigate={props.onNavigate}
                         dispatch={props.dispatch}
                         client={props.client}
+                        arrival={arrival && arrival.tenant === tenantNow && arrival.feature === feature.id ? arrival : null}
                     />
                 )}
                 <p role='status' aria-live='polite' data-slot='shell-status' className='mt-4 pb-6 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
@@ -246,6 +298,9 @@ export function V2Shell(props: V2ShellProps) {
             </main>
             {paletteOpen && (
                 <Palette snapshot={snapshot} onNavigate={props.onNavigate} onSwitchTenant={props.onSwitchTenant} onReadNow={props.onReadNow} onClose={closePalette} />
+            )}
+            {guard && guardTarget && (
+                <SwitchGuard target={guardTarget} completion={false} onStay={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => props.onSwitchTenant(guard.to, resolution)} />
             )}
             {adding && (
                 <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} data-slot='add-tenant-sheet'>

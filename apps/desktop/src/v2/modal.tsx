@@ -56,7 +56,8 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
         if (!node) return
         focusedOnce.current = true
         if (!node.contains(document.activeElement)) {
-            const first = node.querySelector<HTMLElement>('[autofocus], ' + FOCUSABLE)
+            // A declared initial control first (wherever it sits), else the first focusable.
+            const first = node.querySelector<HTMLElement>('[autofocus]') ?? node.querySelector<HTMLElement>(FOCUSABLE)
             ;(first ?? node).focus()
         }
     }, [topmost])

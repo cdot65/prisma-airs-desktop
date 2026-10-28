@@ -30,9 +30,13 @@ export const SHELL_COPY = {
     classic: 'Return to the classic interface',
     fixture: 'Fixture build',
     status: 'Status',
-    toastRefused: (what: string, reason: string) => `${what} was refused (${reason}).`,
+    toastRefused: (what: string, reason: string, text: string | null = null) => `${what} was refused (${reason}).${text ? ` ${text}` : ''}`,
     switchTo: (tenant: string) => `The switch to ${tenant}`,
     readOf: (tenant: string) => `The read of ${tenant}`,
+    recheckOf: (product: string, tenant: string) => `The recheck of ${product} in ${tenant}`,
+    acknowledgmentOf: (title: string) => `The acknowledgment of “${title}”`,
+    snoozeOf: (title: string) => `The snooze of “${title}”`,
+    unsnoozeOf: (title: string) => `The unsnooze of “${title}”`,
     toastUnknown: (what: string) => `${what} was sent but not confirmed. The current state is shown.`,
     toastFailed: (what: string) => `${what} could not be delivered.`,
     toastPrefix: { ok: 'Done: ', info: 'Note: ', warn: 'Warning: ' } as Record<'ok' | 'info' | 'warn', string>,
@@ -40,6 +44,99 @@ export const SHELL_COPY = {
     retry: 'Retry',
     dismiss: 'Dismiss',
 } as const
+
+/** Wall-clock HH:MM for a seconds-since-epoch stamp. */
+export function clockOf(seconds: number): string {
+    const d = new Date(seconds * 1000)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/** Day-relative wording for a return time (today, tomorrow, or the date). */
+export function returnsWording(seconds: number): string {
+    const d = new Date(seconds * 1000)
+    const today = new Date()
+    const dayOf = (x: Date) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`
+    const tomorrow = new Date(today.getTime() + 86_400_000)
+    const day = dayOf(d) === dayOf(today) ? 'today' : dayOf(d) === dayOf(tomorrow) ? 'tomorrow' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    return `${day} ${clockOf(seconds)}`
+}
+
+/**
+ * The one snooze label (I11): the core computes the return time; Home, the
+ * Inbox row, the detail pane and the toast all say exactly this.
+ */
+export const SNOOZE_COPY = {
+    /** Before snoozing: what a snooze will do (24 hours, per P20). */
+    offer: 'Snooze 24 hours',
+    /** After snoozing: when the core says it returns. */
+    returns: (returnsAt: number) => `Returns ${returnsWording(returnsAt)}`,
+    toast: (title: string, returnsAt: number) => `${title} snoozed · returns ${returnsWording(returnsAt)}`,
+}
+
+export const INBOX_COPY = {
+    title: 'Inbox',
+    tabs: { all: 'All', action: 'Needs action', updates: 'Updates', snoozed: 'Snoozed' } as const,
+    severity: { bad: 'Critical', warn: 'Warning', ok: 'Info' } as Record<'bad' | 'warn' | 'ok', string>,
+    kind: { runtime: 'AI Runtime Security', gateway: 'AI Gateway', setupWarning: 'Setup' } as Record<'runtime' | 'gateway' | 'setupWarning', string>,
+    emptyPending: 'First read pending. Nothing has been read for this tenant yet.',
+    emptyReading: 'Reading this tenant…',
+    emptyClear: 'Nothing needs action.',
+    emptyFailed: (when: string) => `The read at ${when} failed. Nothing has been read for this tenant yet.`,
+    emptyStale: (when: string) => `Nothing needed action at ${when}; that read is more than 10 minutes old. Read again to confirm.`,
+    stale: (when: string) => `The read from ${when} is more than 10 minutes old.`,
+    readingKept: (when: string) => `A read is in progress; the read from ${when} is shown.`,
+    readingStale: (when: string) => `A read is in progress; the read from ${when} shown is more than 10 minutes old.`,
+    emptyUnread: (when: string, sources: number) => `The read at ${when} established nothing: ${sources} source${sources === 1 ? '' : 's'} still unread. Nothing has been read for this tenant yet.`,
+    failedKept: (when: string, shown: string) => `The read at ${when} failed; the read from ${shown} is shown.`,
+    emptyTab: 'Nothing here.',
+    partial: (read: number, total: number, when: string) => `${read} of ${total} sources were read at ${when}.`,
+    acknowledged: 'Acknowledged',
+    acknowledge: 'Acknowledge',
+    needsAction: 'Mark as needing action',
+    unsnooze: 'Unsnooze',
+    why: 'Why this matters',
+    facts: 'Facts',
+    whyText: {
+        runtime: 'Runtime Security reads this from the tenant’s sessions and API keys; an item here changes what the scan key can do or how prompts are being handled.',
+        gateway: 'The chosen AI Gateway workspace reported errors or a quota for the day; routes and keys depend on it.',
+        setupWarning: 'A check during setup did not pass. The product reads only partially until it is fixed in Administration.',
+    } as Record<'runtime' | 'gateway' | 'setupWarning', string>,
+    readNow: 'Read now',
+    detail: 'Details',
+    selectHint: 'Select an item to see its details.',
+    ariaList: 'Inbox items',
+}
+
+export const READ_COPY = {
+    finished: (when: string) => `Read finished at ${when} · all sources complete`,
+    finishedIncomplete: (when: string, partial: number) => `Read finished at ${when} · ${partial} source${partial === 1 ? '' : 's'} partial`,
+    finishedNeedsRole: (when: string, products: number) => `Read finished at ${when} · ${products} product${products === 1 ? '' : 's'} still need${products === 1 ? 's' : ''} a role`,
+    finishedNoActivity: (when: string, tenant: string) => `Read finished at ${when} · no activity yet in ${tenant}`,
+    failed: (when: string) => `Read failed at ${when} · nothing read yet`,
+    failedKept: (when: string, shown: string) => `Read failed at ${when} · showing the read from ${shown}`,
+    unread: (sources: number) => `${sources} source${sources === 1 ? ' was' : 's were'} not read.`,
+    stale: (when: string) => `Read at ${when} · more than 10 minutes old; read again to confirm`,
+    staleQualifier: (when: string) => `The read from ${when} is more than 10 minutes old.`,
+    readingKept: (when: string) => `Reading… · showing the read from ${when}`,
+    readingStale: (when: string) => `Reading… · the read from ${when} shown is more than 10 minutes old`,
+    readingQualifier: (when: string) => `A read is in progress; the read from ${when} is shown.`,
+    readingStaleQualifier: (when: string) => `A read is in progress; the read from ${when} shown is more than 10 minutes old.`,
+    recheck: (product: string) => `Rechecking ${product}…`,
+    reading: (tenant: string) => `Reading ${tenant}…`,
+    rechecked: (product: string) => `${product} read again.`,
+    productState: { pending: 'Pending', ok: 'Read', incomplete: 'Incomplete', needsRole: 'Needs a role', failed: 'Failed', notRead: 'Not read here' } as Record<string, string>,
+    products: { runtimeSecurity: 'AI Runtime Security', gateway: 'AI Gateway', redTeam: 'AI Red Teaming', modelSkill: 'Model and skill scans' } as Record<string, string>,
+    sources: (read: number, total: number) => (total === 0 ? '' : `${read} of ${total} sources`),
+}
+
+export const GUARD_COPY = {
+    title: 'A Harness decision is waiting',
+    body: (tenant: string) => `The conversation in this tenant is waiting for your approval. Switching to ${tenant} ends it. Keep its transcript, drop it, or stay.`,
+    bodyCompletion: (tenant: string) => `The conversation in this tenant is waiting for your approval. Finishing the setup of ${tenant} makes it active and ends the conversation. Keep its transcript, drop it, or stay.`,
+    archive: 'Archive and switch',
+    discard: 'Discard and switch',
+    stay: 'Stay',
+}
 
 export const HOME_COPY = {
     title: 'Home',
@@ -50,7 +147,11 @@ export const HOME_COPY = {
     readFailed: (when: string) => `Last read failed at ${when}; the previous read is shown`,
     attention: 'Needs attention',
     allClear: 'Nothing needs action.',
+    clearSoFar: (qualifier: string) => `Nothing needs action in what was read. ${qualifier}`,
     inboxSoon: 'Items that need action appear here once the Inbox is available.',
+    openInbox: 'Open the Inbox',
+    products: 'Products',
+    readNow: 'Read now',
     capabilities: 'Capabilities in this tenant',
     scan: 'Runtime Security scan key',
     management: 'Management client',

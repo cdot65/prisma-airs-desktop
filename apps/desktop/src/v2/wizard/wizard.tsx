@@ -1,11 +1,13 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import type { ContextRef, ManagementResult, ProductId, Region, SetupView, ShellSnapshot, TenantEnvironment, VerifyState, VerifyStep } from '@prisma-airs/desktop-contracts'
+import { createPortal } from 'react-dom'
+import type { ContextRef, ManagementResult, ProductId, Region, SetupView, ShellSnapshot, SwitchResolution, TenantEnvironment, VerifyState, VerifyStep } from '@prisma-airs/desktop-contracts'
 import type { Dispatch, DispatchOutcome } from '../../features/tenants/dispatch'
 import { outcomeMessage } from '../../features/tenants/dispatch'
 import { readManagement } from '../../features/administration/management-read'
 import { AcademyAccount } from '../../features/academy/academy-account'
 import { Verdict, type VerdictTone } from '../verdict'
 import { ENVIRONMENT_LABELS } from '../copy'
+import { SwitchGuard } from '../switch-guard'
 import { PRODUCT_CARDS, WIZARD_COPY as C } from './copy'
 
 export type WizardStep = 'welcome' | 'tenant' | 'products' | 'verify' | 'packs' | 'academy' | 'done'
@@ -300,10 +302,13 @@ export function Wizard(props: WizardProps) {
     const selectedPacks: ProductId[] = (packs ?? offered).filter((p) => offered.includes(p))
 
     // ---- done: completion is one core intent; the shell confirms it ----
-    async function finish() {
+    // Completion makes the new tenant active: it is the one guarded switch
+    // path (I1). A pending Harness decision refuses it; the core's guard is
+    // rendered here and the completion re-sent with the chosen resolution.
+    async function finish(resolution: SwitchResolution | null = null) {
         if (!setup) return
         setFinishing(true)
-        const outcome = await dispatch({ kind: 'completeTenantSetup', context: setup.context, packs: selectedPacks })
+        const outcome = await dispatch({ kind: 'completeTenantSetup', context: setup.context, packs: selectedPacks, resolution })
         if (outcome.kind === 'admitted') {
             // First run: the shell takes over once the snapshot shows onboarding
             // done (the same intent set it). Add: the sheet closes with the label.
@@ -311,8 +316,11 @@ export function Wizard(props: WizardProps) {
             return
         }
         setFinishing(false)
+        // The guard is the snapshot's to show (switchBlocked), not a status line.
+        if (outcome.kind === 'refused' && outcome.refusal === 'decisionPending') return
         report(outcome, null, () => void finish())
     }
+    const completionGuard = snapshot.switchBlocked?.completion && setup && snapshot.switchBlocked.to === setup.tenant.id ? snapshot.switchBlocked : null
 
     // ---- cancel (add mode): the draft is discarded in the core before the sheet closes ----
     // idle → awaitingCreate (a creation is pending or unconfirmed: wait for what it
@@ -691,6 +699,8 @@ export function Wizard(props: WizardProps) {
                     </p>
                 </section>
             </main>
+            {/* The guard is a dialog above the sheet (I8): rendered at the body, outside the sheet's inert subtree. */}
+            {completionGuard && setup && createPortal(<SwitchGuard target={setup.tenant.label} completion onStay={() => void dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => void finish(resolution)} />, document.body)}
         </div>
     )
 }

@@ -130,6 +130,30 @@ pub struct RuntimeOverview {
     pub gateway: Option<crate::gateway_observe::GatewayOverview>,
 }
 
+impl RuntimeOverview {
+    /// The sessions chart established the day's activity: read, with
+    /// consistent totals (an inconsistent chart is a gap, see `summarize`).
+    pub fn chart_established(&self) -> bool {
+        self.chart.is_some()
+            && self.chart_failure.is_none()
+            && self.summary.sessions.is_some()
+            && self.summary.violating.is_some()
+            && self.summary.benign.is_some()
+    }
+
+    /// The key inventory established every key's expiration: read, whole,
+    /// and nothing unreported (an unreported expiration is a gap, see
+    /// `key_items`).
+    pub fn keys_established(&self) -> bool {
+        self.keys_failure.is_none()
+            && self.keys_complete
+            && !self
+                .gaps
+                .iter()
+                .any(|g| g.ends_with(" unreported") || g.contains("unreported"))
+    }
+}
+
 fn count(value: Option<&Value>) -> Option<u32> {
     value
         .and_then(Value::as_u64)

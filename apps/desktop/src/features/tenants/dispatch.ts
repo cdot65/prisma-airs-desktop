@@ -23,6 +23,7 @@ const REFUSAL_TEXT: Record<Refusal, string> = {
     alreadyProcessed: 'That request was already processed.',
     sequenceGap: 'The request was not delivered in order. Try again.',
     shuttingDown: 'The desktop is shutting down.',
+    decisionPending: 'A Harness decision is pending; resolve it before switching tenants.',
 }
 
 /** Sanitized operator text for an outcome that did not apply. */
