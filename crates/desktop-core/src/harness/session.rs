@@ -27,9 +27,9 @@ use super::protocol::{
 };
 use super::sidecar::{LaunchSpec, Sidecar, SidecarLauncher};
 use super::{
-    ApprovalKind, Cleanup, EntryState, HarnessApproval, HarnessEntry, HarnessFailure, HarnessPhase,
-    HarnessRole, HarnessUsage, MAX_ANSWER_BYTES, MAX_ENTRIES, MAX_TRANSCRIPT_BYTES,
-    McpServerStatus, McpStartup,
+    ApprovalEffect, ApprovalKind, Cleanup, EntryState, HarnessApproval, HarnessEntry,
+    HarnessFailure, HarnessPhase, HarnessRole, HarnessUsage, MAX_ANSWER_BYTES, MAX_ENTRIES,
+    MAX_TRANSCRIPT_BYTES, McpServerStatus, McpStartup,
 };
 use crate::runtime::Outcome;
 
@@ -158,7 +158,12 @@ pub struct Replay {
 
 /// Saves the conversation after a turn (blocking; returns once durable).
 pub type HistorySink = Arc<
-    dyn Fn(Vec<HarnessEntry>, Option<HarnessUsage>, &Replay) -> Result<u64, HistoryFailure>
+    dyn Fn(
+            Vec<HarnessEntry>,
+            Option<HarnessUsage>,
+            Option<String>,
+            &Replay,
+        ) -> Result<u64, HistoryFailure>
         + Send
         + Sync,
 >;
@@ -209,7 +214,17 @@ pub struct Progress {
     pub approvals: Vec<HarnessApproval>,
     /// The scope servers' startup in the running engine (C22).
     pub mcp: Vec<McpServerStatus>,
+    /// The conversation's opening message, whole, once known (C32): it
+    /// outlives the transcript's oldest entries.
+    pub opening: Option<String>,
+    /// Messages (`u-{n}`) as they entered the transcript, newest last: handed
+    /// to the engine (`true`), or failed without one (`false`) (C32). It
+    /// outlives the transcript's oldest entries; the newest [`MAX_MESSAGES`].
+    pub messages: std::collections::VecDeque<(String, bool)>,
 }
+
+/// Messages a conversation's progress remembers entering its transcript.
+pub const MAX_MESSAGES: usize = 64;
 
 pub type ProgressSlot = Arc<Mutex<Progress>>;
 pub type KeyReader = Box<dyn FnOnce() -> Result<Zeroizing<String>, HarnessFailure> + Send>;
@@ -496,6 +511,7 @@ async fn launched(
         tools: shared.tools.clone(),
         approvals: Vec::new(),
         tool_calls: Vec::new(),
+        held_reads: Vec::new(),
         run: {
             let mut b = [0u8; 8];
             let _ = getrandom::fill(&mut b);
@@ -664,10 +680,10 @@ async fn launched(
             {
                 e.state = EntryState::Interrupted;
             }
-            taken = Some((p.entries.clone(), p.usage));
+            taken = Some((p.entries.clone(), p.usage, p.opening.clone()));
         });
-        if let Some((entries, usage)) = taken {
-            let saved = tokio::task::spawn_blocking(move || sink(entries, usage, &export))
+        if let Some((entries, usage, opening)) = taken {
+            let saved = tokio::task::spawn_blocking(move || sink(entries, usage, opening, &export))
                 .await
                 .unwrap_or(Err(HistoryFailure::Unavailable));
             update(&progress, &pulse, |p| match saved {
@@ -742,16 +758,16 @@ async fn keep_unsent(shared: &Shared, entry: Option<HarnessEntry>, restore: Opti
     let mut taken = None;
     update(&shared.progress, &shared.pulse, |p| {
         push(p, entry);
-        taken = Some((p.entries.clone(), p.usage));
+        taken = Some((p.entries.clone(), p.usage, p.opening.clone()));
     });
-    let (Some(sink), Some((entries, usage))) = (shared.history.clone(), taken) else {
+    let (Some(sink), Some((entries, usage, opening))) = (shared.history.clone(), taken) else {
         return;
     };
     let export = restore.cloned().unwrap_or(Replay {
         context: Value::Null,
         replay: Value::Null,
     });
-    let saved = tokio::task::spawn_blocking(move || sink(entries, usage, &export))
+    let saved = tokio::task::spawn_blocking(move || sink(entries, usage, opening, &export))
         .await
         .unwrap_or(Err(HistoryFailure::Unavailable));
     update(&shared.progress, &shared.pulse, |p| match saved {
@@ -1036,6 +1052,9 @@ struct Conversation {
     elicitations_declined: u32,
     /// Tool calls being run: the engine's request and the entry.
     tool_calls: Vec<(RequestId, String, ToolLease)>,
+    /// Desktop reads held for the operator's decision (C32): the
+    /// approval's id and the call, its entry and lease.
+    held_reads: Vec<(String, RequestId, super::tools::ToolCall, String, ToolLease)>,
     /// This engine run, as a tool lease names it.
     run: u64,
     /// Cancelled when the turn is interrupted or ends (tool calls).
@@ -1165,11 +1184,11 @@ impl Conversation {
         let Some(sink) = self.history.clone() else {
             return;
         };
-        let (entries, usage) = match self.progress.lock() {
-            Ok(p) => (p.entries.clone(), p.usage),
+        let (entries, usage, opening) = match self.progress.lock() {
+            Ok(p) => (p.entries.clone(), p.usage, p.opening.clone()),
             Err(_) => return,
         };
-        let saved = tokio::task::spawn_blocking(move || sink(entries, usage, &export))
+        let saved = tokio::task::spawn_blocking(move || sink(entries, usage, opening, &export))
             .await
             .unwrap_or(Err(HistoryFailure::Unavailable));
         self.unsaved &= saved.is_err();
@@ -1299,6 +1318,36 @@ impl Conversation {
                 // engine forgets them when a turn ends or is interrupted.
                 if let Some(at) = self.approvals.iter().position(|(a, _, _)| *a == approval) {
                     let (_, request, kind) = self.approvals.remove(at);
+                    if kind == ApprovalKind::DesktopRead {
+                        self.set(|p| p.approvals.retain(|a| a.id != approval));
+                        let Some(held) = self.held_reads.iter().position(|h| h.0 == approval)
+                        else {
+                            return Ok(());
+                        };
+                        let (_, request, call, entry, lease) = self.held_reads.remove(held);
+                        if allow && let Some(sink) = self.tools.clone() {
+                            self.tool_calls
+                                .push((request.clone(), entry, lease.clone()));
+                            sink(ToolRequest {
+                                request,
+                                call,
+                                lease,
+                                cancel: self.turn_cancel.clone(),
+                            });
+                        } else {
+                            // Declined: nothing is read; the engine is told so.
+                            self.send(protocol::reply(
+                                &request,
+                                json!({"contentItems":[{"type":"inputText","text":super::tools::DECLINED}],"success":false}),
+                            )?)?;
+                            self.set(|p| {
+                                if let Some(e) = p.entries.iter_mut().find(|e| e.id == entry) {
+                                    e.state = EntryState::Declined;
+                                }
+                            });
+                        }
+                        return Ok(());
+                    }
                     let decision = if allow { "accept" } else { "decline" };
                     // MCP approvals are elicitations: `action`, nothing else.
                     let reply = if kind == ApprovalKind::McpTool {
@@ -1399,6 +1448,7 @@ impl Conversation {
             self.turn_cancel.cancel();
             self.approvals.clear();
             self.tool_calls.clear();
+            self.held_reads.clear();
             self.mcp_items.clear();
             self.set(|p| p.approvals.clear());
         }
@@ -1504,12 +1554,60 @@ impl Conversation {
                 json!({"contentItems":[{"type":"inputText","text":text}],"success":false}),
             )?);
         };
-        if self.tool_calls.len() >= MAX_PENDING_DECISIONS {
+        if self.tool_calls.len() + self.held_reads.len() >= MAX_PENDING_DECISIONS {
             return Err(HarnessFailure::Bounds);
         }
         self.seen.push(call_id.clone());
         let entry = self.assistant_id(&call_id);
         let title = call.title();
+        // A read of the tenant waits for the operator's decision in the page
+        // (C32); staging a proposal reads nothing and runs at once.
+        if call.needs_decision() {
+            if self.approvals.len() >= MAX_PENDING_DECISIONS {
+                return Err(HarnessFailure::Bounds);
+            }
+            let mut token = [0u8; 12];
+            getrandom::fill(&mut token).map_err(|_| HarnessFailure::Protocol)?;
+            let token = hex::encode(token);
+            let approval = HarnessApproval {
+                id: token.clone(),
+                kind: ApprovalKind::DesktopRead,
+                command: None,
+                cwd: None,
+                reason: None,
+                files: Vec::new(),
+                server: Some(super::tools::NAMESPACE.to_owned()),
+                tool: Some(call.name().to_owned()),
+                // Bounded and free of credentials by the parse above.
+                arguments: Some(params["arguments"].to_string()),
+                effect: ApprovalEffect::ReadOnly,
+            };
+            self.set(|p| {
+                push(
+                    p,
+                    HarnessEntry {
+                        id: entry.clone(),
+                        role: HarnessRole::Tool,
+                        text: title,
+                        state: EntryState::Streaming,
+                    },
+                );
+                p.approvals.push(approval);
+            });
+            self.approvals
+                .push((token.clone(), id.clone(), ApprovalKind::DesktopRead));
+            self.held_reads.push((
+                token,
+                id,
+                call,
+                entry,
+                ToolLease {
+                    run: self.run,
+                    turn,
+                },
+            ));
+            return Ok(());
+        }
         self.set(|p| {
             push(
                 p,
@@ -1565,7 +1663,9 @@ impl Conversation {
                 .as_deref()
                 .is_some_and(|c| !c.is_empty() && c.len() <= MAX_APPROVAL_COMMAND),
             ApprovalKind::FileChange => !files.is_empty(),
-            ApprovalKind::McpTool => false,
+            // Neither comes through this request: MCP tools are elicitations,
+            // desktop reads the desktop's own tool calls.
+            ApprovalKind::McpTool | ApprovalKind::DesktopRead => false,
         };
         let grantable = self.ours(params)
             && self.binding.project.is_some()
@@ -1605,6 +1705,13 @@ impl Conversation {
             server: None,
             tool: None,
             arguments: None,
+            // A command in a read-only project sandbox reads; a file change,
+            // or a command with changes allowed, may change the project (C32).
+            effect: if kind == ApprovalKind::Command && !self.binding.write {
+                ApprovalEffect::ReadOnly
+            } else {
+                ApprovalEffect::MayChange
+            },
         };
         self.approvals.push((token, id, kind));
         self.set(|p| p.approvals.push(approval));
@@ -1669,6 +1776,8 @@ impl Conversation {
             server: Some(item.server),
             tool: Some(item.tool),
             arguments: Some(item.arguments),
+            // A remote tool's effect is not something the desktop can know (C32).
+            effect: ApprovalEffect::MayChange,
         };
         self.approvals.push((token, id, ApprovalKind::McpTool));
         self.set(|p| p.approvals.push(approval));
@@ -2091,6 +2200,7 @@ impl Conversation {
         // does the desktop (a late decision or result is never sent).
         self.approvals.clear();
         self.tool_calls.clear();
+        self.held_reads.clear();
         self.seen.clear();
         self.files.clear();
         self.mcp_items.clear();
@@ -2146,8 +2256,19 @@ fn transcript_bytes(p: &Progress) -> usize {
     p.entries.iter().map(|e| e.text.len()).sum()
 }
 
-/// Adds an entry, dropping the oldest past the bound.
+/// Adds an entry, dropping the oldest past the bound. The conversation's
+/// first message (`u-1`) is kept whole as its opening (C32).
 fn push(p: &mut Progress, entry: HarnessEntry) {
+    if p.opening.is_none() && entry.role == HarnessRole::Operator && entry.id == "u-1" {
+        p.opening = Some(entry.text.clone());
+    }
+    if entry.role == HarnessRole::Operator {
+        p.messages
+            .push_back((entry.id.clone(), entry.state != EntryState::Failed));
+        if p.messages.len() > MAX_MESSAGES {
+            p.messages.pop_front();
+        }
+    }
     p.entries.push(entry);
     while p.entries.len() > MAX_ENTRIES || transcript_bytes(p) > MAX_TRANSCRIPT_BYTES {
         p.entries.remove(0);
@@ -2294,6 +2415,7 @@ mod tests {
             tools: None,
             approvals: Vec::new(),
             tool_calls: Vec::new(),
+            held_reads: Vec::new(),
             run: 1,
             turn_cancel: CancellationToken::new(),
             seen: Vec::new(),
@@ -2339,6 +2461,16 @@ mod tests {
         );
     }
 
+    /// Allows the first desktop read held for the operator (C32).
+    fn allow_read(c: &mut Conversation) {
+        let approval = c.held_reads.first().expect("a held read").0.clone();
+        c.on_command(Command::Decide {
+            approval,
+            allow: true,
+        })
+        .expect("decided");
+    }
+
     #[test]
     fn a_tool_call_runs_once_and_only_for_the_turn_being_answered() {
         let (writer, reader) = std_mpsc::sync_channel(64);
@@ -2354,7 +2486,10 @@ mod tests {
             RequestId::Number(1),
             &call("call-1", "turn-1", "supplyChain"),
         )
-        .expect("runs");
+        .expect("held");
+        // A read waits for the operator's decision in the page (C32).
+        assert_eq!(ran.lock().expect("fixture").len(), 0);
+        allow_read(&mut c);
         assert_eq!(ran.lock().expect("fixture").len(), 1);
         // The same call again is a protocol failure; nothing runs twice.
         assert_eq!(
@@ -2409,7 +2544,8 @@ mod tests {
         }));
         let call = |call: &str, turn: &str| json!({"threadId":"t","turnId":turn,"callId":call,"namespace":"airs_desktop","tool":"supplyChain","arguments":{}});
         c.on_tool_call(RequestId::Number(1), &call("call-1", "turn-1"))
-            .expect("runs");
+            .expect("held");
+        allow_read(&mut c);
         let first = handed.lock().expect("fixture").remove(0);
         assert_eq!(first.lease.turn, "turn-1");
         assert!(!first.cancel.is_cancelled());
@@ -2444,7 +2580,8 @@ mod tests {
         // The next turn reuses request ids: only its own lease answers.
         c.turn = Some(("u-2".into(), Some("turn-2".into())));
         c.on_tool_call(RequestId::Number(1), &call("call-3", "turn-2"))
-            .expect("runs");
+            .expect("held");
+        allow_read(&mut c);
         let next = handed.lock().expect("fixture").remove(0);
         assert_eq!(next.request, first.request);
         assert_ne!(next.lease, first.lease);
@@ -2688,6 +2825,31 @@ mod tests {
         assert_eq!(mcp.len(), 2);
         assert_eq!(mcp[0].status, McpStartup::Ready);
         assert!(!mcp[0].signed_out && mcp[1].signed_out);
+    }
+
+    #[test]
+    fn the_opening_message_outlives_the_entries_the_bounds_drop() {
+        let mut p = Progress::default();
+        let opening = format!("Investigate:\n{}", "q".repeat(200));
+        let message = |id: &str, text: &str| HarnessEntry {
+            id: id.to_owned(),
+            role: HarnessRole::Operator,
+            text: text.to_owned(),
+            state: EntryState::Complete,
+        };
+        push(&mut p, message("u-1", &opening));
+        for n in 2..=(MAX_ENTRIES as u64 + 5) {
+            push(&mut p, message(&format!("u-{n}"), "later"));
+        }
+        assert!(
+            p.entries.iter().all(|e| e.id != "u-1"),
+            "dropped from the transcript"
+        );
+        assert_eq!(p.opening.as_deref(), Some(opening.as_str()));
+        // A restored conversation's later messages never become its opening.
+        let mut restored = Progress::default();
+        push(&mut restored, message("u-8", "a later question"));
+        assert_eq!(restored.opening, None);
     }
 
     #[test]

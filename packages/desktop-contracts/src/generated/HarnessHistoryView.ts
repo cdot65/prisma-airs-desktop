@@ -2,6 +2,7 @@
 import type { ExportView } from "./ExportView";
 import type { HistoryFailure } from "./HistoryFailure";
 import type { HistoryListState } from "./HistoryListState";
+import type { OpenSettled } from "./OpenSettled";
 import type { OpenedConversationView } from "./OpenedConversationView";
 import type { SavedConversationView } from "./SavedConversationView";
 
@@ -30,6 +31,12 @@ busy: boolean,
  * Why the last open or delete did not happen.
  */
 problem: HistoryFailure | null, 
+/**
+ * The last open that settled, so the open that asked for a record can
+ * tell its own outcome, whatever came before it (C32). Absent until
+ * one has.
+ */
+lastOpen?: OpenSettled, 
 /**
  * Saving a transcript in the native sheet.
  */

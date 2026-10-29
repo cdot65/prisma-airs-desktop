@@ -520,9 +520,24 @@ async fn a_renewal_restarts_with_changes_only_once_the_operator_allows_them_agai
     assert_eq!(desk.answered().await["lastTurn"], "completed");
     let first_pid = desk.last_pid().expect("pid");
     tokio::time::sleep(Duration::from_secs(7)).await;
-    // The renewal waits for the operator: nothing restarts or is sent.
-    desk.say(&id, SECOND).await.expect("sent");
+    // The renewal waits for the operator: nothing restarts or is sent. A
+    // named send is pending meanwhile, never reported delivered (C32).
+    let state = |desk: &Desk, s: &str| {
+        desk.conversation()["submissions"].as_array().and_then(|l| {
+            l.iter()
+                .find(|t| t["submission"] == s)
+                .map(|t| t["state"].clone())
+        })
+    };
+    let (declined, allowed, stopped) = (
+        "0000000000000000000000000000000a",
+        "0000000000000000000000000000000b",
+        "0000000000000000000000000000000c",
+    );
+    let named = |s: &str, prompt: &str| json!({"kind": "sendHarness", "conversation": id.clone(), "prompt": prompt, "submission": s});
+    desk.send(named(declined, SECOND)).await.expect("sent");
     assert!(settle(|| desk.conversation()["phase"] == "confirmWrite").await);
+    assert_eq!(state(&desk, declined), Some(json!("pending")));
     tokio::time::sleep(Duration::from_millis(500)).await;
     assert_eq!(desk.last_pid(), Some(first_pid));
     assert_eq!(gateway_keys(&desk).len(), 1);
@@ -535,6 +550,7 @@ async fn a_renewal_restarts_with_changes_only_once_the_operator_allows_them_agai
     let c = desk.conversation();
     assert_eq!(c["unsent"], SECOND, "{c}");
     assert_eq!(c["entries"].as_array().map(Vec::len), Some(2));
+    assert_eq!(state(&desk, declined), Some(json!("returned")));
     // A confirmation that is not asked for is refused.
     assert!(
         desk.send(json!({"kind": "confirmHarnessWrite", "conversation": id, "allow": true}))
@@ -542,8 +558,9 @@ async fn a_renewal_restarts_with_changes_only_once_the_operator_allows_them_agai
             .is_err()
     );
     // Allowed: the engine restarts with changes and the conversation.
-    desk.say(&id, SECOND).await.expect("sent");
+    desk.send(named(allowed, SECOND)).await.expect("sent");
     assert!(settle(|| desk.conversation()["phase"] == "confirmWrite").await);
+    assert_eq!(state(&desk, allowed), Some(json!("pending")));
     desk.send(json!({"kind": "confirmHarnessWrite", "conversation": id, "allow": true}))
         .await
         .expect("allowed");
@@ -555,18 +572,21 @@ async fn a_renewal_restarts_with_changes_only_once_the_operator_allows_them_agai
     assert!(gone(first_pid).await);
     assert_eq!(idp.lock().expect("idp").refreshes, 1);
     assert!(bodies(&desk)[1].contains("periwinkle"));
+    assert_eq!(state(&desk, allowed), Some(json!("delivered")));
     // Due again, and the Mac sleeps while the confirmation is asked: the
     // message goes back to the box, and nothing restarts or is sent (P06
     // review R3-F1).
     let launches = desk.launcher.launches().len();
     tokio::time::sleep(Duration::from_secs(7)).await;
-    desk.say(&id, THIRD).await.expect("sent");
+    desk.send(named(stopped, THIRD)).await.expect("sent");
     assert!(settle(|| desk.conversation()["phase"] == "confirmWrite").await);
+    assert_eq!(state(&desk, stopped), Some(json!("pending")));
     desk.core.system_will_sleep();
     assert!(settle_for(15, || desk.conversation()["phase"] == "ended").await);
     let c = desk.conversation();
     assert_eq!(c["unsent"], THIRD, "{c}");
     assert_eq!(c["entries"].as_array().map(Vec::len), Some(4), "{c}");
+    assert_eq!(state(&desk, stopped), Some(json!("returned")));
     assert_eq!(idp.lock().expect("idp").refreshes, 1);
     assert_eq!(gateway_keys(&desk).len(), 2);
     assert_eq!(desk.launcher.launches().len(), launches);
@@ -582,12 +602,23 @@ async fn a_refused_renewal_gives_the_message_back_and_a_new_sign_in_continues() 
     assert_eq!(desk.answered().await["lastTurn"], "completed");
     idp.lock().expect("idp").refuse_refresh = true;
     tokio::time::sleep(Duration::from_secs(7)).await;
-    desk.say(&id, SECOND).await.expect("admitted");
+    // Named by the presentation (C32): given back, it is reported returned,
+    // never delivered, and a repeated delivery of it sends nothing.
+    let submission = "00112233445566778899aabbccddeeff";
+    let send = json!({"kind": "sendHarness", "conversation": id, "prompt": SECOND, "submission": submission});
+    desk.send(send.clone()).await.expect("admitted");
     assert!(
         settle(|| desk.conversation()["signInFailure"] == "sessionExpired").await,
         "{}",
         desk.conversation()
     );
+    let c = desk.conversation();
+    assert_eq!(
+        c["submissions"],
+        json!([{"submission": submission, "entry": "u-2", "state": "returned"}]),
+        "{c}"
+    );
+    assert!(desk.send(send).await.is_err());
     let c = desk.conversation();
     assert_eq!(c["unsent"], SECOND);
     assert_eq!(c["phase"], "ready");

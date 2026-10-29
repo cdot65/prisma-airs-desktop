@@ -1224,6 +1224,24 @@
         "id": "C31-N04",
         "check": "The accessibility additions (DESIGN-V2 \u00a78) on the changed UI: the review sheet is the one topmost modal (the rail hidden beneath it) and Escape closes it with focus returned to the page; the rotation reminder leaves the Inbox once the old key is read back gone; Tab from a product header reaches its tabs; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Administration screen lies past the window's right edge; a focused review-sheet control shows its focus ring (pixels around it change against the unfocused capture); the applied result and the rotation's completion sit in polite status regions; with Reduce Motion on, the applied change's toast stays past 6 s until dismissed, and the system setting is restored."
       }
+    ],
+    "C32": [
+      {
+        "id": "C32-N01",
+        "check": "The Harness renders in the v2 shell on the existing engine: the title row names the tenant, the engine and the workspace; the prerequisites checklist is hidden once satisfied; a fresh tenant shows no seeded conversation, and its first send through the composer starts a user conversation that the real engine answers, titled from that message in the rail (I12)."
+      },
+      {
+        "id": "C32-N02",
+        "check": "A command the engine asks to run while the project is read-only is decided in the page (Approve once / Decline) after a project is chosen through the embedded project panel; while it waits, a tenant switch through the switcher, the palette and Go \u203a Switch Tenant\u2026 each shows the guard (Stay, Discard and switch, Archive and switch) and Stay keeps the tenant and the decision (I1, V2-N01); Decline records it and runs nothing, Approve once runs it. With changes allowed, a command is shown as May change things: Approve\u2026 opens the native confirmation, Cancel keeps it pending and runs nothing, Allow once runs it; the guard is the one topmost modal (the rail and the page hidden beneath it) with initial focus on Stay, and Escape closes it with focus returned to the switcher."
+      },
+      {
+        "id": "C32-N03",
+        "check": "The workspace MCP catalog read the engine asks for (airs_desktop.mcpServers) is shown as read-only and read only once approved in the page; a change the engine proposes appears as a follow-up and writes nothing; Open the review shows it as the operator's typed review in Administration (Apply gated, still nothing written) and leaving it closes the follow-up; End conversation seals it (its transcript saved, the rail marks it ended, the engine is gone) and the next send starts a new conversation; the ended conversation is announced in a status region."
+      },
+      {
+        "id": "C32-N04",
+        "check": "Keyboard: Tab from the message box reaches Send or End; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Harness screen lies past the window's right edge and there is no horizontal scroll bar; a focused changed control (New investigation) shows its focus ring (pixels around it change against the unfocused capture); with Reduce Motion on, the ended conversation's toast stays past 6 s until dismissed, and the system setting is restored."
+      }
     ]
   }
 }

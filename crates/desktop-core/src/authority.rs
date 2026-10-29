@@ -480,6 +480,13 @@ pub enum Intent {
     SendHarness {
         conversation: OperationId,
         prompt: String,
+        /// The presentation's own ID for this send (32 lowercase hex): the
+        /// core takes each at most once and reports which message it became,
+        /// so a send whose receipt was lost is settled by the core's word,
+        /// never by matching text (C32).
+        #[serde(default)]
+        #[ts(optional)]
+        submission: Option<String>,
     },
     /// Stop the answer being given.
     InterruptHarness {
@@ -1671,6 +1678,9 @@ struct State {
     /// reconciliation) is held in memory but not yet saved: every later
     /// publication retries the save; nothing remote is replayed (C31).
     rotation_unsaved: bool,
+    /// A Harness decision that may change things, waiting on the native
+    /// confirmation: its conversation, approval and nonce (C32).
+    harness_confirming: Option<(OperationId, String, u64)>,
     cleaning: bool,
     /// Cleanup was asked for while a pass ran: run another when it ends,
     /// so a record released meanwhile is not left waiting (P06).
@@ -2575,6 +2585,14 @@ enum Effect {
         nonce: u64,
         request: ConfirmationRequest,
     },
+    /// The native confirmation of a Harness decision that may change
+    /// things (C32).
+    ConfirmHarness {
+        conversation: OperationId,
+        approval: String,
+        nonce: u64,
+        request: ConfirmationRequest,
+    },
     RevealSecret {
         label: String,
         secret: Zeroizing<String>,
@@ -2715,6 +2733,7 @@ impl Core {
             reset_failure: None,
             durability_unconfirmed: false,
             rotation_unsaved: false,
+            harness_confirming: None,
             cleaning: false,
             clean_again: false,
             writes_in_flight: Vec::new(),
@@ -4180,7 +4199,18 @@ fn admit(
             approval,
             allow,
         } => {
-            state.decide_harness_approval(&conversation, &approval, allow)?;
+            // Allowing a decision that may change things opens the native
+            // confirmation; only its private completion lets it run (C32).
+            if let Some((nonce, request)) =
+                state.decide_harness_approval(&conversation, &approval, allow)?
+            {
+                effects.push(Effect::ConfirmHarness {
+                    conversation,
+                    approval,
+                    nonce,
+                    request,
+                });
+            }
             state.changed();
         }
         Intent::ReviewHarnessProposal {
@@ -4348,8 +4378,9 @@ fn admit(
         Intent::SendHarness {
             conversation,
             prompt,
+            submission,
         } => {
-            if let Some(job) = state.send_harness(&conversation, prompt)? {
+            if let Some(job) = state.send_harness(&conversation, prompt, submission)? {
                 effects.push(Effect::HarnessRenew(Box::new(job)));
             }
             state.changed();
@@ -5110,6 +5141,26 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                 tokio::spawn(async move {
                     let accepted = inner.adapters.confirmer.confirm(nonce, request).await;
                     settle_confirmation(&inner, &review, nonce, accepted);
+                });
+            }
+            Effect::ConfirmHarness {
+                conversation,
+                approval,
+                nonce,
+                request,
+            } => {
+                let inner = Arc::clone(inner);
+                tokio::spawn(async move {
+                    let accepted = inner.adapters.confirmer.confirm(nonce, request).await;
+                    if let Ok(mut state) = lock(&inner) {
+                        state.settle_harness_confirmation(
+                            &conversation,
+                            &approval,
+                            nonce,
+                            accepted,
+                        );
+                        state.changed();
+                    }
                 });
             }
             Effect::ChooseTextFile { lease } => {

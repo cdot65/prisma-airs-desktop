@@ -150,6 +150,21 @@ pub enum ApprovalKind {
     FileChange,
     /// Call one tool of a workspace MCP server, once (C22).
     McpTool,
+    /// Read the tenant through one of the desktop's own read tools, once
+    /// (C32): read-only by construction.
+    DesktopRead,
+}
+
+/// What a decision lets the engine do, as the core can establish it (C32).
+/// Only a desktop read, or a command in a read-only project sandbox, is
+/// read-only; a file change, a command with changes allowed and any remote
+/// MCP tool (whose effect the desktop cannot know) may change things, and
+/// allowing one needs the native confirmation, never in-page consent alone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ApprovalEffect {
+    ReadOnly,
+    MayChange,
 }
 
 /// A pending approval, as the operator sees it (C21). Its id is the
@@ -172,6 +187,12 @@ pub struct HarnessApproval {
     pub server: Option<String>,
     pub tool: Option<String>,
     pub arguments: Option<String>,
+    /// What allowing it lets the engine do (C32). Always sent; optional in
+    /// the presentation's type only so snapshots written before C32 still
+    /// type-check (the validator and the presentation treat absent as
+    /// `mayChange`).
+    #[ts(as = "Option<ApprovalEffect>", optional)]
+    pub effect: ApprovalEffect,
 }
 
 /// How a workspace MCP server started in the running engine (C22).
@@ -204,6 +225,22 @@ pub struct HarnessEntry {
     pub state: EntryState,
 }
 
+/// Where a conversation's message numbering (`u-{n}`) continues from a
+/// restored transcript: past every message it shows. A transcript that
+/// dropped its oldest entries shows fewer messages than its last number, so
+/// counting them would reuse an ID it still shows, and the presentation
+/// tells a new message by its ID (C32).
+pub(crate) fn messages_after(entries: &[HarnessEntry]) -> u64 {
+    let shown = entries
+        .iter()
+        .filter(|e| e.role == HarnessRole::Operator)
+        .count() as u64;
+    entries
+        .iter()
+        .filter_map(|e| e.id.strip_prefix("u-")?.parse::<u64>().ok())
+        .fold(shown, u64::max)
+}
+
 /// How the engine was stopped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -234,3 +271,42 @@ pub const MAX_ENTRIES: usize = 200;
 pub const MAX_TRANSCRIPT_BYTES: usize = 1024 * 1024;
 /// One answer's text; past it the answer is stopped and marked truncated.
 pub const MAX_ANSWER_BYTES: usize = 256 * 1024;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(id: &str, role: HarnessRole) -> HarnessEntry {
+        HarnessEntry {
+            id: id.to_owned(),
+            role,
+            text: String::new(),
+            state: EntryState::Complete,
+        }
+    }
+
+    #[test]
+    fn a_restored_transcript_continues_past_every_message_it_shows() {
+        // Its first messages gave way to the bounds: two shown, numbered 51 and 52.
+        let evicted = [
+            entry("a-50", HarnessRole::Assistant),
+            entry("u-51", HarnessRole::Operator),
+            entry("a-51", HarnessRole::Assistant),
+            entry("u-52", HarnessRole::Operator),
+        ];
+        assert_eq!(messages_after(&evicted), 52);
+        assert_eq!(messages_after(&[]), 0);
+        // An imported transcript keeps its own IDs: counted, never reused.
+        let imported = [
+            entry("msg-a", HarnessRole::Operator),
+            entry("u-2", HarnessRole::Operator),
+            entry("msg-c", HarnessRole::Operator),
+        ];
+        assert_eq!(messages_after(&imported), 3);
+        let numbered = [
+            entry("u-1", HarnessRole::Operator),
+            entry("u-7", HarnessRole::Tool),
+        ];
+        assert_eq!(messages_after(&numbered), 7);
+    }
+}

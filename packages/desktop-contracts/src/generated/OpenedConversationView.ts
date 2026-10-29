@@ -6,4 +6,10 @@ import type { NotContinuable } from "./NotContinuable";
 /**
  * A saved conversation opened for reading.
  */
-export type OpenedConversationView = { id: string, title: string, updated: number, entries: Array<HarnessEntry>, source: CredentialSource, notContinuable: NotContinuable | null, };
+export type OpenedConversationView = { id: string, title: string, updated: number, entries: Array<HarnessEntry>, source: CredentialSource, notContinuable: NotContinuable | null, 
+/**
+ * Its opening message, whole (never the shortened title), when known:
+ * a record saved before C32 knows it only while its transcript holds
+ * the first message (C32).
+ */
+opening?: string, };

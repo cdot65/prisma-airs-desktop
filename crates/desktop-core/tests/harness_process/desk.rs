@@ -474,6 +474,9 @@ pub async fn desk_with(engine: Option<Engine>, fixture: Option<Pin>) -> Desk {
     .expect("policy");
     let handle = core.operator();
     let session = handle.register_delivery_session().expect("session").nonce;
+    // The operator accepts the native sheet a change needs (C32); a test of
+    // the sheet itself sets its own answer.
+    handles.confirmer.auto(Some(true));
     let mut desk = Desk {
         core,
         handle,
@@ -577,6 +580,9 @@ pub async fn relaunch_from(old: Desk, online: bool, real: bool, crashed: bool) -
     }
     let handle = core.operator();
     let session = handle.register_delivery_session().expect("session").nonce;
+    // The operator accepts the native sheet a change needs (C32); a test of
+    // the sheet itself sets its own answer.
+    handles.confirmer.auto(Some(true));
     Desk {
         core,
         handle,

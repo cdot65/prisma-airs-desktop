@@ -13,6 +13,7 @@ import type { McpServerStatus } from "./McpServerStatus";
 import type { OperationId } from "./OperationId";
 import type { ProposalView } from "./ProposalView";
 import type { SignInFailure } from "./SignInFailure";
+import type { TakenSubmission } from "./TakenSubmission";
 import type { TurnEnd } from "./TurnEnd";
 
 /**
@@ -56,4 +57,16 @@ proposals: Array<ProposalView>,
 /**
  * Its workspace MCP servers' startup in the running engine (C22).
  */
-mcp: Array<McpServerStatus>, };
+mcp: Array<McpServerStatus>, 
+/**
+ * Its opening message, whole (never the shortened title); absent while
+ * nothing was sent, or when the transcript it was restored from no
+ * longer held it (C32).
+ */
+opening?: string, 
+/**
+ * The sends it took that the presentation named, newest last, with the
+ * message each became (C32): a send whose receipt was lost is settled
+ * by its own entry here, never by matching text.
+ */
+submissions?: Array<TakenSubmission>, };

@@ -223,7 +223,7 @@ impl State {
         conversation: &OperationId,
         approval: &str,
         allow: bool,
-    ) -> Result<(), Refusal> {
+    ) -> Result<Option<(u64, super::ConfirmationRequest)>, Refusal> {
         let c = self.harness_live(conversation)?;
         let Some(pending) = c
             .progress_approvals()
@@ -232,19 +232,103 @@ impl State {
         else {
             return Err(Refusal::StaleContext);
         };
-        // An MCP tool runs only while its server's sign-in is the one the
-        // conversation holds and is not expired (C22): otherwise it is
-        // declined, whatever the operator chose.
-        let usable = pending.kind != crate::harness::ApprovalKind::McpTool
+        // A call that cannot run any more (an MCP server whose sign-in lapsed)
+        // is declined at once, as before C32: no sheet is shown for it.
+        if allow
+            && pending.effect == crate::harness::ApprovalEffect::MayChange
+            && self.approval_usable(conversation, &pending)
+        {
+            // In-page consent never authorises a change: the native sheet
+            // does (C32). One at a time; the decision stays pending.
+            if self.harness_confirming.is_some() {
+                return Err(Refusal::Busy);
+            }
+            let nonce = super::change_domain::nonce().ok_or(Refusal::Busy)?;
+            self.harness_confirming = Some((conversation.clone(), approval.to_owned(), nonce));
+            return Ok(Some((nonce, harness_confirmation(&pending))));
+        }
+        self.decide_now(conversation, &pending, allow)?;
+        Ok(None)
+    }
+
+    /// The native confirmation of a decision settled: allowed, the decision
+    /// is sent if it is still pending in the same conversation; refused or
+    /// stale, nothing is sent and the decision stays for the operator.
+    pub(super) fn settle_harness_confirmation(
+        &mut self,
+        conversation: &OperationId,
+        approval: &str,
+        nonce: u64,
+        accepted: bool,
+    ) {
+        if self
+            .harness_confirming
+            .as_ref()
+            .map(|(c, a, n)| (c, a.as_str(), *n))
+            != Some((conversation, approval, nonce))
+        {
+            return;
+        }
+        self.harness_confirming = None;
+        if !accepted {
+            return;
+        }
+        let Ok(c) = self.harness_live(conversation) else {
+            return;
+        };
+        let Some(pending) = c
+            .progress_approvals()
+            .into_iter()
+            .find(|a| a.id == approval)
+        else {
+            return;
+        };
+        let _ = self.decide_now(conversation, &pending, true);
+    }
+
+    /// Ends a native confirmation that no longer has its decision (the
+    /// conversation ended or retired, the turn moved on).
+    pub(super) fn retire_harness_confirmation(&mut self) {
+        let Some((conversation, approval, nonce)) = self.harness_confirming.clone() else {
+            return;
+        };
+        let pending = self
+            .harness_live(&conversation)
+            .ok()
+            .is_some_and(|c| c.progress_approvals().iter().any(|a| a.id == approval));
+        if !pending {
+            self.confirmer.dismiss(nonce);
+            self.harness_confirming = None;
+        }
+    }
+
+    /// An MCP tool runs only while its server's sign-in is the one the
+    /// conversation holds and is not expired (C22): otherwise it is
+    /// declined, whatever the operator chose.
+    fn approval_usable(
+        &self,
+        conversation: &OperationId,
+        pending: &crate::harness::HarnessApproval,
+    ) -> bool {
+        pending.kind != crate::harness::ApprovalKind::McpTool
             || self
                 .harness_mcp_scope(conversation)
                 .zip(pending.server.as_ref())
                 .is_some_and(|((tenant, workspace, scope), server)| {
                     self.mcp_server_usable(&tenant, &workspace, &scope, server)
-                });
+                })
+    }
+
+    fn decide_now(
+        &mut self,
+        conversation: &OperationId,
+        pending: &crate::harness::HarnessApproval,
+        allow: bool,
+    ) -> Result<(), Refusal> {
+        let usable = self.approval_usable(conversation, pending);
         let c = self.harness_live(conversation)?;
         c.command(Command::Decide {
-            approval: approval.to_owned(),
+            approval: pending.id.clone(),
             allow: allow && usable,
         })?;
         if allow && !usable {
@@ -257,16 +341,32 @@ impl State {
     fn stage_proposal(
         &mut self,
         conversation: &OperationId,
-        draft: ChangeDraft,
+        mut draft: ChangeDraft,
         summary: String,
     ) -> Result<String, Refusal> {
         // The same static checks a review makes before any read.
-        let tenant = self.harness_live(conversation)?.tenant_id().clone();
+        let (tenant, (reference, workspace_id)) = {
+            let c = self.harness_live(conversation)?;
+            (c.tenant_id().clone(), c.workspace_binding())
+        };
         let client = self
             .tenant(&tenant)
             .and_then(|t| t.management_client.clone())
             .ok_or(Refusal::CapabilityMissing)?;
-        crate::changes::normalize(&draft, &client).map_err(|_| Refusal::InvalidInput)?;
+        if draft.kind.gateway().is_some() {
+            // A Gateway proposal belongs to the conversation's own
+            // workspace: its review is bound to that reference and is
+            // refused once another workspace is chosen (C32).
+            let tsg = self
+                .tenant(&tenant)
+                .and_then(|t| t.profile.tsg_id.clone())
+                .unwrap_or_default();
+            crate::gateway_changes::normalize(&draft, &tsg, Some(&workspace_id))
+                .map_err(|_| Refusal::InvalidInput)?;
+            draft.workspace = Some(reference);
+        } else {
+            crate::changes::normalize(&draft, &client).map_err(|_| Refusal::InvalidInput)?;
+        }
         let c = self.harness_live(conversation)?;
         let proposals = c.proposals_mut();
         if proposals.len() >= MAX_PROPOSALS {
@@ -497,6 +597,19 @@ async fn run(
         ToolCall::Search { query } => management(ManagementRequest::Search { query }).await,
         ToolCall::RedTeam { window } => management(ManagementRequest::RedTeam { window }).await,
         ToolCall::SupplyChain => management(ManagementRequest::SupplyChain).await,
+        ToolCall::McpServers => {
+            // The conversation's own workspace catalog, as the MCP panel reads it.
+            let reference = {
+                let mut state = lock(inner)?;
+                current(&mut state)?;
+                state.harness_live(conversation)?.workspace_binding().0
+            };
+            management(ManagementRequest::Gateway {
+                workspace: Some(reference),
+                read: crate::gateway::GatewayRead::McpServers,
+            })
+            .await
+        }
         ToolCall::Scan {
             profile,
             prompt,
@@ -594,5 +707,37 @@ async fn run(
                 "Proposal {id} is staged for the operator. It has not been applied: only the operator can review and confirm it in the desktop."
             ))
         }
+    }
+}
+
+/// What the native sheet asks for a decision that may change things (C32).
+fn harness_confirmation(a: &crate::harness::HarnessApproval) -> super::ConfirmationRequest {
+    use crate::harness::ApprovalKind;
+    let (title, message) = match a.kind {
+        ApprovalKind::FileChange => (
+            "Allow the Harness to change files?".to_owned(),
+            format!("It will change {} in the project folder.", a.files.join(", ")),
+        ),
+        ApprovalKind::McpTool => (
+            format!(
+                "Allow the Harness to run {}.{}?",
+                a.server.as_deref().unwrap_or_default(),
+                a.tool.as_deref().unwrap_or_default()
+            ),
+            "A workspace MCP tool runs on its server; the desktop cannot tell whether it changes anything there.".to_owned(),
+        ),
+        _ => (
+            "Allow the Harness to run this command?".to_owned(),
+            format!(
+                "It runs in the project folder with changes allowed: {}",
+                a.command.as_deref().unwrap_or_default()
+            ),
+        ),
+    };
+    super::ConfirmationRequest {
+        title,
+        message,
+        confirm_label: "Allow once".to_owned(),
+        destructive: true,
     }
 }

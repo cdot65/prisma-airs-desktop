@@ -1189,7 +1189,8 @@ export const MCP_SIGN_IN_FAILURES: readonly string[] = [
     'storeFailed',
 ]
 /** What the Harness may propose (C21): Runtime and DLP changes only. */
-const PROPOSAL_KINDS: readonly string[] = CHANGE_KINDS.filter((k) => !k.startsWith('gateway'))
+/** The Harness proposes Runtime and DLP changes, a key rotation's start, and its workspace's guardrails (C21, C32). */
+const PROPOSAL_KINDS: readonly string[] = [...CHANGE_KINDS.filter((k) => !k.startsWith('gateway')), 'gatewayGuardrails']
 const PROPOSAL_STATES: readonly string[] = ['staged', 'inReview', 'closed', 'dismissed']
 /** Pending approvals, staged proposals and an approval's texts (C21). */
 const MAX_APPROVALS = 8
@@ -1424,7 +1425,13 @@ function isHarnessApproval(value: unknown): boolean {
         isRecord(value) &&
         typeof value.id === 'string' &&
         APPROVAL_ID.test(value.id) &&
-        oneOf(['command', 'fileChange', 'mcpTool'], value.kind) &&
+        oneOf(['command', 'fileChange', 'mcpTool', 'desktopRead'], value.kind) &&
+        // C32: what allowing it lets the engine do, as the core established it
+        // (absent only before C32, and then treated as may-change).
+        optional((e) => oneOf(['readOnly', 'mayChange'], e), value.effect ?? null) &&
+        // A desktop read only reads, and says so; a file change or a remote tool may change things.
+        (value.kind !== 'desktopRead' || value.effect === 'readOnly') &&
+        ((value.kind !== 'fileChange' && value.kind !== 'mcpTool') || value.effect !== 'readOnly') &&
         // Shown whole: never cut (C21 F3).
         optional((v) => typeof v === 'string' && utf8Bytes(v) <= MAX_APPROVAL_BYTES, value.command) &&
         optional(bounded(1024), value.cwd) &&
@@ -1438,10 +1445,10 @@ function isHarnessApproval(value: unknown): boolean {
         optional((v) => typeof v === 'string' && MCP_NAME.test(v), value.server) &&
         optional(bounded(128), value.tool) &&
         optional((v) => typeof v === 'string' && utf8Bytes(v) <= MAX_APPROVAL_BYTES, value.arguments) &&
-        // An MCP tool approval names its server and tool, and only it does.
-        (value.kind === 'mcpTool') === (value.server !== null && value.tool !== null) &&
-        (value.kind === 'mcpTool' || value.arguments === null) &&
-        (value.kind !== 'mcpTool' || (value.command === null && value.cwd === null))
+        // An MCP tool or a desktop read names its server and tool, and only they do.
+        (value.kind === 'mcpTool' || value.kind === 'desktopRead') === (value.server !== null && value.tool !== null) &&
+        (value.kind === 'mcpTool' || value.kind === 'desktopRead' || value.arguments === null) &&
+        ((value.kind !== 'mcpTool' && value.kind !== 'desktopRead') || (value.command === null && value.cwd === null))
     )
 }
 
@@ -1515,11 +1522,18 @@ function isProposalView(value: unknown): boolean {
         value.summary.trim().length > 0 &&
         [...value.summary].length <= 512 &&
         oneOf(PROPOSAL_KINDS, d.kind) &&
-        oneOf(['create', 'update', 'delete'], d.action) &&
+        // An API key's version is the hand-off of a rotation; a guardrail is
+        // created or updated only; everything else creates, updates or deletes.
+        (d.kind === 'apiKeys' && d.action === 'version'
+            ? true
+            : d.kind === 'gatewayGuardrails'
+              ? oneOf(['create', 'update'], d.action)
+              : oneOf(['create', 'update', 'delete'], d.action)) &&
         typeof d.target === 'string' &&
         d.target.length <= 256 &&
         isJsonObjectText(d.body) &&
-        d.workspace === undefined &&
+        // Only a Gateway proposal names a workspace: the conversation's own.
+        (d.kind === 'gatewayGuardrails' ? typeof d.workspace === 'string' && WORKSPACE_REF.test(d.workspace) : d.workspace === undefined) &&
         oneOf(PROPOSAL_STATES, value.state) &&
         optional((r) => typeof r === 'string' && REVIEW_ID.test(r), value.review) &&
         // Only a proposal opened into a review names it.
@@ -1559,6 +1573,23 @@ function isSavedConversation(value: unknown): boolean {
     )
 }
 
+/** Sends a conversation took by the presentation's ID, with the message each became (C32): bounded, each ID once. */
+const SUBMISSION = /^[0-9a-f]{32}$/
+const MAX_SUBMISSIONS = 64
+function isTakenSubmissions(value: unknown): boolean {
+    return (
+        Array.isArray(value) &&
+        value.length <= MAX_SUBMISSIONS &&
+        value.every(
+            (t) => isRecord(t) && typeof t.submission === 'string' && SUBMISSION.test(t.submission) && typeof t.entry === 'string' && /^u-[0-9]{1,20}$/.test(t.entry) && oneOf(['pending', 'delivered', 'returned'], t.state)
+        ) &&
+        new Set(value.map((t) => (t as { submission: string }).submission)).size === value.length
+    )
+}
+
+/** A conversation's opening message, whole (C32): absent when not known, never empty. */
+const isOpening = (value: unknown): boolean => typeof value === 'string' && value.length > 0 && utf8Bytes(value) <= MAX_TRANSCRIPT_BYTES
+
 function isOpenedConversation(value: unknown): boolean {
     if (!isRecord(value)) return false
     const entries = value.entries
@@ -1572,7 +1603,19 @@ function isOpenedConversation(value: unknown): boolean {
         entries.length <= MAX_HARNESS_ENTRIES &&
         entries.every(isHarnessEntry) &&
         oneOf(CREDENTIAL_SOURCES, value.source) &&
-        optional((v) => oneOf(NOT_CONTINUABLE, v), value.notContinuable)
+        optional((v) => oneOf(NOT_CONTINUABLE, v), value.notContinuable) &&
+        optional(isOpening, value.opening ?? null)
+    )
+}
+
+/** The last open that settled: its record, its order, and why it did not open (C32). */
+function isOpenSettled(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        UUID.test(value.id) &&
+        isCount(value.sequence) &&
+        optional((v) => oneOf(HISTORY_FAILURES, v), value.failure)
     )
 }
 
@@ -1596,6 +1639,7 @@ function isHarnessHistoryView(value: unknown): boolean {
         optional(isOpenedConversation, value.opened) &&
         typeof value.busy === 'boolean' &&
         optional((v) => oneOf(HISTORY_FAILURES, v), value.problem) &&
+        optional(isOpenSettled, value.lastOpen ?? null) &&
         optional((e) => isExportView(e) && (e as Record<string, unknown>).kind === 'harnessConversation', value.export)
     )
 }
@@ -1643,7 +1687,8 @@ function isConversationView(value: unknown): boolean {
             (a) => {
                 const kind = (a as Record<string, unknown>).kind
                 // MCP tools need no folder; commands and file changes do.
-                return kind === 'mcpTool' || (value.project !== null && (value.write || kind === 'command'))
+                // MCP tools and desktop reads need no folder; commands and file changes do.
+                return kind === 'mcpTool' || kind === 'desktopRead' || (value.project !== null && (value.write || kind === 'command'))
             },
         ) &&
         Array.isArray(value.proposals) &&
@@ -1654,6 +1699,8 @@ function isConversationView(value: unknown): boolean {
         value.mcp.length <= MAX_MCP_SERVERS &&
         value.mcp.every(isMcpServerStatus) &&
         new Set(value.mcp.map((m) => (m as { name: string }).name)).size === value.mcp.length &&
+        optional(isOpening, value.opening ?? null) &&
+        optional(isTakenSubmissions, value.submissions ?? null) &&
         // The write confirmation is only asked when changes are allowed.
         (value.phase !== 'confirmWrite' || value.write === true)
     )

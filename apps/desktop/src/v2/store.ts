@@ -14,6 +14,28 @@ export interface Arrival {
     sequence: number
 }
 
+/** A Harness message kept for the operator: refused or never sent, or not confirmed (C32). */
+export interface HarnessKept {
+    /** This record's own id: each attempt is its own record (C32). */
+    id: number
+    text: string
+    unconfirmed: boolean
+    /**
+     * For an unconfirmed send: the conversation it was sent to and the send's
+     * own ID. It is settled only when that conversation reports the core took
+     * that ID (`ConversationView.submissions`), never by matching text (C32).
+     */
+    conversation?: string
+    submission?: string
+}
+
+/** A Harness send the page dispatched, awaiting the core's word on it (C32): never shown, never sent again. */
+export interface HarnessSent {
+    submission: string
+    conversation: string
+    text: string
+}
+
 /** A delivery the desktop did not confirm: kept until the operator retries or dismisses it (DESIGN-V2 §7). */
 export interface Unconfirmed {
     id: number
@@ -53,6 +75,28 @@ interface ShellStore {
     /** The Inbox tab and item per tenant (I2: a switch round trip keeps it). */
     inboxSelection: Record<string, { tab: 'all' | 'action' | 'updates' | 'snoozed'; item: string | null }>
     selectInbox(tenant: string, selection: { tab: 'all' | 'action' | 'updates' | 'snoozed'; item: string | null }): void
+    /** Harness drafts, by `tenant|workspace|conversation` (C32): kept across navigation and tenant round trips, never shared between scopes, never sent by themselves. */
+    harnessDrafts: Record<string, string>
+    setHarnessDraft(scope: string, text: string): void
+    /** Per `tenant|workspace`: the operator chose a new investigation while one runs (C32). */
+    harnessFresh: Record<string, boolean>
+    setHarnessFresh(scope: string, fresh: boolean): void
+    /**
+     * Per `tenant|workspace`: messages kept for the operator (C32). `unconfirmed`
+     * ones may have been delivered (the desktop did not confirm it); the others
+     * were refused or never sent. Never sent by themselves.
+     */
+    harnessUnsent: Record<string, HarnessKept[]>
+    keepHarnessUnsent(scope: string, kept: Omit<HarnessKept, 'id'>): void
+    dropHarnessUnsent(scope: string, id: number): void
+    /**
+     * Per `tenant|workspace`: sends dispatched and not yet reported by their
+     * conversation (C32), so a send the core gives back keeps its text whatever
+     * order its receipt and the core's word arrive in. Newest 64.
+     */
+    harnessSent: Record<string, HarnessSent[]>
+    trackHarnessSend(scope: string, sent: HarnessSent): void
+    untrackHarnessSend(scope: string, submission: string): void
     /** The last contextual action's target, consumed by the destination it names. */
     arrival: Arrival | null
     arrive(target: Omit<Arrival, 'sequence'>): void
@@ -77,6 +121,7 @@ interface ShellStore {
 }
 
 let nextToast = 1
+let nextKept = 1
 
 export const useShellStore = create<ShellStore>((set, get) => ({
     scope: { tenant: null, context: null },
@@ -94,6 +139,26 @@ export const useShellStore = create<ShellStore>((set, get) => ({
     modals: [],
     inboxSelection: {},
     selectInbox: (tenant, selection) => set((s) => ({ inboxSelection: { ...s.inboxSelection, [tenant]: selection } })),
+    harnessDrafts: {},
+    setHarnessDraft: (scope, text) => set((s) => ({ harnessDrafts: { ...s.harnessDrafts, [scope]: text } })),
+    harnessFresh: {},
+    setHarnessFresh: (scope, fresh) => set((s) => ({ harnessFresh: { ...s.harnessFresh, [scope]: fresh } })),
+    harnessUnsent: {},
+    keepHarnessUnsent: (scope, item) =>
+        set((s) => {
+            const kept = s.harnessUnsent[scope] ?? []
+            const record = { ...item, id: nextKept++ }
+            // An uncertain attempt is never removed or downgraded by a later one:
+            // only the core's word on its own send ID, or the operator, settles it.
+            // A not-sent record of the same text is superseded by a later attempt;
+            // not-sent records are kept once per text.
+            const others = kept.filter((k) => k.unconfirmed || k.text !== item.text)
+            return { harnessUnsent: { ...s.harnessUnsent, [scope]: [...others, record] } }
+        }),
+    dropHarnessUnsent: (scope, id) => set((s) => ({ harnessUnsent: { ...s.harnessUnsent, [scope]: (s.harnessUnsent[scope] ?? []).filter((k) => k.id !== id) } })),
+    harnessSent: {},
+    trackHarnessSend: (scope, sent) => set((s) => ({ harnessSent: { ...s.harnessSent, [scope]: [...(s.harnessSent[scope] ?? []), sent].slice(-64) } })),
+    untrackHarnessSend: (scope, submission) => set((s) => ({ harnessSent: { ...s.harnessSent, [scope]: (s.harnessSent[scope] ?? []).filter((t) => t.submission !== submission) } })),
     arrival: null,
     arrive: (target) => set((s) => ({ arrival: { ...target, sequence: (s.arrival?.sequence ?? 0) + 1 } })),
     unconfirmed: [],
@@ -129,5 +194,5 @@ export const useShellStore = create<ShellStore>((set, get) => ({
 
 /** Test seam: forget everything (each test starts from an empty store). */
 export function resetShellStore() {
-    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null })
+    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {} })
 }

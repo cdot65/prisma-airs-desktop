@@ -5,6 +5,7 @@ import type { Dispatch } from '../features/tenants/dispatch'
 import { FeatureBody } from '../shell/feature-body'
 import { type Act, Inbox } from './inbox/inbox'
 import { Administration } from './admin/administration'
+import { Harness } from './harness/harness'
 import { FEATURE_ICONS } from '../shell/icons'
 import { SHELL_COPY, SNOOZE_COPY } from './copy'
 import { readLine } from './home'
@@ -290,6 +291,15 @@ export function V2Shell(props: V2ShellProps) {
                         onAct={props.onAct}
                         onNavigate={props.onNavigate}
                         arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'administration' ? arrival : null}
+                    />
+                ) : feature.id === 'harness' && feature.availability.state === 'available' ? (
+                    <Harness
+                        key={snapshot.active?.context ?? 'none'}
+                        ref={heading}
+                        snapshot={snapshot}
+                        dispatch={props.dispatch}
+                        onNavigate={props.onNavigate}
+                        arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'harness' ? arrival : null}
                     />
                 ) : (
                     <FeatureBody

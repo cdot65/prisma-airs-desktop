@@ -129,11 +129,34 @@ async fn ready(desk: &mut Desk) -> String {
 }
 
 async fn answered_with(desk: &mut Desk, predicate: impl Fn(&Value) -> bool) -> Value {
-    assert!(
-        settle_for(40, || predicate(&desk.conversation())).await,
-        "{}",
-        desk.conversation()
-    );
+    // A desktop read waits for the operator's decision in the page (C32):
+    // these tests allow each one as it is asked.
+    let deadline = std::time::Instant::now() + Duration::from_secs(40);
+    loop {
+        let c = desk.conversation();
+        if predicate(&c) {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{c}");
+        let reads: Vec<Value> = c["approvals"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter(|a| a["kind"] == "desktopRead")
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        for read in reads {
+            let _ = desk
+                .send(
+                    json!({"kind": "decideHarnessApproval", "conversation": c["id"],
+                    "approval": read["id"], "allow": true}),
+                )
+                .await;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
     desk.conversation()
 }
 
@@ -221,11 +244,28 @@ async fn a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered() {
         .clone()
         .expect("hook");
     let slow = Arc::clone(&fast);
+    // The read is held until the stop has landed, then released: no timing
+    // assumption, however loaded the suite is.
+    let (release, gate) = std::sync::mpsc::channel::<()>();
+    let gate = std::sync::Mutex::new(gate);
+    let started = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let read_started = Arc::clone(&started);
+    let served = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let read_served = Arc::clone(&served);
     desk.gateway.lock().expect("gateway").hook = Some(Arc::new(move |seen| {
-        if seen.request_line.contains("/apikeys/") {
-            std::thread::sleep(Duration::from_secs(3));
+        if !seen.request_line.contains("/apikeys/") {
+            return slow(seen);
         }
-        slow(seen)
+        read_started.store(true, std::sync::atomic::Ordering::SeqCst);
+        // The plane's runtime keeps running while this read is held.
+        let _ = tokio::task::block_in_place(|| {
+            gate.lock()
+                .expect("gate")
+                .recv_timeout(Duration::from_secs(60))
+        });
+        let reply = slow(seen);
+        read_served.store(true, std::sync::atomic::Ordering::SeqCst);
+        reply
     }));
     let id = ready(&mut desk).await;
     tool(
@@ -237,9 +277,11 @@ async fn a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered() {
     desk.say(&id, "Which API keys exist?").await.expect("sent");
     answered_with(&mut desk, |c| {
         entry(c, "tool").is_some_and(|t| t["state"] == "streaming")
+            && c["approvals"].as_array().is_some_and(Vec::is_empty)
     })
     .await;
-    assert!(settle(|| management_reads(&desk) > 0).await);
+    // The read is under way (a request is recorded only once answered).
+    assert!(settle(|| started.load(std::sync::atomic::Ordering::SeqCst)).await);
     desk.send(json!({"kind": "interruptHarness", "conversation": id}))
         .await
         .expect("interrupted");
@@ -249,7 +291,9 @@ async fn a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered() {
     .await;
     assert_eq!(c["lastTurn"], "interrupted", "{c}");
     // The read finishes after the turn ended: its result is never sent.
-    tokio::time::sleep(Duration::from_secs(4)).await;
+    release.send(()).expect("release");
+    assert!(settle(|| served.load(std::sync::atomic::Ordering::SeqCst)).await);
+    tokio::time::sleep(Duration::from_secs(1)).await;
     assert!(outputs(&desk).is_empty(), "{:?}", outputs(&desk));
     assert_ne!(
         entry(&desk.conversation(), "tool").expect("tool")["state"],

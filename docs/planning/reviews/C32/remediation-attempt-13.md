@@ -1,0 +1,9 @@
+# C32 remediation after attempt-13 (9/8/9/8/8, fail)
+
+| Finding | Remediation | Where |
+|---|---|---|
+| R1 a repeated read failure could leave the contextual restart reading forever | The core now reports each open that settles: `HarnessHistoryView.lastOpen` (`OpenSettled`: the record's ID, its admission order from the core's lease, and the failure if it did not open), set when the open's result is applied, whether it failed like the one before or not. The page records the last settled order when it asks for the record and settles its read only by a receipt for that record with a newer order: read, it prefills the opening (or says it is not known); failed, it says the record could not be read, ends the loading state and lets the operator ask again. No busy edge or change of error is relied on; a refused or unconfirmed open ends the wait at once; leaving the tenant or workspace clears the hint and its read. Tests: "a repeated read failure of an archived record settles each read by its receipt…" (the same failure already shown, busy and settled in one update; then a retry that reads), the other restart tests now settle by receipts, and `the_opening_message_is_kept_whole_beside_its_shortened_title` (ui_v2_harness) opens a missing record twice and checks two ordered receipts with the same failure | `harness_history.rs`, `client.ts`, generated `OpenSettled`/`HarnessHistoryView`, `harness.tsx`, provenance P51 |
+
+The first attempt-13 check run failed the desktop typecheck (a test helper's spread of the possibly-null history view; fixed) and kept core-fixture flake logs from timing-sensitive tests outside C32 (transport connection release, management_reads context retirement, runtime_changes confirmation), each of which passes alone; the same-input rerun passed.
+
+B1/E1 (the C29 live Vulture verification receipt) stay owner-gated (`evidence/C29/live-scope-request.md`).

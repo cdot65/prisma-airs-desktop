@@ -22,7 +22,7 @@ use serde_json::Value;
 use ts_rs::TS;
 use zeroize::Zeroizing;
 
-use super::{HarnessEntry, HarnessUsage, MAX_ENTRIES};
+use super::{HarnessEntry, HarnessRole, HarnessUsage, MAX_ENTRIES};
 use crate::vault::{RecordId, Vault, VaultError};
 
 pub const SCHEMA: &str = "prisma-airs-desktop-v2/harness-history/1";
@@ -112,6 +112,27 @@ pub struct Record {
     /// Where it came from, when not from this app's own conversation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Origin>,
+    /// The conversation's opening message, whole (the title is a shortened
+    /// line of it): kept even once the transcript has dropped it (C32).
+    /// Absent in records saved before C32.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opening: Option<String>,
+}
+
+impl Record {
+    /// The opening message, whole, or `None` when it is not known: a record
+    /// saved before C32 knows it only while its transcript still holds the
+    /// first message (`u-1`; an import is never continued, so whole).
+    pub fn opening(&self) -> Option<String> {
+        self.opening.clone().or_else(|| {
+            let first = self
+                .entries
+                .iter()
+                .find(|e| e.role == HarnessRole::Operator)?;
+            (self.origin == Some(Origin::ImportedV1) || first.id == "u-1")
+                .then(|| first.text.clone())
+        })
+    }
 }
 
 /// A record's provenance (C23).
@@ -410,6 +431,7 @@ mod tests {
             schema: SCHEMA.to_owned(),
             id: id.to_owned(),
             title: title(text),
+            opening: None,
             created: 1,
             updated: 2,
             binding: SavedBinding {
@@ -531,5 +553,35 @@ mod tests {
         assert_eq!(json["entries"][0]["text"], "periwinkle");
         assert!(export::markdown(&r).contains("## You\n\nperiwinkle"));
         assert!(!export::text(&r).contains("\"r\""));
+    }
+
+    #[test]
+    fn the_opening_is_whole_and_never_guessed_from_a_later_message() {
+        let long = format!("Line one\n{}", "word ".repeat(60));
+        // Kept whole beside its shortened title.
+        let kept = Record {
+            opening: Some(long.clone()),
+            ..record(&id(2), &long)
+        };
+        assert_eq!(kept.opening().as_deref(), Some(long.as_str()));
+        assert!(kept.title.ends_with('…') && kept.title.chars().count() == MAX_TITLE_CHARS);
+        // A record saved before C32: its first message while the transcript holds it.
+        let older = record(&id(3), &long);
+        assert_eq!(older.opening().as_deref(), Some(long.as_str()));
+        // ...never a later message once the first one was dropped.
+        let mut dropped = record(&id(4), "A later question");
+        dropped.entries[0].id = "u-7".into();
+        assert_eq!(dropped.opening(), None);
+        // An import is whole: its first message, whatever its ID.
+        let mut imported = record(&id(5), "Imported question");
+        imported.entries[0].id = "v1-entry".into();
+        imported.origin = Some(Origin::ImportedV1);
+        assert_eq!(imported.opening().as_deref(), Some("Imported question"));
+        // A record written before C32 has no field and reads as before.
+        let mut json = serde_json::to_value(&older).expect("json");
+        assert!(json.get("opening").is_none());
+        json["entries"][0]["id"] = "u-9".into();
+        let read: Record = serde_json::from_value(json).expect("read");
+        assert_eq!(read.opening(), None);
     }
 }

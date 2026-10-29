@@ -1,0 +1,1757 @@
+diff --git a/apps/desktop/src/features/harness/decisions-panel.tsx b/apps/desktop/src/features/harness/decisions-panel.tsx
+index e852a816..74570312 100644
+--- a/apps/desktop/src/features/harness/decisions-panel.tsx
++++ b/apps/desktop/src/features/harness/decisions-panel.tsx
+@@ -9,6 +9,7 @@ const APPROVAL_TITLE: Record<HarnessApproval['kind'], string> = {
+     command: 'Run a command',
+     fileChange: 'Change files',
+     mcpTool: 'Run a workspace MCP tool',
++    desktopRead: 'Read the tenant through the desktop',
+ }
+ 
+ interface Props {
+diff --git a/apps/desktop/src/v2/modal.tsx b/apps/desktop/src/v2/modal.tsx
+index 8cbba22a..e093110d 100644
+--- a/apps/desktop/src/v2/modal.tsx
++++ b/apps/desktop/src/v2/modal.tsx
+@@ -18,7 +18,9 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
+  * Shift-Tab stay inside the topmost dialog, Escape closes the topmost only,
+  * focus moves into the dialog on open and back to the opener on close. The
+  * page behind every dialog is made inert by the shell (`useModalsOpen`).
+- * No global key listener: the dialog element handles its own keys.
++ * The dialog element handles its own keys; the topmost dialog also listens
++ * on the window for Escape alone, for when focus has left it (a native
++ * sheet returned focus elsewhere), and closes only itself.
+  */
+ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalProps) {
+     const id = useId()
+diff --git a/apps/desktop/src/v2/store.ts b/apps/desktop/src/v2/store.ts
+index fcac1cc3..48910eb8 100644
+--- a/apps/desktop/src/v2/store.ts
++++ b/apps/desktop/src/v2/store.ts
+@@ -14,6 +14,12 @@ export interface Arrival {
+     sequence: number
+ }
+ 
++/** A Harness message kept for the operator: refused or never sent, or not confirmed (C32). */
++export interface HarnessKept {
++    text: string
++    unconfirmed: boolean
++}
++
+ /** A delivery the desktop did not confirm: kept until the operator retries or dismisses it (DESIGN-V2 §7). */
+ export interface Unconfirmed {
+     id: number
+@@ -53,6 +59,20 @@ interface ShellStore {
+     /** The Inbox tab and item per tenant (I2: a switch round trip keeps it). */
+     inboxSelection: Record<string, { tab: 'all' | 'action' | 'updates' | 'snoozed'; item: string | null }>
+     selectInbox(tenant: string, selection: { tab: 'all' | 'action' | 'updates' | 'snoozed'; item: string | null }): void
++    /** Harness drafts, by `tenant|workspace|conversation` (C32): kept across navigation and tenant round trips, never shared between scopes, never sent by themselves. */
++    harnessDrafts: Record<string, string>
++    setHarnessDraft(scope: string, text: string): void
++    /** Per `tenant|workspace`: the operator chose a new investigation while one runs (C32). */
++    harnessFresh: Record<string, boolean>
++    setHarnessFresh(scope: string, fresh: boolean): void
++    /**
++     * Per `tenant|workspace`: messages kept for the operator (C32). `unconfirmed`
++     * ones may have been delivered (the desktop did not confirm it); the others
++     * were refused or never sent. Never sent by themselves.
++     */
++    harnessUnsent: Record<string, HarnessKept[]>
++    keepHarnessUnsent(scope: string, kept: HarnessKept): void
++    dropHarnessUnsent(scope: string, index: number): void
+     /** The last contextual action's target, consumed by the destination it names. */
+     arrival: Arrival | null
+     arrive(target: Omit<Arrival, 'sequence'>): void
+@@ -94,6 +114,17 @@ export const useShellStore = create<ShellStore>((set, get) => ({
+     modals: [],
+     inboxSelection: {},
+     selectInbox: (tenant, selection) => set((s) => ({ inboxSelection: { ...s.inboxSelection, [tenant]: selection } })),
++    harnessDrafts: {},
++    setHarnessDraft: (scope, text) => set((s) => ({ harnessDrafts: { ...s.harnessDrafts, [scope]: text } })),
++    harnessFresh: {},
++    setHarnessFresh: (scope, fresh) => set((s) => ({ harnessFresh: { ...s.harnessFresh, [scope]: fresh } })),
++    harnessUnsent: {},
++    keepHarnessUnsent: (scope, item) =>
++        set((s) => {
++            const kept = s.harnessUnsent[scope] ?? []
++            return kept.some((k) => k.text === item.text) ? {} : { harnessUnsent: { ...s.harnessUnsent, [scope]: [...kept, item] } }
++        }),
++    dropHarnessUnsent: (scope, index) => set((s) => ({ harnessUnsent: { ...s.harnessUnsent, [scope]: (s.harnessUnsent[scope] ?? []).filter((_, i) => i !== index) } })),
+     arrival: null,
+     arrive: (target) => set((s) => ({ arrival: { ...target, sequence: (s.arrival?.sequence ?? 0) + 1 } })),
+     unconfirmed: [],
+@@ -129,5 +160,5 @@ export const useShellStore = create<ShellStore>((set, get) => ({
+ 
+ /** Test seam: forget everything (each test starts from an empty store). */
+ export function resetShellStore() {
+-    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null })
++    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {} })
+ }
+diff --git a/apps/desktop/src/v2/v2-shell.tsx b/apps/desktop/src/v2/v2-shell.tsx
+index 1cd6fc88..e417a9d0 100644
+--- a/apps/desktop/src/v2/v2-shell.tsx
++++ b/apps/desktop/src/v2/v2-shell.tsx
+@@ -5,6 +5,7 @@ import type { Dispatch } from '../features/tenants/dispatch'
+ import { FeatureBody } from '../shell/feature-body'
+ import { type Act, Inbox } from './inbox/inbox'
+ import { Administration } from './admin/administration'
++import { Harness } from './harness/harness'
+ import { FEATURE_ICONS } from '../shell/icons'
+ import { SHELL_COPY, SNOOZE_COPY } from './copy'
+ import { readLine } from './home'
+@@ -291,6 +292,15 @@ export function V2Shell(props: V2ShellProps) {
+                         onNavigate={props.onNavigate}
+                         arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'administration' ? arrival : null}
+                     />
++                ) : feature.id === 'harness' && feature.availability.state === 'available' ? (
++                    <Harness
++                        key={snapshot.active?.context ?? 'none'}
++                        ref={heading}
++                        snapshot={snapshot}
++                        dispatch={props.dispatch}
++                        onNavigate={props.onNavigate}
++                        arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'harness' ? arrival : null}
++                    />
+                 ) : (
+                     <FeatureBody
+                         ref={heading}
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index d9e94203..4a2a526d 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -1671,6 +1671,9 @@ struct State {
+     /// reconciliation) is held in memory but not yet saved: every later
+     /// publication retries the save; nothing remote is replayed (C31).
+     rotation_unsaved: bool,
++    /// A Harness decision that may change things, waiting on the native
++    /// confirmation: its conversation, approval and nonce (C32).
++    harness_confirming: Option<(OperationId, String, u64)>,
+     cleaning: bool,
+     /// Cleanup was asked for while a pass ran: run another when it ends,
+     /// so a record released meanwhile is not left waiting (P06).
+@@ -2575,6 +2578,14 @@ enum Effect {
+         nonce: u64,
+         request: ConfirmationRequest,
+     },
++    /// The native confirmation of a Harness decision that may change
++    /// things (C32).
++    ConfirmHarness {
++        conversation: OperationId,
++        approval: String,
++        nonce: u64,
++        request: ConfirmationRequest,
++    },
+     RevealSecret {
+         label: String,
+         secret: Zeroizing<String>,
+@@ -2715,6 +2726,7 @@ impl Core {
+             reset_failure: None,
+             durability_unconfirmed: false,
+             rotation_unsaved: false,
++            harness_confirming: None,
+             cleaning: false,
+             clean_again: false,
+             writes_in_flight: Vec::new(),
+@@ -4180,7 +4192,18 @@ fn admit(
+             approval,
+             allow,
+         } => {
+-            state.decide_harness_approval(&conversation, &approval, allow)?;
++            // Allowing a decision that may change things opens the native
++            // confirmation; only its private completion lets it run (C32).
++            if let Some((nonce, request)) =
++                state.decide_harness_approval(&conversation, &approval, allow)?
++            {
++                effects.push(Effect::ConfirmHarness {
++                    conversation,
++                    approval,
++                    nonce,
++                    request,
++                });
++            }
+             state.changed();
+         }
+         Intent::ReviewHarnessProposal {
+@@ -5112,6 +5135,26 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
+                     settle_confirmation(&inner, &review, nonce, accepted);
+                 });
+             }
++            Effect::ConfirmHarness {
++                conversation,
++                approval,
++                nonce,
++                request,
++            } => {
++                let inner = Arc::clone(inner);
++                tokio::spawn(async move {
++                    let accepted = inner.adapters.confirmer.confirm(nonce, request).await;
++                    if let Ok(mut state) = lock(&inner) {
++                        state.settle_harness_confirmation(
++                            &conversation,
++                            &approval,
++                            nonce,
++                            accepted,
++                        );
++                        state.changed();
++                    }
++                });
++            }
+             Effect::ChooseTextFile { lease } => {
+                 let inner = Arc::clone(inner);
+                 tokio::spawn(async move {
+diff --git a/crates/desktop-core/src/authority/change_domain.rs b/crates/desktop-core/src/authority/change_domain.rs
+index 65a21dbd..3bc2e940 100644
+--- a/crates/desktop-core/src/authority/change_domain.rs
++++ b/crates/desktop-core/src/authority/change_domain.rs
+@@ -484,7 +484,7 @@ fn gateway_failure(error: ChangeError) -> ChangeFailure {
+     }
+ }
+ 
+-fn nonce() -> Option<u64> {
++pub(super) fn nonce() -> Option<u64> {
+     let mut bytes = [0u8; 8];
+     getrandom::fill(&mut bytes).ok()?;
+     Some(u64::from_le_bytes(bytes))
+diff --git a/crates/desktop-core/src/authority/harness_domain.rs b/crates/desktop-core/src/authority/harness_domain.rs
+index e27aa91b..64d101f2 100644
+--- a/crates/desktop-core/src/authority/harness_domain.rs
++++ b/crates/desktop-core/src/authority/harness_domain.rs
+@@ -111,6 +111,11 @@ impl Conversation {
+         &self.tenant
+     }
+ 
++    /// The Gateway workspace it runs in: its reference and its ID (C32).
++    pub(super) fn workspace_binding(&self) -> (WorkspaceRef, String) {
++        (self.reference.clone(), self.workspace.id.clone())
++    }
++
+     pub(super) fn progress_approvals(&self) -> Vec<crate::harness::HarnessApproval> {
+         self.progress
+             .lock()
+@@ -841,6 +846,8 @@ impl State {
+ 
+     /// Retires a conversation that is no longer bound (run on every change).
+     pub(super) fn sync_harness(&mut self) {
++        // A confirmation whose decision is gone is ended (C32).
++        self.retire_harness_confirmation();
+         let bound = self.harness.as_ref().is_some_and(|c| self.harness_bound(c));
+         let Some(c) = self.harness.as_mut() else {
+             return;
+diff --git a/crates/desktop-core/src/authority/harness_tools.rs b/crates/desktop-core/src/authority/harness_tools.rs
+index fba86bba..84a29014 100644
+--- a/crates/desktop-core/src/authority/harness_tools.rs
++++ b/crates/desktop-core/src/authority/harness_tools.rs
+@@ -223,7 +223,7 @@ impl State {
+         conversation: &OperationId,
+         approval: &str,
+         allow: bool,
+-    ) -> Result<(), Refusal> {
++    ) -> Result<Option<(u64, super::ConfirmationRequest)>, Refusal> {
+         let c = self.harness_live(conversation)?;
+         let Some(pending) = c
+             .progress_approvals()
+@@ -232,19 +232,103 @@ impl State {
+         else {
+             return Err(Refusal::StaleContext);
+         };
+-        // An MCP tool runs only while its server's sign-in is the one the
+-        // conversation holds and is not expired (C22): otherwise it is
+-        // declined, whatever the operator chose.
+-        let usable = pending.kind != crate::harness::ApprovalKind::McpTool
++        // A call that cannot run any more (an MCP server whose sign-in lapsed)
++        // is declined at once, as before C32: no sheet is shown for it.
++        if allow
++            && pending.effect == crate::harness::ApprovalEffect::MayChange
++            && self.approval_usable(conversation, &pending)
++        {
++            // In-page consent never authorises a change: the native sheet
++            // does (C32). One at a time; the decision stays pending.
++            if self.harness_confirming.is_some() {
++                return Err(Refusal::Busy);
++            }
++            let nonce = super::change_domain::nonce().ok_or(Refusal::Busy)?;
++            self.harness_confirming = Some((conversation.clone(), approval.to_owned(), nonce));
++            return Ok(Some((nonce, harness_confirmation(&pending))));
++        }
++        self.decide_now(conversation, &pending, allow)?;
++        Ok(None)
++    }
++
++    /// The native confirmation of a decision settled: allowed, the decision
++    /// is sent if it is still pending in the same conversation; refused or
++    /// stale, nothing is sent and the decision stays for the operator.
++    pub(super) fn settle_harness_confirmation(
++        &mut self,
++        conversation: &OperationId,
++        approval: &str,
++        nonce: u64,
++        accepted: bool,
++    ) {
++        if self
++            .harness_confirming
++            .as_ref()
++            .map(|(c, a, n)| (c, a.as_str(), *n))
++            != Some((conversation, approval, nonce))
++        {
++            return;
++        }
++        self.harness_confirming = None;
++        if !accepted {
++            return;
++        }
++        let Ok(c) = self.harness_live(conversation) else {
++            return;
++        };
++        let Some(pending) = c
++            .progress_approvals()
++            .into_iter()
++            .find(|a| a.id == approval)
++        else {
++            return;
++        };
++        let _ = self.decide_now(conversation, &pending, true);
++    }
++
++    /// Ends a native confirmation that no longer has its decision (the
++    /// conversation ended or retired, the turn moved on).
++    pub(super) fn retire_harness_confirmation(&mut self) {
++        let Some((conversation, approval, nonce)) = self.harness_confirming.clone() else {
++            return;
++        };
++        let pending = self
++            .harness_live(&conversation)
++            .ok()
++            .is_some_and(|c| c.progress_approvals().iter().any(|a| a.id == approval));
++        if !pending {
++            self.confirmer.dismiss(nonce);
++            self.harness_confirming = None;
++        }
++    }
++
++    /// An MCP tool runs only while its server's sign-in is the one the
++    /// conversation holds and is not expired (C22): otherwise it is
++    /// declined, whatever the operator chose.
++    fn approval_usable(
++        &self,
++        conversation: &OperationId,
++        pending: &crate::harness::HarnessApproval,
++    ) -> bool {
++        pending.kind != crate::harness::ApprovalKind::McpTool
+             || self
+                 .harness_mcp_scope(conversation)
+                 .zip(pending.server.as_ref())
+                 .is_some_and(|((tenant, workspace, scope), server)| {
+                     self.mcp_server_usable(&tenant, &workspace, &scope, server)
+-                });
++                })
++    }
++
++    fn decide_now(
++        &mut self,
++        conversation: &OperationId,
++        pending: &crate::harness::HarnessApproval,
++        allow: bool,
++    ) -> Result<(), Refusal> {
++        let usable = self.approval_usable(conversation, pending);
+         let c = self.harness_live(conversation)?;
+         c.command(Command::Decide {
+-            approval: approval.to_owned(),
++            approval: pending.id.clone(),
+             allow: allow && usable,
+         })?;
+         if allow && !usable {
+@@ -257,16 +341,32 @@ impl State {
+     fn stage_proposal(
+         &mut self,
+         conversation: &OperationId,
+-        draft: ChangeDraft,
++        mut draft: ChangeDraft,
+         summary: String,
+     ) -> Result<String, Refusal> {
+         // The same static checks a review makes before any read.
+-        let tenant = self.harness_live(conversation)?.tenant_id().clone();
++        let (tenant, (reference, workspace_id)) = {
++            let c = self.harness_live(conversation)?;
++            (c.tenant_id().clone(), c.workspace_binding())
++        };
+         let client = self
+             .tenant(&tenant)
+             .and_then(|t| t.management_client.clone())
+             .ok_or(Refusal::CapabilityMissing)?;
+-        crate::changes::normalize(&draft, &client).map_err(|_| Refusal::InvalidInput)?;
++        if draft.kind.gateway().is_some() {
++            // A Gateway proposal belongs to the conversation's own
++            // workspace: its review is bound to that reference and is
++            // refused once another workspace is chosen (C32).
++            let tsg = self
++                .tenant(&tenant)
++                .and_then(|t| t.profile.tsg_id.clone())
++                .unwrap_or_default();
++            crate::gateway_changes::normalize(&draft, &tsg, Some(&workspace_id))
++                .map_err(|_| Refusal::InvalidInput)?;
++            draft.workspace = Some(reference);
++        } else {
++            crate::changes::normalize(&draft, &client).map_err(|_| Refusal::InvalidInput)?;
++        }
+         let c = self.harness_live(conversation)?;
+         let proposals = c.proposals_mut();
+         if proposals.len() >= MAX_PROPOSALS {
+@@ -497,6 +597,19 @@ async fn run(
+         ToolCall::Search { query } => management(ManagementRequest::Search { query }).await,
+         ToolCall::RedTeam { window } => management(ManagementRequest::RedTeam { window }).await,
+         ToolCall::SupplyChain => management(ManagementRequest::SupplyChain).await,
++        ToolCall::McpServers => {
++            // The conversation's own workspace catalog, as the MCP panel reads it.
++            let reference = {
++                let mut state = lock(inner)?;
++                current(&mut state)?;
++                state.harness_live(conversation)?.workspace_binding().0
++            };
++            management(ManagementRequest::Gateway {
++                workspace: Some(reference),
++                read: crate::gateway::GatewayRead::McpServers,
++            })
++            .await
++        }
+         ToolCall::Scan {
+             profile,
+             prompt,
+@@ -596,3 +709,35 @@ async fn run(
+         }
+     }
+ }
++
++/// What the native sheet asks for a decision that may change things (C32).
++fn harness_confirmation(a: &crate::harness::HarnessApproval) -> super::ConfirmationRequest {
++    use crate::harness::ApprovalKind;
++    let (title, message) = match a.kind {
++        ApprovalKind::FileChange => (
++            "Allow the Harness to change files?".to_owned(),
++            format!("It will change {} in the project folder.", a.files.join(", ")),
++        ),
++        ApprovalKind::McpTool => (
++            format!(
++                "Allow the Harness to run {}.{}?",
++                a.server.as_deref().unwrap_or_default(),
++                a.tool.as_deref().unwrap_or_default()
++            ),
++            "A workspace MCP tool runs on its server; the desktop cannot tell whether it changes anything there.".to_owned(),
++        ),
++        _ => (
++            "Allow the Harness to run this command?".to_owned(),
++            format!(
++                "It runs in the project folder with changes allowed: {}",
++                a.command.as_deref().unwrap_or_default()
++            ),
++        ),
++    };
++    super::ConfirmationRequest {
++        title,
++        message,
++        confirm_label: "Allow once".to_owned(),
++        destructive: true,
++    }
++}
+diff --git a/crates/desktop-core/src/harness.rs b/crates/desktop-core/src/harness.rs
+index 66cd1f3b..966da9e8 100644
+--- a/crates/desktop-core/src/harness.rs
++++ b/crates/desktop-core/src/harness.rs
+@@ -150,6 +150,21 @@ pub enum ApprovalKind {
+     FileChange,
+     /// Call one tool of a workspace MCP server, once (C22).
+     McpTool,
++    /// Read the tenant through one of the desktop's own read tools, once
++    /// (C32): read-only by construction.
++    DesktopRead,
++}
++
++/// What a decision lets the engine do, as the core can establish it (C32).
++/// Only a desktop read, or a command in a read-only project sandbox, is
++/// read-only; a file change, a command with changes allowed and any remote
++/// MCP tool (whose effect the desktop cannot know) may change things, and
++/// allowing one needs the native confirmation, never in-page consent alone.
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum ApprovalEffect {
++    ReadOnly,
++    MayChange,
+ }
+ 
+ /// A pending approval, as the operator sees it (C21). Its id is the
+@@ -172,6 +187,12 @@ pub struct HarnessApproval {
+     pub server: Option<String>,
+     pub tool: Option<String>,
+     pub arguments: Option<String>,
++    /// What allowing it lets the engine do (C32). Always sent; optional in
++    /// the presentation's type only so snapshots written before C32 still
++    /// type-check (the validator and the presentation treat absent as
++    /// `mayChange`).
++    #[ts(as = "Option<ApprovalEffect>", optional)]
++    pub effect: ApprovalEffect,
+ }
+ 
+ /// How a workspace MCP server started in the running engine (C22).
+diff --git a/crates/desktop-core/src/harness/session.rs b/crates/desktop-core/src/harness/session.rs
+index f79ff458..7b7c7cfd 100644
+--- a/crates/desktop-core/src/harness/session.rs
++++ b/crates/desktop-core/src/harness/session.rs
+@@ -27,9 +27,9 @@ use super::protocol::{
+ };
+ use super::sidecar::{LaunchSpec, Sidecar, SidecarLauncher};
+ use super::{
+-    ApprovalKind, Cleanup, EntryState, HarnessApproval, HarnessEntry, HarnessFailure, HarnessPhase,
+-    HarnessRole, HarnessUsage, MAX_ANSWER_BYTES, MAX_ENTRIES, MAX_TRANSCRIPT_BYTES,
+-    McpServerStatus, McpStartup,
++    ApprovalEffect, ApprovalKind, Cleanup, EntryState, HarnessApproval, HarnessEntry,
++    HarnessFailure, HarnessPhase, HarnessRole, HarnessUsage, MAX_ANSWER_BYTES, MAX_ENTRIES,
++    MAX_TRANSCRIPT_BYTES, McpServerStatus, McpStartup,
+ };
+ use crate::runtime::Outcome;
+ 
+@@ -496,6 +496,7 @@ async fn launched(
+         tools: shared.tools.clone(),
+         approvals: Vec::new(),
+         tool_calls: Vec::new(),
++        held_reads: Vec::new(),
+         run: {
+             let mut b = [0u8; 8];
+             let _ = getrandom::fill(&mut b);
+@@ -1036,6 +1037,9 @@ struct Conversation {
+     elicitations_declined: u32,
+     /// Tool calls being run: the engine's request and the entry.
+     tool_calls: Vec<(RequestId, String, ToolLease)>,
++    /// Desktop reads held for the operator's decision (C32): the
++    /// approval's id and the call, its entry and lease.
++    held_reads: Vec<(String, RequestId, super::tools::ToolCall, String, ToolLease)>,
+     /// This engine run, as a tool lease names it.
+     run: u64,
+     /// Cancelled when the turn is interrupted or ends (tool calls).
+@@ -1299,6 +1303,36 @@ impl Conversation {
+                 // engine forgets them when a turn ends or is interrupted.
+                 if let Some(at) = self.approvals.iter().position(|(a, _, _)| *a == approval) {
+                     let (_, request, kind) = self.approvals.remove(at);
++                    if kind == ApprovalKind::DesktopRead {
++                        self.set(|p| p.approvals.retain(|a| a.id != approval));
++                        let Some(held) = self.held_reads.iter().position(|h| h.0 == approval)
++                        else {
++                            return Ok(());
++                        };
++                        let (_, request, call, entry, lease) = self.held_reads.remove(held);
++                        if allow && let Some(sink) = self.tools.clone() {
++                            self.tool_calls
++                                .push((request.clone(), entry, lease.clone()));
++                            sink(ToolRequest {
++                                request,
++                                call,
++                                lease,
++                                cancel: self.turn_cancel.clone(),
++                            });
++                        } else {
++                            // Declined: nothing is read; the engine is told so.
++                            self.send(protocol::reply(
++                                &request,
++                                json!({"contentItems":[{"type":"inputText","text":super::tools::DECLINED}],"success":false}),
++                            )?)?;
++                            self.set(|p| {
++                                if let Some(e) = p.entries.iter_mut().find(|e| e.id == entry) {
++                                    e.state = EntryState::Declined;
++                                }
++                            });
++                        }
++                        return Ok(());
++                    }
+                     let decision = if allow { "accept" } else { "decline" };
+                     // MCP approvals are elicitations: `action`, nothing else.
+                     let reply = if kind == ApprovalKind::McpTool {
+@@ -1399,6 +1433,7 @@ impl Conversation {
+             self.turn_cancel.cancel();
+             self.approvals.clear();
+             self.tool_calls.clear();
++            self.held_reads.clear();
+             self.mcp_items.clear();
+             self.set(|p| p.approvals.clear());
+         }
+@@ -1504,12 +1539,60 @@ impl Conversation {
+                 json!({"contentItems":[{"type":"inputText","text":text}],"success":false}),
+             )?);
+         };
+-        if self.tool_calls.len() >= MAX_PENDING_DECISIONS {
++        if self.tool_calls.len() + self.held_reads.len() >= MAX_PENDING_DECISIONS {
+             return Err(HarnessFailure::Bounds);
+         }
+         self.seen.push(call_id.clone());
+         let entry = self.assistant_id(&call_id);
+         let title = call.title();
++        // A read of the tenant waits for the operator's decision in the page
++        // (C32); staging a proposal reads nothing and runs at once.
++        if call.needs_decision() {
++            if self.approvals.len() >= MAX_PENDING_DECISIONS {
++                return Err(HarnessFailure::Bounds);
++            }
++            let mut token = [0u8; 12];
++            getrandom::fill(&mut token).map_err(|_| HarnessFailure::Protocol)?;
++            let token = hex::encode(token);
++            let approval = HarnessApproval {
++                id: token.clone(),
++                kind: ApprovalKind::DesktopRead,
++                command: None,
++                cwd: None,
++                reason: None,
++                files: Vec::new(),
++                server: Some(super::tools::NAMESPACE.to_owned()),
++                tool: Some(call.name().to_owned()),
++                // Bounded and free of credentials by the parse above.
++                arguments: Some(params["arguments"].to_string()),
++                effect: ApprovalEffect::ReadOnly,
++            };
++            self.set(|p| {
++                push(
++                    p,
++                    HarnessEntry {
++                        id: entry.clone(),
++                        role: HarnessRole::Tool,
++                        text: title,
++                        state: EntryState::Streaming,
++                    },
++                );
++                p.approvals.push(approval);
++            });
++            self.approvals
++                .push((token.clone(), id.clone(), ApprovalKind::DesktopRead));
++            self.held_reads.push((
++                token,
++                id,
++                call,
++                entry,
++                ToolLease {
++                    run: self.run,
++                    turn,
++                },
++            ));
++            return Ok(());
++        }
+         self.set(|p| {
+             push(
+                 p,
+@@ -1565,7 +1648,9 @@ impl Conversation {
+                 .as_deref()
+                 .is_some_and(|c| !c.is_empty() && c.len() <= MAX_APPROVAL_COMMAND),
+             ApprovalKind::FileChange => !files.is_empty(),
+-            ApprovalKind::McpTool => false,
++            // Neither comes through this request: MCP tools are elicitations,
++            // desktop reads the desktop's own tool calls.
++            ApprovalKind::McpTool | ApprovalKind::DesktopRead => false,
+         };
+         let grantable = self.ours(params)
+             && self.binding.project.is_some()
+@@ -1605,6 +1690,13 @@ impl Conversation {
+             server: None,
+             tool: None,
+             arguments: None,
++            // A command in a read-only project sandbox reads; a file change,
++            // or a command with changes allowed, may change the project (C32).
++            effect: if kind == ApprovalKind::Command && !self.binding.write {
++                ApprovalEffect::ReadOnly
++            } else {
++                ApprovalEffect::MayChange
++            },
+         };
+         self.approvals.push((token, id, kind));
+         self.set(|p| p.approvals.push(approval));
+@@ -1669,6 +1761,8 @@ impl Conversation {
+             server: Some(item.server),
+             tool: Some(item.tool),
+             arguments: Some(item.arguments),
++            // A remote tool's effect is not something the desktop can know (C32).
++            effect: ApprovalEffect::MayChange,
+         };
+         self.approvals.push((token, id, ApprovalKind::McpTool));
+         self.set(|p| p.approvals.push(approval));
+@@ -2091,6 +2185,7 @@ impl Conversation {
+         // does the desktop (a late decision or result is never sent).
+         self.approvals.clear();
+         self.tool_calls.clear();
++        self.held_reads.clear();
+         self.seen.clear();
+         self.files.clear();
+         self.mcp_items.clear();
+@@ -2294,6 +2389,7 @@ mod tests {
+             tools: None,
+             approvals: Vec::new(),
+             tool_calls: Vec::new(),
++            held_reads: Vec::new(),
+             run: 1,
+             turn_cancel: CancellationToken::new(),
+             seen: Vec::new(),
+@@ -2339,6 +2435,16 @@ mod tests {
+         );
+     }
+ 
++    /// Allows the first desktop read held for the operator (C32).
++    fn allow_read(c: &mut Conversation) {
++        let approval = c.held_reads.first().expect("a held read").0.clone();
++        c.on_command(Command::Decide {
++            approval,
++            allow: true,
++        })
++        .expect("decided");
++    }
++
+     #[test]
+     fn a_tool_call_runs_once_and_only_for_the_turn_being_answered() {
+         let (writer, reader) = std_mpsc::sync_channel(64);
+@@ -2354,7 +2460,10 @@ mod tests {
+             RequestId::Number(1),
+             &call("call-1", "turn-1", "supplyChain"),
+         )
+-        .expect("runs");
++        .expect("held");
++        // A read waits for the operator's decision in the page (C32).
++        assert_eq!(ran.lock().expect("fixture").len(), 0);
++        allow_read(&mut c);
+         assert_eq!(ran.lock().expect("fixture").len(), 1);
+         // The same call again is a protocol failure; nothing runs twice.
+         assert_eq!(
+@@ -2409,7 +2518,8 @@ mod tests {
+         }));
+         let call = |call: &str, turn: &str| json!({"threadId":"t","turnId":turn,"callId":call,"namespace":"airs_desktop","tool":"supplyChain","arguments":{}});
+         c.on_tool_call(RequestId::Number(1), &call("call-1", "turn-1"))
+-            .expect("runs");
++            .expect("held");
++        allow_read(&mut c);
+         let first = handed.lock().expect("fixture").remove(0);
+         assert_eq!(first.lease.turn, "turn-1");
+         assert!(!first.cancel.is_cancelled());
+@@ -2444,7 +2554,8 @@ mod tests {
+         // The next turn reuses request ids: only its own lease answers.
+         c.turn = Some(("u-2".into(), Some("turn-2".into())));
+         c.on_tool_call(RequestId::Number(1), &call("call-3", "turn-2"))
+-            .expect("runs");
++            .expect("held");
++        allow_read(&mut c);
+         let next = handed.lock().expect("fixture").remove(0);
+         assert_eq!(next.request, first.request);
+         assert_ne!(next.lease, first.lease);
+diff --git a/crates/desktop-core/src/harness/tools.rs b/crates/desktop-core/src/harness/tools.rs
+index b4a828ec..99db880e 100644
+--- a/crates/desktop-core/src/harness/tools.rs
++++ b/crates/desktop-core/src/harness/tools.rs
+@@ -28,6 +28,9 @@ pub const MAX_SCAN_TEXT: usize = 16 * 1024;
+ /// around a check).
+ pub const UNAVAILABLE: &str = "This tool or its arguments are unavailable.";
+ 
++/// What the engine is told when the operator declines a read (C32).
++pub const DECLINED: &str = "The operator declined this read, so nothing was read.";
++
+ /// Field names whose values are never shown to the model.
+ const SENSITIVE: [&str; 14] = [
+     "api_key",
+@@ -78,7 +81,7 @@ pub fn catalog() -> Value {
+     let resource = json!({"type":"string","enum":RESOURCES});
+     let id = json!({"type":"string","minLength":1,"maxLength":256});
+     let kinds = json!({"type":"string","enum":["profiles","topics","applications","apiKeys",
+-        "dataPatterns","dataProfiles","filteringProfiles","dictionaries"]});
++        "dataPatterns","dataProfiles","filteringProfiles","dictionaries","gatewayGuardrails"]});
+     json!([{
+         "type":"namespace",
+         "name":NAMESPACE,
+@@ -101,8 +104,9 @@ pub fn catalog() -> Value {
+                     "prompt":{"type":"string","maxLength":MAX_SCAN_TEXT},
+                     "response":{"type":"string","maxLength":MAX_SCAN_TEXT}}),&["profile"]),
+             function("cases","The tenant's saved test cases (names and verdict expectations).",json!({}),&[]),
+-            function("proposeChange","Stage a Runtime Security change for the operator to review. It is never applied by this tool: the operator must review and confirm it in the desktop.",
+-                json!({"kind":kinds,"action":{"type":"string","enum":["create","update","delete"]},
++            function("mcpServers","The MCP servers of this conversation's AI Gateway workspace (names, namespaces and status), as the workspace's MCP catalog lists them.",json!({}),&[]),
++            function("proposeChange","Stage a change for the operator to review: a Runtime Security or DLP change, an additional API key for an application (action version: the start of a key rotation, which the operator finishes in Administration), or a guardrail of this conversation's AI Gateway workspace (create or update). It is never applied by this tool: the operator must review and confirm it in the desktop.",
++                json!({"kind":kinds,"action":{"type":"string","enum":["create","update","delete","version"]},
+                     "target":{"type":"string","maxLength":256},
+                     "body":{"type":"object"},
+                     "summary":{"type":"string","maxLength":512}}),&["kind","action","summary"]),
+@@ -140,6 +144,8 @@ pub enum ToolCall {
+         response: Option<String>,
+     },
+     Cases,
++    /// The conversation's workspace MCP catalog (`GatewayRead::McpServers`, C32).
++    McpServers,
+     ProposeChange {
+         kind: ChangeKind,
+         action: ChangeAction,
+@@ -302,11 +308,18 @@ impl ToolCall {
+                 let _: Empty = serde_json::from_value(args).ok()?;
+                 Self::Cases
+             }
++            "mcpServers" => {
++                let _: Empty = serde_json::from_value(args).ok()?;
++                Self::McpServers
++            }
+             "proposeChange" => {
+                 let a: ProposeArgs = serde_json::from_value(args).ok()?;
+-                // Only the Runtime and DLP kinds: Gateway changes need the
+-                // operator's own workspace review.
+-                if !matches!(
++                // The Runtime and DLP kinds (create, update, delete); an API
++                // key's version, the start of a rotation the operator
++                // finishes in Administration (C32); and a guardrail of the
++                // conversation's own Gateway workspace, created or updated,
++                // reviewed under that workspace (C32). Nothing else.
++                let runtime = matches!(
+                     a.kind,
+                     ChangeKind::Profiles
+                         | ChangeKind::Topics
+@@ -316,10 +329,15 @@ impl ToolCall {
+                         | ChangeKind::DataProfiles
+                         | ChangeKind::FilteringProfiles
+                         | ChangeKind::Dictionaries
+-                ) || !matches!(
++                ) && matches!(
+                     a.action,
+                     ChangeAction::Create | ChangeAction::Update | ChangeAction::Delete
+-                ) || a.summary.trim().is_empty()
++                );
++                let rotation = a.kind == ChangeKind::ApiKeys && a.action == ChangeAction::Version;
++                let guardrail = a.kind == ChangeKind::GatewayGuardrails
++                    && matches!(a.action, ChangeAction::Create | ChangeAction::Update);
++                if !(runtime || rotation || guardrail)
++                    || a.summary.trim().is_empty()
+                     || a.summary.chars().count() > 512
+                     || a.target.len() > 256
+                     || a.target.chars().any(char::is_control)
+@@ -340,6 +358,29 @@ impl ToolCall {
+         Some(call)
+     }
+ 
++    /// Whether the call waits for the operator's decision in the page
++    /// (C32): every read of the tenant does; staging a proposal reads
++    /// nothing and only ever opens the operator's own review.
++    pub fn needs_decision(&self) -> bool {
++        !matches!(self, Self::ProposeChange { .. })
++    }
++
++    /// The tool's name, as the engine called it.
++    pub fn name(&self) -> &'static str {
++        match self {
++            Self::Inventory { .. } => "inventory",
++            Self::Detail { .. } => "detail",
++            Self::Session { .. } => "session",
++            Self::Search { .. } => "search",
++            Self::RedTeam { .. } => "redTeam",
++            Self::SupplyChain => "supplyChain",
++            Self::Scan { .. } => "scan",
++            Self::Cases => "cases",
++            Self::McpServers => "mcpServers",
++            Self::ProposeChange { .. } => "proposeChange",
++        }
++    }
++
+     /// A short, model-free description for the transcript.
+     pub fn title(&self) -> String {
+         match self {
+@@ -353,6 +394,7 @@ impl ToolCall {
+             Self::SupplyChain => "Read Model Security and AgentGuard".to_owned(),
+             Self::Scan { .. } => "Scanned text with Runtime Security".to_owned(),
+             Self::Cases => "Read the test case library".to_owned(),
++            Self::McpServers => "Read the workspace's MCP servers".to_owned(),
+             Self::ProposeChange { summary, .. } => format!("Proposed a change: {summary}"),
+         }
+     }
+@@ -576,4 +618,35 @@ mod tests {
+             assert_eq!(cut["cut"], CUT_NOTE);
+         }
+     }
++
++    /// C32: the Harness may hand off a key rotation (an API key version)
++    /// and propose a guardrail of its own Gateway workspace (create or
++    /// update); every other Gateway change, and a key rotation in place,
++    /// stays out of its reach.
++    #[test]
++    fn proposals_admit_the_rotation_hand_off_and_workspace_guardrails_only() {
++        let ns = Some(NAMESPACE);
++        let call = |kind: &str, action: &str| {
++            ToolCall::parse(
++                ns,
++                "proposeChange",
++                &json!({"kind": kind, "action": action, "target": if action == "create" { "" } else { "x-1" },
++                        "body": {}, "summary": "s"}),
++            )
++        };
++        assert!(call("apiKeys", "version").is_some());
++        assert!(call("gatewayGuardrails", "create").is_some());
++        assert!(call("gatewayGuardrails", "update").is_some());
++        assert!(call("topics", "update").is_some());
++        for (kind, action) in [
++            ("gatewayGuardrails", "delete"),
++            ("gatewayRoutes", "create"),
++            ("gatewayServiceKeys", "rotate"),
++            ("gatewayWorkspaces", "create"),
++            ("apiKeys", "rotate"),
++            ("topics", "version"),
++        ] {
++            assert!(call(kind, action).is_none(), "{kind} {action}");
++        }
++    }
+ }
+diff --git a/crates/desktop-core/tests/harness_process/desk.rs b/crates/desktop-core/tests/harness_process/desk.rs
+index 27b8bf1d..b235f536 100644
+--- a/crates/desktop-core/tests/harness_process/desk.rs
++++ b/crates/desktop-core/tests/harness_process/desk.rs
+@@ -474,6 +474,9 @@ pub async fn desk_with(engine: Option<Engine>, fixture: Option<Pin>) -> Desk {
+     .expect("policy");
+     let handle = core.operator();
+     let session = handle.register_delivery_session().expect("session").nonce;
++    // The operator accepts the native sheet a change needs (C32); a test of
++    // the sheet itself sets its own answer.
++    handles.confirmer.auto(Some(true));
+     let mut desk = Desk {
+         core,
+         handle,
+@@ -577,6 +580,9 @@ pub async fn relaunch_from(old: Desk, online: bool, real: bool, crashed: bool) -
+     }
+     let handle = core.operator();
+     let session = handle.register_delivery_session().expect("session").nonce;
++    // The operator accepts the native sheet a change needs (C32); a test of
++    // the sheet itself sets its own answer.
++    handles.confirmer.auto(Some(true));
+     Desk {
+         core,
+         handle,
+diff --git a/crates/desktop-core/tests/harness_tools/main.rs b/crates/desktop-core/tests/harness_tools/main.rs
+index b9225933..e080261d 100644
+--- a/crates/desktop-core/tests/harness_tools/main.rs
++++ b/crates/desktop-core/tests/harness_tools/main.rs
+@@ -129,11 +129,34 @@ async fn ready(desk: &mut Desk) -> String {
+ }
+ 
+ async fn answered_with(desk: &mut Desk, predicate: impl Fn(&Value) -> bool) -> Value {
+-    assert!(
+-        settle_for(40, || predicate(&desk.conversation())).await,
+-        "{}",
+-        desk.conversation()
+-    );
++    // A desktop read waits for the operator's decision in the page (C32):
++    // these tests allow each one as it is asked.
++    let deadline = std::time::Instant::now() + Duration::from_secs(40);
++    loop {
++        let c = desk.conversation();
++        if predicate(&c) {
++            break;
++        }
++        assert!(std::time::Instant::now() < deadline, "{c}");
++        let reads: Vec<Value> = c["approvals"]
++            .as_array()
++            .map(|a| {
++                a.iter()
++                    .filter(|a| a["kind"] == "desktopRead")
++                    .cloned()
++                    .collect()
++            })
++            .unwrap_or_default();
++        for read in reads {
++            let _ = desk
++                .send(
++                    json!({"kind": "decideHarnessApproval", "conversation": c["id"],
++                    "approval": read["id"], "allow": true}),
++                )
++                .await;
++        }
++        tokio::time::sleep(Duration::from_millis(50)).await;
++    }
+     desk.conversation()
+ }
+ 
+@@ -222,8 +245,10 @@ async fn a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered() {
+         .expect("hook");
+     let slow = Arc::clone(&fast);
+     desk.gateway.lock().expect("gateway").hook = Some(Arc::new(move |seen| {
++        // Long enough that the stop always lands first, even under the
++        // full suite's load (the in-page read decision adds a round trip).
+         if seen.request_line.contains("/apikeys/") {
+-            std::thread::sleep(Duration::from_secs(3));
++            std::thread::sleep(Duration::from_secs(6));
+         }
+         slow(seen)
+     }));
+@@ -237,6 +262,7 @@ async fn a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered() {
+     desk.say(&id, "Which API keys exist?").await.expect("sent");
+     answered_with(&mut desk, |c| {
+         entry(c, "tool").is_some_and(|t| t["state"] == "streaming")
++            && c["approvals"].as_array().is_some_and(Vec::is_empty)
+     })
+     .await;
+     assert!(settle(|| management_reads(&desk) > 0).await);
+@@ -249,7 +275,7 @@ async fn a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered() {
+     .await;
+     assert_eq!(c["lastTurn"], "interrupted", "{c}");
+     // The read finishes after the turn ended: its result is never sent.
+-    tokio::time::sleep(Duration::from_secs(4)).await;
++    tokio::time::sleep(Duration::from_secs(7)).await;
+     assert!(outputs(&desk).is_empty(), "{:?}", outputs(&desk));
+     assert_ne!(
+         entry(&desk.conversation(), "tool").expect("tool")["state"],
+@@ -1659,3 +1685,338 @@ async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
+     );
+     std::fs::remove_dir_all(&dir).expect("cleanup");
+ }
++
++/// C32: the keys lifecycle hands off a rotation as an API key version and
++/// the mcp lifecycle proposes a guardrail of the conversation's own
++/// workspace. Each is staged, never applied (nothing is written), and opens
++/// as the operator's review; the guardrail's review is bound to that
++/// workspace's reference.
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn a_rotation_hand_off_and_a_workspace_guardrail_are_staged_never_applied() {
++    let mut desk = desk().await;
++    let id = ready(&mut desk).await;
++    let reference = desk.json()["gateway"]["selected"]["reference"]
++        .as_str()
++        .expect("ref")
++        .to_owned();
++    tool(
++        &desk,
++        Some("airs_desktop"),
++        "proposeChange",
++        json!({"kind": "apiKeys", "action": "version", "target": "key-1",
++            "body": {"cust_app": "Support bot", "cust_env": "production", "cust_cloud_provider": "aws",
++                     "api_key_name": "Runtime 2", "dp_name": "dp-0", "revoked": false,
++                     "rotation_time_interval": 30, "rotation_time_unit": "days"},
++            "summary": "Rotation is a write: start it in Administration"}),
++    );
++    desk.say(&id, "Rotate the Support bot key.")
++        .await
++        .expect("sent");
++    let c = answered_with(&mut desk, |c| c["lastTurn"] == "completed").await;
++    assert_eq!(c["proposals"][0]["state"], "staged", "{c}");
++    assert_eq!(c["proposals"][0]["draft"]["kind"], "apiKeys");
++    assert_eq!(c["proposals"][0]["draft"]["action"], "version");
++    tool(
++        &desk,
++        Some("airs_desktop"),
++        "proposeChange",
++        json!({"kind": "gatewayGuardrails", "action": "create",
++            "body": {"name": "mcp-allow-list", "checks": [{"id": "pii-check", "parameters": {"scan_scope": "all_messages"}}],
++                     "actions": {"deny": true}},
++            "summary": "Deny MCP servers that are not on the allow list"}),
++    );
++    desk.say(&id, "Propose a guardrail.").await.expect("sent");
++    let c = answered_with(&mut desk, |c| {
++        c["proposals"].as_array().map(Vec::len) == Some(2) && c["phase"] == "ready"
++    })
++    .await;
++    assert_eq!(c["proposals"][1]["state"], "staged", "{c}");
++    assert_eq!(
++        c["proposals"][1]["draft"]["workspace"], reference,
++        "bound to the conversation's own workspace"
++    );
++    // Nothing was written by the Harness.
++    assert!(
++        desk.requests("/aisec/v1/mgmt/apikey")
++            .iter()
++            .all(|s| s.request_line.starts_with("GET"))
++    );
++    assert!(
++        desk.requests(&format!("{DATA}/guardrails"))
++            .iter()
++            .all(|s| s.request_line.starts_with("GET"))
++    );
++    // Each opens as the operator's review.
++    for proposal in ["P-1", "P-2"] {
++        let opened = desk
++            .send(
++                json!({"kind": "reviewHarnessProposal", "conversation": id, "proposal": proposal}),
++            )
++            .await;
++        assert!(opened.is_ok(), "{proposal}: {opened:?}");
++        assert!(settle(|| !desk.json()["changes"]["review"].is_null()).await);
++        let review = desk.json()["changes"]["review"]["review"].clone();
++        desk.send(json!({"kind": "discardChange", "review": review}))
++            .await
++            .expect("discarded");
++    }
++    // A Gateway delete or a key rotation in place is never staged.
++    for (kind, action) in [("gatewayGuardrails", "delete"), ("apiKeys", "rotate")] {
++        tool(
++            &desk,
++            Some("airs_desktop"),
++            "proposeChange",
++            json!({"kind": kind, "action": action, "target": "x-1", "summary": "s"}),
++        );
++        desk.say(&id, "Try it.").await.expect("sent");
++        answered_with(&mut desk, |c| {
++            c["phase"] == "ready" && c["lastTurn"].is_string()
++        })
++        .await;
++        let last = outputs(&desk).last().cloned().unwrap_or_default();
++        assert!(
++            last.contains("This tool or its arguments are unavailable."),
++            "{last}"
++        );
++    }
++    assert_eq!(
++        desk.conversation()["proposals"].as_array().map(Vec::len),
++        Some(2)
++    );
++    desk.end(&id).await;
++}
++
++/// C32 (R1): a decision is classified by the core. A desktop read is
++/// read-only and decided in the page (declined, nothing is read); a command
++/// with changes allowed may change the project, and in-page consent alone
++/// never runs it: only the native confirmation does.
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn reads_are_decided_in_the_page_and_changes_need_the_native_confirmation() {
++    let mut desk = desk().await;
++    let id = ready(&mut desk).await;
++    // A read, declined: nothing is read and the engine is told so.
++    tool(
++        &desk,
++        Some("airs_desktop"),
++        "inventory",
++        json!({"resource": "apiKeys", "limit": 5}),
++    );
++    let reads = management_reads(&desk);
++    desk.say(&id, "Which API keys exist?").await.expect("sent");
++    assert!(
++        settle_for(40, || desk.conversation()["approvals"]
++            .as_array()
++            .is_some_and(|a| a.len() == 1))
++        .await
++    );
++    let read = desk.conversation()["approvals"][0].clone();
++    assert_eq!(read["kind"], "desktopRead");
++    assert_eq!(read["effect"], "readOnly");
++    assert_eq!(read["server"], "airs_desktop");
++    assert_eq!(read["tool"], "inventory");
++    desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": read["id"], "allow": false}))
++        .await
++        .expect("declined");
++    let c = answered_with(&mut desk, |c| {
++        c["phase"] == "ready" && c["lastTurn"].is_string()
++    })
++    .await;
++    assert_eq!(management_reads(&desk), reads, "nothing was read");
++    assert_eq!(entry(&c, "tool").expect("entry")["state"], "declined");
++    assert!(
++        outputs(&desk)
++            .last()
++            .is_some_and(|o| o.contains("declined this read"))
++    );
++    desk.end(&id).await;
++    desk.send(json!({"kind": "clearHarness", "conversation": id}))
++        .await
++        .expect("cleared");
++    // A command with changes allowed: the sheet refused, nothing runs.
++    let dir = project();
++    choose_project(&mut desk, &dir).await;
++    let context = desk.context();
++    desk.send(json!({"kind": "setHarnessWrite", "context": context, "write": true}))
++        .await
++        .expect("write");
++    let reference = desk.json()["gateway"]["selected"]["reference"]
++        .as_str()
++        .expect("ref")
++        .to_owned();
++    let id = desk.start(&reference).await.expect("started");
++    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
++    tool(
++        &desk,
++        None,
++        "exec_command",
++        json!({"cmd": "echo c32 > c32.txt"}),
++    );
++    desk.say(&id, "Write a file.").await.expect("sent");
++    assert!(
++        settle_for(40, || desk.conversation()["approvals"]
++            .as_array()
++            .is_some_and(|a| a.len() == 1))
++        .await
++    );
++    let change = desk.conversation()["approvals"][0].clone();
++    assert_eq!(change["kind"], "command");
++    assert_eq!(change["effect"], "mayChange");
++    desk.adapters.confirmer.auto(Some(false));
++    desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": change["id"], "allow": true}))
++        .await
++        .expect("asked natively");
++    tokio::time::sleep(Duration::from_millis(800)).await;
++    assert_eq!(
++        desk.conversation()["approvals"][0]["id"],
++        change["id"],
++        "still pending: in-page consent alone does not run it"
++    );
++    assert!(!dir.join("c32.txt").exists(), "nothing ran");
++    // Accepted in the native sheet: it runs once.
++    desk.adapters.confirmer.auto(Some(true));
++    desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": change["id"], "allow": true}))
++        .await
++        .expect("asked natively");
++    answered_with(&mut desk, |c| {
++        c["phase"] == "ready"
++            && c["approvals"].as_array().is_some_and(Vec::is_empty)
++            && c["lastTurn"].is_string()
++    })
++    .await;
++    assert!(
++        settle(|| dir.join("c32.txt").exists()).await,
++        "it ran after the native confirmation"
++    );
++    desk.end(&id).await;
++}
++
++/// C32 (R7): the mcp lifecycle's read is the desktop's own `mcpServers`
++/// tool: it waits for the operator's decision in the page and, allowed,
++/// reads the conversation workspace's MCP catalog (`GatewayRead::McpServers`)
++/// and gives the engine the servers it lists.
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn the_mcp_catalog_is_read_for_the_engine_only_once_the_operator_allows_it() {
++    let mut desk = desk().await;
++    let fast = desk
++        .gateway
++        .lock()
++        .expect("gateway")
++        .hook
++        .clone()
++        .expect("hook");
++    desk.gateway.lock().expect("gateway").hook = Some(Arc::new(move |seen| {
++        let target = seen.request_line.split(' ').nth(1)?;
++        if target.starts_with(&format!("{DATA}/mcp-servers")) {
++            return Some(json_reply(
++                200,
++                &json!({"object": "list", "total": 1, "data": [
++                {"id": "mcp-1", "name": "scratch-tools", "slug": "scratch-tools",
++                 "url": "https://mcp.example/scratch-tools/mcp", "status": "active",
++                 "workspace_id": WS_A, "last_updated_at": "2026-10-28T00:00:00Z", "auth_type": "oauth",
++                 "object": "mcp_server"}]}),
++            ));
++        }
++        fast(seen)
++    }));
++    let id = ready(&mut desk).await;
++    tool(&desk, Some("airs_desktop"), "mcpServers", json!({}));
++    desk.say(&id, "Which MCP servers does this workspace have?")
++        .await
++        .expect("sent");
++    assert!(
++        settle_for(40, || desk.conversation()["approvals"]
++            .as_array()
++            .is_some_and(|a| a.len() == 1))
++        .await
++    );
++    let read = desk.conversation()["approvals"][0].clone();
++    assert_eq!(
++        (
++            read["kind"].as_str(),
++            read["tool"].as_str(),
++            read["effect"].as_str()
++        ),
++        (Some("desktopRead"), Some("mcpServers"), Some("readOnly"))
++    );
++    assert!(
++        desk.requests(&format!("{DATA}/mcp-servers")).is_empty(),
++        "nothing read before the decision"
++    );
++    desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": read["id"], "allow": true}))
++        .await
++        .expect("allowed");
++    let c = answered_with(&mut desk, |c| {
++        c["phase"] == "ready" && c["lastTurn"].is_string()
++    })
++    .await;
++    assert_eq!(
++        desk.requests(&format!("{DATA}/mcp-servers")).len(),
++        1,
++        "read once"
++    );
++    assert_eq!(entry(&c, "tool").expect("entry")["state"], "complete");
++    assert!(
++        outputs(&desk)
++            .last()
++            .is_some_and(|o| o.contains("scratch-tools")),
++        "{:?}",
++        outputs(&desk)
++    );
++    desk.end(&id).await;
++}
++
++/// C32 (attempt-02 optional): a native confirmation still open when its
++/// conversation ends is dismissed, and an acceptance that arrives late runs
++/// nothing.
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn a_confirmation_that_outlives_its_conversation_runs_nothing() {
++    let mut desk = desk().await;
++    let dir = project();
++    choose_project(&mut desk, &dir).await;
++    let context = desk.context();
++    desk.send(json!({"kind": "setHarnessWrite", "context": context, "write": true}))
++        .await
++        .expect("write");
++    let id = ready(&mut desk).await;
++    tool(
++        &desk,
++        None,
++        "exec_command",
++        json!({"cmd": "echo late > late.txt"}),
++    );
++    desk.say(&id, "Write a file.").await.expect("sent");
++    assert!(
++        settle_for(40, || desk.conversation()["approvals"]
++            .as_array()
++            .is_some_and(|a| a.len() == 1))
++        .await
++    );
++    let change = desk.conversation()["approvals"][0].clone();
++    assert_eq!(change["effect"], "mayChange");
++    // The sheet stays open: the operator has not answered yet.
++    desk.adapters.confirmer.auto(None);
++    desk.send(json!({"kind": "decideHarnessApproval", "conversation": id, "approval": change["id"], "allow": true}))
++        .await
++        .expect("asked natively");
++    assert!(
++        settle(|| desk.adapters.confirmer.held() == 1).await,
++        "the sheet is shown"
++    );
++    let nonce = desk
++        .adapters
++        .confirmer
++        .requests()
++        .last()
++        .expect("a request")
++        .0;
++    // The conversation ends while the sheet is open: it is dismissed.
++    desk.end(&id).await;
++    assert!(
++        settle(|| desk.adapters.confirmer.dismissed().contains(&nonce)).await,
++        "dismissed with its conversation"
++    );
++    // A late acceptance runs nothing.
++    let _ = desk.adapters.confirmer.complete(true);
++    tokio::time::sleep(Duration::from_millis(800)).await;
++    assert!(!dir.join("late.txt").exists(), "nothing ran");
++}
+diff --git a/crates/xtask/src/budgets.rs b/crates/xtask/src/budgets.rs
+index da917e33..63deb0e7 100644
+--- a/crates/xtask/src/budgets.rs
++++ b/crates/xtask/src/budgets.rs
+@@ -9,7 +9,7 @@
+ //! mismatched input fails.
+ 
+ use std::collections::BTreeMap;
+-use std::path::Path;
++use std::path::{Path, PathBuf};
+ 
+ use serde::{Deserialize, Serialize};
+ 
+@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
+     Ok(total)
+ }
+ 
+-const MIB: f64 = 1024.0 * 1024.0;
+-
+-/// Builds the complete unsigned production app and DMG, the sealed Harness
+-/// engine included (C19, D046; budgets.json version 5), and records their
+-/// sizes.
+-pub fn footprint(
+-    repo: &Repo,
+-    manifest: &Manifest,
+-    env: &Environment,
+-    subject: Subject,
+-) -> Result<Footprint> {
+-    let Some(chunk) = required(repo, manifest, subject)? else {
+-        return Err(invalid(format!(
+-            "{subject} does not contain the chunk that registered the budgets"
+-        )));
+-    };
+-    let (_, record, sha) = registration(repo, &chunk)?;
+-    let started_utc = now_utc();
+-    if started_utc < record.registered_utc {
+-        return Err(invalid("the clock is before the budget registration"));
+-    }
+-    let target = manifest.target.as_str();
++/// Builds the complete unsigned production app and DMG with the sealed
++/// Harness engine as a bundle resource (C19, D046): the frontend, then
++/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
++pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
+     // The sealed engine the production app ships with (C19).
+     crate::harness::unpack(repo)?;
+     let commands: Vec<Vec<String>> = [
+@@ -181,13 +163,58 @@ pub fn footprint(
+     let identifier = plist_value(&app, "CFBundleIdentifier")?;
+     if identifier != crate::native::PRODUCTION_IDENTIFIER {
+         return Err(invalid(format!(
+-            "footprint bundle has identifier {identifier}"
++            "the production bundle has identifier {identifier}"
+         )));
+     }
+     let version = plist_value(&app, "CFBundleShortVersionString")?;
+     let dmg = repo.join(format!(
+         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
+     ));
++    Ok(ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    })
++}
++
++/// A production build: the app, its DMG, the bundle identifier and the
++/// commands that built them.
++pub struct ProductionBuild {
++    pub app: PathBuf,
++    pub dmg: PathBuf,
++    pub identifier: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++const MIB: f64 = 1024.0 * 1024.0;
++
++/// Builds the complete unsigned production app and DMG, the sealed Harness
++/// engine included (C19, D046; budgets.json version 5), and records their
++/// sizes.
++pub fn footprint(
++    repo: &Repo,
++    manifest: &Manifest,
++    env: &Environment,
++    subject: Subject,
++) -> Result<Footprint> {
++    let Some(chunk) = required(repo, manifest, subject)? else {
++        return Err(invalid(format!(
++            "{subject} does not contain the chunk that registered the budgets"
++        )));
++    };
++    let (_, record, sha) = registration(repo, &chunk)?;
++    let started_utc = now_utc();
++    if started_utc < record.registered_utc {
++        return Err(invalid("the clock is before the budget registration"));
++    }
++    let target = manifest.target.as_str();
++    let ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    } = build_production(repo, env, target)?;
+     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
+     let relative = |p: &Path| {
+         p.strip_prefix(repo.root())
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index 3e5dd1a6..85008cb8 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1224,6 +1224,24 @@
+         "id": "C31-N04",
+         "check": "The accessibility additions (DESIGN-V2 \u00a78) on the changed UI: the review sheet is the one topmost modal (the rail hidden beneath it) and Escape closes it with focus returned to the page; the rotation reminder leaves the Inbox once the old key is read back gone; Tab from a product header reaches its tabs; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Administration screen lies past the window's right edge; a focused review-sheet control shows its focus ring (pixels around it change against the unfocused capture); the applied result and the rotation's completion sit in polite status regions; with Reduce Motion on, the applied change's toast stays past 6 s until dismissed, and the system setting is restored."
+       }
++    ],
++    "C32": [
++      {
++        "id": "C32-N01",
++        "check": "The Harness renders in the v2 shell on the existing engine: the title row names the tenant, the engine and the workspace; the prerequisites checklist is hidden once satisfied; a fresh tenant shows no seeded conversation, and its first send through the composer starts a user conversation that the real engine answers, titled from that message in the rail (I12)."
++      },
++      {
++        "id": "C32-N02",
++        "check": "A command the engine asks to run while the project is read-only is decided in the page (Approve once / Decline) after a project is chosen through the embedded project panel; while it waits, a tenant switch through the switcher, the palette and Go \u203a Switch Tenant\u2026 each shows the guard (Stay, Discard and switch, Archive and switch) and Stay keeps the tenant and the decision (I1, V2-N01); Decline records it and runs nothing, Approve once runs it. With changes allowed, a command is shown as May change things: Approve\u2026 opens the native confirmation, Cancel keeps it pending and runs nothing, Allow once runs it."
++      },
++      {
++        "id": "C32-N03",
++        "check": "The workspace MCP catalog read the engine asks for (airs_desktop.mcpServers) is shown as read-only and read only once approved in the page; a change the engine proposes appears as a follow-up and writes nothing; Open the review shows it as the operator's typed review in Administration (Apply gated, still nothing written) and leaving it closes the follow-up; End conversation seals it (its transcript saved, the rail marks it ended, the engine is gone) and the next send starts a new conversation."
++      },
++      {
++        "id": "C32-N04",
++        "check": "Keyboard: Tab from the message box reaches Send or End; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Harness screen lies past the window's right edge and there is no horizontal scroll bar."
++      }
+     ]
+   }
+ }
+diff --git a/docs/architecture/ui-v2/provenance.md b/docs/architecture/ui-v2/provenance.md
+index 41d2d1ce..79ccffdb 100644
+--- a/docs/architecture/ui-v2/provenance.md
++++ b/docs/architecture/ui-v2/provenance.md
+@@ -54,6 +54,12 @@ page "Refined Native v2", version 134 (version id 1793059808-4929, published
+ | P41 | Rotation state per tenant with two stored timestamps | `Tenant.rotations` (persisted, never a secret): driven from settled `ApiKeys` results of the active context (a Version read back starts one; an unknown Version starts an unconfirmed one; a failed one records nothing; the old key's Delete read back absent completes it; a rejected Delete keeps it with the reason; an unknown one is reconciled by a complete key inventory read), plus `acknowledgeDeployment{application}` stored once. The reminder is the Inbox item `rotation-<application>` while a key is confirmed and the old one not read back gone. The one-time secret stays on its change result for the context it was applied in: Reveal is offered only while the core holds it; any sheet exit forgets it and a context change drops it | The issued secret must never be persisted (I6) while the stage and timestamps must survive reads, switches and relaunches (I7) |
+ | P42 | Playground topic examples classify under the topic | The scan result carries `topics{violation, blocked, allowed}` from the service's `topic_violation` flag and `topic_guardrails_details`, shown apart from the detector flags: a matched topic is "flagged (blocked)" or "flagged (monitor only)", no match under the profile is "Not detected", an unreported verdict says so; detectors stay listed beside it. The prototype's local classifier is not carried: verdicts come from the service | The desktop never invents a verdict (DESIGN-V2 §10 gap 2 closed with service data) |
+ | P43 | C31 live row runs through `xtask live-run` | `live-run --family L03 --subject C31` runs the C31 topic routine inside L03's designation and writes its receipts and run record under evidence/C31/live, leaving C25's receipts untouched (the consumption ledger stays C25's single ledger) | The live row needs the reviewed runner and the owner's designation, not a second harness |
++| P44 | Lifecycle conversations are seeded data in the prototype (`CONVOS`) | The three lifecycles are fixtures in the contracts package (`fixtures/wire/harness-lifecycle-{blocks,mcp,keys}.json`), one `ConversationView` per step (asking, approved, declined, ended) plus the saved transcript. Each read is one of the desktop's own read tools (`desktopRead`, `effect: readOnly`): blocks `search`, mcp `mcpServers`, keys `inventory` of API keys. They are regression inputs and boards only: a real tenant never shows them (I12) | The core decides approvals; fixtures must be shapes the core emits, validated by `parseShellSnapshot` |
++| P45 | The mcp and keys follow-ups open a guardrail review and the key rotation flow | `proposeChange` admits, besides the Runtime and DLP kinds, an API key `version` (the hand-off of a rotation: it opens the C31 review sheet and its staged sequence) and a guardrail of the conversation's own Gateway workspace (create or update only), staged with that workspace's reference so its review is bound to it; Gateway deletes and every other Gateway change, and a key rotation in place, stay refused. The follow-up of a key hand-off shows the rotation stage from `ShellSnapshot.rotations`. The mcp lifecycle's guardrail is described as what it is (a pii-check guardrail on all messages while the unlisted server is reviewed); no guardrail expresses an MCP allow list | A proposal only ever opens the operator's own review (D014); the follow-ups must be core-owned, not page-invented |
++| P46 | `endConversation` returns an archive id | `endHarness` keeps its receipt; the ended conversation names its saved transcript (`ConversationView.historyId`, the protected history record, shown only with save evidence: `savedAt` set and no `saveFailure`) and the rail marks it ended; "Open the saved transcript" opens that record | The archive already exists as the C20 protected history; a second id would duplicate it |
++| P47 | The mcp lifecycle reads `GatewayRead::McpServers` (P16) | A new desktop read tool `mcpServers` reads the conversation workspace's MCP catalog (`GatewayRead::McpServers`, the read the MCP panel uses) for the engine, decided in the page like every desktop read | The prototype's AES inventory has no admitted service; the Gateway catalog is the admitted read P16 named |
++| P48 | Read-only tool calls are approved in the page (C21 assumed) | Every desktop read tool (inventory, detail, session, search, Red Teaming, model observation, scan, test cases, MCP catalog) now waits for the operator's decision in the page (`ApprovalKind::DesktopRead`, `effect: readOnly`); declined, nothing is read and the engine is told so. Staging a proposal reads nothing and still runs at once. Before C32 these reads ran without asking | The lifecycles' approve and decline paths, and the operator's control over what tenant data reaches the model |
++| P49 | The core decides from the tool's write flag whether the native confirmation is required (C21 assumed) | No such branch existed: every decision was in-page. The core now classifies each decision (`HarnessApproval.effect`): a desktop read, or a command while the project is read-only, is `readOnly`; a file change, a command with changes allowed and any workspace MCP tool (whose effect the desktop cannot know; tools carry no trusted annotations) is `mayChange`, and allowing it opens the native confirmation (`Effect::ConfirmHarness`), whose private completion alone sends the allow; refused, the decision stays pending; a stale one is dismissed. In TypeScript `effect` is optional only so pre-C32 snapshots type-check, and absent is treated as `mayChange` | In-page consent must never authorise a change (D058, C32) |
+ 
+ P10–P14 are the five round-16 Codex items carried as known gaps (see
+ [DESIGN-V2.md](DESIGN-V2.md) "Known gaps"). P16–P21 were added after the C27
+diff --git a/docs/architecture/ui-v2/screens/boards.md b/docs/architecture/ui-v2/screens/boards.md
+index 714a3f63..30d203ac 100644
+--- a/docs/architecture/ui-v2/screens/boards.md
++++ b/docs/architecture/ui-v2/screens/boards.md
+@@ -30,9 +30,9 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
+ | R2Fresh | R2App | start=home, tenant never read | `fx.fresh` | first read pending, empty Inbox (I12) | C30 |
+ | R2Admin | R2App | start=admin | `fxAdmin` (v2/admin/administration.test.tsx) | V2-T19, T20, per-tab labels | C31 |
+ | R2Review | R2App | start=admin, overlay=review | `fxAdmin` + `review()`/`rotation()` (same file) | V2-T03, T06, T08; T07 in `ui_v2_reviews` | C31 |
+-| R2Harness | R2App | start=harness, convo=blocks | `fx.harness.blocks` | V2-T17 | C32 |
+-| R2Harness2 | R2App | start=harness, convo=mcp | `fx.harness.mcp` | V2-T17 (Gateway MCP read, P16) | C32 |
+-| R2Harness3 | R2App | start=harness, convo=keys | `fx.harness.keys` | V2-T17, T18 | C32 |
++| R2Harness | R2App | start=harness, convo=blocks | `fxHarness` + `harness-lifecycle-blocks.json` (v2/harness/harness.test.tsx) | V2-T17 | C32 |
++| R2Harness2 | R2App | start=harness, convo=mcp | `fxHarness` + `harness-lifecycle-mcp.json` (v2/harness/harness.test.tsx) | V2-T17 (Gateway MCP read, P16) | C32 |
++| R2Harness3 | R2App | start=harness, convo=keys | `fxHarness` + `harness-lifecycle-keys.json` (v2/harness/harness.test.tsx) | V2-T17, T18 | C32 |
+ | R2Api | R2App | start=api | `fx.api` | V2-T05, T14 | C33 |
+ | R2Cases | R2App | start=cases | `fx.cases` | V2-T15, T16 | C33 |
+ | R2Academy | R2App | start=academy | `fx.academy` | embed mounts, theme | C34 |
+diff --git a/docs/planning/status.md b/docs/planning/status.md
+index 3f944d09..ec859432 100644
+--- a/docs/planning/status.md
++++ b/docs/planning/status.md
+@@ -53,7 +53,8 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
+ | C29 | **Reviewed, live row blocked** (P09, D058): Codex attempt-06 scored 9/9/9/8/8 with no required fixes (`reviews/C29/attempt-06/receipt.json`); validation and overall stay at 8 only for the mandatory live Vulture verify receipt, which the approved manifest does not designate (`evidence/C29/live-scope-request.md` names the family to add); native acceptance C29-N01–N06 recorded on the prepared fixture bundle; controller receipt and ledger completion regenerate once C26 completes | Attempts 01–05 remediated (`reviews/C29/remediation-attempt-0{1..5}.md`) |
+ | C30 | **Reviewed, live row blocked** (P09, D058): Codex attempt-09 scored 9/9/9/8/8 with no required fixes (`reviews/C30/attempt-09/receipt.json`); validation and overall stay at 8 only for the predecessor C29's mandatory live Vulture verify receipt (B1/E1; `evidence/C29/live-scope-request.md` names the family to add); Inbox, reads, the tenant-switch guard and Home attention are core-owned per-tenant scopes; native C30-N01–N04 and the tenant-switch workload recorded on the prepared fixture bundle; attempts 01–08 remediated (`reviews/C30/remediation-attempt-0{1..8}.md`); controller receipt regenerates once C26 completes | Attempt history 7/6/6/6/6 → 8/7/8/7/7 → 8/7/8/8/7 → 9/8/8/8/8 → 9/8/9/8/8 → 9/8/9/8/8 → 9/9/9/8/8 → 9/8/9/8/8 → 9/9/9/8/8 |
+ | C31 | **Reviewed, live row blocked** (P09, D058): Administration renders the core's `AdminInventory` per tab; reviews apply only with the typed name through the native confirmation, and every review exit retires one-time keys in the core; Runtime key rotation is the core-owned staged sequence with its Inbox reminder, two stored timestamps and attempt-specific reconciliation; prompt and response topic results keyed apart from detectors; live topic review row passed against Redtail (evidence/C31/live) | Attempt-01 7/6/6/6/6, attempt-02 8/7/8/8/7, attempt-03 8/8/8/8/8, attempt-04 9/9/9/8/8 with no required fixes; reviewed, live row blocked (C29 B1/E1, owner-gated) |
+-| C32–C34 | Planned (P09, D058) | Specification: `docs/architecture/ui-v2/` |
++| C32 | **In review** (P09, D058): the Harness in the v2 shell on the existing engine, sessions, decisions, history, sign-in, project and MCP modules; read-only calls decided in the page; follow-ups only as the operator's review (proposals now include a key rotation's hand-off and the conversation workspace's guardrails); a fresh tenant's first send starts a conversation; lifecycle fixtures blocks, mcp and keys in the contracts package | Attempt-01 8/6/7/7/7, attempt-02 9/8/9/8/8, attempt-03 9/8/9/8/8, attempt-04 9/8/9/8/8 (fail); remediated, attempt-05 pending |
++| C33–C34 | Planned (P09, D058) | Specification: `docs/architecture/ui-v2/` |
+ 
+ ## C01 evidence (docs/planning/evidence/C01)
+ 
+diff --git a/packages/desktop-contracts/src/client.ts b/packages/desktop-contracts/src/client.ts
+index e5dcccea..dd99b892 100644
+--- a/packages/desktop-contracts/src/client.ts
++++ b/packages/desktop-contracts/src/client.ts
+@@ -1189,7 +1189,8 @@ export const MCP_SIGN_IN_FAILURES: readonly string[] = [
+     'storeFailed',
+ ]
+ /** What the Harness may propose (C21): Runtime and DLP changes only. */
+-const PROPOSAL_KINDS: readonly string[] = CHANGE_KINDS.filter((k) => !k.startsWith('gateway'))
++/** The Harness proposes Runtime and DLP changes, a key rotation's start, and its workspace's guardrails (C21, C32). */
++const PROPOSAL_KINDS: readonly string[] = [...CHANGE_KINDS.filter((k) => !k.startsWith('gateway')), 'gatewayGuardrails']
+ const PROPOSAL_STATES: readonly string[] = ['staged', 'inReview', 'closed', 'dismissed']
+ /** Pending approvals, staged proposals and an approval's texts (C21). */
+ const MAX_APPROVALS = 8
+@@ -1424,7 +1425,13 @@ function isHarnessApproval(value: unknown): boolean {
+         isRecord(value) &&
+         typeof value.id === 'string' &&
+         APPROVAL_ID.test(value.id) &&
+-        oneOf(['command', 'fileChange', 'mcpTool'], value.kind) &&
++        oneOf(['command', 'fileChange', 'mcpTool', 'desktopRead'], value.kind) &&
++        // C32: what allowing it lets the engine do, as the core established it
++        // (absent only before C32, and then treated as may-change).
++        optional((e) => oneOf(['readOnly', 'mayChange'], e), value.effect ?? null) &&
++        // A desktop read only reads, and says so; a file change or a remote tool may change things.
++        (value.kind !== 'desktopRead' || value.effect === 'readOnly') &&
++        ((value.kind !== 'fileChange' && value.kind !== 'mcpTool') || value.effect !== 'readOnly') &&
+         // Shown whole: never cut (C21 F3).
+         optional((v) => typeof v === 'string' && utf8Bytes(v) <= MAX_APPROVAL_BYTES, value.command) &&
+         optional(bounded(1024), value.cwd) &&
+@@ -1438,10 +1445,10 @@ function isHarnessApproval(value: unknown): boolean {
+         optional((v) => typeof v === 'string' && MCP_NAME.test(v), value.server) &&
+         optional(bounded(128), value.tool) &&
+         optional((v) => typeof v === 'string' && utf8Bytes(v) <= MAX_APPROVAL_BYTES, value.arguments) &&
+-        // An MCP tool approval names its server and tool, and only it does.
+-        (value.kind === 'mcpTool') === (value.server !== null && value.tool !== null) &&
+-        (value.kind === 'mcpTool' || value.arguments === null) &&
+-        (value.kind !== 'mcpTool' || (value.command === null && value.cwd === null))
++        // An MCP tool or a desktop read names its server and tool, and only they do.
++        (value.kind === 'mcpTool' || value.kind === 'desktopRead') === (value.server !== null && value.tool !== null) &&
++        (value.kind === 'mcpTool' || value.kind === 'desktopRead' || value.arguments === null) &&
++        ((value.kind !== 'mcpTool' && value.kind !== 'desktopRead') || (value.command === null && value.cwd === null))
+     )
+ }
+ 
+@@ -1515,11 +1522,18 @@ function isProposalView(value: unknown): boolean {
+         value.summary.trim().length > 0 &&
+         [...value.summary].length <= 512 &&
+         oneOf(PROPOSAL_KINDS, d.kind) &&
+-        oneOf(['create', 'update', 'delete'], d.action) &&
++        // An API key's version is the hand-off of a rotation; a guardrail is
++        // created or updated only; everything else creates, updates or deletes.
++        (d.kind === 'apiKeys' && d.action === 'version'
++            ? true
++            : d.kind === 'gatewayGuardrails'
++              ? oneOf(['create', 'update'], d.action)
++              : oneOf(['create', 'update', 'delete'], d.action)) &&
+         typeof d.target === 'string' &&
+         d.target.length <= 256 &&
+         isJsonObjectText(d.body) &&
+-        d.workspace === undefined &&
++        // Only a Gateway proposal names a workspace: the conversation's own.
++        (d.kind === 'gatewayGuardrails' ? typeof d.workspace === 'string' && WORKSPACE_REF.test(d.workspace) : d.workspace === undefined) &&
+         oneOf(PROPOSAL_STATES, value.state) &&
+         optional((r) => typeof r === 'string' && REVIEW_ID.test(r), value.review) &&
+         // Only a proposal opened into a review names it.
+@@ -1643,7 +1657,8 @@ function isConversationView(value: unknown): boolean {
+             (a) => {
+                 const kind = (a as Record<string, unknown>).kind
+                 // MCP tools need no folder; commands and file changes do.
+-                return kind === 'mcpTool' || (value.project !== null && (value.write || kind === 'command'))
++                // MCP tools and desktop reads need no folder; commands and file changes do.
++                return kind === 'mcpTool' || kind === 'desktopRead' || (value.project !== null && (value.write || kind === 'command'))
+             },
+         ) &&
+         Array.isArray(value.proposals) &&
+diff --git a/packages/desktop-contracts/src/generated/ApprovalKind.ts b/packages/desktop-contracts/src/generated/ApprovalKind.ts
+index af68cea9..92b61413 100644
+--- a/packages/desktop-contracts/src/generated/ApprovalKind.ts
++++ b/packages/desktop-contracts/src/generated/ApprovalKind.ts
+@@ -3,4 +3,4 @@
+ /**
+  * What an engine request for approval asks (C21).
+  */
+-export type ApprovalKind = "command" | "fileChange" | "mcpTool";
++export type ApprovalKind = "command" | "fileChange" | "mcpTool" | "desktopRead";
+diff --git a/packages/desktop-contracts/src/generated/HarnessApproval.ts b/packages/desktop-contracts/src/generated/HarnessApproval.ts
+index f5ba38d1..c5160bab 100644
+--- a/packages/desktop-contracts/src/generated/HarnessApproval.ts
++++ b/packages/desktop-contracts/src/generated/HarnessApproval.ts
+@@ -1,4 +1,5 @@
+ // This file was generated by [ts-rs](https://github.com/Aleph-Alpha/ts-rs). Do not edit this file manually.
++import type { ApprovalEffect } from "./ApprovalEffect";
+ import type { ApprovalKind } from "./ApprovalKind";
+ 
+ /**
+@@ -26,4 +27,11 @@ files: Array<string>,
+  * The workspace MCP server (its namespace) and tool, and the call's
+  * arguments as JSON, from the engine's running call (MCP tools, C22).
+  */
+-server: string | null, tool: string | null, arguments: string | null, };
++server: string | null, tool: string | null, arguments: string | null, 
++/**
++ * What allowing it lets the engine do (C32). Always sent; optional in
++ * the presentation's type only so snapshots written before C32 still
++ * type-check (the validator and the presentation treat absent as
++ * `mayChange`).
++ */
++effect?: ApprovalEffect, };
+
+# Untracked files in scope:
+# + apps/desktop/src/v2/harness/copy.ts
+# + apps/desktop/src/v2/harness/harness.test.tsx
+# + apps/desktop/src/v2/harness/harness.tsx
+# + docs/planning/evidence/C32/native-acceptance.json
+# + docs/planning/evidence/C32/native-prepare.json
+# + docs/planning/evidence/C32/native/captures/harness-decision-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-decision-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-decision-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-decision-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-empty-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-empty-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-empty-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-empty-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-ended-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-ended-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-ended-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-ended-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-first-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-first-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-first-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-first-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-follow-up-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-follow-up-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-follow-up-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-follow-up-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-min-200-dark.png
+# + docs/planning/evidence/C32/native/captures/harness-min-200-light.png
+# + docs/planning/evidence/C32/native/observations.json
+# + docs/planning/evidence/C32/native/tree-guard-switcher.json
+# + docs/planning/evidence/C32/native/tree-harness-approved.json
+# + docs/planning/evidence/C32/native/tree-harness-decision.json
+# + docs/planning/evidence/C32/native/tree-harness-desktop-read.json
+# + docs/planning/evidence/C32/native/tree-harness-empty.json
+# + docs/planning/evidence/C32/native/tree-harness-ended.json
+# + docs/planning/evidence/C32/native/tree-harness-first-send.json
+# + docs/planning/evidence/C32/native/tree-harness-follow-up.json
+# + docs/planning/evidence/C32/native/tree-harness-may-change.json
+# + docs/planning/evidence/C32/native/tree-harness-min-200-dark.json
+# + docs/planning/evidence/C32/native/tree-harness-min-200-light.json
+# + docs/planning/evidence/C32/native/tree-harness-review.json
+# + docs/planning/evidence/C32/runs/bindings.exit
+# + docs/planning/evidence/C32/runs/bindings.log
+# + docs/planning/evidence/C32/runs/clippy-default.exit
+# + docs/planning/evidence/C32/runs/clippy-default.log
+# + docs/planning/evidence/C32/runs/clippy.exit
+# + docs/planning/evidence/C32/runs/clippy.log
+# + docs/planning/evidence/C32/runs/contracts-typecheck.exit
+# + docs/planning/evidence/C32/runs/contracts-typecheck.log
+# + docs/planning/evidence/C32/runs/core-fixtures.exit
+# + docs/planning/evidence/C32/runs/core-fixtures.flake-1.log
+# + docs/planning/evidence/C32/runs/core-fixtures.log
+# + docs/planning/evidence/C32/runs/core-lib.exit
+# + docs/planning/evidence/C32/runs/core-lib.log
+# + docs/planning/evidence/C32/runs/desktop-build.exit
+# + docs/planning/evidence/C32/runs/desktop-build.log
+# + docs/planning/evidence/C32/runs/desktop-typecheck.exit
+# + docs/planning/evidence/C32/runs/desktop-typecheck.log
+# + docs/planning/evidence/C32/runs/hash-inputs.sh
+# + docs/planning/evidence/C32/runs/host.exit
+# + docs/planning/evidence/C32/runs/host.log
+# + docs/planning/evidence/C32/runs/inputs-after.sha256
+# + docs/planning/evidence/C32/runs/inputs-before.sha256
+# + docs/planning/evidence/C32/runs/notices.exit
+# + docs/planning/evidence/C32/runs/notices.log
+# + docs/planning/evidence/C32/runs/run-attempt-01.json
+# + docs/planning/evidence/C32/runs/run-attempt-02.json
+# + docs/planning/evidence/C32/runs/run-attempt-03.json
+# + docs/planning/evidence/C32/runs/run-attempt-04.json
+# + docs/planning/evidence/C32/runs/run-attempt-05.json
+# + docs/planning/evidence/C32/runs/run-checks.sh
+# + docs/planning/evidence/C32/runs/rustfmt.exit
+# + docs/planning/evidence/C32/runs/rustfmt.log
+# + docs/planning/evidence/C32/runs/shell-controller.exit
+# + docs/planning/evidence/C32/runs/shell-controller.log
+# + docs/planning/evidence/C32/runs/vitest-truth.exit
+# + docs/planning/evidence/C32/runs/vitest-truth.log
+# + docs/planning/evidence/C32/runs/vitest.exit
+# + docs/planning/evidence/C32/runs/vitest.log
+# + docs/planning/evidence/C32/runs/xtask-lib.exit
+# + docs/planning/evidence/C32/runs/xtask-lib.log
+# + docs/planning/evidence/C32/screens/harness-decision-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-decision-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-decision-light-100.png
+# + docs/planning/evidence/C32/screens/harness-decision-light-200.png
+# + docs/planning/evidence/C32/screens/harness-empty-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-empty-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-empty-light-100.png
+# + docs/planning/evidence/C32/screens/harness-empty-light-200.png
+# + docs/planning/evidence/C32/screens/harness-ended-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-ended-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-ended-light-100.png
+# + docs/planning/evidence/C32/screens/harness-ended-light-200.png
+# + docs/planning/evidence/C32/screens/harness-first-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-first-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-first-light-100.png
+# + docs/planning/evidence/C32/screens/harness-first-light-200.png
+# + docs/planning/evidence/C32/screens/harness-follow-up-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-follow-up-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-follow-up-light-100.png
+# + docs/planning/evidence/C32/screens/harness-follow-up-light-200.png
+# + docs/planning/evidence/C32/screens/harness-min-200-dark.png
+# + docs/planning/evidence/C32/screens/harness-min-200-light.png
+# + docs/planning/reviews/C32/attempt-01/diff.patch
+# + docs/planning/reviews/C32/attempt-01/message.txt
+# + docs/planning/reviews/C32/attempt-01/request.json
+# + docs/planning/reviews/C32/attempt-01/source-inventory.json
+# + docs/planning/reviews/C32/attempt-01/thread-reply.log
+# + docs/planning/reviews/C32/attempt-01/verdict-returned.json
+# + docs/planning/reviews/C32/attempt-02/diff.patch
+# + docs/planning/reviews/C32/attempt-02/message.txt
+# + docs/planning/reviews/C32/attempt-02/request.json
+# + docs/planning/reviews/C32/attempt-02/source-inventory.json
+# + docs/planning/reviews/C32/attempt-02/thread-reply.log
+# + docs/planning/reviews/C32/attempt-02/verdict-returned.json
+# + docs/planning/reviews/C32/attempt-03/diff.patch
+# + docs/planning/reviews/C32/attempt-03/message.txt
+# + docs/planning/reviews/C32/attempt-03/request.json
+# + docs/planning/reviews/C32/attempt-03/source-inventory.json
+# + docs/planning/reviews/C32/attempt-03/thread-reply.log
+# + docs/planning/reviews/C32/attempt-03/verdict-returned.json
+# + docs/planning/reviews/C32/attempt-04/diff.patch
+# + docs/planning/reviews/C32/attempt-04/message.txt
+# + docs/planning/reviews/C32/attempt-04/request.json
+# + docs/planning/reviews/C32/attempt-04/source-inventory.json
+# + docs/planning/reviews/C32/attempt-04/thread-reply.log
+# + docs/planning/reviews/C32/attempt-04/verdict-returned.json
+# + docs/planning/reviews/C32/remediation-attempt-01.md
+# + docs/planning/reviews/C32/remediation-attempt-02.md
+# + docs/planning/reviews/C32/remediation-attempt-03.md
+# + docs/planning/reviews/C32/remediation-attempt-04.md
+# + packages/desktop-contracts/fixtures/wire/harness-lifecycle-blocks.json
+# + packages/desktop-contracts/fixtures/wire/harness-lifecycle-keys.json
+# + packages/desktop-contracts/fixtures/wire/harness-lifecycle-mcp.json
+# + packages/desktop-contracts/src/generated/ApprovalEffect.ts
+# + tools/native-acceptance/acceptance_c32.py

@@ -1,0 +1,9 @@
+# C32 remediation after attempt-14 (9/8/9/8/8, fail)
+
+| Finding | Remediation | Where |
+|---|---|---|
+| R1 a contextual arrival was consumed before its archived conversation was listed | An arrival is now kept pending (bound to the tenant and workspace it arrived in) until it is resolved: by the conversation here (ended: the hint; running: nothing to restart), by the history once it lists the record (the hint, with "Open the saved transcript" and "Start a new investigation"), or explicitly when it cannot be: listed without it ("That investigation is not among this workspace's saved conversations.") or not listable ("…could not be listed, so that investigation cannot be shown."). While the list loads the page says "Finding that investigation among the saved conversations…". Navigation (leaving the Harness consumes the arrival), a new arrival, another tenant or workspace (a scope check in the resolving effect, so the next workspace's list can never resolve it), opening a transcript or starting a new investigation cancel it. Nothing is dispatched or sent while it is pending; the draft is untouched. Tests: "a contextual arrival waits for the saved conversations to be listed…" (loading on mount, then ready with the record: hint and both actions, draft kept, nothing opened, started or sent) and "a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be" | `harness.tsx`, `copy.ts`, provenance P51 |
+
+Attempt-14's first check run kept core-fixture flake logs from the same three timing-sensitive tests outside C32 (transport connection release, management_reads context retirement, runtime_changes confirmation), each passing alone; the same-input rerun passed.
+
+B1/E1 (the C29 live Vulture verification receipt) stay owner-gated (`evidence/C29/live-scope-request.md`).

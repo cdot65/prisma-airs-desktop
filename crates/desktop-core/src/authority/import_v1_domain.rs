@@ -1195,6 +1195,8 @@ fn imported_record(
         context: Value::Null,
         replay: Value::Null,
         origin: Some(Origin::ImportedV1),
+        // Imported whole: its first message is its opening (C32).
+        opening: (!first.is_empty()).then_some(first),
     })
 }
 

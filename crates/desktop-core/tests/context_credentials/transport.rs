@@ -218,8 +218,24 @@ async fn dropping_a_request_releases_its_connection() {
         &origin("localhost", &server),
         factory.for_admission().expect("transport"),
     );
-    let pending = tokio::time::timeout(Duration::from_millis(500), send(&scan, b"{}")).await;
-    assert!(pending.is_err(), "still waiting when dropped");
+    // Dropped once the service has the request, however long the connection
+    // took to set up here (a fixed 500 ms could drop it before it was sent).
+    let mut request = Box::pin(send(&scan, b"{}"));
+    let reached = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            tokio::select! {
+                _ = &mut request => return false,
+                () = tokio::time::sleep(Duration::from_millis(10)) => {
+                    if !server.seen().is_empty() {
+                        return true;
+                    }
+                }
+            }
+        }
+    })
+    .await;
+    assert_eq!(reached, Ok(true), "still waiting when dropped");
+    drop(request);
     assert!(
         eventually(|| server.closed_by_client() == 1).await,
         "the connection was closed"

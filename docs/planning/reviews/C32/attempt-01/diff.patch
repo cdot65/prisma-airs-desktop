@@ -1,0 +1,620 @@
+diff --git a/apps/desktop/src/v2/modal.tsx b/apps/desktop/src/v2/modal.tsx
+index 8cbba22a..e093110d 100644
+--- a/apps/desktop/src/v2/modal.tsx
++++ b/apps/desktop/src/v2/modal.tsx
+@@ -18,7 +18,9 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
+  * Shift-Tab stay inside the topmost dialog, Escape closes the topmost only,
+  * focus moves into the dialog on open and back to the opener on close. The
+  * page behind every dialog is made inert by the shell (`useModalsOpen`).
+- * No global key listener: the dialog element handles its own keys.
++ * The dialog element handles its own keys; the topmost dialog also listens
++ * on the window for Escape alone, for when focus has left it (a native
++ * sheet returned focus elsewhere), and closes only itself.
+  */
+ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalProps) {
+     const id = useId()
+diff --git a/apps/desktop/src/v2/v2-shell.tsx b/apps/desktop/src/v2/v2-shell.tsx
+index 1cd6fc88..e417a9d0 100644
+--- a/apps/desktop/src/v2/v2-shell.tsx
++++ b/apps/desktop/src/v2/v2-shell.tsx
+@@ -5,6 +5,7 @@ import type { Dispatch } from '../features/tenants/dispatch'
+ import { FeatureBody } from '../shell/feature-body'
+ import { type Act, Inbox } from './inbox/inbox'
+ import { Administration } from './admin/administration'
++import { Harness } from './harness/harness'
+ import { FEATURE_ICONS } from '../shell/icons'
+ import { SHELL_COPY, SNOOZE_COPY } from './copy'
+ import { readLine } from './home'
+@@ -291,6 +292,15 @@ export function V2Shell(props: V2ShellProps) {
+                         onNavigate={props.onNavigate}
+                         arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'administration' ? arrival : null}
+                     />
++                ) : feature.id === 'harness' && feature.availability.state === 'available' ? (
++                    <Harness
++                        key={snapshot.active?.context ?? 'none'}
++                        ref={heading}
++                        snapshot={snapshot}
++                        dispatch={props.dispatch}
++                        onNavigate={props.onNavigate}
++                        arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'harness' ? arrival : null}
++                    />
+                 ) : (
+                     <FeatureBody
+                         ref={heading}
+diff --git a/crates/desktop-core/src/authority/harness_domain.rs b/crates/desktop-core/src/authority/harness_domain.rs
+index e27aa91b..f7478cda 100644
+--- a/crates/desktop-core/src/authority/harness_domain.rs
++++ b/crates/desktop-core/src/authority/harness_domain.rs
+@@ -111,6 +111,11 @@ impl Conversation {
+         &self.tenant
+     }
+ 
++    /// The Gateway workspace it runs in: its reference and its ID (C32).
++    pub(super) fn workspace_binding(&self) -> (WorkspaceRef, String) {
++        (self.reference.clone(), self.workspace.id.clone())
++    }
++
+     pub(super) fn progress_approvals(&self) -> Vec<crate::harness::HarnessApproval> {
+         self.progress
+             .lock()
+diff --git a/crates/desktop-core/src/authority/harness_tools.rs b/crates/desktop-core/src/authority/harness_tools.rs
+index fba86bba..c4f24210 100644
+--- a/crates/desktop-core/src/authority/harness_tools.rs
++++ b/crates/desktop-core/src/authority/harness_tools.rs
+@@ -257,16 +257,32 @@ impl State {
+     fn stage_proposal(
+         &mut self,
+         conversation: &OperationId,
+-        draft: ChangeDraft,
++        mut draft: ChangeDraft,
+         summary: String,
+     ) -> Result<String, Refusal> {
+         // The same static checks a review makes before any read.
+-        let tenant = self.harness_live(conversation)?.tenant_id().clone();
++        let (tenant, (reference, workspace_id)) = {
++            let c = self.harness_live(conversation)?;
++            (c.tenant_id().clone(), c.workspace_binding())
++        };
+         let client = self
+             .tenant(&tenant)
+             .and_then(|t| t.management_client.clone())
+             .ok_or(Refusal::CapabilityMissing)?;
+-        crate::changes::normalize(&draft, &client).map_err(|_| Refusal::InvalidInput)?;
++        if draft.kind.gateway().is_some() {
++            // A Gateway proposal belongs to the conversation's own
++            // workspace: its review is bound to that reference and is
++            // refused once another workspace is chosen (C32).
++            let tsg = self
++                .tenant(&tenant)
++                .and_then(|t| t.profile.tsg_id.clone())
++                .unwrap_or_default();
++            crate::gateway_changes::normalize(&draft, &tsg, Some(&workspace_id))
++                .map_err(|_| Refusal::InvalidInput)?;
++            draft.workspace = Some(reference);
++        } else {
++            crate::changes::normalize(&draft, &client).map_err(|_| Refusal::InvalidInput)?;
++        }
+         let c = self.harness_live(conversation)?;
+         let proposals = c.proposals_mut();
+         if proposals.len() >= MAX_PROPOSALS {
+diff --git a/crates/desktop-core/src/harness/tools.rs b/crates/desktop-core/src/harness/tools.rs
+index b4a828ec..650ba9b6 100644
+--- a/crates/desktop-core/src/harness/tools.rs
++++ b/crates/desktop-core/src/harness/tools.rs
+@@ -78,7 +78,7 @@ pub fn catalog() -> Value {
+     let resource = json!({"type":"string","enum":RESOURCES});
+     let id = json!({"type":"string","minLength":1,"maxLength":256});
+     let kinds = json!({"type":"string","enum":["profiles","topics","applications","apiKeys",
+-        "dataPatterns","dataProfiles","filteringProfiles","dictionaries"]});
++        "dataPatterns","dataProfiles","filteringProfiles","dictionaries","gatewayGuardrails"]});
+     json!([{
+         "type":"namespace",
+         "name":NAMESPACE,
+@@ -101,8 +101,8 @@ pub fn catalog() -> Value {
+                     "prompt":{"type":"string","maxLength":MAX_SCAN_TEXT},
+                     "response":{"type":"string","maxLength":MAX_SCAN_TEXT}}),&["profile"]),
+             function("cases","The tenant's saved test cases (names and verdict expectations).",json!({}),&[]),
+-            function("proposeChange","Stage a Runtime Security change for the operator to review. It is never applied by this tool: the operator must review and confirm it in the desktop.",
+-                json!({"kind":kinds,"action":{"type":"string","enum":["create","update","delete"]},
++            function("proposeChange","Stage a change for the operator to review: a Runtime Security or DLP change, an additional API key for an application (action version: the start of a key rotation, which the operator finishes in Administration), or a guardrail of this conversation's AI Gateway workspace (create or update). It is never applied by this tool: the operator must review and confirm it in the desktop.",
++                json!({"kind":kinds,"action":{"type":"string","enum":["create","update","delete","version"]},
+                     "target":{"type":"string","maxLength":256},
+                     "body":{"type":"object"},
+                     "summary":{"type":"string","maxLength":512}}),&["kind","action","summary"]),
+@@ -304,9 +304,12 @@ impl ToolCall {
+             }
+             "proposeChange" => {
+                 let a: ProposeArgs = serde_json::from_value(args).ok()?;
+-                // Only the Runtime and DLP kinds: Gateway changes need the
+-                // operator's own workspace review.
+-                if !matches!(
++                // The Runtime and DLP kinds (create, update, delete); an API
++                // key's version, the start of a rotation the operator
++                // finishes in Administration (C32); and a guardrail of the
++                // conversation's own Gateway workspace, created or updated,
++                // reviewed under that workspace (C32). Nothing else.
++                let runtime = matches!(
+                     a.kind,
+                     ChangeKind::Profiles
+                         | ChangeKind::Topics
+@@ -316,10 +319,15 @@ impl ToolCall {
+                         | ChangeKind::DataProfiles
+                         | ChangeKind::FilteringProfiles
+                         | ChangeKind::Dictionaries
+-                ) || !matches!(
++                ) && matches!(
+                     a.action,
+                     ChangeAction::Create | ChangeAction::Update | ChangeAction::Delete
+-                ) || a.summary.trim().is_empty()
++                );
++                let rotation = a.kind == ChangeKind::ApiKeys && a.action == ChangeAction::Version;
++                let guardrail = a.kind == ChangeKind::GatewayGuardrails
++                    && matches!(a.action, ChangeAction::Create | ChangeAction::Update);
++                if !(runtime || rotation || guardrail)
++                    || a.summary.trim().is_empty()
+                     || a.summary.chars().count() > 512
+                     || a.target.len() > 256
+                     || a.target.chars().any(char::is_control)
+@@ -576,4 +584,35 @@ mod tests {
+             assert_eq!(cut["cut"], CUT_NOTE);
+         }
+     }
++
++    /// C32: the Harness may hand off a key rotation (an API key version)
++    /// and propose a guardrail of its own Gateway workspace (create or
++    /// update); every other Gateway change, and a key rotation in place,
++    /// stays out of its reach.
++    #[test]
++    fn proposals_admit_the_rotation_hand_off_and_workspace_guardrails_only() {
++        let ns = Some(NAMESPACE);
++        let call = |kind: &str, action: &str| {
++            ToolCall::parse(
++                ns,
++                "proposeChange",
++                &json!({"kind": kind, "action": action, "target": if action == "create" { "" } else { "x-1" },
++                        "body": {}, "summary": "s"}),
++            )
++        };
++        assert!(call("apiKeys", "version").is_some());
++        assert!(call("gatewayGuardrails", "create").is_some());
++        assert!(call("gatewayGuardrails", "update").is_some());
++        assert!(call("topics", "update").is_some());
++        for (kind, action) in [
++            ("gatewayGuardrails", "delete"),
++            ("gatewayRoutes", "create"),
++            ("gatewayServiceKeys", "rotate"),
++            ("gatewayWorkspaces", "create"),
++            ("apiKeys", "rotate"),
++            ("topics", "version"),
++        ] {
++            assert!(call(kind, action).is_none(), "{kind} {action}");
++        }
++    }
+ }
+diff --git a/crates/desktop-core/tests/harness_tools/main.rs b/crates/desktop-core/tests/harness_tools/main.rs
+index b9225933..dfb4bb53 100644
+--- a/crates/desktop-core/tests/harness_tools/main.rs
++++ b/crates/desktop-core/tests/harness_tools/main.rs
+@@ -1659,3 +1659,103 @@ async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
+     );
+     std::fs::remove_dir_all(&dir).expect("cleanup");
+ }
++
++/// C32: the keys lifecycle hands off a rotation as an API key version and
++/// the mcp lifecycle proposes a guardrail of the conversation's own
++/// workspace. Each is staged, never applied (nothing is written), and opens
++/// as the operator's review; the guardrail's review is bound to that
++/// workspace's reference.
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn a_rotation_hand_off_and_a_workspace_guardrail_are_staged_never_applied() {
++    let mut desk = desk().await;
++    let id = ready(&mut desk).await;
++    let reference = desk.json()["gateway"]["selected"]["reference"]
++        .as_str()
++        .expect("ref")
++        .to_owned();
++    tool(
++        &desk,
++        Some("airs_desktop"),
++        "proposeChange",
++        json!({"kind": "apiKeys", "action": "version", "target": "key-1",
++            "body": {"cust_app": "Support bot", "cust_env": "production", "cust_cloud_provider": "aws",
++                     "api_key_name": "Runtime 2", "dp_name": "dp-0", "revoked": false,
++                     "rotation_time_interval": 30, "rotation_time_unit": "days"},
++            "summary": "Rotation is a write: start it in Administration"}),
++    );
++    desk.say(&id, "Rotate the Support bot key.")
++        .await
++        .expect("sent");
++    let c = answered_with(&mut desk, |c| c["lastTurn"] == "completed").await;
++    assert_eq!(c["proposals"][0]["state"], "staged", "{c}");
++    assert_eq!(c["proposals"][0]["draft"]["kind"], "apiKeys");
++    assert_eq!(c["proposals"][0]["draft"]["action"], "version");
++    tool(
++        &desk,
++        Some("airs_desktop"),
++        "proposeChange",
++        json!({"kind": "gatewayGuardrails", "action": "create",
++            "body": {"name": "mcp-allow-list", "checks": [{"id": "pii-check", "parameters": {"scan_scope": "all_messages"}}],
++                     "actions": {"deny": true}},
++            "summary": "Deny MCP servers that are not on the allow list"}),
++    );
++    desk.say(&id, "Propose a guardrail.").await.expect("sent");
++    let c = answered_with(&mut desk, |c| {
++        c["proposals"].as_array().map(Vec::len) == Some(2) && c["phase"] == "ready"
++    })
++    .await;
++    assert_eq!(c["proposals"][1]["state"], "staged", "{c}");
++    assert_eq!(
++        c["proposals"][1]["draft"]["workspace"], reference,
++        "bound to the conversation's own workspace"
++    );
++    // Nothing was written by the Harness.
++    assert!(
++        desk.requests("/aisec/v1/mgmt/apikey")
++            .iter()
++            .all(|s| s.request_line.starts_with("GET"))
++    );
++    assert!(
++        desk.requests(&format!("{DATA}/guardrails"))
++            .iter()
++            .all(|s| s.request_line.starts_with("GET"))
++    );
++    // Each opens as the operator's review.
++    for proposal in ["P-1", "P-2"] {
++        let opened = desk
++            .send(
++                json!({"kind": "reviewHarnessProposal", "conversation": id, "proposal": proposal}),
++            )
++            .await;
++        assert!(opened.is_ok(), "{proposal}: {opened:?}");
++        assert!(settle(|| !desk.json()["changes"]["review"].is_null()).await);
++        let review = desk.json()["changes"]["review"]["review"].clone();
++        desk.send(json!({"kind": "discardChange", "review": review}))
++            .await
++            .expect("discarded");
++    }
++    // A Gateway delete or a key rotation in place is never staged.
++    for (kind, action) in [("gatewayGuardrails", "delete"), ("apiKeys", "rotate")] {
++        tool(
++            &desk,
++            Some("airs_desktop"),
++            "proposeChange",
++            json!({"kind": kind, "action": action, "target": "x-1", "summary": "s"}),
++        );
++        desk.say(&id, "Try it.").await.expect("sent");
++        answered_with(&mut desk, |c| {
++            c["phase"] == "ready" && c["lastTurn"].is_string()
++        })
++        .await;
++        let last = outputs(&desk).last().cloned().unwrap_or_default();
++        assert!(
++            last.contains("This tool or its arguments are unavailable."),
++            "{last}"
++        );
++    }
++    assert_eq!(
++        desk.conversation()["proposals"].as_array().map(Vec::len),
++        Some(2)
++    );
++    desk.end(&id).await;
++}
+diff --git a/crates/xtask/src/budgets.rs b/crates/xtask/src/budgets.rs
+index da917e33..63deb0e7 100644
+--- a/crates/xtask/src/budgets.rs
++++ b/crates/xtask/src/budgets.rs
+@@ -9,7 +9,7 @@
+ //! mismatched input fails.
+ 
+ use std::collections::BTreeMap;
+-use std::path::Path;
++use std::path::{Path, PathBuf};
+ 
+ use serde::{Deserialize, Serialize};
+ 
+@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
+     Ok(total)
+ }
+ 
+-const MIB: f64 = 1024.0 * 1024.0;
+-
+-/// Builds the complete unsigned production app and DMG, the sealed Harness
+-/// engine included (C19, D046; budgets.json version 5), and records their
+-/// sizes.
+-pub fn footprint(
+-    repo: &Repo,
+-    manifest: &Manifest,
+-    env: &Environment,
+-    subject: Subject,
+-) -> Result<Footprint> {
+-    let Some(chunk) = required(repo, manifest, subject)? else {
+-        return Err(invalid(format!(
+-            "{subject} does not contain the chunk that registered the budgets"
+-        )));
+-    };
+-    let (_, record, sha) = registration(repo, &chunk)?;
+-    let started_utc = now_utc();
+-    if started_utc < record.registered_utc {
+-        return Err(invalid("the clock is before the budget registration"));
+-    }
+-    let target = manifest.target.as_str();
++/// Builds the complete unsigned production app and DMG with the sealed
++/// Harness engine as a bundle resource (C19, D046): the frontend, then
++/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
++pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
+     // The sealed engine the production app ships with (C19).
+     crate::harness::unpack(repo)?;
+     let commands: Vec<Vec<String>> = [
+@@ -181,13 +163,58 @@ pub fn footprint(
+     let identifier = plist_value(&app, "CFBundleIdentifier")?;
+     if identifier != crate::native::PRODUCTION_IDENTIFIER {
+         return Err(invalid(format!(
+-            "footprint bundle has identifier {identifier}"
++            "the production bundle has identifier {identifier}"
+         )));
+     }
+     let version = plist_value(&app, "CFBundleShortVersionString")?;
+     let dmg = repo.join(format!(
+         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
+     ));
++    Ok(ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    })
++}
++
++/// A production build: the app, its DMG, the bundle identifier and the
++/// commands that built them.
++pub struct ProductionBuild {
++    pub app: PathBuf,
++    pub dmg: PathBuf,
++    pub identifier: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++const MIB: f64 = 1024.0 * 1024.0;
++
++/// Builds the complete unsigned production app and DMG, the sealed Harness
++/// engine included (C19, D046; budgets.json version 5), and records their
++/// sizes.
++pub fn footprint(
++    repo: &Repo,
++    manifest: &Manifest,
++    env: &Environment,
++    subject: Subject,
++) -> Result<Footprint> {
++    let Some(chunk) = required(repo, manifest, subject)? else {
++        return Err(invalid(format!(
++            "{subject} does not contain the chunk that registered the budgets"
++        )));
++    };
++    let (_, record, sha) = registration(repo, &chunk)?;
++    let started_utc = now_utc();
++    if started_utc < record.registered_utc {
++        return Err(invalid("the clock is before the budget registration"));
++    }
++    let target = manifest.target.as_str();
++    let ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    } = build_production(repo, env, target)?;
+     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
+     let relative = |p: &Path| {
+         p.strip_prefix(repo.root())
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index 3e5dd1a6..27945e70 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1224,6 +1224,24 @@
+         "id": "C31-N04",
+         "check": "The accessibility additions (DESIGN-V2 \u00a78) on the changed UI: the review sheet is the one topmost modal (the rail hidden beneath it) and Escape closes it with focus returned to the page; the rotation reminder leaves the Inbox once the old key is read back gone; Tab from a product header reaches its tabs; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Administration screen lies past the window's right edge; a focused review-sheet control shows its focus ring (pixels around it change against the unfocused capture); the applied result and the rotation's completion sit in polite status regions; with Reduce Motion on, the applied change's toast stays past 6 s until dismissed, and the system setting is restored."
+       }
++    ],
++    "C32": [
++      {
++        "id": "C32-N01",
++        "check": "The Harness renders in the v2 shell on the existing engine: the title row names the tenant, the engine and the workspace; the prerequisites checklist is hidden once satisfied; a fresh tenant shows no seeded conversation, and its first send through the composer starts a user conversation that the real engine answers, titled from that message in the rail (I12)."
++      },
++      {
++        "id": "C32-N02",
++        "check": "A command the engine asks to run is decided in the page (Approve once / Decline) after a project is chosen through the embedded project panel; while it waits, a tenant switch through the switcher, the palette and Go \u203a Switch Tenant\u2026 each shows the guard (Stay, Discard and switch, Archive and switch) and Stay keeps the tenant and the decision (I1, V2-N01); Decline records it and runs nothing, Approve once runs it."
++      },
++      {
++        "id": "C32-N03",
++        "check": "A change the engine proposes appears as a follow-up and writes nothing; Open the review shows it as the operator's typed review in Administration (still nothing written) and leaving it closes the follow-up; End conversation seals it (its transcript saved, the rail marks it ended, the engine is gone) and the next send starts a new conversation."
++      },
++      {
++        "id": "C32-N04",
++        "check": "Keyboard: Tab from the message box reaches Send or End; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Harness screen lies past the window's right edge and there is no horizontal scroll bar."
++      }
+     ]
+   }
+ }
+diff --git a/docs/architecture/ui-v2/provenance.md b/docs/architecture/ui-v2/provenance.md
+index 41d2d1ce..11abe965 100644
+--- a/docs/architecture/ui-v2/provenance.md
++++ b/docs/architecture/ui-v2/provenance.md
+@@ -54,6 +54,10 @@ page "Refined Native v2", version 134 (version id 1793059808-4929, published
+ | P41 | Rotation state per tenant with two stored timestamps | `Tenant.rotations` (persisted, never a secret): driven from settled `ApiKeys` results of the active context (a Version read back starts one; an unknown Version starts an unconfirmed one; a failed one records nothing; the old key's Delete read back absent completes it; a rejected Delete keeps it with the reason; an unknown one is reconciled by a complete key inventory read), plus `acknowledgeDeployment{application}` stored once. The reminder is the Inbox item `rotation-<application>` while a key is confirmed and the old one not read back gone. The one-time secret stays on its change result for the context it was applied in: Reveal is offered only while the core holds it; any sheet exit forgets it and a context change drops it | The issued secret must never be persisted (I6) while the stage and timestamps must survive reads, switches and relaunches (I7) |
+ | P42 | Playground topic examples classify under the topic | The scan result carries `topics{violation, blocked, allowed}` from the service's `topic_violation` flag and `topic_guardrails_details`, shown apart from the detector flags: a matched topic is "flagged (blocked)" or "flagged (monitor only)", no match under the profile is "Not detected", an unreported verdict says so; detectors stay listed beside it. The prototype's local classifier is not carried: verdicts come from the service | The desktop never invents a verdict (DESIGN-V2 §10 gap 2 closed with service data) |
+ | P43 | C31 live row runs through `xtask live-run` | `live-run --family L03 --subject C31` runs the C31 topic routine inside L03's designation and writes its receipts and run record under evidence/C31/live, leaving C25's receipts untouched (the consumption ledger stays C25's single ledger) | The live row needs the reviewed runner and the owner's designation, not a second harness |
++| P44 | Lifecycle conversations are seeded data in the prototype (`CONVOS`) | The three lifecycles are fixtures in the contracts package (`fixtures/wire/harness-lifecycle-{blocks,mcp,keys}.json`), one `ConversationView` per step (asking, approved, declined, ended) plus the saved transcript; each read-only call is a workspace MCP tool approval (`mcpTool`, decided in the page), the shape the core raises for workspace MCP tools (C22). They are regression inputs and boards only: a real tenant never shows them (I12) | The core decides approvals; fixtures must be shapes the core emits, validated by `parseShellSnapshot` |
++| P45 | The mcp and keys follow-ups open a guardrail review and the key rotation flow | `proposeChange` admits, besides the Runtime and DLP kinds, an API key `version` (the hand-off of a rotation: it opens the C31 review sheet and its staged sequence) and a guardrail of the conversation's own Gateway workspace (create or update only), staged with that workspace's reference so its review is bound to it; Gateway deletes and every other Gateway change, and a key rotation in place, stay refused. The follow-up of a key hand-off shows the rotation stage from `ShellSnapshot.rotations` | A proposal only ever opens the operator's own review (D014); the follow-ups must be core-owned, not page-invented |
++| P46 | `endConversation` returns an archive id | `endHarness` keeps its receipt; the ended conversation names its saved transcript (`ConversationView.historyId`, the protected history record) and the rail marks it ended; "Open the saved transcript" opens that record | The archive already exists as the C20 protected history; a second id would duplicate it |
++| P47 | The mcp lifecycle reads `GatewayRead::McpServers` directly (P16) | Its read-only call is a workspace MCP tool listing the workspace's MCP servers (`workspace_inventory.list_mcp_servers`), decided in the page like the other lifecycles; the desktop's own `GatewayRead::McpServers` listing stays in the MCP panel the Harness embeds | No desktop tool reads the Gateway MCP catalog; adding one would widen the Harness's tool surface beyond C22 |
+ 
+ P10–P14 are the five round-16 Codex items carried as known gaps (see
+ [DESIGN-V2.md](DESIGN-V2.md) "Known gaps"). P16–P21 were added after the C27
+diff --git a/docs/architecture/ui-v2/screens/boards.md b/docs/architecture/ui-v2/screens/boards.md
+index 714a3f63..30d203ac 100644
+--- a/docs/architecture/ui-v2/screens/boards.md
++++ b/docs/architecture/ui-v2/screens/boards.md
+@@ -30,9 +30,9 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
+ | R2Fresh | R2App | start=home, tenant never read | `fx.fresh` | first read pending, empty Inbox (I12) | C30 |
+ | R2Admin | R2App | start=admin | `fxAdmin` (v2/admin/administration.test.tsx) | V2-T19, T20, per-tab labels | C31 |
+ | R2Review | R2App | start=admin, overlay=review | `fxAdmin` + `review()`/`rotation()` (same file) | V2-T03, T06, T08; T07 in `ui_v2_reviews` | C31 |
+-| R2Harness | R2App | start=harness, convo=blocks | `fx.harness.blocks` | V2-T17 | C32 |
+-| R2Harness2 | R2App | start=harness, convo=mcp | `fx.harness.mcp` | V2-T17 (Gateway MCP read, P16) | C32 |
+-| R2Harness3 | R2App | start=harness, convo=keys | `fx.harness.keys` | V2-T17, T18 | C32 |
++| R2Harness | R2App | start=harness, convo=blocks | `fxHarness` + `harness-lifecycle-blocks.json` (v2/harness/harness.test.tsx) | V2-T17 | C32 |
++| R2Harness2 | R2App | start=harness, convo=mcp | `fxHarness` + `harness-lifecycle-mcp.json` (v2/harness/harness.test.tsx) | V2-T17 (Gateway MCP read, P16) | C32 |
++| R2Harness3 | R2App | start=harness, convo=keys | `fxHarness` + `harness-lifecycle-keys.json` (v2/harness/harness.test.tsx) | V2-T17, T18 | C32 |
+ | R2Api | R2App | start=api | `fx.api` | V2-T05, T14 | C33 |
+ | R2Cases | R2App | start=cases | `fx.cases` | V2-T15, T16 | C33 |
+ | R2Academy | R2App | start=academy | `fx.academy` | embed mounts, theme | C34 |
+diff --git a/docs/planning/status.md b/docs/planning/status.md
+index 3f944d09..6c00e570 100644
+--- a/docs/planning/status.md
++++ b/docs/planning/status.md
+@@ -53,7 +53,8 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
+ | C29 | **Reviewed, live row blocked** (P09, D058): Codex attempt-06 scored 9/9/9/8/8 with no required fixes (`reviews/C29/attempt-06/receipt.json`); validation and overall stay at 8 only for the mandatory live Vulture verify receipt, which the approved manifest does not designate (`evidence/C29/live-scope-request.md` names the family to add); native acceptance C29-N01–N06 recorded on the prepared fixture bundle; controller receipt and ledger completion regenerate once C26 completes | Attempts 01–05 remediated (`reviews/C29/remediation-attempt-0{1..5}.md`) |
+ | C30 | **Reviewed, live row blocked** (P09, D058): Codex attempt-09 scored 9/9/9/8/8 with no required fixes (`reviews/C30/attempt-09/receipt.json`); validation and overall stay at 8 only for the predecessor C29's mandatory live Vulture verify receipt (B1/E1; `evidence/C29/live-scope-request.md` names the family to add); Inbox, reads, the tenant-switch guard and Home attention are core-owned per-tenant scopes; native C30-N01–N04 and the tenant-switch workload recorded on the prepared fixture bundle; attempts 01–08 remediated (`reviews/C30/remediation-attempt-0{1..8}.md`); controller receipt regenerates once C26 completes | Attempt history 7/6/6/6/6 → 8/7/8/7/7 → 8/7/8/8/7 → 9/8/8/8/8 → 9/8/9/8/8 → 9/8/9/8/8 → 9/9/9/8/8 → 9/8/9/8/8 → 9/9/9/8/8 |
+ | C31 | **Reviewed, live row blocked** (P09, D058): Administration renders the core's `AdminInventory` per tab; reviews apply only with the typed name through the native confirmation, and every review exit retires one-time keys in the core; Runtime key rotation is the core-owned staged sequence with its Inbox reminder, two stored timestamps and attempt-specific reconciliation; prompt and response topic results keyed apart from detectors; live topic review row passed against Redtail (evidence/C31/live) | Attempt-01 7/6/6/6/6, attempt-02 8/7/8/8/7, attempt-03 8/8/8/8/8, attempt-04 9/9/9/8/8 with no required fixes; reviewed, live row blocked (C29 B1/E1, owner-gated) |
+-| C32–C34 | Planned (P09, D058) | Specification: `docs/architecture/ui-v2/` |
++| C32 | **In review** (P09, D058): the Harness in the v2 shell on the existing engine, sessions, decisions, history, sign-in, project and MCP modules; read-only calls decided in the page; follow-ups only as the operator's review (proposals now include a key rotation's hand-off and the conversation workspace's guardrails); a fresh tenant's first send starts a conversation; lifecycle fixtures blocks, mcp and keys in the contracts package | Attempt-01 pending |
++| C33–C34 | Planned (P09, D058) | Specification: `docs/architecture/ui-v2/` |
+ 
+ ## C01 evidence (docs/planning/evidence/C01)
+ 
+diff --git a/packages/desktop-contracts/src/client.ts b/packages/desktop-contracts/src/client.ts
+index e5dcccea..3c6bb8cd 100644
+--- a/packages/desktop-contracts/src/client.ts
++++ b/packages/desktop-contracts/src/client.ts
+@@ -1189,7 +1189,8 @@ export const MCP_SIGN_IN_FAILURES: readonly string[] = [
+     'storeFailed',
+ ]
+ /** What the Harness may propose (C21): Runtime and DLP changes only. */
+-const PROPOSAL_KINDS: readonly string[] = CHANGE_KINDS.filter((k) => !k.startsWith('gateway'))
++/** The Harness proposes Runtime and DLP changes, a key rotation's start, and its workspace's guardrails (C21, C32). */
++const PROPOSAL_KINDS: readonly string[] = [...CHANGE_KINDS.filter((k) => !k.startsWith('gateway')), 'gatewayGuardrails']
+ const PROPOSAL_STATES: readonly string[] = ['staged', 'inReview', 'closed', 'dismissed']
+ /** Pending approvals, staged proposals and an approval's texts (C21). */
+ const MAX_APPROVALS = 8
+@@ -1515,11 +1516,18 @@ function isProposalView(value: unknown): boolean {
+         value.summary.trim().length > 0 &&
+         [...value.summary].length <= 512 &&
+         oneOf(PROPOSAL_KINDS, d.kind) &&
+-        oneOf(['create', 'update', 'delete'], d.action) &&
++        // An API key's version is the hand-off of a rotation; a guardrail is
++        // created or updated only; everything else creates, updates or deletes.
++        (d.kind === 'apiKeys' && d.action === 'version'
++            ? true
++            : d.kind === 'gatewayGuardrails'
++              ? oneOf(['create', 'update'], d.action)
++              : oneOf(['create', 'update', 'delete'], d.action)) &&
+         typeof d.target === 'string' &&
+         d.target.length <= 256 &&
+         isJsonObjectText(d.body) &&
+-        d.workspace === undefined &&
++        // Only a Gateway proposal names a workspace: the conversation's own.
++        (d.kind === 'gatewayGuardrails' ? typeof d.workspace === 'string' && WORKSPACE_REF.test(d.workspace) : d.workspace === undefined) &&
+         oneOf(PROPOSAL_STATES, value.state) &&
+         optional((r) => typeof r === 'string' && REVIEW_ID.test(r), value.review) &&
+         // Only a proposal opened into a review names it.
+
+# Untracked files in scope:
+# + apps/desktop/src/v2/harness/copy.ts
+# + apps/desktop/src/v2/harness/harness.test.tsx
+# + apps/desktop/src/v2/harness/harness.tsx
+# + docs/planning/evidence/C32/native-acceptance.json
+# + docs/planning/evidence/C32/native-prepare.json
+# + docs/planning/evidence/C32/native/captures/harness-decision-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-decision-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-decision-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-decision-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-empty-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-empty-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-empty-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-empty-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-ended-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-ended-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-ended-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-ended-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-first-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-first-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-first-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-first-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-follow-up-dark-100.png
+# + docs/planning/evidence/C32/native/captures/harness-follow-up-dark-200.png
+# + docs/planning/evidence/C32/native/captures/harness-follow-up-light-100.png
+# + docs/planning/evidence/C32/native/captures/harness-follow-up-light-200.png
+# + docs/planning/evidence/C32/native/captures/harness-min-200-dark.png
+# + docs/planning/evidence/C32/native/captures/harness-min-200-light.png
+# + docs/planning/evidence/C32/native/observations.json
+# + docs/planning/evidence/C32/native/tree-guard-switcher.json
+# + docs/planning/evidence/C32/native/tree-harness-approved.json
+# + docs/planning/evidence/C32/native/tree-harness-decision.json
+# + docs/planning/evidence/C32/native/tree-harness-empty.json
+# + docs/planning/evidence/C32/native/tree-harness-ended.json
+# + docs/planning/evidence/C32/native/tree-harness-first-send.json
+# + docs/planning/evidence/C32/native/tree-harness-follow-up.json
+# + docs/planning/evidence/C32/native/tree-harness-min-200-dark.json
+# + docs/planning/evidence/C32/native/tree-harness-min-200-light.json
+# + docs/planning/evidence/C32/native/tree-harness-review.json
+# + docs/planning/evidence/C32/runs/bindings.exit
+# + docs/planning/evidence/C32/runs/bindings.log
+# + docs/planning/evidence/C32/runs/clippy-default.exit
+# + docs/planning/evidence/C32/runs/clippy-default.log
+# + docs/planning/evidence/C32/runs/clippy.exit
+# + docs/planning/evidence/C32/runs/clippy.log
+# + docs/planning/evidence/C32/runs/contracts-typecheck.exit
+# + docs/planning/evidence/C32/runs/contracts-typecheck.log
+# + docs/planning/evidence/C32/runs/core-fixtures.exit
+# + docs/planning/evidence/C32/runs/core-fixtures.flake-1.log
+# + docs/planning/evidence/C32/runs/core-fixtures.flake-2.log
+# + docs/planning/evidence/C32/runs/core-fixtures.log
+# + docs/planning/evidence/C32/runs/core-lib.exit
+# + docs/planning/evidence/C32/runs/core-lib.log
+# + docs/planning/evidence/C32/runs/desktop-build.exit
+# + docs/planning/evidence/C32/runs/desktop-build.log
+# + docs/planning/evidence/C32/runs/desktop-typecheck.exit
+# + docs/planning/evidence/C32/runs/desktop-typecheck.log
+# + docs/planning/evidence/C32/runs/hash-inputs.sh
+# + docs/planning/evidence/C32/runs/host.exit
+# + docs/planning/evidence/C32/runs/host.log
+# + docs/planning/evidence/C32/runs/inputs-after.sha256
+# + docs/planning/evidence/C32/runs/inputs-before.sha256
+# + docs/planning/evidence/C32/runs/notices.exit
+# + docs/planning/evidence/C32/runs/notices.log
+# + docs/planning/evidence/C32/runs/run-attempt-01.json
+# + docs/planning/evidence/C32/runs/run-checks.sh
+# + docs/planning/evidence/C32/runs/rustfmt.exit
+# + docs/planning/evidence/C32/runs/rustfmt.log
+# + docs/planning/evidence/C32/runs/shell-controller.exit
+# + docs/planning/evidence/C32/runs/shell-controller.log
+# + docs/planning/evidence/C32/runs/vitest-truth.exit
+# + docs/planning/evidence/C32/runs/vitest-truth.log
+# + docs/planning/evidence/C32/runs/vitest.exit
+# + docs/planning/evidence/C32/runs/vitest.log
+# + docs/planning/evidence/C32/runs/xtask-lib.exit
+# + docs/planning/evidence/C32/runs/xtask-lib.log
+# + docs/planning/evidence/C32/screens/harness-decision-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-decision-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-decision-light-100.png
+# + docs/planning/evidence/C32/screens/harness-decision-light-200.png
+# + docs/planning/evidence/C32/screens/harness-empty-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-empty-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-empty-light-100.png
+# + docs/planning/evidence/C32/screens/harness-empty-light-200.png
+# + docs/planning/evidence/C32/screens/harness-ended-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-ended-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-ended-light-100.png
+# + docs/planning/evidence/C32/screens/harness-ended-light-200.png
+# + docs/planning/evidence/C32/screens/harness-first-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-first-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-first-light-100.png
+# + docs/planning/evidence/C32/screens/harness-first-light-200.png
+# + docs/planning/evidence/C32/screens/harness-follow-up-dark-100.png
+# + docs/planning/evidence/C32/screens/harness-follow-up-dark-200.png
+# + docs/planning/evidence/C32/screens/harness-follow-up-light-100.png
+# + docs/planning/evidence/C32/screens/harness-follow-up-light-200.png
+# + docs/planning/evidence/C32/screens/harness-min-200-dark.png
+# + docs/planning/evidence/C32/screens/harness-min-200-light.png
+# + packages/desktop-contracts/fixtures/wire/harness-lifecycle-blocks.json
+# + packages/desktop-contracts/fixtures/wire/harness-lifecycle-keys.json
+# + packages/desktop-contracts/fixtures/wire/harness-lifecycle-mcp.json
+# + tools/native-acceptance/acceptance_c32.py

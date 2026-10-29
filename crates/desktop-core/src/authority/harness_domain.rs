@@ -76,6 +76,9 @@ pub(super) struct Conversation {
     /// No longer bound: withdrawn from every view at once.
     retired: bool,
     entries: u64,
+    /// The sends it took that the presentation named, newest last, with the
+    /// message each became (C32): bounded by [`MAX_SUBMISSIONS`].
+    submissions: std::collections::VecDeque<Taken>,
     source: CredentialSource,
     /// The signed-in grant it runs under (company sign-in).
     grant: Option<Arc<Grant>>,
@@ -109,6 +112,11 @@ impl Conversation {
 
     pub(super) fn tenant_id(&self) -> &TenantId {
         &self.tenant
+    }
+
+    /// The Gateway workspace it runs in: its reference and its ID (C32).
+    pub(super) fn workspace_binding(&self) -> (WorkspaceRef, String) {
+        (self.reference.clone(), self.workspace.id.clone())
     }
 
     pub(super) fn progress_approvals(&self) -> Vec<crate::harness::HarnessApproval> {
@@ -146,7 +154,21 @@ impl Conversation {
     /// stopping task sets the phase (P06 review R3-F1).
     fn keep_unsent(&mut self, job: RenewJob) {
         self.entries -= 1;
+        self.returned(&job.id);
         self.unsent = Some(job.prompt.to_string());
+    }
+
+    /// The named send that became message `entry` was given back, not sent
+    /// (C32): reported as returned, never as delivered.
+    fn returned(&mut self, entry: &str) {
+        if let Some(t) = self
+            .submissions
+            .iter_mut()
+            .rev()
+            .find(|t| t.entry == entry && !t.returned)
+        {
+            t.returned = true;
+        }
     }
 }
 
@@ -158,6 +180,8 @@ pub(super) struct Resume {
     pub(super) entries: Vec<HarnessEntry>,
     pub(super) usage: Option<HarnessUsage>,
     pub(super) replay: Replay,
+    /// Its opening message, whole, when known (C32).
+    pub(super) opening: Option<String>,
 }
 
 /// How a conversation's turns are saved (the sink is made with the core).
@@ -244,6 +268,62 @@ pub struct ConversationView {
     pub proposals: Vec<super::harness_tools::ProposalView>,
     /// Its workspace MCP servers' startup in the running engine (C22).
     pub mcp: Vec<crate::harness::McpServerStatus>,
+    /// Its opening message, whole (never the shortened title); absent while
+    /// nothing was sent, or when the transcript it was restored from no
+    /// longer held it (C32).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub opening: Option<String>,
+    /// The sends it took that the presentation named, newest last, with the
+    /// message each became (C32): a send whose receipt was lost is settled
+    /// by its own entry here, never by matching text.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[ts(as = "Option<Vec<TakenSubmission>>", optional)]
+    pub submissions: Vec<TakenSubmission>,
+}
+
+/// A send the core took, by the presentation's ID, the message it became,
+/// and where it stands (C32).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct TakenSubmission {
+    pub submission: String,
+    /// The transcript entry (`u-{n}`) it was given.
+    pub entry: String,
+    pub state: SubmissionState,
+}
+
+/// Where a taken send stands. Only `delivered` and `returned` are final.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum SubmissionState {
+    /// Taken, not yet handed to the engine (a sign-in renewal or the write
+    /// confirmation is under way): it may still be given back.
+    Pending,
+    /// Handed to the engine: its message entered the transcript.
+    Delivered,
+    /// Given back, not sent (a failed sign-in renewal, changes not allowed
+    /// again, a stop overtaking a renewal), or failed without an engine.
+    Returned,
+}
+
+/// A send the core took (its record; the view says where it stands).
+#[derive(Clone, Debug)]
+pub(super) struct Taken {
+    submission: String,
+    entry: String,
+    /// Given back by the core before it reached the engine.
+    returned: bool,
+}
+
+/// Sends a conversation remembers by the presentation's ID.
+pub(super) const MAX_SUBMISSIONS: usize = 64;
+
+/// A presentation's send ID: 32 lowercase hexadecimal characters.
+fn is_submission(s: &str) -> bool {
+    s.len() == 32
+        && s.bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
@@ -382,12 +462,20 @@ impl State {
         if resume.as_ref().is_some_and(|r| r.binding != saved) {
             return Err(Refusal::StaleContext);
         }
-        let (history_id, created, entries, usage, restore) = match resume {
-            Some(r) => (r.id, r.created, r.entries, r.usage, Some(r.replay)),
+        let (history_id, created, entries, usage, restore, opening) = match resume {
+            Some(r) => (
+                r.id,
+                r.created,
+                r.entries,
+                r.usage,
+                Some(r.replay),
+                r.opening,
+            ),
             None => (
                 new_history_id().ok_or(Refusal::CapabilityMissing)?,
                 now(),
                 Vec::new(),
+                None,
                 None,
                 None,
             ),
@@ -400,10 +488,8 @@ impl State {
             tenant: tenant.clone(),
             workspace: workspace.id.clone(),
         });
-        let operator_entries = entries
-            .iter()
-            .filter(|e| e.role == crate::harness::HarnessRole::Operator)
-            .count() as u64;
+        // New messages are numbered past every one the transcript shows.
+        let operator_entries = crate::harness::messages_after(&entries);
         let (binding_project, binding_write) = (binding.project.clone(), binding.write);
         let id = self.operations.reserve();
         let (commands, receiver) = mpsc::channel(4);
@@ -413,6 +499,7 @@ impl State {
         if let Ok(mut p) = progress.lock() {
             p.entries = entries;
             p.usage = usage;
+            p.opening = opening;
         }
         let inputs = Inputs {
             engine,
@@ -449,6 +536,7 @@ impl State {
             ended: None,
             retired: false,
             entries: operator_entries,
+            submissions: std::collections::VecDeque::new(),
             source,
             grant: grant.clone(),
             engine_renew_at: None,
@@ -535,10 +623,31 @@ impl State {
         &mut self,
         id: &OperationId,
         prompt: String,
+        submission: Option<String>,
     ) -> Result<Option<RenewJob>, Refusal> {
         let prompt = Zeroizing::new(prompt);
         if prompt.trim().is_empty() || prompt.len() > protocol::MAX_PROMPT_BYTES {
             return Err(Refusal::InvalidInput);
+        }
+        if submission.as_deref().is_some_and(|s| !is_submission(s)) {
+            return Err(Refusal::InvalidInput);
+        }
+        // A send already taken (its delivery repeated after a lost receipt)
+        // is taken once: nothing is sent again (C32).
+        let taken = self.harness.as_ref().and_then(|c| {
+            (&c.id == id)
+                .then(|| {
+                    let s = submission.as_ref()?;
+                    c.submissions.iter().find(|t| &t.submission == s)
+                })
+                .flatten()
+                .map(|t| t.returned)
+        });
+        match taken {
+            Some(false) => return Ok(None),
+            // Given back already: never sent now on a repeated delivery.
+            Some(true) => return Err(Refusal::InvalidInput),
+            None => {}
         }
         // A sign-in again to the same account replaces the live grant: the
         // current one renews.
@@ -573,6 +682,16 @@ impl State {
         }
         conversation.entries += 1;
         let entry = format!("u-{}", conversation.entries);
+        if let Some(submission) = submission {
+            conversation.submissions.push_back(Taken {
+                submission,
+                entry: entry.clone(),
+                returned: false,
+            });
+            if conversation.submissions.len() > MAX_SUBMISSIONS {
+                conversation.submissions.pop_front();
+            }
+        }
         conversation.unsent = None;
         conversation.renew_failure = None;
         let renew = match (live, conversation.engine_renew_at) {
@@ -679,6 +798,7 @@ impl State {
             Ok(_) => {}
             Err(failure) => {
                 c.entries -= 1;
+                c.returned(&job.id);
                 c.unsent = Some(job.prompt.to_string());
                 c.renew_failure = Some(failure);
                 if let Ok(mut p) = c.progress.lock() {
@@ -841,6 +961,8 @@ impl State {
 
     /// Retires a conversation that is no longer bound (run on every change).
     pub(super) fn sync_harness(&mut self) {
+        // A confirmation whose decision is gone is ended (C32).
+        self.retire_harness_confirmation();
         let bound = self.harness.as_ref().is_some_and(|c| self.harness_bound(c));
         let Some(c) = self.harness.as_mut() else {
             return;
@@ -901,6 +1023,24 @@ impl State {
                     write: c.write,
                     approvals: p.approvals,
                     mcp: p.mcp,
+                    opening: p.opening,
+                    submissions: c
+                        .submissions
+                        .iter()
+                        .map(|t| TakenSubmission {
+                            submission: t.submission.clone(),
+                            entry: t.entry.clone(),
+                            state: if t.returned {
+                                SubmissionState::Returned
+                            } else {
+                                match p.messages.iter().rev().find(|(id, _)| id == &t.entry) {
+                                    Some((_, true)) => SubmissionState::Delivered,
+                                    Some((_, false)) => SubmissionState::Returned,
+                                    None => SubmissionState::Pending,
+                                }
+                            },
+                        })
+                        .collect(),
                     proposals: c
                         .proposals
                         .iter()

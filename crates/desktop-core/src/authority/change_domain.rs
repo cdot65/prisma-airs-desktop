@@ -484,7 +484,7 @@ fn gateway_failure(error: ChangeError) -> ChangeFailure {
     }
 }
 
-fn nonce() -> Option<u64> {
+pub(super) fn nonce() -> Option<u64> {
     let mut bytes = [0u8; 8];
     getrandom::fill(&mut bytes).ok()?;
     Some(u64::from_le_bytes(bytes))

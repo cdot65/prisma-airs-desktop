@@ -62,7 +62,7 @@ and reconciled by hand; a key missing here is a specification defect.
 | `s.casePage`, `s.caseQ`, `s.cfil` | Test Cases paging, search, filter | UI | workbench store | transient | kept |
 | `s.req`, `s.reqQ`, `s.fmt`, `s.rtab`, `s.rsub` | API Client request, search, body format, response tab, sub-tab | UI | workbench store | transient | kept |
 | `s.quiz` | Academy quiz state | **Dropped** | hosted Academy owns it (P19) | — | dropped |
-| `s.convoHint` | ended-conversation hint | UI | harness store; cleared by any navigation | transient | kept |
+| `s.convoHint` | ended-conversation hint | UI | harness store; cleared by any navigation; its opening question is the core's `opening` (the conversation's, or the opened saved record's), never the title (P51) | transient | kept |
 
 ## R2App — per-tenant (`ts.*`)
 
@@ -77,7 +77,7 @@ and reconciled by hand; a key missing here is a specification defect.
 | `ts.keyRotated`, `ts.keySecretClosed`, `ts.keyDeployed`, `ts.keyDoneAt` | rotation stage | Core | `Tenant.rotations` → `ShellSnapshot.rotations: RotationView{stage, oldKey, newKey, issuedBy, deploymentAcknowledgedAt, oldKeyRemovedAt, removalRejected}`; stage derived (issuanceUnconfirmed, issued, resumed, acknowledged, removalUnconfirmed, complete); intent `acknowledgeDeployment` | per tenant, persisted (timestamps stored once, and the reviewed key name that alone confirms an unconfirmed issuance); the held secret only on its change result, for its context | **changed** (P20, P41): supported Version → Delete sequence; see screens/reviews-administration.md |
 | `ts.follows` | follow-up status per conversation | Core | sessions | persisted | kept |
 | `ts.convo`, `ts.userConvos`, `ts.msgsBy`, `ts.decs`, `ts.ended`, `ts.archived` | current conversation, user conversations, messages, decisions, ended flags, archives | Core | existing harness sessions and decisions | persisted, protected | kept |
-| `ts.draft` | composer draft | UI | harness store per conversation | transient | kept |
+| `ts.draft` | composer draft | UI | shell store per tenant and workspace ID (`harnessDrafts`), with kept messages (`harnessUnsent`: not sent, or not confirmed until their own conversation reports the core took their send ID, `ConversationView.submissions`) | transient | kept |
 
 ## Credential entry paths (native)
 

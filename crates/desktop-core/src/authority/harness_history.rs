@@ -75,6 +75,12 @@ pub struct OpenedConversationView {
     pub entries: Vec<HarnessEntry>,
     pub source: CredentialSource,
     pub not_continuable: Option<NotContinuable>,
+    /// Its opening message, whole (never the shortened title), when known:
+    /// a record saved before C32 knows it only while its transcript holds
+    /// the first message (C32).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub opening: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -104,6 +110,12 @@ pub struct HarnessHistoryView {
     pub busy: bool,
     /// Why the last open or delete did not happen.
     pub problem: Option<HistoryFailure>,
+    /// The last open that settled, so the open that asked for a record can
+    /// tell its own outcome, whatever came before it (C32). Absent until
+    /// one has.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub last_open: Option<OpenSettled>,
     /// Saving a transcript in the native sheet.
     pub export: Option<super::sessions_domain::ExportView>,
 }
@@ -115,6 +127,17 @@ pub enum HistoryFormat {
     Markdown,
     Text,
     Json,
+}
+
+/// An open that settled: the record asked for, its place in the order the
+/// core admitted opens, and why it did not open (C32).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSettled {
+    pub id: String,
+    #[ts(type = "number")]
+    pub sequence: u64,
+    pub failure: Option<HistoryFailure>,
 }
 
 /// The history shown for one scope.
@@ -132,6 +155,7 @@ pub(super) struct HistoryState {
     busy: bool,
     /// Why the last open or delete did not happen.
     problem: Option<HistoryFailure>,
+    last_open: Option<OpenSettled>,
 }
 
 /// Work on records, off the lock.
@@ -212,6 +236,7 @@ impl State {
                 opened: None,
                 busy: false,
                 problem: None,
+                last_open: None,
             });
         }
         self.harness_history
@@ -365,6 +390,7 @@ impl State {
                 context: record.context.clone(),
                 replay: record.replay.clone(),
             },
+            opening: record.opening(),
         })
     }
 
@@ -450,9 +476,14 @@ impl State {
                     h.list = Some(list);
                 }
             }
-            JobResult::Opened(record) => {
+            JobResult::Opened(id, record) => {
                 if h.lease == lease {
                     h.busy = false;
+                    h.last_open = Some(OpenSettled {
+                        id,
+                        sequence: lease,
+                        failure: record.as_ref().err().copied(),
+                    });
                     match record {
                         Ok(record) => {
                             h.opened = Some(Arc::new(*record));
@@ -748,9 +779,11 @@ impl State {
                     entries: r.entries.clone(),
                     source: r.binding.source,
                     not_continuable: self.not_continuable(r),
+                    opening: r.opening(),
                 }),
             busy: h.busy,
             problem: h.problem,
+            last_open: h.last_open.clone(),
             export: self
                 .export
                 .as_ref()
@@ -765,7 +798,7 @@ impl State {
 
 enum JobResult {
     Listed(Result<Vec<Listed>, HistoryFailure>),
-    Opened(Result<Box<Record>, HistoryFailure>),
+    Opened(String, Result<Box<Record>, HistoryFailure>),
     Deleted(
         String,
         Result<(), HistoryFailure>,
@@ -791,7 +824,7 @@ pub(super) async fn run_job(inner: Arc<Inner>, job: HistoryJob) {
         }
         HistoryJob::Open { lease, scope, id } => {
             let record = history::read(&*vault, &scope, &id).map(Box::new);
-            (lease, scope, JobResult::Opened(record))
+            (lease, scope, JobResult::Opened(id, record))
         }
         HistoryJob::Delete { lease, scope, id } => {
             let deleted = history::delete(&scope, &id);
@@ -826,7 +859,7 @@ pub(super) fn sink(inner: &Arc<Inner>, plan: HistoryPlan) -> HistorySink {
         tenant,
         workspace,
     } = plan;
-    Arc::new(move |entries: Vec<HarnessEntry>, usage, export: &Replay| {
+    Arc::new(move |entries: Vec<_>, usage, opening, export: &Replay| {
         let hold = lock(&inner)
             .ok()
             .and_then(|mut state| {
@@ -851,7 +884,7 @@ pub(super) fn sink(inner: &Arc<Inner>, plan: HistoryPlan) -> HistorySink {
                 Err(HistoryFailure::Unavailable)
             } else {
                 save_record(
-                    &inner, &scope, &id, created, &binding, entries, usage, export,
+                    &inner, &scope, &id, created, &binding, entries, usage, opening, export,
                 )
             }
         };
@@ -877,12 +910,19 @@ fn save_record(
     binding: &SavedBinding,
     entries: Vec<HarnessEntry>,
     usage: Option<HarnessUsage>,
+    opening: Option<String>,
     export: &Replay,
 ) -> Result<Record, HistoryFailure> {
-    let title = entries
-        .iter()
-        .find(|e| e.role == HarnessRole::Operator)
-        .map(|e| history::title(&e.text))
+    // Titled from the opening message, also once the transcript dropped it.
+    let title = opening
+        .as_deref()
+        .or_else(|| {
+            entries
+                .iter()
+                .find(|e| e.role == HarnessRole::Operator)
+                .map(|e| e.text.as_str())
+        })
+        .map(history::title)
         .unwrap_or_default();
     let record = Record {
         schema: history::SCHEMA.to_owned(),
@@ -896,6 +936,7 @@ fn save_record(
         context: export.context.clone(),
         replay: export.replay.clone(),
         origin: None,
+        opening,
     };
     history::save(&*inner.adapters.keychain, scope, &record)?;
     Ok(record)

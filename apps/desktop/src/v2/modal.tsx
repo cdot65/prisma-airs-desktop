@@ -18,7 +18,9 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * Shift-Tab stay inside the topmost dialog, Escape closes the topmost only,
  * focus moves into the dialog on open and back to the opener on close. The
  * page behind every dialog is made inert by the shell (`useModalsOpen`).
- * No global key listener: the dialog element handles its own keys.
+ * The dialog element handles its own keys; the topmost dialog also listens
+ * on the window for Escape alone, for when focus has left it (a native
+ * sheet returned focus elsewhere), and closes only itself.
  */
 export function Modal({ label, onClose, children, width = 560, ...rest }: ModalProps) {
     const id = useId()

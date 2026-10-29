@@ -9,6 +9,7 @@ const APPROVAL_TITLE: Record<HarnessApproval['kind'], string> = {
     command: 'Run a command',
     fileChange: 'Change files',
     mcpTool: 'Run a workspace MCP tool',
+    desktopRead: 'Read the tenant through the desktop',
 }
 
 interface Props {

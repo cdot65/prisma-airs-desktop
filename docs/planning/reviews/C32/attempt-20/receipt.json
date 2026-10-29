@@ -1,0 +1,58 @@
+{
+  "review_id": "C32-attempt-20-1793283455",
+  "subject": "C32",
+  "attempt": "attempt-20",
+  "request_id": "C32-attempt-20-1793283455",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed), run by hand; see limitations",
+  "time": "2026-10-29T10:30:00-04:00",
+  "model": "gpt-6.1-sol (xhigh)",
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": 0,
+  "blockers": 1,
+  "evidence_gaps": 1,
+  "fingerprints": {
+    "source": "87513f2b7233ad9e858eebc31b3de3e3d00da129b3cf9cc015721ee04ae6747d",
+    "dependencies": "5a9730ac4a4d3d7140ac199f7c558b1d71a78bbccd31ffece8b3427452c635c5",
+    "build_flags": "18866607b98a5d91dbd41aa26e9e7d0676741c26e6d6d16d4d7951d8d146282d",
+    "evidence": "24852561b855171212b92bfdfd8728329498a2554ec5f4cb4f2c52516c2d21f5"
+  },
+  "native_acceptance": {
+    "record": "docs/planning/evidence/C32/native-acceptance.json",
+    "sha256": "85cc39e7949b660b5df1d27618117b9384cde466fbc0790c9e8c4f4d7187a124",
+    "prepare": "docs/planning/evidence/C32/native-prepare.json",
+    "prepare_sha256": "24674a6731f07ba7d988bdd1c5a355c471e22e973f67e73775661d6f959f6c0f"
+  },
+  "live": null,
+  "verdict_sha256": "7f7b177d34b3d75d6cc4837e6cf773738303387a98e334c6cd273a663cc58b37",
+  "source_frozen": "no repository file changed between packet preparation and the verdict",
+  "outcome": "9/9/9/8/8 with no required fixes and no optional suggestions; recommendation fail solely for the predecessor C29's mandatory live Vulture verify receipt (B1/E1), which the approved manifest does not designate (evidence/C29/live/blocked.json; live-scope-request.md names the family). C32 has no live row of its own (fixture engine and synthetic Gateway only). Code, native (C32-N01..N04) and synthetic evidence complete; manual fresh-exec receipt, to be regenerated through the controller after C26 completes and after the C29 live row runs. C31's optional modal.tsx comment suggestion is carried to C33.",
+  "attempt_history": [
+    "01 8/6/7/7/7",
+    "02 9/8/9/8/8",
+    "03 9/8/9/8/8",
+    "04 9/8/9/8/8",
+    "05 9/8/9/8/8",
+    "06 9/8/9/8/8",
+    "07 9/8/9/8/8",
+    "08 9/8/9/8/8",
+    "09 9/8/9/8/8",
+    "10 9/8/9/8/8",
+    "11 9/8/9/8/8",
+    "12 9/8/9/8/8",
+    "13 9/8/9/8/8",
+    "14 9/8/9/8/8",
+    "15 9/8/9/8/8",
+    "16 9/8/9/8/8",
+    "17 9/8/9/8/8",
+    "18 9/8/9/8/8",
+    "19 9/8/9/8/8",
+    "20 9/9/9/8/8"
+  ]
+}

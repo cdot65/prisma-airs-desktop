@@ -14,7 +14,7 @@ never authorises Apply.
 - Title row "Harness" with tenant and engine status; left rail of
   conversations (lifecycle seeds appear only on non-fresh fixture tenants;
   user conversations titled from their first message; archived ones marked
-  ended); main transcript; composer with a draft per conversation.
+  ended); main transcript; one composer per tenant and workspace (its draft kept across navigation, tenant round trips and a conversation's retirement), with messages that reached no conversation, or whose delivery was not confirmed, kept apart for recovery and never sent by themselves (provenance P50).
 - Prerequisites checklist (tenant, management client, Gateway workspace,
   company sign-in) stays visible until satisfied (D057 F05).
 

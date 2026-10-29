@@ -28,6 +28,9 @@ pub const MAX_SCAN_TEXT: usize = 16 * 1024;
 /// around a check).
 pub const UNAVAILABLE: &str = "This tool or its arguments are unavailable.";
 
+/// What the engine is told when the operator declines a read (C32).
+pub const DECLINED: &str = "The operator declined this read, so nothing was read.";
+
 /// Field names whose values are never shown to the model.
 const SENSITIVE: [&str; 14] = [
     "api_key",
@@ -78,7 +81,7 @@ pub fn catalog() -> Value {
     let resource = json!({"type":"string","enum":RESOURCES});
     let id = json!({"type":"string","minLength":1,"maxLength":256});
     let kinds = json!({"type":"string","enum":["profiles","topics","applications","apiKeys",
-        "dataPatterns","dataProfiles","filteringProfiles","dictionaries"]});
+        "dataPatterns","dataProfiles","filteringProfiles","dictionaries","gatewayGuardrails"]});
     json!([{
         "type":"namespace",
         "name":NAMESPACE,
@@ -101,8 +104,9 @@ pub fn catalog() -> Value {
                     "prompt":{"type":"string","maxLength":MAX_SCAN_TEXT},
                     "response":{"type":"string","maxLength":MAX_SCAN_TEXT}}),&["profile"]),
             function("cases","The tenant's saved test cases (names and verdict expectations).",json!({}),&[]),
-            function("proposeChange","Stage a Runtime Security change for the operator to review. It is never applied by this tool: the operator must review and confirm it in the desktop.",
-                json!({"kind":kinds,"action":{"type":"string","enum":["create","update","delete"]},
+            function("mcpServers","The MCP servers of this conversation's AI Gateway workspace (names, namespaces and status), as the workspace's MCP catalog lists them.",json!({}),&[]),
+            function("proposeChange","Stage a change for the operator to review: a Runtime Security or DLP change, an additional API key for an application (action version: the start of a key rotation, which the operator finishes in Administration), or a guardrail of this conversation's AI Gateway workspace (create or update). It is never applied by this tool: the operator must review and confirm it in the desktop.",
+                json!({"kind":kinds,"action":{"type":"string","enum":["create","update","delete","version"]},
                     "target":{"type":"string","maxLength":256},
                     "body":{"type":"object"},
                     "summary":{"type":"string","maxLength":512}}),&["kind","action","summary"]),
@@ -140,6 +144,8 @@ pub enum ToolCall {
         response: Option<String>,
     },
     Cases,
+    /// The conversation's workspace MCP catalog (`GatewayRead::McpServers`, C32).
+    McpServers,
     ProposeChange {
         kind: ChangeKind,
         action: ChangeAction,
@@ -302,11 +308,18 @@ impl ToolCall {
                 let _: Empty = serde_json::from_value(args).ok()?;
                 Self::Cases
             }
+            "mcpServers" => {
+                let _: Empty = serde_json::from_value(args).ok()?;
+                Self::McpServers
+            }
             "proposeChange" => {
                 let a: ProposeArgs = serde_json::from_value(args).ok()?;
-                // Only the Runtime and DLP kinds: Gateway changes need the
-                // operator's own workspace review.
-                if !matches!(
+                // The Runtime and DLP kinds (create, update, delete); an API
+                // key's version, the start of a rotation the operator
+                // finishes in Administration (C32); and a guardrail of the
+                // conversation's own Gateway workspace, created or updated,
+                // reviewed under that workspace (C32). Nothing else.
+                let runtime = matches!(
                     a.kind,
                     ChangeKind::Profiles
                         | ChangeKind::Topics
@@ -316,10 +329,15 @@ impl ToolCall {
                         | ChangeKind::DataProfiles
                         | ChangeKind::FilteringProfiles
                         | ChangeKind::Dictionaries
-                ) || !matches!(
+                ) && matches!(
                     a.action,
                     ChangeAction::Create | ChangeAction::Update | ChangeAction::Delete
-                ) || a.summary.trim().is_empty()
+                );
+                let rotation = a.kind == ChangeKind::ApiKeys && a.action == ChangeAction::Version;
+                let guardrail = a.kind == ChangeKind::GatewayGuardrails
+                    && matches!(a.action, ChangeAction::Create | ChangeAction::Update);
+                if !(runtime || rotation || guardrail)
+                    || a.summary.trim().is_empty()
                     || a.summary.chars().count() > 512
                     || a.target.len() > 256
                     || a.target.chars().any(char::is_control)
@@ -340,6 +358,29 @@ impl ToolCall {
         Some(call)
     }
 
+    /// Whether the call waits for the operator's decision in the page
+    /// (C32): every read of the tenant does; staging a proposal reads
+    /// nothing and only ever opens the operator's own review.
+    pub fn needs_decision(&self) -> bool {
+        !matches!(self, Self::ProposeChange { .. })
+    }
+
+    /// The tool's name, as the engine called it.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Inventory { .. } => "inventory",
+            Self::Detail { .. } => "detail",
+            Self::Session { .. } => "session",
+            Self::Search { .. } => "search",
+            Self::RedTeam { .. } => "redTeam",
+            Self::SupplyChain => "supplyChain",
+            Self::Scan { .. } => "scan",
+            Self::Cases => "cases",
+            Self::McpServers => "mcpServers",
+            Self::ProposeChange { .. } => "proposeChange",
+        }
+    }
+
     /// A short, model-free description for the transcript.
     pub fn title(&self) -> String {
         match self {
@@ -353,6 +394,7 @@ impl ToolCall {
             Self::SupplyChain => "Read Model Security and AgentGuard".to_owned(),
             Self::Scan { .. } => "Scanned text with Runtime Security".to_owned(),
             Self::Cases => "Read the test case library".to_owned(),
+            Self::McpServers => "Read the workspace's MCP servers".to_owned(),
             Self::ProposeChange { summary, .. } => format!("Proposed a change: {summary}"),
         }
     }
@@ -574,6 +616,37 @@ mod tests {
             assert!(text.len() <= MAX_RESULT_BYTES, "{}", text.len());
             let cut: Value = serde_json::from_str(&text).expect("still JSON");
             assert_eq!(cut["cut"], CUT_NOTE);
+        }
+    }
+
+    /// C32: the Harness may hand off a key rotation (an API key version)
+    /// and propose a guardrail of its own Gateway workspace (create or
+    /// update); every other Gateway change, and a key rotation in place,
+    /// stays out of its reach.
+    #[test]
+    fn proposals_admit_the_rotation_hand_off_and_workspace_guardrails_only() {
+        let ns = Some(NAMESPACE);
+        let call = |kind: &str, action: &str| {
+            ToolCall::parse(
+                ns,
+                "proposeChange",
+                &json!({"kind": kind, "action": action, "target": if action == "create" { "" } else { "x-1" },
+                        "body": {}, "summary": "s"}),
+            )
+        };
+        assert!(call("apiKeys", "version").is_some());
+        assert!(call("gatewayGuardrails", "create").is_some());
+        assert!(call("gatewayGuardrails", "update").is_some());
+        assert!(call("topics", "update").is_some());
+        for (kind, action) in [
+            ("gatewayGuardrails", "delete"),
+            ("gatewayRoutes", "create"),
+            ("gatewayServiceKeys", "rotate"),
+            ("gatewayWorkspaces", "create"),
+            ("apiKeys", "rotate"),
+            ("topics", "version"),
+        ] {
+            assert!(call(kind, action).is_none(), "{kind} {action}");
         }
     }
 }
