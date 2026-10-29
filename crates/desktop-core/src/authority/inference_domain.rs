@@ -174,7 +174,14 @@ impl State {
             .transport
             .clone()
             .ok_or(Refusal::CapabilityMissing)?
-            .for_admission()
+            .for_tenant(
+                &self.calls,
+                crate::transport::CallTag {
+                    tenant: tenant.as_str().to_owned(),
+                    purpose: crate::transport::CallPurpose::Inference,
+                    credential: crate::transport::CallCredential::WorkspaceKey,
+                },
+            )
             .map_err(|_| Refusal::CapabilityMissing)?;
         let key_record = record.clone();
         let key = Box::new(move || {

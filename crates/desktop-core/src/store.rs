@@ -205,6 +205,10 @@ pub struct PersistedState {
     /// "Show the calls" preference (C28; absent before = on).
     #[serde(default = "show_calls_default")]
     pub show_calls: bool,
+    /// The operator chose `show_calls` (C33). Not chosen, the calls are
+    /// shown until onboarding completes, then hidden (DESIGN-V2 §3).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub show_calls_chosen: bool,
     /// Each tenant's chosen products (C29; absent before = Runtime only).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tenant_products: Vec<TenantProducts>,
@@ -276,6 +280,7 @@ impl Default for PersistedState {
             ui_variant: crate::features::UiVariant::Legacy,
             onboarding: crate::features::OnboardingState::Needed,
             show_calls: true,
+            show_calls_chosen: false,
             tenant_products: Vec::new(),
             tenant_warnings: Vec::new(),
             tenant_rotations: Vec::new(),

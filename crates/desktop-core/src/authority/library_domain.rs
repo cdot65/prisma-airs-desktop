@@ -426,7 +426,8 @@ impl State {
     ) -> Result<(TenantId, u64), Refusal> {
         let tenant = self.check_context(context)?;
         let parsed =
-            crate::library::parse_catalog(crate::library::BUNDLED_CATALOG, tenant.as_str());
+            crate::library::parse_catalog(crate::library::BUNDLED_CATALOG, tenant.as_str())
+                .map(starter_packs);
         self.add_examples(&tenant, parsed)
     }
 
@@ -445,7 +446,7 @@ impl State {
         else {
             return (None, None);
         };
-        let cases: Vec<TestCase> = cases
+        let cases: Vec<TestCase> = starter_packs(cases)
             .into_iter()
             .filter(|c| products.contains(&c.product))
             .collect();
@@ -590,6 +591,8 @@ impl State {
         };
         copy.id = crate::library::new_id().ok_or(Refusal::Busy)?;
         copy.tenant = to.as_str().to_owned();
+        // A result is this tenant's run, never the copy's (C33).
+        copy.result = None;
         let label = self
             .tenant(to)
             .map(|t| t.profile.label.clone())
@@ -730,6 +733,18 @@ impl State {
         Some((result, Some(generation)))
     }
 
+    /// Reports a problem with a change the core made to a tenant's open
+    /// library by itself (C33: a case result it had no room for).
+    pub(super) fn library_problem(&mut self, tenant: &TenantId, problem: CaseProblem) {
+        if let Some(library) = self
+            .libraries
+            .iter_mut()
+            .find(|l| &l.tenant == tenant && l.state == LibraryState::Ready)
+        {
+            library.problem = Some(problem);
+        }
+    }
+
     /// The newest generation of a tenant's open library (C23).
     pub(super) fn library_generation(&self, tenant: &TenantId) -> Option<u64> {
         self.libraries
@@ -833,4 +848,17 @@ pub(super) async fn fetch_catalog(
         }
     }
     Some(body)
+}
+
+/// The bundled catalog's cases as starter packs: each carries its product's
+/// pack name and no result ("Not run") (C33).
+fn starter_packs(cases: Vec<TestCase>) -> Vec<TestCase> {
+    cases
+        .into_iter()
+        .map(|c| TestCase {
+            pack: Some(crate::library::pack_name(c.product).to_owned()),
+            result: None,
+            ..c
+        })
+        .collect()
 }

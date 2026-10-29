@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Button, Callout, Input, cn } from '@ai-security-academy/presentation'
 import { AlertTriangle, History, Save, Send } from 'lucide-react'
 import type { DocumentView, Fields, Preview, RunView, RunningView, SendReviewView } from '@prisma-airs/desktop-contracts'
+import { useV2Layout } from '../../shell/presentation'
 import { ReviewPanel, RunPanel, Running } from './request-send'
 import { type WorkbenchCall, fieldText, resultText, saveRefusalText } from './workbench-call'
 
@@ -29,6 +30,17 @@ const same = (a: Fields, b: Fields) =>
     a.settings === b.settings
 
 export const requestName = (relative: string) => relative.split('/').pop()?.replace(/\.request\.toml$/, '') ?? relative
+
+/**
+ * What the completion status region announces after Send (C33, known gap 5):
+ * "<request> · <code> · <duration>". The response body is outside it.
+ */
+export function completionText(record: { relative: string; status: number | null; elapsedMs: number }): string {
+    const code = record.status !== null ? String(record.status) : 'no response'
+    const ms = record.elapsedMs
+    const duration = ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`
+    return `${requestName(record.relative)} · ${code} · ${duration}`
+}
 
 interface Props {
     initial: DocumentView
@@ -64,6 +76,7 @@ export interface EditorHandle {
  * the snapshot on this Mac; a reply never overwrites newer typing.
  */
 export function DocumentEditor({ initial, call, schemas, onClosed, register, context = null, running = [], review = null }: Props) {
+    const v2 = useV2Layout()
     const ids = useId()
     const [doc, setDoc] = useState(initial)
     const [fields, setFields] = useState(initial.fields)
@@ -242,7 +255,7 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register, con
         setSending(false)
         if (r.kind === 'ran') {
             setRun(r.run)
-            setStatus('')
+            setStatus(completionText(r.run.record))
             return
         }
         if (r.kind === 'reviewRequired') {
@@ -270,29 +283,17 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register, con
 
     const dirty = doc.new || doc.metadataDirty || !same(fields, doc.saved)
     const name = requestName(doc.relative)
-    return (
-        <form
-            aria-label={`Request ${name}`}
-            data-slot='workbench-document'
-            className='flex flex-col gap-4'
-            onSubmit={(e) => {
-                e.preventDefault()
-                void save()
-            }}
-            onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
-                    e.preventDefault()
-                    void save()
-                }
-            }}
-        >
-            <div className='flex flex-wrap items-baseline gap-2'>
-                <h2 className='text-[17px] font-semibold'>{name}</h2>
-                <span className='text-academy-ink-faint text-[12px]'>{doc.relative}</span>
-                <span className='text-academy-ink-soft text-[12px]' data-slot='workbench-dirty'>
-                    {doc.new ? 'New · not saved yet' : dirty ? 'Unsaved changes' : 'Saved'}
-                </span>
-            </div>
+    const titleRow = (
+        <div className='flex flex-wrap items-baseline gap-2'>
+            <h2 className='text-[17px] font-semibold'>{name}</h2>
+            <span className='text-academy-ink-faint text-[12px]'>{doc.relative}</span>
+            <span className='text-academy-ink-soft text-[12px]' data-slot='workbench-dirty'>
+                {doc.new ? 'New · not saved yet' : dirty ? 'Unsaved changes' : 'Saved'}
+            </span>
+        </div>
+    )
+    const callouts = (
+        <>
             {conflict ? (
                 <Callout tone='warning' icon={AlertTriangle} role='alert' data-slot='workbench-conflict'>
                     <p className='text-academy-ink font-semibold'>
@@ -322,28 +323,34 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register, con
                     </Button>
                 </Callout>
             ) : null}
-            <div className='grid gap-3 sm:grid-cols-[10rem_1fr]'>
-                <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-method`}>
-                    Method
-                    <Input
-                        id={`${ids}-method`}
-                        list={`${ids}-methods`}
-                        value={fields.method}
-                        autoComplete='off'
-                        spellCheck={false}
-                        onChange={(e) => edit({ method: e.target.value })}
-                    />
-                    <datalist id={`${ids}-methods`}>
-                        {METHODS.map((m) => (
-                            <option key={m} value={m} />
-                        ))}
-                    </datalist>
-                </label>
-                <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-url`}>
-                    URL
-                    <Input id={`${ids}-url`} value={fields.url} autoComplete='off' spellCheck={false} onChange={(e) => edit({ url: e.target.value })} />
-                </label>
-            </div>
+        </>
+    )
+    const methodField = (
+        <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-method`}>
+            Method
+            <Input
+                id={`${ids}-method`}
+                list={`${ids}-methods`}
+                value={fields.method}
+                autoComplete='off'
+                spellCheck={false}
+                onChange={(e) => edit({ method: e.target.value })}
+            />
+            <datalist id={`${ids}-methods`}>
+                {METHODS.map((m) => (
+                    <option key={m} value={m} />
+                ))}
+            </datalist>
+        </label>
+    )
+    const urlField = (
+        <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-url`}>
+            URL
+            <Input id={`${ids}-url`} value={fields.url} autoComplete='off' spellCheck={false} onChange={(e) => edit({ url: e.target.value })} />
+        </label>
+    )
+    const details = (
+        <>
             <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-query`}>
                 Params
                 <textarea
@@ -420,27 +427,39 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register, con
                     ))}
                 </select>
             </label>
-            <div className='flex flex-wrap items-center gap-2'>
-                <Button type='submit' tier='primary' disabled={saving}>
-                    <Save aria-hidden className='size-4' />
-                    Save
+        </>
+    )
+    const saveButton = (
+        <Button type='submit' tier='primary' disabled={saving}>
+            <Save aria-hidden className='size-4' />
+            Save
+        </Button>
+    )
+    const sendButton = (
+        <Button type='button' tier='primary' disabled={sending} onClick={() => void sendNow(null)}>
+            <Send aria-hidden className='size-4' />
+            Send
+        </Button>
+    )
+    const otherButtons = (
+        <>
+            <Button type='button' tier='secondary' onClick={() => void showPreview()}>
+                Preview
+            </Button>
+            {dirty && !doc.new && !doc.recovered ? (
+                <Button type='button' tier='secondary' onClick={() => void discard()}>
+                    Discard changes
                 </Button>
-                <Button type='button' tier='primary' disabled={sending} onClick={() => void sendNow(null)}>
-                    <Send aria-hidden className='size-4' />
-                    Send
-                </Button>
-                <Button type='button' tier='secondary' onClick={() => void showPreview()}>
-                    Preview
-                </Button>
-                {dirty && !doc.new && !doc.recovered ? (
-                    <Button type='button' tier='secondary' onClick={() => void discard()}>
-                        Discard changes
-                    </Button>
-                ) : null}
-                <p role='status' aria-live='polite' className='text-academy-ink-soft text-[13px]' data-slot='workbench-save-status'>
-                    {status}
-                </p>
-            </div>
+            ) : null}
+        </>
+    )
+    const statusRegion = (
+        <p role='status' aria-live='polite' className='text-academy-ink-soft text-[13px]' data-slot='workbench-save-status'>
+            {status}
+        </p>
+    )
+    const responseBits = (
+        <>
             {running.map((r) => (
                 <Running key={r.run} running={r} call={call} />
             ))}
@@ -453,6 +472,79 @@ export function DocumentEditor({ initial, call, schemas, onClosed, register, con
             ) : null}
             {run ? <RunPanel run={run} call={call} /> : null}
             {preview ? <PreviewPanel preview={preview} /> : null}
+        </>
+    )
+    return (
+        <form
+            aria-label={`Request ${name}`}
+            data-slot='workbench-document'
+            className='flex flex-col gap-4'
+            data-layout={v2 ? 'v2' : undefined}
+            onSubmit={(e) => {
+                e.preventDefault()
+                void save()
+            }}
+            onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+                    e.preventDefault()
+                    void save()
+                }
+            }}
+        >
+            {v2 ? (
+                // The v2 shell's API Client (C33): the method, URL and Send on
+                // one compact line; the request details beside a response pane;
+                // Send's completion in the status region, the body outside it.
+                <>
+                    {titleRow}
+                    {callouts}
+                    <div className='flex flex-wrap items-end gap-2' data-slot='workbench-request-line'>
+                        <div className='w-28 shrink-0'>{methodField}</div>
+                        <div className='min-w-0' style={{ flex: '1 1 260px' }}>
+                            {urlField}
+                        </div>
+                        {sendButton}
+                        {saveButton}
+                    </div>
+                    {statusRegion}
+                    <div className='flex flex-wrap items-start gap-4'>
+                        <div className='flex min-w-0 flex-col gap-4' style={{ flex: '999 1 360px', minWidth: 'min(100%, 360px)' }}>
+                            {details}
+                            <div className='flex flex-wrap items-center gap-2'>{otherButtons}</div>
+                        </div>
+                        <section
+                            aria-label='Response pane'
+                            data-slot='workbench-response-pane'
+                            className='flex min-w-0 flex-col gap-3'
+                            style={{ flex: '1 1 340px', minWidth: 'min(100%, 340px)' }}
+                        >
+                            {run || running.length > 0 || review ? null : (
+                                <p className='text-academy-ink-soft text-[13px]' data-slot='workbench-no-response'>
+                                    Send to see the response here.
+                                </p>
+                            )}
+                            {responseBits}
+                        </section>
+                    </div>
+                </>
+            ) : (
+                <>
+                    {titleRow}
+                    {callouts}
+                    <div className='grid gap-3 sm:grid-cols-[10rem_1fr]'>
+                        {methodField}
+                        {urlField}
+                    </div>
+                    {details}
+                    <div className='flex flex-wrap items-center gap-2'>
+                        {saveButton}
+                        {sendButton}
+                        {otherButtons}
+                        {statusRegion}
+                    </div>
+                    {responseBits}
+                </>
+            )}
         </form>
     )
 }

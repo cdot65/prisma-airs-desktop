@@ -8,7 +8,7 @@ import { RedTeamView, type RedTeamSection, type RedTeamTab } from '../../feature
 import { RuntimeView } from '../../features/runtime/runtime-view'
 import type { Dispatch } from '../../features/tenants/dispatch'
 import type { Act } from '../inbox/inbox'
-import type { Arrival } from '../store'
+import { type Arrival, useShellStore } from '../store'
 import { SHELL_COPY } from '../copy'
 import { Verdict } from '../verdict'
 import { ADMIN_COPY as C } from './copy'
@@ -132,6 +132,18 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
         // eslint-disable-next-line react-hooks/exhaustive-deps -- once per opened proposal review
     }, [proposed])
 
+    // A Runtime case opened in the Playground from Test Cases (C33): Runtime
+    // Security's Playground tab, filled with the case.
+    const playground = useShellStore((s) => s.playground)
+    useEffect(() => {
+        if (!playground || playground.tenant !== tenant?.id) return
+        const tab = products.find((p) => p.id === 'runtimeSecurity')?.tabs.find((t) => t.label === 'Playground')
+        if (!tab) return
+        setOpen((o) => ({ ...o, runtimeSecurity: true }))
+        setTabOf((s) => ({ ...s, runtimeSecurity: tab.id }))
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- once per handed case
+    }, [playground?.prefill.nonce, products.length])
+
     // A contextual action (Inbox, Home) opens the product and tab it names (C30).
     useEffect(() => {
         if (!arrival || !arrival.resource) return
@@ -183,7 +195,11 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
                         }
                     />
                 )
-            if (tab.label === 'Playground') return <RuntimeView key={key} snapshot={snapshot} dispatch={dispatch} onNavigate={onNavigate} embedded />
+            if (tab.label === 'Playground') {
+                // A case handed over from Test Cases fills the form (C33); the operator runs it.
+                const handed = playground && playground.tenant === tenant!.id ? playground : null
+                return <RuntimeView key={key} snapshot={snapshot} dispatch={dispatch} onNavigate={onNavigate} prefill={handed?.prefill ?? null} caseId={handed?.caseId ?? null} embedded />
+            }
             const resource = (tab.label === 'DLP' ? dlp : tab.resource) as ManagementResource | null
             if (!resource) return null
             return (

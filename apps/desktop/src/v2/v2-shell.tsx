@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Eye, Moon, Sun, SunMoon, Undo2 } from 'lucide-react'
 import type { SwitchResolution, DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../features/tenants/dispatch'
@@ -17,6 +17,9 @@ import { TenantSwitcher } from './tenant-switcher'
 import { Toasts } from './toasts'
 import { Modal, useModalsOpen } from './modal'
 import { Wizard } from './wizard/wizard'
+import { ApiClient } from './workbench/api-client'
+import { CallsPanel } from './workbench/calls-panel'
+import { TestCases } from './workbench/test-cases'
 
 export interface V2ShellProps {
     snapshot: ShellSnapshot
@@ -125,6 +128,8 @@ export function V2Shell(props: V2ShellProps) {
         }
         heading.current?.focus()
     }, [active])
+
+    const observeWorkbench = useCallback((operation: string) => props.client.observeWorkbench(operation), [props.client])
 
     if (!feature) return null
     return (
@@ -301,6 +306,12 @@ export function V2Shell(props: V2ShellProps) {
                         onNavigate={props.onNavigate}
                         arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'harness' ? arrival : null}
                     />
+                ) : feature.id === 'library' && feature.availability.state === 'available' ? (
+                    // Keyed by context: a new tenant starts at its first page, nothing inspected.
+                    <TestCases key={snapshot.active?.context ?? 'none'} ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
+                ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
+                    // Not keyed by tenant: API Client documents are on this Mac.
+                    <ApiClient ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
                 ) : (
                     <FeatureBody
                         ref={heading}
@@ -318,6 +329,10 @@ export function V2Shell(props: V2ShellProps) {
                     {props.status}
                 </p>
             </main>
+            {/* "Show the calls" (C33): beside every destination while chosen; inert under a modal (I8). */}
+            <div aria-hidden={modalOpen ? true : undefined} inert={modalOpen ? true : undefined} className='flex'>
+                <CallsPanel snapshot={snapshot} dispatch={props.dispatch} />
+            </div>
             {paletteOpen && (
                 <Palette snapshot={snapshot} onNavigate={props.onNavigate} onSwitchTenant={props.onSwitchTenant} onReadNow={props.onReadNow} onClose={closePalette} />
             )}

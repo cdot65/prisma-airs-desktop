@@ -2,6 +2,7 @@
 import type { AcademyView } from "./AcademyView";
 import type { ActiveContext } from "./ActiveContext";
 import type { AdminInventoryView } from "./AdminInventoryView";
+import type { CallView } from "./CallView";
 import type { ChangesView } from "./ChangesView";
 import type { DiagnosticsView } from "./DiagnosticsView";
 import type { EndpointReviewView } from "./EndpointReviewView";
@@ -54,6 +55,11 @@ activeFeature: FeatureId,
  * "Show the calls" preference (C28).
  */
 showCalls: boolean, 
+/**
+ * The active tenant's recorded calls, newest last, while "Show the
+ * calls" is on (C33); absent when it is off or no tenant is active.
+ */
+calls?: Array<CallView>, 
 /**
  * A held tenant switch awaiting the operator's resolution (C30 raises
  * it; always absent in C28).

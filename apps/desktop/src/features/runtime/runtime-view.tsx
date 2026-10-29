@@ -15,6 +15,8 @@ interface Props {
     onNavigate: (id: FeatureId) => void
     /** A Library case or starter to fill the form with (never scanned). */
     prefill?: CasePrefill | null
+    /** The library case the prefill came from (C33): its scan names it, so the core records its result. */
+    caseId?: string | null
     /** v2 (C31): no page heading (the Administration accordion names the tab). */
     embedded?: boolean
 }
@@ -34,7 +36,7 @@ const TEXTAREA = cn(
  * from native snapshots, which already exclude other tenants and discard
  * replies for a retired tenant or key.
  */
-export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate, prefill = null, embedded = false }, ref) {
+export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate, prefill = null, caseId = null, embedded = false }, ref) {
     const ids = useId()
     const [tab, setTab] = useState<'scan' | 'overview'>('scan')
     const [caseName, setCaseName] = useState('')
@@ -124,7 +126,9 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
         }
         setBusy(true)
         setMessage(null)
-        const outcome = await dispatch({ kind: 'scan', context, draft: built.draft })
+        // A case's scan names it: the core records the verdict for the case
+        // only if the case still holds what was scanned (C33).
+        const outcome = await dispatch(caseId && prefill ? { kind: 'scan', context, draft: built.draft, case: caseId } : { kind: 'scan', context, draft: built.draft })
         setBusy(false)
         if (outcome.kind === 'admitted') setSelected(outcome.operation)
         else if (outcome.kind === 'unknown') {

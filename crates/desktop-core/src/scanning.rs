@@ -69,7 +69,7 @@ impl std::fmt::Debug for ScanDraft {
     }
 }
 
-fn uuid_shaped(text: &str) -> bool {
+pub(crate) fn uuid_shaped(text: &str) -> bool {
     text.len() == 36
         && text.char_indices().all(|(i, c)| match i {
             8 | 13 | 18 | 23 => c == '-',
@@ -134,7 +134,7 @@ impl ScanDraft {
 }
 
 /// The desktop's reading of a completed scan.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum Verdict {
     Allow,

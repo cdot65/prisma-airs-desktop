@@ -1242,6 +1242,28 @@
         "id": "C32-N04",
         "check": "Keyboard: Tab from the message box reaches Send or End; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Harness screen lies past the window's right edge and there is no horizontal scroll bar; a focused changed control (New investigation) shows its focus ring (pixels around it change against the unfocused capture); with Reduce Motion on, the ended conversation's toast stays past 6 s until dismissed, and the system setting is restored."
       }
+    ],
+    "C33": [
+      {
+        "id": "C33-N01",
+        "check": "Test Cases in the v2 shell: Add starter packs lists the tenant's starter cases with their pack name and Not run; the product filter and search narrow the rows; a non-Runtime case offers Inspect only, whose details name the product that runs it (Red Team: hand the spec to a scan) and dispatch no scan; a Runtime case's Open in Playground opens Administration's Runtime Playground with the case loaded and sends nothing; the operator's Scan sends exactly one request and Test Cases then shows the case's recorded result (V2-T15, V2-T16)."
+      },
+      {
+        "id": "C33-N02",
+        "check": "API Client in the v2 shell: Send announces \"<request> \u00b7 <code> \u00b7 <duration>\" in a status region with the response body outside it (known gap 5, V2-T14); after a topic is applied a new send reflects it while the history entry of the earlier send shows exactly its first response; nothing is resent (I5, V2-R05, V2-T05)."
+      },
+      {
+        "id": "C33-N03",
+        "check": "Show the calls: hidden by default once a tenant exists; while chosen, a panel beside the destination lists the calls made for the tenant (the scan's request line and its credential by kind, the core having attached it), never a secret, a query or a body; Hide the calls removes it."
+      },
+      {
+        "id": "C33-N04",
+        "check": "Keyboard and layout on both screens (T09): Test Cases' search and product filter in Tab order with the focus ring on a changed control; the API Client's Send reached by Tab from the URL and pressed with Space, its completion announced, with the focus ring on Send; the calls panel's control reachable with the ring and Space hiding the panel; Test Cases and the API Client at 900x600 and 200% in light and dark with no horizontal overflow."
+      },
+      {
+        "id": "C33-N05",
+        "check": "The library's workflows in the v2 Test Cases (C12 parity): a Runtime case and a specification created through the form, a case removed, an export saved, cancelled and failed (each said), the exported file imported, and a case copied explicitly to another tenant; no scan request is sent throughout."
+      }
     ]
   }
 }

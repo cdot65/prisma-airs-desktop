@@ -73,6 +73,55 @@ pub struct TestCase {
     pub expected: String,
     #[serde(default)]
     pub payload: Value,
+    /// The starter pack it came from (C33). Kept in the library, never in
+    /// an export (v1's file has no such field).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pack: Option<String>,
+    /// Its last result: the newest Playground scan run for it, recorded by
+    /// the core when that scan settled (C33). Absent: not run. Never in an
+    /// export, never taken from an import.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<CaseResult>,
+}
+
+/// A case's last result (C33): the verdict of a Playground scan run for it,
+/// recorded only while the case still held what was scanned.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CaseResult {
+    pub verdict: crate::scanning::Verdict,
+    /// Wall-clock seconds when the scan settled.
+    #[ts(type = "number")]
+    pub at: u64,
+    /// The service's scan identifier; absent when the service gave none
+    /// (an empty identifier is never invented or shown).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub scan_id: Option<String>,
+}
+
+/// What recording a case's result did (C33).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Recorded {
+    Recorded,
+    /// No Runtime case still holds what was scanned: nothing recorded.
+    NotHeld,
+    /// The library would exceed 256 KiB: nothing recorded.
+    TooLarge,
+}
+
+/// Longest starter pack name a case carries (C33).
+pub const PACK_NAME_LIMIT: usize = 128;
+
+/// A starter pack's name as its cases carry it (C33).
+pub fn pack_name(product: CaseProduct) -> &'static str {
+    match product {
+        CaseProduct::RuntimeSecurity => "Runtime Security starter pack",
+        CaseProduct::AiGateway => "AI Gateway starter pack",
+        CaseProduct::AiRedTeaming => "AI Red Teaming starter pack",
+        CaseProduct::ModelSecurity => "Model Security starter pack",
+        CaseProduct::SkillScanning => "Skill Scanning starter pack",
+    }
 }
 
 /// Why a case, import or catalog was refused (v1's messages are the
@@ -204,6 +253,8 @@ impl CaseDraft {
             },
             expected: self.expected,
             payload,
+            pack: None,
+            result: None,
         };
         case.validate(tenant)?;
         Ok(case)
@@ -224,6 +275,14 @@ pub struct CaseView {
     pub expected: String,
     /// The payload as pretty JSON (non-Runtime products), if any.
     pub payload: Option<String>,
+    /// The starter pack it came from (C33).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub pack: Option<String>,
+    /// Its last result; absent: not run (C33).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub result: Option<CaseResult>,
 }
 
 impl From<&TestCase> for CaseView {
@@ -240,6 +299,8 @@ impl From<&TestCase> for CaseView {
             payload: (!c.payload.is_null())
                 .then(|| serde_json::to_string_pretty(&c.payload).ok())
                 .flatten(),
+            pack: c.pack.clone(),
+            result: c.result.clone(),
         }
     }
 }
@@ -253,6 +314,29 @@ pub struct CaseLibrary {
 impl CaseLibrary {
     fn encoded_len(cases: &[TestCase]) -> usize {
         serde_json::to_vec(cases).map_or(usize::MAX, |b| b.len())
+    }
+
+    /// Records a Playground scan's result for case `id` (C33): only for a
+    /// Runtime case still holding exactly what was scanned, and only while
+    /// the library stays within 256 KiB (the loader's own limit).
+    pub fn record_result(
+        &mut self,
+        id: &str,
+        prompt: &str,
+        response: &str,
+        result: CaseResult,
+    ) -> Recorded {
+        let Some(at) = self.cases.iter().position(|c| {
+            c.id == id && c.product.can_scan() && c.prompt == prompt && c.response == response
+        }) else {
+            return Recorded::NotHeld;
+        };
+        let before = self.cases[at].result.replace(result);
+        if Self::encoded_len(&self.cases) > LIBRARY_BYTES {
+            self.cases[at].result = before;
+            return Recorded::TooLarge;
+        }
+        Recorded::Recorded
     }
 
     /// v1 `add_case`: validated, unique, within 32 cases and 256 KiB.
@@ -300,7 +384,25 @@ impl CaseLibrary {
     }
 
     /// Checks stored cases on load (v1 re-validates every case).
-    pub fn from_cases(cases: Vec<TestCase>, tenant: &str) -> Option<Self> {
+    pub fn from_cases(mut cases: Vec<TestCase>, tenant: &str) -> Option<Self> {
+        // Only a Runtime Security case is ever run, and a pack name is short:
+        // anything else stored is dropped, never shown (C33).
+        for c in &mut cases {
+            if !c.product.can_scan() {
+                c.result = None;
+            }
+            if let Some(r) = c.result.as_mut()
+                && r.scan_id.as_ref().is_some_and(|s| s.is_empty())
+            {
+                r.scan_id = None;
+            }
+            if c.pack
+                .as_ref()
+                .is_some_and(|p| p.is_empty() || p.chars().count() > PACK_NAME_LIMIT)
+            {
+                c.pack = None;
+            }
+        }
         let ok = cases.len() <= CASE_LIMIT
             && Self::encoded_len(&cases) <= LIBRARY_BYTES
             && cases.iter().all(|c| c.validate(tenant).is_ok())
@@ -323,10 +425,19 @@ pub fn export(tenant: &str, cases: &[TestCase]) -> Result<Vec<u8>, CaseProblem> 
     if cases.len() > CASE_LIMIT {
         return Err(CaseProblem::Full);
     }
+    // v1's file: no pack, no local result.
+    let cases = cases
+        .iter()
+        .map(|c| TestCase {
+            pack: None,
+            result: None,
+            ..c.clone()
+        })
+        .collect();
     let bytes = serde_json::to_vec_pretty(&CaseExport {
         version: 2,
         tenant: tenant.to_owned(),
-        cases: cases.to_vec(),
+        cases,
     })
     .map_err(|_| CaseProblem::Format)?;
     if bytes.len() > LIBRARY_BYTES {
@@ -358,7 +469,16 @@ pub fn parse_import(bytes: &[u8], tenant: &str) -> Result<Vec<TestCase>, CasePro
     {
         return Err(CaseProblem::Duplicate);
     }
-    Ok(file.cases)
+    // A file never brings a pack or a result: results are this Mac's runs.
+    Ok(file
+        .cases
+        .into_iter()
+        .map(|c| TestCase {
+            pack: None,
+            result: None,
+            ..c
+        })
+        .collect())
 }
 
 #[derive(Clone, Deserialize)]
@@ -421,6 +541,8 @@ pub fn parse_catalog(bytes: &[u8], tenant: &str) -> Result<Vec<TestCase>, CasePr
             app_name: e.app_name,
             expected: e.expected,
             payload: e.payload,
+            pack: None,
+            result: None,
         };
         case.validate(tenant).map_err(|_| CaseProblem::Catalog)?;
         cases.push(case);
@@ -580,6 +702,10 @@ pub fn store(
     library: &CaseLibrary,
 ) -> Result<(), LibraryFailure> {
     let plain = serde_json::to_vec(&library.cases).map_err(|_| LibraryFailure::Unavailable)?;
+    // Never a file the loader would refuse (C33): within 256 KiB.
+    if plain.len() > LIBRARY_BYTES {
+        return Err(LibraryFailure::Unavailable);
+    }
     let key = key(keychain, tenant, true)?.ok_or(LibraryFailure::Unavailable)?;
     let sealed =
         crate::sessions::seal(&key, &aad(tenant), &plain).ok_or(LibraryFailure::Unavailable)?;
@@ -701,6 +827,86 @@ mod tests {
         ];
         assert_eq!(library.merge(two), Err(CaseProblem::Full));
         assert_eq!(library.cases.len(), CASE_LIMIT - 1);
+    }
+
+    #[test]
+    fn a_result_is_recorded_only_for_a_held_runtime_case_and_only_within_256_kib() {
+        let result = || CaseResult {
+            verdict: crate::scanning::Verdict::Allow,
+            at: 1,
+            scan_id: Some("S-1".into()),
+        };
+        let runtime = draft(CaseProduct::RuntimeSecurity)
+            .into_case(T)
+            .expect("runtime");
+        let spec = draft(CaseProduct::AiRedTeaming).into_case(T).expect("spec");
+        let mut library = CaseLibrary {
+            cases: vec![runtime.clone(), spec.clone()],
+        };
+        assert_eq!(
+            library.record_result(&spec.id, &spec.prompt, &spec.response, result()),
+            Recorded::NotHeld
+        );
+        assert_eq!(
+            library.record_result(&runtime.id, "edited", "", result()),
+            Recorded::NotHeld
+        );
+        assert_eq!(
+            library.record_result(&runtime.id, &runtime.prompt, &runtime.response, result()),
+            Recorded::Recorded
+        );
+        // Near the limit: the result would not fit, so nothing changes.
+        for _ in 0..2 {
+            let mut filler = draft(CaseProduct::RuntimeSecurity)
+                .into_case(T)
+                .expect("filler");
+            filler.prompt = "f".repeat(90_000);
+            library.cases.push(filler);
+        }
+        let room = LIBRARY_BYTES - CaseLibrary::encoded_len(&library.cases);
+        let mut big = draft(CaseProduct::RuntimeSecurity)
+            .into_case(T)
+            .expect("big");
+        let probe = CaseLibrary::encoded_len(std::slice::from_ref(&big)) + 1;
+        big.prompt = "p".repeat(room - probe + big.prompt.len() - 10);
+        library.cases.push(big.clone());
+        assert!(CaseLibrary::encoded_len(&library.cases) <= LIBRARY_BYTES);
+        let before = library.clone();
+        assert_eq!(
+            library.record_result(&big.id, &big.prompt, &big.response, result()),
+            Recorded::TooLarge
+        );
+        assert_eq!(library, before);
+        assert!(CaseLibrary::from_cases(library.cases.clone(), T).is_some());
+    }
+
+    #[test]
+    fn a_stored_result_on_a_specification_or_an_oversized_pack_is_dropped_on_load() {
+        let result = || CaseResult {
+            verdict: crate::scanning::Verdict::Block,
+            at: 1,
+            scan_id: Some("S".into()),
+        };
+        let runtime = TestCase {
+            result: Some(result()),
+            pack: Some(pack_name(CaseProduct::RuntimeSecurity).into()),
+            ..draft(CaseProduct::RuntimeSecurity)
+                .into_case(T)
+                .expect("runtime")
+        };
+        let spec = TestCase {
+            result: Some(result()),
+            pack: Some("p".repeat(PACK_NAME_LIMIT + 1)),
+            ..draft(CaseProduct::AiRedTeaming).into_case(T).expect("spec")
+        };
+        let library =
+            CaseLibrary::from_cases(vec![runtime.clone(), spec.clone()], T).expect("read");
+        assert_eq!(
+            library.cases[0], runtime,
+            "a Runtime case keeps its result and pack"
+        );
+        assert_eq!(library.cases[1].result, None);
+        assert_eq!(library.cases[1].pack, None);
     }
 
     #[test]

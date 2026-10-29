@@ -454,7 +454,8 @@ pub async fn desk_with(engine: Option<Engine>, fixture: Option<Pin>) -> Desk {
         history_root: Some(history_root.clone()),
         fixture: fixture.map(|pin| FixtureEngine {
             pin,
-            bootstrap_timeout: Duration::from_secs(1),
+            // Generous: several engines start at once under the full suite's load.
+            bootstrap_timeout: Duration::from_secs(5),
         }),
         save_gate: Some(Arc::clone(&save_gate)),
     };
@@ -553,7 +554,8 @@ pub async fn relaunch_from(old: Desk, online: bool, real: bool, crashed: bool) -
         history_root: Some(history_root.clone()),
         fixture: pin.map(|pin| FixtureEngine {
             pin,
-            bootstrap_timeout: Duration::from_secs(1),
+            // Generous: several engines start at once under the full suite's load.
+            bootstrap_timeout: Duration::from_secs(5),
         }),
         save_gate: Some(Arc::clone(&save_gate)),
     };

@@ -2016,7 +2016,70 @@ function isCaseView(value: unknown): boolean {
         isString(value.expected) &&
         optional(isString, value.payload) &&
         // Only specifications carry a payload (v1).
-        (value.product !== 'runtime-security' || value.payload === null)
+        (value.product !== 'runtime-security' || value.payload === null) &&
+        // C33: its starter pack, and its last Playground result (absent: not run).
+        optional((p) => typeof p === 'string' && p.length > 0 && p.length <= 128, value.pack ?? null) &&
+        optional(isCaseResult, value.result ?? null) &&
+        // Only a Runtime Security case is ever run.
+        (value.result === undefined || value.product === 'runtime-security')
+    )
+}
+
+/** A case's last result (C33): the verdict of a Playground scan run for it. */
+function isCaseResult(value: unknown): boolean {
+    // The service's scan identifier, when it gave one (never empty, never invented).
+    return isRecord(value) && oneOf(['allow', 'block', 'alert', 'unknown'], value.verdict) && isCount(value.at) && optional((id) => isString(id) && (id as string).length > 0, value.scanId ?? null)
+}
+
+const CALL_PURPOSES: readonly string[] = ['scan', 'management', 'inference']
+const CALL_CREDENTIALS: readonly string[] = ['scanKey', 'managementClient', 'workspaceKey']
+const MAX_SHOWN_CALLS = 50
+/** The core's call record bounds (desktop-core transport.rs `CALL_*_LIMIT`). */
+const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9a-z-]{1,64}$/
+const HTTP_TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,16}$/
+
+/**
+ * One call made on the tenant's behalf (C33): its request line without the
+ * query, header names only and sizes, and the response status, duration and
+ * content type. Never a header value, a query or a body.
+ */
+function isCallView(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        isCount(value.sequence) &&
+        oneOf(CALL_PURPOSES, value.purpose) &&
+        oneOf(CALL_CREDENTIALS, value.credential) &&
+        typeof value.method === 'string' &&
+        HTTP_TOKEN.test(value.method) &&
+        typeof value.origin === 'string' &&
+        /^https:\/\/[^/?#\s]+$/.test(value.origin) &&
+        typeof value.path === 'string' &&
+        value.path.startsWith('/') &&
+        !/[?#\s]/.test(value.path) &&
+        value.path.length <= 2048 &&
+        typeof value.query === 'boolean' &&
+        Array.isArray(value.requestHeaders) &&
+        value.requestHeaders.length <= 128 &&
+        value.requestHeaders.every((h) => typeof h === 'string' && HEADER_NAME.test(h)) &&
+        isCount(value.requestBytes) &&
+        optional((s) => Number.isInteger(s) && (s as number) >= 100 && (s as number) <= 999, value.status) &&
+        isCount(value.durationMs) &&
+        optional((t) => typeof t === 'string' && t.length <= 128, value.contentType) &&
+        Array.isArray(value.responseHeaders) &&
+        value.responseHeaders.length <= 128 &&
+        value.responseHeaders.every((h) => typeof h === 'string' && HEADER_NAME.test(h))
+    )
+}
+
+/** The active tenant's calls, newest last (increasing sequence), only while "Show the calls" is on (C33). */
+function isCalls(value: unknown, showCalls: unknown): boolean {
+    if (value === undefined) return true
+    return (
+        showCalls === true &&
+        Array.isArray(value) &&
+        value.length <= MAX_SHOWN_CALLS &&
+        value.every(isCallView) &&
+        value.every((c, i) => i === 0 || (c as { sequence: number }).sequence > (value[i - 1] as { sequence: number }).sequence)
     )
 }
 
@@ -2810,6 +2873,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         typeof value.activeFeature !== 'string' ||
         !FEATURE_IDS.includes(value.activeFeature) ||
         typeof value.showCalls !== 'boolean' ||
+        !isCalls(value.calls, value.showCalls) ||
         !optional(
             (g) =>
                 isRecord(g) &&

@@ -91,6 +91,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         if url.path == "/items":
             return self.answer(200, b'{"items":[1,2,3]}', [("content-type", "application/json")])
+        if url.path == "/topics":
+            # C33: the topics the "service" holds now; the driver applies one between sends.
+            p = os.path.join(self.server.dir, "topics.json")
+            names = json.load(open(p)) if os.path.exists(p) else ["Finance"]
+            return self.answer(200, json.dumps({"custom_topics": names}, separators=(",", ":")).encode(),
+                               [("content-type", "application/json")])
         if url.path == "/login":
             return self.answer(200, b"{}", [("content-type", "application/json"),
                                             ("set-cookie", "sid=synthetic-c15; Path=/; Max-Age=3600")])

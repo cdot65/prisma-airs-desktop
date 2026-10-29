@@ -36,6 +36,17 @@ export interface HarnessSent {
     text: string
 }
 
+/**
+ * A Runtime case handed to the Playground (C33): Administration opens Runtime
+ * Security's Playground tab with the case's fields; the operator runs the
+ * scan there. Bound to the tenant it was opened in.
+ */
+export interface PlaygroundCase {
+    tenant: string
+    caseId: string
+    prefill: import('../features/library/library-view').CasePrefill
+}
+
 /** A delivery the desktop did not confirm: kept until the operator retries or dismisses it (DESIGN-V2 §7). */
 export interface Unconfirmed {
     id: number
@@ -95,6 +106,9 @@ interface ShellStore {
      * order its receipt and the core's word arrive in. Newest 64.
      */
     harnessSent: Record<string, HarnessSent[]>
+    /** The case last handed to the Playground (C33); never runs anything by itself. */
+    playground: PlaygroundCase | null
+    openPlayground(target: Omit<PlaygroundCase, 'prefill'> & { prefill: Omit<PlaygroundCase['prefill'], 'nonce'> }): void
     trackHarnessSend(scope: string, sent: HarnessSent): void
     untrackHarnessSend(scope: string, submission: string): void
     /** The last contextual action's target, consumed by the destination it names. */
@@ -157,6 +171,8 @@ export const useShellStore = create<ShellStore>((set, get) => ({
         }),
     dropHarnessUnsent: (scope, id) => set((s) => ({ harnessUnsent: { ...s.harnessUnsent, [scope]: (s.harnessUnsent[scope] ?? []).filter((k) => k.id !== id) } })),
     harnessSent: {},
+    playground: null,
+    openPlayground: (target) => set((s) => ({ playground: { ...target, prefill: { ...target.prefill, nonce: (s.playground?.prefill.nonce ?? 0) + 1 } } })),
     trackHarnessSend: (scope, sent) => set((s) => ({ harnessSent: { ...s.harnessSent, [scope]: [...(s.harnessSent[scope] ?? []), sent].slice(-64) } })),
     untrackHarnessSend: (scope, submission) => set((s) => ({ harnessSent: { ...s.harnessSent, [scope]: (s.harnessSent[scope] ?? []).filter((t) => t.submission !== submission) } })),
     arrival: null,
@@ -194,5 +210,5 @@ export const useShellStore = create<ShellStore>((set, get) => ({
 
 /** Test seam: forget everything (each test starts from an empty store). */
 export function resetShellStore() {
-    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {} })
+    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
 }

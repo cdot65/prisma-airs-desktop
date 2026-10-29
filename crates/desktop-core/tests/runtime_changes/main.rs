@@ -1003,14 +1003,16 @@ async fn nothing_about_a_change_or_its_secret_is_persisted_or_replayed_after_res
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_confirmation_that_outlives_its_review_applies_nothing() {
-    let mut desk = desk_with(|c| c.review_lifetime = Duration::from_millis(800)).await;
+    // Long enough for the review to be prepared on a slow network (800 ms was
+    // not); the confirmation is then held past it.
+    let mut desk = desk_with(|c| c.review_lifetime = Duration::from_millis(3_000)).await;
     let draft = topic_update("Late");
     let review = desk.review(&draft).await;
     desk.request(&review, &draft, "Finance")
         .await
         .expect("requested");
     assert!(eventually(|| desk.adapters.confirmer.held() == 1).await);
-    tokio::time::sleep(Duration::from_millis(1_000)).await;
+    tokio::time::sleep(Duration::from_millis(3_200)).await;
     assert!(desk.adapters.confirmer.complete(true));
     tokio::time::sleep(Duration::from_millis(300)).await;
     assert!(desk.writes().is_empty() && desk.snap().changes.results.is_empty());

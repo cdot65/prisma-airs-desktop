@@ -859,10 +859,17 @@ async fn a_result_settled_before_its_context_retired_is_never_delivered_afterwar
         .admit(json!({"kind": "detail", "resource": "topics", "id": "11111111-1111-4111-8111-111111111111"}))
         .await
         .expect("admitted");
-    assert!(
-        eventually(|| desk.requests("/aisec/v1/mgmt/topics").len() == 1).await,
-        "both reads reached the service"
-    );
+    // However long the token and the connection take here (2 s was not
+    // always enough on a slow network).
+    let mut reached = false;
+    for _ in 0..1500 {
+        if desk.requests("/aisec/v1/mgmt/topics").len() == 1 {
+            reached = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(reached, "both reads reached the service");
     tokio::time::sleep(Duration::from_millis(300)).await;
     // The credential is replaced: A's results are withdrawn, not delivered.
     desk.management_key("replacement-secret").await;

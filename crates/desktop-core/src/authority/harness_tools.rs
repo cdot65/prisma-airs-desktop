@@ -627,6 +627,7 @@ async fn run(
                 let admitted = state.admit_scan(
                     context.clone(),
                     draft,
+                    None,
                     Arc::clone(&inner.adapters.keychain),
                     Arc::clone(&inner.session),
                 )?;

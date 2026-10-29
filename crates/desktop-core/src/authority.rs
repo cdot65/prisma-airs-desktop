@@ -676,6 +676,12 @@ pub enum Intent {
     Scan {
         context: ContextRef,
         draft: ScanDraft,
+        /// The library case it was opened from (C33): once it settles, its
+        /// verdict is recorded for that case, if the case still holds what
+        /// was scanned. Never starts anything by itself.
+        #[serde(default)]
+        #[ts(optional)]
+        case: Option<String>,
     },
     /// Cancel a scan: queued work is not sent; a running request is
     /// cancelled and its outcome reported as the service left it.
@@ -1226,6 +1232,11 @@ pub struct ShellSnapshot {
     pub active_feature: FeatureId,
     /// "Show the calls" preference (C28).
     pub show_calls: bool,
+    /// The active tenant's recorded calls, newest last, while "Show the
+    /// calls" is on (C33); absent when it is off or no tenant is active.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub calls: Option<Vec<crate::transport::CallView>>,
     /// A held tenant switch awaiting the operator's resolution (C30 raises
     /// it; always absent in C28).
     pub switch_blocked: Option<SwitchBlocked>,
@@ -1318,6 +1329,15 @@ struct ScanRecord {
     /// Copied from the runtime when observed, so history never depends on
     /// how long the runtime retains settled operations.
     settlement: Option<runtime::Settlement>,
+    /// The library case it was opened from, with what was scanned (C33).
+    case: Option<ScannedCase>,
+}
+
+/// A scan opened from a library case (C33): the case and what was scanned.
+struct ScannedCase {
+    id: String,
+    prompt: String,
+    response: String,
 }
 
 /// Bounds for the core's in-memory structures.
@@ -1693,6 +1713,10 @@ struct State {
     transport: Option<Arc<TransportFactory>>,
     store: Arc<dyn AppStore>,
     scans: Vec<ScanRecord>,
+    /// Calls made on tenants' behalf, for "Show the calls" (C33).
+    calls: crate::transport::CallLog,
+    /// Library generations a case result changed, still to be stored (C33).
+    case_writes: Vec<(TenantId, u64)>,
     /// One SDK session per issued context; cancelled when it retires.
     scan_sessions: Vec<(ContextRef, Session)>,
     /// The management endpoints credentials are bound to.
@@ -1855,8 +1879,11 @@ impl State {
         }
     }
 
+    /// The operator's choice, else on until onboarding completes (C33).
     fn show_calls(&self) -> bool {
-        self.data.show_calls.unwrap_or(true)
+        self.data
+            .show_calls
+            .unwrap_or(self.shown_onboarding() != features::OnboardingState::Done)
     }
 
     /// The active destination: the last admitted `navigate` while it stays
@@ -1876,6 +1903,12 @@ impl State {
             onboarding: self.shown_onboarding(),
             active_feature: self.active_feature(),
             show_calls: self.show_calls(),
+            calls: self
+                .data
+                .active
+                .as_ref()
+                .filter(|_| self.show_calls())
+                .map(|t| self.calls.for_tenant(t.as_str())),
             switch_blocked: self.switch_blocked.clone(),
             setup: self.setup_view(),
             features: features::catalogue_for(self.ui_variant()),
@@ -2018,6 +2051,7 @@ impl State {
             ui_variant: self.ui_variant(),
             onboarding: self.onboarding(),
             show_calls: self.show_calls(),
+            show_calls_chosen: self.data.show_calls.is_some(),
             tenants: self
                 .data
                 .tenants
@@ -2182,12 +2216,36 @@ impl State {
         &mut self,
         context: ContextRef,
         draft: crate::scanning::ScanDraft,
+        case: Option<String>,
         keychain: Arc<dyn CredentialStore>,
         session: Arc<SessionVault>,
     ) -> Result<(OperationId, Vec<runtime::Start>), Refusal> {
         let state = self;
         let tenant = state.check_context(&context)?;
         let draft = draft.validate().ok_or(Refusal::InvalidInput)?;
+        if case
+            .as_deref()
+            .is_some_and(|id| !crate::scanning::uuid_shaped(id))
+        {
+            return Err(Refusal::InvalidInput);
+        }
+        // Only a Runtime Security case of this tenant's open library can be
+        // named: a missing, another tenant's or another product's case is
+        // refused before anything is sent (C33).
+        if let Some(id) = case.as_deref() {
+            let runnable = state
+                .open_library_cases(&tenant)
+                .is_some_and(|cases| cases.iter().any(|c| c.id == id && c.product.can_scan()));
+            if !runnable {
+                return Err(Refusal::InvalidInput);
+            }
+        }
+        // What was scanned, to compare with the case when it settles.
+        let case = case.map(|id| ScannedCase {
+            id,
+            prompt: draft.prompt.clone(),
+            response: draft.response.clone(),
+        });
         let (record, mode, origin) = match &state.tenant(&tenant).ok_or(Refusal::StaleContext)?.scan
         {
             ScanCapability::Ready {
@@ -2202,7 +2260,14 @@ impl State {
             .transport
             .clone()
             .ok_or(Refusal::CapabilityMissing)?
-            .for_admission()
+            .for_tenant(
+                &state.calls,
+                crate::transport::CallTag {
+                    tenant: tenant.as_str().to_owned(),
+                    purpose: crate::transport::CallPurpose::Scan,
+                    credential: crate::transport::CallCredential::ScanKey,
+                },
+            )
             .map_err(|_| Refusal::CapabilityMissing)?;
         let slot: PayloadSlot = Arc::default();
         let bytes = draft.queued_bytes();
@@ -2229,6 +2294,7 @@ impl State {
             payload: None,
             discarded: false,
             settlement: None,
+            case,
         });
         Ok((operation, starts))
     }
@@ -2236,6 +2302,14 @@ impl State {
     /// Collects settled scans now (C21's scan tool waits on them).
     fn sync_scans_now(&mut self) {
         self.sync_scans();
+    }
+
+    /// The library writes case results queued (C33).
+    fn take_case_writes(&mut self) -> Vec<Effect> {
+        std::mem::take(&mut self.case_writes)
+            .into_iter()
+            .map(|(tenant, generation)| Effect::StoreLibrary { tenant, generation })
+            .collect()
     }
 
     /// A settled scan's result as the presentation sees it (C21's scan
@@ -2264,6 +2338,7 @@ impl State {
 
     fn sync_scans(&mut self) {
         let current = self.active_ref.clone();
+        let mut results = Vec::new();
         for record in self.scans.iter_mut().filter(|r| r.settlement.is_none()) {
             record.settlement = match self.operations.state(&record.operation) {
                 Some(OperationState::Settled(s)) => Some(s),
@@ -2277,8 +2352,39 @@ impl State {
             let payload = record.slot.lock().ok().and_then(|mut s| s.take());
             if Some(&record.context) == current.as_ref() {
                 record.payload = payload;
+                if let (Some(case), Some(ScanPayload::Result(view))) =
+                    (&record.case, &record.payload)
+                {
+                    results.push((
+                        record.tenant.clone(),
+                        case.id.clone(),
+                        case.prompt.clone(),
+                        case.response.clone(),
+                        crate::library::CaseResult {
+                            verdict: view.verdict,
+                            at: offline_domain::now_secs(),
+                            scan_id: (!view.scan_id.is_empty()).then(|| view.scan_id.clone()),
+                        },
+                    ));
+                }
             } else {
                 record.discarded = payload.is_some();
+            }
+        }
+        // A case's result is its newest Playground run, recorded only while
+        // the case still holds what was scanned (C33).
+        for (tenant, id, prompt, response, result) in results {
+            let changed = self.change_open_library(&tenant, |library| {
+                let recorded = library.record_result(&id, &prompt, &response, result);
+                (recorded, recorded == crate::library::Recorded::Recorded)
+            });
+            match changed {
+                Some((_, Some(generation))) => self.case_writes.push((tenant, generation)),
+                // Said, never silently dropped: the library has no room for it.
+                Some((crate::library::Recorded::TooLarge, None)) => {
+                    self.library_problem(&tenant, crate::library::CaseProblem::TooLarge);
+                }
+                _ => {}
             }
         }
         // Per tenant: every unsettled scan and the newest settled ones.
@@ -2742,6 +2848,8 @@ impl Core {
             transport,
             store: Arc::clone(&adapters.store),
             scans: Vec::new(),
+            calls: crate::transport::CallLog::default(),
+            case_writes: Vec::new(),
             scan_sessions: Vec::new(),
             management_endpoints: config.management,
             management_bindings: Vec::new(),
@@ -3285,7 +3393,7 @@ fn data_from(doc: PersistedState) -> Data {
         appearance: Some(doc.appearance),
         ui_variant: Some(doc.ui_variant),
         onboarding: Some(doc.onboarding),
-        show_calls: Some(doc.show_calls),
+        show_calls: doc.show_calls_chosen.then_some(doc.show_calls),
         tenants,
         active: doc.active_tenant,
         setup: None,
@@ -3577,7 +3685,8 @@ fn admit(
             }
         }
         Intent::SetShowCalls { on } => {
-            if state.show_calls() != on {
+            // The operator's choice holds from now on, onboarding or not (C33).
+            if state.data.show_calls != Some(on) {
                 let before = state.data.clone();
                 state.data.show_calls = Some(on);
                 if state.storage == StorageHealth::Ready
@@ -3825,6 +3934,7 @@ fn admit(
             }
             let before = state.data.clone();
             let was_active = state.data.active.as_ref() == Some(&tenant);
+            state.calls.forget(tenant.as_str());
             let retired_session = state.retire_credential(&tenant);
             let retired_management = state.retire_class(&tenant, CredentialClass::Management);
             let retired_inference = state.retire_class(&tenant, CredentialClass::Inference);
@@ -4900,10 +5010,15 @@ fn admit(
             operation_ref = Some(operation);
             effects.push(Effect::Start(starts));
         }
-        Intent::Scan { context, draft } => {
+        Intent::Scan {
+            context,
+            draft,
+            case,
+        } => {
             let (operation, starts) = state.admit_scan(
                 context,
                 draft,
+                case,
                 Arc::clone(&adapters.keychain),
                 Arc::clone(session),
             )?;
@@ -4927,6 +5042,7 @@ fn admit(
             state.sync_scans();
             effects.push(Effect::Start(starts));
             state.changed();
+            effects.extend(state.take_case_writes());
         }
     }
     state.admitted += 1;
@@ -5618,6 +5734,7 @@ fn complete_operation(
             state.sync_scans();
             state.changed();
             let mut effects = vec![Effect::Start(starts)];
+            effects.extend(state.take_case_writes());
             effects.extend(gateway_local_effects(&mut state));
             effects
         }

@@ -33,8 +33,9 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
 | R2Harness | R2App | start=harness, convo=blocks | `fxHarness` + `harness-lifecycle-blocks.json` (v2/harness/harness.test.tsx) | V2-T17 | C32 |
 | R2Harness2 | R2App | start=harness, convo=mcp | `fxHarness` + `harness-lifecycle-mcp.json` (v2/harness/harness.test.tsx) | V2-T17 (Gateway MCP read, P16) | C32 |
 | R2Harness3 | R2App | start=harness, convo=keys | `fxHarness` + `harness-lifecycle-keys.json` (v2/harness/harness.test.tsx) | V2-T17, T18 | C32 |
-| R2Api | R2App | start=api | `fx.api` | V2-T05, T14 | C33 |
-| R2Cases | R2App | start=cases | `fx.cases` | V2-T15, T16 | C33 |
+| R2Api | R2App | start=api | `fxApi` (v2/fixtures.ts; v2/workbench/workbench.test.tsx) | V2-T14; V2-R05, T05 in `ui_v2_workbench` | C33 |
+| R2Cases | R2App | start=cases | `fxCases` (v2/fixtures.ts; v2/workbench/workbench.test.tsx) | V2-T15, T16 | C33 |
+| Show the calls | R2App, any start (no prototype board) | `fxCalls` (v2/fixtures.ts; v2/workbench/workbench.test.tsx) | panel shown only while chosen, never a secret (P54) | C33 |
 | R2Academy | R2App | start=academy | `fx.academy` | embed mounts, theme | C34 |
 
 Test ids: `V2-Txx` Vitest (desktop app), `V2-Rxx` Rust integration

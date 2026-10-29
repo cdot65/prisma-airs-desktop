@@ -194,7 +194,14 @@ impl State {
             .transport
             .clone()
             .ok_or(Refusal::CapabilityMissing)?
-            .for_admission()
+            .for_tenant(
+                &self.calls,
+                crate::transport::CallTag {
+                    tenant: tenant.as_str().to_owned(),
+                    purpose: crate::transport::CallPurpose::Management,
+                    credential: crate::transport::CallCredential::ManagementClient,
+                },
+            )
             .map_err(|_| Refusal::CapabilityMissing)?;
         // Only a Keychain-stored credential's investigation is sealed on
         // disk (its key in the same namespace); a session credential's stays

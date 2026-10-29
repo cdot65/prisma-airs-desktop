@@ -31,7 +31,7 @@ and reconciled by hand; a key missing here is a specification defect.
 | `s.vs` | verify results per product | Core | `ShellSnapshot.setup.verify` (streamed `VerifyStep`s from `verifyTenantSetup`, with `done`/`failed`/`stale`) | until the draft completes or is discarded | kept; computed in core, including staleness against a signature of the draft's inputs |
 | `s.aesFixed`, `s.failCleared` | AES warning demo acknowledged; failed row cleared | UI | wizard store | per run | **changed**: AES is not an admitted product (P18); the warning demo becomes a generic "warning row" fixture on an admitted product |
 | `s.prods` | selected products | UI → Core | `completeOnboarding.products` | written at completion | kept; unavailable products are not selectable (P18) |
-| `s.packs`, `s.casesState` | starter packs selected, pack state | UI → Core | `completeOnboarding.packs` → library entries | written at completion | kept |
+| `s.packs`, `s.casesState` | starter packs selected, pack state | UI → Core | `completeTenantSetup.products` → the bundled catalog's cases as library entries named by their starter pack, Not run (P55) | written at completion | kept |
 | `s.acad`, `s.af` (`f.email`, `f.dname`), `s.streaks`, `s.remind` | local Academy account form, streaks, reminders | **Dropped** / Core (Academy) | Academy identity is hosted (D004–D006, C04); the step signs in or skips | — | **changed** (P19): no local account, streaks or reminders in the wizard |
 | `s.help` | help popover open | UI | wizard store | transient | kept |
 | `s.opened` | "Open Prisma AIRS" progress | UI | mirrors the `onboarding` transition | transient | kept |
@@ -59,10 +59,12 @@ and reconciled by hand; a key missing here is a specification defect.
 | `s.credOpen`, `s.credVal` | credential dialog open, value | Host | credential entry is the host secret sheet | — | **changed** (P1): no web credential value |
 | `s.packsOpen`, `s.packPick` | starter-pack dialog, picks | UI → Core | library intent | transient | kept |
 | `s.ncOpen`, `s.ncName`, `s.ncPid`, `s.ncInput`, `s.ncDir` | new-case dialog fields | UI → Core | `createCase` (existing library) | transient | kept |
-| `s.casePage`, `s.caseQ`, `s.cfil` | Test Cases paging, search, filter | UI | workbench store | transient | kept |
+| `s.casePage`, `s.caseQ`, `s.cfil` | Test Cases paging, search, filter | UI | Test Cases screen state (keyed by context) | transient | kept |
 | `s.req`, `s.reqQ`, `s.fmt`, `s.rtab`, `s.rsub` | API Client request, search, body format, response tab, sub-tab | UI | workbench store | transient | kept |
 | `s.quiz` | Academy quiz state | **Dropped** | hosted Academy owns it (P19) | — | dropped |
 | `s.convoHint` | ended-conversation hint | UI | harness store; cleared by any navigation; its opening question is the core's `opening` (the conversation's, or the opened saved record's), never the title (P51) | transient | kept |
+| (none; DESIGN-V2 §3) | "Show the calls" preference and panel | Core | `ShellSnapshot.showCalls` (the operator's choice once made, else on until onboarding completes) and `ShellSnapshot.calls` (the active tenant's calls this app run: request line, credential kind, header names, status, duration; never a value, query or body) (P54) | preference persisted; calls in memory for the app run | added |
+| `ts.activeCase` hand-off | the case opened in the Playground | UI → Core | shell store `playground` (tenant, case, fields) → Runtime Playground prefill; the scan names the case (`scan.case`) and the core records its result (P55, P56) | until the next hand-off | kept |
 
 ## R2App — per-tenant (`ts.*`)
 

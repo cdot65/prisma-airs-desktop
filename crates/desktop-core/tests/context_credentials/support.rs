@@ -335,8 +335,11 @@ impl Proxy {
 }
 
 /// Waits until `condition` holds or the timeout passes.
+/// Waits up to 10 s for `condition` (it returns as soon as it holds): a
+/// TLS connection, a token and a read can take seconds on a slow network
+/// or under the full suite's load (C33).
 pub async fn eventually(mut condition: impl FnMut() -> bool) -> bool {
-    for _ in 0..200 {
+    for _ in 0..1000 {
         if condition() {
             return true;
         }

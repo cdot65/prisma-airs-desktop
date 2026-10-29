@@ -1,0 +1,134 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C33",
+  "recorded_utc": "2026-10-29T17:41:43Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c33.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "91fb757344fcbf713777677bd01ce375b37937f36a85bbd6b88844e28a6d5d82",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C33-N01",
+      "description": "Test Cases in the v2 shell: Add starter packs lists the tenant's starter cases with their pack name and Not run; the product filter and search narrow the rows; a non-Runtime case offers Inspect only, whose details name the product that runs it (Red Team: hand the spec to a scan) and dispatch no scan; a Runtime case's Open in Playground opens Administration's Runtime Playground with the case loaded and sends nothing; the operator's Scan sends exactly one request and Test Cases then shows the case's recorded result (V2-T15, V2-T16).",
+      "result": "pass",
+      "observation": "Test Cases screen True; Add starter packs listed 3 Runtime rows (Open in Playground) and 8 specification rows (Inspect), pack named True, Not run True; filter AI Red Teaming (2) showed 2 rows, none Runtime (0); search with no match said so True; Inspect showed the Red Team spec's 'hand the spec to a scan' True and the never-run note True with 0 scan requests; Open in Playground opened Administration's Playground with the case loaded True and no scan True; the operator's Scan sent one request True; Test Cases then showed its result True (1 scan in all)",
+      "evidence": [
+        "docs/planning/evidence/C33/native/observations.json",
+        "docs/planning/evidence/C33/native/tree-cases.json",
+        "docs/planning/evidence/C33/native/tree-cases-inspect.json",
+        "docs/planning/evidence/C33/native/tree-cases-playground.json",
+        "docs/planning/evidence/C33/native/tree-cases-result.json",
+        "docs/planning/evidence/C33/native/captures/cases-light-100.png",
+        "docs/planning/evidence/C33/native/captures/cases-dark-100.png",
+        "docs/planning/evidence/C33/native/captures/cases-dark-200.png",
+        "docs/planning/evidence/C33/native/captures/cases-light-200.png",
+        "docs/planning/evidence/C33/native/captures/cases-inspect.png",
+        "docs/planning/evidence/C33/native/captures/cases-playground.png",
+        "docs/planning/evidence/C33/native/captures/cases-result.png"
+      ]
+    },
+    {
+      "id": "C33-N02",
+      "description": "API Client in the v2 shell: Send announces \"<request> \u00b7 <code> \u00b7 <duration>\" in a status region with the response body outside it (known gap 5, V2-T14); after a topic is applied a new send reflects it while the history entry of the earlier send shows exactly its first response; nothing is resent (I5, V2-R05, V2-T05).",
+      "result": "pass",
+      "observation": "Send announced 'topics \u00b7 200 \u00b7 7 ms' in a status region True with the body outside it True; after the topic was applied a new send reflected it True; History listed 2 entries and the older one showed exactly the first response True; 2 requests reached the loopback endpoint, nothing resent",
+      "evidence": [
+        "docs/planning/evidence/C33/native/observations.json",
+        "docs/planning/evidence/C33/native/tree-api-sent.json",
+        "docs/planning/evidence/C33/native/tree-api-history.json",
+        "docs/planning/evidence/C33/native/captures/api-sent-light-100.png",
+        "docs/planning/evidence/C33/native/captures/api-sent-dark-100.png",
+        "docs/planning/evidence/C33/native/captures/api-sent-dark-200.png",
+        "docs/planning/evidence/C33/native/captures/api-sent-light-200.png",
+        "docs/planning/evidence/C33/native/captures/api-history.png"
+      ]
+    },
+    {
+      "id": "C33-N03",
+      "description": "Show the calls: hidden by default once a tenant exists; while chosen, a panel beside the destination lists the calls made for the tenant (the scan's request line and its credential by kind, the core having attached it), never a secret, a query or a body; Hide the calls removes it.",
+      "result": "pass",
+      "observation": "hidden by default once a tenant exists True; Show the calls listed the scan's request line True with its credential by kind True (management calls True); no secret anywhere in the window True; Hide the calls removed the panel True",
+      "evidence": [
+        "docs/planning/evidence/C33/native/observations.json",
+        "docs/planning/evidence/C33/native/tree-calls.json",
+        "docs/planning/evidence/C33/native/captures/calls-light-100.png",
+        "docs/planning/evidence/C33/native/captures/calls-dark-100.png",
+        "docs/planning/evidence/C33/native/captures/calls-dark-200.png",
+        "docs/planning/evidence/C33/native/captures/calls-light-200.png"
+      ]
+    },
+    {
+      "id": "C33-N05",
+      "description": "The library's workflows in the v2 Test Cases (C12 parity): a Runtime case and a specification created through the form, a case removed, an export saved, cancelled and failed (each said), the exported file imported, and a case copied explicitly to another tenant; no scan request is sent throughout.",
+      "result": "pass",
+      "observation": "New case saved a Runtime case True listed with Open in Playground True, and with the Red Team filter a specification True (no profile field True, Inspect only True); Remove removed one True; Export saved the file True, cancelled said so True, a read-only folder failed and said so True; Import of the exported file reported its cases already present True; Copy cases to Tenant B True copied one True; no scan request throughout True",
+      "evidence": [
+        "docs/planning/evidence/C33/native/observations.json",
+        "docs/planning/evidence/C33/native/tree-cases-library.json",
+        "docs/planning/evidence/C33/native/captures/cases-library.png"
+      ]
+    },
+    {
+      "id": "C33-N04",
+      "description": "Keyboard and layout on both screens (T09): Test Cases' search and product filter in Tab order with the focus ring on a changed control; the API Client's Send reached by Tab from the URL and pressed with Space, its completion announced, with the focus ring on Send; the calls panel's control reachable with the ring and Space hiding the panel; Test Cases and the API Client at 900x600 and 200% in light and dark with no horizontal overflow.",
+      "result": "pass",
+      "observation": "Test Cases: Tab from Add starter packs reached ['Add public examples', 'Import\u2026', 'Export\u2026', 'Search cases', 'All (12)', 'Runtime Security (3)', 'AI Gateway (2)', 'AI Red Teaming (3)'] (search True, filter True); ring 2812 px (True); 900\u00d7600 at 200% overflow light 0 px, dark 0 px, scroll bars [0, 0]. API Client: Tab from URL reached ['Send'] and Space on Send sent and announced it True; ring on Send 2224 px (True); 900\u00d7600 at 200% overflow light 0 px, dark 0 px, scroll bars [0, 0]. Calls panel: ring on Hide the calls 3842 px (True), Tab moved on to AXDisclosureTriangle, Space hid it True",
+      "evidence": [
+        "docs/planning/evidence/C33/native/observations.json",
+        "docs/planning/evidence/C33/native/tree-cases-min-200-light.json",
+        "docs/planning/evidence/C33/native/tree-cases-min-200-dark.json",
+        "docs/planning/evidence/C33/native/tree-api-min-200-light.json",
+        "docs/planning/evidence/C33/native/tree-api-min-200-dark.json",
+        "docs/planning/evidence/C33/native/captures/cases-min-200-light.png",
+        "docs/planning/evidence/C33/native/captures/cases-min-200-dark.png",
+        "docs/planning/evidence/C33/native/captures/cases-ring-plain.png",
+        "docs/planning/evidence/C33/native/captures/cases-ring.png",
+        "docs/planning/evidence/C33/native/captures/api-min-200-light.png",
+        "docs/planning/evidence/C33/native/captures/api-min-200-dark.png",
+        "docs/planning/evidence/C33/native/captures/api-ring-plain.png",
+        "docs/planning/evidence/C33/native/captures/api-ring.png",
+        "docs/planning/evidence/C33/native/captures/calls-ring-plain.png",
+        "docs/planning/evidence/C33/native/captures/calls-ring.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the collection folder is chosen through the fixture folder adapter.",
+    "Scan, management and API endpoints are synthetic services on this Mac (scan_server.py, mgmt_server.py, workbench_server.py).",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "api-history-light-100.png",
+    "api-min-200-dark.png",
+    "api-min-200-light.png",
+    "api-ring-focused.png",
+    "api-ring-plain.png",
+    "api-sent-dark-100.png",
+    "api-sent-dark-200.png",
+    "api-sent-light-100.png",
+    "api-sent-light-200.png",
+    "calls-dark-100.png",
+    "calls-dark-200.png",
+    "calls-light-100.png",
+    "calls-light-200.png",
+    "calls-ring-focused.png",
+    "calls-ring-plain.png",
+    "cases-dark-100.png",
+    "cases-dark-200.png",
+    "cases-inspect-light-100.png",
+    "cases-library-light-100.png",
+    "cases-light-100.png",
+    "cases-light-200.png",
+    "cases-min-200-dark.png",
+    "cases-min-200-light.png",
+    "cases-playground-light-100.png",
+    "cases-result-light-100.png",
+    "cases-ring-focused.png",
+    "cases-ring-plain.png"
+  ]
+}
