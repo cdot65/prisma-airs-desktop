@@ -1553,7 +1553,10 @@ fn phases_require_integrated_native_runs_and_acceptance() {
     // keep every application chunk required.
     assert_eq!(
         manifest.native_members(Subject::Phase(9)).expect("P09"),
-        vec!["C28", "C29", "C30", "C31", "C32", "C33", "C34"]
+        vec![
+            "C28", "C29", "C30", "C31", "C32", "C33", "C34", "C35", "C36", "C37", "C38", "C39",
+            "C40", "C41", "C42", "C43", "C44"
+        ]
     );
     let p09 = xtask::evidence::required_checks(
         &controlled,
@@ -1818,7 +1821,10 @@ fn documentation_only_chunk_is_exempt_from_native_gates_but_not_from_the_thresho
     // Integrated P09 validation never asks for a C27 native inventory.
     assert_eq!(
         manifest.native_members(Subject::Phase(9)).expect("P09"),
-        vec!["C28", "C29", "C30", "C31", "C32", "C33", "C34"]
+        vec![
+            "C28", "C29", "C30", "C31", "C32", "C33", "C34", "C35", "C36", "C37", "C38", "C39",
+            "C40", "C41", "C42", "C43", "C44"
+        ]
     );
     assert!(
         manifest

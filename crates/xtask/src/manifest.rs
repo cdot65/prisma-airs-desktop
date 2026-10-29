@@ -149,7 +149,7 @@ impl Manifest {
             }
         }
         if self.chunks.len() != usize::from(Subject::LAST_CHUNK) {
-            return Err(invalid("checks.json must define exactly C01-C34"));
+            return Err(invalid("checks.json must define exactly C01-C44"));
         }
         for (id, chunk) in &self.chunks {
             let fixed = Subject::parse(id)?.is_docs_only();
@@ -177,7 +177,7 @@ impl Manifest {
             .map(|n| Subject::Chunk(n).to_string())
             .collect();
         if phase_members != expected || self.phases.len() != usize::from(Subject::LAST_PHASE) {
-            return Err(invalid("phases must partition C01-C34 in order"));
+            return Err(invalid("phases must partition C01-C44 in order"));
         }
         for argv in self.all_static_commands() {
             check_argv(argv)?;

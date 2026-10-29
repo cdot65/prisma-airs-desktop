@@ -55,7 +55,17 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C31 | **Reviewed, live row blocked** (P09, D058): Administration renders the core's `AdminInventory` per tab; reviews apply only with the typed name through the native confirmation, and every review exit retires one-time keys in the core; Runtime key rotation is the core-owned staged sequence with its Inbox reminder, two stored timestamps and attempt-specific reconciliation; prompt and response topic results keyed apart from detectors; live topic review row passed against Redtail (evidence/C31/live) | Attempt-01 7/6/6/6/6, attempt-02 8/7/8/8/7, attempt-03 8/8/8/8/8, attempt-04 9/9/9/8/8 with no required fixes; reviewed, live row blocked (C29 B1/E1, owner-gated) |
 | C32 | **Reviewed, live row blocked** (P09, D058): the Harness in the v2 shell on the existing engine, sessions, decisions, history, sign-in, project and MCP modules; read-only calls decided in the page; follow-ups only as the operator's review (proposals now include a key rotation's hand-off and the conversation workspace's guardrails); a fresh tenant's first send starts a conversation; lifecycle fixtures blocks, mcp and keys in the contracts package | Attempt-01 8/6/7/7/7, attempt-02 9/8/9/8/8, attempt-03 9/8/9/8/8, attempt-04 9/8/9/8/8, attempt-05 9/8/9/8/8, attempt-06 9/8/9/8/8, attempt-07 9/8/9/8/8, attempt-08 9/8/9/8/8, attempt-09 9/8/9/8/8, attempt-10 9/8/9/8/8, attempt-11 9/8/9/8/8, attempt-12 9/8/9/8/8, attempt-13 9/8/9/8/8, attempt-14 9/8/9/8/8, attempt-15 9/8/9/8/8, attempt-16 9/8/9/8/8, attempt-17 9/8/9/8/8, attempt-18 9/8/9/8/8, attempt-19 9/8/9/8/8, attempt-20 9/9/9/8/8 with no required fixes (fail solely for C29's owner-gated live Vulture receipt, B1/E1); manual receipt `reviews/C32/attempt-20/receipt.json` |
 | C33 | **In review** (P09, D058): API Client and Test Cases in the v2 shell; Send's completion status region (known gap 5); Test Cases with search, product filter, pages of 20, pack names and recorded Playground results; Runtime cases opened in the Playground, every other product inspected only; "Show the calls" from the core's metadata-only call record | Attempt-01 9/7/8/7/7, attempt-02 9/7/9/7/7, both remediated; attempt-03 stopped. **Core committed without a receipt** under the P09 re-cut (`docs/planning/p09-recut.md`): the Test Cases and API Client screens here are superseded by C40 and C41 |
-| C34 | Planned (P09, D058) | Specification: `docs/architecture/ui-v2/` |
+| C34 | Superseded by C44 (P09 re-cut, D059) | — |
+| C35 | Planned (P09, D059): shell port | `docs/planning/chunks/C35.md` |
+| C36 | Planned (P09, D059): Home | `docs/planning/chunks/C36.md` |
+| C37 | Planned (P09, D059): Inbox fix-up | `docs/planning/chunks/C37.md` |
+| C38 | Planned (P09, D059): Harness | `docs/planning/chunks/C38.md` |
+| C39 | Planned (P09, D059): Administration (a: Runtime Security; b: other products) | `docs/planning/chunks/C39.md` |
+| C40 | Planned (P09, D059): Test Cases | `docs/planning/chunks/C40.md` |
+| C41 | Planned (P09, D059): API Client | `docs/planning/chunks/C41.md` |
+| C42 | Planned (P09, D059): Academy | `docs/planning/chunks/C42.md` |
+| C43 | Planned (P09, D059): Wizard re-port | `docs/planning/chunks/C43.md` |
+| C44 | Planned (P09, D059): legacy shell removal, P09 closure | `docs/planning/chunks/C44.md` |
 
 ## C01 evidence (docs/planning/evidence/C01)
 

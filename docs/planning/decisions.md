@@ -2447,6 +2447,33 @@ Decisions (grilling session, 55 questions, all recommendations accepted):
 9. C27 proceeds in parallel with C26 (docs and controller registration only);
    C28 waits for C26.
 
+
+## D059 — P09 re-cut: port the prototype, one gate per screen at 8
+
+Accepted by the owner on 2026-10-29 after a grilling session (23 questions, all
+accepted; `docs/planning/p09-recut.md`). C32 had taken twenty review rounds
+while the built v2 screens never matched the design: chunks had wrapped the
+legacy feature components in v2 frames instead of porting the prototype.
+
+- The frozen prototype (D058, version 134) is the specification per screen; the
+  canvas is not consulted (it is unreachable from the implementing account).
+- A screen is done when it matches its board side by side at 1440×900 in both
+  themes with real core data, judged by the owner from composites kept under
+  the chunk's evidence; parity is structural (regions, widths, spacing, type
+  scale, tokens, component shapes), content differs, accessibility
+  corrections may deviate and are noted. Parity precedes review.
+- One heavy gate per chunk after that approval (rebuild, native acceptance,
+  the full fixture suite, the Codex review), accepted at 8 under D032/D034; the
+  phase review stays 9 and every chunk accepted at 8 is raised in C44.
+- v2 screens import no legacy feature view; the legacy files stay for the
+  legacy shell until C44 removes it. C33 was committed without a receipt (its
+  core stands; its two screens are superseded).
+- Chunks: C35 shell, C36 Home, C37 Inbox fix-up, C38 Harness, C39 Administration
+  (a: Runtime Security, b: other products), C40 Test Cases, C41 API Client,
+  C42 Academy (prototype chrome around the hosted embed), C43 Wizard re-port
+  over the existing state machine, C44 legacy removal on a branch and the P09
+  review. C34 is superseded. `Subject::LAST_CHUNK` is 44.
+
 ## Directions explicitly requested before round 1
 
 - Fresh application implementation; the existing GPUI codebase is primarily a

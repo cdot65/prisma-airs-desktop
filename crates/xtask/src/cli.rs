@@ -101,7 +101,7 @@ impl Args {
         match (self.value("--chunk"), self.value("--phase")) {
             (Some(c), None) => match Subject::parse(c)? {
                 s @ Subject::Chunk(_) => Ok(s),
-                _ => Err(invalid("--chunk expects C01-C34")),
+                _ => Err(invalid("--chunk expects C01-C44")),
             },
             (None, Some(p)) => match Subject::parse(p)? {
                 s @ Subject::Phase(_) => Ok(s),
