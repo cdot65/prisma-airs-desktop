@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { AdminProductId, SwitchResolution, DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { FeatureBody } from '../shell/feature-body'
 import { type Act, Inbox } from './inbox/inbox'
 import { Administration } from './admin/administration'
+import { harnessCredential } from './harness/credential'
 import { Harness } from './harness/harness'
 import { FEATURE_GLYPHS, Glyph, PRODUCT_GLYPHS } from './icons'
 import { HOME_COPY, SHELL_COPY, SNOOZE_COPY } from './copy'
@@ -40,10 +41,24 @@ export interface V2ShellProps {
 /** The products the Inbox files entries under (the inventory's ids that have an admitted service). */
 const productOf = (id: AdminProductId): string | null => (id === 'agenticIdentity' || id === 'agenticEndpoint' ? null : id)
 
-/** Whether the shown appearance is dark: the choice, or the system's when following it. */
-function shownDark(theme: Theme): boolean {
-    if (theme !== 'system') return theme === 'dark'
-    return typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false
+const darkQuery = () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null)
+const subscribeDark = (notify: () => void) => {
+    const query = darkQuery()
+    if (!query) return () => undefined
+    query.addEventListener('change', notify)
+    return () => query.removeEventListener('change', notify)
+}
+// Without a media query the follower assumes dark (shell/appearance.ts): the toggle agrees with it.
+const readDark = () => darkQuery()?.matches ?? true
+
+/**
+ * Whether the shown appearance is dark: the choice, or the system's while
+ * following it, re-read on every OS appearance change (C35 R2) so the
+ * toggle's state and its next click follow what the follower applied.
+ */
+function useShownDark(theme: Theme): boolean {
+    const systemDark = useSyncExternalStore(subscribeDark, readDark, readDark)
+    return theme === 'system' ? systemDark : theme === 'dark'
 }
 
 /**
@@ -153,15 +168,36 @@ export function V2Shell(props: V2ShellProps) {
     }
     const subtitle = feature.id === 'administration' && productShown ? products.find((p) => p.id === productShown)?.label ?? '' : ''
 
-    // The status block (R2App): the connection and read status, the Harness sign-in, the keychain, jobs.
+    // The status block (R2App): the connection and read status, the Harness credential as the
+    // Harness itself would use it for the selected workspace (R1), the keychain, jobs.
     const readStatus = readLine(snapshot, tenant?.label ?? null)
-    const signIn = snapshot.harness.signIn
-    const harnessText = signIn && signIn.selected && signIn.account && signIn.failure === null ? SHELL_COPY.harnessSignedIn : signIn && !signIn.selected ? SHELL_COPY.harnessKey : SHELL_COPY.harnessOff
+    const credential = harnessCredential(snapshot)
+    const harnessText =
+        credential.source === 'sso'
+            ? credential.ready
+                ? SHELL_COPY.harnessSignedIn
+                : credential.failed
+                  ? SHELL_COPY.harnessRenew
+                  : SHELL_COPY.harnessPending
+            : credential.source === 'key'
+              ? SHELL_COPY.harnessKey
+              : credential.workspace
+                ? SHELL_COPY.harnessOff
+                : SHELL_COPY.harnessNoWorkspace
     const keychainText = snapshot.storage === 'ready' ? SHELL_COPY.keychainUnlocked : snapshot.storage === 'unavailable' ? SHELL_COPY.keychainUnavailable : SHELL_COPY.keychainLocked
     const running = read.state === 'reading' ? 1 : 0
     const jobsText = running === 0 ? SHELL_COPY.jobsNone : SHELL_COPY.jobsRunning(running)
-    const account = signIn?.account && signIn.failure === null ? signIn.account : snapshot.academy.state === 'signedIn' ? snapshot.academy.displayName : null
-    const dark = shownDark(snapshot.appearance)
+    const account = credential.source === 'sso' && credential.ready ? credential.account : snapshot.academy.state === 'signedIn' ? snapshot.academy.displayName : null
+    const dark = useShownDark(snapshot.appearance)
+    // The tenant menu's workspace row: the Gateway's Workspaces tab in Administration, while a tenant is active.
+    const gatewayProduct = products.find((p) => p.id === 'gateway')
+    const changeWorkspace =
+        tenantNow && adminAvailable && gatewayProduct && gatewayProduct.availability.state === 'available'
+            ? () => {
+                  useShellStore.getState().arrive({ tenant: tenantNow, feature: 'administration', resource: null, item: null, product: 'gateway', tab: 'workspaces' })
+                  props.onNavigate('administration')
+              }
+            : null
 
     const navRow = (current: boolean, unavailable: boolean) => ({
         background: current ? 'var(--v2-sel)' : 'transparent',
@@ -180,7 +216,7 @@ export function V2Shell(props: V2ShellProps) {
                 className='flex h-screen shrink-0 flex-col overflow-y-auto'
                 style={{ width: 'var(--v2-rail)', padding: '12px 10px 12px', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}
             >
-                <TenantSwitcher snapshot={snapshot} onSwitch={props.onSwitchTenant} onAdd={() => setAdding(true)} onNavigate={props.onNavigate} />
+                <TenantSwitcher snapshot={snapshot} onSwitch={props.onSwitchTenant} onAdd={() => setAdding(true)} onNavigate={props.onNavigate} onChangeWorkspace={changeWorkspace} />
                 <ul className='flex flex-grow flex-col overflow-y-auto overscroll-contain' style={{ gap: 2, minHeight: 0 }} data-slot='nav-list'>
                     {snapshot.features
                         .filter((f) => f.sidebar)

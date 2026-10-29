@@ -149,13 +149,15 @@ describe('v2 shell', () => {
     it('dispatches the appearance and show-the-calls preferences from the rail toggle and the header switch', async () => {
         const user = userEvent.setup()
         const native = await launch()
-        // The rail's toggle flips between light and dark from what is shown (system here, shown light).
-        await user.click(rail().getByRole('switch', { name: 'Switch light or dark appearance' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'dark' })
-        await native.push({ ...native.current, appearance: 'dark' })
+        // The rail's toggle flips between light and dark from what is shown: 'system' with no
+        // media query is shown dark, as the follower applies it (shell/appearance.ts).
         expect(rail().getByRole('switch', { name: 'Switch light or dark appearance' })).toHaveAttribute('aria-checked', 'true')
         await user.click(rail().getByRole('switch', { name: 'Switch light or dark appearance' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'light' })
+        await native.push({ ...native.current, appearance: 'light' })
+        expect(rail().getByRole('switch', { name: 'Switch light or dark appearance' })).toHaveAttribute('aria-checked', 'false')
+        await user.click(rail().getByRole('switch', { name: 'Switch light or dark appearance' }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'dark' })
         // The header's Explain switch is the show-the-calls preference.
         const explain = screen.getByRole('switch', { name: 'Show the calls' })
         expect(explain).toHaveAttribute('aria-checked', 'true')
@@ -318,11 +320,11 @@ describe('v2 shell', () => {
         const native = await launch()
         native.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
         await user.click(rail().getByRole('switch', { name: 'Switch light or dark appearance' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'dark' })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'light' })
         const toast = await screen.findByText(/^The appearance change was refused \(deniedStore\)\./)
         expect(toast.closest('[data-slot="toast"]')).toHaveAttribute('data-kind', 'warn')
-        // The observed selection stays authoritative: still 'system', shown light.
-        expect(rail().getByRole('switch', { name: 'Switch light or dark appearance' })).toHaveAttribute('aria-checked', 'false')
+        // The observed selection stays authoritative: still 'system', shown dark (no media query here).
+        expect(rail().getByRole('switch', { name: 'Switch light or dark appearance' })).toHaveAttribute('aria-checked', 'true')
         native.respond = () => {
             throw new DeliveryOutcomeUnknown('lost')
         }
@@ -496,5 +498,165 @@ describe('v2 shell', () => {
         expect(current()).toBe('Harness⌘3')
         await user.type(within(dialog).getByRole('combobox'), '2222{Enter}')
         expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id, resolution: null })
+    })
+
+    // ---- C35 attempt-01 remediation (R1–R4) ----
+
+    const WS_A = { id: '16f7e90d-382a-4e78-b577-1b01eb5f8297', name: 'Team A', slug: 'team-a', scopeName: 'scope-team-a' }
+    const WS_B = { id: '2a1b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Team B', slug: 'team-b', scopeName: 'scope-team-b' }
+    const signInFor = (workspace: typeof WS_A, account: string | null, failure: 'sessionExpired' | null = null, selected = true) => ({
+        workspace,
+        endpoint: 'https://sso.example',
+        issuer: 'https://issuer.example',
+        clientId: 'cid',
+        audience: 'aud',
+        selected,
+        account,
+        step: null,
+        failure,
+    })
+    const withWorkspace = (snapshot: ReturnType<typeof fxSwitcher>, workspace: typeof WS_A) => ({ ...snapshot, gateway: { ...snapshot.gateway, selected: { reference: workspace === WS_A ? 'gw-aaaaaaaaaaaaaaaaaaaaaaaa' : 'gw-bbbbbbbbbbbbbbbbbbbbbbbb', workspace, restored: false } } })
+    const withKey = (snapshot: ReturnType<typeof fxSwitcher>, workspace: typeof WS_A) => ({
+        ...snapshot,
+        tenants: snapshot.tenants.map((t) => (t.id === snapshot.active?.tenant ? { ...t, inference: { state: 'ready' as const, mode: 'keychain' as const, failure: null, target: { workspace, endpoint: 'https://gw.example' } } } : t)),
+    })
+    const harnessRow = () => document.querySelector('[data-slot="harness-status"]')?.textContent ?? ''
+
+    it('reports the Harness credential the Harness would use for the selected workspace: SSO only for that workspace, else the key, else none (R1)', async () => {
+        const user = userEvent.setup()
+        // A company sign-in for workspace A while A is selected: signed in, and the menu says who.
+        const base = withWorkspace(fxSwitcher(), WS_A)
+        const native = await launch({ ...base, harness: { ...base.harness, signIn: signInFor(WS_A, 'Dana Ruiz') } })
+        expect(harnessRow()).toContain('Signed in · SSO')
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        expect(screen.getByRole('group', { name: 'Tenants' }).textContent).toContain('signed in as Dana Ruiz')
+        await user.keyboard('{Escape}')
+        // The same sign-in while workspace B is selected, with a ready key for B: the key is what the Harness sends with.
+        const forB = withKey(withWorkspace(fxSwitcher(), WS_B), WS_B)
+        await native.push({ ...forB, harness: { ...forB.harness, signIn: signInFor(WS_A, 'Dana Ruiz') } })
+        expect(harnessRow()).toContain('Workspace key')
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        expect(screen.getByRole('group', { name: 'Tenants' }).textContent).not.toContain('signed in as')
+        await user.keyboard('{Escape}')
+        // A ready key for B with no sign-in configured at all: still the key, never "Not signed in".
+        await native.push({ ...forB, harness: { ...forB.harness, signIn: null } })
+        expect(harnessRow()).toContain('Workspace key')
+        // A sign-in for the selected workspace that failed: a renewal is needed before anything is sent.
+        await native.push({ ...base, harness: { ...base.harness, signIn: signInFor(WS_A, 'Dana Ruiz', 'sessionExpired') } })
+        expect(harnessRow()).toContain('Sign in again')
+        // Chosen but not signed in yet.
+        await native.push({ ...base, harness: { ...base.harness, signIn: signInFor(WS_A, null) } })
+        expect(harnessRow()).toContain('Sign in needed')
+        // A sign-in configured but not chosen over the key, and the key missing: nothing to send with.
+        await native.push({ ...base, harness: { ...base.harness, signIn: signInFor(WS_A, 'Dana Ruiz', null, false) } })
+        expect(harnessRow()).toContain('Not signed in')
+        // No workspace selected at all.
+        await native.push({ ...fxSwitcher(), harness: { ...base.harness, signIn: null } })
+        expect(harnessRow()).toContain('No workspace')
+    })
+
+    it('follows an OS appearance change while the preference is system: the toggle updates without a new snapshot and its next click picks the opposite (R2)', async () => {
+        const user = userEvent.setup()
+        const listeners = new Set<() => void>()
+        let dark = false
+        const matchMedia = window.matchMedia
+        window.matchMedia = ((query: string) => ({
+            get matches() {
+                return query.includes('dark') ? dark : false
+            },
+            media: query,
+            addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+            removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
+            addListener() {},
+            removeListener() {},
+            onchange: null,
+            dispatchEvent: () => false,
+        })) as unknown as typeof window.matchMedia
+        try {
+            const native = await launch({ ...fxHome(), appearance: 'system' })
+            const toggle = () => rail().getByRole('switch', { name: 'Switch light or dark appearance' })
+            expect(toggle()).toHaveAttribute('aria-checked', 'false')
+            await user.click(toggle())
+            expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'dark' })
+            // The OS turns dark; no snapshot changes (the preference is still system).
+            dark = true
+            act(() => listeners.forEach((fn) => fn()))
+            expect(toggle()).toHaveAttribute('aria-checked', 'true')
+            await user.click(toggle())
+            expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'light' })
+            // And back to light.
+            dark = false
+            act(() => listeners.forEach((fn) => fn()))
+            expect(toggle()).toHaveAttribute('aria-checked', 'false')
+            await user.click(toggle())
+            expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'dark' })
+        } finally {
+            window.matchMedia = matchMedia
+        }
+    })
+
+    it('opens the Gateway workspace choice from the tenant menu, and gates the row while no tenant is active (R3)', async () => {
+        const user = userEvent.setup()
+        const native = await launch(fxSwitcher())
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        const row = screen.getByRole('button', { name: 'Change Gateway workspace…' })
+        expect(row).toBeEnabled()
+        await user.click(row)
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'administration' })
+        expect(useShellStore.getState().arrival).toMatchObject({ feature: 'administration', product: 'gateway', tab: 'workspaces', tenant: 'tn-0123456789abcdef' })
+        await native.push({ ...native.current, activeFeature: 'administration' })
+        // The Gateway section is open on its Workspaces tab.
+        const gateway = () => document.querySelector('[data-slot="admin-product"][data-product="gateway"]') as HTMLElement
+        expect(within(gateway()).getByRole('tab', { name: 'Workspaces' })).toHaveAttribute('aria-selected', 'true')
+        // The arrival is consumed once (attempt-02 R1): what the operator chooses next survives
+        // fresh snapshots, which arrive with new inventory arrays.
+        await user.click(within(gateway()).getByRole('tab', { name: 'Routes' }))
+        expect(within(gateway()).getByRole('tab', { name: 'Routes' })).toHaveAttribute('aria-selected', 'true')
+        await native.push(JSON.parse(JSON.stringify(native.current)))
+        expect(within(gateway()).getByRole('tab', { name: 'Routes' })).toHaveAttribute('aria-selected', 'true')
+        await user.click(within(gateway()).getByRole('button', { name: /AI Gateway/ }))
+        expect(within(gateway()).getByRole('button', { name: /AI Gateway/ })).toHaveAttribute('aria-expanded', 'false')
+        await native.push(JSON.parse(JSON.stringify(native.current)))
+        expect(within(gateway()).getByRole('button', { name: /AI Gateway/ })).toHaveAttribute('aria-expanded', 'false')
+        // A new arrival from the menu opens and selects its target again.
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        await user.click(screen.getByRole('button', { name: 'Change Gateway workspace…' }))
+        expect(within(gateway()).getByRole('button', { name: /AI Gateway/ })).toHaveAttribute('aria-expanded', 'true')
+        expect(within(gateway()).getByRole('tab', { name: 'Workspaces' })).toHaveAttribute('aria-selected', 'true')
+        // No tenant: the row is gated, explains itself and dispatches nothing.
+        await native.push({ ...fxHome(), tenants: [], active: null })
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        const gated = screen.getByRole('button', { name: /^Change Gateway workspace…/ })
+        expect(gated).toBeDisabled()
+        expect(gated).toHaveTextContent('Choose a tenant first')
+        const before = native.dispatched.length
+        await user.click(gated)
+        expect(native.dispatched.length).toBe(before)
+    })
+
+    it('lets Tab reach the palette’s "Ask the Harness instead" fallback, Enter opens the Harness once, and Escape returns focus to the search button (R4)', async () => {
+        const user = userEvent.setup()
+        const native = await launch(fxSwitcher())
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
+        await user.type(screen.getByRole('combobox'), 'zzz-nothing')
+        const fallback = screen.getByRole('button', { name: 'Ask the Harness instead' })
+        await user.tab()
+        expect(fallback).toHaveFocus()
+        await user.tab()
+        expect(screen.getByRole('combobox')).toHaveFocus()
+        await user.tab({ shift: true })
+        expect(fallback).toHaveFocus()
+        const navigations = () => native.dispatched.filter((i) => i.kind === 'navigate' && i.feature === 'harness').length
+        const before = navigations()
+        await user.keyboard('{Enter}')
+        expect(navigations()).toBe(before + 1)
+        expect(screen.queryByRole('dialog')).toBeNull()
+        // Escape from the fallback closes the palette and restores the opener's focus.
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
+        await user.type(screen.getByRole('combobox'), 'zzz-nothing')
+        await user.tab()
+        await user.keyboard('{Escape}')
+        expect(screen.queryByRole('dialog')).toBeNull()
+        expect(screen.getByRole('button', { name: /Search or go to…/ })).toHaveFocus()
     })
 })

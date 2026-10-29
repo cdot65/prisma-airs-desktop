@@ -1276,7 +1276,7 @@
       },
       {
         "id": "C35-N03",
-        "check": "Keyboard and layout (T09): Tab from the tenant button reaches the destinations, the status block, the header's search button, the Explain switch and Ask Harness in that order, with the focus ring on the search button; Space on the Explain switch flips the preference; Home, Inbox and Administration at 1440\u00d7900 and at 900\u00d7600 with 200% zoom in light and dark with no horizontal overflow."
+        "check": "Keyboard and layout (T09): Tab from the tenant button reaches the destinations, the status block, the header's search button, the Explain switch and Ask Harness in that order, with the focus ring on the search button; Space on the Explain switch flips the preference; Home, Inbox and Administration at 1440 wide by the display's full working height, and at 900\u00d7600 with 200% zoom, in light and dark with no horizontal overflow. Every row records the WebView's measured size from the accessibility tree and asserts it (1440 wide; exactly 900\u00d7600): a clamped resize never passes as the requested size."
       }
     ]
   }

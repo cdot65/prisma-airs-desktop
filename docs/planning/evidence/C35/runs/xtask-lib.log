@@ -1,0 +1,32 @@
+$ cargo test --locked -p xtask --lib
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/xtask-91115f0c5efc067a)
+
+running 23 tests
+test budgets::tests::the_cumulative_chunk_carries_every_workload_under_its_measuring_chunk ... ok
+test budgets::tests::a_budget_fails_over_its_limit_short_of_samples_or_in_another_unit ... ok
+test budgets::tests::the_phase_containing_the_cumulative_chunk_measures_every_budget_itself ... ok
+test budgets::tests::nearest_rank_statistics ... ok
+test ledger::record_tests::a_rows_chunks_and_live_status_are_read_exactly ... ok
+test budgets::tests::the_registered_workload_table_parses_exactly ... ok
+test live_academy::assertions::tests::equality_does_not_confuse_missing_null_or_boolean_shape_with_a_verdict ... ok
+test live_academy::assertions::tests::dependencies_preserve_json_types_and_values_never_enter_receipts ... ok
+test live_academy::assertions::tests::membership_accepts_only_the_designated_graded_outcomes ... ok
+test live_academy::assertions::tests::pointers_and_dependencies_are_validated_before_dispatch ... ok
+test live_academy::assertions::tests::receipt_templates_and_membership_never_publish_authored_answers ... ok
+test live_academy::contracts::tests::every_mandatory_outcome_assertion_is_required_individually ... ok
+test review::tests::a_phase_diff_starts_at_the_previous_phase ... ok
+test notices::tests::legacy_and_reviewed_file_licenses_count_only_when_exact ... ok
+test live_academy::contracts::tests::identity_references_and_critical_occurrences_cannot_be_weakened ... ok
+test sdk::tests::exactly_one_registry_entry_is_accepted ... ok
+test signing::tests::a_real_identity_is_timestamped_and_an_ad_hoc_one_is_not ... ok
+test signing::tests::the_release_plan_signs_inside_out_never_re_signs_the_engine_and_staples_both ... ok
+test subject::tests::accepts_registered_range_only ... ok
+test subject::tests::only_the_specification_chunk_is_documentation_only ... ok
+test fingerprint::tests::every_installed_academy_package_is_fingerprinted_and_verified ... ok
+test signing::tests::the_engine_is_signed_once_from_its_pinned_unsigned_bytes ... ok
+test signing::tests::release_signing_keeps_the_pinned_engine_and_refuses_another ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+EXIT 0

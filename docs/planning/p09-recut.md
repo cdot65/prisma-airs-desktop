@@ -10,8 +10,11 @@ of C33–C34 in `IMPLEMENTATION-PLAN.md`; the specification
 - **The prototype is the spec.** `docs/architecture/ui-v2/prototype/` (Refined
   Native v2, version 134, checksums in `MANIFEST.sha256`) is the reference for
   every screen; the canvas is not consulted.
-- **A screen is done when it matches its board.** Side by side at 1440×900 in
-  light and dark, with real core data wired, and the fast checks (typecheck,
+- **A screen is done when it matches its board.** Side by side at 1440 wide in
+  light and dark (the board is drawn at 1440×900; where the display cannot
+  give a 900px web area both sides are rendered at the window's measured web
+  area, named in the composite's caption, 1440×800 on the current Mac), with
+  real core data wired, and the fast checks (typecheck,
   Vitest, the affected Rust suites) passing. Parity is structural: regions,
   widths, spacing, type scale, tokens and component shapes. Content differs;
   accessibility corrections (focus rings, contrast, status regions) may deviate

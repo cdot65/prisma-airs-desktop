@@ -16,4 +16,4 @@ The board is the shell: the sidebar, the header and the page frame. The page bod
 
 ## Owner's approval
 
-Pending.
+Approved by the owner on 2026-10-29 ("looks good, proceed") on the composites committed in f0a1a61a; the gate runs on that approval.

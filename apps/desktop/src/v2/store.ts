@@ -12,6 +12,8 @@ export interface Arrival {
     item: string | null
     /** The Administration product to open (the rail's product children, C35). */
     product?: AdminProductId
+    /** That product's tab to show, by the inventory's tab id (the tenant menu's workspace row, C35). */
+    tab?: string
     /** Counts arrivals: a destination already open applies a new one. */
     sequence: number
 }
@@ -217,5 +219,5 @@ export const useShellStore = create<ShellStore>((set, get) => ({
 
 /** Test seam: forget everything (each test starts from an empty store). */
 export function resetShellStore() {
-    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
+    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
 }

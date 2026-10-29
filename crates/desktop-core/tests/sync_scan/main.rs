@@ -354,15 +354,23 @@ async fn malformed_responses_are_unknown() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_timeout_after_dispatch_is_unknown() {
     let (ca, server) = start(Reply::Hang).await;
+    // The budget is long enough for the TLS handshake and the request to reach
+    // the hanging server under full-suite load (an 800 ms budget let the deadline
+    // win the race on a loaded Mac, so no request was ever seen); the outcome
+    // under test is the deadline after dispatch, not the handshake's speed.
     let config = CoreConfig {
         operations: OperationLimits {
-            interactive_budget: Duration::from_millis(800),
+            interactive_budget: Duration::from_millis(3000),
             ..OperationLimits::default()
         },
         ..CoreConfig::default()
     };
     let mut desk = Desk::new(&ca, &server, config).await;
     let operation = desk.scan("hello", "").await.expect("admitted");
+    assert!(
+        eventually(|| server.seen().len() == 1).await,
+        "the request reached the endpoint before the deadline"
+    );
     let record = desk.settled(&operation).await;
     assert_eq!(record.outcome, Some(Outcome::Unknown));
     assert!(

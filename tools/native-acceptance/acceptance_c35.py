@@ -34,6 +34,7 @@ EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
 NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C35" else "native-C35")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C35" else "native-acceptance-C35.json")
 LOG = []
+TITLE_BAR = 32
 NAV = ["Home", "Inbox", "Harness", "Academy", "Test Cases", "API Client", "Administration"]
 PRODUCTS = ["AI Runtime Security", "AI Gateway", "AI Red Teaming", "Model and skill scans", "Agentic Identity Security", "Agentic Endpoint Security"]
 CONTROLS = ("AXButton", "AXCheckBox", "AXPopUpButton", "AXMenuButton", "AXSwitch", "AXToggle")
@@ -79,6 +80,18 @@ def luminance(capture):
             total += (r * 299 + g * 587 + b * 114) // 1000
             count += 1
     return total / max(count, 1)
+
+
+def size_window(app, pid, w, h):
+    """Places the window at the screen's origin, asks for w×h plus the title bar, and
+    returns the WebView's actual CSS size from the accessibility tree (R5): what a
+    matrix row records and asserts, never the requested size."""
+    fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {pid}) to set position of window 1 to {{0, 0}}'])
+    c28.set_window_size(pid, w, h + TITLE_BAR)
+    time.sleep(0.8)
+    frame = c29.window_frame(pid)
+    web = next((n for n in app.tree() if n.get("role") == "AXWebArea" and n.get("size")), None)
+    return {"requested": [w, h], "window": frame, "web": [int(web["size"][0]), int(web["size"][1])] if web else None}
 
 
 def overflow(app):
@@ -146,13 +159,15 @@ def exercise(app, endpoint, prepared, FINAL):
     c8.save_client(app)
     c29.press(app, "AXCheckBox", "Use the new interface")
     app.wait_for(lambda t: c29.nav(t, "Destinations") is not None, 15)
-    c28.set_window_size(pid, 1440, 900)
-    time.sleep(1.0)
+    geometry = size_window(app, pid, 1440, 900)
+    time.sleep(0.6)
 
     # ---- N01: the rail, status block and header ------------------------------------
     n1 = {}
     app.menu("Go", "Home")
     c29.heading(app, "Home")
+    # The N01 captures are named by the appearance they show: it is selected, never assumed.
+    c29.appearance(app, "Light")
     time.sleep(0.8)
     tree = app.tree()
     obs["tree_home"] = c29.save_tree("home", tree)
@@ -330,29 +345,36 @@ def exercise(app, endpoint, prepared, FINAL):
     n3["space_flips_explain"] = flipped
     app.keycode(49)
     app.wait_for(lambda t: (calls_panel(t) is not None) == before_calls, 10)
+    # Every matrix row is named by the WebView's measured CSS size, not the request: this
+    # display cannot give a 900px-high web area, and a clamped resize must never pass as one.
     layouts = {}
     for screen, menu_item in (("home", "Home"), ("inbox", "Inbox"), ("admin", "Administration")):
         app.menu("Go", menu_item)
         c29.heading(app, menu_item)
-        time.sleep(0.6)
+        wide = size_window(app, pid, 1440, 900)
         for theme in ("Light", "Dark"):
             c29.appearance(app, theme)
             o, tree = overflow(app)
-            o["capture"] = c29.capture(app, f"{screen}-1440-{theme.lower()}")
-            layouts[f"{screen}-1440-{theme.lower()}"] = o
-        c28.set_window_size(pid, 900, 600)
+            o["geometry"] = wide
+            o["width_1440"] = bool(wide["web"] and wide["web"][0] == 1440)
+            o["capture"] = c29.capture(app, f"{screen}-{wide['web'][0]}x{wide['web'][1]}-{theme.lower()}")
+            o["tree"] = c29.save_tree(f"{screen}-{wide['web'][0]}x{wide['web'][1]}-{theme.lower()}", tree)
+            layouts[f"{screen}-{wide['web'][0]}x{wide['web'][1]}-{theme.lower()}"] = o
+        small = size_window(app, pid, 900, 600)
         c29.zoom(app, 10)
         for theme in ("Light", "Dark"):
             c29.appearance(app, theme)
             o, tree = overflow(app)
-            o["capture"] = c29.capture(app, f"{screen}-min-200-{theme.lower()}")
-            o["tree"] = c29.save_tree(f"{screen}-min-200-{theme.lower()}", tree)
-            layouts[f"{screen}-min-200-{theme.lower()}"] = o
+            o["geometry"] = small
+            o["window_900x600"] = bool(small["web"] and small["web"][0] == 900 and small["web"][1] == 600)
+            o["capture"] = c29.capture(app, f"{screen}-{small['web'][0]}x{small['web'][1]}-200-{theme.lower()}")
+            o["tree"] = c29.save_tree(f"{screen}-{small['web'][0]}x{small['web'][1]}-200-{theme.lower()}", tree)
+            layouts[f"{screen}-{small['web'][0]}x{small['web'][1]}-200-{theme.lower()}"] = o
         c29.zoom(app, -10)
         c29.appearance(app, "Match System")
-        c28.set_window_size(pid, 1440, 900)
-        time.sleep(0.6)
+        size_window(app, pid, 1440, 900)
     n3["layouts"] = layouts
+    n3["geometry"] = geometry
     obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
     obs["n3"] = n3
     app.quit()
@@ -382,9 +404,11 @@ def exercise(app, endpoint, prepared, FINAL):
         f"tenant menu {n2['menu_size']} ({n2['menu_360']}) named the tenant with environment and TSG {n2['identity']}, rows {n2['menu_rows']}, tenants {n2['tenant_rows']} (current checked {n2['current_checked']}), ⌃1 picked the current tenant and closed the menu {n2['hint']}; Escape closed it {n2['menu_closed']} and focus returned {n2['focus_back']}; palette {n2['palette_size']} ({n2['palette_640']}) with groups {n2['groups']}, ⌘ hints {n2['hints']} and the key-hint footer {n2['footer']}; typing narrowed the rows {n2['narrowed']}, Enter opened the Inbox {n2['enter_navigated']} and closed it {n2['palette_closed']}",
         [run_rel, obs["tree_menu"], obs["tree_palette"]] + caps("tenant-menu") + caps("palette"))
     layout_ok = all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 for v in layouts.values())
+    geometry_ok = all(v.get("width_1440", v.get("window_900x600", False)) for v in layouts.values())
+    sizes_text = ", ".join(f"{k}: {v['geometry']['web']}" for k, v in layouts.items())
     overflow_text = ", ".join(f"{k}: {v['overflow_px']}" for k, v in layouts.items())
-    add("C35-N03", n3["reach_in_order"] and ring_ok and n3["space_flips_explain"] and layout_ok,
-        f"Tab from the tenant button reached {n3['order']} in order {n3['reach_in_order']}; ring on the search button {n3['ring'].get('diff')} px ({ring_ok}); Space on Explain flipped the preference {n3['space_flips_explain']}; overflow px by layout {overflow_text}, horizontal scroll bars {[v['horizontal_scrollbars'] for v in layouts.values()]}",
+    add("C35-N03", n3["reach_in_order"] and ring_ok and n3["space_flips_explain"] and layout_ok and geometry_ok,
+        f"Tab from the tenant button reached {n3['order']} in order {n3['reach_in_order']}; ring on the search button {n3['ring'].get('diff')} px ({ring_ok}); Space on Explain flipped the preference {n3['space_flips_explain']}; measured WebView sizes by row {sizes_text} (1440 wide and 900×600 asserted from the accessibility tree: {geometry_ok}); overflow px by layout {overflow_text}, horizontal scroll bars {[v['horizontal_scrollbars'] for v in layouts.values()]}",
         [run_rel, n3["ring"].get("capture"), n3["ring"].get("plain")] + [v["capture"] for v in layouts.values()] + [v.get("tree") for v in layouts.values()])
 
     hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
@@ -397,6 +421,7 @@ def exercise(app, endpoint, prepared, FINAL):
         "checks": checks,
         "limitations": [
             "Pixels come from the fixture build's own WKWebView snapshot; widths are read from the accessibility tree at 100% zoom.",
+            "Window geometry is measured, not assumed: this Mac's display (1470×956 points, menu bar and title bar) gives a 1440-wide WebView of about 800 CSS px; the wide rows record that measured size and assert the width, the small rows assert exactly 900×600.",
             "Scan and management endpoints are synthetic services on this Mac (scan_server.py, mgmt_server.py).",
             "Visual parity with the prototype is the owner's judgement from the composites under evidence/C35/parity, not a check here.",
             "Spoken VoiceOver output was not recorded.",

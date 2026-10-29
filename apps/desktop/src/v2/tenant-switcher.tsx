@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { FeatureId, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
 import { ENVIRONMENT_LABELS, SHELL_COPY } from './copy'
+import { harnessCredential } from './harness/credential'
 import { Glyph } from './icons'
 import { useShellStore } from './store'
 import { useModalsOpen } from './modal'
@@ -11,6 +12,8 @@ export interface TenantSwitcherProps {
     onSwitch: (tenant: string) => void
     onAdd: () => void
     onNavigate: (feature: FeatureId) => void
+    /** Opens the Gateway's workspace choice in Administration; null while no tenant is active (the row is gated). */
+    onChangeWorkspace: (() => void) | null
     collapsed?: boolean
 }
 
@@ -52,7 +55,7 @@ const envDot = (t: TenantView) => (t.environment === 'production' ? 'var(--v2-bl
  * ⌃n hints, and ends with "Add a tenant". Switching dispatches the one
  * `selectTenant` intent (the C30 guard renders from the core's refusal).
  */
-export function TenantSwitcher({ snapshot, onSwitch, onAdd, onNavigate, collapsed }: TenantSwitcherProps) {
+export function TenantSwitcher({ snapshot, onSwitch, onAdd, onNavigate, onChangeWorkspace, collapsed }: TenantSwitcherProps) {
     const open = useShellStore((s) => s.switcherOpen)
     const setOpen = useShellStore((s) => s.setSwitcher)
     const active = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
@@ -79,7 +82,9 @@ export function TenantSwitcher({ snapshot, onSwitch, onAdd, onNavigate, collapse
         setAnchor(rect ? { top: rect.bottom + 6, left: rect.left } : { top: 96, left: 10 })
     }, [open])
     const workspace = snapshot.gateway.selected?.workspace.name ?? null
-    const signedIn = snapshot.harness.signIn && snapshot.harness.signIn.failure === null ? snapshot.harness.signIn.account : null
+    // The account shown is the one the Harness would send as, for the selected workspace (R1).
+    const credential = harnessCredential(snapshot)
+    const signedIn = credential.source === 'sso' && credential.ready ? credential.account : null
     const close = () => setOpen(false)
     return (
         <div data-slot='tenant-switcher' className='relative'>
@@ -190,13 +195,18 @@ export function TenantSwitcher({ snapshot, onSwitch, onAdd, onNavigate, collapse
                             </button>
                             <button
                                 type='button'
+                                disabled={!onChangeWorkspace}
+                                title={onChangeWorkspace ? undefined : SHELL_COPY.changeWorkspaceGate}
                                 onClick={() => {
+                                    if (!onChangeWorkspace) return
                                     close()
-                                    onNavigate('administration')
+                                    onChangeWorkspace()
                                 }}
-                                className='flex h-8 items-center rounded-[6px] px-2.5 text-left'
+                                className='flex h-8 items-center justify-between gap-2 rounded-[6px] px-2.5 text-left disabled:cursor-not-allowed'
+                                style={{ color: onChangeWorkspace ? 'var(--v2-ink)' : 'var(--v2-faint)' }}
                             >
-                                {SHELL_COPY.changeWorkspace}
+                                <span>{SHELL_COPY.changeWorkspace}</span>
+                                {!onChangeWorkspace && <span className='text-[12px]'>{SHELL_COPY.changeWorkspaceGate}</span>}
                             </button>
                         </div>
                         <div className='flex flex-col gap-px overflow-y-auto overscroll-contain p-1.5' style={{ borderTop: '1px solid var(--v2-rule)' }}>

@@ -86,10 +86,9 @@ export function Palette(props: PaletteProps) {
         } else if (event.key === 'Enter') {
             event.preventDefault()
             choose(matches[index])
-        } else if (event.key === 'Tab') {
-            event.preventDefault()
-            input.current?.focus()
         }
+        // Tab is the Modal's: it cycles the dialog's controls (the input, and the
+        // "Ask the Harness instead" button when nothing matches).
     }
     let lastGroup = ''
     return (

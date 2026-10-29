@@ -103,14 +103,27 @@ async fn the_sidebar_is_the_prototypes_nav_and_settings_is_reached_off_it() {
         .filter(|f| f.sidebar)
         .map(|f| (f.id, f.label.as_str(), f.shortcut))
         .collect();
-    let expected: Vec<(FeatureId, &str, Option<u8>)> =
-        NAV.iter().map(|(id, label, key)| (*id, *label, Some(*key))).collect();
-    assert_eq!(sidebar, expected, "the rail draws the catalogue in the prototype's order");
+    let expected: Vec<(FeatureId, &str, Option<u8>)> = NAV
+        .iter()
+        .map(|(id, label, key)| (*id, *label, Some(*key)))
+        .collect();
+    assert_eq!(
+        sidebar, expected,
+        "the rail draws the catalogue in the prototype's order"
+    );
     // The header's title is the destination's label: no second title table in the presentation.
     for (id, label, _) in NAV {
-        let entry = snap.features.iter().find(|f| f.id == id).expect("catalogued");
+        let entry = snap
+            .features
+            .iter()
+            .find(|f| f.id == id)
+            .expect("catalogued");
         assert_eq!(entry.label, label);
-        assert_eq!(entry.availability, Availability::Available, "{id:?} available in this build");
+        assert_eq!(
+            entry.availability,
+            Availability::Available,
+            "{id:?} available in this build"
+        );
     }
     // Settings is catalogued but off the sidebar: the status block's "Settings ⌘," button
     // and the tenant menu's "Tenant settings and credentials…" navigate there.
@@ -163,7 +176,9 @@ async fn the_rails_product_children_are_the_inventory_with_the_gated_two_named()
                     AdminAvailability::Unavailable { reason } => {
                         assert!(reason.contains("Not available in this release"), "{reason}")
                     }
-                    AdminAvailability::Available => panic!("{:?} has no admitted service", product.id),
+                    AdminAvailability::Available => {
+                        panic!("{:?} has no admitted service", product.id)
+                    }
                 }
             }
             _ => assert_eq!(product.availability, AdminAvailability::Available),
@@ -180,7 +195,10 @@ async fn the_rails_product_children_are_the_inventory_with_the_gated_two_named()
 #[tokio::test]
 async fn the_explain_switch_is_the_persisted_show_calls_preference() {
     let mut desk = Desk::v2().await;
-    assert!(desk.snap().show_calls, "on by default: the switch starts checked");
+    assert!(
+        desk.snap().show_calls,
+        "on by default: the switch starts checked"
+    );
     desk.send(json!({"kind": "setShowCalls", "on": false}))
         .await
         .expect("off");
@@ -202,7 +220,11 @@ async fn the_explain_switch_is_the_persisted_show_calls_preference() {
 #[tokio::test]
 async fn the_rails_theme_toggle_is_the_persisted_appearance() {
     let mut desk = Desk::v2().await;
-    assert_eq!(desk.snap().appearance, Theme::System, "follows macOS until chosen");
+    assert_eq!(
+        desk.snap().appearance,
+        Theme::System,
+        "follows macOS until chosen"
+    );
     // The toggle flips between light and dark from what is shown; Settings keeps "Match system".
     desk.send(json!({"kind": "setAppearance", "theme": "dark"}))
         .await
@@ -212,7 +234,10 @@ async fn the_rails_theme_toggle_is_the_persisted_appearance() {
         .await
         .expect("light");
     assert_eq!(desk.snap().appearance, Theme::Light);
-    assert_eq!(desk.adapters.store.saved().expect("saved").appearance, Theme::Light);
+    assert_eq!(
+        desk.adapters.store.saved().expect("saved").appearance,
+        Theme::Light
+    );
     desk.send(json!({"kind": "setAppearance", "theme": "system"}))
         .await
         .expect("system");
@@ -221,7 +246,11 @@ async fn the_rails_theme_toggle_is_the_persisted_appearance() {
         .await
         .expect("dark again");
     let desk = desk.restart();
-    assert_eq!(desk.snap().appearance, Theme::Dark, "the choice survives a restart");
+    assert_eq!(
+        desk.snap().appearance,
+        Theme::Dark,
+        "the choice survives a restart"
+    );
     // A theme the wire does not name is not a well-formed intent.
     assert!(
         serde_json::from_value::<Intent>(json!({"kind": "setAppearance", "theme": "sepia"}))

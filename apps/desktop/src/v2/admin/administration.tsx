@@ -144,18 +144,31 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
         // eslint-disable-next-line react-hooks/exhaustive-deps -- once per handed case
     }, [playground?.prefill.nonce, products.length])
 
-    // The rail's product children open that product's section (C35).
+    // An arrival is consumed once, when its target is in the inventory (C35 attempt-02 R1):
+    // a fresh snapshot never re-applies it over what the operator chose since. The rail's
+    // product children and the tenant menu's "Change Gateway workspace…" name a product
+    // (and a tab); a contextual action (Inbox, Home) names a Runtime inventory (C30).
+    const consumedArrival = useRef<number | null>(null)
     useEffect(() => {
-        if (!arrival?.product) return
-        setOpen((o) => ({ ...o, [arrival.product!]: true }))
-    }, [arrival])
-    // A contextual action (Inbox, Home) opens the product and tab it names (C30).
-    useEffect(() => {
-        if (!arrival || !arrival.resource) return
+        if (!arrival || consumedArrival.current === arrival.sequence) return
+        if (arrival.product) {
+            const product = products.find((p) => p.id === arrival.product)
+            if (!product) return
+            consumedArrival.current = arrival.sequence
+            setOpen((o) => ({ ...o, [product.id]: true }))
+            const tab = arrival.tab ? product.tabs.find((t) => t.id === arrival.tab && t.disposition.kind !== 'removed') : undefined
+            if (tab) setTabOf((s) => ({ ...s, [product.id]: tab.id }))
+            return
+        }
+        if (!arrival.resource) {
+            consumedArrival.current = arrival.sequence
+            return
+        }
         const resource = arrival.resource
         const runtime = products.find((p) => p.id === 'runtimeSecurity')
         const tab = runtime?.tabs.find((t) => t.resource === resource) ?? (DLP.includes(resource) ? runtime?.tabs.find((t) => t.label === 'DLP') : undefined)
         if (!tab) return
+        consumedArrival.current = arrival.sequence
         setOpen((o) => ({ ...o, runtimeSecurity: true }))
         setTabOf((s) => ({ ...s, runtimeSecurity: tab.id }))
         if (DLP.includes(resource)) setDlp(resource)
