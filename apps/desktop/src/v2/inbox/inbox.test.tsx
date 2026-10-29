@@ -46,9 +46,9 @@ describe('Inbox', () => {
         // The action carries its target: Administration opens on the API keys inventory, filtered to the key.
         const ready = native.current.tenants.map((t, i) => (i === 0 ? { ...t, management: { state: 'ready' as const, mode: 'keychain' as const, failure: null, clientId: 'client@1762204418.iam.panserviceaccount.com', tokenOrigin: 'https://auth.apps.paloaltonetworks.com' } } : t))
         await native.push({ ...native.current, activeFeature: 'administration', tenants: ready })
-        await screen.findByRole('heading', { level: 1, name: /Tenant inventories/ })
-        expect(screen.getByRole('button', { name: 'API keys' })).toHaveAttribute('aria-current', 'true')
-        expect(document.querySelector('[data-slot="administration-filter"]')).toHaveValue('Runtime')
+        await screen.findByRole('heading', { level: 1, name: 'Administration' })
+        await waitFor(() => expect(screen.getByRole('tab', { name: 'API keys' })).toHaveAttribute('aria-selected', 'true'))
+        await waitFor(() => expect(document.querySelector('[data-slot="administration-filter"]')).toHaveValue('Runtime'))
         await native.push({ ...native.current, activeFeature: 'inbox' })
         await screen.findByRole('heading', { level: 1, name: 'Inbox' })
         await user.click(within(screen.getByRole('list', { name: 'Inbox items' })).getByRole('button', { name: /Runtime expires in 5 days/ }))
@@ -214,8 +214,9 @@ describe('Inbox', () => {
         const meridian = native.current.tenants[1]!
         const ready = { ...meridian, management: { state: 'ready' as const, mode: 'keychain' as const, failure: null, clientId: 'client@1001464285.iam.panserviceaccount.com', tokenOrigin: 'https://auth.apps.paloaltonetworks.com' } }
         await native.push({ ...native.current, tenants: [native.current.tenants[0]!, ready], active: { tenant: meridian.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' }, activeFeature: 'administration', inbox: { items: [], read: { state: 'pending', lastReadAt: null, failedAt: null, settledAt: null, products: [], sourcesMissing: [], generation: 0, rechecking: null }, lastSnooze: null } })
-        await screen.findByRole('heading', { level: 1, name: /Tenant inventories/ })
-        expect(screen.getByRole('button', { name: 'Security profiles' })).toHaveAttribute('aria-current', 'true')
+        await screen.findByRole('heading', { level: 1, name: 'Administration' })
+        expect(screen.getByRole('tab', { name: 'Custom topics' })).toHaveAttribute('aria-selected', 'true')
+        expect(screen.getByRole('tab', { name: 'API keys' })).toHaveAttribute('aria-selected', 'false')
         expect(document.querySelector('[data-slot="administration-filter"]')).toHaveValue('')
         expect(document.querySelector('[data-slot="unconfirmed"]')).toBeNull()
         // Back in Northwind (a new context): the retired delivery is gone for good, never re-sent.

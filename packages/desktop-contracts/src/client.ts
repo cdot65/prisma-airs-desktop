@@ -455,7 +455,104 @@ function isScanResult(value: unknown): boolean {
         Array.isArray(value.promptDetected) &&
         value.promptDetected.every(isDetection) &&
         Array.isArray(value.responseDetected) &&
-        value.responseDetected.every(isDetection)
+        value.responseDetected.every(isDetection) &&
+        // C31: topic results keyed apart from the detectors, per direction.
+        isTopicVerdict(value.topics) &&
+        isTopicVerdict(value.responseTopics)
+    )
+}
+
+function isTopicVerdict(value: unknown): boolean {
+    return (
+        isRecord(value) &&
+        optional((v) => typeof v === 'boolean', value.violation) &&
+        Array.isArray(value.blocked) &&
+        value.blocked.every(isString) &&
+        Array.isArray(value.allowed) &&
+        value.allowed.every(isString)
+    )
+}
+
+const ADMIN_PRODUCTS: readonly string[] = ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill', 'agenticIdentity', 'agenticEndpoint']
+const CHANGE_KINDS_ALL: readonly string[] = [
+    'profiles',
+    'topics',
+    'applications',
+    'apiKeys',
+    'dataPatterns',
+    'dataProfiles',
+    'filteringProfiles',
+    'dictionaries',
+    'gatewayWorkspaces',
+    'gatewayProviders',
+    'gatewayRoutes',
+    'gatewayGuardrails',
+    'gatewayServiceKeys',
+    'gatewayUserKeys',
+    'gatewayIntegrations',
+]
+const CHANGE_ACTIONS_ALL: readonly string[] = ['create', 'update', 'delete', 'version', 'rotate', 'models']
+const TAB_DISPOSITIONS: readonly string[] = ['read', 'change', 'unavailable', 'removed']
+/** The Administration inventory (C31): products, tabs, dispositions and the admitted actions per tab. */
+function isAdminInventoryView(value: unknown): boolean {
+    if (!isRecord(value) || !Array.isArray(value.products)) return false
+    const isPair = (p: unknown) => isRecord(p) && oneOf(CHANGE_KINDS_ALL, p.kind) && oneOf(CHANGE_ACTIONS_ALL, p.action)
+    return value.products.every(
+        (p: unknown) =>
+            isRecord(p) &&
+            oneOf(ADMIN_PRODUCTS, p.id) &&
+            isString(p.label) &&
+            isRecord(p.availability) &&
+            (p.availability.state === 'available' || (p.availability.state === 'unavailable' && isString(p.availability.reason))) &&
+            typeof p.readOnly === 'boolean' &&
+            Array.isArray(p.tabs) &&
+            // An unavailable product has no tabs and so no action (V2-T19).
+            (p.availability.state === 'available' || p.tabs.length === 0) &&
+            p.tabs.every(
+                (t: unknown) =>
+                    isRecord(t) &&
+                    isString(t.id) &&
+                    isString(t.label) &&
+                    isRecord(t.disposition) &&
+                    oneOf(TAB_DISPOSITIONS, t.disposition.kind) &&
+                    (t.disposition.kind === 'read' || t.disposition.kind === 'change' || isString(t.disposition.reason)) &&
+                    Array.isArray(t.reads) &&
+                    t.reads.every(isString) &&
+                    Array.isArray(t.actions) &&
+                    t.actions.every((a: unknown) => isPair(a) && isString((a as Record<string, unknown>).label) && typeof (a as Record<string, unknown>).row === 'boolean') &&
+                    // Only a change tab offers actions; a read-only product never does.
+                    (t.disposition.kind === 'change' || t.actions.length === 0) &&
+                    (!p.readOnly || t.actions.length === 0) &&
+                    Array.isArray(t.denied) &&
+                    t.denied.every((d: unknown) => isPair(d) && isString((d as Record<string, unknown>).reason)) &&
+                    optional(isString, t.resource)
+            )
+    )
+}
+
+const ROTATION_STAGES: readonly string[] = ['issuanceUnconfirmed', 'issued', 'resumed', 'acknowledged', 'removalUnconfirmed', 'complete']
+/** One key rotation (C31, I7): its two labelled timestamps and stage. */
+function isRotationView(value: unknown): boolean {
+    const isKey = (k: unknown) => isRecord(k) && isString(k.id) && typeof k.name === 'string'
+    return (
+        isRecord(value) &&
+        isString(value.application) &&
+        isKey(value.oldKey) &&
+        optional(isKey, value.newKey) &&
+        oneOf(ROTATION_STAGES, value.stage) &&
+        optional(isString, value.issuedBy) &&
+        isCount(value.issuedAt) &&
+        optional(isCount, value.deploymentAcknowledgedAt) &&
+        optional(isCount, value.oldKeyRemovedAt) &&
+        optional(isString, value.removalRejected) &&
+        typeof value.unsaved === 'boolean' &&
+        // Complete means read back gone, with its time; otherwise that time is unset.
+        ((value.stage === 'complete') === (value.oldKeyRemovedAt !== null)) &&
+        // The held key is offered only while it may be revealed: issued, or
+        // issued but not yet confirmed by readback (C31, I6).
+        (value.stage === 'issued' || value.stage === 'issuanceUnconfirmed' || value.issuedBy === null) &&
+        // Nothing is claimed about a key an unconfirmed issuance has not read back.
+        (value.stage !== 'issuanceUnconfirmed' || value.newKey === null)
     )
 }
 
@@ -1736,7 +1833,9 @@ function isChangeResult(value: unknown): boolean {
         optional(isListedWorkspace, value.workspace) &&
         // Steps belong only to a workspace provisioning.
         (value.provisioning === null ||
-            (value.kind === 'gatewayWorkspaces' && value.action === 'create' && isProvisioning(value.provisioning)))
+            (value.kind === 'gatewayWorkspaces' && value.action === 'create' && isProvisioning(value.provisioning))) &&
+        // C31: when the settlement was recorded; only a settled change has one.
+        (value.settledAt === undefined || (value.settled === true && isCount(value.settledAt)))
     )
 }
 
@@ -2101,7 +2200,7 @@ function isOverviewView(value: unknown): boolean {
     )
 }
 
-const INBOX_KINDS: readonly string[] = ['runtime', 'gateway', 'setupWarning']
+const INBOX_KINDS: readonly string[] = ['runtime', 'gateway', 'setupWarning', 'rotation']
 const READ_STATES: readonly string[] = ['pending', 'reading', 'done', 'failed']
 const PRODUCT_READ_STATES: readonly string[] = ['pending', 'ok', 'incomplete', 'needsRole', 'failed', 'notRead']
 /** The active tenant's Inbox and read status (C30): entries with their core-computed holds. */
@@ -2718,6 +2817,9 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isSessionsView(value.sessions) ||
         !isLibraryView(value.library) ||
         !isOverviewView(value.overview) ||
+        !optional(isAdminInventoryView, value.administration) ||
+        !Array.isArray(value.rotations) ||
+        !value.rotations.every(isRotationView) ||
         !isInboxView(value.inbox) ||
         !isWorkbenchView(value.workbench) ||
         !isGatewayView(value.gateway) ||

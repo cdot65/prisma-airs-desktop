@@ -390,6 +390,14 @@ pub const WORKLOADS: &[Workload] = &[
         measured_by: "C24",
         evidence: "workload-perf.json",
     },
+    // The v2 tenant switch (D058): the new tenant's Home from cached
+    // scopes, registered by C30 before it measured it.
+    Workload {
+        registered_by: "C30",
+        registration: "docs/planning/evidence/C30/workload-budget-registration.json",
+        measured_by: "C30",
+        evidence: "workload-perf.json",
+    },
 ];
 
 /// Budgets from a registered Markdown table:
@@ -417,14 +425,6 @@ pub fn workload_budgets(table: &str) -> Result<Vec<Budget>> {
                 .map_err(|_| invalid(format!("budget limit is not a number: {line}")))?,
             unit: unit.to_owned(),
             samples: cells[3]
-    // The v2 tenant switch (D058): the new tenant's Home from cached
-    // scopes, registered by C30 before it measured it.
-    Workload {
-        registered_by: "C30",
-        registration: "docs/planning/evidence/C30/workload-budget-registration.json",
-        measured_by: "C30",
-        evidence: "workload-perf.json",
-    },
                 .parse()
                 .map_err(|_| invalid(format!("budget sample count is not a number: {line}")))?,
         });

@@ -215,6 +215,17 @@ pub struct PersistedState {
     /// is not restored: its credentials are cleaned up on the next load.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tenant_draft: Option<StoredDraft>,
+    /// Each tenant's Runtime key rotations in progress or completed (C31).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tenant_rotations: Vec<TenantRotations>,
+}
+
+/// One tenant's key rotations (C31).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TenantRotations {
+    pub tenant: TenantId,
+    pub rotations: Vec<crate::features::Rotation>,
 }
 
 /// The draft a wizard was working on (C29).
@@ -267,6 +278,7 @@ impl Default for PersistedState {
             show_calls: true,
             tenant_products: Vec::new(),
             tenant_warnings: Vec::new(),
+            tenant_rotations: Vec::new(),
             tenant_draft: None,
         }
     }

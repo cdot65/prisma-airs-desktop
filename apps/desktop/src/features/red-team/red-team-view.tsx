@@ -28,7 +28,16 @@ interface Props {
     dispatch: Dispatch
     observe: ObserveManagement
     onNavigate: (id: FeatureId) => void
+    /** v2 (C31): the product the shell's Administration accordion selected; strip and heading are then the shell's. */
+    tab?: Tab
+    /** v2 (C31): one Administration tab's part of the product; all of it when absent. */
+    section?: RedTeamSection
+    embedded?: boolean
 }
+
+export type RedTeamTab = Tab
+/** The Administration tabs of the two read-only products (screens/administration-inventory.md). */
+export type RedTeamSection = 'overview' | 'targets' | 'scans' | 'attacks' | 'reports' | 'modelOverview' | 'modelScans' | 'skillScans'
 
 /** A product read held by the view: the last read, kept (dated) when a
  * later one fails. */
@@ -96,12 +105,15 @@ const bound = (n: number, complete: boolean) => (complete ? n.toLocaleString() :
  * not available here and nothing on this page starts one. Keyed by context
  * in the shell: a tenant or credential change starts with nothing held.
  */
-export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTeamView({ snapshot, dispatch, observe, onNavigate }, ref) {
+export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTeamView({ snapshot, dispatch, observe, onNavigate, tab: controlledTab, section, embedded = false }, ref) {
     const ids = useId()
     const context = snapshot.active?.context ?? null
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
     const ready = tenant?.management.state === 'ready'
-    const [tab, setTab] = useState<Tab>('redTeam')
+    const [tab, setTab] = useState<Tab>(controlledTab ?? 'redTeam')
+    useEffect(() => {
+        if (controlledTab) setTab(controlledTab)
+    }, [controlledTab])
     const [range, setRange] = useState<Window>(30)
     const [redTeam, setRedTeam] = useState<Held<RedTeamObservation>>(empty)
     const [models, setModels] = useState<Held<SupplyChainObservation>>(empty)
@@ -139,7 +151,7 @@ export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTea
         if (tab === 'models' && !models.read && !models.loading && !models.failure) void readModels()
     }, [tab, ready])
 
-    const heading = <PageHeading ref={ref} id='red-team-heading' kicker='Red Team & Models' title='Red Teaming and model observation' />
+    const heading = embedded ? null : <PageHeading ref={ref} id='red-team-heading' kicker='Red Team & Models' title='Red Teaming and model observation' />
 
     if (!tenant || !context) {
         return (
@@ -166,7 +178,7 @@ export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTea
                 </Callout>
             ) : (
                 <>
-                    <div role='tablist' aria-label='Product' className='flex gap-1'>
+                    <div role='tablist' aria-label='Product' className='flex gap-1' hidden={!!controlledTab}>
                         {(
                             [
                                 ['redTeam', 'Red Teaming'],
@@ -200,9 +212,10 @@ export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTea
                                 onRefresh={() => void readRedTeam(range)}
                                 context={context}
                                 read={read}
+                                section={section}
                             />
                         ) : (
-                            <ModelsPanel held={models} onRefresh={() => void readModels()} />
+                            <ModelsPanel held={models} onRefresh={() => void readModels()} section={section} />
                         )}
                     </div>
                 </>
@@ -306,6 +319,7 @@ function RedTeamPanel({
     onRefresh,
     context,
     read,
+    section,
 }: {
     held: Held<RedTeamObservation>
     range: Window
@@ -313,8 +327,12 @@ function RedTeamPanel({
     onRefresh: () => void
     context: ContextRef
     read: (request: ManagementRequest) => Promise<ManagementResult | string>
+    section?: RedTeamSection
 }) {
     const ids = useId()
+    // The legacy page shows its overview and scans; the v2-only parts render only on their own tab.
+    const show = (part: RedTeamSection) => !section || section === part
+    const only = (part: RedTeamSection) => section === part
     const [status, setStatus] = useState('all')
     const [attacksOf, setAttacksOf] = useState<string | null>(null)
     const observation = held.read
@@ -339,6 +357,7 @@ function RedTeamPanel({
     return (
         <>
             <ReadStatus held={held} what='Red Teaming' extra={`last ${observation?.window ?? range} days`} onRefresh={onRefresh} />
+            {show('overview') ? (
             <fieldset className='flex flex-wrap items-center gap-3 text-[13px]'>
                 <legend className='text-academy-ink-soft mb-1 text-[12px]'>Statistics window</legend>
                 {WINDOWS.map((days) => (
@@ -348,8 +367,11 @@ function RedTeamPanel({
                     </label>
                 ))}
             </fieldset>
+            ) : null}
             {observation ? (
                 <>
+                    {show('overview') ? (
+                    <>
                     <Tiles label='Red Teaming summary' tiles={tiles} />
                     {stats?.noScans ? <p className='text-[13px]'>No scans in this tenant yet. Red Teaming scans run in Prisma AIRS.</p> : null}
                     <div className='flex flex-wrap gap-6'>
@@ -363,6 +385,12 @@ function RedTeamPanel({
                             ['Scans', coverage(scans, observation.scansFailure)],
                         ]}
                     />
+                    </>
+                    ) : null}
+                    {only('targets') ? <TargetsTable scans={scans} onResults={setAttacksOf} /> : null}
+                    {only('attacks') ? <ReportedScans scans={scans} title='Attack results' note='Attack results are read for one reported scan at a time, at most ten pages.' action='Open attack results' onOpen={setAttacksOf} /> : null}
+                    {only('reports') ? <ReportedScans scans={scans} title='Reports' note='Reports are listed from scan metadata only; nothing is generated, exported or run here.' action='Open attack results' onOpen={setAttacksOf} /> : null}
+                    {show('scans') ? (
                     <section aria-labelledby={`${ids}-scans`} className='flex flex-col gap-2' data-slot='red-team-scans'>
                         <h2 id={`${ids}-scans`} className='text-[15px] font-semibold'>
                             Red Teaming scans
@@ -422,10 +450,13 @@ function RedTeamPanel({
                             </table>
                         )}
                     </section>
+                    ) : null}
                     {attacksOf ? <AttackResults key={attacksOf} scanId={attacksOf} context={context} read={read} onClose={() => setAttacksOf(null)} /> : null}
                 </>
             ) : null}
-            <Unavailable items='Starting or re-running Red Teaming scans, verifying ASR, and creating targets, custom adapters, network channels or prompt sets are not available here.' />
+            {show('overview') ? (
+                <Unavailable items='Starting or re-running Red Teaming scans, verifying ASR, and creating targets, custom adapters, network channels or prompt sets are not available here.' />
+            ) : null}
         </>
     )
 }
@@ -561,8 +592,12 @@ function AttackResults({
     )
 }
 
-function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>; onRefresh: () => void }) {
+function ModelsPanel({ held, onRefresh, section }: { held: Held<SupplyChainObservation>; onRefresh: () => void; section?: RedTeamSection }) {
     const ids = useId()
+    const overview = !section || section === 'modelOverview'
+    const showModels = !section || section === 'modelOverview' || section === 'modelScans'
+    const showSkills = !section || section === 'modelOverview' || section === 'skillScans'
+    const listOnly = section === 'modelScans' || section === 'skillScans'
     const observation = held.read
     const models = observation?.models ?? null
     const stats = observation?.skillStatistics ?? null
@@ -580,6 +615,8 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>; 
             <ReadStatus held={held} what='model observation' extra='current scan inventory and 30-day skill statistics' onRefresh={onRefresh} />
             {observation ? (
                 <>
+                    {overview ? (
+                    <>
                     <Tiles label='Model and skill summary' tiles={tiles} />
                     <div className='flex flex-wrap gap-6'>
                         <Ranked
@@ -599,15 +636,20 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>; 
                             ['Skill scans', coverage(skills, observation.skillsFailure)],
                         ]}
                     />
-                    <section aria-labelledby={`${ids}-rows`} className='flex flex-col gap-2' data-slot='models-scans'>
+                    </>
+                    ) : null}
+                    {listOnly || !section ? (
+                    <section aria-labelledby={`${ids}-rows`} className='flex flex-col gap-2' data-slot='models-scans' data-section={section ?? 'all'}>
                         <h2 id={`${ids}-rows`} className='text-[15px] font-semibold'>
-                            Model and skill scans
+                            {section === 'modelScans' ? 'Model scans' : section === 'skillScans' ? 'Skill scans' : 'Model and skill scans'}
                         </h2>
+                        {section === 'modelScans' ? <p className='text-[12px]'>{`Coverage: ${coverage(models, observation.modelsFailure)}`}</p> : null}
+                        {section === 'skillScans' ? <p className='text-[12px]'>{`Coverage: ${coverage(skills, observation.skillsFailure)}`}</p> : null}
                         <p className='text-academy-ink-soft text-[12px]'>
                             At most 100 scans per list. Skills are named by a pseudonym that holds for this read only.
                         </p>
-                        {(models?.rows.length ?? 0) + (skills?.rows.length ?? 0) === 0 ? (
-                            <p className='text-[13px]'>No model or skill scans were read.</p>
+                        {(showModels ? (models?.rows.length ?? 0) : 0) + (showSkills ? (skills?.rows.length ?? 0) : 0) === 0 ? (
+                            <p className='text-[13px]'>{section === 'modelScans' ? 'No model scans were read.' : section === 'skillScans' ? 'No skill scans were read.' : 'No model or skill scans were read.'}</p>
                         ) : (
                             <table className='w-full text-left text-[13px]'>
                                 <thead>
@@ -620,7 +662,7 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>; 
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(models?.rows ?? []).map((r) => (
+                                    {(showModels ? (models?.rows ?? []) : []).map((r) => (
                                         <tr key={`m-${r.id}`}>
                                             <td>Model Security</td>
                                             <td>{`Model scan ${short(r.id)}`}</td>
@@ -629,7 +671,7 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>; 
                                             <td>{r.createdAt ?? 'Not reported'}</td>
                                         </tr>
                                     ))}
-                                    {(skills?.rows ?? []).map((r, i) => (
+                                    {(showSkills ? (skills?.rows ?? []) : []).map((r, i) => (
                                         <tr key={`s-${i}-${r.pseudonym}`}>
                                             <td>AgentGuard</td>
                                             <td>{`Skill ${r.pseudonym} (pseudonym for this read)`}</td>
@@ -648,9 +690,117 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>; 
                             </table>
                         )}
                     </section>
+                    ) : null}
                 </>
             ) : null}
-            <Unavailable items='Starting model scans and managing security groups or model sources are not available here.' />
+            {overview ? <Unavailable items='Starting model scans and managing security groups or model sources are not available here.' /> : null}
         </>
+    )
+}
+
+/**
+ * Red Team Targets (C31, V2-T21): targets as the scan list carries them,
+ * identifiers and types only. Target names are outside the C13 privacy
+ * boundary and never read; "Results" opens the target's latest reported scan.
+ */
+function TargetsTable({ scans, onResults }: { scans: RedTeamObservation['scans']; onResults: (scanId: string) => void }) {
+    const ids = useId()
+    const targets = new Map<string, { type: string | null; scans: number; reported: string | null }>()
+    for (const r of scans?.rows ?? []) {
+        const key = r.targetId ?? 'Not reported'
+        const held = targets.get(key) ?? { type: r.targetType, scans: 0, reported: null }
+        held.scans += 1
+        if (!held.reported && REPORTED.includes((r.status ?? '').toUpperCase())) held.reported = r.id
+        targets.set(key, held)
+    }
+    return (
+        <section aria-labelledby={`${ids}-targets`} className='flex flex-col gap-2' data-slot='red-team-targets'>
+            <h2 id={`${ids}-targets`} className='text-[15px] font-semibold'>
+                Targets
+            </h2>
+            <p className='text-academy-ink-soft text-[12px]'>Identifiers and types from the scans read; target names stay in Prisma AIRS.</p>
+            {scans === null ? (
+                <p className='text-[13px]'>The scan list could not be read.</p>
+            ) : targets.size === 0 ? (
+                <p className='text-[13px]'>No targets appear in the scans read.</p>
+            ) : (
+                <table className='w-full text-left text-[13px]'>
+                    <thead>
+                        <tr>
+                            <th scope='col'>Target</th>
+                            <th scope='col'>Type</th>
+                            <th scope='col'>Scans read</th>
+                            <th scope='col'>
+                                <span className='sr-only'>Actions</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {[...targets].map(([id, t]) => (
+                            <tr key={id}>
+                                <td className='font-mono'>{id === 'Not reported' ? id : short(id)}</td>
+                                <td>{words(t.type)}</td>
+                                <td>{t.scans.toLocaleString()}</td>
+                                <td>
+                                    {t.reported ? (
+                                        <Button type='button' size='sm' tier='tertiary' onClick={() => onResults(t.reported!)}>
+                                            {`Results for target ${id === 'Not reported' ? id : short(id)}`}
+                                        </Button>
+                                    ) : null}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </section>
+    )
+}
+
+/** The reported scans (completed, passed or failed) as metadata rows, each opening its attack results. */
+function ReportedScans({ scans, title, note, action, onOpen }: { scans: RedTeamObservation['scans']; title: string; note: string; action: string; onOpen: (scanId: string) => void }) {
+    const ids = useId()
+    const rows = (scans?.rows ?? []).filter((r) => REPORTED.includes((r.status ?? '').toUpperCase()))
+    return (
+        <section aria-labelledby={`${ids}-reported`} className='flex flex-col gap-2' data-slot='red-team-reported' data-title={title}>
+            <h2 id={`${ids}-reported`} className='text-[15px] font-semibold'>
+                {title}
+            </h2>
+            <p className='text-academy-ink-soft text-[12px]'>{note}</p>
+            {scans === null ? (
+                <p className='text-[13px]'>The scan list could not be read.</p>
+            ) : rows.length === 0 ? (
+                <p className='text-[13px]'>No reported scans in the rows read.</p>
+            ) : (
+                <table className='w-full text-left text-[13px]'>
+                    <thead>
+                        <tr>
+                            <th scope='col'>Scan</th>
+                            <th scope='col'>Status</th>
+                            <th scope='col'>Type</th>
+                            <th scope='col'>Created</th>
+                            <th scope='col'>
+                                <span className='sr-only'>Actions</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((r) => (
+                            <tr key={r.id}>
+                                <td className='font-mono'>{short(r.id)}</td>
+                                <td>{words(r.status)}</td>
+                                <td>{words(r.jobType)}</td>
+                                <td>{r.createdAt ?? 'Not reported'}</td>
+                                <td>
+                                    <Button type='button' size='sm' tier='tertiary' onClick={() => onOpen(r.id)}>
+                                        {`${action} for scan ${short(r.id)}`}
+                                    </Button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </section>
     )
 }

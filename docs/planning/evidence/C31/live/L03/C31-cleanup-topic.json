@@ -1,0 +1,35 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "C31-cleanup-topic",
+  "workflows": [
+    "W08"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "e5456fd320d532d4fb40414d4af3c4f4110657b72b2c970ef891586720932ba3",
+  "started_utc": "2026-10-28T19:55:28Z",
+  "finished_utc": "2026-10-28T19:55:29Z",
+  "inputs": {
+    "action": "delete",
+    "body": {},
+    "kind": "topics",
+    "target": "44c3bbb8-1527-4dbc-b257-a0ef737c1446"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back absent",
+  "observed": {
+    "confirmation_title": "Delete custom topic “airs-v2-c25-c31-topic”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {},
+  "readback": "absent",
+  "cleanup": "this is the cleanup",
+  "consumption": {},
+  "implementation": {
+    "cargo_lock_sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+    "runner_sha256": "02858eba793b6476a0ba6545631db414914f20da0c66dbaa717dc2652e54180a",
+    "source_fingerprint": "7d2d1dc1a1715253e0e20b4884e1a3304563ed016d5e2f3bee9c7d7674bd64f0"
+  }
+}

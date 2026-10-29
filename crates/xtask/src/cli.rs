@@ -375,10 +375,21 @@ pub fn main(raw: Vec<String>) -> Result<()> {
             Ok(())
         }
         "live-run" => {
-            args.only(&["--scope", "--family"])?;
+            args.only(&["--scope", "--family", "--subject"])?;
             let scope = PathBuf::from(args.require("--scope")?);
             let families = args.values("--family");
-            let record = crate::live_run::main(&repo, &scope, &families)?;
+            // A later chunk's live row (C31) runs inside a C25 family's
+            // designation and writes its receipts under its own evidence.
+            let subject = match args.value("--subject") {
+                None | Some("C25") => Subject::Chunk(25),
+                Some("C31") => Subject::Chunk(31),
+                Some(other) => {
+                    return Err(invalid(format!(
+                        "--subject {other}: only C25 and C31 run live rows"
+                    )));
+                }
+            };
+            let record = crate::live_run::main(&repo, &scope, &families, subject)?;
             for family in &record.families {
                 println!(
                     "{} {}: {}",

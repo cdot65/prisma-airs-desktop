@@ -847,6 +847,10 @@ pub(crate) struct Run<'a> {
     pub scratch: PathBuf,
     /// What this run executes ([`implementation`]), in every receipt.
     pub implementation: BTreeMap<String, String>,
+    /// The chunk whose evidence the receipts and run record belong to (C25
+    /// for the C25 families; C31's live row writes under C31). The
+    /// consumption ledger stays C25's: one append-only budget ledger.
+    pub subject: Subject,
 }
 
 impl Run<'_> {
@@ -1021,7 +1025,7 @@ impl Run<'_> {
         write_json(
             &self
                 .repo
-                .evidence_dir(Subject::Chunk(25))
+                .evidence_dir(self.subject)
                 .join("live")
                 .join(family)
                 .join(format!("{}.json", spec.id)),
@@ -1240,6 +1244,32 @@ pub async fn run(
     evidence: Evidence,
     families: &[String],
 ) -> Result<RunRecord> {
+    run_for(
+        repo,
+        manifest,
+        sha,
+        resolver,
+        operator,
+        evidence,
+        families,
+        Subject::Chunk(25),
+    )
+    .await
+}
+
+/// [`run`] with the receipts and run record under `subject`'s evidence
+/// (a later chunk's live row run inside a C25 family's designation).
+#[allow(clippy::too_many_arguments)]
+pub async fn run_for(
+    repo: &Repo,
+    manifest: &LiveManifest,
+    sha: &str,
+    resolver: &dyn Resolve,
+    operator: Arc<dyn Operator>,
+    evidence: Evidence,
+    families: &[String],
+    subject: Subject,
+) -> Result<RunRecord> {
     let failures = live::check(repo, manifest);
     if !failures.is_empty() {
         return Err(invalid(format!(
@@ -1295,11 +1325,12 @@ pub async fn run(
         secrets: Vec::new(),
         scratch,
         implementation: implementation.clone(),
+        subject,
     };
     let run_implementation = implementation;
     // Each requested family's earlier receipts move to live/history/ so a
     // check this run does not reach never shows an older run's result.
-    let live_dir = repo.evidence_dir(Subject::Chunk(25)).join("live");
+    let live_dir = repo.evidence_dir(subject).join("live");
     let history = live_dir.join("history").join(started.replace(':', ""));
     for id in &requested {
         let dir = live_dir.join(id);
@@ -1371,10 +1402,7 @@ pub async fn run(
         implementation: run_implementation,
     };
     write_json(
-        &repo
-            .evidence_dir(Subject::Chunk(25))
-            .join("live")
-            .join("run.json"),
+        &repo.evidence_dir(subject).join("live").join("run.json"),
         &record,
     )?;
     Ok(record)
@@ -1425,13 +1453,18 @@ fn native_family(run: &mut Run<'_>, id: &str) -> Result<FamilyResult> {
 }
 
 /// `xtask live-run`: a live run against the designated services.
-pub fn main(repo: &Repo, scope: &std::path::Path, families: &[String]) -> Result<RunRecord> {
+pub fn main(
+    repo: &Repo,
+    scope: &std::path::Path,
+    families: &[String],
+    subject: Subject,
+) -> Result<RunRecord> {
     let (manifest, sha) = live::load(repo, scope)?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(|e| invalid(format!("runtime: {e}")))?;
-    runtime.block_on(run(
+    runtime.block_on(run_for(
         repo,
         &manifest,
         &sha,
@@ -1439,5 +1472,6 @@ pub fn main(repo: &Repo, scope: &std::path::Path, families: &[String]) -> Result
         Arc::new(TerminalOperator),
         Evidence::Live,
         families,
+        subject,
     ))
 }

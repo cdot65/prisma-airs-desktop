@@ -1,0 +1,167 @@
+{
+  "subject": "C31",
+  "attempt": "attempt-04",
+  "time": "2026-10-28T20:01:43-0400",
+  "cwd": "/Users/cdot/development/redtail/prisma-airs-desktop-v2",
+  "toolchain": {
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+    "node": "v24.21.0",
+    "pnpm": "10.6.5",
+    "rustup_active": "1.99.0-aarch64-apple-darwin (overridden by '/Users/cdot/development/redtail/prisma-airs-desktop-v2/rust-toolchain.toml')"
+  },
+  "environment": {
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools/bin:/Users/cdot/.cargo/bin:/Users/cdot/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTFLAGS": null,
+    "CARGO_TARGET_DIR": null
+  },
+  "build_flags": {
+    "digest": "53866b1875c103ac65bd4b61d0c849caeeb71aec93e20c7ae1126cae432ad611",
+    "covers": "checks.json, native-checks.json, toolchain.json, budgets.json, tauri.conf.json, tauri.fixture.conf.json, src-tauri/capabilities/*.json, rust-toolchain.toml"
+  },
+  "inputs": {
+    "procedure": "docs/planning/evidence/C31/runs/hash-inputs.sh",
+    "procedure_sha256": "4876c2854234d55402176d03cc96fa67fe74c9a357e8ab105e73925e69283425",
+    "before_inventory_sha256": "41a5efe3ca9192940a8dcfdd87c96bccc039e663cb64f7f53c10a149050b4997",
+    "before_digest": "41a5efe3ca9192940a8dcfdd87c96bccc039e663cb64f7f53c10a149050b4997",
+    "after_inventory_sha256": "41a5efe3ca9192940a8dcfdd87c96bccc039e663cb64f7f53c10a149050b4997",
+    "after_digest": "41a5efe3ca9192940a8dcfdd87c96bccc039e663cb64f7f53c10a149050b4997",
+    "unchanged": true,
+    "members": 18274
+  },
+  "runs": {
+    "rustfmt": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/rustfmt.log",
+      "log_sha256": "6103ed9860b3d5528f2d4d935b0e62ce86231023272ae88325ab480914e8e518",
+      "summary": [
+        "EXIT 0"
+      ]
+    },
+    "clippy": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/clippy.log",
+      "log_sha256": "ee1fab200b49869f2d265f8fb3b4c84ed4a42f99c16f9ca29e9ac63d2c667f2b",
+      "summary": [
+        "EXIT 0"
+      ]
+    },
+    "clippy-default": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/clippy-default.log",
+      "log_sha256": "abf55a5b61243a477c44ca44e582cae2aa503ad9230e9efb96e619893dc7b6e3",
+      "summary": [
+        "EXIT 0"
+      ]
+    },
+    "notices": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/notices.log",
+      "log_sha256": "efb6d000aeb3121eb3f7a710e226957a8889ff1e530cc9f17dbc5bdeb597d59a",
+      "summary": [
+        "EXIT 0"
+      ]
+    },
+    "bindings": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/bindings.log",
+      "log_sha256": "a53dcdfa62c9ad6f5a9fee4bf029363e5ec253d9a77ba6485562a49a6794699a",
+      "summary": [
+        "EXIT 0"
+      ]
+    },
+    "contracts-typecheck": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/contracts-typecheck.log",
+      "log_sha256": "48323564a9a718ceee4400dec176d99f52dbca2e44f896088afc838b2377c7e4",
+      "summary": [
+        "EXIT 0"
+      ]
+    },
+    "desktop-typecheck": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/desktop-typecheck.log",
+      "log_sha256": "c8f63d9cdafe3e78d683b697b769c9acb04c95e076bde2e4d64f7a4c6ae4d8dd",
+      "summary": [
+        "EXIT 0"
+      ]
+    },
+    "vitest": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/vitest.log",
+      "log_sha256": "5997a1faf1164b76ba04dbae08304de76805a751c9421560fc8253391bca2759",
+      "summary": [
+        "Test Files  40 passed (40)",
+        "Tests  532 passed (532)",
+        "EXIT 0"
+      ]
+    },
+    "vitest-truth": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/vitest-truth.log",
+      "log_sha256": "17d112f052855cd0e72b7cfe35fec8102d64e227b94fd527cabb3027b79c3282",
+      "summary": [
+        "Test Files  1 passed (1)",
+        "Tests  1 passed (1)",
+        "EXIT 0"
+      ]
+    },
+    "core-lib": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/core-lib.log",
+      "log_sha256": "8db7014ea6aafc765a351a8def3d4bdbd77a9db1f2d570e9c6d0e5a2b4be6059",
+      "summary": [
+        "test result: ok. 230 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 18.61s",
+        "EXIT 0"
+      ]
+    },
+    "core-fixtures": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/core-fixtures.log",
+      "log_sha256": "11b10a52961cd0c4cf4bdffe8beeaaca4b52279d9a4c2b1183383f68ab67325c",
+      "summary": [
+        "test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.42s",
+        "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.98s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "EXIT 0"
+      ]
+    },
+    "host": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/host.log",
+      "log_sha256": "1367d100b16329c89ec5659168270ed00c34863bb05ddb2c3676b671e47f4c80",
+      "summary": [
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "EXIT 0"
+      ]
+    },
+    "xtask-lib": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/xtask-lib.log",
+      "log_sha256": "a5fc60d29b0e80c6fb1b53e51511d57a46291a94f416277d8a250c86fa6eeb2c",
+      "summary": [
+        "test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s",
+        "EXIT 0"
+      ]
+    },
+    "shell-controller": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/shell-controller.log",
+      "log_sha256": "b9141c3c2a8156dc495d6b972ad55e747bfac54f676edb78be511df48ccf5a13",
+      "summary": [
+        "test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+        "EXIT 0"
+      ]
+    },
+    "desktop-build": {
+      "exit": 0,
+      "log": "docs/planning/evidence/C31/runs/desktop-build.log",
+      "log_sha256": "55e43f1b12cb675b757a3d485726fe3ddc04c046f5ba24e11b1d5d4e12534734",
+      "summary": [
+        "EXIT 0"
+      ]
+    }
+  }
+}

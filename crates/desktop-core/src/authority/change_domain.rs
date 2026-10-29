@@ -177,6 +177,11 @@ pub struct ChangeResultView {
     pub workspace: Option<ListedWorkspace>,
     /// A workspace provisioning's steps and their reconciliation (C17).
     pub provisioning: Option<Provisioning>,
+    /// When the core recorded the settlement (and its readback), on its
+    /// clock; stable across later observations (C31).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub settled_at: Option<u32>,
 }
 
 /// Why a chosen dictionary file was not staged.
@@ -343,11 +348,18 @@ type ProgressSlot = Arc<Mutex<Progress>>;
 
 pub(super) struct ChangeRecord {
     operation: OperationId,
+    /// The review this change was applied from: ending that review ends the
+    /// disclosure of whatever the change returns (C31, I6).
+    review: Option<ReviewId>,
     context: ContextRef,
     kind: ChangeKind,
     action: ChangeAction,
     target: String,
     name: Option<String>,
+    /// The item as reviewed, by name (a key version's source key), and the
+    /// application a key change names (C31 rotations).
+    source_name: Option<String>,
+    application: Option<String>,
     slot: ApplySlot,
     output: Option<ApplyOutput>,
     secret: SecretState,
@@ -357,9 +369,24 @@ pub(super) struct ChangeRecord {
     progress: ProgressSlot,
     /// Kept on this Mac when the change settles uncertain (C17, T23).
     local: Option<LocalOrigin>,
+    /// The operator ended the review before this change settled: its
+    /// one-time secret is dropped the moment it lands (C31, I6).
+    forget_on_settle: bool,
+    /// A Runtime key change's tenant: its settlement updates that tenant's
+    /// rotation even after the context retired (without its secret; C31).
+    rotation_tenant: Option<TenantId>,
+    /// When the settlement was recorded (C31).
+    settled_at: Option<u32>,
 }
 
 impl ChangeRecord {
+    /// A Runtime key Version issued from `old_key` (a rotation's issuance).
+    fn is_issuance_of(&self, old_key: &str) -> bool {
+        self.kind == ChangeKind::ApiKeys
+            && self.action == ChangeAction::Version
+            && self.target == old_key
+    }
+
     /// The tenant a Gateway change keeps its local record under.
     pub(super) fn tenant(&self) -> Option<&TenantId> {
         self.local.as_ref().map(|l| &l.tenant)
@@ -700,6 +727,16 @@ impl State {
                 .as_ref()
                 .and_then(|b| item_name(draft.kind, b))
         });
+        let source_name = prepared
+            .before
+            .as_ref()
+            .and_then(|b| item_name(draft.kind, b));
+        let application = [&prepared.mutation.body]
+            .into_iter()
+            .chain(prepared.before.iter())
+            .find_map(|v| v.get("cust_app").and_then(Value::as_str))
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned);
         let workspace = bound.as_ref().and_then(|b| b.scope.shown.clone());
         let reference = bound.as_ref().and_then(|b| b.scope.reference.clone());
         let local = bound.as_ref().map(|_| LocalOrigin {
@@ -708,6 +745,9 @@ impl State {
             body: draft.body.to_string(),
         });
         let progress: ProgressSlot = Arc::default();
+        let rotation_tenant = (draft.kind == ChangeKind::ApiKeys
+            && matches!(draft.action, ChangeAction::Version | ChangeAction::Delete))
+        .then(|| tenant.clone());
         let job = ApplyJob {
             source,
             tenant,
@@ -730,18 +770,22 @@ impl State {
                     return Vec::new();
                 }
             };
-        if let Some(taken) = self.change_review.take() {
-            self.consumed_reviews.push(taken.id);
-        }
+        let review = self.change_review.take().map(|taken| {
+            self.consumed_reviews.push(taken.id.clone());
+            taken.id
+        });
         self.change_results.insert(
             0,
             ChangeRecord {
                 operation,
+                review,
                 context,
                 kind: draft.kind,
                 action: draft.action,
                 target: draft.target,
                 name,
+                source_name,
+                application,
                 slot,
                 output: None,
                 secret: SecretState::None,
@@ -749,6 +793,9 @@ impl State {
                 reference,
                 progress,
                 local,
+                forget_on_settle: false,
+                rotation_tenant,
+                settled_at: None,
             },
         );
         starts
@@ -859,7 +906,23 @@ impl State {
                 self.change_review = None;
                 Ok(())
             }
-            _ => Err(Refusal::ReviewInvalid),
+            _ => {
+                // An applied review: its exit retires every one-time secret
+                // its changes returned or will return (I6), settled or not.
+                let applied: Vec<OperationId> = self
+                    .change_results
+                    .iter()
+                    .filter(|r| r.review.as_ref() == Some(review))
+                    .map(|r| r.operation.clone())
+                    .collect();
+                if applied.is_empty() {
+                    return Err(Refusal::ReviewInvalid);
+                }
+                for operation in &applied {
+                    let _ = self.forget_secret(operation);
+                }
+                Ok(())
+            }
         }
     }
 
@@ -947,6 +1010,9 @@ impl State {
             .ok_or(Refusal::InvalidInput)?;
         if let Some(output) = record.output.as_mut() {
             output.secret = None;
+        } else {
+            // Not settled yet: whatever key it returns is dropped on arrival.
+            record.forget_on_settle = true;
         }
         if record.secret == SecretState::Held {
             record.secret = SecretState::Forgotten;
@@ -955,10 +1021,25 @@ impl State {
         Ok(())
     }
 
+    /// Forgets the one-time key of exactly the issuance a rotation names:
+    /// the key Version of `old_key` applied as `operation` in this session.
+    /// Any other result (another key, a Gateway rotation) is untouched.
+    pub(super) fn forget_issuance(&mut self, operation: &str, old_key: &str) {
+        let found = self
+            .change_results
+            .iter()
+            .find(|r| r.operation.as_str() == operation && r.is_issuance_of(old_key))
+            .map(|r| r.operation.clone());
+        if let Some(operation) = found {
+            let _ = self.forget_secret(&operation);
+        }
+    }
+
     /// Settles prepared reviews and applied changes; drops everything bound
     /// to a retired context (an open confirmation is ended, held secrets
     /// are zeroized with their record).
     pub(super) fn sync_changes(&mut self) {
+        self.retry_rotation_save();
         let active = self.active_ref.clone();
         let retired = self.change_review.as_ref().is_some_and(|r| {
             r.gateway
@@ -1005,7 +1086,11 @@ impl State {
         for record in std::mem::take(&mut self.change_results) {
             if Some(&record.context) == active.as_ref() {
                 self.change_results.push(record);
-            } else if record.output.is_none() && record.local.is_some() {
+            } else if record.output.is_none()
+                && (record.local.is_some() || record.rotation_tenant.is_some())
+            {
+                // Its settlement still belongs to its tenant (a Gateway
+                // record on this Mac, a Runtime key rotation's facts).
                 self.detached_changes.push(record);
             }
         }
@@ -1013,6 +1098,10 @@ impl State {
             self.secrets.dismiss();
         }
         let mut kept = Vec::new();
+        // Settled Runtime changes of the active context drive key rotations (C31).
+        let mut rotations: Vec<(TenantId, super::rotation_domain::SettledChange)> = Vec::new();
+        let active_tenant = self.data.active.clone();
+        let clock = self.clock();
         for record in self
             .change_results
             .iter_mut()
@@ -1040,13 +1129,19 @@ impl State {
                 secret: None,
                 provisioning: None,
             });
+            // What a rotation needs of the readback (the key read back, never
+            // its secret) is kept before a retired context's reply is dropped.
+            let rotation_current = output.current.clone();
             if Some(&record.context) != active.as_ref() {
                 // A retired context's reply and one-time key go unread.
                 output.secret = None;
                 output.response = None;
                 output.current = None;
             }
-            record.secret = if output.secret.is_some() {
+            record.secret = if record.forget_on_settle && output.secret.is_some() {
+                output.secret = None;
+                SecretState::Forgotten
+            } else if output.secret.is_some() {
                 SecretState::Held
             } else {
                 SecretState::None
@@ -1054,9 +1149,38 @@ impl State {
             if let Some(local) = record.local.take() {
                 kept.push(local_settlement(record, local, &output));
             }
+            // A rotation fact belongs to the tenant the change was made in,
+            // whichever context is active when it settles.
+            let rotation_tenant = record.rotation_tenant.clone().or_else(|| {
+                (Some(&record.context) == active.as_ref() && record.kind == ChangeKind::ApiKeys)
+                    .then(|| active_tenant.clone())
+                    .flatten()
+            });
+            if let Some(tenant) = rotation_tenant {
+                rotations.push((
+                    tenant,
+                    super::rotation_domain::SettledChange {
+                        operation: record.operation.as_str().to_owned(),
+                        kind: record.kind,
+                        action: record.action,
+                        target: record.target.clone(),
+                        new_name: record.name.clone(),
+                        source_name: record.source_name.clone(),
+                        application: record.application.clone(),
+                        outcome: output.outcome,
+                        failure: output.failure.map(|f| format!("{f:?}")),
+                        readback: output.readback,
+                        current: rotation_current,
+                    },
+                ));
+            }
             record.output = Some(output);
+            record.settled_at = Some(clock);
         }
         self.detached_changes.retain(|r| r.output.is_none());
+        for (tenant, change) in rotations {
+            self.rotation_settled(&tenant, change);
+        }
         for (tenant, settled) in kept {
             self.gateway_local_settled(&tenant, settled);
         }
@@ -1069,6 +1193,19 @@ impl State {
                 true
             }
         });
+    }
+
+    /// Whether the one-time key of exactly the issuance a rotation names
+    /// (the key Version of `old_key` applied as `operation`) is still held
+    /// for the active context (C31: a rotation's Reveal is offered only then).
+    pub(super) fn issuance_held(&self, operation: &str, old_key: &str) -> bool {
+        let active = self.active_ref.as_ref();
+        self.change_results.iter().any(|r| {
+            r.operation.as_str() == operation
+                && r.is_issuance_of(old_key)
+                && Some(&r.context) == active
+                && r.secret == SecretState::Held
+        })
     }
 
     pub(super) fn changes_view(&self) -> ChangesView {
@@ -1148,6 +1285,7 @@ impl State {
                 secret: r.secret,
                 workspace: r.workspace.clone(),
                 provisioning: r.output.as_ref().and_then(|o| o.provisioning.clone()),
+                settled_at: r.settled_at,
             })
             .collect();
         let staged = self.staging.as_ref().map(|s| match s {

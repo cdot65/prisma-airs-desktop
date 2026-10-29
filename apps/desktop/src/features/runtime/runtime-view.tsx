@@ -1,7 +1,7 @@
 import { type FormEvent, forwardRef, useEffect, useId, useRef, useState } from 'react'
 import { Button, Callout, Input, PillBox, cn } from '@ai-security-academy/presentation'
-import { AlertTriangle, CheckCircle2, Info, ShieldAlert } from 'lucide-react'
-import type { Detection, FeatureId, ScanRecordView, ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import { AlertTriangle, CheckCircle2, CircleHelp, Eye, Info, ShieldAlert, ShieldX } from 'lucide-react'
+import type { Detection, FeatureId, ScanRecordView, ScanResultView, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { PageHeading } from '../../shell/feature-view'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
 import { type ScanInput, VERDICT_TEXT, draftFrom, outcomeText, recordSummary } from './scan-text'
@@ -15,6 +15,8 @@ interface Props {
     onNavigate: (id: FeatureId) => void
     /** A Library case or starter to fill the form with (never scanned). */
     prefill?: CasePrefill | null
+    /** v2 (C31): no page heading (the Administration accordion names the tab). */
+    embedded?: boolean
 }
 
 const TEXTAREA = cn(
@@ -32,7 +34,7 @@ const TEXTAREA = cn(
  * from native snapshots, which already exclude other tenants and discard
  * replies for a retired tenant or key.
  */
-export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate, prefill = null }, ref) {
+export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate, prefill = null, embedded = false }, ref) {
     const ids = useId()
     const [tab, setTab] = useState<'scan' | 'overview'>('scan')
     const [caseName, setCaseName] = useState('')
@@ -138,7 +140,7 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
         }
     }
 
-    const heading = <PageHeading ref={ref} id='runtime-heading' kicker='Runtime Security' title='Scan a prompt or response' />
+    const heading = embedded ? null : <PageHeading ref={ref} id='runtime-heading' kicker='Runtime Security' title='Scan a prompt or response' />
 
     if (!tenant || !context) {
         return (
@@ -414,9 +416,73 @@ function ScanResult({ record, onCancel }: { record: ScanRecordView; onCancel: (o
                     ) : null}
                 </dl>
             ) : null}
-            {result ? <Detections title='Prompt detections' items={result.promptDetected} /> : null}
-            {result ? <Detections title='Response detections' items={result.responseDetected} /> : null}
+            {result ? <Detections title='Prompt detections' items={result.promptDetected.filter((d) => d.detector !== 'topic_violation')} /> : null}
+            {result ? <Detections title='Response detections' items={result.responseDetected.filter((d) => d.detector !== 'topic_violation')} /> : null}
+            {result ? <TopicVerdict result={result} topics={result.topics} direction='prompt' /> : null}
+            {result && (result.responseDetected.length > 0 || result.responseTopics.violation !== null || result.responseTopics.blocked.length > 0 || result.responseTopics.allowed.length > 0) ? (
+                <TopicVerdict result={result} topics={result.responseTopics} direction='response' />
+            ) : null}
         </section>
+    )
+}
+
+/**
+ * The custom topic result, keyed apart from the detectors (C31, DESIGN-V2
+ * §10 gap 2): a topic matched under the scan's profile is named; "Not
+ * detected" says no assigned topic matched; an unreported verdict says so.
+ * An applied topic never suppresses an enabled detector: both are shown.
+ * The prompt's and the response's results are separate, each labelled.
+ */
+function TopicVerdict({ result, topics, direction }: { result: ScanResultView; topics: ScanResultView['topics']; direction: 'prompt' | 'response' }) {
+    const profile = result.profileName ?? result.profileId ?? 'the scan profile'
+    const matched = topics.blocked.length > 0 || topics.allowed.length > 0 || topics.violation === true
+    return (
+        <div
+            className='flex flex-col gap-1'
+            data-slot='scan-topics'
+            data-direction={direction}
+            data-topic-verdict={topics.violation === null && !matched ? 'unreported' : matched ? 'flagged' : 'clear'}
+        >
+            <h3 className='text-academy-ink text-[13px] font-medium'>{direction === 'prompt' ? 'Custom topics · prompt' : 'Custom topics · response'}</h3>
+            {matched ? (
+                <ul className='flex flex-wrap gap-2'>
+                    {topics.blocked.map((t) => (
+                        <li key={`${direction}-b-${t}`}>
+                            <PillBox tone='danger' data-verdict='blocked'>
+                                <ShieldX aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
+                                {t}: flagged (blocked)
+                            </PillBox>
+                        </li>
+                    ))}
+                    {topics.allowed.map((t) => (
+                        <li key={`${direction}-a-${t}`}>
+                            <PillBox tone='warning' data-verdict='monitor'>
+                                <Eye aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
+                                {t}: flagged (monitor only)
+                            </PillBox>
+                        </li>
+                    ))}
+                    {topics.blocked.length === 0 && topics.allowed.length === 0 ? (
+                        <li>
+                            <PillBox tone='danger' data-verdict='unnamed'>
+                                <AlertTriangle aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
+                                A topic matched (the service named none)
+                            </PillBox>
+                        </li>
+                    ) : null}
+                </ul>
+            ) : topics.violation === false ? (
+                <p className='text-academy-ink-soft text-[12px]' data-verdict='clear'>
+                    <CheckCircle2 aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
+                    Not detected: no custom topic assigned to {profile} matched.
+                </p>
+            ) : (
+                <p className='text-academy-ink-soft text-[12px]' data-verdict='unreported'>
+                    <CircleHelp aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
+                    Not reported by the service for this scan.
+                </p>
+            )}
+        </div>
     )
 }
 

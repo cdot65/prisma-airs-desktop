@@ -175,6 +175,66 @@ pub struct SetupWarning {
     pub recorded_secs: u32,
 }
 
+/// A Runtime API key named by its identifier and name (never a secret).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyRef {
+    pub id: String,
+    pub name: String,
+}
+
+/// Whether the additional key's issuance was confirmed by readback (C31).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum RotationIssuance {
+    Confirmed,
+    /// The version settled unknown: a key is confirmed only once the key
+    /// inventory shows one for the application besides the old key.
+    Unconfirmed,
+}
+
+/// Where the old key's removal stands (C31).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "state", rename_all = "camelCase")]
+pub enum RotationRemoval {
+    Pending,
+    /// Sent but not read back absent: reconciled by a complete inventory.
+    Unconfirmed,
+    /// Refused or failed: the reminder stays, the completion time unset.
+    Rejected {
+        reason: String,
+    },
+    Done,
+}
+
+/// One Runtime API key rotation of a tenant (C31, I7), persisted so its two
+/// timestamps are stored once and survive reads, switches and relaunches.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct Rotation {
+    pub application: String,
+    pub old_key: KeyRef,
+    pub new_key: Option<KeyRef>,
+    pub issuance: RotationIssuance,
+    /// The change result that issued the key (its one-time secret lives
+    /// there, for the context it was applied in, never here). Session-only:
+    /// operation IDs restart with the core, so a relaunch never restores
+    /// this link (a reused ID must not point at another key; C31).
+    #[serde(skip)]
+    #[ts(skip)]
+    pub issued_by: Option<String>,
+    /// The key name the issuing review named: the only key that can confirm
+    /// an unconfirmed issuance.
+    #[serde(default)]
+    pub pending_name: Option<String>,
+    pub issued_at: u32,
+    /// The operator's local statement that the application uses the new key.
+    pub deployment_acknowledged_at: Option<u32>,
+    pub removal: RotationRemoval,
+    /// When the old key was read back absent (remote readback).
+    pub old_key_removed_at: Option<u32>,
+}
+
 /// Stable identifier of a top-level desktop feature destination.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]

@@ -51,6 +51,8 @@ const scan = {
         contentErrors: [{ contentType: 'prompt', feature: 'dlp', status: 'error' }],
         promptDetected: [{ detector: 'future_detector', detected: true }],
         responseDetected: [],
+        topics: { violation: null, blocked: [], allowed: [] },
+        responseTopics: { violation: null, blocked: [], allowed: [] },
     },
     failure: null,
     discarded: false,

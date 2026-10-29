@@ -1,0 +1,2898 @@
+diff --git a/apps/desktop/src/contracts/snapshot-validation.test.ts b/apps/desktop/src/contracts/snapshot-validation.test.ts
+index f8bbdb23..e143e6a6 100644
+--- a/apps/desktop/src/contracts/snapshot-validation.test.ts
++++ b/apps/desktop/src/contracts/snapshot-validation.test.ts
+@@ -51,6 +51,8 @@ const scan = {
+         contentErrors: [{ contentType: 'prompt', feature: 'dlp', status: 'error' }],
+         promptDetected: [{ detector: 'future_detector', detected: true }],
+         responseDetected: [],
++        topics: { violation: null, blocked: [], allowed: [] },
++        responseTopics: { violation: null, blocked: [], allowed: [] },
+     },
+     failure: null,
+     discarded: false,
+diff --git a/apps/desktop/src/features/administration/administration-view.tsx b/apps/desktop/src/features/administration/administration-view.tsx
+index c45a2fee..300a1851 100644
+--- a/apps/desktop/src/features/administration/administration-view.tsx
++++ b/apps/desktop/src/features/administration/administration-view.tsx
+@@ -2,11 +2,13 @@ import { forwardRef, useEffect, useId, useRef, useState } from 'react'
+ import { Button, Callout, Input } from '@ai-security-academy/presentation'
+ import { AlertTriangle, Info, Lock } from 'lucide-react'
+ import type {
++    AdminAction,
+     ContextRef,
+     FeatureId,
+     ManagementDetail,
+     ManagementPage,
+     ManagementResource,
++    RotationView,
+     ShellSnapshot,
+ } from '@prisma-airs/desktop-contracts'
+ import { PageHeading } from '../../shell/feature-view'
+@@ -33,6 +35,19 @@ interface Props {
+     onNavigate: (id: FeatureId) => void
+     /** The inventory and item a contextual action asked for (C30): selected on arrival. */
+     arrival?: { resource: ManagementResource | null; item: string | null; sequence: number } | null
++    /** v2 (C31): one inventory, pinned (no picker); the shell renders it inside its Administration tab. */
++    pinned?: ManagementResource
++    /** v2 (C31): no page heading (the shell's accordion names the product and tab). */
++    embedded?: boolean
++    /** v2 (C31): the labels the Administration inventory gives each action (`AdminInventory`). */
++    labels?: Partial<Record<ChangeTarget['action'], string>>
++    /** v2 (C31): the tab's admitted actions; only these are offered (create above the table, the rest per row). */
++    admitted?: AdminAction[]
++    /** v2 (C31): changes open in the shell's review sheet instead of the inline workbench. */
++    onReview?: (change: ChangeTarget) => void
++    /** v2 (C31): rotations in progress, so an old key's row offers "Finish rotation…". */
++    rotations?: RotationView[]
++    onFinishRotation?: (application: string) => void
+ }
+ 
+ type Item = Record<string, unknown>
+@@ -68,14 +83,14 @@ function rangeText(page: ManagementPage): string {
+  * an inventory is called empty or complete only when the service said so.
+  */
+ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function AdministrationView(
+-    { snapshot, dispatch, observe, onNavigate, arrival = null },
++    { snapshot, dispatch, observe, onNavigate, arrival = null, pinned, embedded = false, labels, admitted, onReview, rotations = [], onFinishRotation },
+     ref
+ ) {
+     const ids = useId()
+     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
+     const context: ContextRef | null = snapshot.active?.context ?? null
+     const ready = tenant?.management.state === 'ready'
+-    const [resource, setResource] = useState<ManagementResource>(arrival?.resource ?? 'profiles')
++    const [resource, setResource] = useState<ManagementResource>(pinned ?? arrival?.resource ?? 'profiles')
+     const [shown, setShown] = useState<Shown | null>(null)
+     const [failure, setFailure] = useState<string | null>(null)
+     const [loading, setLoading] = useState(false)
+@@ -102,7 +117,8 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+         snapshot.harness.conversation?.proposals.find((p) => p.state === 'inReview' && review !== null && p.review === review.review) ?? null
+     const shownProposal = useRef<string | null>(null)
+     useEffect(() => {
+-        if (!proposed || shownProposal.current === proposed.review) return
++        // v2 (C31): the shell's Administration opens the proposal in its review sheet.
++        if (onReview || !proposed || shownProposal.current === proposed.review) return
+         shownProposal.current = proposed.review
+         const d = proposed.draft
+         setDetail(null)
+@@ -120,7 +136,10 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+     const detailToken = useRef(0)
+     const info = RESOURCES.find((r) => r.id === resource) ?? (RESOURCES[0] as ResourceInfo)
+ 
+-    async function load(offset: number) {
++    /** The item whose detail is open, so a refresh after a change can read it again. */
++    const opened = useRef<Item | null>(null)
++
++    async function load(offset: number, keepDetail = false) {
+         if (!context) return
+         const mine = ++token.current
+         setLoading(true)
+@@ -140,8 +159,14 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+         if (result.kind === 'page' && result.page.resource === resource && result.page.offset === offset) {
+             setShown({ page: result.page, items: JSON.parse(result.page.items) as Item[], readAt: new Date() })
+             setFailure(null)
+-            detailToken.current += 1
+-            setDetail(null)
++            if (keepDetail && opened.current) {
++                // A change settled while a detail was open: read that item again.
++                void openDetail(opened.current)
++            } else {
++                detailToken.current += 1
++                setDetail(null)
++                opened.current = null
++            }
+         } else if (result.kind === 'failed') {
+             setFailure(MANAGEMENT_FAILURE_TEXT[result.failure])
+         } else {
+@@ -153,6 +178,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+         const id = itemId(info, item)
+         const name = itemName(info, item)
+         if (!context || id === null) return
++        opened.current = item
+         const mine = ++detailToken.current
+         setDetail({ kind: 'loading', name })
+         const outcome = await readManagement(dispatch, observe, context, { kind: 'detail', resource, id })
+@@ -180,7 +206,34 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+         if (ready) void load(0)
+     }, [context, resource, ready])
+ 
+-    const heading = <PageHeading ref={ref} id='administration-heading' kicker='Administration' title='Tenant inventories' />
++    // v2 (C31): the table follows what changed it. A settled change of this
++    // inventory's kind, or a rotation moving on, re-reads the shown page.
++    const kindHere = CHANGE_KIND[resource]
++    const changedHere = [
++        ...snapshot.changes.results.filter((r) => r.settled && r.kind === kindHere).map((r) => r.operation),
++        ...(resource === 'apiKeys' ? rotations.map((r) => `${r.application}:${r.stage}:${r.newKey?.id ?? ''}`) : []),
++    ].join('|')
++    const lastChanged = useRef(changedHere)
++    useEffect(() => {
++        if (lastChanged.current === changedHere) return
++        lastChanged.current = changedHere
++        if (ready && onReview) void load(shown?.page.offset ?? 0, true)
++        // eslint-disable-next-line react-hooks/exhaustive-deps -- re-read on change only
++    }, [changedHere])
++    const relations = useTopicRelations(resource, ready && !!onReview, shown, context, dispatch, observe)
++
++    const heading = embedded ? null : <PageHeading ref={ref} id='administration-heading' kicker='Administration' title='Tenant inventories' />
++    // v2 (C31): a change opens in the shell's review sheet; the inline workbench stays the legacy path.
++    const openChange = (c: ChangeTarget) => (onReview ? onReview(c) : setChange(c))
++    const label = (action: ChangeTarget['action']) =>
++        admitted?.find((a) => a.kind === kindHere && a.action === action && a.row)?.label ?? labels?.[action] ?? ACTION_LABEL[action]
++    // v2: exactly the inventory's admitted create; legacy: v1's.
++    const create = admitted
++        ? admitted.some((a) => a.kind === kindHere && a.action === 'create' && !a.row)
++            ? CREATE[resource]
++            : undefined
++        : CREATE[resource]
++    const createLabel = admitted?.find((a) => a.kind === kindHere && a.action === 'create' && !a.row)?.label ?? labels?.create ?? CREATE[resource]?.title
+ 
+     if (!tenant || !context) {
+         return (
+@@ -222,15 +275,43 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+     )
+     const page = shown?.page
+     const empty = page !== undefined && !failure && page.count === 0 && page.offset === 0 && page.complete
++    // v2 (C31): the domain column of this inventory.
++    const extra: { heading: string; cell: (item: Item, id: string | null) => string } | null = !onReview
++        ? null
++        : resource === 'profiles'
++          ? { heading: 'Topics', cell: (item) => listText(topicRefs(item).map((t) => t.name ?? t.id ?? '')) }
++          : resource === 'topics'
++            ? {
++                  heading: 'Used by',
++                  cell: (item, id) => {
++                      if (!relations) return 'Reading profiles…'
++                      if (relations.failure) return 'Not read'
++                      const users = relations.usedBy(id, itemName(info, item))
++                      return users.length > 0 ? listText(users) : relations.complete ? 'No profile' : 'None in the profiles read'
++                  },
++              }
++            : resource === 'apiKeys'
++              ? {
++                    heading: 'State',
++                    cell: (_item, id) => {
++                        const old = rotations.find((r) => r.oldKey.id === id && r.stage !== 'complete')
++                        if (old) return 'Replace after deployment'
++                        const fresh = rotations.find((r) => r.newKey?.id === id && r.stage !== 'complete')
++                        if (fresh) return `New key for ${fresh.application}`
++                        return 'In use'
++                    },
++                }
++              : null
+ 
+     return (
+         <section aria-labelledby='administration-heading' data-slot='administration' className='flex flex-col gap-5'>
+             {heading}
+             <p className='text-academy-ink-soft -mt-4 text-[13px]' data-slot='administration-tenant'>
+-                Read-only inventories of {tenant.label}, read with its management client. Nothing here changes the
+-                tenant.
++                {onReview
++                    ? `Inventories of ${tenant.label}, read with its management client. A change opens a review and applies only after you confirm it.`
++                    : `Read-only inventories of ${tenant.label}, read with its management client. Nothing here changes the tenant.`}
+             </p>
+-            <div className='flex flex-col gap-3' data-slot='administration-resources'>
++            {pinned ? null : <div className='flex flex-col gap-3' data-slot='administration-resources'>
+                 {(['AI Runtime Security', 'Data Loss Prevention'] as const).map((group) => (
+                     <div key={group} role='group' aria-labelledby={`${ids}-${group.replace(/ /g, '-')}`} className='flex flex-col gap-1'>
+                         <span id={`${ids}-${group.replace(/ /g, '-')}`} className='text-academy-ink-soft text-[12px] font-medium'>
+@@ -253,7 +334,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+                         </div>
+                     </div>
+                 ))}
+-            </div>
++            </div>}
+             <div className='flex flex-wrap items-end gap-3'>
+                 <label className='flex min-w-48 flex-1 flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-filter`}>
+                     Filter this page
+@@ -269,9 +350,9 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+                 <Button type='button' tier='secondary' disabled={loading} onClick={() => void load(page?.offset ?? 0)}>
+                     Refresh
+                 </Button>
+-                {CREATE[resource] ? (
+-                    <Button type='button' tier='secondary' onClick={() => setChange(CREATE[resource] ?? null)}>
+-                        {CREATE[resource]?.title}
++                {create ? (
++                    <Button type='button' tier='secondary' onClick={() => openChange(create)}>
++                        {createLabel}
+                     </Button>
+                 ) : null}
+             </div>
+@@ -320,6 +401,11 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+                                 <th scope='col' className='py-2 pr-3 font-medium'>
+                                     ID
+                                 </th>
++                                {extra ? (
++                                    <th scope='col' className='py-2 pr-3 font-medium'>
++                                        {extra.heading}
++                                    </th>
++                                ) : null}
+                                 <th scope='col' className='py-2 font-medium'>
+                                     <span className='sr-only'>Actions</span>
+                                 </th>
+@@ -335,6 +421,11 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+                                         <td className='text-academy-ink-soft py-2 pr-3 font-mono text-[12px] break-all'>
+                                             {id ?? '—'}
+                                         </td>
++                                        {extra ? (
++                                            <td className='py-2 pr-3 text-[12px]' data-slot='administration-relation'>
++                                                {extra.cell(item, id)}
++                                            </td>
++                                        ) : null}
+                                         <td className='py-2 text-right'>
+                                             {id !== null && info.detail ? (
+                                                 <Button
+@@ -375,9 +466,21 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+             ) : null}
+ 
+             {detail ? (
+-                <DetailPanel state={detail} info={info} onClose={() => setDetail(null)} onChange={setChange} />
++                <DetailPanel
++                    state={detail}
++                    info={info}
++                    onClose={() => setDetail(null)}
++                    onChange={openChange}
++                    label={label}
++                    admitted={admitted ? (c) => admitted.findIndex((a) => a.kind === c.kind && a.action === c.action && a.row) : undefined}
++                    rotation={(item) => {
++                        const id = itemId(info, item)
++                        return rotations.find((r) => r.oldKey.id === id && r.stage !== 'complete') ?? null
++                    }}
++                    onFinishRotation={onFinishRotation}
++                />
+             ) : null}
+-            {change ? (
++            {change && !onReview ? (
+                 <ChangeWorkbench
+                     key={`${change.kind}-${change.action}-${change.target}`}
+                     change={change}
+@@ -388,7 +491,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
+                     onClose={() => setChange(null)}
+                 />
+             ) : null}
+-            <ChangeResults results={snapshot.changes.results.filter((r) => !isGatewayKind(r.kind))} dispatch={dispatch} />
++            {onReview ? null : <ChangeResults results={snapshot.changes.results.filter((r) => !isGatewayKind(r.kind))} dispatch={dispatch} />}
+         </section>
+     )
+ })
+@@ -432,7 +535,7 @@ function itemChanges(info: ResourceInfo, item: Item, name: string): ChangeTarget
+                 kind,
+                 action: 'version',
+                 target: id,
+-                title: `Add a key for ${fieldText(item.cust_app)}`,
++                title: `Issue additional key for ${fieldText(item.cust_app)}`,
+                 body: pretty({ ...TEMPLATES.key, cust_app: item.cust_app ?? '' }),
+             },
+             { kind, action: 'delete', target: id, title: `Delete ${name}`, body: '{}' },
+@@ -468,12 +571,22 @@ function DetailPanel({
+     info,
+     onClose,
+     onChange,
++    label = (action) => ACTION_LABEL[action],
++    rotation = () => null,
++    onFinishRotation,
++    admitted = () => 0,
+ }: {
+     state: DetailState
+     info: ResourceInfo
+     onClose: () => void
+     onChange: (change: ChangeTarget) => void
++    label?: (action: ChangeTarget['action']) => string
++    rotation?: (item: Item) => RotationView | null
++    onFinishRotation?: (application: string) => void
++    /** v2 (C31): a row action's place in the inventory, or -1 when it is not admitted. */
++    admitted?: (change: ChangeTarget) => number
+ }) {
++    const inRotation = state.kind === 'shown' && state.item ? rotation(state.item) : null
+     const headingId = useId()
+     const heading = useRef<HTMLHeadingElement>(null)
+     useEffect(() => {
+@@ -524,10 +637,18 @@ function DetailPanel({
+                 </>
+             )}
+             <div className='flex flex-wrap gap-2'>
++                {inRotation && onFinishRotation ? (
++                    <Button type='button' tier='primary' data-slot='finish-rotation' onClick={() => onFinishRotation(inRotation.application)}>
++                        Finish rotation…
++                    </Button>
++                ) : null}
+                 {state.kind === 'shown' && state.item
+-                    ? itemChanges(info, state.item, state.name).map((c) => (
++                    ? itemChanges(info, state.item, state.name)
++                          .filter((c) => admitted(c) >= 0)
++                          .sort((a, b) => admitted(a) - admitted(b))
++                          .map((c) => (
+                           <Button key={c.action} type='button' tier='secondary' onClick={() => onChange(c)}>
+-                              {ACTION_LABEL[c.action]}
++                              {label(c.action)}
+                           </Button>
+                       ))
+                     : null}
+@@ -538,3 +659,86 @@ function DetailPanel({
+         </section>
+     )
+ }
++
++/** A short list for a table cell: the first three names and how many more. */
++function listText(names: string[]): string {
++    const shown = names.filter(Boolean)
++    if (shown.length === 0) return '—'
++    return shown.length <= 3 ? shown.join(', ') : `${shown.slice(0, 3).join(', ')} +${shown.length - 3}`
++}
++
++/** The custom topics a security profile's policy names, by one walk of its JSON (C31). */
++export function topicRefs(profile: Item): { id: string | null; name: string | null }[] {
++    const found = new Map<string, { id: string | null; name: string | null }>()
++    const walk = (value: unknown, depth: number) => {
++        if (depth > 12 || value === null || typeof value !== 'object') return
++        if (Array.isArray(value)) {
++            for (const v of value) walk(v, depth + 1)
++            return
++        }
++        const o = value as Record<string, unknown>
++        const id = typeof o.topic_id === 'string' ? o.topic_id : null
++        const name = typeof o.topic_name === 'string' ? o.topic_name : null
++        if (id || name) found.set(id ?? `name:${name}`, { id, name })
++        for (const v of Object.values(o)) walk(v, depth + 1)
++    }
++    walk(profile.policy ?? profile, 0)
++    return [...found.values()]
++}
++
++/** Which profiles use a topic, derived from one profiles read (C31). */
++interface TopicRelations {
++    usedBy: (topicId: string | null, topicName: string) => string[]
++    complete: boolean
++    failure: string | null
++}
++
++/**
++ * The profile ↔ topic relationship inventory: one read of the profiles
++ * inventory (first 100), walked once with {@link topicRefs}. Shown only on
++ * the Custom topics tab; "None in the profiles read" when that read was not
++ * the whole inventory.
++ */
++function useTopicRelations(
++    resource: ManagementResource,
++    enabled: boolean,
++    shown: Shown | null,
++    context: ContextRef | null,
++    dispatch: Dispatch,
++    observe: ObserveManagement
++): TopicRelations | null {
++    const [relations, setRelations] = useState<TopicRelations | null>(null)
++    const readAt = shown?.readAt.getTime() ?? 0
++    useEffect(() => {
++        if (!enabled || resource !== 'topics' || !context) return
++        let live = true
++        void readManagement(dispatch, observe, context, { kind: 'page', resource: 'profiles', offset: 0, limit: 100 }).then((outcome) => {
++            if (!live) return
++            if (outcome.kind === 'notAdmitted' || outcome.result.kind !== 'page') {
++                setRelations({ usedBy: () => [], complete: false, failure: outcome.kind === 'notAdmitted' ? outcome.message : 'failed' })
++                return
++            }
++            const page = outcome.result.page
++            const profiles = JSON.parse(page.items) as Item[]
++            const byId = new Map<string, string[]>()
++            const byName = new Map<string, string[]>()
++            for (const profile of profiles) {
++                const name = typeof profile.profile_name === 'string' ? profile.profile_name : String(profile.profile_id ?? '')
++                for (const t of topicRefs(profile)) {
++                    if (t.id) byId.set(t.id, [...(byId.get(t.id) ?? []), name])
++                    else if (t.name) byName.set(t.name, [...(byName.get(t.name) ?? []), name])
++                }
++            }
++            setRelations({
++                usedBy: (id, topicName) => [...new Set([...(id ? (byId.get(id) ?? []) : []), ...(byName.get(topicName) ?? [])])],
++                complete: page.offset === 0 && page.complete,
++                failure: null,
++            })
++        })
++        return () => {
++            live = false
++        }
++        // eslint-disable-next-line react-hooks/exhaustive-deps -- re-derived with each topics read
++    }, [enabled, resource, context, readAt])
++    return relations
++}
+diff --git a/apps/desktop/src/features/administration/runtime-changes.tsx b/apps/desktop/src/features/administration/runtime-changes.tsx
+index e6c2d33f..057cb6ac 100644
+--- a/apps/desktop/src/features/administration/runtime-changes.tsx
++++ b/apps/desktop/src/features/administration/runtime-changes.tsx
+@@ -157,6 +157,8 @@ interface WorkbenchProps {
+     onDraft?: (body: string) => void
+     /** Shown under the editor (where the draft is kept). */
+     note?: ReactNode
++    /** v2 (C31, I3): Apply stays disabled until the typed name matches the review's. */
++    requireTyped?: boolean
+ }
+ 
+ /** How long typing pauses before a draft is kept. */
+@@ -179,8 +181,9 @@ function dictionaryParts(body: string): { metadata: string; keywords: string } {
+  * draft. While the native confirmation is open the editor is read-only and
+  * the main window is held by the sheet.
+  */
+-export function ChangeWorkbench({ change, review, staged = null, context, dispatch, onClose, onDraft, note }: WorkbenchProps) {
++export function ChangeWorkbench({ change, review, staged = null, context, dispatch, onClose, onDraft, note, requireTyped = false }: WorkbenchProps) {
+     const ids = useId()
++    const [typedText, setTypedText] = useState('')
+     const heading = useRef<HTMLHeadingElement>(null)
+     const editor = useRef<HTMLTextAreaElement>(null)
+     const keywords = useRef<HTMLTextAreaElement>(null)
+@@ -458,12 +461,13 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
+                                 spellCheck={false}
+                                 readOnly={confirming}
+                                 data-slot='change-confirmation'
++                                onChange={(e) => setTypedText(e.currentTarget.value)}
+                             />
+                             <div>
+                                 <Button
+                                     type='button'
+                                     tier='primary'
+-                                    disabled={busy || confirming || blocked}
++                                    disabled={busy || confirming || blocked || (requireTyped && typedText !== (mine.confirmation ?? ''))}
+                                     onClick={() => void apply()}
+                                 >
+                                     Apply…
+@@ -487,7 +491,7 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
+     )
+ }
+ 
+-function resultText(result: ChangeResultView): string {
++export function resultText(result: ChangeResultView): string {
+     if (!result.settled) return 'Applying…'
+     // Each provisioning step keeps its own outcome; the steps say what is known.
+     if (result.provisioning)
+diff --git a/apps/desktop/src/features/red-team/red-team-view.tsx b/apps/desktop/src/features/red-team/red-team-view.tsx
+index 2bdffb95..1da79bd2 100644
+--- a/apps/desktop/src/features/red-team/red-team-view.tsx
++++ b/apps/desktop/src/features/red-team/red-team-view.tsx
+@@ -28,8 +28,17 @@ interface Props {
+     dispatch: Dispatch
+     observe: ObserveManagement
+     onNavigate: (id: FeatureId) => void
++    /** v2 (C31): the product the shell's Administration accordion selected; strip and heading are then the shell's. */
++    tab?: Tab
++    /** v2 (C31): one Administration tab's part of the product; all of it when absent. */
++    section?: RedTeamSection
++    embedded?: boolean
+ }
+ 
++export type RedTeamTab = Tab
++/** The Administration tabs of the two read-only products (screens/administration-inventory.md). */
++export type RedTeamSection = 'overview' | 'targets' | 'scans' | 'attacks' | 'reports' | 'modelOverview' | 'modelScans' | 'skillScans'
++
+ /** A product read held by the view: the last read, kept (dated) when a
+  * later one fails. */
+ interface Held<T> {
+@@ -96,12 +105,15 @@ const bound = (n: number, complete: boolean) => (complete ? n.toLocaleString() :
+  * not available here and nothing on this page starts one. Keyed by context
+  * in the shell: a tenant or credential change starts with nothing held.
+  */
+-export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTeamView({ snapshot, dispatch, observe, onNavigate }, ref) {
++export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTeamView({ snapshot, dispatch, observe, onNavigate, tab: controlledTab, section, embedded = false }, ref) {
+     const ids = useId()
+     const context = snapshot.active?.context ?? null
+     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
+     const ready = tenant?.management.state === 'ready'
+-    const [tab, setTab] = useState<Tab>('redTeam')
++    const [tab, setTab] = useState<Tab>(controlledTab ?? 'redTeam')
++    useEffect(() => {
++        if (controlledTab) setTab(controlledTab)
++    }, [controlledTab])
+     const [range, setRange] = useState<Window>(30)
+     const [redTeam, setRedTeam] = useState<Held<RedTeamObservation>>(empty)
+     const [models, setModels] = useState<Held<SupplyChainObservation>>(empty)
+@@ -139,7 +151,7 @@ export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTea
+         if (tab === 'models' && !models.read && !models.loading && !models.failure) void readModels()
+     }, [tab, ready])
+ 
+-    const heading = <PageHeading ref={ref} id='red-team-heading' kicker='Red Team & Models' title='Red Teaming and model observation' />
++    const heading = embedded ? null : <PageHeading ref={ref} id='red-team-heading' kicker='Red Team & Models' title='Red Teaming and model observation' />
+ 
+     if (!tenant || !context) {
+         return (
+@@ -166,7 +178,7 @@ export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTea
+                 </Callout>
+             ) : (
+                 <>
+-                    <div role='tablist' aria-label='Product' className='flex gap-1'>
++                    <div role='tablist' aria-label='Product' className='flex gap-1' hidden={!!controlledTab}>
+                         {(
+                             [
+                                 ['redTeam', 'Red Teaming'],
+@@ -200,9 +212,10 @@ export const RedTeamView = forwardRef<HTMLHeadingElement, Props>(function RedTea
+                                 onRefresh={() => void readRedTeam(range)}
+                                 context={context}
+                                 read={read}
++                                section={section}
+                             />
+                         ) : (
+-                            <ModelsPanel held={models} onRefresh={() => void readModels()} />
++                            <ModelsPanel held={models} onRefresh={() => void readModels()} section={section} />
+                         )}
+                     </div>
+                 </>
+@@ -306,6 +319,7 @@ function RedTeamPanel({
+     onRefresh,
+     context,
+     read,
++    section,
+ }: {
+     held: Held<RedTeamObservation>
+     range: Window
+@@ -313,8 +327,12 @@ function RedTeamPanel({
+     onRefresh: () => void
+     context: ContextRef
+     read: (request: ManagementRequest) => Promise<ManagementResult | string>
++    section?: RedTeamSection
+ }) {
+     const ids = useId()
++    // The legacy page shows its overview and scans; the v2-only parts render only on their own tab.
++    const show = (part: RedTeamSection) => !section || section === part
++    const only = (part: RedTeamSection) => section === part
+     const [status, setStatus] = useState('all')
+     const [attacksOf, setAttacksOf] = useState<string | null>(null)
+     const observation = held.read
+@@ -339,6 +357,7 @@ function RedTeamPanel({
+     return (
+         <>
+             <ReadStatus held={held} what='Red Teaming' extra={`last ${observation?.window ?? range} days`} onRefresh={onRefresh} />
++            {show('overview') ? (
+             <fieldset className='flex flex-wrap items-center gap-3 text-[13px]'>
+                 <legend className='text-academy-ink-soft mb-1 text-[12px]'>Statistics window</legend>
+                 {WINDOWS.map((days) => (
+@@ -348,8 +367,11 @@ function RedTeamPanel({
+                     </label>
+                 ))}
+             </fieldset>
++            ) : null}
+             {observation ? (
+                 <>
++                    {show('overview') ? (
++                    <>
+                     <Tiles label='Red Teaming summary' tiles={tiles} />
+                     {stats?.noScans ? <p className='text-[13px]'>No scans in this tenant yet. Red Teaming scans run in Prisma AIRS.</p> : null}
+                     <div className='flex flex-wrap gap-6'>
+@@ -363,6 +385,12 @@ function RedTeamPanel({
+                             ['Scans', coverage(scans, observation.scansFailure)],
+                         ]}
+                     />
++                    </>
++                    ) : null}
++                    {only('targets') ? <TargetsTable scans={scans} onResults={setAttacksOf} /> : null}
++                    {only('attacks') ? <ReportedScans scans={scans} title='Attack results' note='Attack results are read for one reported scan at a time, at most ten pages.' action='Open attack results' onOpen={setAttacksOf} /> : null}
++                    {only('reports') ? <ReportedScans scans={scans} title='Reports' note='Reports are listed from scan metadata only; nothing is generated, exported or run here.' action='Open attack results' onOpen={setAttacksOf} /> : null}
++                    {show('scans') ? (
+                     <section aria-labelledby={`${ids}-scans`} className='flex flex-col gap-2' data-slot='red-team-scans'>
+                         <h2 id={`${ids}-scans`} className='text-[15px] font-semibold'>
+                             Red Teaming scans
+@@ -422,10 +450,13 @@ function RedTeamPanel({
+                             </table>
+                         )}
+                     </section>
++                    ) : null}
+                     {attacksOf ? <AttackResults key={attacksOf} scanId={attacksOf} context={context} read={read} onClose={() => setAttacksOf(null)} /> : null}
+                 </>
+             ) : null}
+-            <Unavailable items='Starting or re-running Red Teaming scans, verifying ASR, and creating targets, custom adapters, network channels or prompt sets are not available here.' />
++            {show('overview') ? (
++                <Unavailable items='Starting or re-running Red Teaming scans, verifying ASR, and creating targets, custom adapters, network channels or prompt sets are not available here.' />
++            ) : null}
+         </>
+     )
+ }
+@@ -561,8 +592,12 @@ function AttackResults({
+     )
+ }
+ 
+-function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>; onRefresh: () => void }) {
++function ModelsPanel({ held, onRefresh, section }: { held: Held<SupplyChainObservation>; onRefresh: () => void; section?: RedTeamSection }) {
+     const ids = useId()
++    const overview = !section || section === 'modelOverview'
++    const showModels = !section || section === 'modelOverview' || section === 'modelScans'
++    const showSkills = !section || section === 'modelOverview' || section === 'skillScans'
++    const listOnly = section === 'modelScans' || section === 'skillScans'
+     const observation = held.read
+     const models = observation?.models ?? null
+     const stats = observation?.skillStatistics ?? null
+@@ -580,6 +615,8 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>;
+             <ReadStatus held={held} what='model observation' extra='current scan inventory and 30-day skill statistics' onRefresh={onRefresh} />
+             {observation ? (
+                 <>
++                    {overview ? (
++                    <>
+                     <Tiles label='Model and skill summary' tiles={tiles} />
+                     <div className='flex flex-wrap gap-6'>
+                         <Ranked
+@@ -599,15 +636,20 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>;
+                             ['Skill scans', coverage(skills, observation.skillsFailure)],
+                         ]}
+                     />
+-                    <section aria-labelledby={`${ids}-rows`} className='flex flex-col gap-2' data-slot='models-scans'>
++                    </>
++                    ) : null}
++                    {listOnly || !section ? (
++                    <section aria-labelledby={`${ids}-rows`} className='flex flex-col gap-2' data-slot='models-scans' data-section={section ?? 'all'}>
+                         <h2 id={`${ids}-rows`} className='text-[15px] font-semibold'>
+-                            Model and skill scans
++                            {section === 'modelScans' ? 'Model scans' : section === 'skillScans' ? 'Skill scans' : 'Model and skill scans'}
+                         </h2>
++                        {section === 'modelScans' ? <p className='text-[12px]'>{`Coverage: ${coverage(models, observation.modelsFailure)}`}</p> : null}
++                        {section === 'skillScans' ? <p className='text-[12px]'>{`Coverage: ${coverage(skills, observation.skillsFailure)}`}</p> : null}
+                         <p className='text-academy-ink-soft text-[12px]'>
+                             At most 100 scans per list. Skills are named by a pseudonym that holds for this read only.
+                         </p>
+-                        {(models?.rows.length ?? 0) + (skills?.rows.length ?? 0) === 0 ? (
+-                            <p className='text-[13px]'>No model or skill scans were read.</p>
++                        {(showModels ? (models?.rows.length ?? 0) : 0) + (showSkills ? (skills?.rows.length ?? 0) : 0) === 0 ? (
++                            <p className='text-[13px]'>{section === 'modelScans' ? 'No model scans were read.' : section === 'skillScans' ? 'No skill scans were read.' : 'No model or skill scans were read.'}</p>
+                         ) : (
+                             <table className='w-full text-left text-[13px]'>
+                                 <thead>
+@@ -620,7 +662,7 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>;
+                                     </tr>
+                                 </thead>
+                                 <tbody>
+-                                    {(models?.rows ?? []).map((r) => (
++                                    {(showModels ? (models?.rows ?? []) : []).map((r) => (
+                                         <tr key={`m-${r.id}`}>
+                                             <td>Model Security</td>
+                                             <td>{`Model scan ${short(r.id)}`}</td>
+@@ -629,7 +671,7 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>;
+                                             <td>{r.createdAt ?? 'Not reported'}</td>
+                                         </tr>
+                                     ))}
+-                                    {(skills?.rows ?? []).map((r, i) => (
++                                    {(showSkills ? (skills?.rows ?? []) : []).map((r, i) => (
+                                         <tr key={`s-${i}-${r.pseudonym}`}>
+                                             <td>AgentGuard</td>
+                                             <td>{`Skill ${r.pseudonym} (pseudonym for this read)`}</td>
+@@ -648,9 +690,117 @@ function ModelsPanel({ held, onRefresh }: { held: Held<SupplyChainObservation>;
+                             </table>
+                         )}
+                     </section>
++                    ) : null}
+                 </>
+             ) : null}
+-            <Unavailable items='Starting model scans and managing security groups or model sources are not available here.' />
++            {overview ? <Unavailable items='Starting model scans and managing security groups or model sources are not available here.' /> : null}
+         </>
+     )
+ }
++
++/**
++ * Red Team Targets (C31, V2-T21): targets as the scan list carries them,
++ * identifiers and types only. Target names are outside the C13 privacy
++ * boundary and never read; "Results" opens the target's latest reported scan.
++ */
++function TargetsTable({ scans, onResults }: { scans: RedTeamObservation['scans']; onResults: (scanId: string) => void }) {
++    const ids = useId()
++    const targets = new Map<string, { type: string | null; scans: number; reported: string | null }>()
++    for (const r of scans?.rows ?? []) {
++        const key = r.targetId ?? 'Not reported'
++        const held = targets.get(key) ?? { type: r.targetType, scans: 0, reported: null }
++        held.scans += 1
++        if (!held.reported && REPORTED.includes((r.status ?? '').toUpperCase())) held.reported = r.id
++        targets.set(key, held)
++    }
++    return (
++        <section aria-labelledby={`${ids}-targets`} className='flex flex-col gap-2' data-slot='red-team-targets'>
++            <h2 id={`${ids}-targets`} className='text-[15px] font-semibold'>
++                Targets
++            </h2>
++            <p className='text-academy-ink-soft text-[12px]'>Identifiers and types from the scans read; target names stay in Prisma AIRS.</p>
++            {scans === null ? (
++                <p className='text-[13px]'>The scan list could not be read.</p>
++            ) : targets.size === 0 ? (
++                <p className='text-[13px]'>No targets appear in the scans read.</p>
++            ) : (
++                <table className='w-full text-left text-[13px]'>
++                    <thead>
++                        <tr>
++                            <th scope='col'>Target</th>
++                            <th scope='col'>Type</th>
++                            <th scope='col'>Scans read</th>
++                            <th scope='col'>
++                                <span className='sr-only'>Actions</span>
++                            </th>
++                        </tr>
++                    </thead>
++                    <tbody>
++                        {[...targets].map(([id, t]) => (
++                            <tr key={id}>
++                                <td className='font-mono'>{id === 'Not reported' ? id : short(id)}</td>
++                                <td>{words(t.type)}</td>
++                                <td>{t.scans.toLocaleString()}</td>
++                                <td>
++                                    {t.reported ? (
++                                        <Button type='button' size='sm' tier='tertiary' onClick={() => onResults(t.reported!)}>
++                                            {`Results for target ${id === 'Not reported' ? id : short(id)}`}
++                                        </Button>
++                                    ) : null}
++                                </td>
++                            </tr>
++                        ))}
++                    </tbody>
++                </table>
++            )}
++        </section>
++    )
++}
++
++/** The reported scans (completed, passed or failed) as metadata rows, each opening its attack results. */
++function ReportedScans({ scans, title, note, action, onOpen }: { scans: RedTeamObservation['scans']; title: string; note: string; action: string; onOpen: (scanId: string) => void }) {
++    const ids = useId()
++    const rows = (scans?.rows ?? []).filter((r) => REPORTED.includes((r.status ?? '').toUpperCase()))
++    return (
++        <section aria-labelledby={`${ids}-reported`} className='flex flex-col gap-2' data-slot='red-team-reported' data-title={title}>
++            <h2 id={`${ids}-reported`} className='text-[15px] font-semibold'>
++                {title}
++            </h2>
++            <p className='text-academy-ink-soft text-[12px]'>{note}</p>
++            {scans === null ? (
++                <p className='text-[13px]'>The scan list could not be read.</p>
++            ) : rows.length === 0 ? (
++                <p className='text-[13px]'>No reported scans in the rows read.</p>
++            ) : (
++                <table className='w-full text-left text-[13px]'>
++                    <thead>
++                        <tr>
++                            <th scope='col'>Scan</th>
++                            <th scope='col'>Status</th>
++                            <th scope='col'>Type</th>
++                            <th scope='col'>Created</th>
++                            <th scope='col'>
++                                <span className='sr-only'>Actions</span>
++                            </th>
++                        </tr>
++                    </thead>
++                    <tbody>
++                        {rows.map((r) => (
++                            <tr key={r.id}>
++                                <td className='font-mono'>{short(r.id)}</td>
++                                <td>{words(r.status)}</td>
++                                <td>{words(r.jobType)}</td>
++                                <td>{r.createdAt ?? 'Not reported'}</td>
++                                <td>
++                                    <Button type='button' size='sm' tier='tertiary' onClick={() => onOpen(r.id)}>
++                                        {`${action} for scan ${short(r.id)}`}
++                                    </Button>
++                                </td>
++                            </tr>
++                        ))}
++                    </tbody>
++                </table>
++            )}
++        </section>
++    )
++}
+diff --git a/apps/desktop/src/features/runtime/runtime-view.tsx b/apps/desktop/src/features/runtime/runtime-view.tsx
+index 89139566..8051e487 100644
+--- a/apps/desktop/src/features/runtime/runtime-view.tsx
++++ b/apps/desktop/src/features/runtime/runtime-view.tsx
+@@ -1,7 +1,7 @@
+ import { type FormEvent, forwardRef, useEffect, useId, useRef, useState } from 'react'
+ import { Button, Callout, Input, PillBox, cn } from '@ai-security-academy/presentation'
+-import { AlertTriangle, CheckCircle2, Info, ShieldAlert } from 'lucide-react'
+-import type { Detection, FeatureId, ScanRecordView, ShellSnapshot } from '@prisma-airs/desktop-contracts'
++import { AlertTriangle, CheckCircle2, CircleHelp, Eye, Info, ShieldAlert, ShieldX } from 'lucide-react'
++import type { Detection, FeatureId, ScanRecordView, ScanResultView, ShellSnapshot } from '@prisma-airs/desktop-contracts'
+ import { PageHeading } from '../../shell/feature-view'
+ import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
+ import { type ScanInput, VERDICT_TEXT, draftFrom, outcomeText, recordSummary } from './scan-text'
+@@ -15,6 +15,8 @@ interface Props {
+     onNavigate: (id: FeatureId) => void
+     /** A Library case or starter to fill the form with (never scanned). */
+     prefill?: CasePrefill | null
++    /** v2 (C31): no page heading (the Administration accordion names the tab). */
++    embedded?: boolean
+ }
+ 
+ const TEXTAREA = cn(
+@@ -32,7 +34,7 @@ const TEXTAREA = cn(
+  * from native snapshots, which already exclude other tenants and discard
+  * replies for a retired tenant or key.
+  */
+-export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate, prefill = null }, ref) {
++export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function RuntimeView({ snapshot, dispatch, onNavigate, prefill = null, embedded = false }, ref) {
+     const ids = useId()
+     const [tab, setTab] = useState<'scan' | 'overview'>('scan')
+     const [caseName, setCaseName] = useState('')
+@@ -138,7 +140,7 @@ export const RuntimeView = forwardRef<HTMLHeadingElement, Props>(function Runtim
+         }
+     }
+ 
+-    const heading = <PageHeading ref={ref} id='runtime-heading' kicker='Runtime Security' title='Scan a prompt or response' />
++    const heading = embedded ? null : <PageHeading ref={ref} id='runtime-heading' kicker='Runtime Security' title='Scan a prompt or response' />
+ 
+     if (!tenant || !context) {
+         return (
+@@ -414,12 +416,76 @@ function ScanResult({ record, onCancel }: { record: ScanRecordView; onCancel: (o
+                     ) : null}
+                 </dl>
+             ) : null}
+-            {result ? <Detections title='Prompt detections' items={result.promptDetected} /> : null}
+-            {result ? <Detections title='Response detections' items={result.responseDetected} /> : null}
++            {result ? <Detections title='Prompt detections' items={result.promptDetected.filter((d) => d.detector !== 'topic_violation')} /> : null}
++            {result ? <Detections title='Response detections' items={result.responseDetected.filter((d) => d.detector !== 'topic_violation')} /> : null}
++            {result ? <TopicVerdict result={result} topics={result.topics} direction='prompt' /> : null}
++            {result && (result.responseDetected.length > 0 || result.responseTopics.violation !== null || result.responseTopics.blocked.length > 0 || result.responseTopics.allowed.length > 0) ? (
++                <TopicVerdict result={result} topics={result.responseTopics} direction='response' />
++            ) : null}
+         </section>
+     )
+ }
+ 
++/**
++ * The custom topic result, keyed apart from the detectors (C31, DESIGN-V2
++ * §10 gap 2): a topic matched under the scan's profile is named; "Not
++ * detected" says no assigned topic matched; an unreported verdict says so.
++ * An applied topic never suppresses an enabled detector: both are shown.
++ * The prompt's and the response's results are separate, each labelled.
++ */
++function TopicVerdict({ result, topics, direction }: { result: ScanResultView; topics: ScanResultView['topics']; direction: 'prompt' | 'response' }) {
++    const profile = result.profileName ?? result.profileId ?? 'the scan profile'
++    const matched = topics.blocked.length > 0 || topics.allowed.length > 0 || topics.violation === true
++    return (
++        <div
++            className='flex flex-col gap-1'
++            data-slot='scan-topics'
++            data-direction={direction}
++            data-topic-verdict={topics.violation === null && !matched ? 'unreported' : matched ? 'flagged' : 'clear'}
++        >
++            <h3 className='text-academy-ink text-[13px] font-medium'>{direction === 'prompt' ? 'Custom topics · prompt' : 'Custom topics · response'}</h3>
++            {matched ? (
++                <ul className='flex flex-wrap gap-2'>
++                    {topics.blocked.map((t) => (
++                        <li key={`${direction}-b-${t}`}>
++                            <PillBox tone='danger' data-verdict='blocked'>
++                                <ShieldX aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
++                                {t}: flagged (blocked)
++                            </PillBox>
++                        </li>
++                    ))}
++                    {topics.allowed.map((t) => (
++                        <li key={`${direction}-a-${t}`}>
++                            <PillBox tone='warning' data-verdict='monitor'>
++                                <Eye aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
++                                {t}: flagged (monitor only)
++                            </PillBox>
++                        </li>
++                    ))}
++                    {topics.blocked.length === 0 && topics.allowed.length === 0 ? (
++                        <li>
++                            <PillBox tone='danger' data-verdict='unnamed'>
++                                <AlertTriangle aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
++                                A topic matched (the service named none)
++                            </PillBox>
++                        </li>
++                    ) : null}
++                </ul>
++            ) : topics.violation === false ? (
++                <p className='text-academy-ink-soft text-[12px]' data-verdict='clear'>
++                    <CheckCircle2 aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
++                    Not detected: no custom topic assigned to {profile} matched.
++                </p>
++            ) : (
++                <p className='text-academy-ink-soft text-[12px]' data-verdict='unreported'>
++                    <CircleHelp aria-hidden className='mr-1 inline size-3.5 align-[-2px]' />
++                    Not reported by the service for this scan.
++                </p>
++            )}
++        </div>
++    )
++}
++
+ function Detections({ title, items }: { title: string; items: Detection[] }) {
+     if (items.length === 0) return null
+     return (
+diff --git a/apps/desktop/src/features/runtime/scan-submit.test.tsx b/apps/desktop/src/features/runtime/scan-submit.test.tsx
+index 1b37d6b8..b8ec901c 100644
+--- a/apps/desktop/src/features/runtime/scan-submit.test.tsx
++++ b/apps/desktop/src/features/runtime/scan-submit.test.tsx
+@@ -33,6 +33,8 @@ function result(overrides: Partial<ScanResultView> = {}): ScanResultView {
+             { detector: 'future_detector', detected: true },
+         ],
+         responseDetected: [],
++        topics: { violation: null, blocked: [], allowed: [] },
++        responseTopics: { violation: null, blocked: [], allowed: [] },
+         ...overrides,
+     }
+ }
+diff --git a/apps/desktop/src/v2/copy.ts b/apps/desktop/src/v2/copy.ts
+index d0e2fc4b..be23e2b1 100644
+--- a/apps/desktop/src/v2/copy.ts
++++ b/apps/desktop/src/v2/copy.ts
+@@ -77,7 +77,7 @@ export const INBOX_COPY = {
+     title: 'Inbox',
+     tabs: { all: 'All', action: 'Needs action', updates: 'Updates', snoozed: 'Snoozed' } as const,
+     severity: { bad: 'Critical', warn: 'Warning', ok: 'Info' } as Record<'bad' | 'warn' | 'ok', string>,
+-    kind: { runtime: 'AI Runtime Security', gateway: 'AI Gateway', setupWarning: 'Setup' } as Record<'runtime' | 'gateway' | 'setupWarning', string>,
++    kind: { runtime: 'AI Runtime Security', gateway: 'AI Gateway', setupWarning: 'Setup', rotation: 'Key rotation' } as Record<'runtime' | 'gateway' | 'setupWarning' | 'rotation', string>,
+     emptyPending: 'First read pending. Nothing has been read for this tenant yet.',
+     emptyReading: 'Reading this tenant…',
+     emptyClear: 'Nothing needs action.',
+@@ -100,7 +100,8 @@ export const INBOX_COPY = {
+         runtime: 'Runtime Security reads this from the tenant’s sessions and API keys; an item here changes what the scan key can do or how prompts are being handled.',
+         gateway: 'The chosen AI Gateway workspace reported errors or a quota for the day; routes and keys depend on it.',
+         setupWarning: 'A check during setup did not pass. The product reads only partially until it is fixed in Administration.',
+-    } as Record<'runtime' | 'gateway' | 'setupWarning', string>,
++        rotation: 'An additional API key was issued for this application. Until the old key is removed, both keys work; finish the rotation once the application uses the new key.',
++    } as Record<'runtime' | 'gateway' | 'setupWarning' | 'rotation', string>,
+     readNow: 'Read now',
+     detail: 'Details',
+     selectHint: 'Select an item to see its details.',
+diff --git a/apps/desktop/src/v2/fixtures.ts b/apps/desktop/src/v2/fixtures.ts
+index 1ed3929d..ab3b74cb 100644
+--- a/apps/desktop/src/v2/fixtures.ts
++++ b/apps/desktop/src/v2/fixtures.ts
+@@ -5,6 +5,7 @@
+  */
+ import type { FeatureEntry, InboxEntry, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
+ import { baseSnapshot, tenant, withTenant } from '../test/native'
++import inventory from './admin/inventory.fixture.json'
+ 
+ /** The v2 catalogue exactly as desktop-core's `catalogue_for(V2)` lists it (C28). */
+ export const V2_FEATURES: FeatureEntry[] = [
+@@ -25,7 +26,7 @@ export const V2_FEATURES: FeatureEntry[] = [
+ 
+ /** fx.home: the v2 shell on Home with no tenant yet. */
+ export function fxHome(): ShellSnapshot {
+-    return { ...baseSnapshot, uiVariant: 'v2', onboarding: 'done', activeFeature: 'home', showCalls: true, features: V2_FEATURES }
++    return { ...baseSnapshot, uiVariant: 'v2', onboarding: 'done', activeFeature: 'home', showCalls: true, features: V2_FEATURES, administration: inventory as ShellSnapshot['administration'] }
+ }
+ 
+ /** fx.home.dark */
+diff --git a/apps/desktop/src/v2/inbox/inbox.test.tsx b/apps/desktop/src/v2/inbox/inbox.test.tsx
+index f19108c3..416a5020 100644
+--- a/apps/desktop/src/v2/inbox/inbox.test.tsx
++++ b/apps/desktop/src/v2/inbox/inbox.test.tsx
+@@ -46,9 +46,9 @@ describe('Inbox', () => {
+         // The action carries its target: Administration opens on the API keys inventory, filtered to the key.
+         const ready = native.current.tenants.map((t, i) => (i === 0 ? { ...t, management: { state: 'ready' as const, mode: 'keychain' as const, failure: null, clientId: 'client@1762204418.iam.panserviceaccount.com', tokenOrigin: 'https://auth.apps.paloaltonetworks.com' } } : t))
+         await native.push({ ...native.current, activeFeature: 'administration', tenants: ready })
+-        await screen.findByRole('heading', { level: 1, name: /Tenant inventories/ })
+-        expect(screen.getByRole('button', { name: 'API keys' })).toHaveAttribute('aria-current', 'true')
+-        expect(document.querySelector('[data-slot="administration-filter"]')).toHaveValue('Runtime')
++        await screen.findByRole('heading', { level: 1, name: 'Administration' })
++        await waitFor(() => expect(screen.getByRole('tab', { name: 'API keys' })).toHaveAttribute('aria-selected', 'true'))
++        await waitFor(() => expect(document.querySelector('[data-slot="administration-filter"]')).toHaveValue('Runtime'))
+         await native.push({ ...native.current, activeFeature: 'inbox' })
+         await screen.findByRole('heading', { level: 1, name: 'Inbox' })
+         await user.click(within(screen.getByRole('list', { name: 'Inbox items' })).getByRole('button', { name: /Runtime expires in 5 days/ }))
+@@ -214,8 +214,9 @@ describe('Inbox', () => {
+         const meridian = native.current.tenants[1]!
+         const ready = { ...meridian, management: { state: 'ready' as const, mode: 'keychain' as const, failure: null, clientId: 'client@1001464285.iam.panserviceaccount.com', tokenOrigin: 'https://auth.apps.paloaltonetworks.com' } }
+         await native.push({ ...native.current, tenants: [native.current.tenants[0]!, ready], active: { tenant: meridian.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' }, activeFeature: 'administration', inbox: { items: [], read: { state: 'pending', lastReadAt: null, failedAt: null, settledAt: null, products: [], sourcesMissing: [], generation: 0, rechecking: null }, lastSnooze: null } })
+-        await screen.findByRole('heading', { level: 1, name: /Tenant inventories/ })
+-        expect(screen.getByRole('button', { name: 'Security profiles' })).toHaveAttribute('aria-current', 'true')
++        await screen.findByRole('heading', { level: 1, name: 'Administration' })
++        expect(screen.getByRole('tab', { name: 'Custom topics' })).toHaveAttribute('aria-selected', 'true')
++        expect(screen.getByRole('tab', { name: 'API keys' })).toHaveAttribute('aria-selected', 'false')
+         expect(document.querySelector('[data-slot="administration-filter"]')).toHaveValue('')
+         expect(document.querySelector('[data-slot="unconfirmed"]')).toBeNull()
+         // Back in Northwind (a new context): the retired delivery is gone for good, never re-sent.
+diff --git a/apps/desktop/src/v2/modal.test.tsx b/apps/desktop/src/v2/modal.test.tsx
+index d204278d..bd3fecf1 100644
+--- a/apps/desktop/src/v2/modal.test.tsx
++++ b/apps/desktop/src/v2/modal.test.tsx
+@@ -100,4 +100,47 @@ describe('modal stack (I8)', () => {
+         expect(screen.queryByRole('dialog', { name: 'Inner' })).toBeNull()
+         await waitFor(() => expect(screen.getByRole('button', { name: 'Outer second' })).toHaveFocus())
+     })
++
++    it('Escape closes only the topmost dialog even when focus has left it (a native sheet returned focus to the page)', async () => {
++        const user = userEvent.setup()
++        render(<Stack />)
++        await user.click(screen.getByRole('button', { name: 'Open outer' }))
++        await user.click(screen.getByRole('button', { name: 'Open inner' }))
++        ;(document.activeElement as HTMLElement | null)?.blur()
++        expect(document.activeElement).toBe(document.body)
++        await user.keyboard('{Escape}')
++        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Inner' })).toBeNull())
++        expect(screen.getByRole('dialog', { name: 'Outer' })).toBeInTheDocument()
++    })
++
++    it('returns focus to the page heading when the opener no longer exists', async () => {
++        const user = userEvent.setup()
++        function Gone() {
++            const [open, setOpen] = useState(false)
++            const [opener, setOpener] = useState(true)
++            return (
++                <main>
++                    <h1 tabIndex={-1}>Page</h1>
++                    {opener && (
++                        <button type='button' onClick={() => setOpen(true)}>
++                            Open once
++                        </button>
++                    )}
++                    {open && (
++                        <Modal label='Once' onClose={() => setOpen(false)}>
++                            <button type='button' onClick={() => setOpener(false)}>
++                                Finish
++                            </button>
++                        </Modal>
++                    )}
++                </main>
++            )
++        }
++        render(<Gone />)
++        await user.click(screen.getByRole('button', { name: 'Open once' }))
++        await user.click(screen.getByRole('button', { name: 'Finish' }))
++        await user.keyboard('{Escape}')
++        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Once' })).toBeNull())
++        await waitFor(() => expect(screen.getByRole('heading', { name: 'Page' })).toHaveFocus())
++    })
+ })
+diff --git a/apps/desktop/src/v2/modal.tsx b/apps/desktop/src/v2/modal.tsx
+index d86e59fd..8cbba22a 100644
+--- a/apps/desktop/src/v2/modal.tsx
++++ b/apps/desktop/src/v2/modal.tsx
+@@ -42,7 +42,11 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
+                 // Only when nothing else took focus meanwhile (⌘T replacing the
+                 // palette hands focus to the tenant list, which must keep it).
+                 const active = document.activeElement
+-                if (!active || active === document.body) target?.focus()
++                if (active && active !== document.body) return
++                // The opener may be gone (a "Finish rotation…" that completed):
++                // focus the page heading rather than leave it on nothing.
++                if (target?.isConnected) target.focus()
++                else document.querySelector<HTMLElement>('main h1[tabindex="-1"]')?.focus()
+             })
+         }
+     }, [id, pushModal, popModal])
+@@ -62,6 +66,24 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
+         }
+     }, [topmost])
+ 
++    // Escape still closes the topmost dialog when focus has left it (a
++    // native sheet returning focus to the page body, a click on the scrim's
++    // edge): the dialog's own handler stops the event first when it has focus.
++    const closeRef = useRef(onClose)
++    closeRef.current = onClose
++    useEffect(() => {
++        if (!topmost) return
++        const onWindowKey = (event: globalThis.KeyboardEvent) => {
++            if (event.key !== 'Escape' || event.defaultPrevented) return
++            const node = dialog.current
++            if (node && node.contains(document.activeElement)) return
++            event.preventDefault()
++            closeRef.current()
++        }
++        window.addEventListener('keydown', onWindowKey)
++        return () => window.removeEventListener('keydown', onWindowKey)
++    }, [topmost])
++
+     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+         if (!topmost) return
+         if (event.key === 'Escape') {
+diff --git a/apps/desktop/src/v2/v2-shell.tsx b/apps/desktop/src/v2/v2-shell.tsx
+index 6a22e768..1cd6fc88 100644
+--- a/apps/desktop/src/v2/v2-shell.tsx
++++ b/apps/desktop/src/v2/v2-shell.tsx
+@@ -4,6 +4,7 @@ import type { SwitchResolution, DesktopClient, FeatureId, Intent, ShellSnapshot,
+ import type { Dispatch } from '../features/tenants/dispatch'
+ import { FeatureBody } from '../shell/feature-body'
+ import { type Act, Inbox } from './inbox/inbox'
++import { Administration } from './admin/administration'
+ import { FEATURE_ICONS } from '../shell/icons'
+ import { SHELL_COPY, SNOOZE_COPY } from './copy'
+ import { readLine } from './home'
+@@ -279,6 +280,17 @@ export function V2Shell(props: V2ShellProps) {
+                     <Home ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
+                 ) : feature.id === 'inbox' ? (
+                     <Inbox ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
++                ) : feature.id === 'administration' && feature.availability.state === 'available' ? (
++                    <Administration
++                        key={snapshot.active?.context ?? 'none'}
++                        ref={heading}
++                        snapshot={snapshot}
++                        dispatch={props.dispatch}
++                        client={props.client}
++                        onAct={props.onAct}
++                        onNavigate={props.onNavigate}
++                        arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'administration' ? arrival : null}
++                    />
+                 ) : (
+                     <FeatureBody
+                         ref={heading}
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 24342d40..d9e94203 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -35,6 +35,7 @@ mod library_domain;
+ mod management_domain;
+ mod observation_domain;
+ mod offline_domain;
++mod rotation_domain;
+ mod sessions_domain;
+ mod setup_domain;
+ mod workbench_domain;
+@@ -56,6 +57,7 @@ pub use inbox_domain::{
+ };
+ pub use observation_domain::{AttentionFace, HeldItem, HoldKind, OverviewView, SnoozeReceipt};
+ pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineState, OfflineView};
++pub use rotation_domain::{RotationStage, RotationView};
+ pub use sessions_domain::{
+     ExportKind, ExportState, ExportView, InvestigationView, ReportTarget, ReportUndoView,
+     ReportsState, ReportsView, SessionsView,
+@@ -200,6 +202,12 @@ pub enum Intent {
+         context: ContextRef,
+         product: features::ProductId,
+     },
++    /// The operator's statement that `application` now uses the key a
++    /// rotation issued (C31, I7): recorded once, locally, with its time.
++    AcknowledgeDeployment {
++        context: ContextRef,
++        application: String,
++    },
+     /// Set an Inbox entry aside until its level rises (C30, I11).
+     AcknowledgeItem {
+         context: ContextRef,
+@@ -786,6 +794,7 @@ intent_kinds! {
+     DismissSwitchGuard => "dismissSwitchGuard",
+     ReadTenant => "readTenant",
+     RecheckProduct => "recheckProduct",
++    AcknowledgeDeployment => "acknowledgeDeployment",
+     AcknowledgeItem => "acknowledgeItem",
+     SnoozeItem => "snoozeItem",
+     UnsnoozeItem => "unsnoozeItem",
+@@ -1250,6 +1259,12 @@ pub struct ShellSnapshot {
+     pub library: LibraryView,
+     /// The active context's Runtime Home/Inbox observations.
+     pub overview: OverviewView,
++    /// The Administration inventory (C31): static per build, published in
++    /// the v2 shell only (the legacy shell keeps its own fixed matrix and
++    /// literal snapshot).
++    pub administration: Option<crate::admin_inventory::AdminInventoryView>,
++    /// The active tenant's Runtime key rotations (C31).
++    pub rotations: Vec<rotation_domain::RotationView>,
+     /// The active tenant's Inbox and read status (C30).
+     pub inbox: inbox_domain::InboxView,
+     /// API Client projects on this Mac (C14).
+@@ -1538,6 +1553,8 @@ struct Tenant {
+     products: Vec<features::ProductId>,
+     /// Verify warnings recorded at wizard completion (C29).
+     setup_warnings: Vec<features::SetupWarning>,
++    /// Runtime API key rotations (C31).
++    rotations: Vec<features::Rotation>,
+     scan: ScanCapability,
+     /// The management OAuth client secret (destination: the token origin).
+     management: ScanCapability,
+@@ -1563,6 +1580,7 @@ impl Tenant {
+             profile,
+             products: Vec::new(),
+             setup_warnings: Vec::new(),
++            rotations: Vec::new(),
+             scan: ScanCapability::Missing,
+             management: ScanCapability::Missing,
+             management_client: None,
+@@ -1649,6 +1667,10 @@ struct State {
+     import: ImportState,
+     reset_failure: Option<ResetFailure>,
+     durability_unconfirmed: bool,
++    /// A rotation fact the service established (an issuance, a removal, a
++    /// reconciliation) is held in memory but not yet saved: every later
++    /// publication retries the save; nothing remote is replayed (C31).
++    rotation_unsaved: bool,
+     cleaning: bool,
+     /// Cleanup was asked for while a pass ran: run another when it ends,
+     /// so a record released meanwhile is not left waiting (P06).
+@@ -1913,6 +1935,9 @@ impl State {
+             sessions: self.sessions_view(),
+             library: self.library_view(),
+             overview: self.overview_view(),
++            administration: (self.ui_variant() == features::UiVariant::V2)
++                .then(crate::admin_inventory::inventory),
++            rotations: self.rotations_view(),
+             inbox: self.inbox_view(&self.overview_view()),
+             workbench: self.workbench_view(),
+             gateway: self.gateway_view(),
+@@ -1970,6 +1995,16 @@ impl State {
+                     warnings: t.setup_warnings.clone(),
+                 })
+                 .collect(),
++            tenant_rotations: self
++                .data
++                .tenants
++                .iter()
++                .filter(|t| !t.rotations.is_empty())
++                .map(|t| crate::store::TenantRotations {
++                    tenant: t.profile.id.clone(),
++                    rotations: t.rotations.clone(),
++                })
++                .collect(),
+             ui_variant: self.ui_variant(),
+             onboarding: self.onboarding(),
+             show_calls: self.show_calls(),
+@@ -2375,10 +2410,13 @@ impl State {
+         match saved {
+             Ok(()) => {
+                 self.durability_unconfirmed = false;
++                // The saved state includes every rotation fact held in memory.
++                self.rotation_unsaved = false;
+                 Ok(())
+             }
+             Err(StoreError::Unconfirmed) => {
+                 self.durability_unconfirmed = true;
++                self.rotation_unsaved = false;
+                 Ok(())
+             }
+             Err(error) => {
+@@ -2676,6 +2714,7 @@ impl Core {
+             import: ImportState::Idle,
+             reset_failure: None,
+             durability_unconfirmed: false,
++            rotation_unsaved: false,
+             cleaning: false,
+             clean_again: false,
+             writes_in_flight: Vec::new(),
+@@ -3213,6 +3252,13 @@ fn data_from(doc: PersistedState) -> Data {
+             {
+                 tenant.setup_warnings = tw.warnings.clone();
+             }
++            if let Some(tr) = doc
++                .tenant_rotations
++                .iter()
++                .find(|r| r.tenant == tenant.profile.id)
++            {
++                tenant.rotations = tr.rotations.clone();
++            }
+             tenant
+         })
+         .collect();
+@@ -3739,6 +3785,20 @@ fn admit(
+             state.restore_insight(&context, &id)?;
+             state.changed();
+         }
++        Intent::AcknowledgeDeployment {
++            context,
++            application,
++        } => {
++            state.require_storage()?;
++            let before = state.data.clone();
++            let issued_by = state.acknowledge_deployment(&context, &application)?;
++            state.save_with(&before)?;
++            // Only a recorded acknowledgement retires the held copy (I6).
++            if let Some((operation, old_key)) = issued_by {
++                state.forget_issuance(&operation, &old_key);
++            }
++            state.changed();
++        }
+         Intent::DeleteTenant { tenant } => {
+             state.require_storage()?;
+             if !state.committed_tenant(&tenant) {
+diff --git a/crates/desktop-core/src/authority/change_domain.rs b/crates/desktop-core/src/authority/change_domain.rs
+index e89041bf..65a21dbd 100644
+--- a/crates/desktop-core/src/authority/change_domain.rs
++++ b/crates/desktop-core/src/authority/change_domain.rs
+@@ -177,6 +177,11 @@ pub struct ChangeResultView {
+     pub workspace: Option<ListedWorkspace>,
+     /// A workspace provisioning's steps and their reconciliation (C17).
+     pub provisioning: Option<Provisioning>,
++    /// When the core recorded the settlement (and its readback), on its
++    /// clock; stable across later observations (C31).
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    #[ts(optional)]
++    pub settled_at: Option<u32>,
+ }
+ 
+ /// Why a chosen dictionary file was not staged.
+@@ -343,11 +348,18 @@ type ProgressSlot = Arc<Mutex<Progress>>;
+ 
+ pub(super) struct ChangeRecord {
+     operation: OperationId,
++    /// The review this change was applied from: ending that review ends the
++    /// disclosure of whatever the change returns (C31, I6).
++    review: Option<ReviewId>,
+     context: ContextRef,
+     kind: ChangeKind,
+     action: ChangeAction,
+     target: String,
+     name: Option<String>,
++    /// The item as reviewed, by name (a key version's source key), and the
++    /// application a key change names (C31 rotations).
++    source_name: Option<String>,
++    application: Option<String>,
+     slot: ApplySlot,
+     output: Option<ApplyOutput>,
+     secret: SecretState,
+@@ -357,9 +369,24 @@ pub(super) struct ChangeRecord {
+     progress: ProgressSlot,
+     /// Kept on this Mac when the change settles uncertain (C17, T23).
+     local: Option<LocalOrigin>,
++    /// The operator ended the review before this change settled: its
++    /// one-time secret is dropped the moment it lands (C31, I6).
++    forget_on_settle: bool,
++    /// A Runtime key change's tenant: its settlement updates that tenant's
++    /// rotation even after the context retired (without its secret; C31).
++    rotation_tenant: Option<TenantId>,
++    /// When the settlement was recorded (C31).
++    settled_at: Option<u32>,
+ }
+ 
+ impl ChangeRecord {
++    /// A Runtime key Version issued from `old_key` (a rotation's issuance).
++    fn is_issuance_of(&self, old_key: &str) -> bool {
++        self.kind == ChangeKind::ApiKeys
++            && self.action == ChangeAction::Version
++            && self.target == old_key
++    }
++
+     /// The tenant a Gateway change keeps its local record under.
+     pub(super) fn tenant(&self) -> Option<&TenantId> {
+         self.local.as_ref().map(|l| &l.tenant)
+@@ -700,6 +727,16 @@ impl State {
+                 .as_ref()
+                 .and_then(|b| item_name(draft.kind, b))
+         });
++        let source_name = prepared
++            .before
++            .as_ref()
++            .and_then(|b| item_name(draft.kind, b));
++        let application = [&prepared.mutation.body]
++            .into_iter()
++            .chain(prepared.before.iter())
++            .find_map(|v| v.get("cust_app").and_then(Value::as_str))
++            .filter(|s| !s.is_empty())
++            .map(str::to_owned);
+         let workspace = bound.as_ref().and_then(|b| b.scope.shown.clone());
+         let reference = bound.as_ref().and_then(|b| b.scope.reference.clone());
+         let local = bound.as_ref().map(|_| LocalOrigin {
+@@ -708,6 +745,9 @@ impl State {
+             body: draft.body.to_string(),
+         });
+         let progress: ProgressSlot = Arc::default();
++        let rotation_tenant = (draft.kind == ChangeKind::ApiKeys
++            && matches!(draft.action, ChangeAction::Version | ChangeAction::Delete))
++        .then(|| tenant.clone());
+         let job = ApplyJob {
+             source,
+             tenant,
+@@ -730,18 +770,22 @@ impl State {
+                     return Vec::new();
+                 }
+             };
+-        if let Some(taken) = self.change_review.take() {
+-            self.consumed_reviews.push(taken.id);
+-        }
++        let review = self.change_review.take().map(|taken| {
++            self.consumed_reviews.push(taken.id.clone());
++            taken.id
++        });
+         self.change_results.insert(
+             0,
+             ChangeRecord {
+                 operation,
++                review,
+                 context,
+                 kind: draft.kind,
+                 action: draft.action,
+                 target: draft.target,
+                 name,
++                source_name,
++                application,
+                 slot,
+                 output: None,
+                 secret: SecretState::None,
+@@ -749,6 +793,9 @@ impl State {
+                 reference,
+                 progress,
+                 local,
++                forget_on_settle: false,
++                rotation_tenant,
++                settled_at: None,
+             },
+         );
+         starts
+@@ -859,7 +906,23 @@ impl State {
+                 self.change_review = None;
+                 Ok(())
+             }
+-            _ => Err(Refusal::ReviewInvalid),
++            _ => {
++                // An applied review: its exit retires every one-time secret
++                // its changes returned or will return (I6), settled or not.
++                let applied: Vec<OperationId> = self
++                    .change_results
++                    .iter()
++                    .filter(|r| r.review.as_ref() == Some(review))
++                    .map(|r| r.operation.clone())
++                    .collect();
++                if applied.is_empty() {
++                    return Err(Refusal::ReviewInvalid);
++                }
++                for operation in &applied {
++                    let _ = self.forget_secret(operation);
++                }
++                Ok(())
++            }
+         }
+     }
+ 
+@@ -947,6 +1010,9 @@ impl State {
+             .ok_or(Refusal::InvalidInput)?;
+         if let Some(output) = record.output.as_mut() {
+             output.secret = None;
++        } else {
++            // Not settled yet: whatever key it returns is dropped on arrival.
++            record.forget_on_settle = true;
+         }
+         if record.secret == SecretState::Held {
+             record.secret = SecretState::Forgotten;
+@@ -955,10 +1021,25 @@ impl State {
+         Ok(())
+     }
+ 
++    /// Forgets the one-time key of exactly the issuance a rotation names:
++    /// the key Version of `old_key` applied as `operation` in this session.
++    /// Any other result (another key, a Gateway rotation) is untouched.
++    pub(super) fn forget_issuance(&mut self, operation: &str, old_key: &str) {
++        let found = self
++            .change_results
++            .iter()
++            .find(|r| r.operation.as_str() == operation && r.is_issuance_of(old_key))
++            .map(|r| r.operation.clone());
++        if let Some(operation) = found {
++            let _ = self.forget_secret(&operation);
++        }
++    }
++
+     /// Settles prepared reviews and applied changes; drops everything bound
+     /// to a retired context (an open confirmation is ended, held secrets
+     /// are zeroized with their record).
+     pub(super) fn sync_changes(&mut self) {
++        self.retry_rotation_save();
+         let active = self.active_ref.clone();
+         let retired = self.change_review.as_ref().is_some_and(|r| {
+             r.gateway
+@@ -1005,7 +1086,11 @@ impl State {
+         for record in std::mem::take(&mut self.change_results) {
+             if Some(&record.context) == active.as_ref() {
+                 self.change_results.push(record);
+-            } else if record.output.is_none() && record.local.is_some() {
++            } else if record.output.is_none()
++                && (record.local.is_some() || record.rotation_tenant.is_some())
++            {
++                // Its settlement still belongs to its tenant (a Gateway
++                // record on this Mac, a Runtime key rotation's facts).
+                 self.detached_changes.push(record);
+             }
+         }
+@@ -1013,6 +1098,10 @@ impl State {
+             self.secrets.dismiss();
+         }
+         let mut kept = Vec::new();
++        // Settled Runtime changes of the active context drive key rotations (C31).
++        let mut rotations: Vec<(TenantId, super::rotation_domain::SettledChange)> = Vec::new();
++        let active_tenant = self.data.active.clone();
++        let clock = self.clock();
+         for record in self
+             .change_results
+             .iter_mut()
+@@ -1040,13 +1129,19 @@ impl State {
+                 secret: None,
+                 provisioning: None,
+             });
++            // What a rotation needs of the readback (the key read back, never
++            // its secret) is kept before a retired context's reply is dropped.
++            let rotation_current = output.current.clone();
+             if Some(&record.context) != active.as_ref() {
+                 // A retired context's reply and one-time key go unread.
+                 output.secret = None;
+                 output.response = None;
+                 output.current = None;
+             }
+-            record.secret = if output.secret.is_some() {
++            record.secret = if record.forget_on_settle && output.secret.is_some() {
++                output.secret = None;
++                SecretState::Forgotten
++            } else if output.secret.is_some() {
+                 SecretState::Held
+             } else {
+                 SecretState::None
+@@ -1054,9 +1149,38 @@ impl State {
+             if let Some(local) = record.local.take() {
+                 kept.push(local_settlement(record, local, &output));
+             }
++            // A rotation fact belongs to the tenant the change was made in,
++            // whichever context is active when it settles.
++            let rotation_tenant = record.rotation_tenant.clone().or_else(|| {
++                (Some(&record.context) == active.as_ref() && record.kind == ChangeKind::ApiKeys)
++                    .then(|| active_tenant.clone())
++                    .flatten()
++            });
++            if let Some(tenant) = rotation_tenant {
++                rotations.push((
++                    tenant,
++                    super::rotation_domain::SettledChange {
++                        operation: record.operation.as_str().to_owned(),
++                        kind: record.kind,
++                        action: record.action,
++                        target: record.target.clone(),
++                        new_name: record.name.clone(),
++                        source_name: record.source_name.clone(),
++                        application: record.application.clone(),
++                        outcome: output.outcome,
++                        failure: output.failure.map(|f| format!("{f:?}")),
++                        readback: output.readback,
++                        current: rotation_current,
++                    },
++                ));
++            }
+             record.output = Some(output);
++            record.settled_at = Some(clock);
+         }
+         self.detached_changes.retain(|r| r.output.is_none());
++        for (tenant, change) in rotations {
++            self.rotation_settled(&tenant, change);
++        }
+         for (tenant, settled) in kept {
+             self.gateway_local_settled(&tenant, settled);
+         }
+@@ -1071,6 +1195,19 @@ impl State {
+         });
+     }
+ 
++    /// Whether the one-time key of exactly the issuance a rotation names
++    /// (the key Version of `old_key` applied as `operation`) is still held
++    /// for the active context (C31: a rotation's Reveal is offered only then).
++    pub(super) fn issuance_held(&self, operation: &str, old_key: &str) -> bool {
++        let active = self.active_ref.as_ref();
++        self.change_results.iter().any(|r| {
++            r.operation.as_str() == operation
++                && r.is_issuance_of(old_key)
++                && Some(&r.context) == active
++                && r.secret == SecretState::Held
++        })
++    }
++
+     pub(super) fn changes_view(&self) -> ChangesView {
+         let active = self.active_ref.as_ref();
+         let review = self
+@@ -1148,6 +1285,7 @@ impl State {
+                 secret: r.secret,
+                 workspace: r.workspace.clone(),
+                 provisioning: r.output.as_ref().and_then(|o| o.provisioning.clone()),
++                settled_at: r.settled_at,
+             })
+             .collect();
+         let staged = self.staging.as_ref().map(|s| match s {
+diff --git a/crates/desktop-core/src/authority/inbox_domain.rs b/crates/desktop-core/src/authority/inbox_domain.rs
+index f8795fa4..0568f5f8 100644
+--- a/crates/desktop-core/src/authority/inbox_domain.rs
++++ b/crates/desktop-core/src/authority/inbox_domain.rs
+@@ -38,6 +38,8 @@ pub enum InboxKind {
+     Gateway,
+     /// A warning recorded at tenant setup (C29).
+     SetupWarning,
++    /// A key rotation in progress (C31, I7).
++    Rotation,
+ }
+ 
+ /// An operator's hold on an entry, with the core-computed return time.
+@@ -719,6 +721,45 @@ impl State {
+                 });
+             }
+         }
++        for item in self.rotation_items() {
++            items.push(InboxEntry {
++                id: item.id.clone(),
++                kind: InboxKind::Rotation,
++                needs_action: true,
++                severity: Tone::Warn,
++                title: item.title.clone(),
++                detail: item.detail.clone(),
++                source: item.source.clone(),
++                product: Some(ProductId::RuntimeSecurity),
++                target: Some(InboxTarget {
++                    feature: FeatureId::Administration,
++                    product: Some(ProductId::RuntimeSecurity),
++                    resource: Some(ManagementResource::ApiKeys),
++                    item: item
++                        .facts
++                        .iter()
++                        .find(|f| f.label == "Old key")
++                        .map(|f| f.value.clone()),
++                }),
++                action_label: Some(item.action_label.clone()),
++                facts: item.facts.clone(),
++                when: self
++                    .data
++                    .active
++                    .as_ref()
++                    .and_then(|id| self.tenant(id))
++                    .and_then(|t| {
++                        t.rotations
++                            .iter()
++                            .find(|r| {
++                                super::rotation_domain::rotation_item_id(&r.application) == item.id
++                            })
++                            .map(|r| r.issued_at)
++                    })
++                    .unwrap_or(read_at),
++                hold: hold_of(&item),
++            });
++        }
+         InboxView {
+             items,
+             read: self.read_status(overview),
+diff --git a/crates/desktop-core/src/authority/management_domain.rs b/crates/desktop-core/src/authority/management_domain.rs
+index 0b4af298..9cbd7e99 100644
+--- a/crates/desktop-core/src/authority/management_domain.rs
++++ b/crates/desktop-core/src/authority/management_domain.rs
+@@ -70,6 +70,8 @@ pub(super) struct ManagementRecord {
+     /// One product's part of the tenant's Home read (C30, I4): its result
+     /// settles into the tenant's read record as a finite outcome.
+     read_part: Option<crate::features::ProductId>,
++    /// A Runtime API key inventory page: it reconciles key rotations (C31).
++    api_keys_page: bool,
+ }
+ 
+ /// The binding of one credential generation (context): its session and
+@@ -241,6 +243,18 @@ impl State {
+         let gateway = self.gateway_admission(&context, &request)?;
+         let source = self.binding_source(&context, keychain, session_vault)?;
+         let overview = request == ManagementRequest::Overview;
++        // Key reads reconcile rotations (C31): a page, or one key's detail
++        // (a walk of the whole inventory, so its absence is authoritative).
++        let api_keys_page = matches!(
++            request,
++            ManagementRequest::Page {
++                resource: crate::management::ManagementResource::ApiKeys,
++                ..
++            } | ManagementRequest::Detail {
++                resource: crate::management::ManagementResource::ApiKeys,
++                ..
++            }
++        );
+         let lists_workspaces = super::gateway_domain::lists_workspaces(&request);
+         let (domain, workspace, scope) = match gateway {
+             Some(g) => (g.domain, g.workspace, g.scope),
+@@ -274,6 +288,7 @@ impl State {
+             workspace,
+             lists_workspaces,
+             read_part: None,
++            api_keys_page,
+         });
+         if overview {
+             let context = self.management_calls.last().map(|r| r.context.clone());
+@@ -314,6 +329,7 @@ impl State {
+         let current = self.active_ref.clone();
+         let mut overviews = Vec::new();
+         let mut parts = Vec::new();
++        let mut key_pages = Vec::new();
+         let mut listings = Vec::new();
+         // A setup's verify reads (C29) belong to the draft's context and
+         // settle into its lines instead of an observation.
+@@ -356,6 +372,34 @@ impl State {
+             if let Some(product) = record.read_part {
+                 parts.push((record.context.clone(), product, result.clone()));
+             }
++            if record.api_keys_page && !retired {
++                match &result {
++                    ManagementResult::Page { page } => {
++                        // The whole inventory in one read: the first page,
++                        // and the last.
++                        key_pages.push(KeyRead::Items(
++                            record.context.clone(),
++                            page.items.clone(),
++                            page.offset == 0 && page.complete,
++                        ));
++                    }
++                    ManagementResult::Detail { detail } => match (&detail.found, &detail.item) {
++                        (crate::management::DetailFound::Found, Some(item)) => {
++                            key_pages.push(KeyRead::Items(
++                                record.context.clone(),
++                                format!("[{item}]"),
++                                false,
++                            ));
++                        }
++                        (crate::management::DetailFound::Absent, _) => {
++                            key_pages
++                                .push(KeyRead::Absent(record.context.clone(), detail.id.clone()));
++                        }
++                        _ => {}
++                    },
++                    _ => {}
++                }
++            }
+             if record.lists_workspaces
+                 && let ManagementResult::Gateway {
+                     gateway: crate::gateway::GatewayResult::List { list },
+@@ -382,6 +426,22 @@ impl State {
+         for (context, product, result) in parts {
+             self.product_read_settled(&context, product, &result);
+         }
++        for read in key_pages {
++            match read {
++                KeyRead::Items(context, items, whole) => {
++                    if let Ok(tenant) = self.check_context(&context)
++                        && let Ok(items) = serde_json::from_str::<Vec<serde_json::Value>>(&items)
++                    {
++                        self.rotation_reconcile(&tenant, &items, whole);
++                    }
++                }
++                KeyRead::Absent(context, id) => {
++                    if let Ok(tenant) = self.check_context(&context) {
++                        self.rotation_key_absent(&tenant, &id);
++                    }
++                }
++            }
++        }
+         for (context, list) in listings {
+             self.gateway_listed(&context, &list);
+         }
+@@ -450,3 +510,11 @@ fn withdrawn(result: ManagementResult) -> ManagementResult {
+         outcome,
+     }
+ }
++
++/// A settled key read, as rotations reconcile from it (C31).
++enum KeyRead {
++    /// Keys read, and whether they are the whole inventory.
++    Items(ContextRef, String, bool),
++    /// A whole-inventory walk ended without this key.
++    Absent(ContextRef, String),
++}
+diff --git a/crates/desktop-core/src/authority/observation_domain.rs b/crates/desktop-core/src/authority/observation_domain.rs
+index bf1ec848..b0117d0f 100644
+--- a/crates/desktop-core/src/authority/observation_domain.rs
++++ b/crates/desktop-core/src/authority/observation_domain.rs
+@@ -413,9 +413,11 @@ impl State {
+                 if let Some((_, holds)) = self.holds.iter_mut().find(|(t, _)| t == &tenant) {
+                     holds.retain(|h| {
+                         reported.contains(&h.id)
+-                            // A setup warning (C29) is not reported by reads:
+-                            // its hold stays until the operator lifts it.
++                            // A setup warning (C29) or rotation reminder (C31) is
++                            // not reported by reads: its hold stays until the
++                            // operator lifts it (or the rotation completes).
+                             || h.id.starts_with("vw-")
++                            || h.id.starts_with("rotation-")
+                             || if h.id.starts_with("gateway-") {
+                                 gateway_known.as_ref() != Some(&h.id)
+                             } else {
+@@ -577,6 +579,7 @@ impl State {
+             .unwrap_or_default();
+         if self.active_ref.as_ref() == Some(context) {
+             items.extend(self.setup_warning_items());
++            items.extend(self.rotation_items());
+         }
+         items
+     }
+@@ -669,7 +672,8 @@ impl State {
+         let holds: &[Hold] = self.active_holds();
+         let mut attention = Vec::new();
+         let mut held = Vec::new();
+-        let warnings = self.setup_warning_items();
++        let mut warnings = self.setup_warning_items();
++        warnings.extend(self.rotation_items());
+         for item in read
+             .iter()
+             .flat_map(|r| r.items.iter())
+diff --git a/crates/desktop-core/src/changes.rs b/crates/desktop-core/src/changes.rs
+index af979dfc..7ea7f9ef 100644
+--- a/crates/desktop-core/src/changes.rs
++++ b/crates/desktop-core/src/changes.rs
+@@ -250,6 +250,16 @@ pub struct Mutation {
+     pub body: Value,
+ }
+ 
++/// Whether the core admits a (kind, action) at all (Runtime or Gateway
++/// matrix): the Administration inventory is pinned against this (C31).
++pub fn is_allowed(kind: ChangeKind, action: ChangeAction) -> bool {
++    if kind.gateway().is_some() {
++        crate::gateway_changes::allowed(kind, action)
++    } else {
++        allowed(kind, action)
++    }
++}
++
+ fn allowed(kind: ChangeKind, action: ChangeAction) -> bool {
+     use ChangeAction::*;
+     matches!(
+diff --git a/crates/desktop-core/src/features.rs b/crates/desktop-core/src/features.rs
+index ead45ebe..9b938b5f 100644
+--- a/crates/desktop-core/src/features.rs
++++ b/crates/desktop-core/src/features.rs
+@@ -175,6 +175,66 @@ pub struct SetupWarning {
+     pub recorded_secs: u32,
+ }
+ 
++/// A Runtime API key named by its identifier and name (never a secret).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct KeyRef {
++    pub id: String,
++    pub name: String,
++}
++
++/// Whether the additional key's issuance was confirmed by readback (C31).
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub enum RotationIssuance {
++    Confirmed,
++    /// The version settled unknown: a key is confirmed only once the key
++    /// inventory shows one for the application besides the old key.
++    Unconfirmed,
++}
++
++/// Where the old key's removal stands (C31).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(tag = "state", rename_all = "camelCase")]
++pub enum RotationRemoval {
++    Pending,
++    /// Sent but not read back absent: reconciled by a complete inventory.
++    Unconfirmed,
++    /// Refused or failed: the reminder stays, the completion time unset.
++    Rejected {
++        reason: String,
++    },
++    Done,
++}
++
++/// One Runtime API key rotation of a tenant (C31, I7), persisted so its two
++/// timestamps are stored once and survive reads, switches and relaunches.
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct Rotation {
++    pub application: String,
++    pub old_key: KeyRef,
++    pub new_key: Option<KeyRef>,
++    pub issuance: RotationIssuance,
++    /// The change result that issued the key (its one-time secret lives
++    /// there, for the context it was applied in, never here). Session-only:
++    /// operation IDs restart with the core, so a relaunch never restores
++    /// this link (a reused ID must not point at another key; C31).
++    #[serde(skip)]
++    #[ts(skip)]
++    pub issued_by: Option<String>,
++    /// The key name the issuing review named: the only key that can confirm
++    /// an unconfirmed issuance.
++    #[serde(default)]
++    pub pending_name: Option<String>,
++    pub issued_at: u32,
++    /// The operator's local statement that the application uses the new key.
++    pub deployment_acknowledged_at: Option<u32>,
++    pub removal: RotationRemoval,
++    /// When the old key was read back absent (remote readback).
++    pub old_key_removed_at: Option<u32>,
++}
++
+ /// Stable identifier of a top-level desktop feature destination.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+ #[serde(rename_all = "camelCase")]
+diff --git a/crates/desktop-core/src/lib.rs b/crates/desktop-core/src/lib.rs
+index 4465d7ed..7d2f7c2b 100644
+--- a/crates/desktop-core/src/lib.rs
++++ b/crates/desktop-core/src/lib.rs
+@@ -7,6 +7,7 @@
+ //! native host creates one [`Core`] with its [`Adapters`] (ADR 0001).
+ 
+ pub mod academy;
++pub mod admin_inventory;
+ mod authority;
+ pub mod avatar;
+ pub mod changes;
+@@ -53,10 +54,10 @@ pub use authority::{
+     LibraryState, LibraryView, LocalDraftView, MAX_TENANTS, Observation, OfflineState, OfflineView,
+     OperatorConfirmation, OverviewView, PagePrinter, Principal, ProductRead, ProductReadState,
+     ReadState, ReadStatus, Readback, Receipt, Refusal, ReportTarget, ReportUndoView, ReportsState,
+-    ReportsView, ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView,
+-    SecretPresenter, SecretState, SelectedWorkspace, SessionsView, ShellSnapshot, SnoozeReceipt,
+-    StagedFileFailure, StagedFileState, StagedFileView, StorageHealth, SwitchResolution,
+-    TenantView, UrlOpener, ViewScope,
++    ReportsView, ResetFailure, ResetStage, RotationStage, RotationView, ScanProgress,
++    ScanRecordView, ScanState, ScanView, SecretPresenter, SecretState, SelectedWorkspace,
++    SessionsView, ShellSnapshot, SnoozeReceipt, StagedFileFailure, StagedFileState, StagedFileView,
++    StorageHealth, SwitchResolution, TenantView, UrlOpener, ViewScope,
+ };
+ pub use authority::{
+     CollectionView, ConflictKind, DocumentView, EnvironmentView, FolderPicker, RecentView,
+diff --git a/crates/desktop-core/src/red_team.rs b/crates/desktop-core/src/red_team.rs
+index c510c987..fb215250 100644
+--- a/crates/desktop-core/src/red_team.rs
++++ b/crates/desktop-core/src/red_team.rs
+@@ -949,6 +949,23 @@ mod tests {
+         ));
+     }
+ 
++    /// V2-T21: a scan reply carrying `target_name` (top level or nested)
++    /// yields identifiers and types only; the name never reaches the read
++    /// scope the Administration Targets tab renders from.
++    #[test]
++    fn a_target_name_never_reaches_the_targets_scope() {
++        let scans = red_team_scans(&json!({"data": [{"uuid": ID, "status": "COMPLETED",
++            "target_id": ID, "target_name": "Payments assistant (prod)",
++            "target": {"target_name": "Payments assistant (prod)", "name": "Payments assistant (prod)"},
++            "target_type": "APPLICATION", "job_type": "STATIC"}], "pagination": {}}))
++        .expect("valid");
++        let text = serde_json::to_string(&scans).expect("json");
++        assert!(!text.contains("Payments assistant"), "{text}");
++        assert!(!text.contains("target_name") && !text.contains("targetName"));
++        assert_eq!(scans.rows[0].target_id.as_deref(), Some(ID));
++        assert_eq!(scans.rows[0].target_type.as_deref(), Some("APPLICATION"));
++    }
++
+     #[test]
+     fn rows_keep_no_names_uris_or_findings() {
+         let scans = red_team_scans(&json!({"data": [{"uuid": ID, "name": "Secret campaign",
+diff --git a/crates/desktop-core/src/scanning.rs b/crates/desktop-core/src/scanning.rs
+index e4871abe..7f3239ab 100644
+--- a/crates/desktop-core/src/scanning.rs
++++ b/crates/desktop-core/src/scanning.rs
+@@ -192,6 +192,27 @@ pub struct ScanResultView {
+     pub content_errors: Vec<ContentErrorView>,
+     pub prompt_detected: Vec<Detection>,
+     pub response_detected: Vec<Detection>,
++    /// Custom topic results, keyed apart from the detectors (C31): the
++    /// service's topic verdict and the topics it named, for the prompt and
++    /// for the response separately.
++    pub topics: TopicVerdict,
++    pub response_topics: TopicVerdict,
++}
++
++/// What the custom topic guardrails said about the prompt (C31). Topic
++/// matches are independent of detector results: a profile without the
++/// topic assigned yields no match, and an applied topic never suppresses an
++/// enabled detector.
++#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, TS)]
++#[serde(rename_all = "camelCase")]
++pub struct TopicVerdict {
++    /// The `topic_violation` flag as reported (absent when the service did
++    /// not report it).
++    pub violation: Option<bool>,
++    /// Topics the service reported as blocked (matched and enforced).
++    pub blocked: Vec<String>,
++    /// Topics the service reported as allowed (matched, not enforced).
++    pub allowed: Vec<String>,
+ }
+ 
+ fn shown(text: &str) -> String {
+@@ -233,6 +254,7 @@ impl ScanResultView {
+         // Any reported content-level error makes the scan incomplete, even
+         // when the global flags disagree (the schema does not tie them).
+         let incomplete = response.timeout || response.error || !response.errors.is_empty();
++        let wire = serde_json::to_value(response).unwrap_or_default();
+         Self {
+             scan_id: shown(&response.scan_id),
+             report_id: shown(&response.report_id),
+@@ -256,10 +278,41 @@ impl ScanResultView {
+                 .collect(),
+             prompt_detected: detections(&response.prompt_detected),
+             response_detected: detections(&response.response_detected),
++            topics: direction_topics(&wire, "prompt"),
++            response_topics: direction_topics(&wire, "response"),
+         }
+     }
+ }
+ 
++/// The topic results of one direction (`prompt` or `response`), read from
++/// the response's wire form: the `topic_violation` flag and the topic
++/// guardrail's blocked and allowed names.
++fn direction_topics(wire: &serde_json::Value, direction: &str) -> TopicVerdict {
++    let names = |list: Option<&serde_json::Value>| -> Vec<String> {
++        list.and_then(serde_json::Value::as_array)
++            .map(|items| {
++                items
++                    .iter()
++                    .filter_map(serde_json::Value::as_str)
++                    .take(32)
++                    .map(shown)
++                    .collect()
++            })
++            .unwrap_or_default()
++    };
++    let details = wire
++        .get(format!("{direction}_detection_details"))
++        .and_then(|d| d.get("topic_guardrails_details"));
++    TopicVerdict {
++        violation: wire
++            .get(format!("{direction}_detected"))
++            .and_then(|d| d.get("topic_violation"))
++            .and_then(serde_json::Value::as_bool),
++        blocked: names(details.and_then(|d| d.get("blocked_topics"))),
++        allowed: names(details.and_then(|d| d.get("allowed_topics"))),
++    }
++}
++
+ /// Why a scan did not produce a result (sanitized; no server text).
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+ #[serde(rename_all = "camelCase")]
+diff --git a/crates/desktop-core/src/store.rs b/crates/desktop-core/src/store.rs
+index 61b758ee..661e1851 100644
+--- a/crates/desktop-core/src/store.rs
++++ b/crates/desktop-core/src/store.rs
+@@ -215,6 +215,17 @@ pub struct PersistedState {
+     /// is not restored: its credentials are cleaned up on the next load.
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub tenant_draft: Option<StoredDraft>,
++    /// Each tenant's Runtime key rotations in progress or completed (C31).
++    #[serde(default, skip_serializing_if = "Vec::is_empty")]
++    pub tenant_rotations: Vec<TenantRotations>,
++}
++
++/// One tenant's key rotations (C31).
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(rename_all = "camelCase", deny_unknown_fields)]
++pub struct TenantRotations {
++    pub tenant: TenantId,
++    pub rotations: Vec<crate::features::Rotation>,
+ }
+ 
+ /// The draft a wizard was working on (C29).
+@@ -267,6 +278,7 @@ impl Default for PersistedState {
+             show_calls: true,
+             tenant_products: Vec::new(),
+             tenant_warnings: Vec::new(),
++            tenant_rotations: Vec::new(),
+             tenant_draft: None,
+         }
+     }
+diff --git a/crates/xtask/src/budgets.rs b/crates/xtask/src/budgets.rs
+index ced3296f..63deb0e7 100644
+--- a/crates/xtask/src/budgets.rs
++++ b/crates/xtask/src/budgets.rs
+@@ -9,7 +9,7 @@
+ //! mismatched input fails.
+ 
+ use std::collections::BTreeMap;
+-use std::path::Path;
++use std::path::{Path, PathBuf};
+ 
+ use serde::{Deserialize, Serialize};
+ 
+@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
+     Ok(total)
+ }
+ 
+-const MIB: f64 = 1024.0 * 1024.0;
+-
+-/// Builds the complete unsigned production app and DMG, the sealed Harness
+-/// engine included (C19, D046; budgets.json version 5), and records their
+-/// sizes.
+-pub fn footprint(
+-    repo: &Repo,
+-    manifest: &Manifest,
+-    env: &Environment,
+-    subject: Subject,
+-) -> Result<Footprint> {
+-    let Some(chunk) = required(repo, manifest, subject)? else {
+-        return Err(invalid(format!(
+-            "{subject} does not contain the chunk that registered the budgets"
+-        )));
+-    };
+-    let (_, record, sha) = registration(repo, &chunk)?;
+-    let started_utc = now_utc();
+-    if started_utc < record.registered_utc {
+-        return Err(invalid("the clock is before the budget registration"));
+-    }
+-    let target = manifest.target.as_str();
++/// Builds the complete unsigned production app and DMG with the sealed
++/// Harness engine as a bundle resource (C19, D046): the frontend, then
++/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
++pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
+     // The sealed engine the production app ships with (C19).
+     crate::harness::unpack(repo)?;
+     let commands: Vec<Vec<String>> = [
+@@ -181,13 +163,58 @@ pub fn footprint(
+     let identifier = plist_value(&app, "CFBundleIdentifier")?;
+     if identifier != crate::native::PRODUCTION_IDENTIFIER {
+         return Err(invalid(format!(
+-            "footprint bundle has identifier {identifier}"
++            "the production bundle has identifier {identifier}"
+         )));
+     }
+     let version = plist_value(&app, "CFBundleShortVersionString")?;
+     let dmg = repo.join(format!(
+         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
+     ));
++    Ok(ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    })
++}
++
++/// A production build: the app, its DMG, the bundle identifier and the
++/// commands that built them.
++pub struct ProductionBuild {
++    pub app: PathBuf,
++    pub dmg: PathBuf,
++    pub identifier: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++const MIB: f64 = 1024.0 * 1024.0;
++
++/// Builds the complete unsigned production app and DMG, the sealed Harness
++/// engine included (C19, D046; budgets.json version 5), and records their
++/// sizes.
++pub fn footprint(
++    repo: &Repo,
++    manifest: &Manifest,
++    env: &Environment,
++    subject: Subject,
++) -> Result<Footprint> {
++    let Some(chunk) = required(repo, manifest, subject)? else {
++        return Err(invalid(format!(
++            "{subject} does not contain the chunk that registered the budgets"
++        )));
++    };
++    let (_, record, sha) = registration(repo, &chunk)?;
++    let started_utc = now_utc();
++    if started_utc < record.registered_utc {
++        return Err(invalid("the clock is before the budget registration"));
++    }
++    let target = manifest.target.as_str();
++    let ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    } = build_production(repo, env, target)?;
+     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
+     let relative = |p: &Path| {
+         p.strip_prefix(repo.root())
+@@ -390,6 +417,14 @@ pub const WORKLOADS: &[Workload] = &[
+         measured_by: "C24",
+         evidence: "workload-perf.json",
+     },
++    // The v2 tenant switch (D058): the new tenant's Home from cached
++    // scopes, registered by C30 before it measured it.
++    Workload {
++        registered_by: "C30",
++        registration: "docs/planning/evidence/C30/workload-budget-registration.json",
++        measured_by: "C30",
++        evidence: "workload-perf.json",
++    },
+ ];
+ 
+ /// Budgets from a registered Markdown table:
+@@ -417,14 +452,6 @@ pub fn workload_budgets(table: &str) -> Result<Vec<Budget>> {
+                 .map_err(|_| invalid(format!("budget limit is not a number: {line}")))?,
+             unit: unit.to_owned(),
+             samples: cells[3]
+-    // The v2 tenant switch (D058): the new tenant's Home from cached
+-    // scopes, registered by C30 before it measured it.
+-    Workload {
+-        registered_by: "C30",
+-        registration: "docs/planning/evidence/C30/workload-budget-registration.json",
+-        measured_by: "C30",
+-        evidence: "workload-perf.json",
+-    },
+                 .parse()
+                 .map_err(|_| invalid(format!("budget sample count is not a number: {line}")))?,
+         });
+diff --git a/crates/xtask/src/cli.rs b/crates/xtask/src/cli.rs
+index b91881fd..d07c8d3c 100644
+--- a/crates/xtask/src/cli.rs
++++ b/crates/xtask/src/cli.rs
+@@ -375,10 +375,21 @@ pub fn main(raw: Vec<String>) -> Result<()> {
+             Ok(())
+         }
+         "live-run" => {
+-            args.only(&["--scope", "--family"])?;
++            args.only(&["--scope", "--family", "--subject"])?;
+             let scope = PathBuf::from(args.require("--scope")?);
+             let families = args.values("--family");
+-            let record = crate::live_run::main(&repo, &scope, &families)?;
++            // A later chunk's live row (C31) runs inside a C25 family's
++            // designation and writes its receipts under its own evidence.
++            let subject = match args.value("--subject") {
++                None | Some("C25") => Subject::Chunk(25),
++                Some("C31") => Subject::Chunk(31),
++                Some(other) => {
++                    return Err(invalid(format!(
++                        "--subject {other}: only C25 and C31 run live rows"
++                    )));
++                }
++            };
++            let record = crate::live_run::main(&repo, &scope, &families, subject)?;
+             for family in &record.families {
+                 println!(
+                     "{} {}: {}",
+diff --git a/crates/xtask/src/live_changes.rs b/crates/xtask/src/live_changes.rs
+index 533bff16..6328751c 100644
+--- a/crates/xtask/src/live_changes.rs
++++ b/crates/xtask/src/live_changes.rs
+@@ -564,6 +564,9 @@ pub(crate) async fn run(run: &mut Run<'_>, id: &str) -> Result<FamilyResult> {
+         }
+     };
+     match id {
++        "L03" if ctx.run.subject == crate::subject::Subject::Chunk(31) => {
++            c31_topic(&mut ctx, &mut desk).await?
++        }
+         "L03" => l03(&mut ctx, &mut desk).await?,
+         "L04" => l04(&mut ctx, &mut desk).await?,
+         _ => l08(&mut ctx, &mut desk).await?,
+@@ -809,6 +812,54 @@ async fn l03(ctx: &mut Ctx<'_, '_>, desk: &mut Desk) -> Result<()> {
+     .await
+ }
+ 
++/// C31's live row, inside L03's designation (create, update and delete
++/// disposable `airs-v2-c25-*` topics): one topic review applied after the
++/// native confirmation and read back, then removed and read back absent.
++async fn c31_topic(ctx: &mut Ctx<'_, '_>, desk: &mut Desk) -> Result<()> {
++    let p = ctx.prefix.clone().unwrap_or_default();
++    let topic = json!({"topic_name": format!("{p}c31-topic"), "description": "C31 review apply",
++        "examples": ["c31 synthetic example"]});
++    let created = ctx
++        .change(
++            desk,
++            Change {
++                spec: spec("C31-topic-create", &["W08"]),
++                kind: "topics",
++                action: "create",
++                target: None,
++                body: topic.clone(),
++                scoped: false,
++                expect: "found",
++                creates: Some("topic"),
++            },
++        )
++        .await?;
++    let revision = created
++        .as_ref()
++        .map(|c| c["revision"].clone())
++        .filter(|r| !r.is_null())
++        .unwrap_or(json!(1));
++    let mut update = topic;
++    update["description"] = json!("C31 review apply, updated through the review");
++    update["revision"] = revision;
++    ctx.change(
++        desk,
++        Change {
++            spec: spec("C31-topic-review-apply", &["W08"]),
++            kind: "topics",
++            action: "update",
++            target: Some("topic"),
++            body: update,
++            scoped: false,
++            expect: "found",
++            creates: None,
++        },
++    )
++    .await?;
++    ctx.cleanup(desk, &[("topic", spec("C31-cleanup-topic", &["W08"]))])
++        .await
++}
++
+ async fn l04(ctx: &mut Ctx<'_, '_>, desk: &mut Desk) -> Result<()> {
+     let p = ctx.prefix.clone().unwrap_or_default();
+     // The service needs the regex rules and confidence levels a custom
+diff --git a/crates/xtask/src/live_run.rs b/crates/xtask/src/live_run.rs
+index 08176273..28da8387 100644
+--- a/crates/xtask/src/live_run.rs
++++ b/crates/xtask/src/live_run.rs
+@@ -847,6 +847,10 @@ pub(crate) struct Run<'a> {
+     pub scratch: PathBuf,
+     /// What this run executes ([`implementation`]), in every receipt.
+     pub implementation: BTreeMap<String, String>,
++    /// The chunk whose evidence the receipts and run record belong to (C25
++    /// for the C25 families; C31's live row writes under C31). The
++    /// consumption ledger stays C25's: one append-only budget ledger.
++    pub subject: Subject,
+ }
+ 
+ impl Run<'_> {
+@@ -1021,7 +1025,7 @@ impl Run<'_> {
+         write_json(
+             &self
+                 .repo
+-                .evidence_dir(Subject::Chunk(25))
++                .evidence_dir(self.subject)
+                 .join("live")
+                 .join(family)
+                 .join(format!("{}.json", spec.id)),
+@@ -1239,6 +1243,32 @@ pub async fn run(
+     operator: Arc<dyn Operator>,
+     evidence: Evidence,
+     families: &[String],
++) -> Result<RunRecord> {
++    run_for(
++        repo,
++        manifest,
++        sha,
++        resolver,
++        operator,
++        evidence,
++        families,
++        Subject::Chunk(25),
++    )
++    .await
++}
++
++/// [`run`] with the receipts and run record under `subject`'s evidence
++/// (a later chunk's live row run inside a C25 family's designation).
++#[allow(clippy::too_many_arguments)]
++pub async fn run_for(
++    repo: &Repo,
++    manifest: &LiveManifest,
++    sha: &str,
++    resolver: &dyn Resolve,
++    operator: Arc<dyn Operator>,
++    evidence: Evidence,
++    families: &[String],
++    subject: Subject,
+ ) -> Result<RunRecord> {
+     let failures = live::check(repo, manifest);
+     if !failures.is_empty() {
+@@ -1295,11 +1325,12 @@ pub async fn run(
+         secrets: Vec::new(),
+         scratch,
+         implementation: implementation.clone(),
++        subject,
+     };
+     let run_implementation = implementation;
+     // Each requested family's earlier receipts move to live/history/ so a
+     // check this run does not reach never shows an older run's result.
+-    let live_dir = repo.evidence_dir(Subject::Chunk(25)).join("live");
++    let live_dir = repo.evidence_dir(subject).join("live");
+     let history = live_dir.join("history").join(started.replace(':', ""));
+     for id in &requested {
+         let dir = live_dir.join(id);
+@@ -1371,10 +1402,7 @@ pub async fn run(
+         implementation: run_implementation,
+     };
+     write_json(
+-        &repo
+-            .evidence_dir(Subject::Chunk(25))
+-            .join("live")
+-            .join("run.json"),
++        &repo.evidence_dir(subject).join("live").join("run.json"),
+         &record,
+     )?;
+     Ok(record)
+@@ -1425,13 +1453,18 @@ fn native_family(run: &mut Run<'_>, id: &str) -> Result<FamilyResult> {
+ }
+ 
+ /// `xtask live-run`: a live run against the designated services.
+-pub fn main(repo: &Repo, scope: &std::path::Path, families: &[String]) -> Result<RunRecord> {
++pub fn main(
++    repo: &Repo,
++    scope: &std::path::Path,
++    families: &[String],
++    subject: Subject,
++) -> Result<RunRecord> {
+     let (manifest, sha) = live::load(repo, scope)?;
+     let runtime = tokio::runtime::Builder::new_multi_thread()
+         .enable_all()
+         .build()
+         .map_err(|e| invalid(format!("runtime: {e}")))?;
+-    runtime.block_on(run(
++    runtime.block_on(run_for(
+         repo,
+         &manifest,
+         &sha,
+@@ -1439,5 +1472,6 @@ pub fn main(repo: &Repo, scope: &std::path::Path, families: &[String]) -> Result
+         Arc::new(TerminalOperator),
+         Evidence::Live,
+         families,
++        subject,
+     ))
+ }
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index f0af02a2..3e5dd1a6 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1206,6 +1206,24 @@
+         "id": "C30-N04",
+         "check": "The accessibility additions (DESIGN-V2 \u00a78, T09) on the changed UI: from Read now, Tab reaches the Inbox tabs, the rows and the detail actions with every focused frame inside the window and Enter opens a row's detail; the read-status line is in the tree; the guard is the one topmost modal (the rail and page hidden beneath it, initial focus on Stay, the safe default, so Enter on arrival ends nothing) and Escape (Stay) returns focus to the switcher that asked; with macOS Reduce Motion on and the app relaunched a snooze toast persists past 8 s until dismissed (setting restored); at the 900\u00d7600 minimum and 200% zoom in both themes the Inbox columns stack so rows, the detail text and facts and every action stay inside the window with no horizontal scroll."
+       }
++    ],
++    "C31": [
++      {
++        "id": "C31-N01",
++        "check": "Administration renders the core's inventory: Agentic Identity and Endpoint Security show their gate and nothing else; each tab offers exactly its admitted actions with per-tab labels (Custom topics 'New topic\u2026', API keys 'New API key\u2026', no 'New application\u2026', an API key's 'Issue additional key\u2026', 'Regenerate\u2026' and 'Remove\u2026' but never 'Edit\u2026'); the Gateway tabs omit the removed Limits tab and its keys never offer 'Issue additional key\u2026' or 'Finish rotation\u2026'; Codebase scans is unavailable with its gate."
++      },
++      {
++        "id": "C31-N02",
++        "check": "A custom topic edit opens the review sheet; Apply stays disabled until the typed name matches exactly (empty and wrong case refused); Apply opens the native confirmation titled for the topic; Return applies once; the applied panel says 'Live. The item was read back.'; Done closes the sheet."
++      },
++      {
++        "id": "C31-N03",
++        "check": "The staged Runtime key rotation: 'Issue additional key\u2026' reviewed with CREATE and confirmed natively issues one key and shows 'Additional key issued \u00b7 old key still active'; Reveal opens the host secret sheet with the issued key (never in the web view); Escape ends the review; the Inbox lists the distinct reminder; 'Finish rotation\u2026' resumes without any secret control; 'Application updated' records the local acknowledgement and opens the old key's removal review; its native Delete removes the key once and the panel reads 'Rotation complete \u00b7 old key removed' with both labelled timestamps."
++      },
++      {
++        "id": "C31-N04",
++        "check": "The accessibility additions (DESIGN-V2 \u00a78) on the changed UI: the review sheet is the one topmost modal (the rail hidden beneath it) and Escape closes it with focus returned to the page; the rotation reminder leaves the Inbox once the old key is read back gone; Tab from a product header reaches its tabs; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Administration screen lies past the window's right edge; a focused review-sheet control shows its focus ring (pixels around it change against the unfocused capture); the applied result and the rotation's completion sit in polite status regions; with Reduce Motion on, the applied change's toast stays past 6 s until dismissed, and the system setting is restored."
++      }
+     ]
+   }
+ }
+diff --git a/docs/architecture/ui-v2/provenance.md b/docs/architecture/ui-v2/provenance.md
+index c52885c7..41d2d1ce 100644
+--- a/docs/architecture/ui-v2/provenance.md
++++ b/docs/architecture/ui-v2/provenance.md
+@@ -49,7 +49,12 @@ page "Refined Native v2", version 134 (version id 1793059808-4929, published
+ | P36 | Completing "Add a tenant" switches to the new tenant | `completeTenantSetup{resolution?}` goes through the same guard as `selectTenant`: a pending Harness decision refuses it with `switchBlocked{to: <draft id>, completion: true}`, nothing is committed or retired, the draft stays, and the wizard renders the one guard dialog and re-sends the completion with the resolution | Wizard completion is listed among the entry points of the single guarded switch path (shell.md, I1); the attempt-01 review found it bypassing the guard |
+ | P37 | Scopes are per tenant and a switch round trip shows the cached state | Each opened tenant owns its read record in the core (its last overview, the other products' outcomes, generation, recheck, snooze receipt) for the session; a switch away and back shows it again without a new read. Per-operation bookkeeping is separate from the cached data: each read part is tracked with the context it was admitted under, "reading" means a part under the current context is open, a part under a retired context is withdrawn when it lands (never recorded, never counted), so a read held open across a switch round trip can never leave the tenant reading. The presentation's own transient state follows the tenant too: the shell store carries the shown scope (set from each snapshot before it renders); a toast for a tenant's item or read and an unconfirmed delivery bound to a context are refused at insertion when that scope is no longer shown (a refusal or lost delivery arriving after a switch), retired on leaving it (however long Reduce Motion would keep them) and filtered at render; a contextual arrival belongs to the tenant it was followed in | I2 names the tenant, not the context, as the owner of its cached scopes; the attempt-01 review found the overview bound to the context and lost across A → B → A |
+ | P38 | Snooze toast states the core-computed return time | The core issues a `SnoozeReceipt{id, title, returnsAt, sequence}` on the tenant's Inbox scope for the last snooze placed in the session; the shell announces a new sequence once, in the tenant it was placed in, and never a hold a switch or a reread merely rediscovers; a snooze ends at its return time whether or not its entry is actionable, and the core's deadline ticker publishes the expiry (the holds in effect are part of the overview's time signature) | I11 wants one source for the return time and one announcement per snooze; diffing holds between snapshots announced old holds after a switch (attempt-01 review) |
++| P39 | `AdminInventory` generated from screens/administration-inventory.md | Implemented as a Rust table (`admin_inventory::inventory`) carried on `ShellSnapshot.administration` in the v2 shell only (null in the legacy shell, whose literal snapshot and leak canary are unchanged; the presentation's fixture copy is pinned to the table by a core test); a unit test and the `ui_v2_reviews` suite pin every offered (kind, action) to `changes::is_allowed` and every denied pair to its refusal, so a label can never outrun the core. Read and Change tabs render the retained views (the same reads and reviewed changes) embedded under the accordion with the inventory's labels; Unavailable tabs and products show their gate and nothing else; Removed tabs are not rendered. The Gateway MCP servers tab lists the chosen workspace's catalog through `listMcpServers` | One source of truth for dispositions, checked against the matrices the core enforces (V2-T20, V2-R11) |
++| P40 | `openReview`/`confirmReview{typed}` intents | The retained review intents are the review (`reviewChange` binds tenant, context, credentials and the read baseline; `requestApply{confirmation}` validates the typed name in the core and opens the native confirmation, whose private completion alone applies). The v2 sheet disables Apply until the typed text equals the review's name and renders the applied panel only from the core's result and readback | The C09 review already carries every binding I3 asks for; new intents would duplicate it |
++| P41 | Rotation state per tenant with two stored timestamps | `Tenant.rotations` (persisted, never a secret): driven from settled `ApiKeys` results of the active context (a Version read back starts one; an unknown Version starts an unconfirmed one; a failed one records nothing; the old key's Delete read back absent completes it; a rejected Delete keeps it with the reason; an unknown one is reconciled by a complete key inventory read), plus `acknowledgeDeployment{application}` stored once. The reminder is the Inbox item `rotation-<application>` while a key is confirmed and the old one not read back gone. The one-time secret stays on its change result for the context it was applied in: Reveal is offered only while the core holds it; any sheet exit forgets it and a context change drops it | The issued secret must never be persisted (I6) while the stage and timestamps must survive reads, switches and relaunches (I7) |
++| P42 | Playground topic examples classify under the topic | The scan result carries `topics{violation, blocked, allowed}` from the service's `topic_violation` flag and `topic_guardrails_details`, shown apart from the detector flags: a matched topic is "flagged (blocked)" or "flagged (monitor only)", no match under the profile is "Not detected", an unreported verdict says so; detectors stay listed beside it. The prototype's local classifier is not carried: verdicts come from the service | The desktop never invents a verdict (DESIGN-V2 §10 gap 2 closed with service data) |
++| P43 | C31 live row runs through `xtask live-run` | `live-run --family L03 --subject C31` runs the C31 topic routine inside L03's designation and writes its receipts and run record under evidence/C31/live, leaving C25's receipts untouched (the consumption ledger stays C25's single ledger) | The live row needs the reviewed runner and the owner's designation, not a second harness |
+ 
+ P10–P14 are the five round-16 Codex items carried as known gaps (see
+ [DESIGN-V2.md](DESIGN-V2.md) "Known gaps"). P16–P21 were added after the C27
+-attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b); P24–P25 were recorded in C28 and P26–P32 in C29 and P33–P38 in C30 when implementation met the host as it is (P26–P28 revised after the C29 attempt-01 review; P26–P27 again, and P32 added, after attempt-02; P33–P35 revised and P36–P38 added after the C30 attempt-01 review).
++attempt-01 review (R3–R6); P22–P23 after attempt-03 (F3a, F3b); P24–P25 were recorded in C28 and P26–P32 in C29 and P33–P38 in C30 and P39–P43 in C31 when implementation met the host as it is (P26–P28 revised after the C29 attempt-01 review; P26–P27 again, and P32 added, after attempt-02; P33–P35 revised and P36–P38 added after the C30 attempt-01 review).
+diff --git a/docs/architecture/ui-v2/screens/boards.md b/docs/architecture/ui-v2/screens/boards.md
+index 45f53fda..714a3f63 100644
+--- a/docs/architecture/ui-v2/screens/boards.md
++++ b/docs/architecture/ui-v2/screens/boards.md
+@@ -28,8 +28,8 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
+ | R2On07 Done | R2Onboard | step=done | `fx.on.done` | finite open, `onboarding=done` | C29 |
+ | R2Inbox | R2App | start=inbox | `fx.inbox` | V2-T04, T12, T13 | C30 |
+ | R2Fresh | R2App | start=home, tenant never read | `fx.fresh` | first read pending, empty Inbox (I12) | C30 |
+-| R2Admin | R2App | start=admin | `fx.admin` | V2-T19, per-tab labels | C31 |
+-| R2Review | R2App | start=admin, overlay=review | `fx.review` | V2-T03, T06, T07, T08 | C31 |
++| R2Admin | R2App | start=admin | `fxAdmin` (v2/admin/administration.test.tsx) | V2-T19, T20, per-tab labels | C31 |
++| R2Review | R2App | start=admin, overlay=review | `fxAdmin` + `review()`/`rotation()` (same file) | V2-T03, T06, T08; T07 in `ui_v2_reviews` | C31 |
+ | R2Harness | R2App | start=harness, convo=blocks | `fx.harness.blocks` | V2-T17 | C32 |
+ | R2Harness2 | R2App | start=harness, convo=mcp | `fx.harness.mcp` | V2-T17 (Gateway MCP read, P16) | C32 |
+ | R2Harness3 | R2App | start=harness, convo=keys | `fx.harness.keys` | V2-T17, T18 | C32 |
+diff --git a/docs/architecture/ui-v2/state-ownership.md b/docs/architecture/ui-v2/state-ownership.md
+index a5f2bcb9..51c104df 100644
+--- a/docs/architecture/ui-v2/state-ownership.md
++++ b/docs/architecture/ui-v2/state-ownership.md
+@@ -74,7 +74,7 @@ and reconciled by hand; a key missing here is a specification defect.
+ | `ts.extraCases`, `ts.packs` | user-created cases, packs | Core | library | persisted | kept |
+ | `ts.hist` | API responses | Core | workbench history | persisted | kept (I5) |
+ | `ts.topicRev`, `ts.topicDesc`, `ts.injApplied`, `ts.aesApplied`, `ts.aesRev` | applied review results | Core | read back from the product scopes after apply | — | kept for Runtime topics; `aes*` **dropped** (P18) |
+-| `ts.keyRotated`, `ts.keySecretClosed`, `ts.keyDeployed`, `ts.keyDoneAt` | rotation stage | Core | rotation state: `additional_key_issued`, `secret_shown`, `deployment_acknowledged_at`, `old_key_removed_at` | per tenant, session for the held secret | **changed** (P20): supported Version → Delete sequence; see screens/reviews-administration.md |
++| `ts.keyRotated`, `ts.keySecretClosed`, `ts.keyDeployed`, `ts.keyDoneAt` | rotation stage | Core | `Tenant.rotations` → `ShellSnapshot.rotations: RotationView{stage, oldKey, newKey, issuedBy, deploymentAcknowledgedAt, oldKeyRemovedAt, removalRejected}`; stage derived (issuanceUnconfirmed, issued, resumed, acknowledged, removalUnconfirmed, complete); intent `acknowledgeDeployment` | per tenant, persisted (timestamps stored once, and the reviewed key name that alone confirms an unconfirmed issuance); the held secret only on its change result, for its context | **changed** (P20, P41): supported Version → Delete sequence; see screens/reviews-administration.md |
+ | `ts.follows` | follow-up status per conversation | Core | sessions | persisted | kept |
+ | `ts.convo`, `ts.userConvos`, `ts.msgsBy`, `ts.decs`, `ts.ended`, `ts.archived` | current conversation, user conversations, messages, decisions, ended flags, archives | Core | existing harness sessions and decisions | persisted, protected | kept |
+ | `ts.draft` | composer draft | UI | harness store per conversation | transient | kept |
+@@ -86,4 +86,4 @@ and reconciled by hand; a key missing here is a specification defect.
+ | Scan API key | webview password field read through a ref, cleared at once, sent once as `EnteredSecret` inside `configureScanCredential` (P25) | vault (`cr-` record), Keychain v2 namespace | state and mode only (`ScanView`), never the value |
+ | Management client secret | same path, `configureManagementCredential` (optional section) | vault | client id and state only |
+ | Gateway workspace key | same path, `configureInferenceCredential` | vault | state only |
+-| Issued API key (rotation) | `RevealSecret` host sheet / host clipboard | held per result for the active context, never persisted | never |
++| Issued API key (rotation) | `RevealSecret` host sheet / host clipboard | held per result for the active context, never persisted; retired by the review's exit (`DiscardChange` on the applied review, also before the change settles), by acknowledging the deployment, or by a context change | never |
+diff --git a/docs/planning/status.md b/docs/planning/status.md
+index 260cf0d8..37847d37 100644
+--- a/docs/planning/status.md
++++ b/docs/planning/status.md
+@@ -52,7 +52,8 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
+ | C28 | **Reviewed** (P09, D058): Codex attempt-09 scored 9 in all five dimensions through the fresh-exec fallback (`reviews/C28/attempt-09/receipt.json`); native acceptance C28-N01–N07 recorded on the prepared fixture bundle; controller receipt and ledger completion regenerate once C26 completes | Attempts 01–08 remediated (`reviews/C28/remediation-attempt-0{1..8}.md`); follow-up in `reviews/C28/follow-ups.md` |
+ | C29 | **Reviewed, live row blocked** (P09, D058): Codex attempt-06 scored 9/9/9/8/8 with no required fixes (`reviews/C29/attempt-06/receipt.json`); validation and overall stay at 8 only for the mandatory live Vulture verify receipt, which the approved manifest does not designate (`evidence/C29/live-scope-request.md` names the family to add); native acceptance C29-N01–N06 recorded on the prepared fixture bundle; controller receipt and ledger completion regenerate once C26 completes | Attempts 01–05 remediated (`reviews/C29/remediation-attempt-0{1..5}.md`) |
+ | C30 | **Reviewed, live row blocked** (P09, D058): Codex attempt-09 scored 9/9/9/8/8 with no required fixes (`reviews/C30/attempt-09/receipt.json`); validation and overall stay at 8 only for the predecessor C29's mandatory live Vulture verify receipt (B1/E1; `evidence/C29/live-scope-request.md` names the family to add); Inbox, reads, the tenant-switch guard and Home attention are core-owned per-tenant scopes; native C30-N01–N04 and the tenant-switch workload recorded on the prepared fixture bundle; attempts 01–08 remediated (`reviews/C30/remediation-attempt-0{1..8}.md`); controller receipt regenerates once C26 completes | Attempt history 7/6/6/6/6 → 8/7/8/7/7 → 8/7/8/8/7 → 9/8/8/8/8 → 9/8/9/8/8 → 9/8/9/8/8 → 9/9/9/8/8 → 9/8/9/8/8 → 9/9/9/8/8 |
+-| C31–C34 | Planned (P09, D058) | Specification: `docs/architecture/ui-v2/` |
++| C31 | **In review** (P09, D058): Administration renders the core's `AdminInventory` per tab; reviews apply only with the typed name through the native confirmation, and every review exit retires one-time keys in the core; Runtime key rotation is the core-owned staged sequence with its Inbox reminder, two stored timestamps and attempt-specific reconciliation; prompt and response topic results keyed apart from detectors; live topic review row passed against Redtail (evidence/C31/live) | Attempt-01 7/6/6/6/6, attempt-02 8/7/8/8/7, attempt-03 8/8/8/8/8 (fail); remediated, attempt-04 pending |
++| C32–C34 | Planned (P09, D058) | Specification: `docs/architecture/ui-v2/` |
+ 
+ ## C01 evidence (docs/planning/evidence/C01)
+ 
+diff --git a/packages/desktop-contracts/fixtures/wire/observe-shell-response.json b/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
+index 9241c0d0..a733b80e 100644
+--- a/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
++++ b/packages/desktop-contracts/fixtures/wire/observe-shell-response.json
+@@ -1 +1 @@
+-{"kind":"shell","snapshot":{"revision":"1","appearance":"system","uiVariant":"legacy","onboarding":"needed","activeFeature":"runtime","showCalls":true,"switchBlocked":null,"setup":null,"features":[{"id":"runtime","label":"Runtime Security","availability":{"state":"available"},"shortcut":1,"sidebar":true},{"id":"academy","label":"Academy","availability":{"state":"available"},"shortcut":2,"sidebar":true},{"id":"administration","label":"Administration","availability":{"state":"available"},"shortcut":3,"sidebar":true},{"id":"sessions","label":"Sessions & Reports","availability":{"state":"available"},"shortcut":4,"sidebar":true},{"id":"library","label":"Case Library","availability":{"state":"available"},"shortcut":5,"sidebar":true},{"id":"redTeam","label":"Red Team & Models","availability":{"state":"available"},"shortcut":6,"sidebar":true},{"id":"apiClient","label":"API Client","availability":{"state":"available"},"shortcut":7,"sidebar":true},{"id":"gateway","label":"AI Gateway","availability":{"state":"available"},"shortcut":8,"sidebar":true},{"id":"harness","label":"Harness","availability":{"state":"available"},"shortcut":9,"sidebar":true},{"id":"import","label":"Import from v1","availability":{"state":"available"},"shortcut":null,"sidebar":true},{"id":"settings","label":"Settings","availability":{"state":"available"},"shortcut":null,"sidebar":true}],"fixtureBuild":true,"storage":"ready","tenants":[],"active":null,"endpointReview":null,"import":{"state":"idle"},"resetFailure":null,"durabilityUnconfirmed":false,"scans":[],"academy":{"state":"signedOut"},"learner":"lx-000000000000000000000000","academyOrigin":"https://academy.cdot.io","academyOffline":{"state":"signedOut","reachable":true,"downloads":[],"localDrafts":[]},"changes":{"review":null,"staged":null,"results":[]},"sessions":{"reports":{"state":"idle","failure":null,"items":[],"undo":null,"problem":null,"unsaved":false},"investigation":null,"export":null},"library":{"state":"idle","failure":null,"cases":[],"problem":null,"unsaved":null,"notice":null,"choosing":false,"fetching":false,"export":null},"inbox":{"items":[],"read":{"state":"pending","lastReadAt":null,"failedAt":null,"settledAt":null,"products":[],"sourcesMissing":[],"generation":0,"rechecking":null},"lastSnooze":null},"overview":{"read":null,"refreshing":false,"failure":null,"failedAt":null,"fresh":false,"attention":[],"held":[],"face":"firstLaunch"},"workbench":{"available":true,"loaded":false,"failure":null,"recent":[],"collection":null,"import":null,"adoption":null,"adoptionSettled":false,"git":null,"busy":false,"unprotected":false,"running":[],"review":null,"network":"loopbackOnly"},"gateway":{"workspaces":null,"complete":false,"selected":null,"remembered":null,"rememberedMissing":false,"local":{"state":"idle","failure":null,"drafts":[],"records":[],"playground":[],"runs":[],"files":[],"problem":null,"unsaved":false},"playground":null,"files":null},"harness":{"engine":{"available":false,"protocol":"airs-desktop/1","runtimeVersion":"0.1.7-desktop.2","engineCommit":"9331a5839bc6a763d94dee7584746f58bbbe1181"},"conversation":null,"signIn":null,"history":null,"project":null,"projectRefused":null,"mcp":null},"v1Import":{"available":true,"source":null,"tenants":[],"categories":[],"notMapped":[],"plan":null,"activity":null,"receipts":[],"damagedReceipts":[],"receiptsUnreadable":false,"problem":null},"diagnostics":{"available":true,"events":0,"retentionDays":14,"export":null,"clear":null}}}
++{"kind":"shell","snapshot":{"revision":"1","appearance":"system","uiVariant":"legacy","onboarding":"needed","activeFeature":"runtime","showCalls":true,"switchBlocked":null,"setup":null,"features":[{"id":"runtime","label":"Runtime Security","availability":{"state":"available"},"shortcut":1,"sidebar":true},{"id":"academy","label":"Academy","availability":{"state":"available"},"shortcut":2,"sidebar":true},{"id":"administration","label":"Administration","availability":{"state":"available"},"shortcut":3,"sidebar":true},{"id":"sessions","label":"Sessions & Reports","availability":{"state":"available"},"shortcut":4,"sidebar":true},{"id":"library","label":"Case Library","availability":{"state":"available"},"shortcut":5,"sidebar":true},{"id":"redTeam","label":"Red Team & Models","availability":{"state":"available"},"shortcut":6,"sidebar":true},{"id":"apiClient","label":"API Client","availability":{"state":"available"},"shortcut":7,"sidebar":true},{"id":"gateway","label":"AI Gateway","availability":{"state":"available"},"shortcut":8,"sidebar":true},{"id":"harness","label":"Harness","availability":{"state":"available"},"shortcut":9,"sidebar":true},{"id":"import","label":"Import from v1","availability":{"state":"available"},"shortcut":null,"sidebar":true},{"id":"settings","label":"Settings","availability":{"state":"available"},"shortcut":null,"sidebar":true}],"fixtureBuild":true,"storage":"ready","tenants":[],"active":null,"endpointReview":null,"import":{"state":"idle"},"resetFailure":null,"durabilityUnconfirmed":false,"scans":[],"academy":{"state":"signedOut"},"learner":"lx-000000000000000000000000","academyOrigin":"https://academy.cdot.io","academyOffline":{"state":"signedOut","reachable":true,"downloads":[],"localDrafts":[]},"changes":{"review":null,"staged":null,"results":[]},"sessions":{"reports":{"state":"idle","failure":null,"items":[],"undo":null,"problem":null,"unsaved":false},"investigation":null,"export":null},"library":{"state":"idle","failure":null,"cases":[],"problem":null,"unsaved":null,"notice":null,"choosing":false,"fetching":false,"export":null},"administration":null,"rotations":[],"inbox":{"items":[],"read":{"state":"pending","lastReadAt":null,"failedAt":null,"settledAt":null,"products":[],"sourcesMissing":[],"generation":0,"rechecking":null},"lastSnooze":null},"overview":{"read":null,"refreshing":false,"failure":null,"failedAt":null,"fresh":false,"attention":[],"held":[],"face":"firstLaunch"},"workbench":{"available":true,"loaded":false,"failure":null,"recent":[],"collection":null,"import":null,"adoption":null,"adoptionSettled":false,"git":null,"busy":false,"unprotected":false,"running":[],"review":null,"network":"loopbackOnly"},"gateway":{"workspaces":null,"complete":false,"selected":null,"remembered":null,"rememberedMissing":false,"local":{"state":"idle","failure":null,"drafts":[],"records":[],"playground":[],"runs":[],"files":[],"problem":null,"unsaved":false},"playground":null,"files":null},"harness":{"engine":{"available":false,"protocol":"airs-desktop/1","runtimeVersion":"0.1.7-desktop.2","engineCommit":"9331a5839bc6a763d94dee7584746f58bbbe1181"},"conversation":null,"signIn":null,"history":null,"project":null,"projectRefused":null,"mcp":null},"v1Import":{"available":true,"source":null,"tenants":[],"categories":[],"notMapped":[],"plan":null,"activity":null,"receipts":[],"damagedReceipts":[],"receiptsUnreadable":false,"problem":null},"diagnostics":{"available":true,"events":0,"retentionDays":14,"export":null,"clear":null}}}
+diff --git a/packages/desktop-contracts/src/client.ts b/packages/desktop-contracts/src/client.ts
+index fbe5bc2f..e5dcccea 100644
+--- a/packages/desktop-contracts/src/client.ts
++++ b/packages/desktop-contracts/src/client.ts
+@@ -455,7 +455,104 @@ function isScanResult(value: unknown): boolean {
+         Array.isArray(value.promptDetected) &&
+         value.promptDetected.every(isDetection) &&
+         Array.isArray(value.responseDetected) &&
+-        value.responseDetected.every(isDetection)
++        value.responseDetected.every(isDetection) &&
++        // C31: topic results keyed apart from the detectors, per direction.
++        isTopicVerdict(value.topics) &&
++        isTopicVerdict(value.responseTopics)
++    )
++}
++
++function isTopicVerdict(value: unknown): boolean {
++    return (
++        isRecord(value) &&
++        optional((v) => typeof v === 'boolean', value.violation) &&
++        Array.isArray(value.blocked) &&
++        value.blocked.every(isString) &&
++        Array.isArray(value.allowed) &&
++        value.allowed.every(isString)
++    )
++}
++
++const ADMIN_PRODUCTS: readonly string[] = ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill', 'agenticIdentity', 'agenticEndpoint']
++const CHANGE_KINDS_ALL: readonly string[] = [
++    'profiles',
++    'topics',
++    'applications',
++    'apiKeys',
++    'dataPatterns',
++    'dataProfiles',
++    'filteringProfiles',
++    'dictionaries',
++    'gatewayWorkspaces',
++    'gatewayProviders',
++    'gatewayRoutes',
++    'gatewayGuardrails',
++    'gatewayServiceKeys',
++    'gatewayUserKeys',
++    'gatewayIntegrations',
++]
++const CHANGE_ACTIONS_ALL: readonly string[] = ['create', 'update', 'delete', 'version', 'rotate', 'models']
++const TAB_DISPOSITIONS: readonly string[] = ['read', 'change', 'unavailable', 'removed']
++/** The Administration inventory (C31): products, tabs, dispositions and the admitted actions per tab. */
++function isAdminInventoryView(value: unknown): boolean {
++    if (!isRecord(value) || !Array.isArray(value.products)) return false
++    const isPair = (p: unknown) => isRecord(p) && oneOf(CHANGE_KINDS_ALL, p.kind) && oneOf(CHANGE_ACTIONS_ALL, p.action)
++    return value.products.every(
++        (p: unknown) =>
++            isRecord(p) &&
++            oneOf(ADMIN_PRODUCTS, p.id) &&
++            isString(p.label) &&
++            isRecord(p.availability) &&
++            (p.availability.state === 'available' || (p.availability.state === 'unavailable' && isString(p.availability.reason))) &&
++            typeof p.readOnly === 'boolean' &&
++            Array.isArray(p.tabs) &&
++            // An unavailable product has no tabs and so no action (V2-T19).
++            (p.availability.state === 'available' || p.tabs.length === 0) &&
++            p.tabs.every(
++                (t: unknown) =>
++                    isRecord(t) &&
++                    isString(t.id) &&
++                    isString(t.label) &&
++                    isRecord(t.disposition) &&
++                    oneOf(TAB_DISPOSITIONS, t.disposition.kind) &&
++                    (t.disposition.kind === 'read' || t.disposition.kind === 'change' || isString(t.disposition.reason)) &&
++                    Array.isArray(t.reads) &&
++                    t.reads.every(isString) &&
++                    Array.isArray(t.actions) &&
++                    t.actions.every((a: unknown) => isPair(a) && isString((a as Record<string, unknown>).label) && typeof (a as Record<string, unknown>).row === 'boolean') &&
++                    // Only a change tab offers actions; a read-only product never does.
++                    (t.disposition.kind === 'change' || t.actions.length === 0) &&
++                    (!p.readOnly || t.actions.length === 0) &&
++                    Array.isArray(t.denied) &&
++                    t.denied.every((d: unknown) => isPair(d) && isString((d as Record<string, unknown>).reason)) &&
++                    optional(isString, t.resource)
++            )
++    )
++}
++
++const ROTATION_STAGES: readonly string[] = ['issuanceUnconfirmed', 'issued', 'resumed', 'acknowledged', 'removalUnconfirmed', 'complete']
++/** One key rotation (C31, I7): its two labelled timestamps and stage. */
++function isRotationView(value: unknown): boolean {
++    const isKey = (k: unknown) => isRecord(k) && isString(k.id) && typeof k.name === 'string'
++    return (
++        isRecord(value) &&
++        isString(value.application) &&
++        isKey(value.oldKey) &&
++        optional(isKey, value.newKey) &&
++        oneOf(ROTATION_STAGES, value.stage) &&
++        optional(isString, value.issuedBy) &&
++        isCount(value.issuedAt) &&
++        optional(isCount, value.deploymentAcknowledgedAt) &&
++        optional(isCount, value.oldKeyRemovedAt) &&
++        optional(isString, value.removalRejected) &&
++        typeof value.unsaved === 'boolean' &&
++        // Complete means read back gone, with its time; otherwise that time is unset.
++        ((value.stage === 'complete') === (value.oldKeyRemovedAt !== null)) &&
++        // The held key is offered only while it may be revealed: issued, or
++        // issued but not yet confirmed by readback (C31, I6).
++        (value.stage === 'issued' || value.stage === 'issuanceUnconfirmed' || value.issuedBy === null) &&
++        // Nothing is claimed about a key an unconfirmed issuance has not read back.
++        (value.stage !== 'issuanceUnconfirmed' || value.newKey === null)
+     )
+ }
+ 
+@@ -1736,7 +1833,9 @@ function isChangeResult(value: unknown): boolean {
+         optional(isListedWorkspace, value.workspace) &&
+         // Steps belong only to a workspace provisioning.
+         (value.provisioning === null ||
+-            (value.kind === 'gatewayWorkspaces' && value.action === 'create' && isProvisioning(value.provisioning)))
++            (value.kind === 'gatewayWorkspaces' && value.action === 'create' && isProvisioning(value.provisioning))) &&
++        // C31: when the settlement was recorded; only a settled change has one.
++        (value.settledAt === undefined || (value.settled === true && isCount(value.settledAt)))
+     )
+ }
+ 
+@@ -2101,7 +2200,7 @@ function isOverviewView(value: unknown): boolean {
+     )
+ }
+ 
+-const INBOX_KINDS: readonly string[] = ['runtime', 'gateway', 'setupWarning']
++const INBOX_KINDS: readonly string[] = ['runtime', 'gateway', 'setupWarning', 'rotation']
+ const READ_STATES: readonly string[] = ['pending', 'reading', 'done', 'failed']
+ const PRODUCT_READ_STATES: readonly string[] = ['pending', 'ok', 'incomplete', 'needsRole', 'failed', 'notRead']
+ /** The active tenant's Inbox and read status (C30): entries with their core-computed holds. */
+@@ -2718,6 +2817,9 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
+         !isSessionsView(value.sessions) ||
+         !isLibraryView(value.library) ||
+         !isOverviewView(value.overview) ||
++        !optional(isAdminInventoryView, value.administration) ||
++        !Array.isArray(value.rotations) ||
++        !value.rotations.every(isRotationView) ||
+         !isInboxView(value.inbox) ||
+         !isWorkbenchView(value.workbench) ||
+         !isGatewayView(value.gateway) ||
+diff --git a/packages/desktop-contracts/src/generated/ChangeResultView.ts b/packages/desktop-contracts/src/generated/ChangeResultView.ts
+index 6ad2a9fa..1b8a4960 100644
+--- a/packages/desktop-contracts/src/generated/ChangeResultView.ts
++++ b/packages/desktop-contracts/src/generated/ChangeResultView.ts
+@@ -28,4 +28,9 @@ workspace: ListedWorkspace | null,
+ /**
+  * A workspace provisioning's steps and their reconciliation (C17).
+  */
+-provisioning: Provisioning | null, };
++provisioning: Provisioning | null, 
++/**
++ * When the core recorded the settlement (and its readback), on its
++ * clock; stable across later observations (C31).
++ */
++settledAt?: number, };
+diff --git a/packages/desktop-contracts/src/generated/InboxKind.ts b/packages/desktop-contracts/src/generated/InboxKind.ts
+index 34e6e689..728cf75d 100644
+--- a/packages/desktop-contracts/src/generated/InboxKind.ts
++++ b/packages/desktop-contracts/src/generated/InboxKind.ts
+@@ -3,4 +3,4 @@
+ /**
+  * Where an Inbox entry came from.
+  */
+-export type InboxKind = "runtime" | "gateway" | "setupWarning";
++export type InboxKind = "runtime" | "gateway" | "setupWarning" | "rotation";
+diff --git a/packages/desktop-contracts/src/generated/Intent.ts b/packages/desktop-contracts/src/generated/Intent.ts
+index c861b664..bebe846c 100644
+--- a/packages/desktop-contracts/src/generated/Intent.ts
++++ b/packages/desktop-contracts/src/generated/Intent.ts
+@@ -51,4 +51,4 @@ resolution: SwitchResolution | null, } | { "kind": "discardTenantSetup", context
+  * How a switch blocked by a pending Harness decision proceeds
+  * (C30, I1); absent, a pending decision refuses the switch.
+  */
+-resolution: SwitchResolution | null, } | { "kind": "dismissSwitchGuard" } | { "kind": "readTenant", context: ContextRef, } | { "kind": "recheckProduct", context: ContextRef, product: ProductId, } | { "kind": "acknowledgeItem", context: ContextRef, id: string, } | { "kind": "snoozeItem", context: ContextRef, id: string, } | { "kind": "unsnoozeItem", context: ContextRef, id: string, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "configureManagementCredential", context: ContextRef, mode: StorageMode, clientId: string, secret: EnteredSecret, } | { "kind": "removeManagementCredential", context: ContextRef, } | { "kind": "management", context: ContextRef, request: ManagementRequest, } | { "kind": "selectGatewayWorkspace", context: ContextRef, workspace: string, } | { "kind": "reviewChange", context: ContextRef, draft: ChangeDraft, } | { "kind": "requestApply", review: ReviewId, draft: ChangeDraft, confirmation: string, } | { "kind": "discardChange", review: ReviewId, } | { "kind": "chooseDictionaryFile", context: ContextRef, } | { "kind": "revealSecret", operation: OperationId, } | { "kind": "forgetSecret", operation: OperationId, } | { "kind": "cancelChange", operation: OperationId, } | { "kind": "openGatewayLocal", context: ContextRef, } | { "kind": "saveGatewayDraft", context: ContextRef, draft: GatewayDraftInput, } | { "kind": "discardGatewayLocal", context: ContextRef, id: string, } | { "kind": "configureInferenceCredential", context: ContextRef, mode: StorageMode, workspace: WorkspaceRef, endpoint: string, secret: EnteredSecret, } | { "kind": "removeInferenceCredential", context: ContextRef, } | { "kind": "runInference", context: ContextRef, workspace: WorkspaceRef, run: InferenceRun, } | { "kind": "stopInference", operation: OperationId, } | { "kind": "clearInference", operation: OperationId, } | { "kind": "startHarness", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "configureHarnessSignIn", context: ContextRef, workspace: WorkspaceRef, endpoint: string, issuer: string, clientId: string, audience: string, } | { "kind": "removeHarnessSignIn", context: ContextRef, } | { "kind": "chooseHarnessCredential", context: ContextRef, source: CredentialSource, } | { "kind": "signInHarness", context: ContextRef, } | { "kind": "cancelHarnessSignIn", context: ContextRef, } | { "kind": "signOutHarness", context: ContextRef, } | { "kind": "chooseHarnessProject", context: ContextRef, } | { "kind": "clearHarnessProject", context: ContextRef, } | { "kind": "setHarnessWrite", context: ContextRef, write: boolean, } | { "kind": "decideHarnessApproval", conversation: OperationId, approval: string, allow: boolean, } | { "kind": "reviewHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "dismissHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "confirmHarnessWrite", conversation: OperationId, allow: boolean, } | { "kind": "listMcpServers", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "enableMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, enabled: boolean, } | { "kind": "signInMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "cancelMcpSignIn", context: ContextRef, } | { "kind": "signOutMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "listHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "openHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "closeHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "deleteHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "exportHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, format: HistoryFormat, } | { "kind": "resumeHarness", context: ContextRef, workspace: WorkspaceRef, id: string, } | { "kind": "sendHarness", conversation: OperationId, prompt: string, } | { "kind": "interruptHarness", conversation: OperationId, } | { "kind": "endHarness", conversation: OperationId, } | { "kind": "clearHarness", conversation: OperationId, } | { "kind": "readGatewayFiles", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "chooseGatewayFile", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "uploadGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "deleteGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "savePlaygroundDraft", context: ContextRef, workspace?: WorkspaceRef, draft: PlaygroundDraftInput, } | { "kind": "openReports", context: ContextRef, } | { "kind": "saveReport", context: ContextRef, target: ReportTarget, input: ReportInput, } | { "kind": "removeReport", context: ContextRef, scanId: string, subRequest: number, } | { "kind": "undoReport", context: ContextRef, } | { "kind": "exportReports", context: ContextRef, } | { "kind": "clearInvestigation", context: ContextRef, } | { "kind": "exportInvestigation", context: ContextRef, } | { "kind": "openLibrary", context: ContextRef, } | { "kind": "saveCase", context: ContextRef, draft: CaseDraft, } | { "kind": "deleteCase", context: ContextRef, id: string, } | { "kind": "importCases", context: ContextRef, } | { "kind": "importExamples", context: ContextRef, source: CatalogSource, } | { "kind": "copyCase", context: ContextRef, id: string, tenant: TenantId, } | { "kind": "exportCases", context: ContextRef, } | { "kind": "saveLibraryAgain", context: ContextRef, } | { "kind": "workbench", request: WorkbenchRequest, } | { "kind": "holdInsight", context: ContextRef, id: string, hold: HoldKind, } | { "kind": "restoreInsight", context: ContextRef, id: string, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "inspectV1Import" } | { "kind": "planV1Import", categories: Array<Category>, targets: Array<TenantTarget>, } | { "kind": "confirmV1Import", review: ReviewId, items: Array<number>, } | { "kind": "resumeV1Import", receipt: string, } | { "kind": "rollBackV1Import", receipt: string, } | { "kind": "forgetV1ImportReceipt", receipt: string, } | { "kind": "dismissV1Import" } | { "kind": "exportDiagnostics" } | { "kind": "clearDiagnostics" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, } | { "kind": "startAcademySignIn" } | { "kind": "cancelAcademySignIn" } | { "kind": "openAcademyVerification" } | { "kind": "signOutAcademy" } | { "kind": "printPage", learner: LearnerRef, } | { "kind": "uploadAvatar", learner: LearnerRef, } | { "kind": "loadAcademyImage", learner: LearnerRef, url: string, } | { "kind": "downloadCourse", learner: LearnerRef, courseId: string, } | { "kind": "removeDownload", learner: LearnerRef, courseId: string, } | { "kind": "saveLocalDraft", learner: LearnerRef, attemptId: string, baseVersion: number, draft: string, } | { "kind": "loadLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "clearLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "academyCall", learner: LearnerRef, procedure: string, procedureKind: ProcedureKind, input: string | null, };
++resolution: SwitchResolution | null, } | { "kind": "dismissSwitchGuard" } | { "kind": "readTenant", context: ContextRef, } | { "kind": "recheckProduct", context: ContextRef, product: ProductId, } | { "kind": "acknowledgeDeployment", context: ContextRef, application: string, } | { "kind": "acknowledgeItem", context: ContextRef, id: string, } | { "kind": "snoozeItem", context: ContextRef, id: string, } | { "kind": "unsnoozeItem", context: ContextRef, id: string, } | { "kind": "deleteTenant", tenant: TenantId, } | { "kind": "configureScanCredential", context: ContextRef, mode: StorageMode, key: EnteredSecret, } | { "kind": "removeScanCredential", context: ContextRef, } | { "kind": "configureManagementCredential", context: ContextRef, mode: StorageMode, clientId: string, secret: EnteredSecret, } | { "kind": "removeManagementCredential", context: ContextRef, } | { "kind": "management", context: ContextRef, request: ManagementRequest, } | { "kind": "selectGatewayWorkspace", context: ContextRef, workspace: string, } | { "kind": "reviewChange", context: ContextRef, draft: ChangeDraft, } | { "kind": "requestApply", review: ReviewId, draft: ChangeDraft, confirmation: string, } | { "kind": "discardChange", review: ReviewId, } | { "kind": "chooseDictionaryFile", context: ContextRef, } | { "kind": "revealSecret", operation: OperationId, } | { "kind": "forgetSecret", operation: OperationId, } | { "kind": "cancelChange", operation: OperationId, } | { "kind": "openGatewayLocal", context: ContextRef, } | { "kind": "saveGatewayDraft", context: ContextRef, draft: GatewayDraftInput, } | { "kind": "discardGatewayLocal", context: ContextRef, id: string, } | { "kind": "configureInferenceCredential", context: ContextRef, mode: StorageMode, workspace: WorkspaceRef, endpoint: string, secret: EnteredSecret, } | { "kind": "removeInferenceCredential", context: ContextRef, } | { "kind": "runInference", context: ContextRef, workspace: WorkspaceRef, run: InferenceRun, } | { "kind": "stopInference", operation: OperationId, } | { "kind": "clearInference", operation: OperationId, } | { "kind": "startHarness", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "configureHarnessSignIn", context: ContextRef, workspace: WorkspaceRef, endpoint: string, issuer: string, clientId: string, audience: string, } | { "kind": "removeHarnessSignIn", context: ContextRef, } | { "kind": "chooseHarnessCredential", context: ContextRef, source: CredentialSource, } | { "kind": "signInHarness", context: ContextRef, } | { "kind": "cancelHarnessSignIn", context: ContextRef, } | { "kind": "signOutHarness", context: ContextRef, } | { "kind": "chooseHarnessProject", context: ContextRef, } | { "kind": "clearHarnessProject", context: ContextRef, } | { "kind": "setHarnessWrite", context: ContextRef, write: boolean, } | { "kind": "decideHarnessApproval", conversation: OperationId, approval: string, allow: boolean, } | { "kind": "reviewHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "dismissHarnessProposal", conversation: OperationId, proposal: string, } | { "kind": "confirmHarnessWrite", conversation: OperationId, allow: boolean, } | { "kind": "listMcpServers", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "enableMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, enabled: boolean, } | { "kind": "signInMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "cancelMcpSignIn", context: ContextRef, } | { "kind": "signOutMcpServer", context: ContextRef, workspace: WorkspaceRef, server: string, } | { "kind": "listHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "openHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "closeHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, } | { "kind": "deleteHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, } | { "kind": "exportHarnessHistory", context: ContextRef, workspace: WorkspaceRef | null, id: string, format: HistoryFormat, } | { "kind": "resumeHarness", context: ContextRef, workspace: WorkspaceRef, id: string, } | { "kind": "sendHarness", conversation: OperationId, prompt: string, } | { "kind": "interruptHarness", conversation: OperationId, } | { "kind": "endHarness", conversation: OperationId, } | { "kind": "clearHarness", conversation: OperationId, } | { "kind": "readGatewayFiles", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "chooseGatewayFile", context: ContextRef, workspace: WorkspaceRef, } | { "kind": "uploadGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "deleteGatewayFile", context: ContextRef, workspace: WorkspaceRef, file: string, } | { "kind": "savePlaygroundDraft", context: ContextRef, workspace?: WorkspaceRef, draft: PlaygroundDraftInput, } | { "kind": "openReports", context: ContextRef, } | { "kind": "saveReport", context: ContextRef, target: ReportTarget, input: ReportInput, } | { "kind": "removeReport", context: ContextRef, scanId: string, subRequest: number, } | { "kind": "undoReport", context: ContextRef, } | { "kind": "exportReports", context: ContextRef, } | { "kind": "clearInvestigation", context: ContextRef, } | { "kind": "exportInvestigation", context: ContextRef, } | { "kind": "openLibrary", context: ContextRef, } | { "kind": "saveCase", context: ContextRef, draft: CaseDraft, } | { "kind": "deleteCase", context: ContextRef, id: string, } | { "kind": "importCases", context: ContextRef, } | { "kind": "importExamples", context: ContextRef, source: CatalogSource, } | { "kind": "copyCase", context: ContextRef, id: string, tenant: TenantId, } | { "kind": "exportCases", context: ContextRef, } | { "kind": "saveLibraryAgain", context: ContextRef, } | { "kind": "workbench", request: WorkbenchRequest, } | { "kind": "holdInsight", context: ContextRef, id: string, hold: HoldKind, } | { "kind": "restoreInsight", context: ContextRef, id: string, } | { "kind": "reviewEndpointChange", context: ContextRef, destination: Destination, } | { "kind": "confirmEndpointChange", context: ContextRef, review: ReviewId, } | { "kind": "discardReview", review: ReviewId, } | { "kind": "chooseProfileImport" } | { "kind": "confirmProfileImport", review: ReviewId, selected: Array<number>, } | { "kind": "resetLocalData" } | { "kind": "inspectV1Import" } | { "kind": "planV1Import", categories: Array<Category>, targets: Array<TenantTarget>, } | { "kind": "confirmV1Import", review: ReviewId, items: Array<number>, } | { "kind": "resumeV1Import", receipt: string, } | { "kind": "rollBackV1Import", receipt: string, } | { "kind": "forgetV1ImportReceipt", receipt: string, } | { "kind": "dismissV1Import" } | { "kind": "exportDiagnostics" } | { "kind": "clearDiagnostics" } | { "kind": "scan", context: ContextRef, draft: ScanDraft, } | { "kind": "cancelScan", operation: OperationId, } | { "kind": "startAcademySignIn" } | { "kind": "cancelAcademySignIn" } | { "kind": "openAcademyVerification" } | { "kind": "signOutAcademy" } | { "kind": "printPage", learner: LearnerRef, } | { "kind": "uploadAvatar", learner: LearnerRef, } | { "kind": "loadAcademyImage", learner: LearnerRef, url: string, } | { "kind": "downloadCourse", learner: LearnerRef, courseId: string, } | { "kind": "removeDownload", learner: LearnerRef, courseId: string, } | { "kind": "saveLocalDraft", learner: LearnerRef, attemptId: string, baseVersion: number, draft: string, } | { "kind": "loadLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "clearLocalDraft", learner: LearnerRef, attemptId: string, } | { "kind": "academyCall", learner: LearnerRef, procedure: string, procedureKind: ProcedureKind, input: string | null, };
+diff --git a/packages/desktop-contracts/src/generated/ScanResultView.ts b/packages/desktop-contracts/src/generated/ScanResultView.ts
+index 783cea2c..13470f40 100644
+--- a/packages/desktop-contracts/src/generated/ScanResultView.ts
++++ b/packages/desktop-contracts/src/generated/ScanResultView.ts
+@@ -1,6 +1,7 @@
+ // This file was generated by [ts-rs](https://github.com/Aleph-Alpha/ts-rs). Do not edit this file manually.
+ import type { ContentErrorView } from "./ContentErrorView";
+ import type { Detection } from "./Detection";
++import type { TopicVerdict } from "./TopicVerdict";
+ import type { Verdict } from "./Verdict";
+ 
+ /**
+@@ -22,4 +23,10 @@ timeout: boolean,
+ /**
+  * The service reported a scan error (incomplete).
+  */
+-serviceError: boolean, contentErrors: Array<ContentErrorView>, promptDetected: Array<Detection>, responseDetected: Array<Detection>, };
++serviceError: boolean, contentErrors: Array<ContentErrorView>, promptDetected: Array<Detection>, responseDetected: Array<Detection>, 
++/**
++ * Custom topic results, keyed apart from the detectors (C31): the
++ * service's topic verdict and the topics it named, for the prompt and
++ * for the response separately.
++ */
++topics: TopicVerdict, responseTopics: TopicVerdict, };
+diff --git a/packages/desktop-contracts/src/generated/ShellSnapshot.ts b/packages/desktop-contracts/src/generated/ShellSnapshot.ts
+index 4a08a991..5541b110 100644
+--- a/packages/desktop-contracts/src/generated/ShellSnapshot.ts
++++ b/packages/desktop-contracts/src/generated/ShellSnapshot.ts
+@@ -1,6 +1,7 @@
+ // This file was generated by [ts-rs](https://github.com/Aleph-Alpha/ts-rs). Do not edit this file manually.
+ import type { AcademyView } from "./AcademyView";
+ import type { ActiveContext } from "./ActiveContext";
++import type { AdminInventoryView } from "./AdminInventoryView";
+ import type { ChangesView } from "./ChangesView";
+ import type { DiagnosticsView } from "./DiagnosticsView";
+ import type { EndpointReviewView } from "./EndpointReviewView";
+@@ -16,6 +17,7 @@ import type { OfflineView } from "./OfflineView";
+ import type { OnboardingState } from "./OnboardingState";
+ import type { OverviewView } from "./OverviewView";
+ import type { ResetFailure } from "./ResetFailure";
++import type { RotationView } from "./RotationView";
+ import type { ScanRecordView } from "./ScanRecordView";
+ import type { SessionsView } from "./SessionsView";
+ import type { SetupView } from "./SetupView";
+@@ -114,6 +116,16 @@ library: LibraryView,
+  * The active context's Runtime Home/Inbox observations.
+  */
+ overview: OverviewView, 
++/**
++ * The Administration inventory (C31): static per build, published in
++ * the v2 shell only (the legacy shell keeps its own fixed matrix and
++ * literal snapshot).
++ */
++administration: AdminInventoryView | null, 
++/**
++ * The active tenant's Runtime key rotations (C31).
++ */
++rotations: Array<RotationView>, 
+ /**
+  * The active tenant's Inbox and read status (C30).
+  */
+diff --git a/packages/desktop-contracts/src/index.ts b/packages/desktop-contracts/src/index.ts
+index c1a5699c..aa3afd56 100644
+--- a/packages/desktop-contracts/src/index.ts
++++ b/packages/desktop-contracts/src/index.ts
+@@ -308,6 +308,18 @@ export type { InboxView } from './generated/InboxView'
+ export type { InboxEntry } from './generated/InboxEntry'
+ export type { InboxKind } from './generated/InboxKind'
+ export type { HoldView } from './generated/HoldView'
++export type { AdminAction } from './generated/AdminAction'
++export type { AdminAvailability } from './generated/AdminAvailability'
++export type { AdminInventoryView } from './generated/AdminInventoryView'
++export type { AdminProduct } from './generated/AdminProduct'
++export type { AdminProductId } from './generated/AdminProductId'
++export type { AdminTab } from './generated/AdminTab'
++export type { DeniedAction } from './generated/DeniedAction'
++export type { KeyRef } from './generated/KeyRef'
++export type { RotationStage } from './generated/RotationStage'
++export type { RotationView } from './generated/RotationView'
++export type { TabDisposition } from './generated/TabDisposition'
++export type { TopicVerdict } from './generated/TopicVerdict'
+ export type { ReadStatus } from './generated/ReadStatus'
+ export type { ReadState } from './generated/ReadState'
+ export type { ProductRead } from './generated/ProductRead'
+
+# Untracked files in scope:
+# + apps/desktop/src/v2/admin/administration.test.tsx
+# + apps/desktop/src/v2/admin/administration.tsx
+# + apps/desktop/src/v2/admin/copy.ts
+# + apps/desktop/src/v2/admin/inventory.fixture.json
+# + apps/desktop/src/v2/admin/review-sheet.tsx
+# + apps/desktop/src/v2/admin/rotation-panel.tsx
+# + crates/desktop-core/src/admin_inventory.rs
+# + crates/desktop-core/src/authority/rotation_domain.rs
+# + crates/desktop-core/tests/ui_v2_reviews/main.rs
+# + docs/planning/evidence/C31/live/L03/C31-cleanup-topic.json
+# + docs/planning/evidence/C31/live/L03/C31-topic-create.json
+# + docs/planning/evidence/C31/live/L03/C31-topic-review-apply.json
+# + docs/planning/evidence/C31/live/run.json
+# + docs/planning/evidence/C31/native-acceptance.json
+# + docs/planning/evidence/C31/native-prepare.json
+# + docs/planning/evidence/C31/native/captures/admin-dark-100.png
+# + docs/planning/evidence/C31/native/captures/admin-dark-200.png
+# + docs/planning/evidence/C31/native/captures/admin-light-100.png
+# + docs/planning/evidence/C31/native/captures/admin-light-200.png
+# + docs/planning/evidence/C31/native/captures/admin-min-200-dark.png
+# + docs/planning/evidence/C31/native/captures/admin-min-200-light.png
+# + docs/planning/evidence/C31/native/captures/reduce-motion-toast.png
+# + docs/planning/evidence/C31/native/captures/review-applied-dark-100.png
+# + docs/planning/evidence/C31/native/captures/review-applied-dark-200.png
+# + docs/planning/evidence/C31/native/captures/review-applied-light-100.png
+# + docs/planning/evidence/C31/native/captures/review-applied-light-200.png
+# + docs/planning/evidence/C31/native/captures/review-ring-close.png
+# + docs/planning/evidence/C31/native/captures/review-ring-plain.png
+# + docs/planning/evidence/C31/native/captures/rotation-complete-dark-100.png
+# + docs/planning/evidence/C31/native/captures/rotation-complete-dark-200.png
+# + docs/planning/evidence/C31/native/captures/rotation-complete-light-100.png
+# + docs/planning/evidence/C31/native/captures/rotation-complete-light-200.png
+# + docs/planning/evidence/C31/native/captures/rotation-issued-dark-100.png
+# + docs/planning/evidence/C31/native/captures/rotation-issued-dark-200.png
+# + docs/planning/evidence/C31/native/captures/rotation-issued-light-100.png
+# + docs/planning/evidence/C31/native/captures/rotation-issued-light-200.png
+# + docs/planning/evidence/C31/native/observations.json
+# + docs/planning/evidence/C31/native/tree-admin-keys.json
+# + docs/planning/evidence/C31/native/tree-admin-min-200-dark.json
+# + docs/planning/evidence/C31/native/tree-admin-min-200-light.json
+# + docs/planning/evidence/C31/native/tree-reduce-motion-toast.json
+# + docs/planning/evidence/C31/native/tree-review-applied.json
+# + docs/planning/evidence/C31/native/tree-rotation-complete.json
+# + docs/planning/evidence/C31/native/tree-rotation-issued.json
+# + docs/planning/evidence/C31/native/tree-rotation-reminder.json
+# + docs/planning/evidence/C31/runs/bindings.exit
+# + docs/planning/evidence/C31/runs/bindings.log
+# + docs/planning/evidence/C31/runs/clippy-default.exit
+# + docs/planning/evidence/C31/runs/clippy-default.log
+# + docs/planning/evidence/C31/runs/clippy.exit
+# + docs/planning/evidence/C31/runs/clippy.log
+# + docs/planning/evidence/C31/runs/contracts-typecheck.exit
+# + docs/planning/evidence/C31/runs/contracts-typecheck.log
+# + docs/planning/evidence/C31/runs/core-fixtures.exit
+# + docs/planning/evidence/C31/runs/core-fixtures.log
+# + docs/planning/evidence/C31/runs/core-lib.exit
+# + docs/planning/evidence/C31/runs/core-lib.log
+# + docs/planning/evidence/C31/runs/desktop-build.exit
+# + docs/planning/evidence/C31/runs/desktop-build.log
+# + docs/planning/evidence/C31/runs/desktop-typecheck.exit
+# + docs/planning/evidence/C31/runs/desktop-typecheck.log
+# + docs/planning/evidence/C31/runs/hash-inputs.sh
+# + docs/planning/evidence/C31/runs/host.exit
+# + docs/planning/evidence/C31/runs/host.log
+# + docs/planning/evidence/C31/runs/inputs-after.sha256
+# + docs/planning/evidence/C31/runs/inputs-before.sha256
+# + docs/planning/evidence/C31/runs/notices.exit
+# + docs/planning/evidence/C31/runs/notices.log
+# + docs/planning/evidence/C31/runs/run-attempt-01.json
+# + docs/planning/evidence/C31/runs/run-attempt-02.json
+# + docs/planning/evidence/C31/runs/run-attempt-03.json
+# + docs/planning/evidence/C31/runs/run-attempt-04.json
+# + docs/planning/evidence/C31/runs/run-checks.sh
+# + docs/planning/evidence/C31/runs/rustfmt.exit
+# + docs/planning/evidence/C31/runs/rustfmt.log
+# + docs/planning/evidence/C31/runs/shell-controller.exit
+# + docs/planning/evidence/C31/runs/shell-controller.log
+# + docs/planning/evidence/C31/runs/vitest-truth.exit
+# + docs/planning/evidence/C31/runs/vitest-truth.log
+# + docs/planning/evidence/C31/runs/vitest.exit
+# + docs/planning/evidence/C31/runs/vitest.log
+# + docs/planning/evidence/C31/runs/xtask-lib.exit
+# + docs/planning/evidence/C31/runs/xtask-lib.log
+# + docs/planning/evidence/C31/screens/admin-dark-100.png
+# + docs/planning/evidence/C31/screens/admin-dark-200.png
+# + docs/planning/evidence/C31/screens/admin-light-100.png
+# + docs/planning/evidence/C31/screens/admin-light-200.png
+# + docs/planning/evidence/C31/screens/admin-min-200-dark.png
+# + docs/planning/evidence/C31/screens/admin-min-200-light.png
+# + docs/planning/evidence/C31/screens/reduce-motion-toast.png
+# + docs/planning/evidence/C31/screens/review-applied-dark-100.png
+# + docs/planning/evidence/C31/screens/review-applied-dark-200.png
+# + docs/planning/evidence/C31/screens/review-applied-light-100.png
+# + docs/planning/evidence/C31/screens/review-applied-light-200.png
+# + docs/planning/evidence/C31/screens/review-ring-close.png
+# + docs/planning/evidence/C31/screens/review-ring-plain.png
+# + docs/planning/evidence/C31/screens/rotation-complete-dark-100.png
+# + docs/planning/evidence/C31/screens/rotation-complete-dark-200.png
+# + docs/planning/evidence/C31/screens/rotation-complete-light-100.png
+# + docs/planning/evidence/C31/screens/rotation-complete-light-200.png
+# + docs/planning/evidence/C31/screens/rotation-issued-dark-100.png
+# + docs/planning/evidence/C31/screens/rotation-issued-dark-200.png
+# + docs/planning/evidence/C31/screens/rotation-issued-light-100.png
+# + docs/planning/evidence/C31/screens/rotation-issued-light-200.png
+# + docs/planning/reviews/C31/attempt-01/diff.patch
+# + docs/planning/reviews/C31/attempt-01/message.txt
+# + docs/planning/reviews/C31/attempt-01/request.json
+# + docs/planning/reviews/C31/attempt-01/source-inventory.json
+# + docs/planning/reviews/C31/attempt-01/thread-reply.log
+# + docs/planning/reviews/C31/attempt-01/verdict-returned.json
+# + docs/planning/reviews/C31/attempt-02/diff.patch
+# + docs/planning/reviews/C31/attempt-02/message.txt
+# + docs/planning/reviews/C31/attempt-02/request.json
+# + docs/planning/reviews/C31/attempt-02/source-inventory.json
+# + docs/planning/reviews/C31/attempt-02/thread-reply.log
+# + docs/planning/reviews/C31/attempt-02/verdict-returned.json
+# + docs/planning/reviews/C31/attempt-03/diff.patch
+# + docs/planning/reviews/C31/attempt-03/message.txt
+# + docs/planning/reviews/C31/attempt-03/request.json
+# + docs/planning/reviews/C31/attempt-03/source-inventory.json
+# + docs/planning/reviews/C31/attempt-03/thread-reply.log
+# + docs/planning/reviews/C31/attempt-03/verdict-returned.json
+# + docs/planning/reviews/C31/remediation-attempt-01.md
+# + docs/planning/reviews/C31/remediation-attempt-02.md
+# + docs/planning/reviews/C31/remediation-attempt-03.md
+# + packages/desktop-contracts/src/generated/AdminAction.ts
+# + packages/desktop-contracts/src/generated/AdminAvailability.ts
+# + packages/desktop-contracts/src/generated/AdminInventoryView.ts
+# + packages/desktop-contracts/src/generated/AdminProduct.ts
+# + packages/desktop-contracts/src/generated/AdminProductId.ts
+# + packages/desktop-contracts/src/generated/AdminTab.ts
+# + packages/desktop-contracts/src/generated/DeniedAction.ts
+# + packages/desktop-contracts/src/generated/KeyRef.ts
+# + packages/desktop-contracts/src/generated/RotationStage.ts
+# + packages/desktop-contracts/src/generated/RotationView.ts
+# + packages/desktop-contracts/src/generated/TabDisposition.ts
+# + packages/desktop-contracts/src/generated/TopicVerdict.ts
+# + tools/native-acceptance/acceptance_c31.py

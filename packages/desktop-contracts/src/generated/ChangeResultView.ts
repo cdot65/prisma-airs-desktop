@@ -28,4 +28,9 @@ workspace: ListedWorkspace | null,
 /**
  * A workspace provisioning's steps and their reconciliation (C17).
  */
-provisioning: Provisioning | null, };
+provisioning: Provisioning | null, 
+/**
+ * When the core recorded the settlement (and its readback), on its
+ * clock; stable across later observations (C31).
+ */
+settledAt?: number, };

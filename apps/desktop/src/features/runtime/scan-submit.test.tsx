@@ -33,6 +33,8 @@ function result(overrides: Partial<ScanResultView> = {}): ScanResultView {
             { detector: 'future_detector', detected: true },
         ],
         responseDetected: [],
+        topics: { violation: null, blocked: [], allowed: [] },
+        responseTopics: { violation: null, blocked: [], allowed: [] },
         ...overrides,
     }
 }

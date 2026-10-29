@@ -1,7 +1,8 @@
-import { forwardRef, useEffect, useId, useRef, useState } from 'react'
+import { forwardRef, type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { Button, Callout } from '@ai-security-academy/presentation'
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react'
 import type {
+    AdminAction,
     ChangeAction,
     ChangeKind,
     ContextRef,
@@ -46,9 +47,23 @@ interface Props {
     dispatch: Dispatch
     observe: ObserveManagement
     onNavigate: (id: FeatureId) => void
+    /** v2 (C31): the tab the shell's Administration accordion selected; the strip and heading are then the shell's. */
+    tab?: GatewayTab
+    embedded?: boolean
+    /** v2 (C31): the Administration tab's admitted actions and labels (AdminInventory); legacy actions when absent. */
+    actions?: AdminAction[]
+    /** v2 (C31): every change opens the shell's review sheet (typed confirmation, secret disposal on exit). */
+    onReview?: (change: ChangeTarget, extras: GatewayReviewExtras) => void
 }
 
-type Tab = Exclude<GatewayResource, 'workspaces'> | 'workspace' | 'prerequisites' | 'playground' | 'files' | 'usage' | 'logs' | 'limits'
+/** What a Gateway change carries into the shell's review sheet: the local draft hook and its note. */
+export interface GatewayReviewExtras {
+    onDraft?: (body: string) => void
+    note?: ReactNode
+}
+
+export type GatewayTab = Exclude<GatewayResource, 'workspaces'> | 'workspace' | 'prerequisites' | 'playground' | 'files' | 'usage' | 'logs' | 'limits'
+type Tab = GatewayTab
 
 const TABS: readonly [Tab, string][] = [
     ['workspace', 'Workspace'],
@@ -209,7 +224,7 @@ function coverage(list: GatewayList, what: string): string {
  * inference. Keyed by context in the shell; a different workspace starts
  * with nothing held, and a reply for one chosen before is never shown.
  */
-export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function GatewayView({ snapshot, dispatch, observe, onNavigate }, ref) {
+export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function GatewayView({ snapshot, dispatch, observe, onNavigate, tab: controlledTab, embedded = false, actions, onReview }, ref) {
     const ids = useId()
     const context = snapshot.active?.context ?? null
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
@@ -219,7 +234,10 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
     const reference = selected?.reference ?? null
     const [listing, setListing] = useState<{ loading: boolean; failure: string | null }>({ loading: false, failure: null })
     const [choosing, setChoosing] = useState<string | null>(null)
-    const [tab, setTab] = useState<Tab>('providers')
+    const [tab, setTab] = useState<Tab>(controlledTab ?? 'providers')
+    useEffect(() => {
+        if (controlledTab) setTab(controlledTab)
+    }, [controlledTab])
     const [lists, setLists] = useState<Partial<Record<GatewayResource, Held<GatewayList>>>>({})
     const [prerequisites, setPrerequisites] = useState<Held<GatewayPrerequisites>>(empty)
     const [space, setSpace] = useState<Held<GatewayDetail>>(empty)
@@ -227,6 +245,12 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
     /** The trace the Logs tab opens with ("Find in logs"). */
     const [logsTrace, setLogsTrace] = useState<string | undefined>(undefined)
     const local = gateway.local
+    const draftNote = (
+        <p className='text-academy-ink-faint text-[12px]' data-slot='gateway-draft-note'>
+            {(local.problem && DRAFT_PROBLEM_TEXT[local.problem]) ??
+                'Your edits are kept on this Mac as a draft (never a review). Nothing is sent until you review and apply it.'}
+        </p>
+    )
     const opener = useRef<HTMLElement | null>(null)
     const settledSeen = useRef<Set<string> | null>(null)
     // A reply for a superseded read (or another workspace) is dropped.
@@ -289,6 +313,14 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
 
     function startChange(next: Opened, from: HTMLElement | null) {
         opener.current = from
+        if (onReview) {
+            // v2: the shell's review sheet, with this view's draft behaviour.
+            onReview(next, {
+                onDraft: next.action === 'delete' ? undefined : (body) => keepDraft(next, body),
+                note: next.action === 'delete' ? null : draftNote,
+            })
+            return
+        }
         setChange(next)
     }
 
@@ -383,7 +415,7 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
         if (!held) void readList(resource)
     }, [tab, ready, reference, lists, prerequisites, space])
 
-    const heading = <PageHeading ref={ref} id='gateway-heading' kicker='AI Gateway' title='Gateway workspaces and configuration' />
+    const heading = embedded ? null : <PageHeading ref={ref} id='gateway-heading' kicker='AI Gateway' title='Gateway workspaces and configuration' />
 
     if (!tenant || !context) {
         return (
@@ -443,14 +475,17 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
                             <Button type='button' tier='secondary' size='sm' aria-disabled={listing.loading} onClick={() => !listing.loading && void listWorkspaces()}>
                                 <RefreshCw aria-hidden className='size-4' /> Refresh workspaces
                             </Button>
-                            <Button
-                                type='button'
-                                tier='secondary'
-                                size='sm'
-                                onClick={(e) => startChange(gatewayChange('workspaces', 'create', '', '', null), e.currentTarget)}
-                            >
-                                Provision workspace…
-                            </Button>
+                            {/* v2: creating a workspace belongs to the Workspaces tab only. */}
+                            {!controlledTab || controlledTab === 'workspace' ? (
+                                <Button
+                                    type='button'
+                                    tier='secondary'
+                                    size='sm'
+                                    onClick={(e) => startChange(gatewayChange('workspaces', 'create', '', '', null), e.currentTarget)}
+                                >
+                                    {admittedLabel(actions, 'gatewayWorkspaces', 'create') ?? 'Provision workspace…'}
+                                </Button>
+                            ) : null}
                         </div>
                         {listing.failure ? (
                             <Callout tone='danger' icon={AlertTriangle} role='alert' data-slot='gateway-workspaces-failure'>
@@ -496,7 +531,7 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
                     </fieldset>
                     {selected ? (
                         <>
-                            <div role='tablist' aria-label={`Configuration of ${selected.workspace.name}`} className='flex flex-wrap gap-1'>
+                            <div role='tablist' aria-label={`Configuration of ${selected.workspace.name}`} className='flex flex-wrap gap-1' hidden={!!controlledTab}>
                                 {TABS.map(([id, label]) => (
                                     <Button
                                         key={id}
@@ -554,6 +589,7 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
                                         name={selected.workspace.name}
                                         held={space}
                                         onRefresh={() => void readWorkspace()}
+                                        actions={actions}
                                         onChange={(action, from) =>
                                             startChange(gatewayChange('workspaces', action, selected.workspace.id, selected.workspace.name, null), from)
                                         }
@@ -565,6 +601,7 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
                                         held={lists[tab as GatewayResource] ?? empty<GatewayList>()}
                                         onRefresh={() => void readList(tab as GatewayResource)}
                                         read={read}
+                                        actions={actions}
                                         onChange={(action, target, name, from, body) =>
                                             startChange(gatewayChange(tab as GatewayResource, action, target, name, reference, body), from)
                                         }
@@ -584,14 +621,7 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
                             dispatch={dispatch}
                             onClose={closeChange}
                             onDraft={opened.action === 'delete' ? undefined : (body) => keepDraft(opened, body)}
-                            note={
-                                opened.action === 'delete' ? null : (
-                                    <p className='text-academy-ink-faint text-[12px]' data-slot='gateway-draft-note'>
-                                        {(local.problem && DRAFT_PROBLEM_TEXT[local.problem]) ??
-                                            'Your edits are kept on this Mac as a draft (never a review). Nothing is sent until you review and apply it.'}
-                                    </p>
-                                )
-                            }
+                            note={opened.action === 'delete' ? null : draftNote}
                         />
                     ) : null}
                     <ChangeResults heading='Gateway changes' results={gatewayResults} dispatch={dispatch} />
@@ -853,8 +883,13 @@ type DetailState =
 
 type StartChange = (action: ChangeAction, target: string, name: string, from: HTMLElement, body?: Record<string, unknown>) => void
 
-/** The changes v1 offers for an item of `resource`. */
-function itemActions(resource: GatewayResource): [ChangeAction, string][] {
+/** v2 (C31): the inventory's label for an admitted (kind, action), if admitted. */
+const admittedLabel = (actions: AdminAction[] | undefined, kind: ChangeKind, action: ChangeAction) => actions?.find((a) => a.kind === kind && a.action === action)?.label
+
+/** The changes offered for an item of `resource`: the inventory's admitted
+ * row actions in v2 (C31), else the v1 set. */
+function itemActions(resource: GatewayResource, admitted?: AdminAction[]): [ChangeAction, string][] {
+    if (admitted) return admitted.filter((a) => a.kind === KIND[resource] && a.row).map((a) => [a.action, a.label])
     const actions: [ChangeAction, string][] = [['update', 'Edit…']]
     if (resource === 'serviceKeys' || resource === 'userKeys') actions.push(['rotate', 'Rotate…'])
     if (resource === 'integrations') actions.push(['models', 'Models…'])
@@ -868,13 +903,16 @@ function InventoryPanel({
     onRefresh,
     read,
     onChange,
+    actions,
 }: {
     resource: GatewayResource
     held: Held<GatewayList>
     onRefresh: () => void
     read: (r: GatewayRead, scoped: boolean) => Promise<ManagementResult | string>
     onChange: StartChange
+    actions?: AdminAction[]
 }) {
+    const create = actions ? actions.find((a) => a.kind === KIND[resource] && a.action === 'create' && !a.row)?.label : `New ${NOUN[resource]}…`
     const what = LABEL[resource]
     const [detail, setDetail] = useState<DetailState | null>(null)
     const opener = useRef<HTMLButtonElement | null>(null)
@@ -909,9 +947,11 @@ function InventoryPanel({
                 <Button type='button' tier='secondary' size='sm' aria-disabled={held.loading} onClick={() => !held.loading && onRefresh()}>
                     <RefreshCw aria-hidden className='size-4' /> {`Refresh ${what}`}
                 </Button>
-                <Button type='button' tier='secondary' size='sm' onClick={(e) => onChange('create', '', '', e.currentTarget)}>
-                    {`New ${NOUN[resource]}…`}
-                </Button>
+                {create ? (
+                    <Button type='button' tier='secondary' size='sm' onClick={(e) => onChange('create', '', '', e.currentTarget)}>
+                        {create}
+                    </Button>
+                ) : null}
             </div>
             {resource === 'integrations' ? (
                 <p className='text-academy-ink-faint text-[12px]'>Integrations are tenant-wide; the workspaces granted them share them.</p>
@@ -963,7 +1003,7 @@ function InventoryPanel({
             {detail ? (
                 // Keyed by item: another item never shows this one's models,
                 // loading state or failure.
-                <DetailPanel key={detail.id} state={detail} resource={resource} onClose={close} read={read} onChange={onChange} />
+                <DetailPanel key={detail.id} state={detail} resource={resource} onClose={close} read={read} onChange={onChange} actions={actions} />
             ) : null}
         </div>
     )
@@ -977,12 +1017,14 @@ function DetailPanel({
     onClose,
     read,
     onChange,
+    actions,
 }: {
     state: DetailState
     resource: GatewayResource
     onClose: () => void
     read: (r: GatewayRead, scoped: boolean) => Promise<ManagementResult | string>
     onChange: StartChange
+    actions?: AdminAction[]
 }) {
     const headingId = useId()
     const heading = useRef<HTMLHeadingElement>(null)
@@ -1088,7 +1130,7 @@ function DetailPanel({
             )}
             {state.kind === 'shown' && state.detail.found === 'found' ? (
                 <div className='flex flex-wrap gap-2' data-slot='gateway-item-actions'>
-                    {itemActions(resource).map(([action, label]) => (
+                    {itemActions(resource, actions).map(([action, label]) => (
                         <Button
                             key={action}
                             type='button'
@@ -1132,11 +1174,13 @@ function WorkspacePanel({
     held,
     onRefresh,
     onChange,
+    actions,
 }: {
     name: string
     held: Held<GatewayDetail>
     onRefresh: () => void
     onChange: (action: ChangeAction, from: HTMLElement) => void
+    actions?: AdminAction[]
 }) {
     const d = held.read
     const item: Record<string, unknown> | null = d?.item ? (JSON.parse(d.item) as Record<string, unknown>) : null
@@ -1169,12 +1213,16 @@ function WorkspacePanel({
                 </dl>
             ) : null}
             <div className='flex flex-wrap gap-2'>
-                <Button type='button' tier='secondary' size='sm' onClick={(e) => onChange('update', e.currentTarget)}>
-                    Edit workspace…
-                </Button>
-                <Button type='button' tier='secondary' size='sm' onClick={(e) => onChange('delete', e.currentTarget)}>
-                    Archive workspace…
-                </Button>
+                {!actions || admittedLabel(actions, 'gatewayWorkspaces', 'update') ? (
+                    <Button type='button' tier='secondary' size='sm' onClick={(e) => onChange('update', e.currentTarget)}>
+                        {admittedLabel(actions, 'gatewayWorkspaces', 'update') ?? 'Edit workspace…'}
+                    </Button>
+                ) : null}
+                {!actions || admittedLabel(actions, 'gatewayWorkspaces', 'delete') ? (
+                    <Button type='button' tier='secondary' size='sm' onClick={(e) => onChange('delete', e.currentTarget)}>
+                        {admittedLabel(actions, 'gatewayWorkspaces', 'delete') ?? 'Archive workspace…'}
+                    </Button>
+                ) : null}
             </div>
         </div>
     )

@@ -100,4 +100,47 @@ describe('modal stack (I8)', () => {
         expect(screen.queryByRole('dialog', { name: 'Inner' })).toBeNull()
         await waitFor(() => expect(screen.getByRole('button', { name: 'Outer second' })).toHaveFocus())
     })
+
+    it('Escape closes only the topmost dialog even when focus has left it (a native sheet returned focus to the page)', async () => {
+        const user = userEvent.setup()
+        render(<Stack />)
+        await user.click(screen.getByRole('button', { name: 'Open outer' }))
+        await user.click(screen.getByRole('button', { name: 'Open inner' }))
+        ;(document.activeElement as HTMLElement | null)?.blur()
+        expect(document.activeElement).toBe(document.body)
+        await user.keyboard('{Escape}')
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Inner' })).toBeNull())
+        expect(screen.getByRole('dialog', { name: 'Outer' })).toBeInTheDocument()
+    })
+
+    it('returns focus to the page heading when the opener no longer exists', async () => {
+        const user = userEvent.setup()
+        function Gone() {
+            const [open, setOpen] = useState(false)
+            const [opener, setOpener] = useState(true)
+            return (
+                <main>
+                    <h1 tabIndex={-1}>Page</h1>
+                    {opener && (
+                        <button type='button' onClick={() => setOpen(true)}>
+                            Open once
+                        </button>
+                    )}
+                    {open && (
+                        <Modal label='Once' onClose={() => setOpen(false)}>
+                            <button type='button' onClick={() => setOpener(false)}>
+                                Finish
+                            </button>
+                        </Modal>
+                    )}
+                </main>
+            )
+        }
+        render(<Gone />)
+        await user.click(screen.getByRole('button', { name: 'Open once' }))
+        await user.click(screen.getByRole('button', { name: 'Finish' }))
+        await user.keyboard('{Escape}')
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Once' })).toBeNull())
+        await waitFor(() => expect(screen.getByRole('heading', { name: 'Page' })).toHaveFocus())
+    })
 })

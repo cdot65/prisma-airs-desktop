@@ -2,11 +2,13 @@ import { forwardRef, useEffect, useId, useRef, useState } from 'react'
 import { Button, Callout, Input } from '@ai-security-academy/presentation'
 import { AlertTriangle, Info, Lock } from 'lucide-react'
 import type {
+    AdminAction,
     ContextRef,
     FeatureId,
     ManagementDetail,
     ManagementPage,
     ManagementResource,
+    RotationView,
     ShellSnapshot,
 } from '@prisma-airs/desktop-contracts'
 import { PageHeading } from '../../shell/feature-view'
@@ -33,6 +35,19 @@ interface Props {
     onNavigate: (id: FeatureId) => void
     /** The inventory and item a contextual action asked for (C30): selected on arrival. */
     arrival?: { resource: ManagementResource | null; item: string | null; sequence: number } | null
+    /** v2 (C31): one inventory, pinned (no picker); the shell renders it inside its Administration tab. */
+    pinned?: ManagementResource
+    /** v2 (C31): no page heading (the shell's accordion names the product and tab). */
+    embedded?: boolean
+    /** v2 (C31): the labels the Administration inventory gives each action (`AdminInventory`). */
+    labels?: Partial<Record<ChangeTarget['action'], string>>
+    /** v2 (C31): the tab's admitted actions; only these are offered (create above the table, the rest per row). */
+    admitted?: AdminAction[]
+    /** v2 (C31): changes open in the shell's review sheet instead of the inline workbench. */
+    onReview?: (change: ChangeTarget) => void
+    /** v2 (C31): rotations in progress, so an old key's row offers "Finish rotation…". */
+    rotations?: RotationView[]
+    onFinishRotation?: (application: string) => void
 }
 
 type Item = Record<string, unknown>
@@ -68,14 +83,14 @@ function rangeText(page: ManagementPage): string {
  * an inventory is called empty or complete only when the service said so.
  */
 export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function AdministrationView(
-    { snapshot, dispatch, observe, onNavigate, arrival = null },
+    { snapshot, dispatch, observe, onNavigate, arrival = null, pinned, embedded = false, labels, admitted, onReview, rotations = [], onFinishRotation },
     ref
 ) {
     const ids = useId()
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
     const context: ContextRef | null = snapshot.active?.context ?? null
     const ready = tenant?.management.state === 'ready'
-    const [resource, setResource] = useState<ManagementResource>(arrival?.resource ?? 'profiles')
+    const [resource, setResource] = useState<ManagementResource>(pinned ?? arrival?.resource ?? 'profiles')
     const [shown, setShown] = useState<Shown | null>(null)
     const [failure, setFailure] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
@@ -102,7 +117,8 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
         snapshot.harness.conversation?.proposals.find((p) => p.state === 'inReview' && review !== null && p.review === review.review) ?? null
     const shownProposal = useRef<string | null>(null)
     useEffect(() => {
-        if (!proposed || shownProposal.current === proposed.review) return
+        // v2 (C31): the shell's Administration opens the proposal in its review sheet.
+        if (onReview || !proposed || shownProposal.current === proposed.review) return
         shownProposal.current = proposed.review
         const d = proposed.draft
         setDetail(null)
@@ -120,7 +136,10 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
     const detailToken = useRef(0)
     const info = RESOURCES.find((r) => r.id === resource) ?? (RESOURCES[0] as ResourceInfo)
 
-    async function load(offset: number) {
+    /** The item whose detail is open, so a refresh after a change can read it again. */
+    const opened = useRef<Item | null>(null)
+
+    async function load(offset: number, keepDetail = false) {
         if (!context) return
         const mine = ++token.current
         setLoading(true)
@@ -140,8 +159,14 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
         if (result.kind === 'page' && result.page.resource === resource && result.page.offset === offset) {
             setShown({ page: result.page, items: JSON.parse(result.page.items) as Item[], readAt: new Date() })
             setFailure(null)
-            detailToken.current += 1
-            setDetail(null)
+            if (keepDetail && opened.current) {
+                // A change settled while a detail was open: read that item again.
+                void openDetail(opened.current)
+            } else {
+                detailToken.current += 1
+                setDetail(null)
+                opened.current = null
+            }
         } else if (result.kind === 'failed') {
             setFailure(MANAGEMENT_FAILURE_TEXT[result.failure])
         } else {
@@ -153,6 +178,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
         const id = itemId(info, item)
         const name = itemName(info, item)
         if (!context || id === null) return
+        opened.current = item
         const mine = ++detailToken.current
         setDetail({ kind: 'loading', name })
         const outcome = await readManagement(dispatch, observe, context, { kind: 'detail', resource, id })
@@ -180,7 +206,34 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
         if (ready) void load(0)
     }, [context, resource, ready])
 
-    const heading = <PageHeading ref={ref} id='administration-heading' kicker='Administration' title='Tenant inventories' />
+    // v2 (C31): the table follows what changed it. A settled change of this
+    // inventory's kind, or a rotation moving on, re-reads the shown page.
+    const kindHere = CHANGE_KIND[resource]
+    const changedHere = [
+        ...snapshot.changes.results.filter((r) => r.settled && r.kind === kindHere).map((r) => r.operation),
+        ...(resource === 'apiKeys' ? rotations.map((r) => `${r.application}:${r.stage}:${r.newKey?.id ?? ''}`) : []),
+    ].join('|')
+    const lastChanged = useRef(changedHere)
+    useEffect(() => {
+        if (lastChanged.current === changedHere) return
+        lastChanged.current = changedHere
+        if (ready && onReview) void load(shown?.page.offset ?? 0, true)
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- re-read on change only
+    }, [changedHere])
+    const relations = useTopicRelations(resource, ready && !!onReview, shown, context, dispatch, observe)
+
+    const heading = embedded ? null : <PageHeading ref={ref} id='administration-heading' kicker='Administration' title='Tenant inventories' />
+    // v2 (C31): a change opens in the shell's review sheet; the inline workbench stays the legacy path.
+    const openChange = (c: ChangeTarget) => (onReview ? onReview(c) : setChange(c))
+    const label = (action: ChangeTarget['action']) =>
+        admitted?.find((a) => a.kind === kindHere && a.action === action && a.row)?.label ?? labels?.[action] ?? ACTION_LABEL[action]
+    // v2: exactly the inventory's admitted create; legacy: v1's.
+    const create = admitted
+        ? admitted.some((a) => a.kind === kindHere && a.action === 'create' && !a.row)
+            ? CREATE[resource]
+            : undefined
+        : CREATE[resource]
+    const createLabel = admitted?.find((a) => a.kind === kindHere && a.action === 'create' && !a.row)?.label ?? labels?.create ?? CREATE[resource]?.title
 
     if (!tenant || !context) {
         return (
@@ -222,15 +275,43 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
     )
     const page = shown?.page
     const empty = page !== undefined && !failure && page.count === 0 && page.offset === 0 && page.complete
+    // v2 (C31): the domain column of this inventory.
+    const extra: { heading: string; cell: (item: Item, id: string | null) => string } | null = !onReview
+        ? null
+        : resource === 'profiles'
+          ? { heading: 'Topics', cell: (item) => listText(topicRefs(item).map((t) => t.name ?? t.id ?? '')) }
+          : resource === 'topics'
+            ? {
+                  heading: 'Used by',
+                  cell: (item, id) => {
+                      if (!relations) return 'Reading profiles…'
+                      if (relations.failure) return 'Not read'
+                      const users = relations.usedBy(id, itemName(info, item))
+                      return users.length > 0 ? listText(users) : relations.complete ? 'No profile' : 'None in the profiles read'
+                  },
+              }
+            : resource === 'apiKeys'
+              ? {
+                    heading: 'State',
+                    cell: (_item, id) => {
+                        const old = rotations.find((r) => r.oldKey.id === id && r.stage !== 'complete')
+                        if (old) return 'Replace after deployment'
+                        const fresh = rotations.find((r) => r.newKey?.id === id && r.stage !== 'complete')
+                        if (fresh) return `New key for ${fresh.application}`
+                        return 'In use'
+                    },
+                }
+              : null
 
     return (
         <section aria-labelledby='administration-heading' data-slot='administration' className='flex flex-col gap-5'>
             {heading}
             <p className='text-academy-ink-soft -mt-4 text-[13px]' data-slot='administration-tenant'>
-                Read-only inventories of {tenant.label}, read with its management client. Nothing here changes the
-                tenant.
+                {onReview
+                    ? `Inventories of ${tenant.label}, read with its management client. A change opens a review and applies only after you confirm it.`
+                    : `Read-only inventories of ${tenant.label}, read with its management client. Nothing here changes the tenant.`}
             </p>
-            <div className='flex flex-col gap-3' data-slot='administration-resources'>
+            {pinned ? null : <div className='flex flex-col gap-3' data-slot='administration-resources'>
                 {(['AI Runtime Security', 'Data Loss Prevention'] as const).map((group) => (
                     <div key={group} role='group' aria-labelledby={`${ids}-${group.replace(/ /g, '-')}`} className='flex flex-col gap-1'>
                         <span id={`${ids}-${group.replace(/ /g, '-')}`} className='text-academy-ink-soft text-[12px] font-medium'>
@@ -253,7 +334,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                         </div>
                     </div>
                 ))}
-            </div>
+            </div>}
             <div className='flex flex-wrap items-end gap-3'>
                 <label className='flex min-w-48 flex-1 flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-filter`}>
                     Filter this page
@@ -269,9 +350,9 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                 <Button type='button' tier='secondary' disabled={loading} onClick={() => void load(page?.offset ?? 0)}>
                     Refresh
                 </Button>
-                {CREATE[resource] ? (
-                    <Button type='button' tier='secondary' onClick={() => setChange(CREATE[resource] ?? null)}>
-                        {CREATE[resource]?.title}
+                {create ? (
+                    <Button type='button' tier='secondary' onClick={() => openChange(create)}>
+                        {createLabel}
                     </Button>
                 ) : null}
             </div>
@@ -320,6 +401,11 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                                 <th scope='col' className='py-2 pr-3 font-medium'>
                                     ID
                                 </th>
+                                {extra ? (
+                                    <th scope='col' className='py-2 pr-3 font-medium'>
+                                        {extra.heading}
+                                    </th>
+                                ) : null}
                                 <th scope='col' className='py-2 font-medium'>
                                     <span className='sr-only'>Actions</span>
                                 </th>
@@ -335,6 +421,11 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                                         <td className='text-academy-ink-soft py-2 pr-3 font-mono text-[12px] break-all'>
                                             {id ?? '—'}
                                         </td>
+                                        {extra ? (
+                                            <td className='py-2 pr-3 text-[12px]' data-slot='administration-relation'>
+                                                {extra.cell(item, id)}
+                                            </td>
+                                        ) : null}
                                         <td className='py-2 text-right'>
                                             {id !== null && info.detail ? (
                                                 <Button
@@ -375,9 +466,21 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
             ) : null}
 
             {detail ? (
-                <DetailPanel state={detail} info={info} onClose={() => setDetail(null)} onChange={setChange} />
+                <DetailPanel
+                    state={detail}
+                    info={info}
+                    onClose={() => setDetail(null)}
+                    onChange={openChange}
+                    label={label}
+                    admitted={admitted ? (c) => admitted.findIndex((a) => a.kind === c.kind && a.action === c.action && a.row) : undefined}
+                    rotation={(item) => {
+                        const id = itemId(info, item)
+                        return rotations.find((r) => r.oldKey.id === id && r.stage !== 'complete') ?? null
+                    }}
+                    onFinishRotation={onFinishRotation}
+                />
             ) : null}
-            {change ? (
+            {change && !onReview ? (
                 <ChangeWorkbench
                     key={`${change.kind}-${change.action}-${change.target}`}
                     change={change}
@@ -388,7 +491,7 @@ export const AdministrationView = forwardRef<HTMLHeadingElement, Props>(function
                     onClose={() => setChange(null)}
                 />
             ) : null}
-            <ChangeResults results={snapshot.changes.results.filter((r) => !isGatewayKind(r.kind))} dispatch={dispatch} />
+            {onReview ? null : <ChangeResults results={snapshot.changes.results.filter((r) => !isGatewayKind(r.kind))} dispatch={dispatch} />}
         </section>
     )
 })
@@ -432,7 +535,7 @@ function itemChanges(info: ResourceInfo, item: Item, name: string): ChangeTarget
                 kind,
                 action: 'version',
                 target: id,
-                title: `Add a key for ${fieldText(item.cust_app)}`,
+                title: `Issue additional key for ${fieldText(item.cust_app)}`,
                 body: pretty({ ...TEMPLATES.key, cust_app: item.cust_app ?? '' }),
             },
             { kind, action: 'delete', target: id, title: `Delete ${name}`, body: '{}' },
@@ -468,12 +571,22 @@ function DetailPanel({
     info,
     onClose,
     onChange,
+    label = (action) => ACTION_LABEL[action],
+    rotation = () => null,
+    onFinishRotation,
+    admitted = () => 0,
 }: {
     state: DetailState
     info: ResourceInfo
     onClose: () => void
     onChange: (change: ChangeTarget) => void
+    label?: (action: ChangeTarget['action']) => string
+    rotation?: (item: Item) => RotationView | null
+    onFinishRotation?: (application: string) => void
+    /** v2 (C31): a row action's place in the inventory, or -1 when it is not admitted. */
+    admitted?: (change: ChangeTarget) => number
 }) {
+    const inRotation = state.kind === 'shown' && state.item ? rotation(state.item) : null
     const headingId = useId()
     const heading = useRef<HTMLHeadingElement>(null)
     useEffect(() => {
@@ -524,10 +637,18 @@ function DetailPanel({
                 </>
             )}
             <div className='flex flex-wrap gap-2'>
+                {inRotation && onFinishRotation ? (
+                    <Button type='button' tier='primary' data-slot='finish-rotation' onClick={() => onFinishRotation(inRotation.application)}>
+                        Finish rotation…
+                    </Button>
+                ) : null}
                 {state.kind === 'shown' && state.item
-                    ? itemChanges(info, state.item, state.name).map((c) => (
+                    ? itemChanges(info, state.item, state.name)
+                          .filter((c) => admitted(c) >= 0)
+                          .sort((a, b) => admitted(a) - admitted(b))
+                          .map((c) => (
                           <Button key={c.action} type='button' tier='secondary' onClick={() => onChange(c)}>
-                              {ACTION_LABEL[c.action]}
+                              {label(c.action)}
                           </Button>
                       ))
                     : null}
@@ -537,4 +658,87 @@ function DetailPanel({
             </div>
         </section>
     )
+}
+
+/** A short list for a table cell: the first three names and how many more. */
+function listText(names: string[]): string {
+    const shown = names.filter(Boolean)
+    if (shown.length === 0) return '—'
+    return shown.length <= 3 ? shown.join(', ') : `${shown.slice(0, 3).join(', ')} +${shown.length - 3}`
+}
+
+/** The custom topics a security profile's policy names, by one walk of its JSON (C31). */
+export function topicRefs(profile: Item): { id: string | null; name: string | null }[] {
+    const found = new Map<string, { id: string | null; name: string | null }>()
+    const walk = (value: unknown, depth: number) => {
+        if (depth > 12 || value === null || typeof value !== 'object') return
+        if (Array.isArray(value)) {
+            for (const v of value) walk(v, depth + 1)
+            return
+        }
+        const o = value as Record<string, unknown>
+        const id = typeof o.topic_id === 'string' ? o.topic_id : null
+        const name = typeof o.topic_name === 'string' ? o.topic_name : null
+        if (id || name) found.set(id ?? `name:${name}`, { id, name })
+        for (const v of Object.values(o)) walk(v, depth + 1)
+    }
+    walk(profile.policy ?? profile, 0)
+    return [...found.values()]
+}
+
+/** Which profiles use a topic, derived from one profiles read (C31). */
+interface TopicRelations {
+    usedBy: (topicId: string | null, topicName: string) => string[]
+    complete: boolean
+    failure: string | null
+}
+
+/**
+ * The profile ↔ topic relationship inventory: one read of the profiles
+ * inventory (first 100), walked once with {@link topicRefs}. Shown only on
+ * the Custom topics tab; "None in the profiles read" when that read was not
+ * the whole inventory.
+ */
+function useTopicRelations(
+    resource: ManagementResource,
+    enabled: boolean,
+    shown: Shown | null,
+    context: ContextRef | null,
+    dispatch: Dispatch,
+    observe: ObserveManagement
+): TopicRelations | null {
+    const [relations, setRelations] = useState<TopicRelations | null>(null)
+    const readAt = shown?.readAt.getTime() ?? 0
+    useEffect(() => {
+        if (!enabled || resource !== 'topics' || !context) return
+        let live = true
+        void readManagement(dispatch, observe, context, { kind: 'page', resource: 'profiles', offset: 0, limit: 100 }).then((outcome) => {
+            if (!live) return
+            if (outcome.kind === 'notAdmitted' || outcome.result.kind !== 'page') {
+                setRelations({ usedBy: () => [], complete: false, failure: outcome.kind === 'notAdmitted' ? outcome.message : 'failed' })
+                return
+            }
+            const page = outcome.result.page
+            const profiles = JSON.parse(page.items) as Item[]
+            const byId = new Map<string, string[]>()
+            const byName = new Map<string, string[]>()
+            for (const profile of profiles) {
+                const name = typeof profile.profile_name === 'string' ? profile.profile_name : String(profile.profile_id ?? '')
+                for (const t of topicRefs(profile)) {
+                    if (t.id) byId.set(t.id, [...(byId.get(t.id) ?? []), name])
+                    else if (t.name) byName.set(t.name, [...(byName.get(t.name) ?? []), name])
+                }
+            }
+            setRelations({
+                usedBy: (id, topicName) => [...new Set([...(id ? (byId.get(id) ?? []) : []), ...(byName.get(topicName) ?? [])])],
+                complete: page.offset === 0 && page.complete,
+                failure: null,
+            })
+        })
+        return () => {
+            live = false
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- re-derived with each topics read
+    }, [enabled, resource, context, readAt])
+    return relations
 }

@@ -38,6 +38,8 @@ pub enum InboxKind {
     Gateway,
     /// A warning recorded at tenant setup (C29).
     SetupWarning,
+    /// A key rotation in progress (C31, I7).
+    Rotation,
 }
 
 /// An operator's hold on an entry, with the core-computed return time.
@@ -718,6 +720,45 @@ impl State {
                     hold: hold_of(&item),
                 });
             }
+        }
+        for item in self.rotation_items() {
+            items.push(InboxEntry {
+                id: item.id.clone(),
+                kind: InboxKind::Rotation,
+                needs_action: true,
+                severity: Tone::Warn,
+                title: item.title.clone(),
+                detail: item.detail.clone(),
+                source: item.source.clone(),
+                product: Some(ProductId::RuntimeSecurity),
+                target: Some(InboxTarget {
+                    feature: FeatureId::Administration,
+                    product: Some(ProductId::RuntimeSecurity),
+                    resource: Some(ManagementResource::ApiKeys),
+                    item: item
+                        .facts
+                        .iter()
+                        .find(|f| f.label == "Old key")
+                        .map(|f| f.value.clone()),
+                }),
+                action_label: Some(item.action_label.clone()),
+                facts: item.facts.clone(),
+                when: self
+                    .data
+                    .active
+                    .as_ref()
+                    .and_then(|id| self.tenant(id))
+                    .and_then(|t| {
+                        t.rotations
+                            .iter()
+                            .find(|r| {
+                                super::rotation_domain::rotation_item_id(&r.application) == item.id
+                            })
+                            .map(|r| r.issued_at)
+                    })
+                    .unwrap_or(read_at),
+                hold: hold_of(&item),
+            });
         }
         InboxView {
             items,

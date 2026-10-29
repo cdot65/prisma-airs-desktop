@@ -564,6 +564,9 @@ pub(crate) async fn run(run: &mut Run<'_>, id: &str) -> Result<FamilyResult> {
         }
     };
     match id {
+        "L03" if ctx.run.subject == crate::subject::Subject::Chunk(31) => {
+            c31_topic(&mut ctx, &mut desk).await?
+        }
         "L03" => l03(&mut ctx, &mut desk).await?,
         "L04" => l04(&mut ctx, &mut desk).await?,
         _ => l08(&mut ctx, &mut desk).await?,
@@ -807,6 +810,54 @@ async fn l03(ctx: &mut Ctx<'_, '_>, desk: &mut Desk) -> Result<()> {
         ],
     )
     .await
+}
+
+/// C31's live row, inside L03's designation (create, update and delete
+/// disposable `airs-v2-c25-*` topics): one topic review applied after the
+/// native confirmation and read back, then removed and read back absent.
+async fn c31_topic(ctx: &mut Ctx<'_, '_>, desk: &mut Desk) -> Result<()> {
+    let p = ctx.prefix.clone().unwrap_or_default();
+    let topic = json!({"topic_name": format!("{p}c31-topic"), "description": "C31 review apply",
+        "examples": ["c31 synthetic example"]});
+    let created = ctx
+        .change(
+            desk,
+            Change {
+                spec: spec("C31-topic-create", &["W08"]),
+                kind: "topics",
+                action: "create",
+                target: None,
+                body: topic.clone(),
+                scoped: false,
+                expect: "found",
+                creates: Some("topic"),
+            },
+        )
+        .await?;
+    let revision = created
+        .as_ref()
+        .map(|c| c["revision"].clone())
+        .filter(|r| !r.is_null())
+        .unwrap_or(json!(1));
+    let mut update = topic;
+    update["description"] = json!("C31 review apply, updated through the review");
+    update["revision"] = revision;
+    ctx.change(
+        desk,
+        Change {
+            spec: spec("C31-topic-review-apply", &["W08"]),
+            kind: "topics",
+            action: "update",
+            target: Some("topic"),
+            body: update,
+            scoped: false,
+            expect: "found",
+            creates: None,
+        },
+    )
+    .await?;
+    ctx.cleanup(desk, &[("topic", spec("C31-cleanup-topic", &["W08"]))])
+        .await
 }
 
 async fn l04(ctx: &mut Ctx<'_, '_>, desk: &mut Desk) -> Result<()> {

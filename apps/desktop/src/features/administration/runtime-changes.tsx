@@ -157,6 +157,8 @@ interface WorkbenchProps {
     onDraft?: (body: string) => void
     /** Shown under the editor (where the draft is kept). */
     note?: ReactNode
+    /** v2 (C31, I3): Apply stays disabled until the typed name matches the review's. */
+    requireTyped?: boolean
 }
 
 /** How long typing pauses before a draft is kept. */
@@ -179,8 +181,9 @@ function dictionaryParts(body: string): { metadata: string; keywords: string } {
  * draft. While the native confirmation is open the editor is read-only and
  * the main window is held by the sheet.
  */
-export function ChangeWorkbench({ change, review, staged = null, context, dispatch, onClose, onDraft, note }: WorkbenchProps) {
+export function ChangeWorkbench({ change, review, staged = null, context, dispatch, onClose, onDraft, note, requireTyped = false }: WorkbenchProps) {
     const ids = useId()
+    const [typedText, setTypedText] = useState('')
     const heading = useRef<HTMLHeadingElement>(null)
     const editor = useRef<HTMLTextAreaElement>(null)
     const keywords = useRef<HTMLTextAreaElement>(null)
@@ -458,12 +461,13 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
                                 spellCheck={false}
                                 readOnly={confirming}
                                 data-slot='change-confirmation'
+                                onChange={(e) => setTypedText(e.currentTarget.value)}
                             />
                             <div>
                                 <Button
                                     type='button'
                                     tier='primary'
-                                    disabled={busy || confirming || blocked}
+                                    disabled={busy || confirming || blocked || (requireTyped && typedText !== (mine.confirmation ?? ''))}
                                     onClick={() => void apply()}
                                 >
                                     Apply…
@@ -487,7 +491,7 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
     )
 }
 
-function resultText(result: ChangeResultView): string {
+export function resultText(result: ChangeResultView): string {
     if (!result.settled) return 'Applying…'
     // Each provisioning step keeps its own outcome; the steps say what is known.
     if (result.provisioning)

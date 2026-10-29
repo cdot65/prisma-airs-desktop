@@ -7,6 +7,7 @@
 //! native host creates one [`Core`] with its [`Adapters`] (ADR 0001).
 
 pub mod academy;
+pub mod admin_inventory;
 mod authority;
 pub mod avatar;
 pub mod changes;
@@ -53,10 +54,10 @@ pub use authority::{
     LibraryState, LibraryView, LocalDraftView, MAX_TENANTS, Observation, OfflineState, OfflineView,
     OperatorConfirmation, OverviewView, PagePrinter, Principal, ProductRead, ProductReadState,
     ReadState, ReadStatus, Readback, Receipt, Refusal, ReportTarget, ReportUndoView, ReportsState,
-    ReportsView, ResetFailure, ResetStage, ScanProgress, ScanRecordView, ScanState, ScanView,
-    SecretPresenter, SecretState, SelectedWorkspace, SessionsView, ShellSnapshot, SnoozeReceipt,
-    StagedFileFailure, StagedFileState, StagedFileView, StorageHealth, SwitchResolution,
-    TenantView, UrlOpener, ViewScope,
+    ReportsView, ResetFailure, ResetStage, RotationStage, RotationView, ScanProgress,
+    ScanRecordView, ScanState, ScanView, SecretPresenter, SecretState, SelectedWorkspace,
+    SessionsView, ShellSnapshot, SnoozeReceipt, StagedFileFailure, StagedFileState, StagedFileView,
+    StorageHealth, SwitchResolution, TenantView, UrlOpener, ViewScope,
 };
 pub use authority::{
     CollectionView, ConflictKind, DocumentView, EnvironmentView, FolderPicker, RecentView,

@@ -1,0 +1,45 @@
+{
+  "review_id": "C31-attempt-04-1793232104",
+  "subject": "C31",
+  "attempt": "attempt-04",
+  "request_id": "C31-attempt-04-1793232104",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed), run by hand; see limitations",
+  "time": "2026-10-28T20:15:00-04:00",
+  "model": "gpt-6.1-sol (xhigh)",
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": 0,
+  "blockers": 1,
+  "evidence_gaps": 1,
+  "fingerprints": {
+    "source": "bacdb635ce74b9c6c59f115546d180555b4babb6fff07f3f0c65f39bb84a04e3",
+    "dependencies": "41a5efe3ca9192940a8dcfdd87c96bccc039e663cb64f7f53c10a149050b4997",
+    "build_flags": "53866b1875c103ac65bd4b61d0c849caeeb71aec93e20c7ae1126cae432ad611",
+    "evidence": "29eb18f52d2bcc7f918a6999bc1877a1a1ddaae61a6deb3f470960218ca58d4b"
+  },
+  "native_acceptance": {
+    "record": "docs/planning/evidence/C31/native-acceptance.json",
+    "sha256": "180165567263de3ccae9ade24cdb9edc08a55d9e0a2cb460f543f7dc9097d1a1",
+    "prepare": "docs/planning/evidence/C31/native-prepare.json",
+    "prepare_sha256": "dd0579d86be3d20bceeb2f2500655d6296f182a1a552aacf446388416dd7b14e"
+  },
+  "live": {
+    "record": "docs/planning/evidence/C31/live/run.json",
+    "sha256": "0f8b66fcb16241cf6d37de95a5184b969aeba89d0de02c72cb8ba36570f67a2e"
+  },
+  "verdict_sha256": "812c6f9bf08aca48ef0f754cee63a3a7c551a315d13da62e1c417c05f8cdab37",
+  "source_frozen": "no repository file changed between packet preparation and the verdict",
+  "outcome": "9/9/9/8/8 with no required fixes; recommendation fail solely for the predecessor C29's mandatory live Vulture verify receipt (B1/E1), which the approved manifest does not designate (evidence/C29/live/blocked.json; live-scope-request.md names the family). Code, native (C31-N01..N04), live Redtail topic row and synthetic evidence complete; manual fresh-exec receipt, to be regenerated through the controller after C26 completes and after the C29 live row runs. Optional suggestion (modal.tsx comment about the window Escape listener) carried to C32.",
+  "attempt_history": [
+    "01 7/6/6/6/6",
+    "02 8/7/8/8/7",
+    "03 8/8/8/8/8",
+    "04 9/9/9/8/8"
+  ]
+}

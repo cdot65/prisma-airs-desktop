@@ -413,9 +413,11 @@ impl State {
                 if let Some((_, holds)) = self.holds.iter_mut().find(|(t, _)| t == &tenant) {
                     holds.retain(|h| {
                         reported.contains(&h.id)
-                            // A setup warning (C29) is not reported by reads:
-                            // its hold stays until the operator lifts it.
+                            // A setup warning (C29) or rotation reminder (C31) is
+                            // not reported by reads: its hold stays until the
+                            // operator lifts it (or the rotation completes).
                             || h.id.starts_with("vw-")
+                            || h.id.starts_with("rotation-")
                             || if h.id.starts_with("gateway-") {
                                 gateway_known.as_ref() != Some(&h.id)
                             } else {
@@ -577,6 +579,7 @@ impl State {
             .unwrap_or_default();
         if self.active_ref.as_ref() == Some(context) {
             items.extend(self.setup_warning_items());
+            items.extend(self.rotation_items());
         }
         items
     }
@@ -669,7 +672,8 @@ impl State {
         let holds: &[Hold] = self.active_holds();
         let mut attention = Vec::new();
         let mut held = Vec::new();
-        let warnings = self.setup_warning_items();
+        let mut warnings = self.setup_warning_items();
+        warnings.extend(self.rotation_items());
         for item in read
             .iter()
             .flat_map(|r| r.items.iter())

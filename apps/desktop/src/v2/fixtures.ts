@@ -5,6 +5,7 @@
  */
 import type { FeatureEntry, InboxEntry, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
 import { baseSnapshot, tenant, withTenant } from '../test/native'
+import inventory from './admin/inventory.fixture.json'
 
 /** The v2 catalogue exactly as desktop-core's `catalogue_for(V2)` lists it (C28). */
 export const V2_FEATURES: FeatureEntry[] = [
@@ -25,7 +26,7 @@ export const V2_FEATURES: FeatureEntry[] = [
 
 /** fx.home: the v2 shell on Home with no tenant yet. */
 export function fxHome(): ShellSnapshot {
-    return { ...baseSnapshot, uiVariant: 'v2', onboarding: 'done', activeFeature: 'home', showCalls: true, features: V2_FEATURES }
+    return { ...baseSnapshot, uiVariant: 'v2', onboarding: 'done', activeFeature: 'home', showCalls: true, features: V2_FEATURES, administration: inventory as ShellSnapshot['administration'] }
 }
 
 /** fx.home.dark */

@@ -250,6 +250,16 @@ pub struct Mutation {
     pub body: Value,
 }
 
+/// Whether the core admits a (kind, action) at all (Runtime or Gateway
+/// matrix): the Administration inventory is pinned against this (C31).
+pub fn is_allowed(kind: ChangeKind, action: ChangeAction) -> bool {
+    if kind.gateway().is_some() {
+        crate::gateway_changes::allowed(kind, action)
+    } else {
+        allowed(kind, action)
+    }
+}
+
 fn allowed(kind: ChangeKind, action: ChangeAction) -> bool {
     use ChangeAction::*;
     matches!(

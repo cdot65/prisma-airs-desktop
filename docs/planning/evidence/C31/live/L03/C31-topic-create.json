@@ -1,0 +1,42 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L03",
+  "check": "C31-topic-create",
+  "workflows": [
+    "W08"
+  ],
+  "environment": "test-a",
+  "manifest_sha256": "e5456fd320d532d4fb40414d4af3c4f4110657b72b2c970ef891586720932ba3",
+  "started_utc": "2026-10-28T19:55:25Z",
+  "finished_utc": "2026-10-28T19:55:27Z",
+  "inputs": {
+    "action": "create",
+    "body": {
+      "description": "C31 review apply",
+      "examples": [
+        "c31 synthetic example"
+      ],
+      "topic_name": "airs-v2-c25-c31-topic"
+    },
+    "kind": "topics"
+  },
+  "outcome": "passed",
+  "detail": "applied once after the native confirmation; read back found",
+  "observed": {
+    "confirmation_title": "Create custom topic “airs-v2-c25-c31-topic”?",
+    "failure": null,
+    "outcome": "completed"
+  },
+  "ids": {
+    "created_id": "44c3bbb8-1527-4dbc-b257-a0ef737c1446"
+  },
+  "readback": "found",
+  "cleanup": "deleted at the end of the family and read back as absent",
+  "consumption": {},
+  "implementation": {
+    "cargo_lock_sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+    "runner_sha256": "02858eba793b6476a0ba6545631db414914f20da0c66dbaa717dc2652e54180a",
+    "source_fingerprint": "7d2d1dc1a1715253e0e20b4884e1a3304563ed016d5e2f3bee9c7d7674bd64f0"
+  }
+}

@@ -35,6 +35,7 @@ mod library_domain;
 mod management_domain;
 mod observation_domain;
 mod offline_domain;
+mod rotation_domain;
 mod sessions_domain;
 mod setup_domain;
 mod workbench_domain;
@@ -56,6 +57,7 @@ pub use inbox_domain::{
 };
 pub use observation_domain::{AttentionFace, HeldItem, HoldKind, OverviewView, SnoozeReceipt};
 pub use offline_domain::{DownloadStatus, DownloadView, LocalDraftView, OfflineState, OfflineView};
+pub use rotation_domain::{RotationStage, RotationView};
 pub use sessions_domain::{
     ExportKind, ExportState, ExportView, InvestigationView, ReportTarget, ReportUndoView,
     ReportsState, ReportsView, SessionsView,
@@ -199,6 +201,12 @@ pub enum Intent {
     RecheckProduct {
         context: ContextRef,
         product: features::ProductId,
+    },
+    /// The operator's statement that `application` now uses the key a
+    /// rotation issued (C31, I7): recorded once, locally, with its time.
+    AcknowledgeDeployment {
+        context: ContextRef,
+        application: String,
     },
     /// Set an Inbox entry aside until its level rises (C30, I11).
     AcknowledgeItem {
@@ -786,6 +794,7 @@ intent_kinds! {
     DismissSwitchGuard => "dismissSwitchGuard",
     ReadTenant => "readTenant",
     RecheckProduct => "recheckProduct",
+    AcknowledgeDeployment => "acknowledgeDeployment",
     AcknowledgeItem => "acknowledgeItem",
     SnoozeItem => "snoozeItem",
     UnsnoozeItem => "unsnoozeItem",
@@ -1250,6 +1259,12 @@ pub struct ShellSnapshot {
     pub library: LibraryView,
     /// The active context's Runtime Home/Inbox observations.
     pub overview: OverviewView,
+    /// The Administration inventory (C31): static per build, published in
+    /// the v2 shell only (the legacy shell keeps its own fixed matrix and
+    /// literal snapshot).
+    pub administration: Option<crate::admin_inventory::AdminInventoryView>,
+    /// The active tenant's Runtime key rotations (C31).
+    pub rotations: Vec<rotation_domain::RotationView>,
     /// The active tenant's Inbox and read status (C30).
     pub inbox: inbox_domain::InboxView,
     /// API Client projects on this Mac (C14).
@@ -1538,6 +1553,8 @@ struct Tenant {
     products: Vec<features::ProductId>,
     /// Verify warnings recorded at wizard completion (C29).
     setup_warnings: Vec<features::SetupWarning>,
+    /// Runtime API key rotations (C31).
+    rotations: Vec<features::Rotation>,
     scan: ScanCapability,
     /// The management OAuth client secret (destination: the token origin).
     management: ScanCapability,
@@ -1563,6 +1580,7 @@ impl Tenant {
             profile,
             products: Vec::new(),
             setup_warnings: Vec::new(),
+            rotations: Vec::new(),
             scan: ScanCapability::Missing,
             management: ScanCapability::Missing,
             management_client: None,
@@ -1649,6 +1667,10 @@ struct State {
     import: ImportState,
     reset_failure: Option<ResetFailure>,
     durability_unconfirmed: bool,
+    /// A rotation fact the service established (an issuance, a removal, a
+    /// reconciliation) is held in memory but not yet saved: every later
+    /// publication retries the save; nothing remote is replayed (C31).
+    rotation_unsaved: bool,
     cleaning: bool,
     /// Cleanup was asked for while a pass ran: run another when it ends,
     /// so a record released meanwhile is not left waiting (P06).
@@ -1913,6 +1935,9 @@ impl State {
             sessions: self.sessions_view(),
             library: self.library_view(),
             overview: self.overview_view(),
+            administration: (self.ui_variant() == features::UiVariant::V2)
+                .then(crate::admin_inventory::inventory),
+            rotations: self.rotations_view(),
             inbox: self.inbox_view(&self.overview_view()),
             workbench: self.workbench_view(),
             gateway: self.gateway_view(),
@@ -1968,6 +1993,16 @@ impl State {
                 .map(|t| crate::store::TenantWarnings {
                     tenant: t.profile.id.clone(),
                     warnings: t.setup_warnings.clone(),
+                })
+                .collect(),
+            tenant_rotations: self
+                .data
+                .tenants
+                .iter()
+                .filter(|t| !t.rotations.is_empty())
+                .map(|t| crate::store::TenantRotations {
+                    tenant: t.profile.id.clone(),
+                    rotations: t.rotations.clone(),
                 })
                 .collect(),
             ui_variant: self.ui_variant(),
@@ -2375,10 +2410,13 @@ impl State {
         match saved {
             Ok(()) => {
                 self.durability_unconfirmed = false;
+                // The saved state includes every rotation fact held in memory.
+                self.rotation_unsaved = false;
                 Ok(())
             }
             Err(StoreError::Unconfirmed) => {
                 self.durability_unconfirmed = true;
+                self.rotation_unsaved = false;
                 Ok(())
             }
             Err(error) => {
@@ -2676,6 +2714,7 @@ impl Core {
             import: ImportState::Idle,
             reset_failure: None,
             durability_unconfirmed: false,
+            rotation_unsaved: false,
             cleaning: false,
             clean_again: false,
             writes_in_flight: Vec::new(),
@@ -3213,6 +3252,13 @@ fn data_from(doc: PersistedState) -> Data {
             {
                 tenant.setup_warnings = tw.warnings.clone();
             }
+            if let Some(tr) = doc
+                .tenant_rotations
+                .iter()
+                .find(|r| r.tenant == tenant.profile.id)
+            {
+                tenant.rotations = tr.rotations.clone();
+            }
             tenant
         })
         .collect();
@@ -3737,6 +3783,20 @@ fn admit(
         }
         Intent::UnsnoozeItem { context, id } => {
             state.restore_insight(&context, &id)?;
+            state.changed();
+        }
+        Intent::AcknowledgeDeployment {
+            context,
+            application,
+        } => {
+            state.require_storage()?;
+            let before = state.data.clone();
+            let issued_by = state.acknowledge_deployment(&context, &application)?;
+            state.save_with(&before)?;
+            // Only a recorded acknowledgement retires the held copy (I6).
+            if let Some((operation, old_key)) = issued_by {
+                state.forget_issuance(&operation, &old_key);
+            }
             state.changed();
         }
         Intent::DeleteTenant { tenant } => {

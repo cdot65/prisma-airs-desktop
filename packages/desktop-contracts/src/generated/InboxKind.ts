@@ -3,4 +3,4 @@
 /**
  * Where an Inbox entry came from.
  */
-export type InboxKind = "runtime" | "gateway" | "setupWarning";
+export type InboxKind = "runtime" | "gateway" | "setupWarning" | "rotation";

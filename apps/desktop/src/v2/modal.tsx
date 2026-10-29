@@ -42,7 +42,11 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
                 // Only when nothing else took focus meanwhile (⌘T replacing the
                 // palette hands focus to the tenant list, which must keep it).
                 const active = document.activeElement
-                if (!active || active === document.body) target?.focus()
+                if (active && active !== document.body) return
+                // The opener may be gone (a "Finish rotation…" that completed):
+                // focus the page heading rather than leave it on nothing.
+                if (target?.isConnected) target.focus()
+                else document.querySelector<HTMLElement>('main h1[tabindex="-1"]')?.focus()
             })
         }
     }, [id, pushModal, popModal])
@@ -60,6 +64,24 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
             const first = node.querySelector<HTMLElement>('[autofocus]') ?? node.querySelector<HTMLElement>(FOCUSABLE)
             ;(first ?? node).focus()
         }
+    }, [topmost])
+
+    // Escape still closes the topmost dialog when focus has left it (a
+    // native sheet returning focus to the page body, a click on the scrim's
+    // edge): the dialog's own handler stops the event first when it has focus.
+    const closeRef = useRef(onClose)
+    closeRef.current = onClose
+    useEffect(() => {
+        if (!topmost) return
+        const onWindowKey = (event: globalThis.KeyboardEvent) => {
+            if (event.key !== 'Escape' || event.defaultPrevented) return
+            const node = dialog.current
+            if (node && node.contains(document.activeElement)) return
+            event.preventDefault()
+            closeRef.current()
+        }
+        window.addEventListener('keydown', onWindowKey)
+        return () => window.removeEventListener('keydown', onWindowKey)
     }, [topmost])
 
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

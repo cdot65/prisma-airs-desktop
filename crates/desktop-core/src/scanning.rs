@@ -192,6 +192,27 @@ pub struct ScanResultView {
     pub content_errors: Vec<ContentErrorView>,
     pub prompt_detected: Vec<Detection>,
     pub response_detected: Vec<Detection>,
+    /// Custom topic results, keyed apart from the detectors (C31): the
+    /// service's topic verdict and the topics it named, for the prompt and
+    /// for the response separately.
+    pub topics: TopicVerdict,
+    pub response_topics: TopicVerdict,
+}
+
+/// What the custom topic guardrails said about the prompt (C31). Topic
+/// matches are independent of detector results: a profile without the
+/// topic assigned yields no match, and an applied topic never suppresses an
+/// enabled detector.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicVerdict {
+    /// The `topic_violation` flag as reported (absent when the service did
+    /// not report it).
+    pub violation: Option<bool>,
+    /// Topics the service reported as blocked (matched and enforced).
+    pub blocked: Vec<String>,
+    /// Topics the service reported as allowed (matched, not enforced).
+    pub allowed: Vec<String>,
 }
 
 fn shown(text: &str) -> String {
@@ -233,6 +254,7 @@ impl ScanResultView {
         // Any reported content-level error makes the scan incomplete, even
         // when the global flags disagree (the schema does not tie them).
         let incomplete = response.timeout || response.error || !response.errors.is_empty();
+        let wire = serde_json::to_value(response).unwrap_or_default();
         Self {
             scan_id: shown(&response.scan_id),
             report_id: shown(&response.report_id),
@@ -256,7 +278,38 @@ impl ScanResultView {
                 .collect(),
             prompt_detected: detections(&response.prompt_detected),
             response_detected: detections(&response.response_detected),
+            topics: direction_topics(&wire, "prompt"),
+            response_topics: direction_topics(&wire, "response"),
         }
+    }
+}
+
+/// The topic results of one direction (`prompt` or `response`), read from
+/// the response's wire form: the `topic_violation` flag and the topic
+/// guardrail's blocked and allowed names.
+fn direction_topics(wire: &serde_json::Value, direction: &str) -> TopicVerdict {
+    let names = |list: Option<&serde_json::Value>| -> Vec<String> {
+        list.and_then(serde_json::Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(serde_json::Value::as_str)
+                    .take(32)
+                    .map(shown)
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let details = wire
+        .get(format!("{direction}_detection_details"))
+        .and_then(|d| d.get("topic_guardrails_details"));
+    TopicVerdict {
+        violation: wire
+            .get(format!("{direction}_detected"))
+            .and_then(|d| d.get("topic_violation"))
+            .and_then(serde_json::Value::as_bool),
+        blocked: names(details.and_then(|d| d.get("blocked_topics"))),
+        allowed: names(details.and_then(|d| d.get("allowed_topics"))),
     }
 }
 

@@ -74,7 +74,7 @@ and reconciled by hand; a key missing here is a specification defect.
 | `ts.extraCases`, `ts.packs` | user-created cases, packs | Core | library | persisted | kept |
 | `ts.hist` | API responses | Core | workbench history | persisted | kept (I5) |
 | `ts.topicRev`, `ts.topicDesc`, `ts.injApplied`, `ts.aesApplied`, `ts.aesRev` | applied review results | Core | read back from the product scopes after apply | — | kept for Runtime topics; `aes*` **dropped** (P18) |
-| `ts.keyRotated`, `ts.keySecretClosed`, `ts.keyDeployed`, `ts.keyDoneAt` | rotation stage | Core | rotation state: `additional_key_issued`, `secret_shown`, `deployment_acknowledged_at`, `old_key_removed_at` | per tenant, session for the held secret | **changed** (P20): supported Version → Delete sequence; see screens/reviews-administration.md |
+| `ts.keyRotated`, `ts.keySecretClosed`, `ts.keyDeployed`, `ts.keyDoneAt` | rotation stage | Core | `Tenant.rotations` → `ShellSnapshot.rotations: RotationView{stage, oldKey, newKey, issuedBy, deploymentAcknowledgedAt, oldKeyRemovedAt, removalRejected}`; stage derived (issuanceUnconfirmed, issued, resumed, acknowledged, removalUnconfirmed, complete); intent `acknowledgeDeployment` | per tenant, persisted (timestamps stored once, and the reviewed key name that alone confirms an unconfirmed issuance); the held secret only on its change result, for its context | **changed** (P20, P41): supported Version → Delete sequence; see screens/reviews-administration.md |
 | `ts.follows` | follow-up status per conversation | Core | sessions | persisted | kept |
 | `ts.convo`, `ts.userConvos`, `ts.msgsBy`, `ts.decs`, `ts.ended`, `ts.archived` | current conversation, user conversations, messages, decisions, ended flags, archives | Core | existing harness sessions and decisions | persisted, protected | kept |
 | `ts.draft` | composer draft | UI | harness store per conversation | transient | kept |
@@ -86,4 +86,4 @@ and reconciled by hand; a key missing here is a specification defect.
 | Scan API key | webview password field read through a ref, cleared at once, sent once as `EnteredSecret` inside `configureScanCredential` (P25) | vault (`cr-` record), Keychain v2 namespace | state and mode only (`ScanView`), never the value |
 | Management client secret | same path, `configureManagementCredential` (optional section) | vault | client id and state only |
 | Gateway workspace key | same path, `configureInferenceCredential` | vault | state only |
-| Issued API key (rotation) | `RevealSecret` host sheet / host clipboard | held per result for the active context, never persisted | never |
+| Issued API key (rotation) | `RevealSecret` host sheet / host clipboard | held per result for the active context, never persisted; retired by the review's exit (`DiscardChange` on the applied review, also before the change settles), by acknowledging the deployment, or by a context change | never |

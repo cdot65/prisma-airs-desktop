@@ -28,8 +28,8 @@ canvas. Props are the `data-props` of `prototype/R2App.dc.html`
 | R2On07 Done | R2Onboard | step=done | `fx.on.done` | finite open, `onboarding=done` | C29 |
 | R2Inbox | R2App | start=inbox | `fx.inbox` | V2-T04, T12, T13 | C30 |
 | R2Fresh | R2App | start=home, tenant never read | `fx.fresh` | first read pending, empty Inbox (I12) | C30 |
-| R2Admin | R2App | start=admin | `fx.admin` | V2-T19, per-tab labels | C31 |
-| R2Review | R2App | start=admin, overlay=review | `fx.review` | V2-T03, T06, T07, T08 | C31 |
+| R2Admin | R2App | start=admin | `fxAdmin` (v2/admin/administration.test.tsx) | V2-T19, T20, per-tab labels | C31 |
+| R2Review | R2App | start=admin, overlay=review | `fxAdmin` + `review()`/`rotation()` (same file) | V2-T03, T06, T08; T07 in `ui_v2_reviews` | C31 |
 | R2Harness | R2App | start=harness, convo=blocks | `fx.harness.blocks` | V2-T17 | C32 |
 | R2Harness2 | R2App | start=harness, convo=mcp | `fx.harness.mcp` | V2-T17 (Gateway MCP read, P16) | C32 |
 | R2Harness3 | R2App | start=harness, convo=keys | `fx.harness.keys` | V2-T17, T18 | C32 |

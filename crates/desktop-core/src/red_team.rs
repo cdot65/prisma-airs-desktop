@@ -949,6 +949,23 @@ mod tests {
         ));
     }
 
+    /// V2-T21: a scan reply carrying `target_name` (top level or nested)
+    /// yields identifiers and types only; the name never reaches the read
+    /// scope the Administration Targets tab renders from.
+    #[test]
+    fn a_target_name_never_reaches_the_targets_scope() {
+        let scans = red_team_scans(&json!({"data": [{"uuid": ID, "status": "COMPLETED",
+            "target_id": ID, "target_name": "Payments assistant (prod)",
+            "target": {"target_name": "Payments assistant (prod)", "name": "Payments assistant (prod)"},
+            "target_type": "APPLICATION", "job_type": "STATIC"}], "pagination": {}}))
+        .expect("valid");
+        let text = serde_json::to_string(&scans).expect("json");
+        assert!(!text.contains("Payments assistant"), "{text}");
+        assert!(!text.contains("target_name") && !text.contains("targetName"));
+        assert_eq!(scans.rows[0].target_id.as_deref(), Some(ID));
+        assert_eq!(scans.rows[0].target_type.as_deref(), Some("APPLICATION"));
+    }
+
     #[test]
     fn rows_keep_no_names_uris_or_findings() {
         let scans = red_team_scans(&json!({"data": [{"uuid": ID, "name": "Secret campaign",

@@ -70,6 +70,8 @@ pub(super) struct ManagementRecord {
     /// One product's part of the tenant's Home read (C30, I4): its result
     /// settles into the tenant's read record as a finite outcome.
     read_part: Option<crate::features::ProductId>,
+    /// A Runtime API key inventory page: it reconciles key rotations (C31).
+    api_keys_page: bool,
 }
 
 /// The binding of one credential generation (context): its session and
@@ -241,6 +243,18 @@ impl State {
         let gateway = self.gateway_admission(&context, &request)?;
         let source = self.binding_source(&context, keychain, session_vault)?;
         let overview = request == ManagementRequest::Overview;
+        // Key reads reconcile rotations (C31): a page, or one key's detail
+        // (a walk of the whole inventory, so its absence is authoritative).
+        let api_keys_page = matches!(
+            request,
+            ManagementRequest::Page {
+                resource: crate::management::ManagementResource::ApiKeys,
+                ..
+            } | ManagementRequest::Detail {
+                resource: crate::management::ManagementResource::ApiKeys,
+                ..
+            }
+        );
         let lists_workspaces = super::gateway_domain::lists_workspaces(&request);
         let (domain, workspace, scope) = match gateway {
             Some(g) => (g.domain, g.workspace, g.scope),
@@ -274,6 +288,7 @@ impl State {
             workspace,
             lists_workspaces,
             read_part: None,
+            api_keys_page,
         });
         if overview {
             let context = self.management_calls.last().map(|r| r.context.clone());
@@ -314,6 +329,7 @@ impl State {
         let current = self.active_ref.clone();
         let mut overviews = Vec::new();
         let mut parts = Vec::new();
+        let mut key_pages = Vec::new();
         let mut listings = Vec::new();
         // A setup's verify reads (C29) belong to the draft's context and
         // settle into its lines instead of an observation.
@@ -356,6 +372,34 @@ impl State {
             if let Some(product) = record.read_part {
                 parts.push((record.context.clone(), product, result.clone()));
             }
+            if record.api_keys_page && !retired {
+                match &result {
+                    ManagementResult::Page { page } => {
+                        // The whole inventory in one read: the first page,
+                        // and the last.
+                        key_pages.push(KeyRead::Items(
+                            record.context.clone(),
+                            page.items.clone(),
+                            page.offset == 0 && page.complete,
+                        ));
+                    }
+                    ManagementResult::Detail { detail } => match (&detail.found, &detail.item) {
+                        (crate::management::DetailFound::Found, Some(item)) => {
+                            key_pages.push(KeyRead::Items(
+                                record.context.clone(),
+                                format!("[{item}]"),
+                                false,
+                            ));
+                        }
+                        (crate::management::DetailFound::Absent, _) => {
+                            key_pages
+                                .push(KeyRead::Absent(record.context.clone(), detail.id.clone()));
+                        }
+                        _ => {}
+                    },
+                    _ => {}
+                }
+            }
             if record.lists_workspaces
                 && let ManagementResult::Gateway {
                     gateway: crate::gateway::GatewayResult::List { list },
@@ -381,6 +425,22 @@ impl State {
         }
         for (context, product, result) in parts {
             self.product_read_settled(&context, product, &result);
+        }
+        for read in key_pages {
+            match read {
+                KeyRead::Items(context, items, whole) => {
+                    if let Ok(tenant) = self.check_context(&context)
+                        && let Ok(items) = serde_json::from_str::<Vec<serde_json::Value>>(&items)
+                    {
+                        self.rotation_reconcile(&tenant, &items, whole);
+                    }
+                }
+                KeyRead::Absent(context, id) => {
+                    if let Ok(tenant) = self.check_context(&context) {
+                        self.rotation_key_absent(&tenant, &id);
+                    }
+                }
+            }
         }
         for (context, list) in listings {
             self.gateway_listed(&context, &list);
@@ -449,4 +509,12 @@ fn withdrawn(result: ManagementResult) -> ManagementResult {
         failure: ManagementFailure::Cancelled,
         outcome,
     }
+}
+
+/// A settled key read, as rotations reconcile from it (C31).
+enum KeyRead {
+    /// Keys read, and whether they are the whole inventory.
+    Items(ContextRef, String, bool),
+    /// A whole-inventory walk ended without this key.
+    Absent(ContextRef, String),
 }
