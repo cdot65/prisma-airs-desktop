@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type ToastKind = 'ok' | 'info' | 'warn'
-import type { FeatureId, Intent, ManagementResource } from '@prisma-airs/desktop-contracts'
+import type { AdminProductId, FeatureId, Intent, ManagementResource } from '@prisma-airs/desktop-contracts'
 
 /** What a contextual action asked the destination to select on arrival (C30), owned by the tenant it was followed in (I2). */
 export interface Arrival {
@@ -10,6 +10,8 @@ export interface Arrival {
     resource: ManagementResource | null
     /** The item to filter to, by name. */
     item: string | null
+    /** The Administration product to open (the rail's product children, C35). */
+    product?: AdminProductId
     /** Counts arrivals: a destination already open applies a new one. */
     sequence: number
 }
@@ -80,6 +82,9 @@ interface ShellStore {
     setScope(tenant: string | null, context: string | null): void
     paletteOpen: boolean
     switcherOpen: boolean
+    /** The rail's Administration children shown or hidden (C35; the prototype's `adminNav`). */
+    adminNavOpen: boolean
+    setAdminNav(open: boolean): void
     toasts: Toast[]
     /** Open modal ids, bottom to top; only the last is interactive (I8). */
     modals: string[]
@@ -149,6 +154,8 @@ export const useShellStore = create<ShellStore>((set, get) => ({
         })),
     paletteOpen: false,
     switcherOpen: false,
+    adminNavOpen: true,
+    setAdminNav: (open) => set({ adminNavOpen: open }),
     toasts: [],
     modals: [],
     inboxSelection: {},

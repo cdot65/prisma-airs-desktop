@@ -33,15 +33,28 @@
     --v2-page-x: 44px;
     --v2-title: 26px;
     --v2-card-pad: 20px;
-    --v2-gap: 12px;
-    --v2-text: 14px;
+    /* Grid and card gaps (the prototype's 16–20px; 12px is only inside rows). */
+    --v2-gap: 16px;
+    --v2-gap-row: 12px;
+    /* The prototype's base text is 13px; 14px is the subtitle size. */
+    --v2-text: 13px;
+    --v2-text-1: 14px;
     --v2-text-2: 12px;
+    --v2-h2: 13px;
     --v2-control: 32px;
     --v2-radius-control: 7px;
     --v2-radius-card: 12px;
     --v2-rail: 244px;
+    --v2-header: 56px;
     --v2-reading: 860px;
-    --v2-scrim: rgba(20, 20, 26, 0.4);
+    /* Overlay widths (R2App): tenant menu, palette, review sheet, detail sheet, dialogs. */
+    --v2-menu: 360px;
+    --v2-palette: 640px;
+    --v2-sheet: 620px;
+    --v2-detail: 520px;
+    --v2-dialog: 560px;
+    --v2-scrim: rgba(0, 0, 0, 0.22);
+    --v2-scrim-deep: rgba(0, 0, 0, 0.34);
 }
 
 :root[data-theme='gruvbox'] {
@@ -64,7 +77,6 @@
     --v2-ok: #b8bb26;
     --v2-ok-bg: #2b2f17;
     --v2-get: #83a598;
-    --v2-scrim: rgba(0, 0, 0, 0.55);
 }
 
 /* The v2 shell root: body background, type and the visible focus ring
@@ -74,7 +86,20 @@
     background: var(--v2-bg);
     color: var(--v2-ink);
     font-size: var(--v2-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
     min-height: 100vh;
+}
+/* The destination heading takes focus after navigation for assistive technology; it is not a control, so no ring (C35). */
+[data-v2-shell] h1[tabindex='-1']:focus {
+    outline: none;
+}
+/* A page inside the shell's main region: the prototype's 32/44 margins, scrolling by itself. */
+[data-v2-shell] [data-v2-page] {
+    padding: var(--v2-page-top) var(--v2-page-x) 28px;
+    overflow-y: auto;
+    min-height: 0;
+    flex-grow: 1;
+    min-width: 0;
 }
 [data-v2-shell] :focus-visible {
     outline: 2px solid var(--v2-acc);
@@ -109,14 +134,28 @@
     [data-v2-rail] [data-v2-stack] > * {
         width: 100%;
     }
-    /* Collapsed: labels leave the layout but stay in the accessible name. */
-    [data-v2-rail] [data-v2-label] {
+    /* Collapsed: labels leave the layout but stay in the accessible name (rail and header). */
+    [data-v2-rail] [data-v2-label],
+    [data-v2-header] [data-v2-label] {
         position: absolute;
         width: 1px;
         height: 1px;
         overflow: hidden;
         clip: rect(0 0 0 0);
         white-space: nowrap;
+    }
+    /* Collapsed: the product children and the status rows leave the rail (C35). */
+    [data-v2-rail] [data-v2-collapse] {
+        display: none !important;
+    }
+    [data-v2-rail] [data-v2-stack] > * {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    [data-v2-header] [data-v2-search] {
+        width: auto !important;
+        flex: 1 1 120px !important;
+        min-width: 0;
     }
 }
 /* The selected destination is accent-filled, so its ring is the ink-on-accent

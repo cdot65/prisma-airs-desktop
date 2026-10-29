@@ -88,7 +88,7 @@ describe('v2 shell', () => {
     it('opens the palette from the sidebar, lists destinations, tenants and actions, and dispatches on Enter', async () => {
         const user = userEvent.setup()
         const native = await launch(fxSwitcher())
-        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
         const dialog = screen.getByRole('dialog', { name: 'Command palette' })
         expect(dialog).toHaveAttribute('aria-modal', 'true')
         const options = within(dialog).getAllByRole('option').map((o) => o.textContent)
@@ -103,7 +103,7 @@ describe('v2 shell', () => {
         await user.type(within(dialog).getByRole('combobox'), 'meridian{Enter}')
         expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
         expect(screen.queryByRole('dialog')).toBeNull()
-        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
         await user.type(screen.getByRole('combobox'), 'read{Enter}')
         expect(native.dispatched.at(-1)).toEqual({ kind: 'readTenant', context: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' })
     })
@@ -116,26 +116,53 @@ describe('v2 shell', () => {
         expect(switcher).toHaveTextContent('TSG 1762204418')
         await user.click(switcher)
         const list = screen.getByRole('group', { name: 'Switch tenant' })
-        expect(within(list).getAllByRole('button').map((o) => o.textContent)).toEqual([
-            'Northwind HealthProduction · TSG 1762204418',
-            'Meridian RetailProduction · TSG 1001464285',
-            'Add a tenant…',
+        expect(within(list).getAllByRole('button').map((o) => o.getAttribute('aria-label'))).toEqual([
+            'Northwind Health · Production · TSG 1762204418',
+            'Meridian Retail · Production · TSG 1001464285',
         ])
+        expect(within(list).getAllByRole('button')[0]).toHaveAttribute('aria-pressed', 'true')
+        const menu = list.closest('[data-slot="tenant-menu"]') as HTMLElement
+        expect(within(menu).getByRole('button', { name: 'Add a tenant…' })).toBeInTheDocument()
+        expect(within(menu).getByRole('button', { name: 'Tenant settings and credentials…' })).toBeInTheDocument()
         await user.click(within(list).getByRole('button', { name: /Meridian Retail/ }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
         expect(screen.queryByRole('group', { name: 'Switch tenant' })).toBeNull()
     })
 
-    it('dispatches the appearance, show-the-calls and return-to-classic preferences', async () => {
+    it('picks the nth tenant with ⌃n while the menu is open, as its hints say (C35)', async () => {
+        const user = userEvent.setup()
+        const native = await launch(fxSwitcher())
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        const list = screen.getByRole('group', { name: 'Switch tenant' })
+        expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual([expect.stringContaining('⌃1'), expect.stringContaining('⌃2')])
+        await user.keyboard('{Control>}2{/Control}')
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
+        expect(screen.queryByRole('group', { name: 'Switch tenant' })).toBeNull()
+        // ⌃1 on the current tenant closes the menu and sends nothing.
+        const before = native.dispatched.length
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        await user.keyboard('{Control>}1{/Control}')
+        expect(native.dispatched.length).toBe(before)
+        expect(screen.queryByRole('group', { name: 'Switch tenant' })).toBeNull()
+    })
+
+    it('dispatches the appearance and show-the-calls preferences from the rail toggle and the header switch', async () => {
         const user = userEvent.setup()
         const native = await launch()
-        await user.click(screen.getByRole('button', { name: 'Dark' }))
+        // The rail's toggle flips between light and dark from what is shown (system here, shown light).
+        await user.click(rail().getByRole('switch', { name: 'Switch light or dark appearance' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'dark' })
-        await user.click(screen.getByRole('checkbox', { name: 'Show the calls' }))
+        await native.push({ ...native.current, appearance: 'dark' })
+        expect(rail().getByRole('switch', { name: 'Switch light or dark appearance' })).toHaveAttribute('aria-checked', 'true')
+        await user.click(rail().getByRole('switch', { name: 'Switch light or dark appearance' }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'light' })
+        // The header's Explain switch is the show-the-calls preference.
+        const explain = screen.getByRole('switch', { name: 'Show the calls' })
+        expect(explain).toHaveAttribute('aria-checked', 'true')
+        await user.click(explain)
         expect(native.dispatched.at(-1)).toEqual({ kind: 'setShowCalls', on: false })
-        await user.click(screen.getByRole('button', { name: 'Return to the classic interface' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'setUiVariant', variant: 'legacy' })
-        // The legacy shell renders only when the core says so.
+        // The classic interface is left from Settings only (C35); the legacy shell renders only when the core says so.
+        expect(screen.queryByRole('button', { name: 'Return to the classic interface' })).toBeNull()
         await native.push({ ...native.current, uiVariant: 'legacy', features: (await import('../test/native')).baseSnapshot.features, activeFeature: 'runtime' })
         expect(screen.getByRole('navigation', { name: 'Features' })).toBeInTheDocument()
     })
@@ -171,7 +198,7 @@ describe('v2 shell', () => {
     it('keeps one topmost modal: the palette over the switcher, Escape closes only the top, focus returns', async () => {
         const user = userEvent.setup()
         await launch(fxSwitcher())
-        const trigger = rail().getByRole('button', { name: /Go to…/ })
+        const trigger = screen.getByRole('button', { name: /Search or go to…/ })
         trigger.focus()
         await user.keyboard('{Enter}')
         const palette = screen.getByRole('dialog', { name: 'Command palette' })
@@ -255,7 +282,8 @@ describe('v2 shell', () => {
             el.style.clip = 'rect(0 0 0 0)'
         })
         expect(rail().getByRole('button', { name: /^Harness/ })).toHaveAccessibleName('Harness Command 3')
-        expect(rail().getByRole('button', { name: 'Return to the classic interface' })).toBeInTheDocument()
+        expect(rail().getByRole('button', { name: /^Settings/ })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Search or go to…/ })).toHaveTextContent('⌘K')
         expect(rail().getByRole('button', { name: /^Harness/ })).toHaveAttribute('title', 'Harness (⌘3)')
         // A snapshot update re-renders the shell mid-life; the deadline is the toast's.
         act(() => useShellStore.setState({ toastMs: 300 }))
@@ -273,7 +301,7 @@ describe('v2 shell', () => {
     it('hands focus to the tenant list when ⌘T replaces an open palette, and Escape returns it to the trigger', async () => {
         const user = userEvent.setup()
         const native = await launch(fxSwitcher())
-        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
         expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
         await native.pushMenu({ kind: 'tenantSwitcher' })
         expect(screen.queryByRole('dialog')).toBeNull()
@@ -289,12 +317,12 @@ describe('v2 shell', () => {
         const user = userEvent.setup()
         const native = await launch()
         native.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
-        await user.click(screen.getByRole('button', { name: 'Dark' }))
+        await user.click(rail().getByRole('switch', { name: 'Switch light or dark appearance' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'setAppearance', theme: 'dark' })
         const toast = await screen.findByText(/^The appearance change was refused \(deniedStore\)\./)
         expect(toast.closest('[data-slot="toast"]')).toHaveAttribute('data-kind', 'warn')
-        // The observed selection stays authoritative: still 'system'.
-        expect(screen.getByRole('button', { name: 'Match system' })).toHaveAttribute('aria-pressed', 'true')
+        // The observed selection stays authoritative: still 'system', shown light.
+        expect(rail().getByRole('switch', { name: 'Switch light or dark appearance' })).toHaveAttribute('aria-checked', 'false')
         native.respond = () => {
             throw new DeliveryOutcomeUnknown('lost')
         }
@@ -313,7 +341,7 @@ describe('v2 shell', () => {
     it('focuses the tenant list after ⌘T even when focus inside an inert rail is refused, as WebKit does', async () => {
         const user = userEvent.setup()
         const native = await launch(fxSwitcher())
-        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
         // WebKit refuses focus inside an inert subtree; jsdom does not, so refuse it here.
         const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'focus') as PropertyDescriptor
         const realFocus = HTMLElement.prototype.focus
@@ -344,7 +372,8 @@ describe('v2 shell', () => {
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         const list = screen.getByRole('group', { name: 'Switch tenant' })
         expect(list.closest('[data-v2-rail]')).toBeNull()
-        expect(list.style.minWidth).toBe('280px')
+        const menu = list.closest('[data-slot="tenant-menu"]') as HTMLElement
+        expect(menu.style.width).toContain('var(--v2-menu)')
         await user.keyboard('{Escape}')
         // Settings (inside the v2 shell) reports a refused interface change and keeps an unknown one retryable.
         await native.push({ ...native.current, activeFeature: 'settings' })
@@ -378,7 +407,7 @@ describe('v2 shell', () => {
         })
         const dismiss = () => screen.queryByRole('button', { name: 'Dismiss', hidden: true }) as HTMLElement
         expect(dismiss().closest('[inert]')).toBeNull()
-        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
         expect(dismiss().closest('[inert]')).not.toBeNull()
         expect(dismiss().closest('[aria-hidden="true"]')).not.toBeNull()
         await user.keyboard('{Escape}')
@@ -394,10 +423,11 @@ describe('v2 shell', () => {
         const native = await launch({ ...base, tenants: many, active: { tenant: many[0]!.id, context: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' } })
         await native.pushMenu({ kind: 'tenantSwitcher' })
         const list = await screen.findByRole('group', { name: 'Switch tenant' })
-        expect(list.style.maxHeight).toMatch(/calc\(100vh - \d+px\)/)
-        expect(list.className).toContain('overflow-y-auto')
+        const menu = list.closest('[data-slot="tenant-menu"]') as HTMLElement
+        expect(menu.style.maxHeight).toMatch(/calc\(100vh - \d+px\)/)
+        expect(list.parentElement!.className).toContain('overflow-y-auto')
         const buttons = within(list).getAllByRole('button')
-        expect(buttons).toHaveLength(21)
+        expect(buttons).toHaveLength(20)
         await waitFor(() => expect(buttons[0]).toHaveFocus())
         for (let i = 0; i < 19; i += 1) await user.tab()
         expect(buttons[19]).toHaveFocus()
@@ -415,7 +445,7 @@ describe('v2 shell', () => {
         // Palette: Read now with a late refusal after the active context moved on.
         let answer: (value: unknown) => void = () => undefined
         native.respond = () => new Promise((resolve) => (answer = resolve))
-        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
         await user.type(screen.getByRole('combobox'), 'read{Enter}')
         await native.push({ ...native.current, active: { tenant: 'tn-fedcba9876543210', context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
         await act(async () => {
@@ -428,7 +458,7 @@ describe('v2 shell', () => {
         expect(Array.from(document.querySelectorAll('[data-slot="toast"]')).map((t) => t.textContent)).toEqual([expect.stringContaining('The switch to Meridian Retail was refused')])
         // A refusal that arrives while its tenant is still shown is reported.
         native.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
-        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
         await user.type(screen.getByRole('combobox'), 'read{Enter}')
         expect(await screen.findByText(/^The read of Meridian Retail was refused \(deniedStore\)\./)).toBeInTheDocument()
     })
@@ -441,7 +471,7 @@ describe('v2 shell', () => {
         expect(screen.getByRole('button', { name: 'Switch tenant: Acme · Production · TSG 1111111111' })).toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         const rows = within(screen.getByRole('group', { name: 'Switch tenant' })).getAllByRole('button')
-        expect(rows.map((r) => r.textContent)).toEqual(['AcmeProduction · TSG 1111111111', 'AcmeProduction · TSG 2222222222', 'Add a tenant…'])
+        expect(rows.map((r) => r.getAttribute('aria-label'))).toEqual(['Acme · Production · TSG 1111111111', 'Acme · Production · TSG 2222222222'])
         await user.click(rows[1]!)
         expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: b.id, resolution: null })
         await native.push({ ...native.current, active: { tenant: b.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
@@ -454,7 +484,7 @@ describe('v2 shell', () => {
         const a = tenant({ id: 'tn-0123456789abcdef', label: 'Acme', tsgId: '1111111111' })
         const b = tenant({ id: 'tn-fedcba9876543210', label: 'Acme', tsgId: '2222222222', destination: { kind: 'region', region: 'unitedStates' } })
         const native = await launch({ ...fxHome(), tenants: [active, a, b], active: { tenant: active.id, context: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' } })
-        await user.click(rail().getByRole('button', { name: /Go to…/ }))
+        await user.click(screen.getByRole('button', { name: /Search or go to…/ }))
         const dialog = screen.getByRole('dialog', { name: 'Command palette' })
         const labels = within(dialog).getAllByRole('option').map((o) => o.textContent)
         expect(labels).toContain('Switch to Acme · Production · TSG 1111111111')

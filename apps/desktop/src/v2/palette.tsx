@@ -1,6 +1,7 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { FeatureEntry, FeatureId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { ENVIRONMENT_LABELS, SHELL_COPY } from './copy'
+import { FEATURE_GLYPHS, Glyph, type GlyphName } from './icons'
 import { Modal } from './modal'
 
 export type PaletteEntry =
@@ -37,6 +38,14 @@ export function paletteEntries(snapshot: ShellSnapshot): PaletteEntry[] {
     return [...destinations, ...tenants, ...actions]
 }
 
+const glyphOf = (entry: PaletteEntry): GlyphName => (entry.kind === 'navigate' ? (FEATURE_GLYPHS[entry.feature.id] ?? 'chevR') : entry.kind === 'switch' ? 'idcard' : 'play')
+const groupOf = (entry: PaletteEntry) => (entry.kind === 'navigate' ? SHELL_COPY.paletteGroups.destinations : entry.kind === 'switch' ? SHELL_COPY.paletteGroups.tenants : SHELL_COPY.paletteGroups.actions)
+
+/**
+ * The command palette (R2App, C35): a 640px dialog with a 50px search row,
+ * grouped rows (glyph, label, hint) and a footer of key hints. Entries are
+ * the core's destinations, the other tenants and the read action.
+ */
 export function Palette(props: PaletteProps) {
     const [query, setQuery] = useState('')
     const [index, setIndex] = useState(0)
@@ -82,61 +91,95 @@ export function Palette(props: PaletteProps) {
             input.current?.focus()
         }
     }
+    let lastGroup = ''
     return (
-        <Modal label={SHELL_COPY.paletteLabel} onClose={props.onClose} data-slot='command-palette'>
-            <input
-                ref={input}
-                role='combobox'
-                aria-expanded='true'
-                aria-controls={listId}
-                aria-activedescendant={activeId}
-                aria-autocomplete='list'
-                aria-label={SHELL_COPY.paletteInput}
-                placeholder={SHELL_COPY.palette}
-                value={query}
-                onKeyDown={onKeyDown}
-                onChange={(e) => {
-                    setQuery(e.target.value)
-                    setIndex(0)
-                }}
-                className='w-full px-3 text-[15px]'
-            />
-            <ul id={listId} role='listbox' aria-label={SHELL_COPY.paletteLabel} className='mt-2 flex max-h-[50vh] flex-col overflow-auto'>
+        <Modal label={SHELL_COPY.paletteLabel} onClose={props.onClose} width={640} padding={0} top={90} radius={14} data-slot='command-palette'>
+            <div className='flex h-[50px] items-center gap-2.5 px-4' style={{ borderBottom: '1px solid var(--v2-rule)' }}>
+                <Glyph name='search' size={16} color='var(--v2-faint)' />
+                <input
+                    ref={input}
+                    role='combobox'
+                    aria-expanded='true'
+                    aria-controls={listId}
+                    aria-activedescendant={activeId}
+                    aria-autocomplete='list'
+                    aria-label={SHELL_COPY.paletteInput}
+                    placeholder={SHELL_COPY.searchOrGo}
+                    value={query}
+                    onKeyDown={onKeyDown}
+                    onChange={(e) => {
+                        setQuery(e.target.value)
+                        setIndex(0)
+                    }}
+                    className='min-h-0 flex-grow border-0 bg-transparent px-0 text-[15px] outline-none'
+                    style={{ border: 0, background: 'transparent' }}
+                />
+                <kbd className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                    Esc
+                </kbd>
+            </div>
+            <ul id={listId} role='listbox' aria-label={SHELL_COPY.paletteLabel} className='flex flex-col overflow-auto' style={{ padding: '6px 8px 8px', maxHeight: 'min(620px, 60vh)' }}>
                 {matches.map((entry, i) => {
                     const unavailable = entry.kind === 'navigate' && entry.feature.availability.state === 'unavailable'
+                    const group = groupOf(entry)
+                    const heading = group !== lastGroup
+                    lastGroup = group
                     return (
-                        <li
-                            key={entry.id}
-                            id={`${listId}-${entry.id}`}
-                            role='option'
-                            aria-selected={i === index}
-                            aria-current={i === index ? 'true' : undefined}
-                            aria-disabled={unavailable || undefined}
-                            onMouseEnter={() => setIndex(i)}
-                            onClick={() => choose(entry)}
-                            className='flex min-h-10 cursor-pointer items-center justify-between rounded-[7px] px-3 text-[14px]'
-                            style={{ background: i === index ? 'var(--v2-inset)' : 'transparent', color: unavailable ? 'var(--v2-faint)' : 'var(--v2-ink)' }}
-                        >
-                            <span>{entry.label}</span>
-                            {entry.kind === 'navigate' && entry.feature.shortcut !== null && (
-                                <kbd className='text-[11px]' style={{ color: 'var(--v2-faint)' }}>
-                                    ⌘{entry.feature.shortcut}
-                                </kbd>
+                        <Fragment key={entry.id}>
+                            {heading && (
+                                <li role='presentation' className='text-[12px] font-semibold' style={{ padding: '8px 8px 4px', color: 'var(--v2-faint)' }}>
+                                    {group}
+                                </li>
                             )}
-                            {unavailable && entry.feature.availability.state === 'unavailable' && (
-                                <span className='text-[11px] uppercase' style={{ color: 'var(--v2-faint)' }}>
-                                    {entry.feature.availability.plannedChunk}
-                                </span>
-                            )}
-                        </li>
+                            <li
+                                id={`${listId}-${entry.id}`}
+                                role='option'
+                                aria-selected={i === index}
+                                aria-current={i === index ? 'true' : undefined}
+                                aria-disabled={unavailable || undefined}
+                                onMouseEnter={() => setIndex(i)}
+                                onClick={() => choose(entry)}
+                                className='flex h-[34px] cursor-pointer items-center gap-2.5 rounded-[7px] px-2.5 text-[13px]'
+                                style={{ background: i === index ? 'var(--v2-inset)' : 'transparent', color: unavailable ? 'var(--v2-faint)' : 'var(--v2-ink)' }}
+                            >
+                                <Glyph name={glyphOf(entry)} size={14} color={unavailable ? 'var(--v2-faint)' : 'var(--v2-soft)'} />
+                                <span className='font-semibold'>{entry.label}</span>
+                                <span className='flex-grow' />
+                                {entry.kind === 'navigate' && entry.feature.shortcut !== null && (
+                                    <kbd className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                        ⌘{entry.feature.shortcut}
+                                    </kbd>
+                                )}
+                                {unavailable && entry.feature.availability.state === 'unavailable' && (
+                                    <span className='text-[11px] uppercase' style={{ color: 'var(--v2-faint)' }}>
+                                        {entry.feature.availability.plannedChunk}
+                                    </span>
+                                )}
+                            </li>
+                        </Fragment>
                     )
                 })}
                 {matches.length === 0 && (
-                    <li className='px-3 py-2 text-[13px]' style={{ color: 'var(--v2-faint)' }}>
-                        {SHELL_COPY.paletteEmpty}
+                    <li className='flex items-center gap-2.5' style={{ padding: '16px 10px', color: 'var(--v2-faint)' }}>
+                        <span className='flex-grow'>{SHELL_COPY.paletteEmpty}</span>
+                        <button
+                            type='button'
+                            onClick={() => {
+                                props.onClose()
+                                props.onNavigate('harness')
+                            }}
+                            className='h-8 rounded-[7px] border px-3 font-semibold'
+                            style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}
+                        >
+                            {SHELL_COPY.paletteAsk}
+                        </button>
                     </li>
                 )}
             </ul>
+            <div className='flex gap-4 px-4 py-2 text-[12px]' style={{ borderTop: '1px solid var(--v2-rule)', background: 'var(--v2-side)', color: 'var(--v2-faint)' }}>
+                <span>{SHELL_COPY.paletteHints.move}</span>
+                <span>{SHELL_COPY.paletteHints.open}</span>
+            </div>
         </Modal>
     )
 }

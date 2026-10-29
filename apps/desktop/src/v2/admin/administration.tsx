@@ -144,6 +144,11 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
         // eslint-disable-next-line react-hooks/exhaustive-deps -- once per handed case
     }, [playground?.prefill.nonce, products.length])
 
+    // The rail's product children open that product's section (C35).
+    useEffect(() => {
+        if (!arrival?.product) return
+        setOpen((o) => ({ ...o, [arrival.product!]: true }))
+    }, [arrival])
     // A contextual action (Inbox, Home) opens the product and tab it names (C30).
     useEffect(() => {
         if (!arrival || !arrival.resource) return

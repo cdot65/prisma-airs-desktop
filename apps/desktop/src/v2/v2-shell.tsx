@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Eye, Moon, Sun, SunMoon, Undo2 } from 'lucide-react'
-import type { SwitchResolution, DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import type { AdminProductId, SwitchResolution, DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { FeatureBody } from '../shell/feature-body'
 import { type Act, Inbox } from './inbox/inbox'
 import { Administration } from './admin/administration'
 import { Harness } from './harness/harness'
-import { FEATURE_ICONS } from '../shell/icons'
-import { SHELL_COPY, SNOOZE_COPY } from './copy'
+import { FEATURE_GLYPHS, Glyph, PRODUCT_GLYPHS } from './icons'
+import { HOME_COPY, SHELL_COPY, SNOOZE_COPY } from './copy'
 import { readLine } from './home'
 import { Home } from './home'
 import { Palette } from './palette'
@@ -28,7 +27,6 @@ export interface V2ShellProps {
     onNavigate: (id: FeatureId) => void
     onSetAppearance: (theme: Theme) => void
     onSetShowCalls: (on: boolean) => void
-    onReturnToClassic: () => void
     onSwitchTenant: (tenant: string, resolution?: SwitchResolution) => void
     onReadNow: () => void
     /** Re-sends a delivery the desktop did not confirm, only on the operator's click. */
@@ -39,25 +37,32 @@ export interface V2ShellProps {
     client: DesktopClient
 }
 
-const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
-    { value: 'system', label: SHELL_COPY.appearanceSystem, icon: SunMoon },
-    { value: 'light', label: SHELL_COPY.appearanceLight, icon: Sun },
-    { value: 'dark', label: SHELL_COPY.appearanceDark, icon: Moon },
-]
+/** The products the Inbox files entries under (the inventory's ids that have an admitted service). */
+const productOf = (id: AdminProductId): string | null => (id === 'agenticIdentity' || id === 'agenticEndpoint' ? null : id)
+
+/** Whether the shown appearance is dark: the choice, or the system's when following it. */
+function shownDark(theme: Theme): boolean {
+    if (theme !== 'system') return theme === 'dark'
+    return typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false
+}
 
 /**
- * The "Refined Native" shell (C28, DESIGN-V2): a 244px rail with the tenant
- * switcher on top, the Rust navigation inventory (labels and ⌘ hints come
- * from the same catalogue the native menu is built from), appearance and
- * "show the calls" preferences, one status surface and the modal stack.
- * Every destination other than Home renders the same FeatureBody the legacy
- * shell renders, so behaviour is identical whichever shell frames it.
+ * The "Refined Native" shell as the prototype draws it (R2App, C35): a
+ * 244px sidebar (tenant button, the Rust navigation inventory with the
+ * Administration products as children and needs-action badges, the status
+ * block) and a right column with the 56px header (title and subtitle, the
+ * search button that opens the palette, the Explain switch, Ask Harness)
+ * over the destination. Labels and ⌘ hints come from the same catalogue
+ * the native menu is built from. Destinations not yet ported render the
+ * legacy FeatureBody inside the page frame.
  */
 export function V2Shell(props: V2ShellProps) {
     const { snapshot } = props
     const paletteOpen = useShellStore((s) => s.paletteOpen)
     const openPalette = useShellStore((s) => s.openPalette)
     const closePalette = useShellStore((s) => s.closePalette)
+    const adminNavOpen = useShellStore((s) => s.adminNavOpen)
+    const setAdminNav = useShellStore((s) => s.setAdminNav)
     const unconfirmedAll = useShellStore((s) => s.unconfirmed)
     // Only deliveries bound to the shown context, or to none (I2).
     const unconfirmed = unconfirmedAll.filter((u) => u.context === null || u.context === (snapshot.active?.context ?? null))
@@ -83,6 +88,7 @@ export function V2Shell(props: V2ShellProps) {
     // tenant change re-baselines (the other tenant's generation is its own).
     const read = snapshot.inbox.read
     const tenantNow = snapshot.active?.tenant ?? null
+    const tenant = snapshot.tenants.find((t) => t.id === tenantNow) ?? null
     const seenGeneration = useRef<{ tenant: string | null; generation: number }>({ tenant: tenantNow, generation: read.generation })
     useEffect(() => {
         const seen = seenGeneration.current
@@ -132,206 +138,372 @@ export function V2Shell(props: V2ShellProps) {
     const observeWorkbench = useCallback((operation: string) => props.client.observeWorkbench(operation), [props.client])
 
     if (!feature) return null
+
+    // The rail's badges: items needing action, in all and per product (the prototype's NAV badge and PRODUCTS counts).
+    const needing = snapshot.inbox.items.filter((e) => e.needsAction && !e.hold)
+    const products = snapshot.administration?.products ?? []
+    const productsKnown = products.length > 0
+    const admin = snapshot.features.find((f) => f.id === 'administration')
+    const adminAvailable = admin?.availability.state === 'available'
+    const productShown = arrival && arrival.tenant === tenantNow && arrival.feature === 'administration' ? arrival.product ?? null : null
+    const openProduct = (id: AdminProductId) => {
+        if (!tenantNow) return
+        useShellStore.getState().arrive({ tenant: tenantNow, feature: 'administration', resource: null, item: null, product: id })
+        props.onNavigate('administration')
+    }
+    const subtitle = feature.id === 'administration' && productShown ? products.find((p) => p.id === productShown)?.label ?? '' : ''
+
+    // The status block (R2App): the connection and read status, the Harness sign-in, the keychain, jobs.
+    const readStatus = readLine(snapshot, tenant?.label ?? null)
+    const signIn = snapshot.harness.signIn
+    const harnessText = signIn && signIn.selected && signIn.account && signIn.failure === null ? SHELL_COPY.harnessSignedIn : signIn && !signIn.selected ? SHELL_COPY.harnessKey : SHELL_COPY.harnessOff
+    const keychainText = snapshot.storage === 'ready' ? SHELL_COPY.keychainUnlocked : snapshot.storage === 'unavailable' ? SHELL_COPY.keychainUnavailable : SHELL_COPY.keychainLocked
+    const running = read.state === 'reading' ? 1 : 0
+    const jobsText = running === 0 ? SHELL_COPY.jobsNone : SHELL_COPY.jobsRunning(running)
+    const account = signIn?.account && signIn.failure === null ? signIn.account : snapshot.academy.state === 'signedIn' ? snapshot.academy.displayName : null
+    const dark = shownDark(snapshot.appearance)
+
+    const navRow = (current: boolean, unavailable: boolean) => ({
+        background: current ? 'var(--v2-sel)' : 'transparent',
+        color: current ? 'var(--v2-sel-ink)' : unavailable ? 'var(--v2-faint)' : 'var(--v2-ink)',
+    })
+
     return (
-        <div data-v2-shell='' className='flex min-h-screen'>
+        <div data-v2-shell='' className='flex h-screen overflow-hidden'>
             <nav
                 data-v2-rail=''
                 aria-label={SHELL_COPY.navLabel}
                 aria-hidden={modalOpen ? true : undefined}
                 inert={modalOpen ? true : undefined}
-                className='sticky top-0 flex h-screen shrink-0 flex-col gap-2 overflow-y-auto p-3'
-                style={{ width: 'var(--v2-rail)', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}
+                // The prototype reserves 14px above the tenant button for the window's traffic lights, which this
+                // window's own title bar carries; the rail starts under it (noted in the parity notes).
+                className='flex h-screen shrink-0 flex-col overflow-y-auto'
+                style={{ width: 'var(--v2-rail)', padding: '12px 10px 12px', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}
             >
-                <TenantSwitcher snapshot={snapshot} onSwitch={props.onSwitchTenant} onAdd={() => setAdding(true)} />
-                <ul className='mt-2 flex flex-col gap-0.5'>
+                <TenantSwitcher snapshot={snapshot} onSwitch={props.onSwitchTenant} onAdd={() => setAdding(true)} onNavigate={props.onNavigate} />
+                <ul className='flex flex-grow flex-col overflow-y-auto overscroll-contain' style={{ gap: 2, minHeight: 0 }} data-slot='nav-list'>
                     {snapshot.features
                         .filter((f) => f.sidebar)
                         .map((f) => {
-                            const Icon = FEATURE_ICONS[f.id]
+                            const glyph = FEATURE_GLYPHS[f.id] ?? 'chevR'
                             const current = f.id === feature.id
                             const unavailable = f.availability.state === 'unavailable'
                             const reason = f.availability.state === 'unavailable' ? f.availability.reason : ''
+                            const isAdmin = f.id === 'administration'
+                            const badge = f.id === 'inbox' && needing.length > 0 ? String(needing.length) : ''
                             return (
-                                <li key={f.id}>
-                                    <button
-                                        type='button'
-                                        aria-current={current ? 'page' : undefined}
-                                        aria-disabled={unavailable || undefined}
-                                        aria-describedby={unavailable ? `${f.id}-hint` : undefined}
-                                        title={unavailable ? SHELL_COPY.unavailableHint(reason) : f.shortcut !== null ? `${f.label} (⌘${f.shortcut})` : f.label}
-                                        onClick={() => !unavailable && props.onNavigate(f.id)}
-                                        data-inset-focus=''
-                                        className='flex min-h-9 w-full items-center gap-2.5 rounded-[7px] px-2.5 text-left text-[14px] font-medium'
-                                        style={{
-                                            background: current ? 'var(--v2-sel)' : 'transparent',
-                                            color: current ? 'var(--v2-sel-ink)' : unavailable ? 'var(--v2-faint)' : 'var(--v2-ink)',
-                                        }}
-                                    >
-                                        <Icon aria-hidden='true' size={16} />
-                                        <span data-v2-label className='flex-grow truncate'>
-                                            {f.label}
-                                        </span>
-                                        {f.shortcut !== null && (
-                                            <kbd data-v2-label className='text-[11px]' aria-label={`Command ${f.shortcut}`} style={{ opacity: 0.75 }}>
-                                                ⌘{f.shortcut}
-                                            </kbd>
+                                <li key={f.id} className='flex flex-col' style={{ gap: 1 }}>
+                                    <div className='flex items-center' style={{ gap: 2 }}>
+                                        <button
+                                            type='button'
+                                            aria-current={current ? 'page' : undefined}
+                                            aria-disabled={unavailable || undefined}
+                                            aria-describedby={unavailable ? `${f.id}-hint` : undefined}
+                                            title={unavailable ? SHELL_COPY.unavailableHint(reason) : f.shortcut !== null ? `${f.label} (⌘${f.shortcut})` : f.label}
+                                            onClick={() => !unavailable && props.onNavigate(f.id)}
+                                            data-inset-focus=''
+                                            className='flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]'
+                                            style={{ ...navRow(current, unavailable), gap: 9, fontWeight: current ? 600 : 500 }}
+                                        >
+                                            <Glyph name={glyph} size={16} color={current ? 'var(--v2-sel-ink)' : 'var(--v2-soft)'} />
+                                            <span data-v2-label className='flex-grow truncate'>
+                                                {f.label}
+                                            </span>
+                                            {badge && (
+                                                <span
+                                                    data-v2-label
+                                                    data-slot='nav-badge'
+                                                    aria-label={SHELL_COPY.needAction(needing.length)}
+                                                    className='grid h-[18px] min-w-[18px] place-items-center rounded-full px-[5px] text-[11px] font-bold'
+                                                    style={{ background: current ? 'rgba(255,255,255,0.22)' : 'var(--v2-acc)', color: current ? 'var(--v2-sel-ink)' : 'var(--v2-acc-ink)' }}
+                                                >
+                                                    {badge}
+                                                </span>
+                                            )}
+                                            {f.shortcut !== null && (
+                                                <kbd data-v2-label className='text-[12px]' aria-label={`Command ${f.shortcut}`} style={{ color: current ? 'var(--v2-sel-ink)' : 'var(--v2-faint)', opacity: current ? 0.85 : 1 }}>
+                                                    ⌘{f.shortcut}
+                                                </kbd>
+                                            )}
+                                        </button>
+                                        {isAdmin && adminAvailable && productsKnown && (
+                                            <button
+                                                type='button'
+                                                data-v2-collapse=''
+                                                aria-expanded={adminNavOpen}
+                                                aria-label={SHELL_COPY.productsToggle}
+                                                aria-controls='v2-nav-products'
+                                                onClick={() => setAdminNav(!adminNavOpen)}
+                                                className='grid h-[34px] min-h-0 w-6 shrink-0 place-items-center rounded-[6px]'
+                                                style={{ background: 'transparent', color: 'var(--v2-faint)' }}
+                                            >
+                                                <Glyph name={adminNavOpen ? 'chev' : 'chevR'} size={12} stroke={2.2} />
+                                            </button>
                                         )}
-                                    </button>
+                                    </div>
                                     {unavailable && (
                                         <span id={`${f.id}-hint`} className='sr-only'>
                                             {SHELL_COPY.unavailableHint(reason)}
                                         </span>
                                     )}
+                                    {isAdmin && adminAvailable && productsKnown && adminNavOpen && (
+                                        <ul id='v2-nav-products' aria-label={SHELL_COPY.productsLabel} data-slot='nav-products' data-v2-collapse='' className='flex flex-col' style={{ gap: 1, padding: '2px 0 4px 18px' }}>
+                                            {products.map((p) => {
+                                                const key = productOf(p.id)
+                                                const count = key ? needing.filter((e) => e.product === key).length : 0
+                                                const shown = current && productShown === p.id
+                                                const gated = p.availability.state === 'unavailable'
+                                                return (
+                                                    <li key={p.id}>
+                                                        <button
+                                                            type='button'
+                                                            aria-current={shown ? 'true' : undefined}
+                                                            aria-disabled={gated || undefined}
+                                                            title={p.availability.state === 'unavailable' ? p.availability.reason : p.label}
+                                                            onClick={() => !gated && openProduct(p.id)}
+                                                            className='flex h-[31px] min-h-0 w-full items-center gap-2 rounded-[7px] px-2 text-left text-[12.5px]'
+                                                            style={{ background: shown ? 'var(--v2-inset)' : 'transparent', color: 'var(--v2-ink)', fontWeight: shown ? 600 : 400 }}
+                                                        >
+                                                            <Glyph name={PRODUCT_GLYPHS[p.id]} size={14} color='var(--v2-soft)' />
+                                                            <span data-v2-label className='flex-grow truncate'>
+                                                                {p.label}
+                                                            </span>
+                                                            {gated && (
+                                                                <span data-v2-label className='rounded-full px-1.5 text-[12px] font-bold' style={{ padding: '1px 6px', background: 'var(--v2-acc-soft)', color: 'var(--v2-acc)' }}>
+                                                                    {SHELL_COPY.newTag}
+                                                                </span>
+                                                            )}
+                                                            {count > 0 && (
+                                                                <span data-v2-label data-slot='product-badge' aria-label={SHELL_COPY.needAction(count)} className='text-[11px] font-semibold' style={{ color: 'var(--v2-faint)' }}>
+                                                                    {count}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    </li>
+                                                )
+                                            })}
+                                        </ul>
+                                    )}
                                 </li>
                             )
                         })}
                 </ul>
-                <button
-                    type='button'
-                    data-slot='palette-trigger'
-                    onClick={openPalette}
-                    className='mt-1 flex min-h-9 items-center justify-between rounded-[7px] border px-2.5 text-[12px]'
-                    style={{ borderColor: 'var(--v2-rule)', color: 'var(--v2-faint)' }}
-                >
-                    <span data-v2-label>{SHELL_COPY.palette}</span>
-                    <kbd aria-label='Command K'>⌘K</kbd>
-                </button>
-                <div className='mt-auto flex flex-col gap-2 pt-3' style={{ borderTop: '1px solid var(--v2-rule)' }}>
-                    <fieldset aria-busy={props.appearancePending} data-v2-stack='' className='flex gap-1'>
-                        <legend className='sr-only'>{SHELL_COPY.appearance}</legend>
-                        {THEMES.map((t) => (
-                            <button
-                                key={t.value}
-                                type='button'
-                                aria-pressed={snapshot.appearance === t.value}
-                                aria-label={t.label}
-                                title={t.label}
-                                onClick={() => props.onSetAppearance(t.value)}
-                                className='grid size-8 place-items-center rounded-[7px] border'
-                                style={{
-                                    borderColor: 'var(--v2-rule)',
-                                    background: snapshot.appearance === t.value ? 'var(--v2-acc-soft)' : 'transparent',
-                                }}
-                            >
-                                <t.icon aria-hidden='true' size={14} />
-                            </button>
-                        ))}
-                    </fieldset>
-                    <label className='flex min-h-8 items-center gap-2 text-[12px]' title={SHELL_COPY.showCallsHint}>
-                        <Eye aria-hidden='true' size={14} className='shrink-0' />
-                        <input
-                            type='checkbox'
-                            aria-label={SHELL_COPY.showCalls}
-                            aria-describedby='v2-show-calls-hint'
-                            checked={snapshot.showCalls}
-                            onChange={(e) => props.onSetShowCalls(e.target.checked)}
-                            className='size-4 min-h-0'
-                        />
-                        <span data-v2-label>{SHELL_COPY.showCalls}</span>
-                        <span id='v2-show-calls-hint' className='sr-only'>
-                            {SHELL_COPY.showCallsHint}
-                        </span>
-                    </label>
+                <div className='flex flex-col text-[12px]' data-slot='status-block' style={{ gap: 6, padding: '12px 10px 4px', marginTop: 8, borderTop: '1px solid var(--v2-rule)', color: 'var(--v2-soft)' }}>
                     <button
                         type='button'
-                        onClick={props.onReturnToClassic}
-                        title={SHELL_COPY.classic}
-                        aria-label={SHELL_COPY.classic}
-                        className='flex min-h-8 items-center gap-2 rounded-[7px] text-left text-[12px]'
-                        style={{ color: 'var(--v2-faint)' }}
+                        data-v2-collapse=''
+                        data-slot='connection'
+                        data-tone={readStatus.tone}
+                        title={`${readStatus.text} · ${HOME_COPY.readNow}`}
+                        onClick={props.onReadNow}
+                        disabled={!tenant}
+                        className='flex min-h-0 w-full items-center rounded-[6px] text-left text-[12px]'
+                        style={{ gap: 7, color: 'var(--v2-soft)' }}
                     >
-                        <Undo2 aria-hidden='true' size={14} className='shrink-0' />
-                        <span data-v2-label className='underline'>
-                            {SHELL_COPY.classic}
+                        <span aria-hidden='true' className='size-2 shrink-0 rounded-full' style={{ background: readStatus.tone === 'allowed' ? 'var(--v2-ok)' : readStatus.tone === 'blocked' ? 'var(--v2-block)' : readStatus.tone === 'flagged' ? 'var(--v2-flag)' : 'var(--v2-faint)' }} />
+                        <span className='flex-grow'>{tenant ? SHELL_COPY.connected : SHELL_COPY.tenantNone}</span>
+                        <span className='truncate text-right font-semibold' style={{ color: readStatus.tone === 'allowed' ? 'var(--v2-faint)' : readStatus.tone === 'info' ? 'var(--v2-faint)' : 'var(--v2-flag)' }}>
+                            {readStatus.text}
                         </span>
                     </button>
+                    {(
+                        [
+                            ['bot', SHELL_COPY.harnessRow, harnessText, 'harness-status'],
+                            ['lock', SHELL_COPY.keychainRow, keychainText, 'keychain-status'],
+                            ['clock', SHELL_COPY.jobsRow, jobsText, 'jobs-status'],
+                        ] as const
+                    ).map(([glyph, label, value, slot]) => (
+                        <div key={slot} data-slot={slot} data-v2-collapse='' className='flex items-center text-[12px]' style={{ gap: 7, color: 'var(--v2-soft)' }}>
+                            <Glyph name={glyph} size={12} stroke={2} />
+                            <span className='flex-grow'>{label}</span>
+                            <span className='truncate' style={{ color: 'var(--v2-faint)' }}>
+                                {value}
+                            </span>
+                        </div>
+                    ))}
+                    <div className='flex' data-v2-stack='' style={{ gap: 6, paddingTop: 4 }}>
+                        <button
+                            type='button'
+                            onClick={() => props.onNavigate('settings')}
+                            title={SHELL_COPY.settingsButton}
+                            className='flex h-8 min-h-0 flex-grow items-center justify-center gap-1.5 rounded-[7px] border text-[12px]'
+                            style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}
+                        >
+                            <Glyph name='sliders' size={14} className='hidden [@media(max-width:1279px)]:block' />
+                            <span data-v2-label>{SHELL_COPY.settingsButton}</span>
+                        </button>
+                        <button
+                            type='button'
+                            role='switch'
+                            aria-checked={dark}
+                            aria-label={SHELL_COPY.themeToggle}
+                            aria-busy={props.appearancePending || undefined}
+                            title={SHELL_COPY.themeToggle}
+                            onClick={() => props.onSetAppearance(dark ? 'light' : 'dark')}
+                            className='grid h-8 w-9 min-h-0 shrink-0 place-items-center rounded-[7px] border'
+                            style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}
+                        >
+                            <Glyph name={dark ? 'sun' : 'moon'} size={14} />
+                        </button>
+                    </div>
+                    {account && (
+                        <div data-slot='user-row' data-v2-collapse='' className='flex items-center gap-2 text-[12px]' style={{ paddingTop: 6, color: 'var(--v2-ink)' }}>
+                            <span aria-hidden='true' className='grid size-[22px] place-items-center rounded-full text-[10px] font-bold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
+                                {account
+                                    .split(/\s+/)
+                                    .slice(0, 2)
+                                    .map((w) => w[0]?.toUpperCase() ?? '')
+                                    .join('')}
+                            </span>
+                            <span className='truncate'>{account}</span>
+                        </div>
+                    )}
                     {snapshot.fixtureBuild && (
-                        <p data-slot='build-identity' className='font-mono text-[10px] tracking-[0.14em] uppercase' style={{ color: 'var(--v2-flag)' }}>
+                        <p data-slot='build-identity' data-v2-collapse='' className='font-mono text-[10px] tracking-[0.14em] uppercase' style={{ paddingTop: 6, color: 'var(--v2-flag)' }}>
                             {SHELL_COPY.fixture}
                         </p>
                     )}
                 </div>
             </nav>
-            <main
-                data-slot='app-main'
-                className='min-w-0 flex-grow'
-                style={{ padding: 'var(--v2-page-top) var(--v2-page-x) 28px' }}
-                aria-hidden={modalOpen ? true : undefined}
-                inert={modalOpen ? true : undefined}
-            >
-                {unconfirmed.length > 0 && (
-                    <ul data-slot='unconfirmed' aria-label='Not confirmed' className='mb-4 flex flex-col gap-2'>
-                        {unconfirmed.map((u) => (
-                            <li key={u.id} role='status' className='flex items-center gap-3 rounded-[12px] border px-4 py-2 text-[13px]' style={{ borderColor: 'var(--v2-flag)', background: 'var(--v2-flag-bg)', color: 'var(--v2-ink)' }}>
-                                <span className='flex-grow'>{SHELL_COPY.unconfirmed(u.what)}</span>
-                                <button
-                                    type='button'
-                                    onClick={() => {
-                                        clearUnconfirmed(u.id)
-                                        props.onRetry(u.what, u.intent)
-                                    }}
-                                    className='h-8 rounded-[7px] px-3 text-[12px] font-semibold'
-                                    style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}
-                                >
-                                    {SHELL_COPY.retry}
-                                </button>
-                                <button type='button' onClick={() => clearUnconfirmed(u.id)} className='h-8 rounded-[7px] border px-3 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }}>
-                                    {SHELL_COPY.dismiss}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                {feature.id === 'home' ? (
-                    <Home ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
-                ) : feature.id === 'inbox' ? (
-                    <Inbox ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
-                ) : feature.id === 'administration' && feature.availability.state === 'available' ? (
-                    <Administration
-                        key={snapshot.active?.context ?? 'none'}
-                        ref={heading}
-                        snapshot={snapshot}
-                        dispatch={props.dispatch}
-                        client={props.client}
-                        onAct={props.onAct}
-                        onNavigate={props.onNavigate}
-                        arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'administration' ? arrival : null}
-                    />
-                ) : feature.id === 'harness' && feature.availability.state === 'available' ? (
-                    <Harness
-                        key={snapshot.active?.context ?? 'none'}
-                        ref={heading}
-                        snapshot={snapshot}
-                        dispatch={props.dispatch}
-                        onNavigate={props.onNavigate}
-                        arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'harness' ? arrival : null}
-                    />
-                ) : feature.id === 'library' && feature.availability.state === 'available' ? (
-                    // Keyed by context: a new tenant starts at its first page, nothing inspected.
-                    <TestCases key={snapshot.active?.context ?? 'none'} ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
-                ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
-                    // Not keyed by tenant: API Client documents are on this Mac.
-                    <ApiClient ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
-                ) : (
-                    <FeatureBody
-                        ref={heading}
-                        feature={feature}
-                        snapshot={snapshot}
-                        appearancePending={props.appearancePending}
-                        onSetAppearance={props.onSetAppearance}
-                        onNavigate={props.onNavigate}
-                        dispatch={props.dispatch}
-                        client={props.client}
-                        arrival={arrival && arrival.tenant === tenantNow && arrival.feature === feature.id ? arrival : null}
-                    />
-                )}
-                <p role='status' aria-live='polite' data-slot='shell-status' className='mt-4 pb-6 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                    {props.status}
-                </p>
-            </main>
-            {/* "Show the calls" (C33): beside every destination while chosen; inert under a modal (I8). */}
-            <div aria-hidden={modalOpen ? true : undefined} inert={modalOpen ? true : undefined} className='flex'>
-                <CallsPanel snapshot={snapshot} dispatch={props.dispatch} />
+            <div className='flex min-w-0 flex-grow flex-col' aria-hidden={modalOpen ? true : undefined} inert={modalOpen ? true : undefined}>
+                <header
+                    data-slot='app-header'
+                    data-v2-header=''
+                    className='flex shrink-0 items-center'
+                    style={{ height: 'var(--v2-header)', gap: 14, padding: '0 20px 0 44px', borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-bg)' }}
+                >
+                    <div className='min-w-0 truncate text-[16px] font-bold whitespace-nowrap'>
+                        <span data-slot='header-title'>{feature.label}</span>
+                        {subtitle && (
+                            <span data-slot='header-subtitle' className='font-normal' style={{ color: 'var(--v2-faint)' }}>
+                                {'  ›  '}
+                                {subtitle}
+                            </span>
+                        )}
+                    </div>
+                    <button
+                        type='button'
+                        data-slot='palette-trigger'
+                        data-v2-search=''
+                        onClick={openPalette}
+                        className='ml-auto flex h-8 min-h-0 w-[260px] shrink-0 items-center gap-2 rounded-[7px] px-2.5 text-[13px]'
+                        style={{ border: 0, background: 'var(--v2-inset)', color: 'var(--v2-faint)' }}
+                    >
+                        <Glyph name='search' size={14} />
+                        <span className='flex-grow truncate text-left'>{SHELL_COPY.searchOrGo}</span>
+                        <kbd aria-label='Command K' className='text-[12px]'>
+                            ⌘K
+                        </kbd>
+                    </button>
+                    <button
+                        type='button'
+                        role='switch'
+                        aria-checked={snapshot.showCalls}
+                        aria-label={SHELL_COPY.showCalls}
+                        aria-describedby='v2-show-calls-hint'
+                        title={SHELL_COPY.showCallsHint}
+                        onClick={() => props.onSetShowCalls(!snapshot.showCalls)}
+                        className='flex h-8 min-h-0 shrink-0 items-center rounded-[7px] px-2 text-[12px]'
+                        style={{ gap: 7, border: 0, background: 'transparent', color: 'var(--v2-soft)' }}
+                    >
+                        <span
+                            aria-hidden='true'
+                            className='relative inline-block h-4 w-[26px] rounded-full'
+                            style={{ background: snapshot.showCalls ? 'var(--v2-acc)' : 'var(--v2-inset)', boxShadow: `inset 0 0 0 1px ${snapshot.showCalls ? 'var(--v2-acc)' : 'var(--v2-ctl)'}` }}
+                        >
+                            <span className='absolute top-0.5 size-3 rounded-full' style={{ left: snapshot.showCalls ? 12 : 2, background: snapshot.showCalls ? 'var(--v2-acc-ink)' : 'var(--v2-ctl)' }} />
+                        </span>
+                        <span data-v2-label>{SHELL_COPY.explain}</span>
+                        <span id='v2-show-calls-hint' className='sr-only'>
+                            {SHELL_COPY.showCallsHint}
+                        </span>
+                    </button>
+                    <button
+                        type='button'
+                        data-slot='ask-harness'
+                        onClick={() => props.onNavigate('harness')}
+                        className='flex h-8 min-h-0 shrink-0 items-center rounded-[7px] border text-[12px] font-semibold'
+                        style={{ gap: 6, padding: '0 14px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}
+                    >
+                        <Glyph name='bot' size={13} />
+                        <span data-v2-label>{SHELL_COPY.askHarness}</span>
+                    </button>
+                </header>
+                <div className='flex min-h-0 flex-grow'>
+                    <main data-slot='app-main' data-v2-page='' className='flex min-w-0 flex-grow flex-col'>
+                        {unconfirmed.length > 0 && (
+                            <ul data-slot='unconfirmed' aria-label='Not confirmed' className='mb-4 flex flex-col gap-2'>
+                                {unconfirmed.map((u) => (
+                                    <li key={u.id} role='status' className='flex items-center gap-3 rounded-[12px] border px-4 py-2 text-[13px]' style={{ borderColor: 'var(--v2-flag)', background: 'var(--v2-flag-bg)', color: 'var(--v2-ink)' }}>
+                                        <span className='flex-grow'>{SHELL_COPY.unconfirmed(u.what)}</span>
+                                        <button
+                                            type='button'
+                                            onClick={() => {
+                                                clearUnconfirmed(u.id)
+                                                props.onRetry(u.what, u.intent)
+                                            }}
+                                            className='h-8 rounded-[7px] px-3 text-[12px] font-semibold'
+                                            style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}
+                                        >
+                                            {SHELL_COPY.retry}
+                                        </button>
+                                        <button type='button' onClick={() => clearUnconfirmed(u.id)} className='h-8 rounded-[7px] border px-3 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                                            {SHELL_COPY.dismiss}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {feature.id === 'home' ? (
+                            <Home ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
+                        ) : feature.id === 'inbox' ? (
+                            <Inbox ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
+                        ) : feature.id === 'administration' && feature.availability.state === 'available' ? (
+                            <Administration
+                                key={snapshot.active?.context ?? 'none'}
+                                ref={heading}
+                                snapshot={snapshot}
+                                dispatch={props.dispatch}
+                                client={props.client}
+                                onAct={props.onAct}
+                                onNavigate={props.onNavigate}
+                                arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'administration' ? arrival : null}
+                            />
+                        ) : feature.id === 'harness' && feature.availability.state === 'available' ? (
+                            <Harness
+                                key={snapshot.active?.context ?? 'none'}
+                                ref={heading}
+                                snapshot={snapshot}
+                                dispatch={props.dispatch}
+                                onNavigate={props.onNavigate}
+                                arrival={arrival && arrival.tenant === tenantNow && arrival.feature === 'harness' ? arrival : null}
+                            />
+                        ) : feature.id === 'library' && feature.availability.state === 'available' ? (
+                            // Keyed by context: a new tenant starts at its first page, nothing inspected.
+                            <TestCases key={snapshot.active?.context ?? 'none'} ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
+                        ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
+                            // Not keyed by tenant: API Client documents are on this Mac.
+                            <ApiClient ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
+                        ) : (
+                            <FeatureBody
+                                ref={heading}
+                                feature={feature}
+                                snapshot={snapshot}
+                                appearancePending={props.appearancePending}
+                                onSetAppearance={props.onSetAppearance}
+                                onNavigate={props.onNavigate}
+                                dispatch={props.dispatch}
+                                client={props.client}
+                                arrival={arrival && arrival.tenant === tenantNow && arrival.feature === feature.id ? arrival : null}
+                            />
+                        )}
+                        <p role='status' aria-live='polite' data-slot='shell-status' className='mt-4 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+                            {props.status}
+                        </p>
+                    </main>
+                    {/* "Show the calls" (C33): beside every destination while chosen. */}
+                    <CallsPanel snapshot={snapshot} dispatch={props.dispatch} />
+                </div>
             </div>
             {paletteOpen && (
                 <Palette snapshot={snapshot} onNavigate={props.onNavigate} onSwitchTenant={props.onSwitchTenant} onReadNow={props.onReadNow} onClose={closePalette} />

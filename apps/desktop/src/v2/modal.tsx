@@ -7,6 +7,12 @@ interface ModalProps {
     children: ReactNode
     /** Width in CSS px (default 560). */
     width?: number
+    /** Inner padding in CSS px (default 20); 0 for a dialog that lays itself out edge to edge. */
+    padding?: number
+    /** Distance from the top of the window in CSS px (default 4vh); the prototype's palette sits at 90. */
+    top?: number
+    /** Corner radius in CSS px (default 12; the palette's frame is 14). */
+    radius?: number
     'data-slot'?: string
 }
 
@@ -22,7 +28,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * on the window for Escape alone, for when focus has left it (a native
  * sheet returned focus elsewhere), and closes only itself.
  */
-export function Modal({ label, onClose, children, width = 560, ...rest }: ModalProps) {
+export function Modal({ label, onClose, children, width = 560, padding = 20, top, radius = 12, ...rest }: ModalProps) {
     const id = useId()
     const pushModal = useShellStore((s) => s.pushModal)
     const popModal = useShellStore((s) => s.popModal)
@@ -119,7 +125,8 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
 
     return (
         <div
-            className='fixed inset-0 z-50 grid place-items-start justify-center pt-[4vh]'
+            className='fixed inset-0 z-50 grid place-items-start justify-center'
+            style={{ paddingTop: top ?? '4vh' }}
             data-v2-scrim=''
             aria-hidden={topmost ? undefined : true}
             inert={topmost ? undefined : true}
@@ -135,10 +142,10 @@ export function Modal({ label, onClose, children, width = 560, ...rest }: ModalP
                 data-topmost={topmost ? 'true' : 'false'}
                 onKeyDown={onKeyDown}
                 onMouseDown={(e) => e.stopPropagation()}
-                className='rounded-[12px] border p-5 shadow-2xl'
+                className='border'
                 // Bounded to the viewport: a tall dialog scrolls inside itself, so its
                 // actions stay reachable at the minimum window size and 200% zoom.
-                style={{ width: `min(${width}px, 92vw)`, maxHeight: '92vh', overflowY: 'auto', background: 'var(--v2-paper)', borderColor: 'var(--v2-rule)', color: 'var(--v2-ink)' }}
+                style={{ width: `min(${width}px, 92vw)`, maxHeight: '92vh', overflowY: 'auto', padding, borderRadius: radius, boxShadow: '0 24px 60px rgba(0,0,0,0.3)', background: 'var(--v2-paper)', borderColor: 'var(--v2-rule)', color: 'var(--v2-ink)' }}
             >
                 {children}
             </div>

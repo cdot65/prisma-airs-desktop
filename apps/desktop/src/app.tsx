@@ -235,7 +235,6 @@ export function App({ client }: { client: DesktopClient }) {
                 onNavigate={(feature) => void v2Navigate(feature)}
                 onSetAppearance={(theme) => void v2Preference('The appearance change', { kind: 'setAppearance', theme })}
                 onSetShowCalls={(on) => void v2Preference('The preference change', { kind: 'setShowCalls', on })}
-                onReturnToClassic={() => void v2Preference('The interface change', { kind: 'setUiVariant', variant: 'legacy' })}
                 onSwitchTenant={(tenant, resolution) => {
                     // The target is captured now: a late refusal still names it. A
                     // pending-decision refusal is not a toast: the snapshot carries
