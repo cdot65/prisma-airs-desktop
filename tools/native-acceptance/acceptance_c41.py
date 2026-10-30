@@ -368,10 +368,16 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
 
     # ---- N02: keyboard, ring, layouts ----
     n2 = {}
+    # Back to the list request's tab (the + step left its draft, URL https://example.com/, as the active tab; the
+    # first run sent that draft from the keyboard and was refused as not loopback). Only the active tab's editor
+    # is in the tree, so the URL field and Send below are the list request's once its tab is selected.
+    tree = app.tree()
     tab = next((n for n in tree if n.get("role") in TABS and (n.get("label") or "") == "GET list"), None)
     if tab:
         app.ax("press", tab["role"], "GET list")
-        app.wait_for(lambda t: (fx.App.node(t, "AXTextField", "URL") or {}).get("value", "").endswith("/topics"), 8)
+    tree, n2["list_tab"] = app.wait_for(lambda t: (fx.App.node(t, "AXTextField", "URL") or {}).get("value", "").endswith("/topics"), 10)
+    if not n2["list_tab"]:
+        raise RuntimeError(f"the list request's tab did not come back: URL {(fx.App.node(tree, 'AXTextField', 'URL') or {}).get('value')!r}")
     app.ax("focus", "AXTextField", "URL")
     walk = []
     sent_by_key = False
@@ -387,6 +393,7 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
     n2["walk"] = walk
     tree, n2["sent_by_key"] = app.wait_for(lambda t: len(api.requests("/topics")) == before + 1 and any("list · 200 · " in r for r in c31.status_texts(t)), 15)
     n2["sent_by_key"] = n2["sent_by_key"] and sent_by_key
+    n2["key_status"] = [r for r in c31.status_texts(tree) if "list ·" in r or "not send" in r or "not done" in r][:3]
     plain = c29.capture(app, "api-ring-plain")
     n2["ring"] = c31.ring_on(app, "Send", plain, "api-ring")
     layouts = {}
@@ -455,7 +462,7 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
     layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["board"]["ok"] for v in lay.values()) \
         and sum(1 for v in lay.values() if v.get("width_1440")) == 2 and sum(1 for v in lay.values() if v.get("window_900x600")) == 2
     add("C41-N02", n2["sent_by_key"] and ring_ok and layouts_ok,
-        f"Tab from URL reached {n2['walk']} and Space on Send sent and announced it {n2['sent_by_key']}; ring on Send {n2['ring'].get('diff')} px; "
+        f"on the list request's tab {n2['list_tab']}, Tab from URL reached {n2['walk']} and Space on Send sent and announced it {n2['sent_by_key']} ({n2['key_status']}); ring on Send {n2['ring'].get('diff')} px; "
         + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, board {v['board']}" for k, v in lay.items()),
         [run_rel] + [v["tree"] for v in lay.values()] + caps("layouts") + caps("api-ring"))
 

@@ -329,6 +329,10 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
     const dirty = doc.new || doc.metadataDirty || !same(fields, doc.saved)
     const name = requestName(doc.relative)
     const state = doc.new ? C.state.new : dirty ? C.state.unsaved : C.state.saved
+    // A save's word ("Saved", "No changes to save") gives way to the state once the request is edited again.
+    useEffect(() => {
+        if (dirty) setStatus((s) => (s === 'Saved' || s === 'No changes to save' ? '' : s))
+    }, [dirty])
     const url = splitUrl(fields.url)
 
     const rowsTable = (kind: RowKind) => {
