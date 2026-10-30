@@ -12,3 +12,5 @@
 | S the row menu's focus movement and dismissal; capture filenames by observed appearance | Not changed in this generation (optional). | — |
 
 Commands: `npx tsc --noEmit` clean; `npx vitest run src/v2/workbench/workbench.test.tsx` 15 passed. Attempt-02 (rebuild, native, checks, packet, Codex) runs through the queue.
+
+Owner's dependency amendment, 2026-10-30 (approved in the owner's words: "Dependency amendment approved. go go go", to the statement "P09 chunks are reviewed on their own worktrees from each predecessor's pre-gate commit; predecessor remediation is integrated by the merge chain and validated by the P09 phase review"): a chunk's review takes the predecessor's record as it stands and does not require the predecessor's later remediation in its own tree.
