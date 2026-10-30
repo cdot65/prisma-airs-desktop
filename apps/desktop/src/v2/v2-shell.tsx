@@ -552,7 +552,7 @@ export function V2Shell(props: V2ShellProps) {
                 <SwitchGuard target={guardTarget} completion={false} onStay={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => props.onSwitchTenant(guard.to, resolution)} />
             )}
             {adding && (
-                <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} data-slot='add-tenant-sheet'>
+                <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} padding={0} data-slot='add-tenant-sheet'>
                     <Wizard
                         snapshot={snapshot}
                         dispatch={props.dispatch}

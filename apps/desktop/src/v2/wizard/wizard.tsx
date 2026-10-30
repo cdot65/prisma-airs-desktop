@@ -5,6 +5,7 @@ import type { Dispatch, DispatchOutcome } from '../../features/tenants/dispatch'
 import { outcomeMessage } from '../../features/tenants/dispatch'
 import { readManagement } from '../../features/administration/management-read'
 import { AcademyAccount } from '../../features/academy/academy-account'
+import { Glyph, type GlyphName } from '../icons'
 import { Verdict, type VerdictTone } from '../verdict'
 import { ENVIRONMENT_LABELS } from '../copy'
 import { SwitchGuard } from '../switch-guard'
@@ -81,6 +82,10 @@ export function Wizard(props: WizardProps) {
     const [busy, setBusy] = useState(false)
     const [finishing, setFinishing] = useState(false)
     const [packs, setPacks] = useState<ProductId[] | null>(props.initial?.packs ?? null)
+    // Steps the operator skipped (the rail tags them Skipped once passed).
+    const [skipped, setSkipped] = useState<Set<WizardStep>>(() => new Set())
+    const [helpOpen, setHelpOpen] = useState(false)
+    const [scanOpen, setScanOpen] = useState(false)
     const heading = useRef<HTMLHeadingElement>(null)
     const headingId = useId()
 
@@ -393,344 +398,680 @@ export function Wizard(props: WizardProps) {
 
     const railCtx = setup ? `${setup.tenant.label} · ${ENVIRONMENT_LABELS[setup.tenant.environment]}${setup.tenant.tsgId ? ` · TSG ${setup.tenant.tsgId}` : ''}` : ''
     const productLabel = (id: ProductId) => PRODUCT_CARDS.find((c) => c.id === id)?.label ?? id
+    const isAdd = mode === 'add'
+    const dark = snapshot.appearance === 'dark' || (snapshot.appearance === 'system' && typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches)
+    const skip = (s: WizardStep) => {
+        setSkipped((x) => new Set([...x, s]))
+        go(index + 1)
+    }
+    const unskip = (s: WizardStep) =>
+        setSkipped((x) => {
+            const n = new Set(x)
+            n.delete(s)
+            return n
+        })
+
+    // ---- the pinned footer, per step ----
+    type Btn = { label: string; onClick: () => void; disabled?: boolean }
+    let primary: Btn
+    let secondary: Btn | undefined
+    let extra: Btn | undefined
+    let skipBtn: Btn | undefined
+    let hint = ''
+    switch (step) {
+        case 'welcome':
+            primary = { label: C.welcome.continue, onClick: () => void leaveWelcome(), disabled: busy }
+            break
+        case 'tenant':
+            primary = { label: tenantContinue.label, onClick: () => go(index + 1), disabled: tenantContinue.disabled }
+            hint = isAdd && !setup ? C.cancelNote : ''
+            break
+        case 'products':
+            primary = { label: C.products.continue, onClick: () => go(index + 1) }
+            break
+        case 'verify':
+            primary = { label: run && run.done && !run.stale && run.warnings.length > 0 && !run.blocking ? C.verify.continueWarnings : C.verify.continue, onClick: () => go(index + 1), disabled: !setup?.completable }
+            secondary = { label: run ? C.verify.again : C.verify.run, onClick: () => void verify(), disabled: busy || running }
+            extra = run && run.done && run.failed && !run.stale ? { label: C.verify.fix, onClick: () => go(steps.indexOf('tenant')) } : undefined
+            break
+        case 'packs':
+            primary = { label: C.packs.continue, onClick: () => { unskip('packs'); go(index + 1) } }
+            skipBtn = { label: C.packs.skip, onClick: () => { setPacks([]); skip('packs') } }
+            break
+        case 'academy':
+            primary = snapshot.academy.state === 'signedIn' ? { label: C.academy.continue, onClick: () => { unskip('academy'); go(index + 1) } } : { label: C.academy.skip, onClick: () => skip('academy') }
+            break
+        default:
+            primary = { label: finishing ? (isAdd ? C.done.finishing : C.done.opening) : isAdd ? C.done.finish : C.done.open, onClick: () => void finish(), disabled: finishing || !setup?.completable || profileDirty }
+    }
+    const showBack = index > 0
+
+    const card = (children: ReactNode, extraStyle: React.CSSProperties = {}, rest: Record<string, unknown> = {}) => (
+        <section className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', ...extraStyle }} {...rest}>
+            {children}
+        </section>
+    )
+    const pill = (text: string, tone: 'required' | 'optional' = 'optional') => (
+        <span className='rounded-full text-[12px] font-semibold' style={{ padding: '1px 7px', background: 'var(--v2-inset)', color: tone === 'required' ? 'var(--v2-soft)' : 'var(--v2-faint)' }}>
+            {text}
+        </span>
+    )
+    const tile = (name: GlyphName, size = 30) => (
+        <span className='grid shrink-0 place-items-center rounded-[8px]' style={{ width: size, height: size, background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
+            <Glyph name={name} size={Math.round(size / 2)} color='var(--v2-soft)' />
+        </span>
+    )
+    const stateTone = (state: 'missing' | 'storing' | 'ready' | 'failed'): VerdictTone => (state === 'ready' ? 'allowed' : state === 'failed' ? 'blocked' : 'info')
+    const scanCard = setup && (
+        <OptionalCard
+            icon='shield'
+            title={C.tenant.scanKey}
+            text={`${setup.scanRequired ? C.tenant.scanRequired : C.tenant.scanOptional} ${C.tenant.scanHint}`}
+            tag={setup.scanRequired ? C.required : C.optional}
+            open={scanOpen || setup.scanRequired || scanReady}
+            onToggle={setup.scanRequired ? undefined : (on) => setScanOpen(on)}
+            state={
+                <span data-slot='scan-state'>
+                    <Verdict tone={stateTone(setup.tenant.scan.state)} word={C.tenant.state[setup.tenant.scan.state]} />
+                </span>
+            }
+            slot='scan-key-form'
+            onSubmit={(e) => void saveScanKey(e)}
+            busy={busy}
+        >
+            <SecretField label={C.tenant.scanKey} inputRef={scanRef} error={errors.scanKey} />
+            <div className='flex items-end' style={{ gap: 10 }}>
+                <Primary label={scanReady ? C.tenant.replaceKey : C.tenant.saveKey} disabled={busy} />
+                {scanReady && <Secondary label={C.tenant.removeKey} disabled={busy} onClick={() => void remove('removeScanCredential', C.tenant.keyRemoved)} />}
+            </div>
+        </OptionalCard>
+    )
 
     return (
-        <div data-slot='wizard' data-mode={mode} className='flex' style={{ minHeight: mode === 'add' ? 'min(780px, 84vh)' : '100vh', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
-            <nav aria-label='Setup steps' className='flex shrink-0 flex-col gap-1 p-6' style={{ width: mode === 'add' ? 244 : 320, background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}>
-                <p className='text-[15px] font-bold'>{mode === 'add' ? C.railTitleAdd : C.railTitle}</p>
-                <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
-                    {mode === 'add' ? C.railSubAdd : C.railSub}
-                </p>
-                {railCtx && step !== 'welcome' && (
-                    <p data-slot='rail-context' className='mt-1 text-[12px] font-semibold'>
-                        {railCtx}
-                    </p>
-                )}
-                <ol className='mt-4 flex flex-col gap-1'>
-                    {steps.map((s, i) => (
-                        <li key={s}>
-                            <button
-                                type='button'
-                                aria-current={s === step ? 'step' : undefined}
-                                disabled={!reachable(i)}
-                                onClick={() => reachable(i) && go(i)}
-                                className='flex min-h-9 w-full items-center gap-2 rounded-[7px] px-2.5 text-left text-[13px] disabled:opacity-60'
-                                style={{ background: s === step ? 'var(--v2-sel)' : 'transparent', color: s === step ? 'var(--v2-sel-ink)' : 'var(--v2-ink)' }}
-                            >
-                                <span className='grid size-5 place-items-center rounded-full text-[11px] font-bold' style={{ border: '1px solid currentColor' }}>
-                                    {i + 1}
+        <div data-slot='wizard' data-mode={mode} className='flex' style={{ height: isAdd ? 'min(780px, 84vh)' : '100vh', minHeight: 0, background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
+            <nav aria-label='Setup steps' className='flex shrink-0 flex-col' style={{ width: isAdd ? 244 : 320, padding: isAdd ? '22px 16px 16px' : '22px 20px 20px', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}>
+                <div className='flex items-center' style={{ gap: 12, marginBottom: 28 }}>
+                    <span className='grid shrink-0 place-items-center rounded-[10px]' style={{ width: 40, height: 40, background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }} data-slot='brand-tile'>
+                        <Glyph name='shield' size={22} color='var(--v2-acc-ink)' />
+                    </span>
+                    <span className='min-w-0'>
+                        <b className='text-[15px]'>{isAdd ? C.railTitleAdd : C.railTitle}</b>
+                        <br />
+                        <span style={{ color: 'var(--v2-faint)' }}>{isAdd ? C.railSubAdd : C.railSub}</span>
+                        {railCtx && step !== 'welcome' && (
+                            <>
+                                <br />
+                                <span data-slot='rail-context' className='inline-block text-[12px] font-semibold leading-[1.35] break-words' style={{ marginTop: 4 }}>
+                                    {railCtx}
                                 </span>
-                                {C.steps[s]}
-                            </button>
-                        </li>
-                    ))}
-                </ol>
-                {mode === 'add' && (
-                    <div className='mt-auto flex flex-col gap-2 pt-4'>
-                        <p className='text-[11px]' style={{ color: 'var(--v2-faint)' }}>
-                            {C.cancelNote}
-                        </p>
-                        <button type='button' onClick={() => void cancel()} disabled={cancelling} className='h-8 rounded-[7px] border text-[12px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
-                            {cancelling ? C.cancelling : C.cancel}
-                        </button>
-                    </div>
-                )}
-            </nav>
-            <main className='min-w-0 flex-grow' style={{ padding: mode === 'add' ? '34px 44px 24px' : '32px 44px 28px', maxWidth: 'var(--v2-reading)' }}>
-                <section aria-labelledby={headingId} className='flex flex-col gap-4'>
-                    {step === 'welcome' && (
-                        <Step heading={heading} id={headingId} title={C.welcome.title} lead={C.welcome.lead}>
-                            <ul className='grid gap-3' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-                                {C.welcome.cards.map((c) => (
-                                    <li key={c.title} className='rounded-[12px] border p-5' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
-                                        <p className='text-[14px] font-semibold'>{c.title}</p>
-                                        <p className='mt-2 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                                            {c.body}
-                                        </p>
-                                    </li>
-                                ))}
-                            </ul>
-                            <Actions primary={{ label: C.welcome.continue, onClick: () => void leaveWelcome(), disabled: busy }} />
-                        </Step>
-                    )}
-                    {step === 'tenant' && (
-                        <Step heading={heading} id={headingId} title={C.tenant.title} lead={C.tenant.lead}>
-                            <form onSubmit={(e) => void submitProfile(e)} aria-busy={busy} className='flex flex-col gap-3' data-slot='tenant-form'>
-                                <Field label={C.tenant.name} name='name' value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} hint={C.tenant.nameHint} error={touched.name ? errors.name : ''} maxLength={64} onBlur={(v) => { setTouched((t) => ({ ...t, name: true })); setErrors((e) => ({ ...e, name: fieldError('name', v) })) }} />
-                                <div className='flex flex-wrap gap-3'>
-                                    <label className='flex flex-col gap-1 text-[13px] font-medium'>
-                                        {C.tenant.environment}
-                                        <select name='environment' value={form.environment} onChange={(e) => setForm((f) => ({ ...f, environment: e.target.value as TenantEnvironment }))} className='h-8 px-2'>
-                                            {ENVIRONMENTS.map((env) => (
-                                                <option key={env} value={env}>
-                                                    {ENVIRONMENT_LABELS[env]}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label className='flex flex-col gap-1 text-[13px] font-medium'>
-                                        {C.tenant.region}
-                                        <select name='region' value={form.region} onChange={(e) => setForm((f) => ({ ...f, region: e.target.value as Region }))} className='h-8 px-2'>
-                                            {REGIONS.map((r) => (
-                                                <option key={r.value} value={r.value}>
-                                                    {r.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                </div>
-                                <Field label={C.tenant.tsg} name='tsg' value={form.tsg} onChange={(v) => setForm((f) => ({ ...f, tsg: v }))} hint={C.tenant.tsgHint} inputMode='numeric' error={touched.tsg ? errors.tsg : ''} onBlur={(v) => { setTouched((t) => ({ ...t, tsg: true })); setErrors((e) => ({ ...e, tsg: fieldError('tsg', v) })) }} />
-                                {setup && (
-                                    <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
-                                        {C.tenant.updateHint}
-                                    </p>
-                                )}
-                                <div className='flex items-center gap-3'>
-                                    <Primary label={setup ? C.tenant.save : C.tenant.create} disabled={busy} />
-                                    {profileDirty && <Secondary label={C.tenant.revert} onClick={revertProfile} />}
-                                    <button type='button' onClick={() => props.onNavigate('import')} className='text-[13px] underline' style={{ color: 'var(--v2-acc)' }} title={C.tenant.importHint}>
-                                        {C.tenant.importV1}
-                                    </button>
-                                </div>
-                            </form>
-                            {setup && (
-                                <div className='flex flex-col gap-5'>
-                                    <form onSubmit={(e) => void saveScanKey(e)} aria-busy={busy} className='flex flex-col gap-2' data-slot='scan-key-form'>
-                                        <p className='text-[14px] font-semibold'>{C.tenant.scanKey}</p>
-                                        <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
-                                            {setup.scanRequired ? C.tenant.scanRequired : C.tenant.scanOptional} {C.tenant.scanHint}
-                                        </p>
-                                        <p data-slot='scan-state'>
-                                            <Verdict tone={scanReady ? 'allowed' : setup.tenant.scan.state === 'failed' ? 'blocked' : 'info'} word={C.tenant.state[setup.tenant.scan.state]} />
-                                        </p>
-                                        <SecretField label={C.tenant.scanKey} inputRef={scanRef} error={errors.scanKey} />
-                                        <div className='flex items-center gap-3'>
-                                            <Primary label={scanReady ? C.tenant.replaceKey : C.tenant.saveKey} disabled={busy} />
-                                            {scanReady && <Secondary label={C.tenant.removeKey} disabled={busy} onClick={() => void remove('removeScanCredential', C.tenant.keyRemoved)} />}
-                                        </div>
-                                    </form>
-                                    <form onSubmit={(e) => void saveClient(e)} aria-busy={busy} className='flex flex-col gap-2' data-slot='management-form'>
-                                        <p className='text-[14px] font-semibold'>{C.tenant.management}</p>
-                                        <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
-                                            {C.tenant.managementHint}
-                                        </p>
-                                        <p data-slot='management-state'>
-                                            <Verdict tone={clientReady ? 'allowed' : setup.tenant.management.state === 'failed' ? 'blocked' : 'info'} word={C.tenant.state[setup.tenant.management.state]} reason={clientReady && setup.tenant.management.clientId ? `Client ID: ${setup.tenant.management.clientId}` : undefined} />
-                                        </p>
-                                        <Field label={C.tenant.clientId} name='clientId' error={errors.clientId} />
-                                        <SecretField label={C.tenant.clientSecret} inputRef={secretRef} error={errors.clientSecret} />
-                                        <div className='flex items-center gap-3'>
-                                            <Primary label={clientReady ? C.tenant.replaceClient : C.tenant.saveClient} disabled={busy} />
-                                            {clientReady && <Secondary label={C.tenant.removeClient} disabled={busy} onClick={() => void remove('removeManagementCredential', C.tenant.clientRemoved)} />}
-                                        </div>
-                                    </form>
-                                    <section className='flex flex-col gap-2' data-slot='gateway-section' aria-label={C.tenant.gateway}>
-                                        <p className='text-[14px] font-semibold'>{C.tenant.gateway}</p>
-                                        <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
-                                            {C.tenant.gatewayHint}
-                                        </p>
-                                        <label className='flex items-center gap-2 text-[13px]'>
-                                            <input type='checkbox' checked={gatewayOn} onChange={(e) => setGatewayOn(e.target.checked)} />
-                                            {C.tenant.gatewayOn}
-                                        </label>
-                                        {gatewayOn && !clientReady && (
-                                            <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                                                {C.tenant.gatewayNeedsClient}
-                                            </p>
-                                        )}
-                                        {gatewayOn && clientReady && (
-                                            <div className='flex flex-col gap-2'>
-                                                <div className='flex items-center gap-3'>
-                                                    <Secondary label={C.tenant.readWorkspaces} disabled={busy} onClick={() => void listWorkspaces()} />
-                                                    {workspacesNote && <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>{workspacesNote}</span>}
-                                                </div>
-                                                {workspaces && workspaces.length > 0 && (
-                                                    <div className='flex items-end gap-3'>
-                                                        <label className='flex flex-col gap-1 text-[13px] font-medium'>
-                                                            {C.tenant.workspace}
-                                                            <select value={workspace} onChange={(e) => setWorkspace(e.target.value)} className='h-8 px-2'>
-                                                                {workspaces.map((w) => (
-                                                                    <option key={w.id} value={w.id}>
-                                                                        {w.name}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        </label>
-                                                        <Secondary label={C.tenant.chooseWorkspace} disabled={busy || !workspace} onClick={() => void chooseWorkspace()} />
-                                                    </div>
-                                                )}
-                                                {chosen && (
-                                                    <form onSubmit={(e) => void saveWorkspaceKey(e)} aria-busy={busy} className='flex flex-col gap-2' data-slot='workspace-key-form'>
-                                                        <p className='text-[13px]'>{C.tenant.workspaceChosen(chosen.workspace.name)}</p>
-                                                        <p data-slot='inference-state'>
-                                                            <Verdict tone={setup.tenant.inference.state === 'ready' ? 'allowed' : 'info'} word={C.tenant.state[setup.tenant.inference.state]} />
-                                                        </p>
-                                                        <Field label={C.tenant.endpoint} name='endpoint' value={endpoint} onChange={setEndpoint} hint={C.tenant.endpointHint} error={errors.endpoint} />
-                                                        <SecretField label={C.tenant.workspaceKey} inputRef={workspaceKeyRef} error={errors.workspaceKey} />
-                                                        <div>
-                                                            <Primary label={C.tenant.saveWorkspaceKey} disabled={busy} />
-                                                        </div>
-                                                    </form>
-                                                )}
-                                            </div>
-                                        )}
-                                    </section>
-                                </div>
-                            )}
-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} primary={{ label: tenantContinue.label, onClick: () => go(index + 1), disabled: tenantContinue.disabled }} />
-                        </Step>
-                    )}
-                    {step === 'products' && setup && (
-                        <Step heading={heading} id={headingId} title={C.products.title} lead={C.products.lead}>
-                            <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
-                                {C.products.licence}
-                            </p>
-                            <ul className='grid gap-3' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-                                {PRODUCT_CARDS.map((card) => {
-                                    const unavailable = card.id === null
-                                    const always = card.id === 'runtimeSecurity'
-                                    const on = card.id !== null && setup.products.includes(card.id)
-                                    const reads = card.id === null ? null : card.id === 'runtimeSecurity' ? (scanReady ? C.products.readsWith.scanReady : C.products.readsWith.scanMissing) : clientReady ? C.products.readsWith.clientReady : C.products.readsWith.clientMissing
-                                    const lastStep = run && !run.stale && card.id ? run.steps.find((s) => s.product === card.id && s.line !== 'managementClient') : undefined
-                                    return (
-                                        <li key={card.label} className='rounded-[12px] border p-4' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', opacity: unavailable ? 0.7 : 1 }}>
-                                            <label className='flex items-start gap-3'>
-                                                <input type='checkbox' disabled={unavailable || always} checked={on} onChange={(e) => card.id && void toggleProduct(card.id, e.target.checked)} aria-describedby={`${card.label}-body`} className='mt-1' />
-                                                <span className='flex flex-col gap-1'>
-                                                    <span className='text-[14px] font-semibold'>{card.label}</span>
-                                                    <span id={`${card.label}-body`} className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                                                        {card.body}
-                                                    </span>
-                                                    <span className='flex flex-wrap gap-1.5'>
-                                                        {unavailable && <Verdict tone='info' word={C.products.unavailable} />}
-                                                        {always && <Verdict tone='info' word={C.products.always} />}
-                                                        {card.readOnly && <Verdict tone='info' word={C.products.readOnly} />}
-                                                        {reads && !unavailable && <Verdict tone={reads === C.products.readsWith.clientMissing || reads === C.products.readsWith.scanMissing ? 'flagged' : 'allowed'} word={reads} />}
-                                                        {lastStep && lastStep.state !== 'pending' && <Verdict tone={toneOf(lastStep.state)} word={C.verify.state[lastStep.state]} />}
-                                                    </span>
-                                                </span>
-                                            </label>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} primary={{ label: C.products.continue, onClick: () => go(index + 1) }} />
-                        </Step>
-                    )}
-                    {step === 'verify' && setup && (
-                        <Step heading={heading} id={headingId} title={C.verify.title} lead={C.verify.lead}>
-                            <ul className='flex flex-col gap-2' aria-label='Checks' aria-busy={running}>
-                                {plannedRows.map((r) => (
-                                    <li key={r.line} className='flex items-center justify-between gap-3 rounded-[12px] border px-4 py-3' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', opacity: run?.stale ? 0.6 : 1 }} data-slot={`verify-${r.line}`}>
-                                        <span className='flex flex-col'>
-                                            <span className='text-[14px] font-medium'>{C.verify.rows[r.line]}</span>
-                                            {r.reason && (
-                                                <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                                                    {r.reason}
-                                                </span>
-                                            )}
+                            </>
+                        )}
+                    </span>
+                </div>
+                <ol className='flex flex-col' style={{ gap: 2 }}>
+                    {steps.map((s, i) => {
+                        const cur = s === step
+                        const done = i < index && visited.has(s) && !skipped.has(s)
+                        const optional = s === 'packs' || s === 'academy'
+                        return (
+                            <li key={s}>
+                                <button
+                                    type='button'
+                                    aria-current={cur ? 'step' : undefined}
+                                    disabled={!reachable(i)}
+                                    onClick={() => reachable(i) && go(i)}
+                                    className='flex w-full items-center rounded-[8px] text-left text-[13px] disabled:opacity-60'
+                                    style={{ gap: 12, height: 40, padding: '0 10px', background: cur ? 'var(--v2-paper)' : 'transparent', color: 'var(--v2-ink)', fontWeight: cur ? 600 : 400 }}
+                                >
+                                    <span className='grid shrink-0 place-items-center rounded-full text-[11px] font-bold' style={{ width: 24, height: 24, border: `1.5px solid ${cur || done ? 'var(--v2-acc)' : 'var(--v2-ctl)'}`, background: done ? 'var(--v2-acc)' : cur ? 'var(--v2-acc-soft)' : 'transparent', color: done ? 'var(--v2-acc-ink)' : cur ? 'var(--v2-acc)' : 'var(--v2-soft)' }} data-slot='step-mark' data-done={done ? 'true' : undefined}>
+                                        {done ? <Glyph name='check' size={12} color='var(--v2-acc-ink)' /> : i + 1}
+                                    </span>
+                                    <span className='flex-grow'>{C.steps[s]}</span>
+                                    {skipped.has(s) ? (
+                                        <span className='text-[12px] font-normal' style={{ color: 'var(--v2-faint)' }}>
+                                            {C.skipped}
                                         </span>
-                                        <Verdict tone={run || r.state === 'unavailable' ? toneOf(r.state) : 'info'} word={run || r.state === 'unavailable' ? C.verify.state[r.state] : C.verify.notRun} />
-                                    </li>
-                                ))}
-                            </ul>
-                            <p role='status' aria-live='polite' className='text-[13px]' style={{ color: run?.stale || run?.failed ? 'var(--v2-block)' : 'var(--v2-soft)' }}>
-                                {verifyStatus}
-                            </p>
-                            <Actions
-                                back={index > 0 ? () => go(index - 1) : undefined}
-                                // A failed run offers the way back to the inputs; a rerun stays available
-                                // too, because the failure may have been outside this desktop.
-                                extra={run && run.done && run.failed && !run.stale ? { label: C.verify.fix, onClick: () => go(steps.indexOf('tenant')) } : undefined}
-                                secondary={{ label: run ? C.verify.again : C.verify.run, onClick: () => void verify(), disabled: busy || running }}
-                                primary={{ label: run && run.done && !run.stale && run.warnings.length > 0 && !run.blocking ? C.verify.continueWarnings : C.verify.continue, onClick: () => go(index + 1), disabled: !setup.completable }}
-                            />
-                        </Step>
-                    )}
-                    {step === 'packs' && setup && (
-                        <Step heading={heading} id={headingId} title={C.packs.title} lead={C.packs.lead}>
-                            {setup.packs.some((p) => p.count > 0) ? (
-                                <ul className='flex flex-col gap-2' aria-label={C.packs.title}>
-                                    {setup.packs.map((p) => (
-                                        <li key={p.product}>
-                                            <label className='flex items-center gap-2 text-[13px]'>
-                                                <input type='checkbox' disabled={p.count === 0} checked={selectedPacks.includes(p.product)} onChange={(e) => setPacks(e.target.checked ? [...selectedPacks, p.product] : selectedPacks.filter((x) => x !== p.product))} />
-                                                {C.packs.pack(productLabel(p.product), p.count)}
-                                            </label>
+                                    ) : optional ? (
+                                        <span className='text-[12px] font-normal' style={{ color: 'var(--v2-faint)' }}>
+                                            {C.optional}
+                                        </span>
+                                    ) : null}
+                                </button>
+                            </li>
+                        )
+                    })}
+                </ol>
+                <div className='mt-auto flex rounded-[10px] text-[12px] leading-[1.5]' style={{ gap: 8, padding: 12, background: 'var(--v2-inset)', color: 'var(--v2-soft)' }} data-slot='privacy-note'>
+                    <Glyph name='lock' size={14} color='var(--v2-soft)' className='mt-[2px] shrink-0' />
+                    <span>{C.privacy}</span>
+                </div>
+                <button type='button' onClick={() => void dispatch({ kind: 'setAppearance', theme: dark ? 'light' : 'dark' })} className='h-8 self-start rounded-[7px] border px-3 text-[12px]' style={{ marginTop: 10, borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-soft)' }} data-slot='theme-button'>
+                    {dark ? C.themeDark : C.themeLight}
+                </button>
+            </nav>
+            <div className='flex min-w-0 flex-grow flex-col'>
+                <main className='min-h-0 flex-grow overflow-auto' style={{ padding: isAdd ? '26px 32px 22px' : '32px 44px 28px' }}>
+                    <section aria-labelledby={headingId} className='flex flex-col' style={{ gap: 18, maxWidth: 860 }}>
+                        {step === 'welcome' && (
+                            <div className='flex flex-col' style={{ gap: 18, paddingTop: 30 }}>
+                                <span className='grid place-items-center rounded-[18px]' style={{ width: 72, height: 72, background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
+                                    <Glyph name='shield' size={38} color='var(--v2-acc-ink)' />
+                                </span>
+                                <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 32, letterSpacing: '-0.02em' }}>
+                                    {C.welcome.title}
+                                </h1>
+                                <p className='text-[15px] leading-[1.55]' style={{ maxWidth: 680, color: 'var(--v2-soft)' }}>
+                                    {C.welcome.lead}
+                                </p>
+                                <p className='text-[14px] leading-[1.55]' style={{ maxWidth: 680, color: 'var(--v2-soft)' }}>
+                                    {C.welcome.lead2}
+                                </p>
+                                <ul className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 6 }}>
+                                    {C.welcome.cards.map((c) => (
+                                        <li key={c.title} className='flex flex-col rounded-[12px] border' style={{ gap: 10, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                                            <span className='grid place-items-center rounded-[8px]' style={{ width: 30, height: 30, background: 'var(--v2-acc-soft)', color: 'var(--v2-acc)' }}>
+                                                <Glyph name={c.icon} size={15} color='var(--v2-acc)' />
+                                            </span>
+                                            <b>{c.title}</b>
+                                            <span className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
+                                                {c.body}
+                                            </span>
                                         </li>
                                     ))}
                                 </ul>
-                            ) : (
-                                <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                                    {C.packs.none}
+                                <div className='flex items-center rounded-[12px]' style={{ gap: 12, padding: '14px 16px', border: '1px dashed var(--v2-rule)' }} data-slot='import-box'>
+                                    <Glyph name='folder' size={16} color='var(--v2-soft)' />
+                                    <span className='flex-grow'>
+                                        <b>{C.welcome.importTitle}</b> <span style={{ color: 'var(--v2-soft)' }}>{C.welcome.importText}</span>
+                                    </span>
+                                    <Secondary label={C.welcome.importButton} onClick={() => props.onNavigate('import')} />
+                                </div>
+                            </div>
+                        )}
+                        {step === 'tenant' && (
+                            <>
+                                <div className='flex flex-wrap items-end' style={{ gap: 12 }}>
+                                    <div>
+                                        <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
+                                            {C.tenant.title}
+                                        </h1>
+                                        <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
+                                            {C.tenant.lead}
+                                        </p>
+                                    </div>
+                                    <button type='button' onClick={() => props.onNavigate('import')} className='ml-auto text-[13px] font-semibold' style={{ color: 'var(--v2-acc)' }} title={C.tenant.importHint}>
+                                        {C.tenant.importV1}
+                                    </button>
+                                </div>
+                                <form onSubmit={(e) => void submitProfile(e)} aria-busy={busy} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='tenant-form'>
+                                    <div className='flex items-center' style={{ gap: 8 }}>
+                                        <b className='text-[14px]'>{C.tenant.card}</b>
+                                        {pill(C.required, 'required')}
+                                    </div>
+                                    <div className='grid' style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }} data-slot='field-grid'>
+                                        <Field label={C.tenant.name} name='name' value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} hint={C.tenant.nameHint} error={touched.name ? errors.name : ''} maxLength={64} onBlur={(v) => { setTouched((t) => ({ ...t, name: true })); setErrors((e) => ({ ...e, name: fieldError('name', v) })) }} />
+                                        <Field label={C.tenant.tsg} name='tsg' value={form.tsg} onChange={(v) => setForm((f) => ({ ...f, tsg: v }))} hint={C.tenant.tsgHint} inputMode='numeric' error={touched.tsg ? errors.tsg : ''} onBlur={(v) => { setTouched((t) => ({ ...t, tsg: true })); setErrors((e) => ({ ...e, tsg: fieldError('tsg', v) })) }} />
+                                        <div className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
+                                            {C.tenant.environment}
+                                            <div role='radiogroup' aria-label={C.tenant.environment} className='flex w-fit rounded-[8px]' style={{ padding: 2, background: 'var(--v2-inset)' }} data-slot='environment-control'>
+                                                {ENVIRONMENTS.map((env) => {
+                                                    const on = form.environment === env
+                                                    return (
+                                                        <button key={env} type='button' role='radio' aria-checked={on} onClick={() => setForm((f) => ({ ...f, environment: env }))} className='h-8 rounded-[6px] text-[12.5px] font-semibold' style={{ padding: '0 14px', border: 0, background: on ? 'var(--v2-paper)' : 'transparent', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', color: 'var(--v2-ink)' }}>
+                                                            {ENVIRONMENT_LABELS[env]}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                            <span className='font-normal' style={{ color: 'var(--v2-faint)' }}>
+                                                {C.tenant.environmentHint}
+                                            </span>
+                                        </div>
+                                        <label className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
+                                            {C.tenant.region}
+                                            <select name='region' aria-label={C.tenant.region} value={form.region} onChange={(e) => setForm((f) => ({ ...f, region: e.target.value as Region }))} className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px] font-normal' style={{ borderColor: 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
+                                                {REGIONS.map((r) => (
+                                                    <option key={r.value} value={r.value}>
+                                                        {r.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <span className='font-normal' style={{ color: 'var(--v2-faint)' }}>
+                                                {C.tenant.regionHint}
+                                            </span>
+                                        </label>
+                                    </div>
+                                    {setup && (
+                                        <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                            {C.tenant.updateHint}
+                                        </p>
+                                    )}
+                                    <div className='flex items-center' style={{ gap: 10 }}>
+                                        <Primary label={setup ? C.tenant.save : C.tenant.create} disabled={busy} />
+                                        {profileDirty && <Secondary label={C.tenant.revert} onClick={revertProfile} />}
+                                    </div>
+                                </form>
+                                {setup && (
+                                    <>
+                                        {scanCard}
+                                        <form onSubmit={(e) => void saveClient(e)} aria-busy={busy} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='management-form'>
+                                            <div className='flex items-center' style={{ gap: 8 }}>
+                                                <b className='text-[14px]'>{C.tenant.management}</b>
+                                                {pill(C.optional)}
+                                                <button type='button' aria-expanded={helpOpen} onClick={() => setHelpOpen((h) => !h)} className='ml-auto text-[12px] font-semibold' style={{ color: 'var(--v2-acc)' }}>
+                                                    {C.tenant.whereFind}
+                                                </button>
+                                            </div>
+                                            {helpOpen && (
+                                                <ol className='flex list-decimal flex-col rounded-[8px] leading-[1.5]' style={{ gap: 4, padding: '12px 14px 12px 32px', background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
+                                                    {C.tenant.whereSteps.map((t) => (
+                                                        <li key={t}>{t}</li>
+                                                    ))}
+                                                </ol>
+                                            )}
+                                            <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                                {C.tenant.managementHint}
+                                            </p>
+                                            <p data-slot='management-state'>
+                                                <Verdict tone={stateTone(setup.tenant.management.state)} word={C.tenant.state[setup.tenant.management.state]} reason={clientReady && setup.tenant.management.clientId ? `Client ID: ${setup.tenant.management.clientId}` : undefined} />
+                                            </p>
+                                            <div className='grid' style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                <Field label={C.tenant.clientId} name='clientId' error={errors.clientId} />
+                                                <SecretField label={C.tenant.clientSecret} inputRef={secretRef} error={errors.clientSecret} />
+                                            </div>
+                                            <div className='flex items-center' style={{ gap: 10 }}>
+                                                <Primary label={clientReady ? C.tenant.replaceClient : C.tenant.saveClient} disabled={busy} />
+                                                {clientReady && <Secondary label={C.tenant.removeClient} disabled={busy} onClick={() => void remove('removeManagementCredential', C.tenant.clientRemoved)} />}
+                                            </div>
+                                        </form>
+                                        <OptionalCard icon='route' title={C.tenant.gateway} text={C.tenant.gatewayHint} tag={C.optional} open={gatewayOn} onToggle={(on) => setGatewayOn(on)} switchLabel={C.tenant.gatewayOn} slot='gateway-section'>
+                                            {!clientReady && (
+                                                <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+                                                    {C.tenant.gatewayNeedsClient}
+                                                </p>
+                                            )}
+                                            {clientReady && (
+                                                <div className='flex flex-col' style={{ gap: 10 }}>
+                                                    <div className='flex items-center' style={{ gap: 10 }}>
+                                                        <Secondary label={C.tenant.readWorkspaces} disabled={busy} onClick={() => void listWorkspaces()} />
+                                                        {workspacesNote && (
+                                                            <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+                                                                {workspacesNote}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {workspaces && workspaces.length > 0 && (
+                                                        <div className='flex items-end' style={{ gap: 10 }}>
+                                                            <label className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
+                                                                {C.tenant.workspace}
+                                                                <select value={workspace} onChange={(e) => setWorkspace(e.target.value)} className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px] font-normal' style={{ borderColor: 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
+                                                                    {workspaces.map((w) => (
+                                                                        <option key={w.id} value={w.id}>
+                                                                            {w.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </label>
+                                                            <Secondary label={C.tenant.chooseWorkspace} disabled={busy || !workspace} onClick={() => void chooseWorkspace()} />
+                                                        </div>
+                                                    )}
+                                                    {chosen && (
+                                                        <form onSubmit={(e) => void saveWorkspaceKey(e)} aria-busy={busy} className='flex flex-col' style={{ gap: 10 }} data-slot='workspace-key-form'>
+                                                            <p className='text-[13px]'>{C.tenant.workspaceChosen(chosen.workspace.name)}</p>
+                                                            <p data-slot='inference-state'>
+                                                                <Verdict tone={setup.tenant.inference.state === 'ready' ? 'allowed' : 'info'} word={C.tenant.state[setup.tenant.inference.state]} />
+                                                            </p>
+                                                            <div className='grid' style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                                <Field label={C.tenant.endpoint} name='endpoint' value={endpoint} onChange={setEndpoint} hint={C.tenant.endpointHint} error={errors.endpoint} />
+                                                                <SecretField label={C.tenant.workspaceKey} inputRef={workspaceKeyRef} error={errors.workspaceKey} />
+                                                            </div>
+                                                            <div>
+                                                                <Primary label={C.tenant.saveWorkspaceKey} disabled={busy} />
+                                                            </div>
+                                                        </form>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </OptionalCard>
+                                    </>
+                                )}
+                            </>
+                        )}
+                        {step === 'products' && setup && (
+                            <>
+                                <div>
+                                    <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
+                                        {C.products.title}
+                                    </h1>
+                                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
+                                        {C.products.lead(setup.tenant.label)}
+                                    </p>
+                                </div>
+                                <div className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }} data-slot='product-cards'>
+                                    {PRODUCT_CARDS.map((card) => {
+                                        const unavailable = card.id === null
+                                        const always = card.id === 'runtimeSecurity'
+                                        const on = card.id !== null && setup.products.includes(card.id)
+                                        const reads = card.id === null ? null : card.id === 'runtimeSecurity' ? (scanReady ? C.products.readsWith.scanReady : C.products.readsWith.scanMissing) : clientReady ? C.products.readsWith.clientReady : C.products.readsWith.clientMissing
+                                        const lastStep = run && !run.stale && card.id ? run.steps.find((s) => s.product === card.id && s.line !== 'managementClient') : undefined
+                                        const missing = reads === C.products.readsWith.clientMissing || reads === C.products.readsWith.scanMissing
+                                        return (
+                                            <button
+                                                key={card.label}
+                                                type='button'
+                                                role='checkbox'
+                                                aria-checked={on}
+                                                aria-disabled={unavailable || always ? true : undefined}
+                                                aria-label={card.label}
+                                                aria-describedby={`${card.label}-body`}
+                                                onClick={() => card.id && !always && void toggleProduct(card.id, !on)}
+                                                className='relative flex flex-col text-left'
+                                                style={{ gap: 10, minHeight: 176, padding: '18px 20px', border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-rule)'}`, borderRadius: 12, background: on ? 'var(--v2-acc-soft)' : 'var(--v2-paper)', color: 'var(--v2-ink)', opacity: unavailable ? 0.7 : 1, cursor: unavailable || always ? 'default' : 'pointer' }}
+                                                data-slot='product-card'
+                                            >
+                                                <span className='absolute grid place-items-center rounded-full' style={{ top: 14, right: 14, width: 20, height: 20, border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-ctl)'}`, background: on ? 'var(--v2-acc)' : 'transparent', color: 'var(--v2-acc-ink)' }}>
+                                                    {on && <Glyph name='check' size={11} color='var(--v2-acc-ink)' />}
+                                                </span>
+                                                <span className='grid place-items-center rounded-[10px]' style={{ width: 36, height: 36, background: on ? 'var(--v2-acc)' : 'var(--v2-inset)', color: on ? 'var(--v2-acc-ink)' : 'var(--v2-soft)' }}>
+                                                    <Glyph name={card.icon} size={18} color={on ? 'var(--v2-acc-ink)' : 'var(--v2-soft)'} />
+                                                </span>
+                                                <span className='block leading-[1.35]' style={{ paddingRight: 26 }}>
+                                                    <b className='text-[14px]'>{card.label}</b>
+                                                </span>
+                                                <span id={`${card.label}-body`} className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
+                                                    {card.body}
+                                                </span>
+                                                <span className='mt-auto flex flex-wrap' style={{ gap: 6 }}>
+                                                    {unavailable && <Verdict tone='info' word={C.products.unavailable} />}
+                                                    {always && <Verdict tone='info' word={C.products.always} />}
+                                                    {card.readOnly && <Verdict tone='info' word={C.products.readOnly} />}
+                                                    {reads && !unavailable && <Verdict tone={missing ? 'flagged' : 'allowed'} word={reads} />}
+                                                    {lastStep && lastStep.state !== 'pending' && <Verdict tone={toneOf(lastStep.state)} word={C.verify.state[lastStep.state]} />}
+                                                </span>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                {!scanReady && (
+                                    <div className='flex items-center rounded-[8px] leading-[1.45]' style={{ gap: 8, padding: '10px 12px', background: 'var(--v2-flag-bg)' }} data-slot='no-scan-banner'>
+                                        <Glyph name='alert' size={15} color='var(--v2-flag)' className='shrink-0' />
+                                        <span className='flex-grow'>{C.products.noScan}</span>
+                                        <Secondary label={C.products.addScanKey} onClick={() => go(steps.indexOf('tenant'))} />
+                                    </div>
+                                )}
+                                <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                    {C.products.licence}
                                 </p>
-                            )}
-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} secondary={{ label: C.packs.skip, onClick: () => { setPacks([]); go(index + 1) } }} primary={{ label: C.packs.continue, onClick: () => go(index + 1) }} />
-                        </Step>
+                            </>
+                        )}
+                        {step === 'verify' && setup && (
+                            <>
+                                <div>
+                                    <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
+                                        {C.verify.title}
+                                    </h1>
+                                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
+                                        {C.verify.lead(setup.tenant.label)}
+                                    </p>
+                                </div>
+                                <div role='status' aria-live='polite' className='flex items-center rounded-[12px]' style={{ gap: 12, padding: '14px 16px', background: !run ? 'var(--v2-inset)' : run.stale || run.blocking ? 'var(--v2-block-bg)' : running ? 'var(--v2-acc-soft)' : run.failed || run.warnings.length ? 'var(--v2-flag-bg)' : 'var(--v2-ok-bg)' }} data-slot='verify-banner'>
+                                    <Glyph name={!run || running ? 'clock' : run.stale || run.blocking ? 'ban' : run.failed || run.warnings.length ? 'alert' : 'check'} size={22} color={!run ? 'var(--v2-soft)' : run.stale || run.blocking ? 'var(--v2-block)' : running ? 'var(--v2-acc)' : run.failed || run.warnings.length ? 'var(--v2-flag)' : 'var(--v2-ok)'} className='shrink-0' />
+                                    <span className='flex-grow'>
+                                        <b className='text-[14px]'>{!run ? C.verify.notRunTitle : verifyStatus}</b>
+                                        <br />
+                                        <span style={{ color: 'var(--v2-soft)' }}>{!run ? C.verify.notRunText : running ? C.verify.runningText : run.stale ? C.verify.staleText : run.blocking ? C.verify.failedText : run.failed ? C.verify.failedOptionalText : C.verify.doneText}</span>
+                                    </span>
+                                    {run && run.done && run.failed && !run.stale && <Secondary label={C.verify.editCredentials} onClick={() => go(steps.indexOf('tenant'))} />}
+                                </div>
+                                <ul className='flex flex-col overflow-hidden rounded-[12px] border' aria-label='Checks' aria-busy={running} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', opacity: run?.stale ? 0.6 : 1 }}>
+                                    {plannedRows.map((r, i) => {
+                                        const tone = run || r.state === 'unavailable' ? toneOf(r.state) : 'info'
+                                        const colors: [string, string, GlyphName] = tone === 'allowed' ? ['var(--v2-ok-bg)', 'var(--v2-ok)', 'check'] : tone === 'flagged' ? ['var(--v2-flag-bg)', 'var(--v2-flag)', 'alert'] : tone === 'blocked' ? ['var(--v2-block-bg)', 'var(--v2-block)', 'x'] : ['var(--v2-inset)', 'var(--v2-soft)', running && r.state === 'pending' ? 'clock' : 'dot']
+                                        return (
+                                            <li key={r.line} className='flex items-center' style={{ gap: 12, padding: '12px 18px', borderTop: i ? '1px solid var(--v2-rule)' : 0 }} data-slot={`verify-${r.line}`}>
+                                                <span className='grid shrink-0 place-items-center rounded-full' style={{ width: 26, height: 26, background: colors[0], color: colors[1] }}>
+                                                    <Glyph name={colors[2]} size={13} color={colors[1]} />
+                                                </span>
+                                                <span className='min-w-0 flex-grow'>
+                                                    <b className='font-semibold'>{C.verify.rows[r.line]}</b>
+                                                    <br />
+                                                    <span className='leading-[1.45]' style={{ color: tone === 'blocked' ? 'var(--v2-block)' : tone === 'flagged' ? 'var(--v2-flag)' : 'var(--v2-soft)' }}>
+                                                        {r.reason}
+                                                    </span>
+                                                </span>
+                                                <Verdict tone={tone} word={run || r.state === 'unavailable' ? C.verify.state[r.state] : C.verify.notRun} />
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
+                            </>
+                        )}
+                        {step === 'packs' && setup && (
+                            <>
+                                <div>
+                                    <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
+                                        {C.packs.title}
+                                    </h1>
+                                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
+                                        {C.packs.lead(setup.tenant.label)}
+                                    </p>
+                                </div>
+                                {setup.packs.some((p) => p.count > 0) ? (
+                                    <div role='group' aria-label={C.packs.title} className='flex flex-col overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='pack-list'>
+                                        {setup.packs.map((p, i) => {
+                                            const on = selectedPacks.includes(p.product)
+                                            const off = p.count === 0 || !setup.products.includes(p.product)
+                                            const cardInfo = PRODUCT_CARDS.find((c) => c.id === p.product)
+                                            return (
+                                                <button
+                                                    key={p.product}
+                                                    type='button'
+                                                    role='checkbox'
+                                                    aria-checked={on}
+                                                    aria-disabled={off ? true : undefined}
+                                                    aria-label={C.packs.pack(productLabel(p.product), p.count)}
+                                                    onClick={() => !off && setPacks(on ? selectedPacks.filter((x) => x !== p.product) : [...selectedPacks, p.product])}
+                                                    className='flex w-full items-center text-left'
+                                                    style={{ gap: 14, padding: '12px 18px', border: 0, borderTop: i ? '1px solid var(--v2-rule)' : 0, background: 'transparent', color: 'var(--v2-ink)', opacity: off ? 0.55 : 1 }}
+                                                    data-slot='pack-row'
+                                                >
+                                                    <span className='grid shrink-0 place-items-center rounded-[5px]' style={{ width: 18, height: 18, border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-ctl)'}`, background: on ? 'var(--v2-acc)' : 'transparent', color: 'var(--v2-acc-ink)' }}>
+                                                        {on && <Glyph name='check' size={11} color='var(--v2-acc-ink)' />}
+                                                    </span>
+                                                    {tile(cardInfo?.icon ?? 'cases')}
+                                                    <span className='min-w-0 flex-grow'>
+                                                        <b className='font-semibold'>{C.packs.name(productLabel(p.product))}</b> <span style={{ color: 'var(--v2-faint)' }}>· {productLabel(p.product)}</span>
+                                                        <br />
+                                                        <span style={{ color: 'var(--v2-soft)' }}>{cardInfo?.body ?? ''}</span>
+                                                    </span>
+                                                    <span className='text-[12px] whitespace-nowrap' style={{ color: 'var(--v2-faint)' }}>
+                                                        {C.packs.count(p.count)}
+                                                    </span>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+                                        {C.packs.none}
+                                    </p>
+                                )}
+                                <p style={{ color: 'var(--v2-soft)' }} data-slot='pack-summary'>
+                                    {C.packs.summary(selectedPacks.length, selectedPacks.reduce((a, id) => a + (setup.packs.find((p) => p.product === id)?.count ?? 0), 0))}
+                                </p>
+                            </>
+                        )}
+                        {step === 'academy' && (
+                            <>
+                                <div>
+                                    <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
+                                        {C.academy.title}
+                                    </h1>
+                                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
+                                        {C.academy.lead}
+                                    </p>
+                                </div>
+                                <div className='grid' style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 14 }}>
+                                    {card(
+                                        <>
+                                            <b className='text-[14px]'>{C.academy.account}</b>
+                                            <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
+                                        </>,
+                                        {},
+                                        { 'data-slot': 'academy-card' }
+                                    )}
+                                    {card(
+                                        <>
+                                            <b className='text-[14px]'>{C.academy.whatSyncs}</b>
+                                            <ul className='flex list-disc flex-col pl-5 text-[13px]' style={{ gap: 6, color: 'var(--v2-soft)' }}>
+                                                {C.academy.syncs.map((t) => (
+                                                    <li key={t}>{t}</li>
+                                                ))}
+                                            </ul>
+                                        </>,
+                                        { gap: 10 },
+                                        { 'data-slot': 'academy-syncs' }
+                                    )}
+                                </div>
+                            </>
+                        )}
+                        {step === 'done' && setup && (
+                            <div className='flex flex-col' style={{ gap: 16, paddingTop: 10 }}>
+                                <span className='grid place-items-center rounded-[18px]' style={{ width: 64, height: 64, background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)' }}>
+                                    <Glyph name='check' size={34} color='var(--v2-ok)' />
+                                </span>
+                                <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 30, letterSpacing: '-0.02em' }}>
+                                    {C.done.title(setup.tenant.label)}
+                                </h1>
+                                <p className='text-[15px]' style={{ color: 'var(--v2-soft)' }}>
+                                    {C.done.lead}
+                                </p>
+                                <div className='flex flex-col overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='summary'>
+                                    {(
+                                        [
+                                            [C.done.summary.tenant, railCtx, 'ok', 'tenant'],
+                                            [C.done.summary.scan, scanReady ? C.done.summary.saved : C.done.summary.notSaved, scanReady ? 'ok' : 'skip', 'tenant'],
+                                            [C.done.summary.client, clientReady ? C.done.summary.saved : C.done.summary.notSaved, clientReady ? 'ok' : 'skip', 'tenant'],
+                                            [C.done.summary.products, setup.products.map(productLabel).join(', '), 'ok', 'products'],
+                                            [C.done.summary.checks, run && run.done ? (run.warnings.length ? C.done.summary.checksWarnings(run.warnings.length) : C.done.summary.checksPassed) : C.done.summary.none, run?.warnings.length ? 'warn' : 'ok', 'verify'],
+                                            [C.done.summary.packs, selectedPacks.length ? selectedPacks.map(productLabel).join(', ') : C.done.summary.none, selectedPacks.length ? 'ok' : 'skip', 'packs'],
+                                            ...(isAdd ? [] : [[C.done.summary.academy, snapshot.academy.state === 'signedIn' ? snapshot.academy.displayName : C.done.summary.academySkipped, snapshot.academy.state === 'signedIn' ? 'ok' : 'skip', 'academy']]),
+                                        ] as [string, string, 'ok' | 'warn' | 'skip', WizardStep][]
+                                    ).map(([k, v, tone, target], i) => (
+                                        <div key={k} className='flex items-center' style={{ gap: 12, padding: '12px 18px', borderTop: i ? '1px solid var(--v2-rule)' : 0 }}>
+                                            <span className='grid shrink-0 place-items-center rounded-full' style={{ width: 26, height: 26, background: tone === 'ok' ? 'var(--v2-ok-bg)' : tone === 'warn' ? 'var(--v2-flag-bg)' : 'var(--v2-inset)', color: tone === 'ok' ? 'var(--v2-ok)' : tone === 'warn' ? 'var(--v2-flag)' : 'var(--v2-soft)' }}>
+                                                <Glyph name={tone === 'ok' ? 'check' : tone === 'warn' ? 'alert' : 'dot'} size={13} color={tone === 'ok' ? 'var(--v2-ok)' : tone === 'warn' ? 'var(--v2-flag)' : 'var(--v2-soft)'} />
+                                            </span>
+                                            <span className='font-semibold' style={{ width: 130 }}>
+                                                {k}
+                                            </span>
+                                            <span className='sr-only'>: </span>
+                                            <span className='min-w-0 flex-grow' style={{ color: 'var(--v2-soft)' }}>
+                                                {v}
+                                            </span>
+                                            <button type='button' onClick={() => reachable(steps.indexOf(target)) && go(steps.indexOf(target))} className='text-[12px] font-semibold' style={{ color: 'var(--v2-acc)' }} aria-label={`${C.done.change} ${k}`}>
+                                                {C.done.change}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }} data-slot='next-up'>
+                                    {C.done.nextUp.map((n) => (
+                                        <div key={n.title} className='flex flex-col rounded-[12px] border' style={{ gap: 8, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                                            <span className='grid place-items-center rounded-[8px]' style={{ width: 28, height: 28, background: 'var(--v2-acc-soft)', color: 'var(--v2-acc)' }}>
+                                                <Glyph name={n.icon} size={14} color='var(--v2-acc)' />
+                                            </span>
+                                            <b>{n.title}</b>
+                                            <span className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
+                                                {n.text}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </section>
+                </main>
+                <footer className='flex shrink-0 flex-wrap items-center' style={{ gap: 10, padding: isAdd ? '14px 32px' : '14px 44px', borderTop: '1px solid var(--v2-rule)', background: 'var(--v2-bg)' }} data-slot='wizard-footer'>
+                    {isAdd && (
+                        <button type='button' onClick={() => void cancel()} disabled={cancelling} className='h-8 rounded-[7px] border px-3.5 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                            {cancelling ? C.cancelling : C.cancel}
+                        </button>
                     )}
-                    {step === 'academy' && (
-                        <Step heading={heading} id={headingId} title={C.academy.title} lead={C.academy.lead}>
-                            <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} primary={{ label: snapshot.academy.state === 'signedIn' ? C.academy.continue : C.academy.skip, onClick: () => go(index + 1) }} />
-                        </Step>
+                    {showBack && (
+                        <button type='button' onClick={() => go(index - 1)} className='h-8 rounded-[7px] border px-3.5 text-[13px]' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                            {C.back}
+                        </button>
                     )}
-                    {step === 'done' && setup && (
-                        <Step heading={heading} id={headingId} title={C.done.title} lead={C.done.lead(setup.tenant.label)}>
-                            <ul className='text-[13px]' style={{ color: 'var(--v2-soft)' }} data-slot='summary'>
-                                <li>
-                                    {C.done.summary.scan}: {scanReady ? C.done.summary.saved : C.done.summary.notSaved}
-                                </li>
-                                <li>
-                                    {C.done.summary.client}: {clientReady ? C.done.summary.saved : C.done.summary.notSaved}
-                                </li>
-                                <li>
-                                    {C.done.summary.products}: {setup.products.map(productLabel).join(', ')}
-                                </li>
-                                <li>
-                                    {C.done.summary.packs}: {selectedPacks.length ? selectedPacks.map(productLabel).join(', ') : C.done.summary.none}
-                                </li>
-                            </ul>
-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} primary={{ label: finishing ? (mode === 'add' ? C.done.finishing : C.done.opening) : mode === 'add' ? C.done.finish : C.done.open, onClick: () => void finish(), disabled: finishing || !setup.completable || profileDirty }} />
-                        </Step>
-                    )}
-                    <p role='status' aria-live='polite' data-slot='wizard-status' className='flex items-center gap-3 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                        {status?.text}
+                    <p role='status' aria-live='polite' data-slot='wizard-status' className='flex min-w-0 items-center text-[12.5px]' style={{ gap: 10, color: status ? 'var(--v2-ink)' : 'var(--v2-soft)' }}>
+                        <span className='min-w-0'>{status?.text ?? hint}</span>
                         {status?.retry && <Secondary label={C.outcome.retry} onClick={status.retry} />}
                     </p>
-                </section>
-            </main>
+                    <span className='ml-auto text-[12px]' style={{ color: 'var(--v2-faint)' }} data-slot='wizard-progress'>
+                        {C.progress(index + 1, steps.length)}
+                    </span>
+                    {extra && <Secondary label={extra.label} onClick={extra.onClick} disabled={extra.disabled} />}
+                    {secondary && <Secondary label={secondary.label} onClick={secondary.onClick} disabled={secondary.disabled} />}
+                    {skipBtn && <Secondary label={skipBtn.label} onClick={skipBtn.onClick} disabled={skipBtn.disabled} />}
+                    <button type='button' onClick={primary.onClick} disabled={primary.disabled} className='h-8 rounded-[7px] px-[18px] text-[13px] font-semibold disabled:opacity-60' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }} data-slot='wizard-primary'>
+                        {primary.label}
+                    </button>
+                </footer>
+            </div>
             {/* The guard is a dialog above the sheet (I8): rendered at the body, outside the sheet's inert subtree. */}
             {completionGuard && setup && createPortal(<SwitchGuard target={setup.tenant.label} completion onStay={() => void dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => void finish(resolution)} />, document.body)}
         </div>
     )
 }
 
-function Step({ heading, id, title, lead, children }: { heading: React.RefObject<HTMLHeadingElement | null>; id: string; title: string; lead: string; children: ReactNode }) {
+/** A section card with a switch in its header (R2Onboard's optional cards); a required card has no switch and stays open. */
+function OptionalCard({ icon, title, text, tag, open, onToggle, switchLabel, state, slot, onSubmit, busy, children }: { icon: GlyphName; title: string; text: string; tag: string; open: boolean; onToggle?: (on: boolean) => void; switchLabel?: string; state?: ReactNode; slot: string; onSubmit?: (e: FormEvent<HTMLFormElement>) => void; busy?: boolean; children: ReactNode }) {
+    const Tag = onSubmit ? 'form' : 'section'
     return (
-        <>
-            <h1 ref={heading} id={id} tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)' }}>
-                {title}
-            </h1>
-            <p className='text-[14px]' style={{ color: 'var(--v2-soft)', maxWidth: 640 }}>
-                {lead}
-            </p>
-            {children}
-        </>
+        <Tag onSubmit={onSubmit} aria-busy={onSubmit ? busy : undefined} aria-label={onSubmit ? undefined : title} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot={slot}>
+            <div className='flex items-center' style={{ gap: 12 }}>
+                <span className='grid shrink-0 place-items-center rounded-[8px]' style={{ width: 30, height: 30, background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
+                    <Glyph name={icon} size={15} color='var(--v2-soft)' />
+                </span>
+                <span className='min-w-0 flex-grow'>
+                    <span className='flex items-center' style={{ gap: 8 }}>
+                        <b className='text-[14px]'>{title}</b>
+                        <span className='rounded-full text-[12px] font-semibold' style={{ padding: '1px 7px', background: 'var(--v2-inset)', color: 'var(--v2-faint)' }}>
+                            {tag}
+                        </span>
+                        {state}
+                    </span>
+                    <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+                        {text}
+                    </span>
+                </span>
+                {onToggle && (
+                    <button type='button' role='switch' aria-checked={open} aria-label={switchLabel ?? title} onClick={() => onToggle(!open)} className='relative shrink-0 rounded-full' style={{ width: 38, height: 22, border: 0, background: open ? 'var(--v2-acc)' : 'var(--v2-inset)', boxShadow: `inset 0 0 0 1px ${open ? 'var(--v2-acc)' : 'var(--v2-ctl)'}` }} data-slot='switch'>
+                        <span className='absolute rounded-full' style={{ top: 3, left: open ? 19 : 3, width: 16, height: 16, background: open ? 'var(--v2-acc-ink)' : 'var(--v2-paper)' }} />
+                    </button>
+                )}
+            </div>
+            {open && (
+                <div className='flex flex-col' style={{ gap: 10, paddingLeft: 42 }}>
+                    {children}
+                </div>
+            )}
+        </Tag>
     )
 }
 
 function Field({ label, name, hint, error, onBlur, value, onChange, ...rest }: { label: string; name: string; hint?: string; error?: string; onBlur?: (value: string) => void; value?: string; onChange?: (value: string) => void; maxLength?: number; inputMode?: 'numeric' }) {
     const id = useId()
     return (
-        <label className='flex flex-col gap-1 text-[13px] font-medium'>
+        <label className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
             {label}
-            <input id={id} name={name} autoComplete='off' value={value} onChange={onChange ? (e) => onChange(e.target.value) : undefined} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined} onBlur={(e) => onBlur?.(e.target.value)} className='h-8 px-2' {...rest} />
+            <input id={id} name={name} autoComplete='off' value={value} onChange={onChange ? (e) => onChange(e.target.value) : undefined} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined} onBlur={(e) => onBlur?.(e.target.value)} className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px] font-normal' style={{ borderColor: error ? 'var(--v2-block)' : 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }} {...rest} />
             {error ? (
-                <span id={`${id}-error`} role='alert' className='text-[12px] font-normal' style={{ color: 'var(--v2-block)' }}>
+                <span id={`${id}-error`} role='alert' className='font-normal' style={{ color: 'var(--v2-block)' }}>
                     {error}
                 </span>
             ) : hint ? (
-                <span id={`${id}-hint`} className='text-[12px] font-normal' style={{ color: 'var(--v2-faint)' }}>
+                <span id={`${id}-hint`} className='font-normal' style={{ color: 'var(--v2-faint)' }}>
                     {hint}
                 </span>
             ) : null}
@@ -742,11 +1083,11 @@ function Field({ label, name, hint, error, onBlur, value, onChange, ...rest }: {
 function SecretField({ label, inputRef, error }: { label: string; inputRef: React.RefObject<HTMLInputElement | null>; error?: string }) {
     const id = useId()
     return (
-        <label className='flex flex-col gap-1 text-[13px] font-medium'>
+        <label className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
             {label}
-            <input id={id} ref={inputRef} type='password' autoComplete='off' aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} className='h-8 px-2' />
+            <input id={id} ref={inputRef} type='password' autoComplete='off' aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px] font-normal' style={{ borderColor: error ? 'var(--v2-block)' : 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }} />
             {error && (
-                <span id={`${id}-error`} role='alert' className='text-[12px] font-normal' style={{ color: 'var(--v2-block)' }}>
+                <span id={`${id}-error`} role='alert' className='font-normal' style={{ color: 'var(--v2-block)' }}>
                     {error}
                 </span>
             )}
@@ -764,27 +1105,8 @@ function Primary({ label, disabled }: { label: string; disabled?: boolean }) {
 
 function Secondary({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
     return (
-        <button type='button' onClick={onClick} disabled={disabled} className='h-8 rounded-[7px] border px-3 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
+        <button type='button' onClick={onClick} disabled={disabled} className='h-8 rounded-[7px] border px-3 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
             {label}
         </button>
-    )
-}
-
-type Action = { label: string; onClick: () => void; disabled?: boolean }
-function Actions({ back, extra, secondary, primary }: { back?: () => void; extra?: Action; secondary?: Action; primary: Action }) {
-    return (
-        <div className='mt-2 flex items-center gap-2'>
-            {back && (
-                <button type='button' onClick={back} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
-                    {C.back}
-                </button>
-            )}
-            <span className='flex-grow' />
-            {extra && <Secondary label={extra.label} onClick={extra.onClick} disabled={extra.disabled} />}
-            {secondary && <Secondary label={secondary.label} onClick={secondary.onClick} disabled={secondary.disabled} />}
-            <button type='button' onClick={primary.onClick} disabled={primary.disabled} className='h-8 rounded-[7px] px-4 text-[13px] font-semibold disabled:opacity-60' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
-                {primary.label}
-            </button>
-        </div>
     )
 }
