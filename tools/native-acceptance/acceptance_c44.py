@@ -36,7 +36,9 @@ RECORD = os.path.join(EVIDENCE, "native-acceptance.json")
 PARITY = os.path.join(EVIDENCE, "parity")
 LOG = []
 TITLE_BAR = 28
-# Go menu item → the heading the destination shows (the product entries open Administration on their product).
+# Go menu item → the heading the destination shows (the product entries open Administration on their product;
+# Sessions & Reports and Import from v1 keep their C11/C23 page titles under the v2 frame). The menu title keeps
+# its ampersand (menu.rs doubles it for the menu library); the first run showed "Sessions  Reports" and no navigation.
 DESTINATIONS = [
     ("Home", "Home", None),
     ("Inbox", "Inbox", None),
@@ -48,8 +50,8 @@ DESTINATIONS = [
     ("Runtime Security", "Administration", "AI Runtime Security"),
     ("AI Gateway", "Administration", "AI Gateway"),
     ("Red Team & Models", "Administration", "AI Red Teaming"),
-    ("Sessions & Reports", "Sessions & Reports", None),
-    ("Import from v1", "Import from Prisma AIRS Desktop v1", None),
+    ("Sessions & Reports", "Investigate sessions", None),
+    ("Import from v1", "Import from v1", None),
     ("Settings", "Settings", None),
 ]
 SECRETS = (c8.SCAN_KEY, c8.SECRET)
