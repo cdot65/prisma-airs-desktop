@@ -421,32 +421,19 @@ describe('C41 API Client board', () => {
         await user.click(within(dialog).getByRole('button', { name: 'Create' }))
         await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New request' })).toBeNull())
         expect(requests.filter((r) => r.kind === 'newRequest').at(-1)).toMatchObject({ kind: 'newRequest', relative: 'topics/create' })
-        // The core's next snapshot lists the draft as the selected tab; the editor shows it new.
         const next = board()
         const collection = next.workbench.collection!
-        await native.push({
-            ...next,
-            workbench: {
-                ...next.workbench,
-                collection: {
-                    ...collection,
-                    tabs: [
-                        ...collection.tabs,
-                        {
-                            id: 'create',
-                            relative: 'topics/create.request.toml',
-                            method: 'GET',
-                            draft: true,
-                            new: true,
-                            recovered: false,
-                            conflict: null,
-                            interrupted: false,
-                        },
-                    ],
-                    selected: 'create',
-                },
-            },
-        })
+        const draftTab = { id: 'create', relative: 'topics/create.request.toml', method: 'GET', draft: true, new: true, recovered: false, conflict: null, interrupted: false }
+        const withDraft = (selected: string) => ({ ...next, workbench: { ...next.workbench, collection: { ...collection, tabs: [...collection.tabs, draftTab], selected } } })
+        // A snapshot that lists the draft but still names the list request as selected arrives first: the draft
+        // stays shown and the list request is not re-opened (which made the core select it again in a native run).
+        const opens = requests.filter((r) => r.kind === 'openRequest').length
+        await native.push(withDraft(collection.selected!))
+        // Only the tree's form carries that name now: the list request's editor is not re-opened over the draft.
+        expect(screen.getAllByRole('form', { name: 'Request list' })).toHaveLength(1)
+        expect(requests.filter((r) => r.kind === 'openRequest')).toHaveLength(opens)
+        // The core's next snapshot lists the draft as the selected tab; the editor shows it new.
+        await native.push(withDraft('create'))
         expect(await screen.findByRole('form', { name: 'Request create' })).toBeInTheDocument()
         expect(within(screen.getByRole('tablist', { name: 'Open requests' })).getByRole('tab', { name: 'GET create (new)' })).toHaveAttribute('aria-selected', 'true')
         expect(document_().querySelector('[data-slot="workbench-save-status"]')).toHaveTextContent('New · not saved yet')
