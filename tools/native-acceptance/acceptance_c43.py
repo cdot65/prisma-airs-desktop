@@ -389,7 +389,8 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n3 = {}
     open_add_sheet(app)
     tree, _ = app.wait_for(lambda t: c29.dialog(t) is not None, 10)
-    app.ax("focus", "AXButton", "Tenant")
+    # The rail's step marks carry their number ("1 Tenant"); the current step is the only reachable one here.
+    app.ax("focus", "AXButton", "1 Tenant")
     time.sleep(0.3)
     walk = []
     for _ in range(12):
