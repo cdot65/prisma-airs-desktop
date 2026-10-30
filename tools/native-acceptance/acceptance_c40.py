@@ -161,7 +161,31 @@ def table_usable(tree, zoom):
         out["action_inside"] = contained(action, table) or (card is not None and contained(action, card))
     else:
         out["action_inside"] = False
-    out["ok"] = out["table"] and out["action_ok"] and out["foot"] and out["action_inside"]
+    # Readable regions (attempt-01 R1/E2): the header words, the first row's case name, its input, its result and
+    # its action each have a width and none of them overlaps another; the 200% layout once stacked them.
+    def box(n):
+        return (n["pos"][0], n["pos"][1], n["pos"][0] + n["size"][0], n["pos"][1] + n["size"][1]) if n and n.get("pos") and n.get("size") else None
+
+    def apart(a, b):
+        return not (a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3])
+
+    inside = [n for n in tree if table and n.get("pos") and n.get("size") and contained(n, table)] if table else []
+    texts = [n for n in inside if n.get("role") == "AXStaticText" and (n.get("label") or n.get("value"))]
+    headers = [next((n for n in texts if (n.get("label") or n.get("value")) == h), None) for h in ("Case", "Product", "Input or specification", "Last result")]
+    header_bottom = max((n["pos"][1] + n["size"][1] for n in headers if n), default=None)
+    row_texts = [n for n in texts if header_bottom is not None and n["pos"][1] >= header_bottom and n not in headers]
+    name = row_texts[0] if row_texts else None
+    result = next((n for n in inside if (n.get("role") in BTN and (n.get("label") or "").startswith("Show the result of")) or (n.get("role") == "AXStaticText" and (n.get("label") or n.get("value")) == "Not run")), None)
+    regions = {"name": name, "result": result, "action": action, **{f"header_{i}": h for i, h in enumerate(headers)}}
+    out["regions"] = {k: (v.get("label") or v.get("value") or "")[:30] if v else None for k, v in regions.items()}
+    present = {k: box(v) for k, v in regions.items() if v}
+    out["regions_present"] = len(present) == len(regions)
+    out["regions_wide"] = all(b[2] - b[0] >= 24 * zoom for b in present.values())
+    keys = list(present)
+    overlaps = [(a, b) for i, a in enumerate(keys) for b in keys[i + 1:] if not apart(present[a], present[b])]
+    out["overlaps"] = overlaps
+    out["readable"] = out["regions_present"] and out["regions_wide"] and not overlaps
+    out["ok"] = out["table"] and out["action_ok"] and out["foot"] and out["action_inside"] and out["readable"]
     return out
 
 

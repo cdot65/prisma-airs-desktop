@@ -196,3 +196,14 @@
         animation: none !important;
     }
 }
+/* Test Cases (C40): below 760px (a 900-point window at 200%) each row is two lines: the case and its product, the
+   input, then the result and the action; the five-column grid cannot hold readable cells there. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='cases-table'] [role='row'] {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        row-gap: 8px !important;
+    }
+    [data-v2-shell] [data-slot='cases-table'] [role='row'] > :nth-child(3) {
+        grid-column: 1 / -1;
+    }
+}

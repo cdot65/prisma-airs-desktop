@@ -170,6 +170,23 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
         )
     }
 
+    // The library's problem (why the last change was refused) and a delivery that did not apply: on the page,
+    // and inside the open dialog whose action met it (the page behind an open dialog is inert); the dialog stays
+    // open with its fields, so the operator can correct and try again.
+    const problems = (
+        <>
+            {library.problem ? (
+                <p role='alert' className='text-[13px]' style={{ color: 'var(--v2-block)' }} data-slot='cases-problem'>
+                    {CASE_PROBLEM_TEXT[library.problem] ?? library.problem}
+                </p>
+            ) : null}
+            {message ? (
+                <p role='alert' className='text-[13px]' style={{ color: 'var(--v2-block)' }} data-slot='cases-message'>
+                    {message}
+                </p>
+            ) : null}
+        </>
+    )
     // The import/export status lines: on the page, and inside the packs dialog while it is open (the page behind
     // an open dialog is inert, so a save or cancel from the dialog is answered where the operator is looking).
     const transfer = (
@@ -211,17 +228,8 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
                     </Btn>
                 </div>
             ) : null}
-            {library.problem ? (
-                <p role='alert' className='text-[13px]' style={{ color: 'var(--v2-block)' }} data-slot='cases-problem'>
-                    {CASE_PROBLEM_TEXT[library.problem] ?? library.problem}
-                </p>
-            ) : null}
+            {problems}
             {transfer}
-            {message ? (
-                <p role='alert' className='text-[13px]'>
-                    {message}
-                </p>
-            ) : null}
             <section className='shrink-0 overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='cases-card'>
                 <div className='flex flex-wrap items-center' style={{ gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)' }}>
                     <label className='flex items-center rounded-[7px]' style={{ gap: 7, width: 280, maxWidth: '100%', height: 32, padding: '0 9px', background: 'var(--v2-inset)' }}>
@@ -270,7 +278,7 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
                                     {c.prompt || c.response}
                                 </span>
                                 <span role='cell' className='flex min-w-0 flex-col' style={{ gap: 3 }}>
-                                    <CaseResultPill c={c} />
+                                    <CaseResultPill c={c} onOpen={() => setInspected(c.id)} />
                                 </span>
                                 <span role='cell' className='relative flex justify-end' style={{ gap: 6 }}>
                                     {c.product === 'runtime-security' ? (
@@ -364,7 +372,12 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
                               onImport={() => void send({ kind: 'importCases', context })}
                               onExport={() => void send({ kind: 'exportCases', context })}
                               onCancel={() => setPacks(false)}
-                              status={transfer}
+                              status={
+                                  <>
+                                      {problems}
+                                      {transfer}
+                                  </>
+                              }
                           />
                       </Modal>,
                       document.body
@@ -381,6 +394,7 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
                                   if (outcome.kind === 'admitted') setAuthoring(false)
                               }}
                               onCancel={() => setAuthoring(false)}
+                              status={problems}
                           />
                       </Modal>,
                       document.body
@@ -391,7 +405,7 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
 })
 
 /** A case's last result as the prototype's pill (colour, glyph and word) with its time, or "Not run". */
-function CaseResultPill({ c }: { c: CaseView }) {
+function CaseResultPill({ c, onOpen }: { c: CaseView; onOpen: () => void }) {
     if (!c.result) {
         return (
             <span className='inline-flex items-center self-start rounded-full text-[12px] font-semibold' style={{ gap: 4, padding: '2px 8px', background: 'var(--v2-inset)', color: 'var(--v2-faint)' }} data-slot='case-not-run'>
@@ -403,10 +417,17 @@ function CaseResultPill({ c }: { c: CaseView }) {
     const t = TONE[c.result.verdict] ?? TONE.unknown!
     return (
         <span className='flex flex-col' style={{ gap: 3 }} data-slot='case-result' data-verdict={c.result.verdict}>
-            <span className='inline-flex items-center self-start rounded-full border text-[12px] font-semibold whitespace-nowrap' style={{ gap: 4, height: 28, padding: '0 10px', borderColor: t.fg, background: t.bg, color: t.fg }}>
+            <button
+                type='button'
+                aria-label={C.showResult(c.name)}
+                aria-haspopup='dialog'
+                onClick={onOpen}
+                className='inline-flex min-h-0 items-center self-start rounded-full border text-[12px] font-semibold whitespace-nowrap'
+                style={{ gap: 4, height: 28, padding: '0 10px', borderColor: t.fg, background: t.bg, color: t.fg }}
+            >
                 <Glyph name={t.glyph} size={10} stroke={2.6} />
                 {C.verdictWord[c.result.verdict] ?? c.result.verdict}
-            </span>
+            </button>
             <span className='text-[12px]' style={faint}>
                 {C.resultAt(clockOf(c.result.at))}
             </span>
@@ -420,9 +441,12 @@ function CaseDetails({ c, tenant, onClose }: { c: CaseView; tenant: string; onCl
     const rows: [string, string][] = [
         [C.columns.product, `${PRODUCT_LABEL[c.product]} · ${tenant}`],
         ...(c.pack ? ([[C.pack, c.pack]] as [string, string][]) : []),
-        [C.specification, c.payload ?? c.prompt],
+        ...(c.prompt ? ([[C.input, c.prompt]] as [string, string][]) : []),
+        ...(c.response ? ([[C.responseRow, c.response]] as [string, string][]) : []),
+        ...(c.payload && !/^\s*\{\s*\}\s*$/.test(c.payload) ? ([[C.payloadRow, c.payload]] as [string, string][]) : []),
         ...(c.expected ? ([[C.expected, c.expected]] as [string, string][]) : []),
         [C.lastResult, c.result ? `${C.verdictWord[c.result.verdict] ?? c.result.verdict} ${C.resultAt(clockOf(c.result.at))}` : C.notRun],
+        ...(c.result?.scanId ? ([[C.scanId, c.result.scanId]] as [string, string][]) : []),
         [C.runsFrom, C.runs[c.product]],
     ]
     return (
@@ -534,7 +558,7 @@ const labelStyle = { gap: 5, color: 'var(--v2-soft)' }
 const control = { borderColor: 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }
 
 /** A new case (C12's authoring) in the prototype's dialog: every field is read when Save is pressed; saving runs nothing. */
-function CaseForm({ tenant, initialProduct, onSave, onCancel }: { tenant: string; initialProduct: CaseProduct; onSave: (draft: CaseDraft) => Promise<void>; onCancel: () => void }) {
+function CaseForm({ tenant, initialProduct, onSave, onCancel, status }: { tenant: string; initialProduct: CaseProduct; onSave: (draft: CaseDraft) => Promise<void>; onCancel: () => void; status: React.ReactNode }) {
     const ids = useId()
     const form = useRef<HTMLFormElement>(null)
     const [product, setProduct] = useState<CaseProduct>(initialProduct)
@@ -614,6 +638,7 @@ function CaseForm({ tenant, initialProduct, onSave, onCancel }: { tenant: string
             <p className='text-[12px]' style={faint}>
                 {F.note}
             </p>
+            {status}
             <div className='flex justify-end' style={{ gap: 8 }}>
                 <Btn onClick={onCancel}>{F.cancel}</Btn>
                 <Btn type='submit' tier='primary' className='px-4'>

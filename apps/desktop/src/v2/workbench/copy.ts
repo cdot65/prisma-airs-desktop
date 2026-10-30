@@ -45,7 +45,11 @@ export const CASES_COPY = {
     // Inspect: what the case is and which product runs it; nothing is run from here.
     details: 'Case details',
     closeDetails: 'Close details',
-    specification: 'Specification',
+    showResult: (name: string) => `Show the result of ${name}`,
+    input: 'Input or specification',
+    responseRow: 'Response',
+    payloadRow: 'Product payload',
+    scanId: 'Scan ID',
     expected: 'Goal',
     lastResult: 'Last result',
     runsFrom: 'Runs from',
