@@ -308,6 +308,10 @@ describe('C41 API Client board', () => {
             kind: 'save',
             fields: { query: '# page=1' },
         })
+        // Editing again replaces the save's word with the state (the native run saw "Saved" stay after a new row).
+        await user.type(screen.getByRole('textbox', { name: /^Params/ }), '{Enter}limit=5')
+        expect(document_().querySelector('[data-slot="workbench-save-status"]')).toHaveTextContent('Unsaved changes')
+        expect(document_().querySelector('[data-slot="workbench-save-status"]')).toHaveAttribute('data-state', 'unsaved')
         // The Headers rows read the file's "Name: value" lines.
         await user.click(screen.getByRole('tab', { name: 'Headers 1' }))
         expect(within(screen.getByRole('table', { name: 'Headers' })).getByRole('textbox', { name: 'Name 1' })).toHaveValue('Accept')

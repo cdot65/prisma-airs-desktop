@@ -282,3 +282,15 @@
         color: var(--v2-faint);
     }
 }
+/* Narrower still (a 900-point window at 200%): the request tree sits above the editor instead of beside it. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='api-body'] {
+        flex-wrap: wrap;
+    }
+    [data-v2-shell] [data-slot='request-tree'] {
+        width: 100% !important;
+        max-height: 40vh;
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--v2-rule);
+    }
+}
