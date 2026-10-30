@@ -88,14 +88,21 @@ def tenant_on_home(app, endpoint_origin, label="Northwind Health", client=True, 
     if wizard_showing(app, timeout=6):
         first_run(app, endpoint_origin, label=PLACEHOLDER, client=False)
     app.open_settings()
+    results = {}
     for name in (label, *extra):
         app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
-        app.create_custom_tenant(name, endpoint_origin)
+        results[f"created {name}"] = bool(app.create_custom_tenant(name, endpoint_origin)[1])
+        # The core keeps the active tenant on create (the wizard's placeholder here): the new tenant is made
+        # active before its credentials are saved, so Settings attaches them to it and not to the placeholder.
+        results[f"active {name}"] = bool(app.make_active(name)[1])
         if name == label:
-            app.save_key(c8.SCAN_KEY)
+            results["scan key"] = bool(app.save_key(c8.SCAN_KEY)[1])
             if client:
-                c8.save_client(app)
-    app.make_active(label)
+                results["management client"] = bool(c8.save_client(app)[1])
+    results["active again"] = bool(app.make_active(label)[1])
+    missing = [k for k, v in results.items() if not v]
+    if missing:
+        raise RuntimeError(f"tenant setup did not complete: {missing}")
     tree = app.tree()
     if fx.App.node(tree, "AXCheckBox", "Use the new interface") is not None:
         app.ax("press", "AXCheckBox", "Use the new interface")

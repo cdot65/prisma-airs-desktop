@@ -20,6 +20,7 @@ export default defineConfig({
             'src/features/gateway/gateway-inference.test.tsx',
             'src/features/harness/harness-view.test.tsx',
             'src/features/library/library-view.test.tsx',
+            // Its assertions run on the one presentation in src/v2/settings/management-credential.test.tsx (C44 R3).
             'src/features/tenants/management-credential.test.tsx',
             'src/features/workbench/workbench-start.test.tsx',
         ],

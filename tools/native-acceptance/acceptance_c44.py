@@ -55,6 +55,8 @@ DESTINATIONS = [
     ("Settings", "Settings", None),
 ]
 SECRETS = (c8.SCAN_KEY, c8.SECRET)
+# The drivers whose records on this bundle the cumulative gate requires (legacy-script-map.md).
+CUMULATIVE = ["C10", "C11", "C23", "C35", "C36", "C37", "C38", "C39", "C40", "C41", "C42", "C43"]
 
 
 def rel(path):
@@ -141,7 +143,11 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     tree, _ = app.wait_for(lambda t: heading(t, v2s.WELCOME) is not None, 15)
     n1 = {"first_run_is_wizard": heading(tree, v2s.WELCOME) is not None, "no_features_rail_at_start": c29.nav(tree, "Features") is None}
     v2s.tenant_on_home(app, endpoint.origin)
-    size_window(app, pid, 1440, 900)
+    frame = size_window(app, pid, 1440, 900)
+    geo = geometry(app.tree())
+    # The window is asked for 1440×900 and gets what the display allows (the menu bar and the title bar take their
+    # share); the record states the viewport and window actually captured.
+    obs["geometry"] = {"requested": [1440, 900], "window": frame, "viewport": geo["viewport"], "web": geo["web"]}
     os.makedirs(os.path.join(PARITY, "app"), exist_ok=True)
     with open(os.path.join(PARITY, "bundle.json"), "w") as f:
         json.dump({"bundle": prepared["bundle"], "executable_sha256": prepared["executable_sha256"], "from": "native-prepare.json",
@@ -153,7 +159,19 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         app.menu("Go", item)
         tree, d["opened"] = app.wait_for(lambda t: heading(t, head) is not None, 20)
         if product:
-            tree, d["product_opened"] = app.wait_for(lambda t: any(n.get("role") == "AXButton" and (n.get("label") or "").startswith(product) and n.get("value") in (1, "1", True) for n in t) or any((n.get("label") or "") == f"Collapse {product}" for n in t) or app.has_text(t, product), 10)
+            # The product's card is open (its Collapse control is present) and its tab strip is drawn (an Overview
+            # tab inside the card): a collapsed card or the mere presence of the product's name does not pass.
+            def product_open(t):
+                collapse = next((n for n in t if (n.get("label") or "") == f"Collapse {product}"), None)
+                if collapse is None:
+                    return False
+                i = t.index(collapse)
+                depth = collapse.get("depth", 0)
+                for m in t[i + 1:i + 400]:
+                    if m.get("role") in ("AXRadioButton", "AXTab") and (m.get("label") or "") == "Overview":
+                        return True
+                return False
+            tree, d["product_opened"] = app.wait_for(product_open, 10)
         d["no_features_rail"] = c29.nav(tree, "Features") is None
         d["destinations_rail"] = c29.nav(tree, "Destinations") is not None
         d["no_interface_switch"] = fx.App.node(tree, "AXCheckBox", "Use the new interface") is None
@@ -177,6 +195,20 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n1["secret_hits"] = secret_hits
     obs["n1"] = n1
     app.quit()
+    # The cumulative gate: every mapped driver's record on this same bundle (tools/native-acceptance/run_on_v2.py
+    # files them under native/cumulative/<CNN>/), bound to the prepared executable; a missing, stale or failing one
+    # fails C44-N01. The set is the drivers the legacy-script map names as replacements and the pre-P09 drivers it
+    # keeps running on the one presentation (C10, C11, C23).
+    cumulative = {}
+    for chunk in CUMULATIVE:
+        path = os.path.join(EVIDENCE, "native", "cumulative", chunk, "native-acceptance.json")
+        try:
+            rec = json.load(open(path))
+            cumulative[chunk] = {"record": rel(path), "bound": rec["app"]["executable_sha256"] == prepared["executable_sha256"],
+                                 "checks": {c["id"]: c["result"] for c in rec["checks"]}, "recorded_utc": rec.get("recorded_utc")}
+        except (OSError, ValueError, KeyError) as e:
+            cumulative[chunk] = {"record": rel(path), "bound": False, "checks": {}, "missing": str(e)}
+    obs["cumulative"] = cumulative
 
     run_path = os.path.join(NATIVE, "observations.json")
     with open(run_path, "w") as f:
@@ -186,12 +218,14 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     checks = []
     dest = obs["destinations"]
     all_ok = all(d["opened"] and d.get("product_opened", True) and d["no_features_rail"] and d["destinations_rail"] and d["no_interface_switch"] and all(d["captures"].values()) for d in dest.values())
-    passed = n1["first_run_is_wizard"] and n1["no_features_rail_at_start"] and all_ok and not secret_hits and len(dest) == len(DESTINATIONS)
+    cumulative_ok = all(v["bound"] and v["checks"] and all(r == "pass" for r in v["checks"].values()) for v in cumulative.values())
+    cumulative_text = "; ".join(f"{k}: " + ("not run" if not v["checks"] else ("stale bundle; " if not v["bound"] else "") + ", ".join(f"{i} {r}" for i, r in v["checks"].items())) for k, v in cumulative.items())
+    passed = n1["first_run_is_wizard"] and n1["no_features_rail_at_start"] and all_ok and not secret_hits and len(dest) == len(DESTINATIONS) and cumulative_ok
     checks.append({"id": "C44-N01", "description": inventory["C44-N01"], "result": "pass" if passed else "fail",
-                   "observation": f"first run is the wizard {n1['first_run_is_wizard']} (no Features rail {n1['no_features_rail_at_start']}); "
+                   "observation": f"window requested 1440×900, got window {obs['geometry']['window']} viewport {obs['geometry']['viewport']} (the display's menu bar and the title bar take the rest); first run is the wizard {n1['first_run_is_wizard']} (no Features rail {n1['no_features_rail_at_start']}); "
                    + "; ".join(f"{k}: opened {v['opened']}" + (f", product {v.get('product_opened')}" if 'product_opened' in v else "") + f", no legacy rail {v['no_features_rail']}, Destinations {v['destinations_rail']}, no switch {v['no_interface_switch']}, captures {sorted(v['captures'])}" for k, v in dest.items())
-                   + f"; plaintext secrets in any tree: {secret_hits}",
-                   "evidence": [run_rel] + [v["tree"] for v in dest.values()] + [c for v in dest.values() for c in v["captures"].values() if c]})
+                   + f"; plaintext secrets in any tree: {secret_hits}; cumulative records on this bundle: {cumulative_text}",
+                   "evidence": [run_rel] + [v["tree"] for v in dest.values()] + [c for v in dest.values() for c in v["captures"].values() if c] + [v["record"] for v in cumulative.values() if v["checks"]]})
 
     hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
     os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"
