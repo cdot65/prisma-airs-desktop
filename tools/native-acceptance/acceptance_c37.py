@@ -11,14 +11,20 @@ Checks (docs/architecture/native-checks.json, C37): the list card with its
 filter tabs and counts, rows with severity word, title, product, source and
 when, the footer's coverage line, the detail card filled from a row (severity,
 title, body, facts, the entry's own action, Acknowledge, Snooze), the empty
-states, and the C30 holds unchanged (N01); keyboard reach, the focus ring,
-Enter on a row, and the measured layouts in both themes (N02).
+states (first read pending; the failed first read; a product needing a role
+with Open role issue and its destination), and the C30 holds unchanged (N01);
+at each measured layout in both themes the list card keeps its tabs, first
+row and footer inside its own frame, Tab reaches a tab and a row, Enter on a
+row the detail does not show changes the detail, and the focus ring (N02).
+The parity composites (docs/planning/evidence/C37/parity) are captured from
+the populated state with the first row opened.
 """
 
 import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -37,6 +43,8 @@ NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C37" else "native-C37")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C37" else "native-acceptance-C37.json")
 LOG = []
 TITLE_BAR = 32
+PARITY = os.path.join(EVIDENCE, "parity")
+DC = os.path.join(ROOT, "tools/parity")
 TABS = ("All", "Needs action", "Updates", "Snoozed")
 CONTROLS = ("AXButton", "AXCheckBox", "AXPopUpButton", "AXMenuButton", "AXSwitch", "AXToggle", "AXRadioButton", "AXTab")
 
@@ -83,10 +91,109 @@ def rows_of(tree, list_node):
 
 
 def size_window(app, pid, w, h):
+    """Places the window at the screen's origin and asks for w×h plus the title bar; the viewport
+    is measured and the request corrected by the difference, so the row is named by what was measured."""
     fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {pid}) to set position of window 1 to {{0, 0}}'])
-    c28.set_window_size(pid, w, h + TITLE_BAR)
-    time.sleep(0.8)
+    requested = [w, h + TITLE_BAR]
+    for _ in range(3):
+        c28.set_window_size(pid, requested[0], requested[1])
+        time.sleep(0.8)
+        g = geometry_of(app.tree())
+        vp = g["viewport"] or g["web"]
+        if not vp or vp[1] == h:
+            break
+        requested = [requested[0], requested[1] + (h - vp[1])]
     return c29.window_frame(pid)
+
+
+def frame(n):
+    return (n["pos"][0], n["pos"][1], n["pos"][0] + n["size"][0], n["pos"][1] + n["size"][1]) if n and n.get("pos") and n.get("size") else None
+
+
+def contained(n, outer, slack=1):
+    a, b = frame(n), frame(outer)
+    return bool(a and b) and a[0] >= b[0] - slack and a[1] >= b[1] - slack and a[2] <= b[2] + slack and a[3] <= b[3] + slack
+
+
+def list_usable(tree, zoom, app=None):
+    """The list card at this zoom: at least 160 CSS px tall, with its tabs, its first row and its
+    footer inside its own frame (nothing clipped by the card), measured from the tree in points."""
+    lst = region(tree, "Inbox list")
+    if not lst or not frame(lst):
+        return {"ok": False, "reason": "no list region"}
+    tabs = [tab_node(tree, t) for t in TABS]
+    rows = rows_of(tree, lst)
+    foot = next((n for n in within(tree, lst) if n.get("role") == "AXStaticText" and "sources read" in (n.get("label") or n.get("value") or "")), None)
+    out = {"height": lst["size"][1], "tabs_inside": all(contained(t, lst) for t in tabs) and all(tabs),
+           "rows_inside": sum(1 for r in rows if contained(r, lst)), "foot_inside": foot is not None and contained(foot, lst), "zoom": zoom}
+    # The first row is reachable: its focus scrolls the panel to it, and it then sits inside the card.
+    if rows and app is not None:
+        app.ax("focus", "AXButton", rows[0]["label"][:60])
+        time.sleep(0.3)
+        t = app.tree()
+        out["row_inside"] = contained(next((n for n in rows_of(t, region(t, "Inbox list")) if n.get("label") == rows[0]["label"]), None), region(t, "Inbox list"))
+    else:
+        out["row_inside"] = False
+    out["ok"] = out["height"] >= 160 * zoom - 1 and out["tabs_inside"] and out["rows_inside"] >= 1 and out["row_inside"] and out["foot_inside"]
+    return out
+
+
+def keyboard_at(app):
+    """From Read now, Tab reaches a tab and a row; Enter on a row the detail does not show changes the
+    detail to it (the row is focused first, so it is scrolled into the viewport)."""
+    app.ax("focus", "AXButton", "Read now")
+    time.sleep(0.3)
+    walk = [(((f or {}).get("label")) or "")[:44] for f in app.tab_walk(14)]
+    tree = app.tree()
+    lst = region(tree, "Inbox list")
+    rows = rows_of(tree, lst)
+    detail = region(tree, "Details")
+    shown = next(((n.get("label") or "") for n in within(tree, detail) if n.get("role") == "AXHeading"), "") if detail else ""
+    reach = {"tab": next((i for i, l in enumerate(walk) if l.startswith("All")), None),
+             "row": next((i for i, l in enumerate(walk) if rows and any(l and (r.get("label") or "").startswith(l[:12]) for r in rows)), None)}
+    target = next((r for r in rows if not shown or shown not in (r.get("label") or "")), None)
+    out = {"walk": walk, "reach": reach, "shown_before": shown, "target": (target or {}).get("label")}
+    if target:
+        app.ax("focus", "AXButton", target["label"][:60])
+        time.sleep(0.3)
+        t = app.tree()
+        focused = fx.App.focused(t) or {}
+        win = next((n for n in t if n.get("role") == "AXWindow"), None)
+        out["focused_row"] = (focused.get("label") or "") == target["label"]
+        out["row_in_viewport"] = contained(focused, win) if win else False
+        app.keycode(36)
+        _, out["enter_changed"] = app.wait_for(lambda t: region(t, "Details") is not None and any(
+            n.get("role") == "AXHeading" and (n.get("label") or "") and (n.get("label") or "") in (target["label"] or "") and (n.get("label") or "") != shown
+            for n in within(t, region(t, "Details"))), 8)
+    out["ok"] = all(i is not None for i in reach.values()) and reach["tab"] < reach["row"] and bool(target) and out.get("focused_row", False) and out.get("row_in_viewport", False) and out.get("enter_changed", False)
+    return out
+
+
+def composite(app, theme, web_size, prepared=None):
+    """The parity composite for this theme from the current capture (prototype left, app right); the
+    record of the bundle the captures came from is rewritten with every capture (attempt-02 E1)."""
+    name = f"inbox-{theme.lower()}"
+    if prepared:
+        os.makedirs(PARITY, exist_ok=True)
+        with open(os.path.join(PARITY, "bundle.json"), "w") as f:
+            json.dump({"bundle": prepared["bundle"], "executable_sha256": prepared["executable_sha256"], "from": "native-prepare.json",
+                       "captured_by": "tools/native-acceptance/acceptance_c37.py", "captured_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, f, indent=2)
+            f.write("\n")
+    cap = c29.capture(app, f"parity-{name}")
+    if not cap:
+        raise SystemExit(f"no capture for {name}")
+    os.makedirs(os.path.join(PARITY, "app"), exist_ok=True)
+    os.makedirs(os.path.join(PARITY, "proto"), exist_ok=True)
+    app_png = os.path.join(PARITY, "app", f"{name}.png")
+    shutil.copy(os.path.join(ROOT, cap), app_png)
+    web_w, web_h = web_size
+    proto_png = os.path.join(PARITY, "proto", f"{name}.png")
+    subprocess.run([sys.executable, "-I", os.path.join(DC, "dc_render.py"), "--board", "R2App", "--prop", "start=inbox",
+                    "--prop", f"theme={theme.lower()}", "--width", str(web_w), "--height", str(web_h), "--out", proto_png], check=True, capture_output=True)
+    out = os.path.join(PARITY, f"{name}.png")
+    subprocess.run([sys.executable, "-I", os.path.join(DC, "compose.py"), "--left", proto_png, "--right", app_png,
+                    "--out", out, "--title", f"Inbox · {theme.lower()} · {web_w}×{web_h}"], check=True, capture_output=True)
+    return rel(out)
 
 
 def geometry_of(tree):
@@ -174,7 +281,34 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n1["sub_before"] = texts([n for n in tree if n.get("subrole") == "AXApplicationStatus"] and within(tree, next(n for n in tree if n.get("subrole") == "AXApplicationStatus")))
     n1["empty_before"] = "First read pending" in texts(tree)
     obs["captures"]["inbox-empty"] = {"light": c29.capture(app, "inbox-empty-light")}
-    # The read lands; rows appear newest first.
+    # The failed first read: every source answers 500, so nothing is established and the empty state names the failed read.
+    mgmt.mode(chartStatus=500, apiKeysStatus=500, rtStatsStatus=500, modelsStatus=500, skillStatsStatus=500, skillsStatus=500, gwAdminStatus=500, gwIamStatus=500)
+    c29.press(app, "AXButton", "Read now")
+    tree, n1["failed_named"] = app.wait_for(lambda t: any(re.search(r"The read at \d\d:\d\d failed", x) for x in app.texts(t)) and fx.App.node(t, "AXButton", "Read now") is not None, 40)
+    obs["tree_failed"] = c29.save_tree("inbox-failed", tree)
+    obs["captures"]["inbox-failed"] = {"light": c29.capture(app, "inbox-failed-light")}
+    # A product needing a role: the sessions chart answers 403, so AI Runtime Security needs a role; nothing lists,
+    # the empty state offers Open role issue, the footer names the partial coverage, and the issue opens that product.
+    mgmt.mode(chartStatus=403)
+    c29.press(app, "AXButton", "Read now")
+    tree, n1["role_offered"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Open role issue") is not None and fx.App.node(t, "AXButton", "Read now") is not None, 40)
+    n1["role_footer"] = next((x for x in app.texts(tree) if re.search(r"\d+ of \d+ sources read at", x)), None)
+    # The empty pane qualifies what was read and names the unread source; it never says a bare "Nothing needs action." (attempt-02 R1).
+    n1["role_empty"] = next((x for x in app.texts(tree) if x.startswith("Nothing needs action in what was read (") and "is unknown until it can be read" in x), None)
+    n1["role_no_all_clear"] = not any(x.strip() == "Nothing needs action." for x in app.texts(tree))
+    obs["tree_role"] = c29.save_tree("inbox-role-issue", tree)
+    obs["captures"]["inbox-role"] = {"light": c29.capture(app, "inbox-role-issue-light")}
+    c29.press(app, "AXButton", "Open role issue")
+    # The destination: Administration with that product opened (its breadcrumb and its tab group).
+    tree, n1["role_destination"] = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Administration") is not None
+                                                and app.has_text(t, "Administration › AI Runtime Security")
+                                                and any(n.get("role") == "AXTabGroup" and (n.get("label") or "") == "AI Runtime Security tabs" for n in t), 12)
+    obs["tree_role_admin"] = c29.save_tree("inbox-role-issue-administration", tree)
+    app.menu("Go", "Inbox")
+    c29.heading(app, "Inbox")
+    time.sleep(0.5)
+    # The read lands (an API key expiring in five days gives a second row); rows appear newest first.
+    mgmt.mode(keyExpiresInDays=5.5)
     c29.press(app, "AXButton", "Read now")
     _, n1["read_landed"] = app.wait_for(lambda t: app.has_text(t, "sources read at") or app.has_text(t, "All sources read"), 40)
     time.sleep(0.8)
@@ -185,12 +319,12 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n1["sub_ok"] = "Everything that needs you in Northwind Health · newest first" in n1["sub"]
     n1["tabs"] = {t: (tab_node(tree, t) or {}).get("label") for t in TABS}
     n1["tabs_ok"] = all(n1["tabs"].values()) and all(re.search(r"\d+$", (l or "")) for l in n1["tabs"].values())
-    list_node = region(tree, "Inbox items")
+    list_node = region(tree, "Inbox list")
     n1["list_region"] = list_node is not None
     rows = rows_of(tree, list_node)
     n1["rows"] = [r.get("label") for r in rows]
     n1["rows_ok"] = len(rows) >= 1
-    n1["severity_words"] = all(any(w in (r.get("label") or "") for w in ("Critical", "Warning", "Info")) for r in rows)
+    n1["severity_words"] = bool(rows) and all(any(w in (r.get("label") or "") for w in ("Critical", "Warning", "Info")) for r in rows)
     foot = next(((n.get("label") or n.get("value") or "") for n in within(tree, list_node) if n.get("role") == "AXStaticText" and ("sources read at" in (n.get("label") or n.get("value") or "") or "No source reads" in (n.get("label") or n.get("value") or ""))), None)
     n1["footer"] = foot
     # Select the first row: the detail card fills.
@@ -204,15 +338,26 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     title = (rows[0]["label"] or "").split("\n")[0] if rows else ""
     n1["detail_title"] = any(n.get("role") == "AXHeading" and (n.get("label") or "") and (n.get("label") or "") in (rows[0]["label"] or "") for n in inside) if rows else False
     n1["detail_severity"] = any(w in dtext for w in ("Critical", "Warning", "Info"))
-    facts = next((n for n in inside if (n.get("label") or "") == "Facts" and n.get("role") in ("AXGroup", "AXList")), None)
+    facts = next((n for n in inside if (n.get("label") or "") == "Facts"), None)
     n1["facts"] = facts is not None and len([n for n in within(tree, facts) if n.get("role") == "AXStaticText"]) >= 2
-    n1["detail_actions"] = {k: starts(inside, ("AXButton",), k) is not None for k in ("Acknowledge", "Snooze 24 hours")}
+    # Acknowledge carries aria-pressed (it toggles to "Mark as needing action"), so it exposes as a check box.
+    n1["detail_actions"] = {"Acknowledge": starts(inside, CONTROLS, "Acknowledge") is not None, "Snooze 24 hours": starts(inside, ("AXButton",), "Snooze 24 hours") is not None}
     n1["detail_action_own"] = any(n.get("role") == "AXButton" and not (n.get("label") or "").startswith(("Acknowledge", "Snooze", "Unsnooze", "Mark as")) for n in inside)
     obs["tree_detail"] = c29.save_tree("inbox-detail", tree)
     obs["captures"]["inbox"] = {"light": c29.capture(app, "inbox-light")}
     c29.appearance(app, "Dark")
     obs["captures"]["inbox"]["dark"] = c29.capture(app, "inbox-dark")
     c29.appearance(app, "Light")
+    # The parity composites (D059), from this state, at the board's size in both themes.
+    app.ax("focus", "AXHeading", "Inbox")
+    time.sleep(0.3)
+    n1["parity"] = {}
+    for theme in ("Light", "Dark"):
+        c29.appearance(app, theme)
+        time.sleep(0.7)
+        n1["parity"][theme.lower()] = composite(app, theme, geometry_of(app.tree())["web"], prepared)
+    c29.appearance(app, "Light")
+    time.sleep(0.5)
     # The C30 holds, from the detail card: snooze (the core's time in the row, the detail and the toast), unsnooze, acknowledge.
     snooze = starts(inside, ("AXButton",), "Snooze 24 hours")
     if snooze:
@@ -225,8 +370,9 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         app.ax("press", tab["role"], tab["label"]) if tab else None
         time.sleep(0.6)
         tree = app.tree()
-        row = next((n for n in rows_of(tree, region(tree, "Inbox items")) if "Returns " in (n.get("label") or "")), None)
-        row_returns = row["label"].split("Returns ", 1)[1].strip() if row and "Returns " in row["label"] else None
+        row = next((n for n in rows_of(tree, region(tree, "Inbox list")) if "Returns " in (n.get("label") or "")), None)
+        # The row's name ends with the entry's own time after the return wording: "Returns tomorrow 03:16 03:16".
+        row_returns = re.sub(r"\s+\d\d:\d\d$", "", row["label"].split("Returns ", 1)[1].strip()) if row and "Returns " in row["label"] else None
         app.ax("press", "AXButton", row["label"][:60]) if row else None
         time.sleep(0.5)
         tree = app.tree()
@@ -238,26 +384,38 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         tab = tab_node(app.tree(), "All")
         app.ax("press", tab["role"], tab["label"]) if tab else None
         time.sleep(0.5)
-        c29.press(app, "AXButton", "Acknowledge")
-        _, n1["acknowledged"] = app.wait_for(lambda t: app.has_text(t, "Acknowledged") and fx.App.node(t, "AXButton", "Mark as needing action") is not None, 8)
-        c29.press(app, "AXButton", "Mark as needing action")
-        _, n1["unmarked"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Acknowledge") is not None, 8)
+        # Re-open the row in All (the detail follows the selected entry), then Acknowledge from the detail.
+        tree = app.tree()
+        back_row = next((n for n in rows_of(tree, region(tree, "Inbox list")) if title in (n.get("label") or "")), None)
+        app.ax("press", "AXButton", back_row["label"][:60]) if back_row else None
+        tree, has_ack = app.wait_for(lambda t: labelled(t, CONTROLS, "Acknowledge") is not None, 8)
+        obs["tree_before_ack"] = c29.save_tree("inbox-before-acknowledge", tree)
+        n1["ack_offered"] = has_ack
+        if has_ack:
+            ack = labelled(tree, CONTROLS, "Acknowledge")
+            app.ax("press", ack["role"], "Acknowledge")
+            tree, n1["acknowledged"] = app.wait_for(lambda t: app.has_text(t, "Acknowledged") and labelled(t, CONTROLS, "Mark as needing action") is not None, 8)
+            if n1["acknowledged"]:
+                mark = labelled(tree, CONTROLS, "Mark as needing action")
+                app.ax("press", mark["role"], "Mark as needing action")
+                _, n1["unmarked"] = app.wait_for(lambda t: labelled(t, CONTROLS, "Acknowledge") is not None, 8)
     obs["n1"] = n1
 
     # ---- N02: keyboard, ring, Enter on a row, layouts ------------------------------------
     n2 = {}
-    app.ax("focus", "AXHeading", "Inbox")
+    # From Read now (the heading's Tab did not move focus in the fixture): the tabs, the rows, the detail's actions.
+    app.ax("focus", "AXButton", "Read now")
     time.sleep(0.3)
     walk = [(((f or {}).get("label")) or "")[:44] for f in app.tab_walk(14)]
     n2["walk"] = walk
     order = []
-    for key in ("Read now", "All", rows[0]["label"][:12] if rows else "", "Acknowledge"):
+    for key in ("All", rows[0]["label"][:12] if rows else "", "Acknowledge"):
         idx = next((i for i, l in enumerate(walk) if key and l.startswith(key)), None)
         order.append((key, idx))
     n2["order"] = order
     n2["reach_in_order"] = all(i is not None for _, i in order) and [i for _, i in order] == sorted(i for _, i in order)
     plain = c29.capture(app, "row-ring-plain")
-    n2["ring"] = c31.ring_on(app, rows[0]["label"][:60], plain, "row-ring") if rows else {"diff": 0}
+    n2["ring"] = c31.ring_on(app, rows[0]["label"], plain, "row-ring") if rows else {"diff": 0}
     ring_ok = (n2["ring"].get("diff") or 0) > 40
     if rows:
         app.ax("focus", "AXButton", rows[0]["label"][:60])
@@ -268,26 +426,36 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     size_window(app, pid, 1440, 900)
     for theme in ("Light", "Dark"):
         c29.appearance(app, theme)
+        time.sleep(0.4)
         o, tree = overflow(app)
         g = geometry_of(tree)
         o["geometry"] = g
         o["width_1440"] = bool(g["web"] and g["web"][0] == 1440)
+        o["list"] = list_usable(tree, 1, app)
         name = f"inbox-{g['web'][0]}x{g['web'][1]}-{theme.lower()}"
         o["capture"] = c29.capture(app, name)
         o["tree"] = c29.save_tree(name, tree)
+        o["keyboard"] = keyboard_at(app)
         layouts[name] = o
     size_window(app, pid, 900, 600)
     c29.zoom(app, 10)
     for theme in ("Light", "Dark"):
         c29.appearance(app, theme)
+        time.sleep(0.4)
+        # The list card is measured where it stands: scrolled into view by focusing its first tab.
+        tab = tab_node(app.tree(), "All")
+        app.ax("focus", tab["role"], tab["label"]) if tab else None
+        time.sleep(0.4)
         o, tree = overflow(app)
         g = geometry_of(tree)
         vp = g["viewport"] or g["web"]
         o["geometry"] = g
-        o["window_900x600"] = bool(vp and vp[0] == 900 and vp[1] == 600)
+        o["window_900x600"] = bool(vp and vp[0] == 900 and vp[1] == 600 and g["web"] and g["web"][0] == 900)
+        o["list"] = list_usable(tree, 2, app)
         name = f"inbox-{vp[0]}x{vp[1]}-200-{theme.lower()}"
         o["capture"] = c29.capture(app, name)
         o["tree"] = c29.save_tree(name, tree)
+        o["keyboard"] = keyboard_at(app)
         layouts[name] = o
     c29.zoom(app, -10)
     c29.appearance(app, "Match System")
@@ -309,15 +477,15 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
 
     caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
     holds_ok = n1.get("snooze_toast") and n1.get("snooze_same") and n1.get("unsnoozed") and n1.get("acknowledged") and n1.get("unmarked")
-    n1_ok = (n1["heading"] and n1["empty_before"] and n1.get("read_landed") and n1["sub_ok"] and n1["tabs_ok"] and n1["list_region"] and n1["rows_ok"] and n1["severity_words"]
+    n1_ok = (n1["heading"] and n1["empty_before"] and n1.get("failed_named") and n1.get("role_offered") and bool(n1.get("role_footer")) and bool(n1.get("role_empty")) and n1.get("role_no_all_clear") and n1.get("role_destination") and len(n1.get("parity", {})) == 2 and n1.get("read_landed") and n1["sub_ok"] and n1["tabs_ok"] and n1["list_region"] and n1["rows_ok"] and n1["severity_words"]
              and bool(n1["footer"]) and n1["detail_region"] and n1["detail_title"] and n1["detail_severity"] and n1["facts"] and all(n1["detail_actions"].values()) and n1["detail_action_own"] and holds_ok)
     add("C37-N01", n1_ok,
-        f"heading {n1['heading']}; empty state before any read named it {n1['empty_before']}; Read now landed {n1.get('read_landed')}; line '{n1['sub']}' ({n1['sub_ok']}); tabs {n1['tabs']} ({n1['tabs_ok']}); rows {n1['rows']} with severity words {n1['severity_words']}; footer '{n1['footer']}'; detail: title {n1['detail_title']}, severity {n1['detail_severity']}, facts grid {n1['facts']}, own action {n1['detail_action_own']}, actions {n1['detail_actions']}; holds: snooze toast {n1.get('snooze_toast')} times {n1.get('snooze_times')} same {n1.get('snooze_same')}, unsnoozed {n1.get('unsnoozed')}, acknowledged {n1.get('acknowledged')}, unmarked {n1.get('unmarked')}",
-        [run_rel, obs["tree_inbox"], obs["tree_detail"]] + caps("inbox-empty") + caps("inbox"))
-    layout_ok = all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 for v in layouts.values())
+        f"heading {n1['heading']}; empty state before any read named it {n1['empty_before']}; the failed first read named {n1.get('failed_named')}; with the chart denied, Open role issue offered {n1.get('role_offered')} with the footer '{n1.get('role_footer')}', the empty pane '{n1.get('role_empty')}' (no bare all-clear {n1.get('role_no_all_clear')}) and opening AI Runtime Security in Administration {n1.get('role_destination')}; Read now landed {n1.get('read_landed')}; line '{n1['sub']}' ({n1['sub_ok']}); tabs {n1['tabs']} ({n1['tabs_ok']}); rows {n1['rows']} with severity words {n1['severity_words']}; footer '{n1['footer']}'; detail: title {n1['detail_title']}, severity {n1['detail_severity']}, facts grid {n1['facts']}, own action {n1['detail_action_own']}, actions {n1['detail_actions']}; holds: snooze toast {n1.get('snooze_toast')} times {n1.get('snooze_times')} same {n1.get('snooze_same')}, unsnoozed {n1.get('unsnoozed')}, acknowledged {n1.get('acknowledged')}, unmarked {n1.get('unmarked')}",
+        [run_rel, obs["tree_failed"], obs["tree_role"], obs["tree_role_admin"], obs["tree_inbox"], obs["tree_detail"]] + caps("inbox-empty") + caps("inbox-failed") + caps("inbox-role") + caps("inbox") + sorted(n1.get("parity", {}).values()))
+    layout_ok = all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["list"]["ok"] and v["keyboard"]["ok"] for v in layouts.values())
     geometry_ok = all(v.get("width_1440", v.get("window_900x600", False)) for v in layouts.values())
     sizes_text = ", ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']}" for k, v in layouts.items())
-    overflow_text = ", ".join(f"{k}: {v['overflow_px']}" for k, v in layouts.items())
+    overflow_text = ", ".join(f"{k}: overflow {v['overflow_px']} px, list height {v['list'].get('height')} pt (tabs/rows/first row by focus/footer inside {v['list'].get('tabs_inside')}/{v['list'].get('rows_inside')}/{v['list'].get('row_inside')}/{v['list'].get('foot_inside')}), Tab reached {v['keyboard'].get('reach')}, Enter on '{(v['keyboard'].get('target') or '')[:30]}' changed the detail {v['keyboard'].get('enter_changed')}" for k, v in layouts.items())
     add("C37-N02", n2["reach_in_order"] and ring_ok and n2.get("enter_opens") and layout_ok and geometry_ok,
         f"Tab from the heading reached {n2['order']} in order {n2['reach_in_order']}; ring on the first row {n2['ring'].get('diff')} px ({ring_ok}); Enter on the row opened its detail {n2.get('enter_opens')}; measured sizes by row {sizes_text} (asserted {geometry_ok}); overflow px {overflow_text}, horizontal scroll bars {[v['horizontal_scrollbars'] for v in layouts.values()]}",
         [run_rel, n2["ring"].get("capture"), n2["ring"].get("plain")] + [v["capture"] for v in layouts.values()] + [v.get("tree") for v in layouts.values()])

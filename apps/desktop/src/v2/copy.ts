@@ -119,6 +119,8 @@ export const INBOX_COPY = {
     emptyPending: 'First read pending. Nothing has been read for this tenant yet.',
     emptyReading: 'Reading this tenant…',
     emptyClear: 'Nothing needs action.',
+    /** A partial read with nothing listed: what was read says nothing needs action; the unread sources are unknown (I4). */
+    emptyPartial: (read: number, total: number, missing: string[]) => `Nothing needs action in what was read (${read} of ${total} sources). Activity for ${missing.join(', ')} is unknown until it can be read.`,
     emptyFailed: (when: string) => `The read at ${when} failed. Nothing has been read for this tenant yet.`,
     emptyStale: (when: string) => `Nothing needed action at ${when}; that read is more than 10 minutes old. Read again to confirm.`,
     stale: (when: string) => `The read from ${when} is more than 10 minutes old.`,

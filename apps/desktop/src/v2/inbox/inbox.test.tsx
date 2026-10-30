@@ -455,7 +455,10 @@ describe('Inbox', () => {
             ...base,
             inbox: { ...base.inbox, items: [], read: { ...base.inbox.read, products: [{ product: 'gateway', state: 'needsRole', sourcesRead: 0, sourcesTotal: 2, detail: 'Missing read role' }], sourcesMissing: ['Gateway usage', 'Gateway limits'] } },
         })
-        expect(document.querySelector('[data-slot="inbox-empty"]')?.textContent).toContain('Nothing needs action')
+        // A partial read never claims an all-clear: what was read is qualified and the unread source named (attempt-02 R1).
+        expect(document.querySelector('[data-slot="inbox-empty"]')?.textContent).toContain('Nothing needs action in what was read (0 of 2 sources)')
+        expect(document.querySelector('[data-slot="inbox-empty"]')?.textContent).toMatch(/Activity for .* is unknown until it can be read\./)
+        expect(document.querySelector('[data-slot="inbox-empty"]')?.textContent).not.toMatch(/^Nothing needs action\.$/)
         await user.click(screen.getByRole('button', { name: 'Open role issue' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'administration' })
         expect(useShellStore.getState().arrival).toMatchObject({ feature: 'administration', product: 'gateway' })

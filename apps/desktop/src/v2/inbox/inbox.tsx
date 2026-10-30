@@ -109,9 +109,11 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
                 ? C.emptyUnread(clockOf(read.settledAt), read.sourcesMissing.length)
                 : visible.length === 0
                   ? tab === 'all' || tab === 'action'
-                      ? stale
-                          ? C.emptyStale(clockOf(read.lastReadAt ?? 0))
-                          : C.emptyClear
+                      ? read.sourcesMissing.length > 0
+                          ? C.emptyPartial(read.products.reduce((n, p) => n + p.sourcesRead, 0), read.products.reduce((n, p) => n + p.sourcesTotal, 0), read.sourcesMissing)
+                          : stale
+                            ? C.emptyStale(clockOf(read.lastReadAt ?? 0))
+                            : C.emptyClear
                       : C.emptyTab
                   : null
     const partialLine =
