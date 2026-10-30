@@ -61,7 +61,7 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C37 | Planned (P09, D059): Inbox fix-up | `docs/planning/chunks/C37.md` |
 | C38 | **In progress** (P09, D059): Harness — the R2App title band, 244px conversation rail, transcript with the 46px composer and 350px Decisions aside over the C19–C33 behaviour; setup panels and texts as v2 components; parity composites captured by the native script, awaiting the owner's judgement | `docs/planning/chunks/C38.md`; `tools/native-acceptance/acceptance_c38.py`; `crates/desktop-core/tests/ui_v2_harness_port/` |
 | C39 | **In progress** (P09, D059): Administration — C39a: the R2App product cards, tab strip, Runtime Security Overview, Playground and inventory table as v2 components; C39b: the other products and the review sheet | `docs/planning/chunks/C39.md`; `tools/native-acceptance/acceptance_c39.py`; `crates/desktop-core/tests/ui_v2_admin/` |
-| C40 | Planned (P09, D059): Test Cases | `docs/planning/chunks/C40.md` |
+| C40 | **In progress** (P09, D059): Test Cases — the R2App title row, Explain banner, one table card with search, product pills, result pills, the action and ⋯ menu, the packs and new-case dialogs and the detail sheet over the C33 behaviour | `docs/planning/chunks/C40.md`; `tools/native-acceptance/acceptance_c40.py` |
 | C41 | Planned (P09, D059): API Client | `docs/planning/chunks/C41.md` |
 | C42 | Planned (P09, D059): Academy | `docs/planning/chunks/C42.md` |
 | C43 | Planned (P09, D059): Wizard re-port | `docs/planning/chunks/C43.md` |

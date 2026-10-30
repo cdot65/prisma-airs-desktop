@@ -1316,6 +1316,16 @@
         "id": "C39-N04",
         "check": "Keyboard and layout (T09): Tab from the heading reaches Expand all, the Runtime card's header, its tabs and the table's first View in order, the focus ring on the first View; Administration at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with Runtime open on Custom topics and no horizontal overflow, the tab strip scrolling within the card rather than widening it, the table's header, first row and footer inside the card; every row records the WebView's measured size and the viewport from its own tree and asserts them."
       }
+    ],
+    "C40": [
+      {
+        "id": "C40-N01",
+        "check": "Test Cases as the prototype board draws it (R2App start=cases) with a tenant: the title row (heading; 'n cases in <tenant> \u00b7 sealed on this Mac, per tenant'; Load starter packs\u2026 and New case), the empty card first; Load starter packs\u2026 opens the 560px dialog with the bundled packs and the public examples as checks (the bundled checked) and Import\u2026 / Export\u2026 for the operator's own cases, Load selected adds the packs; the one table card: search, the product pills with their counts, the rows (name with the pack under it, product, input in mono, the result pill or Not run, Open in Playground for a Runtime Security case or Inspect for the others, and the \u22ef menu), the footer's range and pages; a filter and a search with Clear search and filters; Inspect opens the 520px detail sheet docked right (the rows, which product runs it, the never-run note) and dispatches no scan; Open in Playground fills the Playground without scanning, the scan run there records the verdict on the case; New case opens the dialog, a Runtime case and a specification are saved (the specification without profile or application, inspect-only); the \u22ef menu removes a case and copies one to another tenant; Export\u2026 saves or is cancelled through the native sheet and Import\u2026 of the exported file says its cases are already here; nothing on this screen scans (D059 parity: the composites under evidence/C40/parity are captured by this script from the populated list, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C40-N02",
+        "check": "Keyboard and layout (T09): Tab from Load starter packs\u2026 reaches New case, the search field and the first product pill in order; the focus ring on New case; Test Cases at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the packs loaded, no horizontal overflow, the row action at least 32 CSS px inside the table card and the footer's pages present; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
     ]
   }
 }
