@@ -23,4 +23,8 @@ Looked at side by side on 2026-10-30 (`academy-light.png`, `academy-dark.png`; p
 - **The Learning paths row is below the fold in the composite.** The board shows six path cards under the frame at 1440×814; the app's row is drawn (the native tree records the Learning paths heading and the Open Runtime Security Path card, checks N01/N02) but the embedded catalog is taller than the board's card, so at this window height the row starts below the captured viewport. The row's cards follow the board's card layout (title, description, progress bar, units line) with the catalog's one path instead of six. This is the one visible gap: a shorter left card would surface the row; it is a consequence of hosting the catalog page itself and is left as is.
 - **No other differences** in spacing, colour or type were found in either theme.
 
-Verdict for this gate: the chrome is at parity with the board; the two content deviations (pills, the embed in the left card) are the chunk's design; the row below the fold is noted as the remaining gap. The owner's standing direction of 2026-10-30 ("go go go until we are 100% complete, stop stopping") is why the gate did not pause for a per-screen sign-off; the owner's own side-by-side look remains invited, and an objection reopens the chunk.
+Verdict for this gate: the chrome is at parity with the board; the two content deviations (pills, the embed in the left card) are the chunk's design; the row below the fold is noted as the remaining gap.
+
+## Owner's approval
+
+The owner judged both composites with the deviations above (the pills, the embedded catalog in the left card, the Learning paths row below the viewport) and approved them on 2026-10-30: "C42 composites approved." This is the owner's judgement the gate runs on (D059); an objection from the owner reopens the parity judgement for this screen.
