@@ -105,8 +105,14 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
 
     const selected = collection?.selected ?? null
     const selectedTab = collection?.tabs.find((t) => t.id === selected) ?? null
+    // The core's selection is followed when it changes, not re-asserted against the document shown: after + the
+    // draft is shown from the core's reply before the snapshot naming it selected arrives, and re-opening the
+    // previously selected request in between made the core select that one again (the draft's tab lost).
+    const followed = useRef<string | null>(null)
     useEffect(() => {
-        if (!selectedTab || doc?.id === selectedTab.id || loading.current === selectedTab.id) return
+        if (!selectedTab || followed.current === selectedTab.id) return
+        followed.current = selectedTab.id
+        if (doc?.id === selectedTab.id || loading.current === selectedTab.id) return
         loading.current = selectedTab.id
         void call({ kind: 'openRequest', relative: selectedTab.relative }).then((r) => {
             loading.current = null
