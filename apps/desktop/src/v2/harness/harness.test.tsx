@@ -11,7 +11,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { DeliveryOutcomeUnknown, DesktopClient, type ConversationView, type Intent, parseShellSnapshot, type RotationView, type SavedConversationView, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import { DeliveryOutcomeUnknown, DesktopClient, type ConversationView, type HarnessHistoryView, type HarnessMcpView, type HarnessSignInView, type Intent, type McpServerView, parseShellSnapshot, type RotationView, type SavedConversationView, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import blocks from '@prisma-airs/desktop-contracts/fixtures/wire/harness-lifecycle-blocks.json'
 import keys from '@prisma-airs/desktop-contracts/fixtures/wire/harness-lifecycle-keys.json'
 import mcp from '@prisma-airs/desktop-contracts/fixtures/wire/harness-lifecycle-mcp.json'
@@ -1573,5 +1573,204 @@ describe('v2 Harness', () => {
         expect(summary).toHaveTextContent('Signed in')
         expect(summary).toHaveTextContent('ticketing')
         expect(summary).toHaveTextContent('Not signed in')
+    })
+
+    // ---- C38 attempt-01 R1 / E2: the MCP summary's truth and the v2 setup panels' workflows ----
+
+    const server = (over: Partial<McpServerView> = {}): McpServerView => ({ id: 'srv-tools-0001', name: 'Tools', namespace: 'tools', url: 'https://mcp.example/tools/mcp', status: 'active', supported: true, enabled: false, signedIn: false, stale: false, expired: null, step: null, failure: null, ...over })
+    const mcpOf = (servers: McpServerView[], over: Partial<HarnessMcpView> = {}): HarnessMcpView => ({ workspace: WS.id, state: 'ready', complete: true, failure: null, servers, ...over })
+    const withHarness = (over: Partial<ShellSnapshot['harness']>): ShellSnapshot => {
+        const base = fxHarness(null)
+        return { ...base, harness: { ...base.harness, ...over } }
+    }
+    const summary = () => document.querySelector('[data-slot="harness-mcp-summary"]') as HTMLElement
+    async function openSetup(user: ReturnType<typeof userEvent.setup>) {
+        await user.click(screen.getByRole('button', { name: 'Project, sign-in and workspace tools' }))
+    }
+
+    it('says what the MCP summary knows: not read, reading, failed, partial; every server that is on is listed and the rest are counted (attempt-01 R1)', async () => {
+        const { native } = await launch(withHarness({ mcp: null }))
+        expect(summary()).toHaveTextContent('Workspace MCP servers · not read yet')
+        expect(summary()).not.toHaveTextContent('0 of 0')
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf([], { state: 'loading' }) } })
+        await waitFor(() => expect(summary()).toHaveTextContent('Workspace MCP servers · reading…'))
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf([], { state: 'failed', failure: 'denied' }) } })
+        await waitFor(() => expect(summary()).toHaveTextContent('Workspace MCP servers · could not be read: This management client is not allowed to read this.'))
+        expect(summary()).toHaveAttribute('data-state', 'failed')
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf([server()], { complete: false }) } })
+        await waitFor(() => expect(summary()).toHaveTextContent('Workspace MCP servers · 0 of 1 · only the first 500 servers were read'))
+        // Nine servers, the ninth the only one on and signed in: it is listed first; one server is named as not shown.
+        const nine = Array.from({ length: 9 }, (_, i) => server({ id: `srv-${i}`, name: `S${i}`, namespace: `s${i}`, enabled: i === 8, signedIn: i === 8 }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf(nine) } })
+        await waitFor(() => expect(summary()).toHaveTextContent('Workspace MCP servers · 1 of 9'))
+        const rows = Array.from(summary().querySelectorAll('div.flex.items-center')).map((r) => r.textContent)
+        expect(rows[0]).toBe('S8Signed in')
+        expect(rows).toHaveLength(8)
+        expect(summary().querySelector('[data-slot="harness-mcp-more"]')).toHaveTextContent('1 more in the setup below')
+    })
+
+    it('chooses a folder, names a refused one, allows changes in it and removes it, through the v2 project panel (C21, attempt-01 E2)', async () => {
+        const { native, user } = await launch(withHarness({ project: null }))
+        await openSetup(user)
+        const panel = screen.getByRole('region', { name: 'Project folder' })
+        expect(within(panel).getByText(/cannot run commands/)).toBeInTheDocument()
+        await user.click(within(panel).getByRole('button', { name: 'Choose a folder…' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'chooseHarnessProject', context: CONTEXT }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, projectRefused: '/usr' } })
+        expect(await within(panel).findByRole('alert')).toHaveTextContent('/usr cannot be used. Folders that hold system files, credentials or this app’s own data cannot be used.')
+        await native.push({ ...native.current, harness: { ...native.current.harness, projectRefused: null, project: { path: '/Users/someone/work/agent-demo', write: false } } })
+        expect(await within(panel).findByText('/Users/someone/work/agent-demo')).toBeInTheDocument()
+        const write = within(panel).getByRole('checkbox', { name: 'Allow changes in this folder' })
+        expect(write).not.toBeChecked()
+        expect(write).toHaveAccessibleDescription(/Read-only/)
+        await user.click(write)
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'setHarnessWrite', context: CONTEXT, write: true }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, project: { path: '/Users/someone/work/agent-demo', write: true } } })
+        await waitFor(() => expect(write).toBeChecked())
+        // A refused delivery is said, and nothing changes.
+        native.respond = (intent: Intent) => (intent.kind === 'clearHarnessProject' ? { outcome: 'refusal', refusal: 'busy' } : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
+        await user.click(within(panel).getByRole('button', { name: 'Remove folder' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'clearHarnessProject', context: CONTEXT }))
+        expect(await screen.findByText(/That was not done\. Folders that hold system files/)).toBeInTheDocument()
+        expect(within(panel).getByText('/Users/someone/work/agent-demo')).toBeInTheDocument()
+    })
+
+    it('sets up company sign-in, signs in through the browser, chooses the credential and signs out, through the v2 sign-in panel; a refused save is named (C20, attempt-01 E2)', async () => {
+        const { native, user } = await launch(withHarness({ signIn: null }))
+        await openSetup(user)
+        await user.click(screen.getByRole('button', { name: 'Set up company sign-in' }))
+        const form = screen.getByRole('button', { name: 'Save company sign-in' }).closest('form') as HTMLFormElement
+        await user.type(within(form).getByLabelText('Gateway endpoint'), 'https://gateway.example/rt/v1')
+        await user.type(within(form).getByLabelText('Identity provider (issuer URL)'), 'https://id.example/oauth2/default')
+        await user.type(within(form).getByLabelText('Client ID'), 'desktop-client')
+        await user.type(within(form).getByLabelText('Gateway audience'), 'https://gateway.example')
+        await user.click(screen.getByRole('button', { name: 'Save company sign-in' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'configureHarnessSignIn', context: CONTEXT, workspace: REF, endpoint: 'https://gateway.example/rt/v1', issuer: 'https://id.example/oauth2/default', clientId: 'desktop-client', audience: 'https://gateway.example' })
+        )
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'chooseHarnessCredential', context: CONTEXT, source: 'companySignIn' }))
+        expect(native.dispatched.some((i) => i.kind === 'signInHarness')).toBe(false)
+        const signIn = (over: Partial<HarnessSignInView> = {}): HarnessSignInView => ({ workspace: WS, endpoint: 'https://gateway.example/rt/v1', issuer: 'https://id.example/oauth2/default', clientId: 'desktop-client', audience: 'https://gateway.example', selected: true, account: null, step: null, failure: null, ...over })
+        await native.push({ ...native.current, harness: { ...native.current.harness, signIn: signIn() } })
+        const choice = await screen.findByRole('group', { name: 'Answer with' })
+        expect(within(choice).getByRole('radio', { name: /Company sign-in/ })).toBeChecked()
+        await user.click(screen.getByRole('button', { name: 'Sign in with your browser' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signInHarness', context: CONTEXT }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, signIn: signIn({ step: 'browser' }) } })
+        expect(await screen.findByText('Continue in your browser. This app is waiting for it to come back.')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Cancel sign-in' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'cancelHarnessSignIn', context: CONTEXT }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, signIn: signIn({ failure: 'invalidToken' }) } })
+        expect(await screen.findByText(/A token from the identity provider did not verify/)).toBeInTheDocument()
+        await native.push({ ...native.current, harness: { ...native.current.harness, signIn: signIn({ account: 'alice@example.com' }) } })
+        expect(await screen.findByText('Signed in as alice@example.com')).toBeInTheDocument()
+        await user.click(within(screen.getByRole('group', { name: 'Answer with' })).getByRole('radio', { name: /The workspace inference key/ }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'chooseHarnessCredential', context: CONTEXT, source: 'workspaceKey' }))
+        await user.click(screen.getByRole('button', { name: 'Sign out' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signOutHarness', context: CONTEXT }))
+        expect(document.body.textContent).not.toContain('eyJ')
+        // A refused save names why and chooses nothing.
+        await native.push({ ...native.current, harness: { ...native.current.harness, signIn: null } })
+        const chosen = native.dispatched.filter((i) => i.kind === 'chooseHarnessCredential').length
+        native.respond = (intent: Intent) => (intent.kind === 'configureHarnessSignIn' ? { outcome: 'refusal', refusal: 'invalidInput' } : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
+        await user.click(await screen.findByRole('button', { name: 'Set up company sign-in' }))
+        const again = screen.getByRole('button', { name: 'Save company sign-in' }).closest('form') as HTMLFormElement
+        await user.type(within(again).getByLabelText('Gateway endpoint'), 'https://gateway.example/rt/v1')
+        await user.type(within(again).getByLabelText('Identity provider (issuer URL)'), 'http://id.example/?x=1')
+        await user.type(within(again).getByLabelText('Client ID'), 'desktop-client')
+        await user.type(within(again).getByLabelText('Gateway audience'), 'https://gateway.example')
+        await user.click(screen.getByRole('button', { name: 'Save company sign-in' }))
+        expect(await screen.findByText('Issuer and Gateway endpoint must be https URLs without a query string.')).toBeInTheDocument()
+        expect(native.dispatched.filter((i) => i.kind === 'chooseHarnessCredential')).toHaveLength(chosen)
+    })
+
+    it('reads the MCP catalog, turns servers on, signs in and out, says why a server cannot be used and keeps at most eight on, through the v2 MCP panel (C22, attempt-01 E2)', async () => {
+        const { native, user } = await launch(withHarness({ mcp: null }))
+        await openSetup(user)
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'listMcpServers', context: CONTEXT, workspace: REF }))
+        const panel = screen.getByRole('region', { name: 'Workspace MCP servers' })
+        expect(within(panel).getByText('Reading the workspace’s MCP servers…')).toBeInTheDocument()
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf([server(), server({ id: 'odd id', name: 'Odd', namespace: 'odd', supported: false })]) } })
+        const use = await within(panel).findByRole('checkbox', { name: 'Use Tools in new conversations' })
+        expect(use).toHaveAccessibleDescription('Not signed in: its tools will be unavailable until you sign in.')
+        expect(within(panel).getByRole('checkbox', { name: 'Use Odd in new conversations' })).toBeDisabled()
+        await user.click(use)
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'enableMcpServer', context: CONTEXT, workspace: REF, server: 'srv-tools-0001', enabled: true }))
+        await user.click(within(panel).getByRole('button', { name: 'Sign in to Tools' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signInMcpServer', context: CONTEXT, workspace: REF, server: 'srv-tools-0001' }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf([server({ enabled: true, step: 'browser' })]) } })
+        expect(await within(panel).findByText('Continue in your browser. This app is waiting for it to come back.')).toBeInTheDocument()
+        await user.click(within(panel).getByRole('button', { name: 'Cancel sign-in' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'cancelMcpSignIn', context: CONTEXT }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf([server({ enabled: true, signedIn: true })]) } })
+        expect(await within(panel).findByText('Signed in.')).toBeInTheDocument()
+        expect(summary()).toHaveTextContent('ToolsSigned in')
+        await user.click(within(panel).getByRole('button', { name: 'Sign out of Tools' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signOutMcpServer', context: CONTEXT, workspace: REF, server: 'srv-tools-0001' }))
+        const many = Array.from({ length: 9 }, (_, i) => server({ id: `srv-${i}`, name: `S${i}`, namespace: `s${i}`, enabled: i < 8, signedIn: i === 0 }))
+        many[1] = { ...many[1]!, stale: true }
+        many[2] = { ...many[2]!, expired: 'sessionExpired' }
+        many[3] = { ...many[3]!, failure: 'registrationNotOffered' }
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf(many, { failure: 'unavailable', complete: false }) } })
+        expect(await within(panel).findByRole('checkbox', { name: 'Use S8 in new conversations' })).toBeDisabled()
+        expect(within(panel).getByRole('checkbox', { name: 'Use S7 in new conversations' })).toBeEnabled()
+        expect(within(panel).getByText('Signed in for an earlier version of this server. Sign in again to use it.')).toBeInTheDocument()
+        expect(within(panel).getByText('The sign-in has expired. Sign in again to use its tools.')).toBeInTheDocument()
+        expect(within(panel).getByText('The server does not let this app register for a sign-in.')).toBeInTheDocument()
+        expect(within(panel).getByText(/^The MCP servers could not be read:/)).toBeInTheDocument()
+        expect(within(panel).getByText('Only the first 500 servers are shown.')).toBeInTheDocument()
+        expect(within(panel).getByRole('button', { name: 'Sign in to S1 again' })).toBeInTheDocument()
+        // A refused enable is said.
+        native.respond = (intent: Intent) => (intent.kind === 'enableMcpServer' ? { outcome: 'refusal', refusal: 'invalidInput' } : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
+        await user.click(within(panel).getByRole('checkbox', { name: 'Use S7 in new conversations' }))
+        expect(await screen.findByText(/That was not done\. At most eight servers can be on/)).toBeInTheDocument()
+    })
+
+    it('lists, opens, continues, exports and deletes saved conversations, says why one cannot be continued, names unreadable ones and a locked store, through the v2 history panel (C20, attempt-01 E2)', async () => {
+        const SAVED = { id: '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d', title: 'Remember periwinkle', updated: 1_790_000_000, entries: 4, source: 'workspaceKey' as const }
+        const historyOf = (over: Partial<HarnessHistoryView> = {}): HarnessHistoryView => ({ local: false, state: 'ready', conversations: [SAVED], unreadable: [], failure: null, full: false, opened: null, busy: false, problem: null, export: null, ...over })
+        const { native, user } = await launch(withHarness({ history: null }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'listHarnessHistory', context: CONTEXT, workspace: REF }))
+        expect(screen.getByText('Reading saved conversations…')).toBeInTheDocument()
+        await native.push({ ...native.current, harness: { ...native.current.harness, history: historyOf() } })
+        const list = await screen.findByRole('list', { name: 'Saved conversations' })
+        expect(within(list).getByText('4 messages', { exact: false })).toBeInTheDocument()
+        await user.click(within(list).getByRole('button', { name: 'Open Remember periwinkle' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'openHarnessHistory', context: CONTEXT, workspace: REF, id: SAVED.id }))
+        const opened = { id: SAVED.id, title: SAVED.title, updated: SAVED.updated, entries: [{ id: 'u-1', role: 'operator' as const, text: 'Remember periwinkle', state: 'complete' as const }, { id: 'u-1/msg_1', role: 'assistant' as const, text: 'Noted.', state: 'complete' as const }], source: 'workspaceKey' as const, notContinuable: null }
+        await native.push({ ...native.current, harness: { ...native.current.harness, history: historyOf({ opened }) } })
+        const heading = await screen.findByRole('heading', { name: 'Remember periwinkle', level: 3 })
+        await waitFor(() => expect(heading).toHaveFocus())
+        expect(within(screen.getByRole('list', { name: 'Saved messages' })).getAllByRole('listitem')).toHaveLength(2)
+        await user.click(screen.getByRole('button', { name: 'Continue this conversation' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'resumeHarness', context: CONTEXT, workspace: REF, id: SAVED.id }))
+        await user.selectOptions(screen.getByLabelText('Export as'), 'json')
+        await user.click(screen.getByRole('button', { name: 'Export…' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'exportHarnessHistory', context: CONTEXT, workspace: REF, id: SAVED.id, format: 'json' }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, history: historyOf({ opened, export: { kind: 'harnessConversation', state: 'saved', name: 'harness-x.json' } as never }) } })
+        expect(await screen.findByText('Saved harness-x.json.')).toBeInTheDocument()
+        const before = native.dispatched.length
+        await user.click(screen.getByRole('button', { name: 'Delete…' }))
+        expect(screen.getByText('Delete this saved conversation from this Mac? It cannot be recovered.')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Keep it' }))
+        expect(native.dispatched.slice(before)).toEqual([])
+        await user.click(screen.getByRole('button', { name: 'Delete…' }))
+        await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'deleteHarnessHistory', context: CONTEXT, workspace: REF, id: SAVED.id }))
+        // Not continuable, unreadable and full, then a locked store.
+        const unreadable = '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6e'
+        await native.push({ ...native.current, harness: { ...native.current.harness, history: historyOf({ opened: { ...opened, title: 'Old key', entries: [], notContinuable: 'otherCredential' }, unreadable: [unreadable], full: true }) } })
+        expect(await screen.findByText('It ran with another key, sign-in or endpoint than this workspace uses now, so it can be read and exported but not continued.')).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Continue this conversation' })).toBeNull()
+        expect(screen.getAllByText('This workspace already keeps 16 saved conversations. Delete one to keep new conversations.').length).toBeGreaterThan(0)
+        const sent = native.dispatched.length
+        await user.click(screen.getByRole('button', { name: 'Delete unreadable conversation…' }))
+        await user.click(screen.getByRole('button', { name: 'Keep it' }))
+        expect(native.dispatched.slice(sent).some((i) => i.kind === 'deleteHarnessHistory')).toBe(false)
+        await user.click(screen.getByRole('button', { name: 'Delete unreadable conversation…' }))
+        await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'deleteHarnessHistory', context: CONTEXT, workspace: REF, id: unreadable }))
+        await native.push({ ...native.current, harness: { ...native.current.harness, history: historyOf({ state: 'failed', failure: 'locked', conversations: [] }) } })
+        expect(await screen.findByText(/The Keychain is locked, so saved conversations cannot be read or saved\./)).toBeInTheDocument()
     })
 })

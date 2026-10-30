@@ -1,0 +1,36 @@
+$ pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.truth.config.ts
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop
+
+stderr | src/features/academy/learner-bundle.truth.ts > ships no Academy truth, privileged module or unexplained procedure
+../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+stderr | src/features/academy/learner-bundle.truth.ts > ships no Academy truth, privileged module or unexplained procedure
+../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+stderr | src/features/academy/learner-bundle.truth.ts > ships no Academy truth, privileged module or unexplained procedure
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+ ✓ src/features/academy/learner-bundle.truth.ts (1 test) 8111ms
+   ✓ ships no Academy truth, privileged module or unexplained procedure  8110ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  05:38:07
+   Duration  8.42s (transform 26ms, setup 0ms, collect 25ms, tests 8.11s, environment 0ms, prepare 63ms)
+
+EXIT 0

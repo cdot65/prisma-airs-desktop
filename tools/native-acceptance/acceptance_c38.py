@@ -152,9 +152,16 @@ def columns(tree, zoom):
     return {"ok": controls_ok and arranged, "controls_ok": controls_ok, "arranged": arranged, "sizes": sizes, "pos": pos, "zoom": zoom}
 
 
-def composite(app, theme, web_size):
-    """The parity composite for this theme from the current capture (prototype left, app right)."""
+def composite(app, theme, web_size, prepared=None):
+    """The parity composite for this theme from the current capture (prototype left, app right); the
+    record of the bundle the captures came from is rewritten with every capture (attempt-01 E1)."""
     name = f"harness-{theme.lower()}"
+    if prepared:
+        os.makedirs(PARITY, exist_ok=True)
+        with open(os.path.join(PARITY, "bundle.json"), "w") as f:
+            json.dump({"bundle": prepared["bundle"], "executable_sha256": prepared["executable_sha256"], "from": "native-prepare.json",
+                       "captured_by": "tools/native-acceptance/acceptance_c38.py", "captured_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, f, indent=2)
+            f.write("\n")
     cap = c29.capture(app, f"parity-{name}")
     if not cap:
         raise SystemExit(f"no capture for {name}")
@@ -300,7 +307,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         c29.appearance(app, theme)
         time.sleep(0.7)
         web = geometry(app.tree())["web"] or g["web"]
-        parity[theme.lower()] = composite(app, theme, web)
+        parity[theme.lower()] = composite(app, theme, web, prepared)
     c29.appearance(app, "Match System")
     n1["parity"] = parity
     # Allowed in the aside: the catalog is read once and the answer follows; the aside empties.

@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef, useState } from 'react'
 import type { ConversationView, FeatureId, HarnessApproval, HarnessEntry, Intent, ProposalView, RotationView, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { type Dispatch, type DispatchOutcome, outcomeMessage } from '../../features/tenants/dispatch'
 import { Glyph } from '../icons'
+import { MANAGEMENT_FAILURE_TEXT } from '../../features/administration/management-read'
 import { type Arrival, useShellStore } from '../store'
 import { Verdict, type VerdictTone } from '../verdict'
 import { HARNESS_COPY as C } from './copy'
@@ -502,7 +503,10 @@ export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Har
     const outcome = conversation ? outcomeOf(conversation) : null
 
     const subtitle = [tenant?.label, engine.available ? C.engineReady(engine.runtimeVersion) : C.engineMissing, selected?.workspace.name ?? C.noWorkspace].filter(Boolean).join(' · ')
-    const mcpServers = selected && snapshot.harness.mcp && snapshot.harness.mcp.workspace === selected.workspace.id ? snapshot.harness.mcp.servers : []
+    const mcpView = selected && snapshot.harness.mcp && snapshot.harness.mcp.workspace === selected.workspace.id ? snapshot.harness.mcp : null
+    const mcpServers = mcpView?.servers ?? []
+    // The servers that are on come first (every one of them is listed), then the others, eight rows in all.
+    const mcpShown = [...mcpServers].sort((a, b) => Number(b.enabled) - Number(a.enabled)).slice(0, 8)
     const button32 = 'flex h-8 min-h-0 items-center rounded-[7px] text-[13px] whitespace-nowrap disabled:opacity-60'
     const secondary = { border: '1px solid var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }
     const primary = { background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }
@@ -801,11 +805,19 @@ export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Har
                         : null}
                     <div className='mt-auto flex flex-col' style={{ gap: 8 }}>
                         {selected ? (
-                            <div data-slot='harness-mcp-summary' className='flex flex-col text-[12px]' style={{ gap: 6 }}>
-                                <div className='font-semibold' style={{ color: 'var(--v2-faint)' }}>
-                                    {C.mcpHeading(mcpServers.filter((s) => s.enabled).length, mcpServers.length)}
+                            <div data-slot='harness-mcp-summary' data-state={mcpView ? mcpView.state : 'unread'} className='flex flex-col text-[12px]' style={{ gap: 6 }}>
+                                {/* The catalog's own state is said (attempt-01 R1): not read, reading, failed, or read with its
+                                    completeness; the rows are the servers that are on first, at most eight, the rest named. */}
+                                <div className='font-semibold' style={{ color: mcpView?.state === 'failed' ? 'var(--v2-flag)' : 'var(--v2-faint)' }}>
+                                    {!mcpView
+                                        ? C.mcpUnread
+                                        : mcpView.state === 'loading'
+                                          ? C.mcpReading
+                                          : mcpView.state === 'failed' && mcpView.failure
+                                            ? C.mcpFailed(MANAGEMENT_FAILURE_TEXT[mcpView.failure])
+                                            : `${C.mcpHeading(mcpServers.filter((s) => s.enabled).length, mcpServers.length)}${mcpView.complete ? '' : ` · ${C.mcpPartial}`}`}
                                 </div>
-                                {mcpServers.slice(0, 8).map((s) => {
+                                {mcpShown.map((s) => {
                                     const st = mcpStanding(s)
                                     return (
                                         <div key={s.id} className='flex items-center justify-between gap-2'>
@@ -816,6 +828,11 @@ export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Har
                                         </div>
                                     )
                                 })}
+                                {mcpServers.length > mcpShown.length ? (
+                                    <div style={{ color: 'var(--v2-faint)' }} data-slot='harness-mcp-more'>
+                                        {C.mcpMore(mcpServers.length - mcpShown.length)}
+                                    </div>
+                                ) : null}
                             </div>
                         ) : null}
                         {context ? (
