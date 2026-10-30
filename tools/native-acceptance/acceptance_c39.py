@@ -232,6 +232,37 @@ def run():
         shutil.rmtree(work, ignore_errors=True)
 
 
+
+def ring_by_tab(app, prefix, name):
+    """Ring pixels around the first control whose label starts with `prefix`, reached by Tab from Expand all
+    (keyboard focus scrolls it into view); the plain capture has the control before it focused."""
+    app.ax("focus", "AXButton", "Expand all")
+    time.sleep(0.3)
+    for _ in range(24):
+        app.keycode(48)
+        time.sleep(0.1)
+        f = fx.App.focused(app.tree()) or {}
+        if (f.get("label") or "").startswith(prefix):
+            break
+    else:
+        return {"diff": 0, "focused": None, "reason": "not reached by Tab"}
+    app.keycode(48, "shift down")
+    time.sleep(0.4)
+    plain_cap = c29.capture(app, f"{name}-plain")
+    app.keycode(48)
+    time.sleep(0.4)
+    focused_cap = c29.capture(app, f"{name}-view")
+    snap = app.tree()
+    web = next((n for n in snap if n.get("role") == "AXWebArea"), None)
+    btn = fx.App.focused(snap)
+    if not (web and btn and btn.get("pos") and btn.get("size") and plain_cap and focused_cap and (btn.get("label") or "").startswith(prefix)):
+        return {"diff": 0, "focused": (btn or {}).get("label")}
+    img_f = c31.c1.png_pixels(os.path.join(ROOT, focused_cap))
+    img_p = c31.c1.png_pixels(os.path.join(ROOT, plain_cap))
+    scale = img_f[0] / web["size"][0]
+    box = [btn["pos"][0] - web["pos"][0], btn["pos"][1] - web["pos"][1], btn["size"][0], btn["size"][1]]
+    return {"diff": c28.ring_diff(img_f, img_p, box, scale), "focused": btn.get("label"), "capture": focused_cap, "plain": plain_cap}
+
 def exercise(app, endpoint, mgmt, prepared, FINAL):
     global NATIVE
     obs = {"captures": {}}
@@ -473,11 +504,9 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     idx = [next((i for i, l in enumerate(walk) if l.startswith(k)), None) for k in keys]
     n4["order"] = list(zip(keys, idx))
     n4["reach_in_order"] = all(i is not None for i in idx) and idx == sorted(idx)
-    view = next((n for n in app.tree() if n.get("role") == "AXButton" and (n.get("label") or "").startswith("Details for")), None)
-    app.ax("focus", "AXButton", "Expand all")
-    time.sleep(0.4)
-    plain = c29.capture(app, "admin-ring-plain")
-    n4["ring"] = c31.ring_on(app, view["label"][:60], plain, "admin-ring-view") if view else {"diff": 0}
+    # The first View sits below the fold once the table is open: keyboard focus scrolls it into view (an AX
+    # focus does not), so the ring is measured by Tab: the control before it focused (plain) against it focused.
+    n4["ring"] = ring_by_tab(app, "Details for", "admin-ring")
     layouts = {}
     size_window(app, pid, 1440, 900)
     for theme in ("Light", "Dark"):
