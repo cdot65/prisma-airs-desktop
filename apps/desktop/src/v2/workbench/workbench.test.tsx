@@ -224,7 +224,8 @@ describe('v2 Test Cases: the result sheet, Inspect and dialog feedback (attempt-
     it('a recorded result opens the case details from its pill: the verdict, its scan ID and the input, no scan dispatched; closing returns focus to the pill (R3)', async () => {
         const { native, user } = await launch(fxCases())
         await screen.findByRole('heading', { level: 1, name: 'Test Cases' })
-        const pill = screen.getByRole('button', { name: 'Show the result of Starter prompt 1' })
+        // The pill's name carries its verdict (the visible word) and what it opens.
+        const pill = screen.getByRole('button', { name: 'Blocked: Show the result of Starter prompt 1' })
         expect(pill).toHaveAttribute('aria-haspopup', 'dialog')
         await user.click(pill)
         const sheet = await screen.findByRole('dialog', { name: 'Case details' })
@@ -237,7 +238,7 @@ describe('v2 Test Cases: the result sheet, Inspect and dialog feedback (attempt-
         await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Case details' })).toBeNull())
         expect(document.activeElement).toBe(pill)
         // A case never run has no pill to open.
-        expect(screen.queryByRole('button', { name: 'Show the result of Starter prompt 4' })).toBeNull()
+        expect(screen.queryByRole('button', { name: /Show the result of Starter prompt 4/ })).toBeNull()
     })
 
     it('Inspect shows a specification’s input, response and product payload separately; an empty payload object hides nothing (R4)', async () => {

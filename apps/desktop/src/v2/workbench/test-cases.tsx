@@ -419,7 +419,7 @@ function CaseResultPill({ c, onOpen }: { c: CaseView; onOpen: () => void }) {
         <span className='flex flex-col' style={{ gap: 3 }} data-slot='case-result' data-verdict={c.result.verdict}>
             <button
                 type='button'
-                aria-label={C.showResult(c.name)}
+                aria-label={`${C.verdictWord[c.result.verdict] ?? c.result.verdict}: ${C.showResult(c.name)}`}
                 aria-haspopup='dialog'
                 onClick={onOpen}
                 className='inline-flex min-h-0 items-center self-start rounded-full border text-[12px] font-semibold whitespace-nowrap'
