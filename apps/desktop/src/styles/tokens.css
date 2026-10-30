@@ -228,8 +228,20 @@
         grid-template-columns: minmax(0, 1fr) !important;
         gap: 4px !important;
     }
+    /* The header row leaves the picture but not the accessibility tree; each stacked cell shows its column's
+       name (C39b attempt-01 R4). */
     [data-v2-shell] [data-slot='administration-table'] > [role='row']:first-child {
-        display: none;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+    [data-v2-shell] [data-slot='administration-row'] > [role='cell'][data-label]::before {
+        content: attr(data-label) ': ';
+        font-weight: 600;
+        color: var(--v2-faint);
     }
     [data-v2-shell] [data-slot='administration-row'] > [role='cell']:last-child {
         justify-content: flex-start;
@@ -242,9 +254,19 @@
         gap: 4px !important;
     }
     [data-v2-shell] [data-slot='admin-tab'] [role='table'] > [role='row']:first-child {
-        display: none;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
     }
     [data-v2-shell] [data-slot='admin-tab'] [role='table'] [role='cell'] {
         white-space: normal;
+    }
+    [data-v2-shell] [data-slot='admin-tab'] [role='table'] [role='cell'][data-label]::before {
+        content: attr(data-label) ': ';
+        font-weight: 600;
+        color: var(--v2-faint);
     }
 }

@@ -155,6 +155,8 @@ interface WorkbenchProps {
     onClose: () => void
     /** Keeps the edited text as a local draft (C17); called after edits pause. */
     onDraft?: (body: string) => void
+    /** Set to the workbench's draft flush, for a host that removes it (Close, Escape, the scrim) before React's cleanup can read the editor. */
+    flushRef?: React.MutableRefObject<(() => void) | null>
     /** Shown under the editor (where the draft is kept). */
     note?: ReactNode
     /** v2 (C31, I3): Apply stays disabled until the typed name matches the review's. */
@@ -181,7 +183,7 @@ function dictionaryParts(body: string): { metadata: string; keywords: string } {
  * draft. While the native confirmation is open the editor is read-only and
  * the main window is held by the sheet.
  */
-export function ChangeWorkbench({ change, review, staged = null, context, dispatch, onClose, onDraft, note, requireTyped = false }: WorkbenchProps) {
+export function ChangeWorkbench({ change, review, staged = null, context, dispatch, onClose, onDraft, flushRef, note, requireTyped = false }: WorkbenchProps) {
     const ids = useId()
     const [typedText, setTypedText] = useState('')
     const heading = useRef<HTMLHeadingElement>(null)
@@ -212,19 +214,24 @@ export function ChangeWorkbench({ change, review, staged = null, context, dispat
     // Edited text is kept as a draft once typing pauses, and on close.
     const pending = useRef<ReturnType<typeof setTimeout> | null>(null)
     const kept = useRef(change.body)
+    // The latest text typed, kept apart from the textarea: React's unmount cleanup runs after the textarea is
+    // detached, so a flush there (or from the host's Close) reads this, never a gone node.
+    const latest = useRef<string | undefined>(undefined)
     function keepDraft() {
         if (pending.current) clearTimeout(pending.current)
         pending.current = null
-        const text = editor.current?.value
+        const text = editor.current?.value ?? latest.current
         if (!onDraft || text === undefined || text === kept.current) return
         kept.current = text
         onDraft(text)
     }
-    function edited() {
+    function edited(event?: React.FormEvent<HTMLTextAreaElement>) {
+        if (event) latest.current = event.currentTarget.value
         if (!onDraft) return
         if (pending.current) clearTimeout(pending.current)
         pending.current = setTimeout(keepDraft, DRAFT_PAUSE_MS)
     }
+    if (flushRef) flushRef.current = keepDraft
     useEffect(() => () => keepDraft(), [])
     const [awaitingFile, setAwaitingFile] = useState(false)
     useEffect(() => {

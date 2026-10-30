@@ -158,6 +158,20 @@ def table_usable(tree, zoom):
     foot = next((n for n in tree if n.get("role") == "AXStaticText" and re.match(r"Read \d{1,2}:\d\d", n.get("label") or n.get("value") or "")), None)
     current = tab_of(tree, "Custom topics")
     out = {"table_inside": contained(table, section), "view_inside": contained(view, section), "foot_inside": contained(foot, section), "tab_inside": contained(current, section), "zoom": zoom}
+    # C39b attempt-01 R4: the column headers stay in the accessibility tree at every width, and once the rows
+    # stack (200%) each stacked value carries its column's name, so a reader is never left with bare values.
+    texts_in = [n for n in tree[tree.index(table) + 1:] if n.get("role") == "AXStaticText" and (n.get("label") or n.get("value")) and contained(n, table, slack=2)]
+    labels = [(n.get("label") or n.get("value") or "") for n in texts_in]
+    headers = [h for h in ("Name", "ID", "Used by") if h in labels]
+    out["headers"] = headers
+    out["headers_ok"] = headers == ["Name", "ID", "Used by"]
+    if zoom >= 2:
+        values = [l for l in labels if l not in ("Name", "ID", "Used by") and not re.match(r"Read \d{1,2}:\d\d", l)]
+        labelled = [l for l in values if l.startswith(("Name: ", "ID: ", "Used by: "))]
+        out["stacked_labelled"] = {"values": len(values), "labelled": len(labelled)}
+        out["labels_ok"] = bool(values) and len(labelled) == len(values)
+    else:
+        out["labels_ok"] = True
     # C39a attempt-01 R1: beyond containment, the row's texts must not overlap each other (a squeezed Name
     # column drawing across ID is a failure even when every frame is inside the card).
     inside = [n for n in tree[tree.index(table) + 1:] if n.get("role") == "AXStaticText" and n.get("pos") and n.get("size") and n["size"][0] > 0 and (n.get("label") or n.get("value"))]
@@ -171,7 +185,7 @@ def table_usable(tree, zoom):
                 overlaps.append([(a.get("label") or a.get("value"))[:30], (b.get("label") or b.get("value"))[:30]])
     out["text_overlaps"] = overlaps[:6]
     out["no_overlap"] = not overlaps
-    out["ok"] = all(out[k] for k in ("table_inside", "view_inside", "foot_inside", "tab_inside", "no_overlap"))
+    out["ok"] = all(out[k] for k in ("table_inside", "view_inside", "foot_inside", "tab_inside", "no_overlap", "headers_ok", "labels_ok"))
     return out
 
 

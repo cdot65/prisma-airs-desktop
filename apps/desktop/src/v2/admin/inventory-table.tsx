@@ -370,14 +370,14 @@ export function InventoryTable({ snapshot, context, dispatch, observe, resource,
                         const name = itemName(info, item)
                         return (
                             <div key={`${id ?? 'row'}-${index}`} role='row' className='grid items-center' style={{ gridTemplateColumns: grid, gap: 12, padding: '12px 18px', borderTop: '1px solid var(--v2-rule)' }} data-slot='administration-row'>
-                                <span role='cell' className={`${cell} font-mono text-[12px] font-semibold`}>
+                                <span role='cell' className={`${cell} font-mono text-[12px] font-semibold`} data-label={C.table.name}>
                                     {name}
                                 </span>
-                                <span role='cell' className={`${cell} font-mono text-[12px]`} style={{ color: 'var(--v2-soft)' }}>
+                                <span role='cell' className={`${cell} font-mono text-[12px]`} style={{ color: 'var(--v2-soft)' }} data-label={C.table.id}>
                                     {id ?? '—'}
                                 </span>
                                 {extra ? (
-                                    <span role='cell' className={`${cell} text-[12px]`} style={{ color: 'var(--v2-soft)' }} data-slot='administration-relation'>
+                                    <span role='cell' className={`${cell} text-[12px]`} style={{ color: 'var(--v2-soft)' }} data-slot='administration-relation' data-label={extra.heading}>
                                         {extra.cell(item, id)}
                                     </span>
                                 ) : null}

@@ -23,6 +23,7 @@ import {
     type ScanRecordView,
     type ShellSnapshot,
     DeliveryOutcomeUnknown,
+    type ManagementFailure,
 } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
 import { scriptedNative, tenant, type Native } from '../../test/native'
@@ -115,6 +116,9 @@ interface Inventories {
     topics: Record<string, unknown>[]
     /** Detail reads answer absent for these IDs. */
     absent: string[]
+    /** What the Red Team scan list reports beyond its rows (a partial or capped sample), or why it could not be read. */
+    redTeamScans?: { total: number | null; capped: boolean; complete: boolean }
+    redTeamScansFailure?: ManagementFailure
 }
 
 const ID_FIELD: Record<string, string> = {
@@ -174,8 +178,8 @@ function service(native: Native, data: Inventories = { keys: [KEY], topics: [TOP
                     statistics: { scans: 1, targets: 1, status: [{ label: 'COMPLETED', count: 1 }], risk: null, targetTypes: [{ label: 'APPLICATION', count: 1 }], noScans: false },
                     statisticsFailure: null,
                     // The extra field stands for anything a reply carries beyond the contract.
-                    scans: { rows: [RT_SCAN as unknown as RedTeamScan], total: 1, capped: false, complete: true },
-                    scansFailure: null,
+                    scans: data.redTeamScansFailure ? null : { rows: [RT_SCAN as unknown as RedTeamScan], total: 1, capped: false, complete: true, ...data.redTeamScans },
+                    scansFailure: data.redTeamScansFailure ?? null,
                 },
             })
         }
@@ -1115,6 +1119,75 @@ describe('v2 Administration', () => {
         await user.click(within(sheet).getByRole('button', { name: 'Close review' }))
         await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Review a change' })).toBeNull())
         expect(native.dispatched.filter((i) => i.kind === 'discardChange')).toHaveLength(1)
+    })
+    it('keeps a Gateway draft typed within the save pause when the sheet is closed at once: the exact text is saved, nothing is applied (C39b attempt-01 R1)', async () => {
+        const { native, user } = await launch(fxAdmin({ gateway: GATEWAY }))
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Routes' }))
+        const panel = panelOf(product('gateway'))
+        await user.click(await within(panel).findByRole('button', { name: 'Details for routes-one' }))
+        const bar = await waitFor(() => panel.querySelector('[data-slot="gateway-item-actions"]') as HTMLElement)
+        await user.click(within(bar).getByRole('button', { name: 'Edit routes-one' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Review a change' })
+        const editor = within(sheet).getByRole('textbox', { name: /draft \(JSON\)/ })
+        await user.clear(editor)
+        await user.type(editor, '{{"name":"edited at once"}')
+        // Closed before the 800 ms pause: the flush runs before the editor is gone.
+        await user.click(within(sheet).getByRole('button', { name: 'Close review' }))
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Review a change' })).toBeNull())
+        const saves = native.dispatched.filter((i) => i.kind === 'saveGatewayDraft') as Extract<Intent, { kind: 'saveGatewayDraft' }>[]
+        expect(saves).toHaveLength(1)
+        expect(saves[0]!.draft.body).toBe('{"name":"edited at once"}')
+        expect(native.dispatched.some((i) => i.kind === 'reviewChange')).toBe(false)
+    })
+
+    it('the open sheet says what became of the Gateway draft from the current state: kept, rejected (incomplete JSON), not stored, and a save the desktop refused (C39b attempt-01 R2)', async () => {
+        const { native, user } = await launch(fxAdmin({ gateway: GATEWAY }))
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Routes' }))
+        const panel = panelOf(product('gateway'))
+        await user.click(await within(panel).findByRole('button', { name: 'Details for routes-one' }))
+        const bar = await waitFor(() => panel.querySelector('[data-slot="gateway-item-actions"]') as HTMLElement)
+        await user.click(within(bar).getByRole('button', { name: 'Edit routes-one' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Review a change' })
+        const note = () => sheet.querySelector('[data-slot="gateway-draft-note"]') as HTMLElement
+        expect(note()).toHaveTextContent('Your edits are kept on this Mac as a draft')
+        expect(note()).toHaveAttribute('data-state', 'kept')
+        const local = native.current.gateway.local
+        await native.push({ ...native.current, gateway: { ...native.current.gateway, local: { ...local, problem: 'incomplete' } } })
+        await waitFor(() => expect(note()).toHaveTextContent('Only complete JSON is kept on this Mac'))
+        expect(note()).toHaveAttribute('data-state', 'rejected')
+        await native.push({ ...native.current, gateway: { ...native.current.gateway, local: { ...local, problem: null, unsaved: true } } })
+        await waitFor(() => expect(note()).toHaveTextContent('could not be stored on this Mac'))
+        expect(note()).toHaveAttribute('data-state', 'unsaved')
+        await native.push({ ...native.current, gateway: { ...native.current.gateway, local: { ...local, problem: null, unsaved: false } } })
+        await waitFor(() => expect(note()).toHaveAttribute('data-state', 'kept'))
+        // A save the desktop refuses is said, until the next save is admitted.
+        const respond = native.respond
+        native.respond = (intent: Intent) => (intent.kind === 'saveGatewayDraft' ? { outcome: 'refusal', refusal: 'busy' } : respond(intent))
+        const editor = within(sheet).getByRole('textbox', { name: /draft \(JSON\)/ })
+        await user.type(editor, ' ')
+        await waitFor(() => expect(note()).toHaveAttribute('data-state', 'refused'), { timeout: 3000 })
+        expect(note()).toHaveTextContent('did not keep these edits')
+        native.respond = respond
+        await user.type(editor, ' ')
+        await waitFor(() => expect(note()).toHaveAttribute('data-state', 'kept'), { timeout: 3000 })
+    })
+
+    it('every Red Team tab drawn from the scan list says what that list is: a partial sample of the reported total on Scans, Targets, Attack results and Reports, not only Overview; a list that could not be read says so there too (C39b attempt-01 R3)', async () => {
+        const partial = await launch(fxAdmin(), { keys: [KEY], topics: [TOPIC], absent: [], redTeamScans: { total: 250, capped: false, complete: false } })
+        await partial.user.click(within(product('redTeam')).getByRole('button', { name: /AI Red Teaming/ }))
+        for (const tab of ['Overview', 'Scans', 'Targets', 'Attack results', 'Reports']) {
+            await partial.user.click(within(product('redTeam')).getByRole('tab', { name: tab }))
+            expect(await within(panelOf(product('redTeam'))).findByText(/Scans · Partial sample · 1 of 250/)).toBeInTheDocument()
+        }
+        partial.unmount()
+        const denied = await launch(fxAdmin(), { keys: [KEY], topics: [TOPIC], absent: [], redTeamScansFailure: 'unauthorized' })
+        await denied.user.click(within(product('redTeam')).getByRole('button', { name: /AI Red Teaming/ }))
+        for (const tab of ['Scans', 'Targets', 'Reports']) {
+            await denied.user.click(within(product('redTeam')).getByRole('tab', { name: tab }))
+            expect(await within(panelOf(product('redTeam'))).findByText(/Scans · Unavailable:/)).toBeInTheDocument()
+        }
     })
 })
 

@@ -23,7 +23,7 @@ import type {
 } from '@prisma-airs/desktop-contracts'
 import { MANAGEMENT_FAILURE_TEXT, type ObserveManagement, fieldText, readManagement } from '../../features/administration/management-read'
 import { CHANGE_NOUN, type ChangeTarget, ProvisioningSteps, isGatewayKind, pretty, verbOf } from '../../features/administration/runtime-changes'
-import { type Dispatch, outcomeMessage } from '../../features/tenants/dispatch'
+import { type Dispatch, outcomeMessage, type DispatchOutcome } from '../../features/tenants/dispatch'
 import { clockOf } from '../copy'
 import { Btn, Field } from '../controls'
 import { Glyph } from '../icons'
@@ -31,8 +31,8 @@ import { ADMIN_COPY as C } from './copy'
 
 /** A change the Gateway tabs open in the review sheet, with how its draft is kept on this Mac (C17). */
 export interface GatewayReviewExtras {
-    onDraft?: (body: string) => void
-    note?: React.ReactNode
+    /** Keeps the edited text on this Mac; the sheet reports the save's outcome and the core's word on the draft. */
+    onDraft?: (body: string) => void | Promise<DispatchOutcome>
 }
 
 interface Held<T> {
@@ -140,7 +140,7 @@ function sizeText(bytes: number): string {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
 }
-const DRAFT_PROBLEM_TEXT: Record<string, string> = {
+export const DRAFT_PROBLEM_TEXT: Record<string, string> = {
     credential: 'This text names a credential field, so it is not kept on this Mac. Credentials are never entered here.',
     incomplete: 'Only complete JSON is kept on this Mac, so these edits are not kept yet: the last complete text is. Finish the document to keep it.',
     tooLarge: 'This text is too large to keep on this Mac; the last text that fit is kept.',
@@ -230,17 +230,13 @@ export function GatewayProduct({ snapshot, context, dispatch, observe, onNavigat
         setSpace((h) => (g?.kind === 'detail' ? { read: g.detail, loading: false, failure: null } : { ...h, loading: false, failure: resultFailure(result) }))
     }
     /** Keeps the edited text on this Mac (never reviewed or sent). */
+    /** Keeps the edited text on this Mac (never reviewed or sent); the sheet shows what the core made of it. */
     function keepDraft(target: ChangeTarget, body: string) {
         const draft: GatewayDraftInput = { kind: target.kind, action: target.action, target: target.target, body }
         if (target.draftId) draft.id = target.draftId
         else if (target.workspace) draft.workspace = target.workspace
-        void dispatch({ kind: 'saveGatewayDraft', context, draft })
+        return dispatch({ kind: 'saveGatewayDraft', context, draft })
     }
-    const draftNote = (
-        <p className='text-[12px]' style={faint} data-slot='gateway-draft-note'>
-            {(local.problem && DRAFT_PROBLEM_TEXT[local.problem]) ?? 'Your edits are kept on this Mac as a draft (never a review). Nothing is sent until you review and apply it.'}
-        </p>
-    )
     function start(next: Opened) {
         // A change opened from this Mac is reviewed only in its own workspace, with the reference chosen now.
         const change: ChangeTarget =
@@ -249,7 +245,7 @@ export function GatewayProduct({ snapshot, context, dispatch, observe, onNavigat
                     ? { ...next, workspace: reference }
                     : { ...next, workspace: undefined, reviewBlocked: `This draft is for workspace ${next.home?.name ?? 'unknown'}. Choose that workspace above to review it.` }
                 : next
-        onReview(change, { onDraft: change.action === 'delete' ? undefined : (body) => keepDraft(change, body), note: change.action === 'delete' ? null : draftNote })
+        onReview(change, { onDraft: change.action === 'delete' ? undefined : (body) => keepDraft(change, body) })
     }
     function openKept(kept: GatewayDraft | GatewayRecord, draftId: string | undefined) {
         const resource = RESOURCE_OF[kept.kind]
@@ -550,13 +546,13 @@ function InventoryPanel({ resource, held, onRefresh, read, onChange, actions }: 
                         const name = nameOf(row)
                         return (
                             <div key={String(row.id)} role='row' className='grid items-center' style={{ gridTemplateColumns: grid, gap: 12, padding: '12px 18px', borderTop: '1px solid var(--v2-rule)' }} data-slot='gateway-row'>
-                                <span role='cell' className='min-w-0 truncate font-mono text-[12px] font-semibold'>
+                                <span role='cell' className='min-w-0 truncate font-mono text-[12px] font-semibold' data-label='Name'>
                                     {name}
                                 </span>
-                                <span role='cell' className='min-w-0 truncate text-[12px]' style={soft}>
+                                <span role='cell' className='min-w-0 truncate text-[12px]' style={soft} data-label='Status'>
                                     {fieldText(row.status)}
                                 </span>
-                                <span role='cell' className='min-w-0 truncate font-mono text-[12px]' style={soft}>
+                                <span role='cell' className='min-w-0 truncate font-mono text-[12px]' style={soft} data-label='ID'>
                                     {String(row.id)}
                                 </span>
                                 <span role='cell' className='flex justify-end'>
@@ -974,12 +970,12 @@ function LogsPanel({ workspace, read }: { workspace: string; read: (r: GatewayRe
                         </div>
                         {rows.map((r) => (
                             <div key={r.id} role='row' className='grid text-[12px]' style={{ gridTemplateColumns: logGrid, gap: 12, padding: '10px 18px', borderTop: '1px solid var(--v2-rule)' }}>
-                                <span role='cell' className='min-w-0 truncate'>{r.createdAt}</span>
-                                <span role='cell' className='min-w-0 truncate font-mono'>{r.provider ? `${r.provider}/${r.model}` : r.model}</span>
-                                <span role='cell'>{r.status === 446 ? '446 (blocked by a guardrail)' : r.status}</span>
-                                <span role='cell'>{r.units === null ? '—' : number(r.units)}</span>
-                                <span role='cell'>{r.cost === null ? '—' : dollars(r.cost)}</span>
-                                <span role='cell' className='min-w-0 truncate font-mono'>{r.traceId ?? '—'}</span>
+                                <span role='cell' className='min-w-0 truncate' data-label='Time'>{r.createdAt}</span>
+                                <span role='cell' className='min-w-0 truncate font-mono' data-label='Model'>{r.provider ? `${r.provider}/${r.model}` : r.model}</span>
+                                <span role='cell' data-label='Status'>{r.status === 446 ? '446 (blocked by a guardrail)' : r.status}</span>
+                                <span role='cell' data-label='Units'>{r.units === null ? '—' : number(r.units)}</span>
+                                <span role='cell' data-label='Cost'>{r.cost === null ? '—' : dollars(r.cost)}</span>
+                                <span role='cell' className='min-w-0 truncate font-mono' data-label='Trace'>{r.traceId ?? '—'}</span>
                             </div>
                         ))}
                     </div>
@@ -1021,9 +1017,9 @@ function McpServers({ snapshot, dispatch, context }: { snapshot: ShellSnapshot; 
                         </div>
                         {mcp.servers.map((s) => (
                             <div key={s.id} role='row' className='grid text-[12px]' style={{ gridTemplateColumns: mcpGrid, gap: 12, padding: '10px 18px', borderTop: '1px solid var(--v2-rule)' }}>
-                                <span role='cell' className='min-w-0 truncate font-semibold'>{s.name}</span>
-                                <span role='cell' className='min-w-0 truncate font-mono'>{s.namespace}</span>
-                                <span role='cell' className='min-w-0 truncate'>{s.status}</span>
+                                <span role='cell' className='min-w-0 truncate font-semibold' data-label='Server'>{s.name}</span>
+                                <span role='cell' className='min-w-0 truncate font-mono' data-label='Namespace'>{s.namespace}</span>
+                                <span role='cell' className='min-w-0 truncate' data-label='Status'>{s.status}</span>
                             </div>
                         ))}
                     </div>

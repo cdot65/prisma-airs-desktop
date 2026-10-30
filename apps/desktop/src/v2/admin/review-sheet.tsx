@@ -1,8 +1,9 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import type { ChangeKind, ChangeResultView, ContextRef, GatewayResource, ManagementRequest, ManagementResource, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { MANAGEMENT_FAILURE_TEXT, RESOURCES, itemName, readManagement, type ObserveManagement } from '../../features/administration/management-read'
-import { CHANGE_NOUN, type ChangeTarget, ChangeWorkbench, TEMPLATES, pretty, resultText } from '../../features/administration/runtime-changes'
-import { type Dispatch, outcomeMessage } from '../../features/tenants/dispatch'
+import { CHANGE_NOUN, type ChangeTarget, ChangeWorkbench, TEMPLATES, isGatewayKind, pretty, resultText } from '../../features/administration/runtime-changes'
+import { DRAFT_PROBLEM_TEXT } from './gateway-tabs'
+import { type Dispatch, type DispatchOutcome, outcomeMessage } from '../../features/tenants/dispatch'
 import { clockOf } from '../copy'
 import { Modal } from '../modal'
 import { useShellStore } from '../store'
@@ -20,11 +21,22 @@ export interface ReviewSheetProps {
     change: ChangeTarget | null
     /** The application whose rotation this sheet follows (a key version, or "Finish rotation…"). */
     rotation: string | null
-    /** A Gateway change keeps its edited text on this Mac as a draft (C17). */
-    onDraft?: (body: string) => void
+    /** A Gateway change keeps its edited text on this Mac as a draft (C17); the save's outcome is what the sheet reports. */
+    onDraft?: (body: string) => void | Promise<DispatchOutcome>
     note?: ReactNode
     onClose: () => void
 }
+
+/** What the open sheet says about the Gateway draft, from the current state: the last save's reply, then the core's word. */
+function draftNoteText(local: ShellSnapshot['gateway']['local'], saving: DraftSave): string {
+    if (saving === 'pending') return 'Keeping your edits on this Mac…'
+    if (saving === 'refused') return 'The desktop did not keep these edits as a draft; they stay only in this window.'
+    if (saving === 'unknown') return 'The desktop did not confirm that these edits were kept; what it holds is shown once it says.'
+    if (local.problem && DRAFT_PROBLEM_TEXT[local.problem]) return DRAFT_PROBLEM_TEXT[local.problem]!
+    if (local.unsaved) return 'Your edits could not be stored on this Mac (the local store is unavailable); they are kept only in this window until it is.'
+    return 'Your edits are kept on this Mac as a draft (never a review). Nothing is sent until you review and apply it.'
+}
+type DraftSave = 'pending' | 'refused' | 'unknown' | null
 
 const matches = (r: ChangeResultView, c: ChangeTarget) => r.kind === c.kind && r.action === c.action && r.target === c.target
 
@@ -138,10 +150,32 @@ export function ReviewSheet({ snapshot, context, dispatch, observe, change: init
         }
     }, [])
 
+    // The workbench's draft flush, called before the sheet removes it (Close, Escape, the scrim): React's own
+    // cleanup would read a detached editor (C39b attempt-01 R1).
+    const flush = useRef<(() => void) | null>(null)
     function close() {
+        flush.current?.()
         exit.current()
         onClose()
     }
+    // The Gateway draft's save as the sheet last saw it (C39b attempt-01 R2); the core's word (problem, unsaved)
+    // is read from the snapshot on every render.
+    const [draftSave, setDraftSave] = useState<DraftSave>(null)
+    const keepDraft = onDraft
+        ? (body: string) => {
+              const r = onDraft(body)
+              if (r && typeof (r as Promise<DispatchOutcome>).then === 'function') {
+                  setDraftSave('pending')
+                  void (r as Promise<DispatchOutcome>).then((o) => setDraftSave(o.kind === 'admitted' ? null : o.kind === 'refused' || o.kind === 'failed' ? 'refused' : 'unknown'))
+              }
+          }
+        : undefined
+    const gatewayNote =
+        change && isGatewayKind(change.kind) && change.action !== 'delete' ? (
+            <p className='text-[12px]' style={{ color: draftSave || snapshot.gateway.local.problem || snapshot.gateway.local.unsaved ? 'var(--v2-flag)' : 'var(--v2-faint)' }} data-slot='gateway-draft-note' data-state={draftSave ?? (snapshot.gateway.local.problem ? 'rejected' : snapshot.gateway.local.unsaved ? 'unsaved' : 'kept')}>
+                {draftNoteText(snapshot.gateway.local, draftSave)}
+            </p>
+        ) : null
 
     async function updated() {
         if (!rotation) return
@@ -273,8 +307,9 @@ export function ReviewSheet({ snapshot, context, dispatch, observe, change: init
                         context={context}
                         dispatch={dispatch}
                         onClose={close}
-                        onDraft={onDraft}
-                        note={note}
+                        onDraft={keepDraft}
+                        flushRef={flush}
+                        note={gatewayNote ?? note}
                         requireTyped
                     />
                 ) : null}

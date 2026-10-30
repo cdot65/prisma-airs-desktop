@@ -221,7 +221,7 @@ function Table({ label, columns, grid, rows, slot }: { label: string; columns: s
                 {rows.map((r) => (
                     <div key={r.key} role='row' className='grid items-center text-[12px]' style={{ gridTemplateColumns: grid, gap: 12, padding: '10px 18px', borderTop: '1px solid var(--v2-rule)' }}>
                         {r.cells.map((c, i) => (
-                            <span key={i} role='cell' className='min-w-0 truncate'>
+                            <span key={i} role='cell' className='min-w-0 truncate' data-label={columns[i] || undefined}>
                                 {c}
                             </span>
                         ))}
@@ -285,6 +285,11 @@ function RedTeamPanel({ held, range, onRange, onRefresh, context, read, section 
                             <Sources rows={[['Statistics', observation.statisticsFailure ? `Unavailable: ${failureText(observation.statisticsFailure)}` : 'Read'], ['Scans', coverage(scans, observation.scansFailure)]]} />
                         </>
                     ) : null}
+                    {section !== 'overview' ? (
+                        // Every tab drawn from the scan list says what that list is: read in full, a partial or capped
+                        // sample of a reported total, a sample of an unknown total, or unavailable (C39b attempt-01 R3).
+                        <Sources rows={[['Scans', coverage(scans, observation.scansFailure)]]} />
+                    ) : null}
                     {section === 'targets' ? <TargetsTable scans={scans} onResults={setAttacksOf} /> : null}
                     {section === 'attack-results' ? <ReportedScans scans={scans} title='Attack results' note='Attack results are read for one reported scan at a time, at most ten pages.' action='Open attack results' onOpen={setAttacksOf} /> : null}
                     {section === 'reports' ? <ReportedScans scans={scans} title='Reports' note='Reports are listed from scan metadata only; nothing is generated, exported or run here.' action='Open the report scan' onOpen={setAttacksOf} /> : null}
@@ -310,7 +315,7 @@ function RedTeamPanel({ held, range, onRange, onRefresh, context, read, section 
                             {scans === null ? (
                                 <p className='text-[13px]'>The scan list could not be read.</p>
                             ) : rows.length === 0 ? (
-                                <p className='text-[13px]'>{scans.complete ? 'No scans in the rows read match this filter.' : 'None of the scans read match. The list could not be read in full; the coverage above says which.'}</p>
+                                <p className='text-[13px]'>{scans.complete ? 'No scans in the rows read match this filter.' : 'None of the scans read match. The list could not be read in full; the Scans source line above says what was read.'}</p>
                             ) : (
                                 <Table
                                     label='Red Teaming scans'
