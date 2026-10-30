@@ -1,15 +1,15 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
-import { CheckCircle2, Circle } from 'lucide-react'
 import type { ConversationView, FeatureId, HarnessApproval, HarnessEntry, Intent, ProposalView, RotationView, ShellSnapshot } from '@prisma-airs/desktop-contracts'
-import { HARNESS_FAILURE_TEXT, TURN_TEXT, conversationText } from '../../features/harness/harness-view'
-import { HISTORY_FAILURE_TEXT, HistoryPanel, savedAt } from '../../features/harness/history-panel'
-import { McpPanel } from '../../features/harness/mcp-panel'
-import { ProjectPanel } from '../../features/harness/project-panel'
-import { SIGN_IN_FAILURE_TEXT, SignInPanel } from '../../features/harness/sign-in-panel'
 import { type Dispatch, type DispatchOutcome, outcomeMessage } from '../../features/tenants/dispatch'
+import { Glyph } from '../icons'
 import { type Arrival, useShellStore } from '../store'
 import { Verdict, type VerdictTone } from '../verdict'
 import { HARNESS_COPY as C } from './copy'
+import { HistoryPanel } from './panels/history'
+import { McpPanel, mcpStanding } from './panels/mcp'
+import { ProjectPanel } from './panels/project'
+import { SignInPanel } from './panels/sign-in'
+import { HARNESS_FAILURE_TEXT, HISTORY_FAILURE_TEXT, SIGN_IN_FAILURE_TEXT, TURN_TEXT, conversationText, savedAt } from './text'
 
 export interface HarnessProps {
     snapshot: ShellSnapshot
@@ -394,6 +394,17 @@ export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Har
         composer.current?.focus()
     }
 
+    // The Decisions aside lists the workspace's MCP servers with their standing (R2App, C38):
+    // the catalog is read for the chosen workspace as the page opens, not only when the setup
+    // disclosure's panel mounts.
+    const mcpWorkspace = selected?.workspace.id ?? null
+    const mcpReference = selected?.reference ?? null
+    const mcpRead = snapshot.harness.mcp?.workspace ?? null
+    useEffect(() => {
+        if (!context || mcpReference === null || mcpRead === mcpWorkspace) return
+        void dispatch({ kind: 'listMcpServers', context, workspace: mcpReference })
+    }, [dispatch, context, mcpReference, mcpWorkspace, mcpRead])
+
     const seenArrival = useRef(0)
     useEffect(() => {
         if (!arrival || arrival.sequence === seenArrival.current) return
@@ -490,60 +501,59 @@ export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Har
     const saved = (history?.conversations ?? []).filter((c) => !conversation || c.id !== conversation.historyId)
     const outcome = conversation ? outcomeOf(conversation) : null
 
+    const subtitle = [tenant?.label, engine.available ? C.engineReady(engine.runtimeVersion) : C.engineMissing, selected?.workspace.name ?? C.noWorkspace].filter(Boolean).join(' · ')
+    const mcpServers = selected && snapshot.harness.mcp && snapshot.harness.mcp.workspace === selected.workspace.id ? snapshot.harness.mcp.servers : []
+    const button32 = 'flex h-8 min-h-0 items-center rounded-[7px] text-[13px] whitespace-nowrap disabled:opacity-60'
+    const secondary = { border: '1px solid var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }
+    const primary = { background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }
     return (
-        <section aria-labelledby='harness-heading' data-slot='harness-v2' className='flex min-w-0 flex-col gap-4'>
-            <div>
-                <h1 ref={ref} id='harness-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)' }}>
-                    {C.title}
-                </h1>
-                <p className='mt-1 text-[13px]' data-slot='harness-status' style={{ color: 'var(--v2-soft)' }}>
-                    {[tenant?.label, engine.available ? C.engineReady(engine.runtimeVersion) : C.engineMissing, selected?.workspace.name ?? C.noWorkspace].filter(Boolean).join(' · ')}
-                </p>
-            </div>
-            {checklist.some(([, ok]) => !ok) ? (
-                <section aria-label={C.prerequisites} data-slot='harness-prerequisites' className='rounded-[12px] border p-4' style={{ borderColor: 'var(--v2-rule)' }}>
-                    <h2 className='text-[14px] font-semibold'>{C.prerequisites}</h2>
-                    <p className='mt-1 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                        {C.prerequisitesNote}
+        // The board (R2App start=harness) owns the page: its title band carries the page margins, the
+        // three columns run edge to edge beneath it.
+        <section
+            aria-labelledby='harness-heading'
+            data-slot='harness-v2'
+            className='flex min-h-0 min-w-0 flex-grow flex-col'
+            style={{ margin: 'calc(-1 * var(--v2-page-top)) calc(-1 * var(--v2-page-x)) -28px' }}
+        >
+            <div data-slot='harness-band' className='flex shrink-0 items-end' style={{ gap: 12, padding: 'var(--v2-page-top) var(--v2-page-x) 18px', borderBottom: '1px solid var(--v2-rule)' }}>
+                <div className='min-w-0'>
+                    <h1 ref={ref} id='harness-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
+                        {C.title}
+                    </h1>
+                    <p className='truncate text-[14px]' data-slot='harness-status' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
+                        {subtitle}
                     </p>
-                    <ul className='mt-3 flex flex-col gap-2 text-[13px]'>
-                        {checklist.map(([label, ok, fix]) => (
-                            <li key={label} data-slot='prerequisite' data-done={ok} className='flex flex-wrap items-center gap-2'>
-                                {ok ? <CheckCircle2 aria-hidden size={16} style={{ color: 'var(--v2-ok)' }} /> : <Circle aria-hidden size={16} style={{ color: 'var(--v2-flag)' }} />}
-                                <span className='flex-grow'>{label}</span>
-                                <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                                    {ok ? C.done : C.needed}
-                                </span>
-                                {!ok && fix ? (
-                                    <button type='button' className='h-8 rounded-[7px] border px-3 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => onNavigate(fix.go)}>
-                                        {fix.label}
-                                    </button>
-                                ) : null}
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-            ) : null}
-            {/* Two columns while they fit; the rail stacks above the conversation when they do not (900x600 at 200%). */}
-            <div className='flex min-w-0 flex-wrap gap-4'>
-                <nav aria-label={C.conversations} data-slot='harness-rail' className='flex min-w-0 flex-col gap-2' style={{ flex: '1 1 200px', maxWidth: '100%' }}>
-                    <button type='button' className='h-8 rounded-[7px] border px-3 text-left text-[13px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => newInvestigation()}>
+                </div>
+                {current ? (
+                    <button type='button' className={`${button32} ml-auto shrink-0 px-3.5`} style={secondary} onClick={() => void run({ kind: 'endHarness', conversation: current.id })}>
+                        {C.end}
+                    </button>
+                ) : null}
+            </div>
+            <div data-slot='harness-columns' className='flex min-h-0 min-w-0 flex-grow flex-nowrap'>
+                <nav aria-label={C.conversations} data-slot='harness-rail' className='flex min-w-0 flex-col overflow-auto' style={{ flex: '0 0 244px', maxWidth: '100%', padding: '20px 12px 22px', gap: 2, borderRight: '1px solid var(--v2-rule)' }}>
+                    <div className='text-[12px] font-semibold' style={{ padding: '0 8px 8px', color: 'var(--v2-faint)' }}>
+                        {C.savedLabel}
+                    </div>
+                    <button type='button' className={`${button32} mb-1 px-2.5 text-left`} style={secondary} onClick={() => newInvestigation()}>
                         {C.newInvestigation}
                     </button>
-                    <ul className='flex flex-col gap-1'>
+                    <ul className='flex flex-col' style={{ gap: 2 }}>
                         {conversation ? (
                             <li data-slot='rail-conversation' data-state={running ? 'live' : 'ended'}>
-                                <div className='rounded-[8px] px-2 py-2' style={{ background: 'var(--v2-sel)', color: 'var(--v2-sel-ink)' }} aria-current='true'>
-                                    <span className='block truncate text-[13px] font-medium'>{titleOf(conversation.entries, conversation.opening)}</span>
-                                    <span className='text-[12px]'>{C.phase[conversation.phase] ?? conversation.phase}</span>
+                                <div className='rounded-[7px] text-left' style={{ padding: 10, background: 'var(--v2-inset)' }} aria-current='true'>
+                                    <span className='block truncate text-[13px] font-semibold'>{titleOf(conversation.entries, conversation.opening)}</span>
+                                    <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                        {C.phase[conversation.phase] ?? conversation.phase}
+                                    </span>
                                 </div>
                             </li>
                         ) : null}
                         {saved.map((c) => (
                             <li key={c.id} data-slot='rail-conversation' data-state='ended'>
-                                <button type='button' className='w-full rounded-[8px] px-2 py-2 text-left' onClick={() => openSaved(c.id)}>
+                                <button type='button' className='w-full rounded-[7px] text-left' style={{ padding: 10 }} onClick={() => openSaved(c.id)}>
                                     <span className='block truncate text-[13px]'>{c.title}</span>
-                                    <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+                                    <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
                                         {C.ended}
                                     </span>
                                 </button>
@@ -551,125 +561,233 @@ export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Har
                         ))}
                     </ul>
                     {history && history.state === 'ready' && saved.length === 0 && !conversation ? (
-                        <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                            {C.savedNone}
+                        <p className='text-[13px] leading-[1.5]' style={{ padding: 10, color: 'var(--v2-faint)' }}>
+                            {tenant ? C.noneFor(tenant.label) : C.savedNone}
                         </p>
                     ) : null}
                 </nav>
-                <div className='flex min-w-0 flex-col gap-3' style={{ flex: '999 1 360px', minWidth: 'min(100%, 360px)' }}>
-                    {arriving !== null && !hint ? (
-                        <p role='status' data-slot='harness-arriving' className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                            {C.findingArrival}
-                        </p>
-                    ) : null}
-                    {hint ? (
-                        <div role='status' data-slot='harness-hint' className='flex flex-col gap-2 rounded-[12px] border p-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
-                            <p>{C.endedHint}</p>
-                            <div className='flex flex-wrap gap-2'>
-                                <button type='button' className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => openSaved(hint.id)}>
-                                    {C.openSaved}
-                                </button>
-                                <button
-                                    type='button'
-                                    className='h-8 rounded-[7px] px-3 text-[13px] font-semibold'
-                                    style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}
-                                    aria-busy={awaitingOpening !== null}
-                                    onClick={startFromHint}
-                                >
-                                    {awaitingOpening ? C.readingOpening : C.startNew}
-                                </button>
-                            </div>
-                        </div>
-                    ) : null}
-                    <section aria-label={C.transcript} data-slot='harness-transcript' className='min-w-0'>
-                        {conversation && conversation.entries.length > 0 ? (
-                            <Transcript entries={conversation.entries} />
-                        ) : (
-                            <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                                {C.empty}
-                            </p>
-                        )}
-                    </section>
-                    {outcome ? (
-                        <div role={outcome.tone === 'blocked' || outcome.tone === 'flagged' ? 'alert' : 'status'} data-slot='harness-outcome' data-tone={outcome.tone} className='flex flex-col gap-1 text-[13px]'>
-                            <Verdict tone={outcome.tone} word={outcome.word} />
-                            <span>{outcome.text}</span>
-                        </div>
-                    ) : null}
-                    {conversation && (conversation.unsent !== null || conversation.signInFailure !== null) ? (
-                        <div role='alert' data-slot='harness-unsent' className='flex flex-col gap-1 text-[13px]' style={{ color: 'var(--v2-block)' }}>
-                            {conversation.signInFailure ? <p>{SIGN_IN_FAILURE_TEXT[conversation.signInFailure]}</p> : null}
-                            {conversation.unsent !== null ? <p>{unsentWhere(conversation.unsent)}</p> : null}
-                        </div>
-                    ) : null}
-                    {([false, true] as const).map((unconfirmed) => {
-                        const items = unsentKept.filter((k) => k.unconfirmed === unconfirmed)
-                        if (items.length === 0) return null
-                        const title = unconfirmed ? C.notConfirmedTitle : C.notSentTitle
-                        return (
-                            <section key={title} aria-label={title} data-slot={unconfirmed ? 'harness-not-confirmed' : 'harness-not-sent'} className='flex flex-col gap-2 rounded-[12px] border p-3 text-[13px]' style={{ borderColor: 'var(--v2-flag)' }}>
-                                <h2 className='text-[14px] font-semibold'>{title}</h2>
-                                <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                                    {unconfirmed ? C.notConfirmedNote : C.notSentNote}
+                <div data-slot='harness-centre' className='flex min-h-0 min-w-0 flex-col' style={{ flex: '1 1 360px', minWidth: 'min(100%, 360px)' }}>
+                    <div className='flex min-h-0 flex-grow flex-col overflow-y-auto' style={{ padding: '24px 36px', gap: 18 }}>
+                        {checklist.some(([, ok]) => !ok) ? (
+                            <section aria-label={C.prerequisites} data-slot='harness-prerequisites' className='rounded-[12px] border p-4' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                                <h2 className='text-[13px] font-bold'>{C.prerequisites}</h2>
+                                <p className='mt-1 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+                                    {C.prerequisitesNote}
                                 </p>
-                                <ul className='flex flex-col gap-2'>
-                                    {items.map(({ text, id }) => (
-                                        <li key={id} data-slot='not-sent' className='flex flex-col gap-1'>
-                                            <blockquote className='rounded-[8px] border p-2 whitespace-pre-wrap' style={{ borderColor: 'var(--v2-rule)' }}>
-                                                {text}
-                                            </blockquote>
-                                            <div className='flex flex-wrap gap-2'>
-                                                <button
-                                                    type='button'
-                                                    className='h-8 rounded-[7px] border px-3 text-[13px]'
-                                                    style={{ borderColor: 'var(--v2-rule)' }}
-                                                    onClick={() => {
-                                                        const now = box()
-                                                        if (!now.includes(text)) setDraft(now ? `${now}\n\n${text}` : text)
-                                                        useShellStore.getState().dropHarnessUnsent(scope, id)
-                                                    }}
-                                                >
-                                                    {C.putBack}
+                                <ul className='mt-3 flex flex-col gap-2 text-[13px]'>
+                                    {checklist.map(([label, ok, fix]) => (
+                                        <li key={label} data-slot='prerequisite' data-done={ok} className='flex flex-wrap items-center gap-2'>
+                                            <Glyph name={ok ? 'check' : 'dot'} size={16} color={ok ? 'var(--v2-ok)' : 'var(--v2-flag)'} />
+                                            <span className='flex-grow'>{label}</span>
+                                            <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+                                                {ok ? C.done : C.needed}
+                                            </span>
+                                            {!ok && fix ? (
+                                                <button type='button' className={`${button32} px-3 text-[12px]`} style={secondary} onClick={() => onNavigate(fix.go)}>
+                                                    {fix.label}
                                                 </button>
-                                                <button type='button' className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => useShellStore.getState().dropHarnessUnsent(scope, id)}>
-                                                    {C.discardUnsent}
-                                                </button>
-                                            </div>
+                                            ) : null}
                                         </li>
                                     ))}
                                 </ul>
                             </section>
-                        )
-                    })}
-                    {conversation && conversation.phase === 'confirmWrite' && conversation.project ? (
-                        // A renewal restarts the engine; allowing changes again is the operator's call (C21).
-                        <section aria-label={C.confirmWrite} data-slot='harness-confirm-write' className='flex flex-col gap-2 rounded-[12px] border p-3' style={{ borderColor: 'var(--v2-flag)' }}>
-                            <Verdict tone='flagged' word={C.confirmWrite} />
-                            <p className='text-[13px]'>{C.confirmWriteNote(conversation.project)}</p>
-                            <div className='flex flex-wrap gap-2'>
-                                <button
-                                    type='button'
-                                    disabled={busy}
-                                    className='h-8 rounded-[7px] border px-3 text-[13px] disabled:opacity-60'
-                                    style={{ borderColor: 'var(--v2-rule)' }}
-                                    onClick={() => void run({ kind: 'confirmHarnessWrite', conversation: conversation.id, allow: true })}
-                                >
-                                    {C.allowChanges}
-                                </button>
-                                <button
-                                    type='button'
-                                    disabled={busy}
-                                    className='h-8 rounded-[7px] px-3 text-[13px] font-semibold disabled:opacity-60'
-                                    style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}
-                                    onClick={() => void run({ kind: 'confirmHarnessWrite', conversation: conversation.id, allow: false })}
-                                >
-                                    {C.notNow}
-                                </button>
-                            </div>
-                            <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                                {C.notNowNote}
+                        ) : null}
+                        {arriving !== null && !hint ? (
+                            <p role='status' data-slot='harness-arriving' className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+                                {C.findingArrival}
                             </p>
+                        ) : null}
+                        {hint ? (
+                            <div role='status' data-slot='harness-hint' className='flex flex-col gap-2 text-[13px] leading-[1.5]' style={{ maxWidth: 560, color: 'var(--v2-faint)' }}>
+                                <p style={{ color: 'var(--v2-ink)' }}>{C.endedHint}</p>
+                                <div className='flex flex-wrap gap-2'>
+                                    <button type='button' className={`${button32} px-3`} style={secondary} onClick={() => openSaved(hint.id)}>
+                                        {C.openSaved}
+                                    </button>
+                                    <button type='button' className={`${button32} px-3 font-semibold`} style={primary} aria-busy={awaitingOpening !== null} onClick={startFromHint}>
+                                        {awaitingOpening ? C.readingOpening : C.startNew}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : null}
+                        <section aria-label={C.transcript} data-slot='harness-transcript' className='flex min-w-0 flex-col' style={{ gap: 18 }}>
+                            {conversation ? (
+                                <div className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                    {conversationText(conversation)}
+                                </div>
+                            ) : null}
+                            {conversation && conversation.entries.length > 0 ? (
+                                <Transcript entries={conversation.entries} />
+                            ) : (
+                                <p className='text-[13px] leading-[1.5]' style={{ maxWidth: 560, color: 'var(--v2-faint)' }}>
+                                    {C.empty}
+                                </p>
+                            )}
                         </section>
+                        {outcome ? (
+                            <div role={outcome.tone === 'blocked' || outcome.tone === 'flagged' ? 'alert' : 'status'} data-slot='harness-outcome' data-tone={outcome.tone} className='flex flex-col gap-1 text-[13px]'>
+                                <Verdict tone={outcome.tone} word={outcome.word} />
+                                <span>{outcome.text}</span>
+                            </div>
+                        ) : null}
+                        {conversation && (conversation.unsent !== null || conversation.signInFailure !== null) ? (
+                            <div role='alert' data-slot='harness-unsent' className='flex flex-col gap-1 text-[13px]' style={{ color: 'var(--v2-block)' }}>
+                                {conversation.signInFailure ? <p>{SIGN_IN_FAILURE_TEXT[conversation.signInFailure]}</p> : null}
+                                {conversation.unsent !== null ? <p>{unsentWhere(conversation.unsent)}</p> : null}
+                            </div>
+                        ) : null}
+                        {([false, true] as const).map((unconfirmed) => {
+                            const items = unsentKept.filter((k) => k.unconfirmed === unconfirmed)
+                            if (items.length === 0) return null
+                            const title = unconfirmed ? C.notConfirmedTitle : C.notSentTitle
+                            return (
+                                <section key={title} aria-label={title} data-slot={unconfirmed ? 'harness-not-confirmed' : 'harness-not-sent'} className='flex flex-col gap-2 rounded-[10px] border p-3 text-[13px]' style={{ borderColor: 'var(--v2-flag)', background: 'var(--v2-paper)' }}>
+                                    <h2 className='text-[13px] font-bold'>{title}</h2>
+                                    <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+                                        {unconfirmed ? C.notConfirmedNote : C.notSentNote}
+                                    </p>
+                                    <ul className='flex flex-col gap-2'>
+                                        {items.map(({ text, id }) => (
+                                            <li key={id} data-slot='not-sent' className='flex flex-col gap-1'>
+                                                <blockquote className='rounded-[8px] p-2 whitespace-pre-wrap' style={{ background: 'var(--v2-inset)' }}>
+                                                    {text}
+                                                </blockquote>
+                                                <div className='flex flex-wrap gap-2'>
+                                                    <button
+                                                        type='button'
+                                                        className={`${button32} px-3`}
+                                                        style={secondary}
+                                                        onClick={() => {
+                                                            const now = box()
+                                                            if (!now.includes(text)) setDraft(now ? `${now}\n\n${text}` : text)
+                                                            useShellStore.getState().dropHarnessUnsent(scope, id)
+                                                        }}
+                                                    >
+                                                        {C.putBack}
+                                                    </button>
+                                                    <button type='button' className={`${button32} px-3`} style={secondary} onClick={() => useShellStore.getState().dropHarnessUnsent(scope, id)}>
+                                                        {C.discardUnsent}
+                                                    </button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </section>
+                            )
+                        })}
+                        {conversation && conversation.phase === 'confirmWrite' && conversation.project ? (
+                            // A renewal restarts the engine; allowing changes again is the operator's call (C21).
+                            <section aria-label={C.confirmWrite} data-slot='harness-confirm-write' className='flex flex-col gap-2 rounded-[10px] border p-3' style={{ borderColor: 'var(--v2-flag)', background: 'var(--v2-paper)' }}>
+                                <Verdict tone='flagged' word={C.confirmWrite} />
+                                <p className='text-[13px]'>{C.confirmWriteNote(conversation.project)}</p>
+                                <div className='flex flex-wrap gap-2'>
+                                    <button type='button' disabled={busy} className={`${button32} px-3`} style={secondary} onClick={() => void run({ kind: 'confirmHarnessWrite', conversation: conversation.id, allow: true })}>
+                                        {C.allowChanges}
+                                    </button>
+                                    <button type='button' disabled={busy} className={`${button32} px-3 font-semibold`} style={primary} onClick={() => void run({ kind: 'confirmHarnessWrite', conversation: conversation.id, allow: false })}>
+                                        {C.notNow}
+                                    </button>
+                                </div>
+                                <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+                                    {C.notNowNote}
+                                </p>
+                            </section>
+                        ) : null}
+                        {current && current.approvals.length > 0 ? (
+                            <div className='flex items-center gap-2 text-[13px] font-semibold' style={{ color: 'var(--v2-flag)' }} data-slot='harness-pending-line'>
+                                <Glyph name='alert' size={14} stroke={2} />
+                                {C.pendingLine(current.approvals.length)}
+                            </div>
+                        ) : null}
+                        {conversation && conversation.proposals.length > 0 ? (
+                            <FollowUps
+                                proposals={conversation.proposals}
+                                rotations={snapshot.rotations}
+                                busy={busy}
+                                open={running}
+                                onOpen={async (p) => {
+                                    if (p.state === 'staged' && (await run({ kind: 'reviewHarnessProposal', conversation: conversation.id, proposal: p.id })).kind !== 'admitted') return
+                                    onNavigate('administration')
+                                }}
+                                onDismiss={(p) => void run({ kind: 'dismissHarnessProposal', conversation: conversation.id, proposal: p.id })}
+                            />
+                        ) : null}
+                        {conversation ? (
+                            <p className='text-[12px]' data-slot='harness-saved-status' style={{ color: conversation.saveFailure ? 'var(--v2-block)' : 'var(--v2-faint)' }}>
+                                {conversation.saveFailure
+                                    ? C.notSaved(HISTORY_FAILURE_TEXT[conversation.saveFailure])
+                                    : conversation.savedAt !== null
+                                      ? C.saved(savedAt(conversation.savedAt), conversation.historyId.slice(0, 8))
+                                      : C.notSavedYet}
+                            </p>
+                        ) : null}
+                        {problem ? (
+                            <p role='alert' data-slot='harness-problem' className='text-[13px]' style={{ color: 'var(--v2-block)' }}>
+                                {problem}
+                            </p>
+                        ) : null}
+                    </div>
+                    <form
+                        className='flex shrink-0 flex-col'
+                        style={{ padding: '18px 36px 22px', gap: 10, borderTop: '1px solid var(--v2-rule)' }}
+                        onSubmit={(e) => {
+                            e.preventDefault()
+                            void send()
+                        }}
+                    >
+                        <label htmlFor='harness-message' className='sr-only'>
+                            {C.message}
+                        </label>
+                        <div data-slot='harness-composer' className='flex items-center rounded-[12px] border' style={{ gap: 10, minHeight: 46, padding: '6px 8px 6px 16px', borderColor: 'var(--v2-ctl)', background: 'var(--v2-paper)' }}>
+                            <textarea
+                                id='harness-message'
+                                ref={composer}
+                                value={draft}
+                                onChange={(e) => setDraft(e.target.value)}
+                                rows={1}
+                                placeholder={C.placeholder}
+                                className='min-h-0 flex-grow resize-none border-0 bg-transparent p-0 text-[13px] leading-5 outline-none'
+                                // Inline: the shell's unlayered textarea rule (border, control height) would win over the utilities.
+                                style={{ border: 0, borderRadius: 0, minHeight: 0, background: 'transparent', color: 'var(--v2-ink)', maxHeight: 120 }}
+                            />
+                            <button
+                                type='submit'
+                                aria-label={C.send}
+                                title={C.send}
+                                disabled={busy || queued !== null || draft.trim() === '' || (current && !fresh ? current.phase !== 'ready' : !ready)}
+                                className='grid size-8 min-h-0 shrink-0 place-items-center rounded-[8px] disabled:opacity-50'
+                                style={primary}
+                            >
+                                <Glyph name='send' size={14} />
+                            </button>
+                        </div>
+                        {!running || fresh ? (
+                            <p className='text-[12px]' data-slot='harness-composer-note' style={{ color: 'var(--v2-faint)' }}>
+                                {queued ? C.sending : running && fresh ? C.composerFresh : C.composerNew}
+                            </p>
+                        ) : null}
+                        {(running && fresh) || (conversation && conversation.phase === 'answering') ? (
+                            <div className='flex flex-wrap gap-2'>
+                                {running && fresh ? (
+                                    <button type='button' className={`${button32} px-3 text-[12px]`} style={secondary} onClick={() => setFresh(false)}>
+                                        {C.backToConversation}
+                                    </button>
+                                ) : null}
+                                {conversation && conversation.phase === 'answering' ? (
+                                    <button type='button' className={`${button32} px-3 text-[12px]`} style={secondary} onClick={() => void run({ kind: 'interruptHarness', conversation: conversation.id })}>
+                                        {C.interrupt}
+                                    </button>
+                                ) : null}
+                            </div>
+                        ) : null}
+                    </form>
+                </div>
+                <aside aria-label={C.decisions} data-slot='harness-decisions' className='flex min-w-0 flex-col overflow-auto' style={{ flex: '0 0 350px', maxWidth: '100%', padding: '20px 22px 24px', gap: 14, borderLeft: '1px solid var(--v2-rule)', background: 'var(--v2-side)' }}>
+                    <h2 className='text-[13px] font-bold'>{C.decisions}</h2>
+                    {!current || current.approvals.length === 0 ? (
+                        <p className='text-[13px] leading-[1.5]' style={{ color: 'var(--v2-faint)' }}>
+                            {C.nothingToDecide}
+                        </p>
                     ) : null}
                     {current
                         ? current.approvals.map((a) => (
@@ -681,129 +799,47 @@ export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Har
                               />
                           ))
                         : null}
-                    {conversation && conversation.proposals.length > 0 ? (
-                        <FollowUps
-                            proposals={conversation.proposals}
-                            rotations={snapshot.rotations}
-                            busy={busy}
-                            open={running}
-                            onOpen={async (p) => {
-                                if (p.state === 'staged' && (await run({ kind: 'reviewHarnessProposal', conversation: conversation.id, proposal: p.id })).kind !== 'admitted') return
-                                onNavigate('administration')
-                            }}
-                            onDismiss={(p) => void run({ kind: 'dismissHarnessProposal', conversation: conversation.id, proposal: p.id })}
-                        />
-                    ) : null}
-                    {conversation ? (
-                        <p className='text-[12px]' data-slot='harness-saved-status' style={{ color: conversation.saveFailure ? 'var(--v2-block)' : 'var(--v2-soft)' }}>
-                            {conversation.saveFailure
-                                ? C.notSaved(HISTORY_FAILURE_TEXT[conversation.saveFailure])
-                                : conversation.savedAt !== null
-                                  ? C.saved(savedAt(conversation.savedAt), conversation.historyId.slice(0, 8))
-                                  : C.notSavedYet}
-                        </p>
-                    ) : null}
-                    <form
-                        className='flex flex-col gap-2'
-                        onSubmit={(e) => {
-                            e.preventDefault()
-                            void send()
-                        }}
-                    >
-                        <label htmlFor='harness-message' className='text-[13px] font-medium'>
-                            {C.message}
-                        </label>
-                        <textarea
-                            id='harness-message'
-                            ref={composer}
-                            value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
-                            rows={3}
-                            className='rounded-[8px] border p-2 text-[13px]'
-                            style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}
-                        />
-                        {!running || fresh ? (
-                            <p className='text-[12px]' data-slot='harness-composer-note' style={{ color: 'var(--v2-soft)' }}>
-                                {queued ? C.sending : running && fresh ? C.composerFresh : C.composerNew}
-                            </p>
-                        ) : null}
-                        <div className='flex flex-wrap gap-2'>
-                            <button
-                                type='submit'
-                                disabled={busy || queued !== null || draft.trim() === '' || (current && !fresh ? current.phase !== 'ready' : !ready)}
-                                className='h-8 rounded-[7px] px-3 text-[13px] font-semibold disabled:opacity-60'
-                                style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}
-                            >
-                                {C.send}
-                            </button>
-                            {running && fresh ? (
-                                <button type='button' className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => setFresh(false)}>
-                                    {C.backToConversation}
-                                </button>
-                            ) : null}
-                            {conversation && conversation.phase === 'answering' ? (
-                                <button
-                                    type='button'
-                                    className='h-8 rounded-[7px] border px-3 text-[13px]'
-                                    style={{ borderColor: 'var(--v2-rule)' }}
-                                    onClick={() => void run({ kind: 'interruptHarness', conversation: conversation.id })}
-                                >
-                                    {C.interrupt}
-                                </button>
-                            ) : null}
-                            {current ? (
-                                <button
-                                    type='button'
-                                    className='h-8 rounded-[7px] border px-3 text-[13px]'
-                                    style={{ borderColor: 'var(--v2-rule)' }}
-                                    onClick={() => void run({ kind: 'endHarness', conversation: current.id })}
-                                >
-                                    {C.end}
-                                </button>
-                            ) : null}
-                        </div>
-                    </form>
-                    {problem ? (
-                        <p role='alert' data-slot='harness-problem' className='text-[13px]' style={{ color: 'var(--v2-block)' }}>
-                            {problem}
-                        </p>
-                    ) : null}
-                    {context ? (
-                        <section data-slot='harness-setup' aria-labelledby='harness-setup-toggle' className='rounded-[12px] border p-3' style={{ borderColor: 'var(--v2-rule)' }}>
-                            <h2 className='m-0'>
-                                <button
-                                    id='harness-setup-toggle'
-                                    type='button'
-                                    aria-expanded={setupOpen}
-                                    aria-controls='harness-setup-panels'
-                                    className='w-full text-left text-[14px] font-semibold'
-                                    onClick={() => setSetupOpen((o) => !o)}
-                                >
-                                    {C.setup}
-                                </button>
-                            </h2>
-                            <div id='harness-setup-panels' hidden={!setupOpen} className='mt-3 flex flex-col gap-4'>
-                                {selected ? (
-                                    <SignInPanel context={context} selected={selected} signIn={signIn} keyHere={keyHere} running={running} dispatch={dispatch} onMessage={setProblem} />
-                                ) : null}
-                                <ProjectPanel
-                                    context={context}
-                                    project={snapshot.harness.project}
-                                    refused={snapshot.harness.projectRefused}
-                                    running={running}
-                                    dispatch={dispatch}
-                                    onMessage={setProblem}
-                                />
-                                {selected ? <McpPanel context={context} selected={selected} mcp={snapshot.harness.mcp} running={running} dispatch={dispatch} onMessage={setProblem} /> : null}
+                    <div className='mt-auto flex flex-col' style={{ gap: 8 }}>
+                        {selected ? (
+                            <div data-slot='harness-mcp-summary' className='flex flex-col text-[12px]' style={{ gap: 6 }}>
+                                <div className='font-semibold' style={{ color: 'var(--v2-faint)' }}>
+                                    {C.mcpHeading(mcpServers.filter((s) => s.enabled).length, mcpServers.length)}
+                                </div>
+                                {mcpServers.slice(0, 8).map((s) => {
+                                    const st = mcpStanding(s)
+                                    return (
+                                        <div key={s.id} className='flex items-center justify-between gap-2'>
+                                            <span className='truncate'>{s.name}</span>
+                                            <span className='shrink-0 font-semibold' style={{ color: st.tone === 'ok' ? 'var(--v2-ok)' : st.tone === 'flag' ? 'var(--v2-flag)' : 'var(--v2-faint)' }}>
+                                                {st.word}
+                                            </span>
+                                        </div>
+                                    )
+                                })}
                             </div>
-                        </section>
-                    ) : null}
-                    {context ? (
-                        <div data-slot='harness-history'>
-                            <HistoryPanel context={context} selected={selected} history={history} running={running} dispatch={dispatch} onMessage={setProblem} />
-                        </div>
-                    ) : null}
-                </div>
+                        ) : null}
+                        {context ? (
+                            <section data-slot='harness-setup' aria-labelledby='harness-setup-toggle' className='rounded-[12px] border p-3' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                                <h2 className='m-0'>
+                                    <button id='harness-setup-toggle' type='button' aria-expanded={setupOpen} aria-controls='harness-setup-panels' className='flex w-full items-center justify-between text-left text-[13px] font-bold' onClick={() => setSetupOpen((o) => !o)}>
+                                        <span>{C.setup}</span>
+                                        <Glyph name={setupOpen ? 'chev' : 'chevR'} size={12} stroke={2.2} color='var(--v2-faint)' />
+                                    </button>
+                                </h2>
+                                <div id='harness-setup-panels' hidden={!setupOpen} className='mt-3 flex flex-col gap-4'>
+                                    {selected ? <SignInPanel context={context} selected={selected} signIn={signIn} keyHere={keyHere} running={running} dispatch={dispatch} onMessage={setProblem} /> : null}
+                                    <ProjectPanel context={context} project={snapshot.harness.project} refused={snapshot.harness.projectRefused} running={running} dispatch={dispatch} onMessage={setProblem} />
+                                    {selected ? <McpPanel context={context} selected={selected} mcp={snapshot.harness.mcp} running={running} dispatch={dispatch} onMessage={setProblem} /> : null}
+                                </div>
+                            </section>
+                        ) : null}
+                        {context ? (
+                            <div data-slot='harness-history' className='rounded-[12px] border p-3' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                                <HistoryPanel context={context} selected={selected} history={history} running={running} dispatch={dispatch} onMessage={setProblem} />
+                            </div>
+                        ) : null}
+                    </div>
+                </aside>
             </div>
         </section>
     )
@@ -826,16 +862,31 @@ function outcomeOf(c: ConversationView): { tone: VerdictTone; word: string; text
 
 function Transcript({ entries }: { entries: HarnessEntry[] }) {
     return (
-        <ol className='flex flex-col gap-3'>
-            {entries.map((e) => (
-                <li key={e.id} data-slot='harness-entry' data-role={e.role} data-state={e.state} className='flex flex-col gap-1'>
-                    <span className='text-[12px] font-medium' style={{ color: 'var(--v2-soft)' }}>
-                        {C.role[e.role] ?? e.role}
-                        {C.entryState[e.state] ? ` · ${C.entryState[e.state]}` : ''}
-                    </span>
-                    <p className='text-[13px] whitespace-pre-wrap'>{e.text}</p>
-                </li>
-            ))}
+        <ol className='flex flex-col' style={{ gap: 18 }}>
+            {entries.map((e) => {
+                const mine = e.role === 'operator'
+                return (
+                    <li
+                        key={e.id}
+                        data-slot='harness-entry'
+                        data-role={e.role}
+                        data-state={e.state}
+                        className='flex shrink-0 flex-col gap-1'
+                        style={mine ? { alignSelf: 'flex-end', maxWidth: '70%' } : { maxWidth: '82%' }}
+                    >
+                        <span className='text-[12px] font-medium' style={{ color: 'var(--v2-faint)' }}>
+                            {C.role[e.role] ?? e.role}
+                            {C.entryState[e.state] ? ` · ${C.entryState[e.state]}` : ''}
+                        </span>
+                        <p
+                            className='text-[13px] leading-[1.45] whitespace-pre-wrap'
+                            style={mine ? { padding: '10px 14px', borderRadius: '14px 14px 4px 14px', background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' } : { lineHeight: 1.5 }}
+                        >
+                            {e.text}
+                        </p>
+                    </li>
+                )
+            })}
         </ol>
     )
 }
@@ -850,30 +901,32 @@ function Decision({ approval: a, busy, onDecide }: { approval: HarnessApproval; 
     // Absent (a snapshot before C32) counts as may-change: never a false assurance.
     const readOnly = a.effect === 'readOnly'
     return (
-        <section aria-label={C.decision} data-slot='harness-decision' data-kind={a.kind} data-effect={a.effect ?? 'mayChange'} className='flex flex-col gap-2 rounded-[12px] border p-3' style={{ borderColor: 'var(--v2-flag)' }}>
-            <Verdict tone={readOnly ? 'info' : 'flagged'} word={readOnly ? C.readOnlyWord : C.mayChangeWord} />
+        <section aria-label={C.decision} data-slot='harness-decision' data-kind={a.kind} data-effect={a.effect ?? 'mayChange'} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: 18, borderColor: readOnly ? 'var(--v2-rule)' : 'var(--v2-flag)', background: 'var(--v2-paper)' }}>
+            <div className='flex items-center gap-2'>
+                <Glyph name='plug' size={16} />
+                <b className='text-[13px]'>{C.decision}</b>
+                <span className='ml-auto rounded-full text-[12px] whitespace-nowrap' style={{ padding: '2px 8px', background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
+                    {readOnly ? C.readOnlyWord : C.mayChangeWord}
+                </span>
+            </div>
             <p className='text-[13px]'>{C.asks(C.kind[a.kind] ?? a.kind, what)}</p>
             {a.arguments ? (
-                <pre className='overflow-x-auto rounded-[8px] p-2 text-[12px]' style={{ background: 'var(--v2-side)' }}>
+                <pre className='overflow-x-auto rounded-[8px] p-2.5 font-mono text-[12px] leading-[1.55]' style={{ background: 'var(--v2-inset)' }}>
                     {a.arguments}
                 </pre>
             ) : null}
-            {a.cwd ? <p className='text-[12px]'>{C.inFolder(a.cwd)}</p> : null}
-            {a.reason ? <p className='text-[12px]'>{a.reason}</p> : null}
-            <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+            <div className='flex flex-col text-[12px]' style={{ gap: 5 }}>
+                {a.cwd ? <p>{C.inFolder(a.cwd)}</p> : null}
+                {a.reason ? <p>{a.reason}</p> : null}
+            </div>
+            <p className='rounded-[8px] text-[12px] leading-[1.45]' style={{ padding: '8px 10px', background: 'var(--v2-acc-soft)' }}>
                 {readOnly ? (C.readOnlyNote[a.kind] ?? C.readOnlyNote.desktopRead) : (C.mayChangeNote[a.kind] ?? C.mayChangeNote.mcpTool)}
             </p>
-            <div className='flex flex-wrap gap-2'>
-                <button
-                    type='button'
-                    disabled={busy}
-                    className='h-8 rounded-[7px] px-3 text-[13px] font-semibold disabled:opacity-60'
-                    style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}
-                    onClick={() => onDecide(true)}
-                >
+            <div className='flex gap-2'>
+                <button type='button' disabled={busy} className='h-8 min-h-0 flex-grow rounded-[7px] text-[13px] font-semibold disabled:opacity-60' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }} onClick={() => onDecide(true)}>
                     {readOnly ? C.approveOnce : C.approveNative}
                 </button>
-                <button type='button' disabled={busy} className='h-8 rounded-[7px] border px-3 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => onDecide(false)}>
+                <button type='button' disabled={busy} className='h-8 min-h-0 flex-grow rounded-[7px] border text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} onClick={() => onDecide(false)}>
                     {C.decline}
                 </button>
             </div>

@@ -30,6 +30,14 @@ export const HARNESS_COPY = {
         failed: 'Failed',
     } as Record<string, string>,
     savedNone: 'No saved conversations in this workspace yet.',
+    // The board (R2App start=harness, C38).
+    savedLabel: 'Saved conversations · encrypted',
+    noneFor: (tenant: string) => `No conversations yet for ${tenant}.`,
+    decisions: 'Decisions',
+    nothingToDecide: 'Nothing to decide yet. Tool calls appear here and wait for your OK.',
+    pendingLine: (n: number) => (n === 1 ? 'Your OK is needed for a tool call →' : `Your OK is needed for ${n} tool calls →`),
+    mcpHeading: (on: number, total: number) => `Workspace MCP servers · ${on} of ${total}`,
+    placeholder: 'Ask the Harness…',
     transcript: 'Transcript',
     empty: 'Ask a question about this tenant. Each answer comes from your AI Gateway workspace; changes are only ever proposed for your review.',
     role: {

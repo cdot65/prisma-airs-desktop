@@ -1511,4 +1511,67 @@ describe('v2 Harness', () => {
         expect(within(screen.getByRole('region', { name: 'Not confirmed' })).getByText('Order matters')).toBeInTheDocument()
     })
 
+
+    // ---- C38: the board (R2App start=harness) over the same behaviour ----
+
+    it('draws the board: the title band with End conversation, the 244px rail of saved conversations, the transcript with its composer, and the Decisions aside holding the decision (C38)', async () => {
+        const l = LIFECYCLES[0]!
+        // An earlier, separately saved conversation: the live one's own saved copy is not listed twice.
+        const earlier = { ...l.saved, id: '7b1c9d2e-3f4a-4b5c-8d6e-7f8091a2b3c4', title: 'Earlier investigation' }
+        const { user, native } = await launch(fxHarness(l.steps.approved, {}, [earlier]))
+        // The band: the title, the status line and End conversation at its right.
+        const band = document.querySelector('[data-slot="harness-band"]') as HTMLElement
+        expect(within(band).getByRole('heading', { level: 1, name: 'Harness' })).toBeInTheDocument()
+        expect(within(band).getByRole('button', { name: 'End conversation' })).toBeInTheDocument()
+        // The rail: the encrypted-saved label, New investigation, the live conversation and the saved one.
+        const rail = screen.getByRole('navigation', { name: 'Conversations' })
+        expect(rail).toHaveTextContent('Saved conversations · encrypted')
+        expect(within(rail).getByRole('button', { name: 'New investigation' })).toBeInTheDocument()
+        expect(rail.querySelectorAll('[data-slot="rail-conversation"]')).toHaveLength(2)
+        // The transcript: operator entries as bubbles at the right, the Harness's at the left; the composer is a pill with an icon Send.
+        const transcript = screen.getByRole('region', { name: 'Transcript' })
+        const entries = transcript.querySelectorAll('[data-slot="harness-entry"]')
+        expect(entries.length).toBeGreaterThan(0)
+        expect((entries[0] as HTMLElement).style.alignSelf).toBe('flex-end')
+        expect(screen.getByRole('textbox', { name: 'Message' })).toHaveAttribute('placeholder', 'Ask the Harness…')
+        expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+        // The aside: Decisions, with the decision card inside it when one waits.
+        const aside = screen.getByRole('complementary', { name: 'Decisions' })
+        expect(within(aside).getByRole('heading', { level: 2, name: 'Decisions' })).toBeInTheDocument()
+        const pending = { ...l.steps.approved, approvals: l.steps.asking.approvals, phase: 'ready' as const }
+        await native.push({ ...native.current, harness: { ...native.current.harness, conversation: pending } })
+        expect(within(screen.getByRole('complementary', { name: 'Decisions' })).getByRole('region', { name: 'Decision needed' })).toBeInTheDocument()
+        expect(document.querySelector('[data-slot="harness-pending-line"]')).not.toBeNull()
+        // End conversation from the band is the same intent.
+        await user.click(within(band).getByRole('button', { name: 'End conversation' }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'endHarness', conversation: pending.id })
+    })
+
+    it('tells the aside what it cannot decide yet, and names the workspace MCP servers with their standing (C38)', async () => {
+        const base = fxHarness(null)
+        await launch({
+            ...base,
+            harness: {
+                ...base.harness,
+                mcp: {
+                    workspace: WS.id,
+                    state: 'ready',
+                    complete: true,
+                    failure: null,
+                    servers: [
+                        { id: 'srv-1', name: 'cloud-inventory', namespace: 'inventory', url: 'https://mcp.example/inventory', status: 'active', supported: true, enabled: true, signedIn: true, stale: false, expired: null, step: null, failure: null },
+                        { id: 'srv-2', name: 'ticketing', namespace: 'ticketing', url: 'https://mcp.example/ticketing', status: 'active', supported: true, enabled: false, signedIn: false, stale: false, expired: null, step: null, failure: null },
+                    ],
+                },
+            },
+        })
+        const aside = screen.getByRole('complementary', { name: 'Decisions' })
+        expect(aside).toHaveTextContent('Nothing to decide yet. Tool calls appear here and wait for your OK.')
+        const summary = aside.querySelector('[data-slot="harness-mcp-summary"]') as HTMLElement
+        expect(summary).toHaveTextContent('Workspace MCP servers · 1 of 2')
+        expect(summary).toHaveTextContent('cloud-inventory')
+        expect(summary).toHaveTextContent('Signed in')
+        expect(summary).toHaveTextContent('ticketing')
+        expect(summary).toHaveTextContent('Not signed in')
+    })
 })

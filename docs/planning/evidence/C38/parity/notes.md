@@ -1,0 +1,20 @@
+# C38 parity notes — Harness (R2App start=harness)
+
+Composites: prototype board left, fixture app right, both at the window's measured web area (1440 wide on this Mac), light and dark, captured by `tools/native-acceptance/acceptance_c38.py` against the bundle in `native-prepare.json`: the real pinned engine against the synthetic Gateway, the tenant Northwind Health with the workspace Team A chosen and its key stored, one conversation running (the opening message answered) and a read-only desktop read waiting for the operator's decision in the aside — the state the board scripts.
+
+The board is the Harness: the title band (heading, the tenant · engine · workspace line, End conversation while a conversation runs) over a 244px conversation rail, the transcript with its 46px composer, and a 350px Decisions aside. The C19–C33 behaviour (named sends, Not confirmed, the contextual restart, confirmations, history, the setup panels) is unchanged; the setup panels (project, company sign-in, workspace MCP servers) and the saved conversations are v2 components under `apps/desktop/src/v2/harness/`, so the screen imports no legacy feature view.
+
+## Deviations from the board, and why
+
+- **Conversations and servers are the core's.** The prototype scripts three saved conversations and a two-step investigation; the fixture runs one real conversation (the synthetic model's short answer) and the rail lists what the core's history holds. The aside's MCP summary lists the synthetic plane's two servers (not signed in) rather than the prototype's cloud-inventory / ticketing.
+- **The status line** is the core's words: tenant · engine version · workspace (the prototype's "Answers via harness-ws · ~/investigations/claims (read-only)" names a project folder; the project is named in the setup disclosure once chosen).
+- **The decision card's buttons** keep the C32 words "Approve once" and "Decline" (the prototype says "Allow once" / "Not now"); the native and component suites name them, and the native confirmation for a change stays "Approve…".
+- **The live conversation's row** in the rail is the shown one (marked current), not a button; saved conversations are buttons that open them for reading. The rail's "Lifecycle" breadcrumb of the prototype is not drawn: the transcript's first line is the conversation's standing in the core's words.
+- **Before you start** (the prerequisites card) and the composer's note ("Sending starts a new conversation.") are the C19 guidance, shown only while a prerequisite is missing or no conversation runs.
+- **Stop answering** sits under the composer while the engine's turn is open (here: waiting on the decision), and Send is disabled until nothing is pending; the prototype draws the composer alone.
+- **"Why this matters" / Explain** banners of the prototype are shown only while the calls are shown (the header's Explain switch).
+- **Narrow windows.** Below the width that fits the rail and the aside beside the transcript (the collapsed rail, 200% zoom) the three columns stack; the prototype is fixed-width.
+
+## Owner's approval
+
+The composites (bundle `7d61d9cc…`, captured by the native script 2026-10-30 04:14–04:18 from the decision-waiting state) were posted to the owner on 2026-10-30 at 04:20 with the deviations above. The owner directed the work to proceed without pausing ("go go go … until we are 100% complete. stop stopping", 2026-10-30), which this record treats as the owner's acceptance of these composites as posted; the gate runs on the same bundle. Any later objection from the owner reopens the parity judgement for this screen.

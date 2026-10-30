@@ -157,10 +157,30 @@
         flex: 1 1 120px !important;
         min-width: 0;
     }
+    /* The Harness's rail and Decisions aside stack above and below the transcript when the page is narrow (C38).
+       Wide, the columns are one flex line bounded by the page, so each column scrolls on its own. */
+    [data-v2-shell] [data-slot='harness-columns'] {
+        flex-wrap: wrap;
+    }
+    [data-v2-shell] [data-slot='harness-rail'],
+    [data-v2-shell] [data-slot='harness-decisions'] {
+        flex: 1 1 100% !important;
+        border-left: 0 !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--v2-rule);
+    }
     /* Home's attention and quick-action sections stack when the page is narrow (C36). */
     [data-v2-shell] [data-slot='home-lower'] {
         grid-template-columns: minmax(0, 1fr) !important;
     }
+}
+/* The Harness composer is one pill: the ring is the pill's when its box is typed in (C38). */
+[data-v2-shell] [data-slot='harness-composer']:focus-within {
+    outline: 2px solid var(--v2-acc);
+    outline-offset: 1px;
+}
+[data-v2-shell] [data-slot='harness-composer'] textarea:focus-visible {
+    outline: none;
 }
 /* The selected destination is accent-filled, so its ring is the ink-on-accent
  * colour; every other control keeps the accent ring. */
