@@ -1060,6 +1060,61 @@ describe('v2 Administration', () => {
         expect(within(runtime).getByRole('img', { name: 'Sessions chart not read' })).toBeInTheDocument()
         expect(runtime.querySelector('[data-slot="admin-sparkline"]')).toHaveAttribute('data-bars', '0')
     })
+
+    // ---- C39b: the other products on the same pattern; the review sheet as the prototype's sheet ----
+
+    it('draws the Gateway Overview from the tenant read: requests, error rate and cost of the chosen workspace, never invented (C39b)', async () => {
+        const base = fxAdmin({ gateway: GATEWAY })
+        const overview = { ...base.overview, read: { readAt: 1_761_490_000, chart: { bucketSeconds: 3600, buckets: [{ time: '2026-10-26T10:00:00Z', total: 3, violating: 0, detections: null }] }, chartFailure: null, summary: { sessions: 3, violating: 0, benign: 3, detectionEvents: 0 }, keysComplete: true, keysFailure: null, items: [], gaps: [], gateway: { workspace: WS.id, workspaceName: WS.name, requests: 1284, errors: 211, cost: 312, partial: false, usageFailure: null, policies: 5, limitsFailure: null } } }
+        const { user } = await launch({ ...base, overview })
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Overview' }))
+        const panel = panelOf(product('gateway'))
+        const tiles = Array.from(panel.querySelectorAll('[data-slot="admin-kpi"]')).map((t) => t.textContent)
+        expect(tiles[0]).toContain('Requests · today')
+        expect(tiles[0]).toContain('1,284')
+        expect(tiles[1]).toContain('16.4%')
+        expect(tiles[1]).toContain('211 errors')
+        expect(tiles[2]).toContain('$3.12')
+        expect(tiles[2]).toContain('5 limit policies')
+        expect(panel).toHaveTextContent('Workspace Team A')
+    })
+
+    it('lists Gateway routes as a table with View per row and the inventory actions in the detail; the Red Team overview draws its tiles and ranked bars (C39b)', async () => {
+        const { user } = await launch(fxAdmin({ gateway: GATEWAY }))
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Routes' }))
+        const panel = panelOf(product('gateway'))
+        expect(await within(panel).findByRole('table', { name: 'Routes' })).toBeInTheDocument()
+        expect(within(panel).getByRole('textbox', { name: 'Search routes' })).toBeInTheDocument()
+        await user.click(within(panel).getByRole('button', { name: 'Details for routes-one' }))
+        const bar = await waitFor(() => panel.querySelector('[data-slot="gateway-item-actions"]') as HTMLElement)
+        expect(within(bar).getAllByRole('button').map((b) => b.textContent)).toEqual(['Edit…', 'Delete…'])
+        expect(panel.querySelector('[data-slot="gateway-foot"]')).toHaveTextContent('1 routes · complete')
+        await user.click(within(product('redTeam')).getByRole('button', { name: /AI Red Teaming/ }))
+        await user.click(within(product('redTeam')).getByRole('tab', { name: 'Overview' }))
+        const rt = panelOf(product('redTeam'))
+        const summary = await within(rt).findByLabelText('Red Teaming summary')
+        expect(summary).toHaveTextContent('Scans1')
+        expect(summary).toHaveTextContent('Targets scanned1')
+        expect(within(rt).getByRole('heading', { name: 'Scans by status' })).toBeInTheDocument()
+    })
+
+    it('opens a change in the prototype’s sheet: the title with the review’s state, a close control, the change’s path (C39b)', async () => {
+        const { native, user } = await launch(fxAdmin())
+        await user.click(await within(product('runtimeSecurity')).findByRole('button', { name: 'Details for Finance' }))
+        await user.click(await screen.findByRole('button', { name: 'Edit…' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Review a change' })
+        expect(within(sheet).getByRole('heading', { level: 2, name: 'Review a change' })).toBeInTheDocument()
+        expect(sheet.querySelector('[data-slot="review-state"]')).toHaveTextContent('Draft')
+        expect(sheet.querySelector('[data-slot="review-path"]')).toHaveTextContent('Custom topic › Edit Finance')
+        await user.click(within(sheet).getByRole('button', { name: 'Review change' }))
+        await native.push({ ...native.current, changes: { review: review(), staged: null, results: [] } })
+        await waitFor(() => expect(sheet.querySelector('[data-slot="review-state"]')).toHaveTextContent('Ready for review'))
+        await user.click(within(sheet).getByRole('button', { name: 'Close review' }))
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Review a change' })).toBeNull())
+        expect(native.dispatched.filter((i) => i.kind === 'discardChange')).toHaveLength(1)
+    })
 })
 
 function settledResult(operation = 'op-11'): ChangeResultView {

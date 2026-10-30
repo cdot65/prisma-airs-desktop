@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""C39a native acceptance (D059): Administration as the prototype board draws
-it (R2App start=admin), AI Runtime Security end to end, driven through the
-real fixture window against the synthetic scan and management endpoints.
+"""C39 native acceptance (D059): Administration as the prototype board draws
+it (R2App start=admin and start=review), driven through the real fixture
+window against the synthetic scan and management endpoints: AI Runtime
+Security end to end (C39a), the review sheet and the other products (C39b).
 
 Run from the repository root after `xtask native-prepare --chunk C39`.
 Requires the macOS Accessibility grant. Synthetic services only; the fixture
@@ -10,10 +11,12 @@ data root is removed at the end.
 Checks (docs/architecture/native-checks.json, C39): the board (header,
 Expand all / Collapse all, the six product cards with their chrome, Runtime
 Security's tab strip, table, detail, Overview tiles and bars, Playground form
-and verdict) (N01); keyboard reach, the focus ring and the measured layouts
-in both themes (N04). N02 (the review sheet) and N03 (the other products)
-are C39b's. The parity composites (docs/planning/evidence/C39/parity) are
-captured from the N01 state: Runtime open on Custom topics after the read.
+and verdict) (N01); a topic edit through the prototype's review sheet, applied
+only with the typed name and the native confirmation (N02); AI Gateway, AI
+Red Teaming and Model and skill scans on the same card pattern (N03);
+keyboard reach, the focus ring and the measured layouts in both themes (N04).
+The parity composites (docs/planning/evidence/C39/parity) are captured from
+the N01 state (admin-*) and with the review sheet open (review-*).
 """
 
 import json
@@ -28,6 +31,8 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fixture_app as fx  # noqa: E402
 import acceptance_c08 as c8  # noqa: E402
+import acceptance_c09 as c9  # noqa: E402
+import acceptance_c16 as c16  # noqa: E402
 import acceptance_c28 as c28  # noqa: E402
 import acceptance_c29 as c29  # noqa: E402
 import acceptance_c31 as c31  # noqa: E402
@@ -146,10 +151,10 @@ def table_usable(tree, zoom):
     return out
 
 
-def composite(app, theme, web_size, prepared=None):
+def composite(app, theme, web_size, prepared=None, start="admin"):
     """The parity composite for this theme (prototype left, app right); the record of the bundle the
     captures came from is rewritten with every capture."""
-    name = f"admin-{theme.lower()}"
+    name = f"{start}-{theme.lower()}"
     if prepared:
         os.makedirs(PARITY, exist_ok=True)
         with open(os.path.join(PARITY, "bundle.json"), "w") as f:
@@ -165,11 +170,11 @@ def composite(app, theme, web_size, prepared=None):
     shutil.copy(os.path.join(ROOT, cap), app_png)
     web_w, web_h = web_size
     proto_png = os.path.join(PARITY, "proto", f"{name}.png")
-    subprocess.run([sys.executable, "-I", os.path.join(DC, "dc_render.py"), "--board", "R2App", "--prop", "start=admin",
+    subprocess.run([sys.executable, "-I", os.path.join(DC, "dc_render.py"), "--board", "R2App", "--prop", f"start={start}",
                     "--prop", f"theme={theme.lower()}", "--width", str(web_w), "--height", str(web_h), "--out", proto_png], check=True, capture_output=True)
     out = os.path.join(PARITY, f"{name}.png")
     subprocess.run([sys.executable, "-I", os.path.join(DC, "compose.py"), "--left", proto_png, "--right", app_png,
-                    "--out", out, "--title", f"Administration · {theme.lower()} · {web_w}×{web_h}"], check=True, capture_output=True)
+                    "--out", out, "--title", f"{'Administration' if start == 'admin' else 'Review change'} · {theme.lower()} · {web_w}×{web_h}"], check=True, capture_output=True)
     return rel(out)
 
 
@@ -229,6 +234,12 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     c8.save_client(app)
     c29.press(app, "AXCheckBox", "Use the new interface")
     app.wait_for(lambda t: c29.nav(t, "Destinations") is not None, 15)
+    # The Gateway workspace Team A is chosen (C39b: the Gateway card's workspace-scoped tabs).
+    app.menu("Go", "AI Gateway")
+    app.wait_for(lambda t: fx.App.node(t, "AXHeading", c16.HEADING) is not None, 12)
+    c8.text(app, "2 workspaces", 15)
+    app.ax("press", "AXRadioButton", "Team A")
+    c8.text(app, "Team A", 10)
     size_window(app, pid, 1440, 900)
     # The tenant read first (Home's Refresh), so the cards carry the plane's figures.
     app.menu("Go", "Home")
@@ -319,13 +330,127 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     c29.press(app, "AXButton", "Collapse all")
     tree, _ = app.wait_for(lambda t: not any((n.get("label") or "").endswith(" tabs") for n in t), 10)
     n1["collapsed_all"] = not any((n.get("label") or "").endswith(" tabs") for n in tree)
-    # Back to Runtime on Custom topics for the layouts.
+    # Runtime again, on Custom topics (the review and the layouts start there).
     c29.press(app, "AXButton", "AI Runtime Security")
     app.wait_for(lambda t: tab_of(t, "Custom topics") is not None, 10)
     t = tab_of(app.tree(), "Custom topics")
     app.ax("press", t["role"], "Custom topics")
     app.wait_for(lambda t: fx.App.node(t, "AXButton", "Details for") is not None, 20)
     obs["n1"] = n1
+
+    # ---- N02: a topic edit through the review sheet, applied only with the typed name ----
+    n2 = {}
+    def dialog(tree, label):
+        return next((n for n in tree if (n.get("label") or "") == label and n.get("subrole") in ("AXDialog", "AXApplicationDialog")), None)
+    def button(tree, label):
+        return next((n for n in tree if n.get("role") == "AXButton" and (n.get("label") or "") == label), None)
+    app.ax("press", "AXButton", "Details for Finance")
+    app.wait_for(lambda t: button(t, "Edit…") is not None, 10)
+    app.ax("press", "AXButton", "Edit…")
+    tree, n2["sheet"] = app.wait_for(lambda t: dialog(t, "Review a change") is not None, 10)
+    sheet = dialog(tree, "Review a change")
+    n2["sheet_frame"] = frame(sheet)
+    web = next((n for n in tree if n.get("role") == "AXWebArea" and n.get("size")), None)
+    # The prototype's sheet: docked to the right edge under the header, 620 CSS px wide.
+    n2["sheet_docked"] = bool(sheet and web and abs((sheet["pos"][0] + sheet["size"][0]) - (web["pos"][0] + web["size"][0])) <= 2 and abs(sheet["size"][0] - 620) <= 2)
+    n2["sheet_title"] = fx.App.node(tree, "AXHeading", "Review a change") is not None
+    n2["sheet_state"] = any((n.get("label") or n.get("value") or "") == "Draft" for n in within(tree, sheet))
+    n2["sheet_close"] = button(tree, "Close review") is not None
+    obs["tree_sheet"] = c29.save_tree("review-sheet", tree)
+    # The review composites (start=review), with the sheet open on the draft.
+    n2["parity"] = {}
+    for theme in ("Light", "Dark"):
+        c29.appearance(app, theme)
+        time.sleep(0.7)
+        n2["parity"][theme.lower()] = composite(app, theme, geometry(app.tree())["web"], None, "review")
+    c29.appearance(app, "Light")
+    time.sleep(0.5)
+    app.type_into("AXTextArea", "custom topic draft (JSON)", '{"topic_name":"Finance","description":"Money and payments","examples":[],"revision":1}')
+    c9.review(app, "Type Finance to confirm")
+    tree = app.tree()
+    n2["state_ready"] = any((n.get("label") or n.get("value") or "") == "Ready for review" for n in within(tree, dialog(tree, "Review a change")))
+    n2["disabled_empty"] = (button(tree, "Apply…") or {}).get("enabled") is False
+    app.type_into("AXTextField", "Type Finance to confirm", "finance")
+    time.sleep(0.4)
+    n2["disabled_wrong"] = (button(app.tree(), "Apply…") or {}).get("enabled") is False
+    app.type_into("AXTextField", "Type Finance to confirm", "Finance")
+    time.sleep(0.4)
+    n2["enabled_match"] = (button(app.tree(), "Apply…") or {}).get("enabled") is not False
+    writes_before = len(c9.writes(mgmt, "PUT"))
+    app.ax("press", "AXButton", "Apply…")
+    tree, n2["native_confirmation"] = c9.wait_sheet(app)
+    nodes = c9.sheet(app, tree) or []
+    n2["confirmation_title"] = any("Update custom topic “Finance”?" in ((n.get("label") or "") + str(n.get("value") or "")) for n in nodes)
+    app.keycode(36)
+    tree, n2["live"] = c8.text(app, "Live. The item was read back.", 15)
+    n2["state_applied"] = any((n.get("label") or n.get("value") or "") == "Applied" for n in within(tree, dialog(tree, "Review a change") or {}) ) if dialog(tree, "Review a change") else False
+    n2["writes"] = len(c9.writes(mgmt, "PUT")) - writes_before
+    obs["tree_applied"] = c29.save_tree("review-applied", tree)
+    obs["captures"]["review-applied"] = {"light": c29.capture(app, "review-applied-light")}
+    c29.press(app, "AXButton", "Done")
+    tree, n2["closed"] = app.wait_for(lambda t: dialog(t, "Review a change") is None, 8)
+    obs["n2"] = n2
+
+    # ---- N03: AI Gateway, AI Red Teaming and Model and skill scans on the card pattern ----
+    n3 = {}
+    c29.press(app, "AXButton", "AI Runtime Security")
+    app.wait_for(lambda t: tab_of(t, "Custom topics") is None, 10)
+    c29.press(app, "AXButton", "AI Gateway")
+    tree, n3["gateway_tabs"] = app.wait_for(lambda t: tab_of(t, "Workspaces") is not None and tab_of(t, "Routes") is not None, 10)
+    t = tab_of(app.tree(), "Workspaces")
+    app.ax("press", t["role"], "Workspaces")
+    tree, n3["workspace_detail"] = app.wait_for(lambda t: app.has_text(t, "Settings of Team A as read from the service.") and fx.App.node(t, "AXButton", "Edit…") is not None, 20)
+    n3["workspace_chosen"] = any(n.get("role") == "AXRadioButton" and (n.get("label") or "") == "Team A" and str(n.get("value", "")).lower() in ("1", "true", "selected") for n in tree)
+    obs["tree_gateway_workspaces"] = c29.save_tree("gateway-workspaces", tree)
+    t = tab_of(app.tree(), "Routes")
+    app.ax("press", t["role"], "Routes")
+    tree, n3["routes_table"] = app.wait_for(lambda t: any(n.get("role") == "AXTable" and (n.get("label") or "") == "Routes" for n in t) and fx.App.node(t, "AXButton", "Details for") is not None, 20)
+    n3["routes_search"] = any(n.get("role") in ("AXTextField", "AXSearchField") and (n.get("label") or "") == "Search routes" for n in tree)
+    n3["routes_create"] = fx.App.node(tree, "AXButton", "New route…") is not None
+    app.ax("press", "AXButton", fx.App.node(tree, "AXButton", "Details for")["label"][:60])
+    tree, n3["route_detail"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Close details") is not None and fx.App.node(t, "AXButton", "Edit") is not None, 15)
+    obs["tree_gateway_routes"] = c29.save_tree("gateway-routes", tree)
+    obs["captures"]["gateway-routes"] = {"light": c29.capture(app, "gateway-routes-light")}
+    c29.press(app, "AXButton", "Close details")
+    t = tab_of(app.tree(), "Keys")
+    app.ax("press", t["role"], "Keys")
+    tree, n3["keys_table"] = app.wait_for(lambda t: any(n.get("role") == "AXTable" and (n.get("label") or "") == "Service keys" for n in t), 20)
+    n3["keys_kinds"] = all(any(n.get("role") == "AXRadioButton" and (n.get("label") or "") == k for n in tree) for k in ("Service keys", "User keys"))
+    c29.press(app, "AXButton", "AI Gateway")
+    c29.press(app, "AXButton", "AI Red Teaming")
+    tree, n3["red_team_tabs"] = app.wait_for(lambda t: tab_of(t, "Targets") is not None and tab_of(t, "Scans") is not None, 10)
+    t = tab_of(app.tree(), "Overview")
+    app.ax("press", t["role"], "Overview")
+    tree, n3["red_team_tiles"] = app.wait_for(lambda t: any((n.get("label") or "") == "Red Teaming summary" for n in t) and app.has_text(t, "Targets scanned"), 20)
+    n3["red_team_ranked"] = fx.App.node(tree, "AXHeading", "Scans by status") is not None
+    obs["tree_red_team"] = c29.save_tree("red-team-overview", tree)
+    obs["captures"]["red-team-overview"] = {"light": c29.capture(app, "red-team-overview-light")}
+    t = tab_of(app.tree(), "Targets")
+    app.ax("press", t["role"], "Targets")
+    tree, n3["targets_table"] = app.wait_for(lambda t: any(n.get("role") == "AXTable" and (n.get("label") or "") == "Targets" for n in t), 15)
+    n3["targets_results"] = fx.App.node(tree, "AXButton", "Results for target") is not None
+    t = tab_of(app.tree(), "Scans")
+    app.ax("press", t["role"], "Scans")
+    tree, n3["scans_heading"] = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Red Teaming scans") is not None, 15)
+    n3["scans_no_tiles"] = not any((n.get("label") or "") == "Red Teaming summary" for n in tree)
+    c29.press(app, "AXButton", "AI Red Teaming")
+    c29.press(app, "AXButton", "Model and skill scans")
+    tree, n3["models_tabs"] = app.wait_for(lambda t: tab_of(t, "Model scans") is not None, 10)
+    t = tab_of(app.tree(), "Model scans")
+    app.ax("press", t["role"], "Model scans")
+    tree, n3["model_scans"] = app.wait_for(lambda t: any(n.get("role") == "AXTable" and (n.get("label") or "") == "Model scans" for n in t) or app.has_text(t, "No model scans were read."), 20)
+    obs["tree_models"] = c29.save_tree("model-scans", tree)
+    t = tab_of(app.tree(), "Codebase scans")
+    app.ax("press", t["role"], "Codebase scans")
+    tree, n3["codebase_unavailable"] = app.wait_for(lambda t: app.has_text(t, "Not available in this release"), 10)
+    c29.press(app, "AXButton", "Model and skill scans")
+    # Back to Runtime on Custom topics for the layouts.
+    c29.press(app, "AXButton", "AI Runtime Security")
+    app.wait_for(lambda t: tab_of(t, "Custom topics") is not None, 10)
+    t = tab_of(app.tree(), "Custom topics")
+    app.ax("press", t["role"], "Custom topics")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Details for") is not None, 20)
+    obs["n3"] = n3
 
     # ---- N04: keyboard, ring, layouts ----
     n4 = {}
@@ -404,6 +529,14 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         f"tabs {n1['tabs']} with Custom topics selected {n1['tabs_ok']}; table {n1['table']} with {n1['rows']} row(s) and View {n1['views']}, search {n1['search']}, New topic… {n1['new_topic']}, footer {n1['footer']}; detail {n1['detail']} with {n1['detail_actions']}; "
         f"Overview tiles {n1['overview']} and bars {n1['bars']}; Playground {n1['playground']} fields {n1['playground_fields']}, scanned {n1['scanned']} → {n1['verdict']}; Expand all {n1['expanded_all']}, Collapse all {n1['collapsed_all']}; composites {sorted(n1['parity'].values())}",
         [run_rel, obs["tree_admin"], obs.get("tree_detail"), obs["tree_overview"], obs["tree_playground"]] + caps("admin") + caps("admin-overview") + caps("admin-playground") + sorted(n1["parity"].values()))
+    n2_ok = all(n2.get(k) for k in ("sheet", "sheet_docked", "sheet_title", "sheet_state", "sheet_close", "state_ready", "disabled_empty", "disabled_wrong", "enabled_match", "native_confirmation", "confirmation_title", "live", "state_applied", "closed")) and n2.get("writes") == 1 and len(n2.get("parity", {})) == 2
+    add("C39-N02", n2_ok,
+        f"the sheet opened {n2.get('sheet')} docked right at 620px {n2.get('sheet_docked')} ({n2.get('sheet_frame')}) with its title {n2.get('sheet_title')}, state Draft {n2.get('sheet_state')} then Ready for review {n2.get('state_ready')}, close control {n2.get('sheet_close')}; Apply… disabled empty {n2.get('disabled_empty')} and wrong {n2.get('disabled_wrong')}, enabled on the typed name {n2.get('enabled_match')}; the native confirmation {n2.get('native_confirmation')} titled {n2.get('confirmation_title')}; applied and read back live {n2.get('live')} (state Applied {n2.get('state_applied')}) with {n2.get('writes')} write(s); Done closed it {n2.get('closed')}; composites {sorted(n2.get('parity', {}).values())}",
+        [run_rel, obs.get("tree_sheet"), obs.get("tree_applied")] + caps("review-applied") + sorted(n2.get("parity", {}).values()))
+    n3_ok = all(n3.get(k) for k in ("gateway_tabs", "workspace_detail", "workspace_chosen", "routes_table", "routes_search", "routes_create", "route_detail", "keys_table", "keys_kinds", "red_team_tabs", "red_team_tiles", "red_team_ranked", "targets_table", "targets_results", "scans_heading", "scans_no_tiles", "models_tabs", "model_scans", "codebase_unavailable"))
+    add("C39-N03", n3_ok,
+        f"Gateway tabs {n3.get('gateway_tabs')}: Workspaces with Team A chosen {n3.get('workspace_chosen')} and its settings read {n3.get('workspace_detail')}; Routes as a table {n3.get('routes_table')} with search {n3.get('routes_search')}, New route… {n3.get('routes_create')} and a detail with Edit {n3.get('route_detail')}; Keys table with the kinds {n3.get('keys_table') and n3.get('keys_kinds')}; Red Teaming tabs {n3.get('red_team_tabs')}: Overview tiles {n3.get('red_team_tiles')} and ranked bars {n3.get('red_team_ranked')}, Targets table {n3.get('targets_table')} with Results {n3.get('targets_results')}, Scans heading {n3.get('scans_heading')} without the tiles {n3.get('scans_no_tiles')}; Model scans {n3.get('model_scans')}, Codebase scans not available {n3.get('codebase_unavailable')}",
+        [run_rel, obs.get("tree_gateway_workspaces"), obs.get("tree_gateway_routes"), obs.get("tree_red_team"), obs.get("tree_models")] + caps("gateway-routes") + caps("red-team-overview"))
     lay = n4["layouts"]
     ring_ok = (n4["ring"].get("diff") or 0) > 40
     layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["table"]["ok"] for v in lay.values()) \
@@ -423,7 +556,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         "checks": checks,
         "limitations": [
             "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size) beside it.",
-            "Synthetic scan and management endpoints only; the inventories are the synthetic plane's. C39-N02 (the review sheet) and C39-N03 (the other products) are C39b's checks.",
+            "Synthetic scan and management endpoints only; the inventories are the synthetic plane's. The review's native confirmation is the fixture sheet adapter's.",
             "Spoken VoiceOver output was not recorded.",
         ],
     }

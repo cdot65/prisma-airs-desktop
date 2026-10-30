@@ -7,6 +7,7 @@ import { clockOf } from '../copy'
 import { Modal } from '../modal'
 import { useShellStore } from '../store'
 import { Verdict } from '../verdict'
+import { Glyph } from '../icons'
 import { ADMIN_COPY as C } from './copy'
 import { RotationPanel } from './rotation-panel'
 
@@ -220,9 +221,26 @@ export function ReviewSheet({ snapshot, context, dispatch, observe, change: init
     }
 
     return (
-        <Modal label={application ? C.rotation.title(application) : C.reviewTitle} onClose={close} width={760} data-slot='review-sheet'>
-            <div className='flex flex-col gap-4'>
-                <h2 className='text-[16px] font-semibold'>{application ? C.rotation.title(application) : (change?.title ?? C.reviewTitle)}</h2>
+        <Modal label={application ? C.rotation.title(application) : C.reviewTitle} onClose={close} width={620} padding={30} sheet data-slot='review-sheet'>
+            <div className='flex flex-col' style={{ gap: 18 }}>
+                {/* R2App's review sheet (C39b): the title with the review's state, a close control, and the change's path. */}
+                <div className='flex items-center' style={{ gap: 10 }}>
+                    <h2 className='text-[24px] font-bold' style={{ letterSpacing: '-0.01em' }}>
+                        {application ? C.rotation.title(application) : C.reviewTitle}
+                    </h2>
+                    <span className='rounded-full text-[12px] font-semibold' style={{ padding: '2px 9px', background: settledState === 'live' || settledState === 'removed' ? 'var(--v2-ok-bg)' : settledState === 'failed' ? 'var(--v2-block-bg)' : 'var(--v2-inset)', color: settledState === 'live' || settledState === 'removed' ? 'var(--v2-ok)' : settledState === 'failed' ? 'var(--v2-block)' : 'var(--v2-soft)' }} data-slot='review-state'>
+                        {settledState === 'live' ? 'Applied' : settledState === 'removed' ? 'Removed' : settledState === 'failed' ? 'Not applied' : settledState === 'unconfirmed' ? 'Outcome unknown' : snapshot.changes.review && change ? (snapshot.changes.review.state === 'ready' ? 'Ready for review' : snapshot.changes.review.state === 'confirming' ? 'Confirming' : snapshot.changes.review.state === 'preparing' ? 'Preparing' : 'Review') : 'Draft'}
+                    </span>
+                    <button type='button' aria-label='Close review' onClick={close} className='ml-auto grid shrink-0 place-items-center rounded-[7px] border' style={{ width: 28, height: 28, minHeight: 0, borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
+                        <Glyph name='x' size={12} stroke={2.2} />
+                    </button>
+                </div>
+                {change ? (
+                    <p className='text-[14px]' style={{ color: 'var(--v2-soft)' }} data-slot='review-path'>
+                        {`${CHANGE_NOUN[change.kind].charAt(0).toUpperCase()}${CHANGE_NOUN[change.kind].slice(1)} › `}
+                        <b style={{ color: 'var(--v2-ink)' }}>{change.title}</b>
+                    </p>
+                ) : null}
                 {rotation ? (
                     <RotationPanel
                         rotation={rotation}

@@ -2,8 +2,6 @@ import { forwardRef, type ReactNode, useCallback, useEffect, useRef, useState } 
 import { createPortal } from 'react-dom'
 import type { AdminProduct, AdminTab, DesktopClient, FeatureId, ManagementResource, ProductReadState, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { CHANGE_NOUN, type ChangeTarget, verbOf } from '../../features/administration/runtime-changes'
-import { GatewayView, type GatewayTab } from '../../features/gateway/gateway-view'
-import { RedTeamView, type RedTeamSection, type RedTeamTab } from '../../features/red-team/red-team-view'
 import type { Dispatch } from '../../features/tenants/dispatch'
 import type { Act } from '../inbox/inbox'
 import { type Arrival, useShellStore } from '../store'
@@ -15,6 +13,8 @@ import { InventoryTable } from './inventory-table'
 import { Playground } from './playground'
 import { type PillTone, ProductCard } from './product-card'
 import { RuntimeOverview } from './runtime-overview'
+import { GatewayProduct, type GatewayTabId } from './gateway-tabs'
+import { ObservationProduct } from './observation-tabs'
 import type { GlyphName } from '../icons'
 import { Btn } from '../controls'
 
@@ -41,32 +41,6 @@ const DLP_KIND: Partial<Record<ManagementResource, string>> = {
     dataProfiles: 'dataProfiles',
     filteringProfiles: 'filteringProfiles',
 }
-const GATEWAY_TAB: Record<string, GatewayTab> = {
-    overview: 'usage',
-    workspaces: 'workspace',
-    routes: 'routes',
-    providers: 'providers',
-    guardrails: 'guardrails',
-    integrations: 'integrations',
-    logs: 'logs',
-}
-const RED_TEAM_TAB = (product: AdminProduct): RedTeamTab => (product.id === 'modelSkill' ? 'models' : 'redTeam')
-/** Each read-only tab renders its own read surface (screens/administration-inventory.md). */
-const SECTION: Record<string, Record<string, RedTeamSection>> = {
-    redTeam: {
-        overview: 'overview',
-        targets: 'targets',
-        scans: 'scans',
-        'attack-results': 'attacks',
-        reports: 'reports',
-    },
-    modelSkill: {
-        overview: 'modelOverview',
-        'model-scans': 'modelScans',
-        'skill-scans': 'skillScans',
-    },
-}
-
 interface Sheet {
     change: ChangeTarget | null
     rotation: string | null
@@ -100,7 +74,6 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
         modelSkill: 'skill-scans',
     })
     const [dlp, setDlp] = useState<ManagementResource>('dataPatterns')
-    const [gatewayKeys, setGatewayKeys] = useState<GatewayTab>('serviceKeys')
     const [sheet, setSheet] = useState<Sheet | null>(null)
     const observe = useCallback((operation: string) => client.observeManagement(operation), [client])
 
@@ -265,58 +238,22 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
             )
         }
         if (product.id === 'gateway') {
-            if (tab.label === 'MCP servers') return <McpTab snapshot={snapshot} dispatch={dispatch} />
-            const gtab = tab.label === 'Keys' ? gatewayKeys : GATEWAY_TAB[tab.id]
             return (
-                <div className='flex flex-col gap-3'>
-                    {tab.label === 'Keys' ? (
-                        <div role='radiogroup' aria-label={C.keyKinds} className='flex gap-1'>
-                            {(['serviceKeys', 'userKeys'] as const).map((k) => (
-                                <button
-                                    key={k}
-                                    type='button'
-                                    role='radio'
-                                    aria-checked={gatewayKeys === k}
-                                    onClick={() => setGatewayKeys(k)}
-                                    className='h-8 rounded-[7px] px-3 text-[13px]'
-                                    style={{
-                                        background: gatewayKeys === k ? 'var(--v2-sel)' : 'transparent',
-                                        color: gatewayKeys === k ? 'var(--v2-sel-ink)' : 'var(--v2-ink)',
-                                    }}
-                                >
-                                    {k === 'serviceKeys' ? C.serviceKeys : C.userKeys}
-                                </button>
-                            ))}
-                        </div>
-                    ) : null}
-                    <GatewayView
-                        key={`${context}-gateway`}
-                        snapshot={snapshot}
-                        dispatch={dispatch}
-                        observe={observe}
-                        onNavigate={onNavigate}
-                        tab={gtab}
-                        embedded
-                        actions={tab.actions}
-                        onReview={(change, extras) => setSheet({ change, rotation: null, ...extras })}
-                    />
-                </div>
-            )
-        }
-        return (
-            <div className='flex flex-col gap-2'>
-                <RedTeamView
-                    key={`${context}-${product.id}`}
+                <GatewayProduct
+                    key={`${context}-gateway`}
                     snapshot={snapshot}
+                    context={context!}
                     dispatch={dispatch}
                     observe={observe}
                     onNavigate={onNavigate}
-                    tab={RED_TEAM_TAB(product)}
-                    section={SECTION[product.id]?.[tab.id]}
-                    embedded
+                    tab={tab.id as GatewayTabId}
+                    actions={tab.actions}
+                    onReview={(change, extras) => setSheet({ change, rotation: null, ...extras })}
+                    onRead={() => void onAct(SHELL_COPY.readOf(tenant!.label), { kind: 'readTenant', context: context! })}
                 />
-            </div>
-        )
+            )
+        }
+        return <ObservationProduct key={`${context}-${product.id}`} snapshot={snapshot} context={context!} dispatch={dispatch} observe={observe} product={product.id as 'redTeam' | 'modelSkill'} tab={tab.id} />
     }
 
     const PILL_WORD: Record<ProductReadState | 'unavailable', { tone: PillTone; glyph: GlyphName }> = {
@@ -408,54 +345,3 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
         </section>
     )
 })
-
-/** Gateway MCP servers: the chosen workspace's catalog (`GatewayRead::McpServers`, C22). */
-function McpTab({ snapshot, dispatch }: { snapshot: ShellSnapshot; dispatch: Dispatch }) {
-    const mcp = snapshot.harness.mcp
-    const context = snapshot.active?.context ?? null
-    const workspace = snapshot.gateway.selected?.reference ?? null
-    if (!workspace) return <p className='text-[13px]'>{C.noWorkspace}</p>
-    if (!mcp || mcp.servers.length === 0) {
-        return (
-            <div className='flex flex-col gap-2 text-[13px]'>
-                <p>{C.mcpNotRead}</p>
-                <div>
-                    <button
-                        type='button'
-                        onClick={() => context && void dispatch({ kind: 'listMcpServers', context, workspace })}
-                        className='h-8 rounded-[7px] border px-3 text-[13px]'
-                        style={{ borderColor: 'var(--v2-rule)' }}
-                    >
-                        {C.readMcp}
-                    </button>
-                </div>
-            </div>
-        )
-    }
-    return (
-        <table className='w-full text-left text-[13px]' data-slot='admin-mcp'>
-            <thead>
-                <tr>
-                    <th scope='col' className='py-1 pr-3 font-medium'>
-                        Server
-                    </th>
-                    <th scope='col' className='py-1 pr-3 font-medium'>
-                        Namespace
-                    </th>
-                    <th scope='col' className='py-1 font-medium'>
-                        Status
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                {mcp.servers.map((s) => (
-                    <tr key={s.id}>
-                        <td className='py-1 pr-3'>{s.name}</td>
-                        <td className='py-1 pr-3 font-mono text-[12px]'>{s.namespace}</td>
-                        <td className='py-1'>{s.status}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    )
-}

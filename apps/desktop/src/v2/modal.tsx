@@ -13,6 +13,8 @@ interface ModalProps {
     top?: number
     /** Corner radius in CSS px (default 12; the palette's frame is 14). */
     radius?: number
+    /** A sheet docked to the window's right edge under the header (R2App's review sheet, 620px wide, full height). */
+    sheet?: boolean
     'data-slot'?: string
 }
 
@@ -28,7 +30,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * on the window for Escape alone, for when focus has left it (a native
  * sheet returned focus elsewhere), and closes only itself.
  */
-export function Modal({ label, onClose, children, width = 560, padding = 20, top, radius = 12, ...rest }: ModalProps) {
+export function Modal({ label, onClose, children, width = 560, padding = 20, top, radius = 12, sheet = false, ...rest }: ModalProps) {
     const id = useId()
     const pushModal = useShellStore((s) => s.pushModal)
     const popModal = useShellStore((s) => s.popModal)
@@ -125,8 +127,8 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
 
     return (
         <div
-            className='fixed inset-0 z-50 grid place-items-start justify-center'
-            style={{ paddingTop: top ?? '4vh' }}
+            className={sheet ? 'fixed z-50 flex justify-end' : 'fixed inset-0 z-50 grid place-items-start justify-center'}
+            style={sheet ? { inset: 'var(--v2-header, 56px) 0 0 0' } : { paddingTop: top ?? '4vh' }}
             data-v2-scrim=''
             aria-hidden={topmost ? undefined : true}
             inert={topmost ? undefined : true}
@@ -145,7 +147,11 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
                 className='border'
                 // Bounded to the viewport: a tall dialog scrolls inside itself, so its
                 // actions stay reachable at the minimum window size and 200% zoom.
-                style={{ width: `min(${width}px, 92vw)`, maxHeight: '92vh', overflowY: 'auto', padding, borderRadius: radius, boxShadow: '0 24px 60px rgba(0,0,0,0.3)', background: 'var(--v2-paper)', borderColor: 'var(--v2-rule)', color: 'var(--v2-ink)' }}
+                style={
+                    sheet
+                        ? { width: `min(${width}px, 100vw)`, height: '100%', overflowY: 'auto', padding, borderRadius: 0, borderLeft: '1px solid var(--v2-rule)', boxShadow: '-18px 0 40px rgba(0,0,0,0.18)', background: 'var(--v2-bg)', borderWidth: 0, color: 'var(--v2-ink)' }
+                        : { width: `min(${width}px, 92vw)`, maxHeight: '92vh', overflowY: 'auto', padding, borderRadius: radius, boxShadow: '0 24px 60px rgba(0,0,0,0.3)', background: 'var(--v2-paper)', borderColor: 'var(--v2-rule)', color: 'var(--v2-ink)' }
+                }
             >
                 {children}
             </div>

@@ -163,6 +163,7 @@ struct Desk {
     session: String,
     sequence: u64,
     _adapters: Handles,
+    #[allow(dead_code)]
     script: Arc<Mutex<Script>>,
     _server: TlsServer,
 }
@@ -268,6 +269,7 @@ impl Desk {
             .to_owned()
     }
 
+    #[allow(dead_code)]
     fn script(&self) -> std::sync::MutexGuard<'_, Script> {
         self.script.lock().expect("script")
     }
