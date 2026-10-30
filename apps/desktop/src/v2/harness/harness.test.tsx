@@ -1631,8 +1631,83 @@ describe('v2 Harness', () => {
         native.respond = (intent: Intent) => (intent.kind === 'clearHarnessProject' ? { outcome: 'refusal', refusal: 'busy' } : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
         await user.click(within(panel).getByRole('button', { name: 'Remove folder' }))
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'clearHarnessProject', context: CONTEXT }))
-        expect(await screen.findByText(/That was not done\. Folders that hold system files/)).toBeInTheDocument()
+        expect(await screen.findByText('That was not done. The desktop is busy with a previous request. Try again in a moment.')).toBeInTheDocument()
         expect(within(panel).getByText('/Users/someone/work/agent-demo')).toBeInTheDocument()
+    })
+
+    it('keeps a lost receipt as Not confirmed in the v2 panels, naming the action; the next snapshot settles what happened and the page resends nothing (attempt-02 R1)', async () => {
+        const saved = { id: '8f0c3a52-5d1e-8b2a-9c4d-1e2f3a4b5c6d', title: 'Remember periwinkle', updated: 1_790_000_000, entries: 4, source: 'workspaceKey' as const }
+        const signedIn: HarnessSignInView = { workspace: WS, endpoint: 'https://gateway.example/rt/v1', issuer: 'https://id.example/oauth2/default', clientId: 'desktop-client', audience: 'https://gateway.example', selected: true, account: 'alice@example.com', step: null, failure: null }
+        const tools = server({ enabled: true, signedIn: true })
+        const history: HarnessHistoryView = { local: false, state: 'ready', conversations: [saved], unreadable: [], failure: null, full: false, opened: null, busy: false, problem: null, export: null }
+        const { native, user } = await launch(withHarness({ project: { path: '/Users/someone/work/agent-demo', write: false }, signIn: signedIn, mcp: mcpOf([tools]), history }))
+        await openSetup(user)
+        // Every receipt for these actions is lost (the client's one resend included).
+        const lost = new Set<Intent['kind']>()
+        const respond = native.respond
+        native.respond = (intent: Intent) => {
+            if (lost.has(intent.kind)) throw new DeliveryOutcomeUnknown('lost')
+            return respond(intent)
+        }
+        const sentOf = (kind: Intent['kind']) => native.dispatched.filter((i) => i.kind === kind).length
+        const problem = () => document.querySelector('[data-slot="harness-problem"]')
+        const notConfirmed = async (kind: Intent['kind'], text: string) => {
+            expect(await screen.findByText(text)).toBeInTheDocument()
+            expect(problem()?.textContent).not.toMatch(/not done/)
+            // The page dispatched once; only the client's own single resend may follow it.
+            expect(sentOf(kind)).toBeGreaterThanOrEqual(1)
+            expect(sentOf(kind)).toBeLessThanOrEqual(2)
+            return sentOf(kind)
+        }
+
+        // The folder permission: Not confirmed names the change; the box follows the snapshot, not the click.
+        lost.add('setHarnessWrite')
+        const project = screen.getByRole('region', { name: 'Project folder' })
+        const write = within(project).getByRole('checkbox', { name: 'Allow changes in this folder' })
+        await user.click(write)
+        const writes = await notConfirmed('setHarnessWrite', 'Not confirmed: allowing changes in this folder. The desktop did not confirm it and it may have been done. Check the folder and the permission shown here before trying again.')
+        expect(write).not.toBeChecked()
+        await native.push({ ...native.current, harness: { ...native.current.harness, project: { path: '/Users/someone/work/agent-demo', write: true } } })
+        await waitFor(() => expect(write).toBeChecked())
+        expect(sentOf('setHarnessWrite')).toBe(writes)
+
+        // An MCP sign-out: Not confirmed names the server; the catalog's next read shows it signed out.
+        lost.add('signOutMcpServer')
+        const mcp = screen.getByRole('region', { name: 'Workspace MCP servers' })
+        await user.click(within(mcp).getByRole('button', { name: 'Sign out of Tools' }))
+        const signOuts = await notConfirmed('signOutMcpServer', 'Not confirmed: signing out of Tools. The desktop did not confirm it and it may have been done. Check the servers shown here before trying again.')
+        expect(within(mcp).getByRole('button', { name: 'Sign out of Tools' })).toBeInTheDocument()
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf([{ ...tools, signedIn: false }]) } })
+        await waitFor(() => expect(within(mcp).queryByRole('button', { name: 'Sign out of Tools' })).toBeNull())
+        expect(sentOf('signOutMcpServer')).toBe(signOuts)
+
+        // A permanent deletion: Not confirmed names it; the list keeps the conversation until the core's next word removes it.
+        lost.add('deleteHarnessHistory')
+        const list = screen.getByRole('region', { name: 'Saved conversations' })
+        await user.click(within(list).getByRole('button', { name: 'Open Remember periwinkle' }))
+        const opened = { id: saved.id, title: saved.title, updated: saved.updated, entries: [{ id: 'u-1', role: 'operator' as const, text: 'Remember periwinkle', state: 'complete' as const }], source: 'workspaceKey' as const, notContinuable: null }
+        await native.push({ ...native.current, harness: { ...native.current.harness, history: { ...history, opened } } })
+        await user.click(await screen.findByRole('button', { name: 'Delete…' }))
+        await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
+        const deletes = await notConfirmed('deleteHarnessHistory', 'Not confirmed: deleting the conversation. The desktop did not confirm it and it may have been done. Check the conversations shown here before trying again.')
+        expect(screen.getByRole('button', { name: 'Open Remember periwinkle' })).toBeInTheDocument()
+        await native.push({ ...native.current, harness: { ...native.current.harness, history: { ...history, conversations: [], opened: null } } })
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Open Remember periwinkle' })).toBeNull())
+        expect(sentOf('deleteHarnessHistory')).toBe(deletes)
+
+        // The Harness sign-out: Not confirmed, never "not done"; the next snapshot shows the account gone.
+        lost.add('signOutHarness')
+        await user.click(screen.getByRole('button', { name: 'Sign out' }))
+        const outs = await notConfirmed('signOutHarness', 'Not confirmed: signing out. The desktop did not confirm it and it may have been done. Check the sign-in state shown here before trying again.')
+        expect(screen.getByText('Signed in as alice@example.com')).toBeInTheDocument()
+        await native.push({ ...native.current, harness: { ...native.current.harness, signIn: { ...signedIn, account: null } } })
+        await waitFor(() => expect(screen.queryByText('Signed in as alice@example.com')).toBeNull())
+        expect(sentOf('signOutHarness')).toBe(outs)
+        // A real refusal still says its own reason, not the folder wording and not Not confirmed.
+        native.respond = (intent: Intent) => (intent.kind === 'removeHarnessSignIn' ? { outcome: 'refusal', refusal: 'busy' } : respond(intent))
+        await user.click(screen.getByRole('button', { name: 'Remove company sign-in' }))
+        expect(await screen.findByText('That was not done. The desktop is busy with a previous request. Try again in a moment.')).toBeInTheDocument()
+        native.respond = respond
     })
 
     it('sets up company sign-in, signs in through the browser, chooses the credential and signs out, through the v2 sign-in panel; a refused save is named (C20, attempt-01 E2)', async () => {

@@ -1,7 +1,7 @@
 import { type FormEvent, useId, useState } from 'react'
 import type { ContextRef, CredentialSource, HarnessSignInView, SelectedWorkspace } from '@prisma-airs/desktop-contracts'
 import type { Dispatch, DispatchOutcome } from '../../../features/tenants/dispatch'
-import { GENERIC_FAILURE, SIGN_IN_FAILURE_TEXT, SIGN_IN_NEEDS, SIGN_IN_STEP_TEXT, saveFailureText } from '../text'
+import { SIGN_IN_FAILURE_TEXT, SIGN_IN_NEEDS, SIGN_IN_STEP_TEXT, actionOutcomeText, notConfirmedText, saveFailureText } from '../text'
 import { Btn, Field } from './controls'
 
 interface Props {
@@ -47,6 +47,8 @@ function SignInUnavailable() {
     )
 }
 
+const CHECK = 'Check the sign-in state shown here before trying again.'
+
 function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch, onMessage }: Props & { selected: SelectedWorkspace }) {
     const ids = useId()
     const here = signIn !== null && signIn.workspace.id === selected.workspace.id
@@ -54,12 +56,15 @@ function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch
     const [busy, setBusy] = useState(false)
     const source: CredentialSource = here && signIn.selected ? 'companySignIn' : 'workspaceKey'
 
-    async function send(intent: Parameters<Dispatch>[0], failureText: (outcome: DispatchOutcome) => string = () => GENERIC_FAILURE): Promise<boolean> {
+    // An unknown delivery stays Not confirmed naming the action (a sign-out or a credential choice may have
+    // happened; the sign-in state shown here is the state to reconcile with); a refusal says its own reason.
+    async function send(intent: Parameters<Dispatch>[0], action: string, failureText?: (outcome: DispatchOutcome) => string): Promise<boolean> {
         onMessage(null)
         setBusy(true)
         try {
             const outcome = await dispatch(intent)
-            if (outcome.kind !== 'admitted') onMessage(failureText(outcome))
+            if (outcome.kind === 'unknown') onMessage(notConfirmedText(action, CHECK))
+            else if (outcome.kind !== 'admitted') onMessage(failureText ? failureText(outcome) : actionOutcomeText(outcome, action, CHECK))
             return outcome.kind === 'admitted'
         } finally {
             setBusy(false)
@@ -81,6 +86,7 @@ function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch
                 clientId: value('client'),
                 audience: value('audience'),
             },
+            'saving the company sign-in',
             saveFailureText
         )
         if (!saved) return
@@ -88,7 +94,7 @@ function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch
         // Newly set up, company sign-in becomes the choice for new
         // conversations; signing in is still the operator's step. A running
         // conversation is left alone (changing the credential ends it).
-        if (first && !running) await send({ kind: 'chooseHarnessCredential', context, source: 'companySignIn' })
+        if (first && !running) await send({ kind: 'chooseHarnessCredential', context, source: 'companySignIn' }, 'choosing the company sign-in')
     }
 
     const signedIn = here && signIn.account !== null
@@ -113,7 +119,7 @@ function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch
                                 name={`${ids}-source`}
                                 value={value}
                                 checked={source === value}
-                                onChange={() => void send({ kind: 'chooseHarnessCredential', context, source: value })}
+                                onChange={() => void send({ kind: 'chooseHarnessCredential', context, source: value }, 'choosing the credential')}
                                 className='size-4 min-h-0'
                             />
                             <span className='flex flex-col'>
@@ -165,14 +171,14 @@ function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch
                     ) : null}
                     <div className='flex flex-wrap gap-2'>
                         {step ? (
-                            <Btn onClick={() => void send({ kind: 'cancelHarnessSignIn', context })}>Cancel sign-in</Btn>
+                            <Btn onClick={() => void send({ kind: 'cancelHarnessSignIn', context }, 'cancelling the sign-in')}>Cancel sign-in</Btn>
                         ) : (
-                            <Btn tier='primary' disabled={busy} onClick={() => void send({ kind: 'signInHarness', context })}>
+                            <Btn tier='primary' disabled={busy} onClick={() => void send({ kind: 'signInHarness', context }, 'starting the sign-in')}>
                                 {signedIn ? 'Sign in again' : 'Sign in with your browser'}
                             </Btn>
                         )}
                         {signedIn ? (
-                            <Btn disabled={busy} onClick={() => void send({ kind: 'signOutHarness', context })}>
+                            <Btn disabled={busy} onClick={() => void send({ kind: 'signOutHarness', context }, 'signing out')}>
                                 Sign out
                             </Btn>
                         ) : (
@@ -180,7 +186,7 @@ function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch
                                 Change identity provider
                             </Btn>
                         )}
-                        <Btn tier='tertiary' disabled={busy} onClick={() => void send({ kind: 'removeHarnessSignIn', context })}>
+                        <Btn tier='tertiary' disabled={busy} onClick={() => void send({ kind: 'removeHarnessSignIn', context }, 'removing the company sign-in')}>
                             Remove company sign-in
                         </Btn>
                     </div>

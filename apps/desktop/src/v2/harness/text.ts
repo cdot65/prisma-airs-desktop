@@ -105,6 +105,35 @@ export const SIGN_IN_STEP_TEXT: Record<SignInStep, string> = {
 
 export const GENERIC_FAILURE = 'That was not done. Check the values and try again.'
 
+/**
+ * A panel action the desktop did not confirm (DESIGN-V2 §7): the action is
+ * named as Not confirmed, never as not done, because it may have happened
+ * (a permission change, a sign-out, a permanent deletion); the operator
+ * reconciles through the state the panel shows, and nothing is resent.
+ */
+export function notConfirmedText(action: string, check: string): string {
+    return `Not confirmed: ${action}. The desktop did not confirm it and it may have been done. ${check}`
+}
+
+/**
+ * The line a panel shows for an action that did not apply: an unknown
+ * delivery stays Not confirmed (above); a refusal says why (the refusal's
+ * own reason, or the panel's wording for it); a delivery that failed before
+ * it reached the desktop is not done.
+ */
+export function actionOutcomeText(outcome: DispatchOutcome, action: string, check: string, refusedLine?: (refusal: Refusal) => string | undefined): string | null {
+    switch (outcome.kind) {
+        case 'admitted':
+            return null
+        case 'unknown':
+            return notConfirmedText(action, check)
+        case 'refused':
+            return refusedLine?.(outcome.refusal) ?? `That was not done. ${outcomeMessage(outcome)}`
+        case 'failed':
+            return `That was not done. ${outcomeMessage(outcome)}`
+    }
+}
+
 export const SAVE_REFUSAL_TEXT: Partial<Record<Refusal, string>> = {
     invalidInput: 'Issuer and Gateway endpoint must be https URLs without a query string.',
     busy: 'Sign out of the current company sign-in first.',

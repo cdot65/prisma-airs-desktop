@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import type { ContextRef, HarnessProjectView } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../../../features/tenants/dispatch'
+import { actionOutcomeText } from '../text'
 import { Btn } from './controls'
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 }
 
 const REFUSED = 'Folders that hold system files, credentials or this app’s own data cannot be used.'
+const CHECK = 'Check the folder and the permission shown here before trying again.'
 
 /**
  * The folder the Harness works in (C21, D048), as a v2 panel (C38): chosen
@@ -26,12 +28,13 @@ export function ProjectPanel({ context, project, refused, running, dispatch, onM
     const ids = useId()
     const [busy, setBusy] = useState(false)
 
-    async function send(intent: Parameters<Dispatch>[0]) {
+    // An unknown delivery stays Not confirmed naming the action (the change may have applied; the folder and
+    // its permission shown here are the state to reconcile with); a refusal says its own reason.
+    async function send(intent: Parameters<Dispatch>[0], action: string) {
         onMessage(null)
         setBusy(true)
         try {
-            const outcome = await dispatch(intent)
-            if (outcome.kind !== 'admitted') onMessage(`That was not done. ${REFUSED}`)
+            onMessage(actionOutcomeText(await dispatch(intent), action, CHECK))
         } finally {
             setBusy(false)
         }
@@ -54,7 +57,9 @@ export function ProjectPanel({ context, project, refused, running, dispatch, onM
                             checked={project.write}
                             disabled={busy}
                             aria-describedby={`${ids}-write`}
-                            onChange={(event) => void send({ kind: 'setHarnessWrite', context, write: event.target.checked })}
+                            onChange={(event) =>
+                                void send({ kind: 'setHarnessWrite', context, write: event.target.checked }, event.target.checked ? 'allowing changes in this folder' : 'making this folder read-only')
+                            }
                         />
                         Allow changes in this folder
                     </label>
@@ -80,11 +85,11 @@ export function ProjectPanel({ context, project, refused, running, dispatch, onM
                 </p>
             ) : null}
             <div className='flex flex-wrap gap-2'>
-                <Btn disabled={busy} onClick={() => void send({ kind: 'chooseHarnessProject', context })}>
+                <Btn disabled={busy} onClick={() => void send({ kind: 'chooseHarnessProject', context }, 'choosing a folder')}>
                     {project ? 'Choose another folder…' : 'Choose a folder…'}
                 </Btn>
                 {project ? (
-                    <Btn tier='tertiary' disabled={busy} onClick={() => void send({ kind: 'clearHarnessProject', context })}>
+                    <Btn tier='tertiary' disabled={busy} onClick={() => void send({ kind: 'clearHarnessProject', context }, 'removing the folder')}>
                         Remove folder
                     </Btn>
                 ) : null}

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ContextRef, HarnessHistoryView, HistoryFormat, SelectedWorkspace } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../../../features/tenants/dispatch'
-import { HISTORY_FAILURE_TEXT, HISTORY_FORMATS, NOT_CONTINUABLE_TEXT, savedAt } from '../text'
+import { HISTORY_FAILURE_TEXT, HISTORY_FORMATS, NOT_CONTINUABLE_TEXT, actionOutcomeText, savedAt } from '../text'
 import { Btn } from './controls'
 
 interface Props {
@@ -27,6 +27,8 @@ const card = { borderColor: 'var(--v2-rule)' }
  * chosen one's, read from this Mac only (T23): read, exported and deleted,
  * never continued.
  */
+const CHECK = 'Check the conversations shown here before trying again.'
+
 export function HistoryPanel({ context, selected, history, running, dispatch, onMessage }: Props) {
     const ids = useId()
     const [format, setFormat] = useState<HistoryFormat>('markdown')
@@ -58,10 +60,12 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
         if (!opened && was !== null) listRef.current?.focus()
     }, [opened])
 
-    async function send(intent: Parameters<Dispatch>[0]): Promise<boolean> {
+    // An unknown delivery stays Not confirmed naming the action (a deletion is permanent and may have happened;
+    // the conversations shown here are the state to reconcile with); a refusal says its own reason.
+    async function send(intent: Parameters<Dispatch>[0], action: string): Promise<boolean> {
         onMessage(null)
         const outcome = await dispatch(intent)
-        if (outcome.kind !== 'admitted') onMessage('That was not done.')
+        onMessage(actionOutcomeText(outcome, action, CHECK))
         return outcome.kind === 'admitted'
     }
 
@@ -98,7 +102,7 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
                                     {`${c.entries} messages · ${savedAt(c.updated)} · ${c.source === 'companySignIn' ? 'company sign-in' : 'workspace key'}`}
                                 </span>
                             </span>
-                            <Btn disabled={busy} aria-label={`Open ${c.title || 'untitled conversation'}`} onClick={() => void send({ kind: 'openHarnessHistory', context, workspace, id: c.id })}>
+                            <Btn disabled={busy} aria-label={`Open ${c.title || 'untitled conversation'}`} onClick={() => void send({ kind: 'openHarnessHistory', context, workspace, id: c.id }, 'opening the conversation')}>
                                 Open
                             </Btn>
                         </li>
@@ -118,7 +122,7 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
                                         disabled={busy}
                                         onClick={async () => {
                                             setConfirming(null)
-                                            await send({ kind: 'deleteHarnessHistory', context, workspace, id })
+                                            await send({ kind: 'deleteHarnessHistory', context, workspace, id }, 'deleting the unreadable conversation')
                                         }}
                                     >
                                         Delete permanently
@@ -165,7 +169,7 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
                     {opened.notContinuable ? <p className='text-[13px]'>{NOT_CONTINUABLE_TEXT[opened.notContinuable]}</p> : null}
                     <div className='flex flex-wrap items-end gap-2'>
                         {opened.notContinuable === null && workspace !== null ? (
-                            <Btn tier='primary' disabled={busy || running} onClick={() => void send({ kind: 'resumeHarness', context, workspace, id: opened.id })}>
+                            <Btn tier='primary' disabled={busy || running} onClick={() => void send({ kind: 'resumeHarness', context, workspace, id: opened.id }, 'continuing the conversation')}>
                                 Continue this conversation
                             </Btn>
                         ) : null}
@@ -179,7 +183,7 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
                                 ))}
                             </select>
                         </label>
-                        <Btn disabled={exportState?.state === 'saving'} onClick={() => void send({ kind: 'exportHarnessHistory', context, workspace, id: opened.id, format })}>
+                        <Btn disabled={exportState?.state === 'saving'} onClick={() => void send({ kind: 'exportHarnessHistory', context, workspace, id: opened.id, format }, 'exporting the conversation')}>
                             Export…
                         </Btn>
                         {confirming === opened.id ? (
@@ -188,7 +192,7 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
                                     disabled={busy}
                                     onClick={async () => {
                                         setConfirming(null)
-                                        await send({ kind: 'deleteHarnessHistory', context, workspace, id: opened.id })
+                                        await send({ kind: 'deleteHarnessHistory', context, workspace, id: opened.id }, 'deleting the conversation')
                                     }}
                                 >
                                     Delete permanently
@@ -202,7 +206,7 @@ export function HistoryPanel({ context, selected, history, running, dispatch, on
                                 Delete…
                             </Btn>
                         )}
-                        <Btn tier='tertiary' onClick={() => void send({ kind: 'closeHarnessHistory', context, workspace })}>
+                        <Btn tier='tertiary' onClick={() => void send({ kind: 'closeHarnessHistory', context, workspace }, 'closing the conversation')}>
                             Close
                         </Btn>
                     </div>

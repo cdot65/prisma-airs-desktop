@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import type { ContextRef, HarnessMcpView, McpServerView, SelectedWorkspace } from '@prisma-airs/desktop-contracts'
 import { MANAGEMENT_FAILURE_TEXT } from '../../../features/administration/management-read'
 import type { Dispatch } from '../../../features/tenants/dispatch'
-import { MCP_MAX_ON, MCP_SIGN_IN_FAILURE_TEXT, MCP_STEP_TEXT } from '../text'
+import { MCP_MAX_ON, MCP_SIGN_IN_FAILURE_TEXT, MCP_STEP_TEXT, actionOutcomeText } from '../text'
 import { Btn } from './controls'
 
 function standing(s: McpServerView): string {
@@ -40,6 +40,8 @@ const faint = { color: 'var(--v2-faint)' }
  * eight), each signed in to in the browser by this app. The engine only
  * ever gets each server's token in memory, and asks before every tool call.
  */
+const CHECK = 'Check the servers shown here before trying again.'
+
 export function McpPanel({ context, selected, mcp, running, dispatch, onMessage }: Props) {
     const ids = useId()
     const [busy, setBusy] = useState(false)
@@ -51,12 +53,14 @@ export function McpPanel({ context, selected, mcp, running, dispatch, onMessage 
         void dispatch({ kind: 'listMcpServers', context, workspace })
     }, [dispatch, context, workspace])
 
-    async function send(intent: Parameters<Dispatch>[0], refused: string) {
+    // An unknown delivery stays Not confirmed naming the action (a sign-out or a change of which servers are on
+    // may have happened; the catalog shown here is the state to reconcile with); a refusal says this panel's
+    // reason for it when it has one, else the refusal's own.
+    async function send(intent: Parameters<Dispatch>[0], action: string, refused?: string) {
         onMessage(null)
         setBusy(true)
         try {
-            const outcome = await dispatch(intent)
-            if (outcome.kind !== 'admitted') onMessage(refused)
+            onMessage(actionOutcomeText(await dispatch(intent), action, CHECK, () => refused))
         } finally {
             setBusy(false)
         }
@@ -105,6 +109,7 @@ export function McpPanel({ context, selected, mcp, running, dispatch, onMessage 
                                         onChange={(event) =>
                                             void send(
                                                 { kind: 'enableMcpServer', context, workspace, server: s.id, enabled: event.target.checked },
+                                                event.target.checked ? `turning ${s.name} on` : `turning ${s.name} off`,
                                                 'That was not done. At most eight servers can be on, and only ones in the catalog.'
                                             )
                                         }
@@ -127,19 +132,19 @@ export function McpPanel({ context, selected, mcp, running, dispatch, onMessage 
                                 ) : null}
                                 <div className='mt-1 flex flex-wrap gap-2'>
                                     {s.step ? (
-                                        <Btn tier='tertiary' onClick={() => void send({ kind: 'cancelMcpSignIn', context }, 'That was not done.')}>
+                                        <Btn tier='tertiary' onClick={() => void send({ kind: 'cancelMcpSignIn', context }, 'cancelling the sign-in')}>
                                             Cancel sign-in
                                         </Btn>
                                     ) : (
                                         <Btn
                                             disabled={busy || !s.supported || signingIn}
-                                            onClick={() => void send({ kind: 'signInMcpServer', context, workspace, server: s.id }, 'Sign-in could not start. Another may be in progress.')}
+                                            onClick={() => void send({ kind: 'signInMcpServer', context, workspace, server: s.id }, `starting the sign-in to ${s.name}`, 'Sign-in could not start. Another may be in progress.')}
                                         >
                                             {holdsSignIn ? `Sign in to ${s.name} again` : `Sign in to ${s.name}`}
                                         </Btn>
                                     )}
                                     {holdsSignIn ? (
-                                        <Btn tier='tertiary' disabled={busy} onClick={() => void send({ kind: 'signOutMcpServer', context, workspace, server: s.id }, 'That was not done.')}>
+                                        <Btn tier='tertiary' disabled={busy} onClick={() => void send({ kind: 'signOutMcpServer', context, workspace, server: s.id }, `signing out of ${s.name}`)}>
                                             {`Sign out of ${s.name}`}
                                         </Btn>
                                     ) : null}
@@ -154,7 +159,7 @@ export function McpPanel({ context, selected, mcp, running, dispatch, onMessage 
                     Turning a server off, signing in again or signing out ends the running conversation that uses it.
                 </p>
             ) : null}
-            <Btn tier='tertiary' className='self-start' disabled={here && mcp.state === 'loading'} onClick={() => void send({ kind: 'listMcpServers', context, workspace }, 'The servers could not be read.')}>
+            <Btn tier='tertiary' className='self-start' disabled={here && mcp.state === 'loading'} onClick={() => void send({ kind: 'listMcpServers', context, workspace }, 'reading the servers', 'The servers could not be read.')}>
                 Read the servers again
             </Btn>
         </section>
