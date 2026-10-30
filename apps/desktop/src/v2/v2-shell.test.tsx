@@ -67,10 +67,10 @@ describe('v2 shell', () => {
         // An unavailable destination dispatches nothing.
         await user.click(rail().getByRole('button', { name: /Inbox/ }))
         expect(intents(native).filter((k) => k === 'navigate')).toHaveLength(1)
-        // A Home card is the same intent.
+        // A Home quick action is the same intent.
         await native.push({ ...native.current, activeFeature: 'home' })
-        await user.click(within(screen.getByRole('main')).getByRole('button', { name: /Test Cases/ }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'library' })
+        await user.click(within(screen.getByRole('main')).getByRole('button', { name: /Ask the Harness/ }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'harness' })
     })
 
     it('reports a refused navigation on the status surface as a warn toast', async () => {

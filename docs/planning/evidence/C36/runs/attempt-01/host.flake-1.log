@@ -1,0 +1,42 @@
+$ cargo test --locked -p desktop-host --features test-fixtures
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.13s
+     Running unittests src/lib.rs (target/debug/deps/desktop_host-f820a462ca56a6f2)
+
+running 3 tests
+test keychain::tests::status_codes_map_to_sanitized_failures ... ok
+test menu::tests::go_items_follow_the_presentation_catalogue ... ok
+test adapters::tests::reads_are_bounded_and_limited_to_regular_files ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/prisma_airs_desktop_v2-15e7e6a365c2a334)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/browser_callback.rs (target/debug/deps/browser_callback-c05b35e14d9407a1)
+
+running 4 tests
+test a_non_https_verification_page_fails_the_sign_in_and_is_never_opened ... ok
+test the_renderer_opens_only_the_page_the_issuer_returned_for_the_current_flow ... ok
+test harness_sign_in_opens_only_the_issuers_page_and_completes_only_on_its_loopback ... ok
+test learner_results_cross_ipc_once_with_no_credential ... FAILED
+
+failures:
+
+---- learner_results_cross_ipc_once_with_no_credential stdout ----
+
+thread 'learner_results_cross_ipc_once_with_no_credential' (53022328) panicked at apps/desktop/src-tauri/tests/browser_callback.rs:287:9:
+AwaitingApproval { user_code: "ABCD-EFGH", verification_uri: "https://localhost:55445/activate", expires_in: 599 }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    learner_results_cross_ipc_once_with_no_credential
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.98s
+
+error: test failed, to rerun pass `-p desktop-host --test browser_callback`
+EXIT 101

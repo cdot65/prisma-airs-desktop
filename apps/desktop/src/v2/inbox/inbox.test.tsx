@@ -144,7 +144,8 @@ describe('Inbox', () => {
         const user = userEvent.setup()
         const native = await launch({ ...fxInbox(), activeFeature: 'home' })
         native.respond = () => ({ outcome: 'refusal', refusal: 'capabilityMissing' })
-        await user.click(screen.getByRole('button', { name: 'Read now' }))
+        // Home's Refresh (R2App) is the same readTenant intent the Inbox's Read now sends.
+        await user.click(screen.getByRole('button', { name: 'Refresh' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'readTenant', context: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' })
         expect(await screen.findByText('The read of Northwind Health was refused (capabilityMissing). That is not available for the current tenant.')).toBeInTheDocument()
         expect(document.querySelector('[data-slot="toast"]')?.getAttribute('data-kind')).toBe('warn')

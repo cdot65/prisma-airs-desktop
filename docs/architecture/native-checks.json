@@ -1278,6 +1278,16 @@
         "id": "C35-N03",
         "check": "Keyboard and layout (T09): Tab from the tenant button reaches the destinations, the status block, the header's search button, the Explain switch and Ask Harness in that order, with the focus ring on the search button; Space on the Explain switch flips the preference; Home, Inbox and Administration at 1440 wide by the display's full working height, and at 900\u00d7600 with 200% zoom, in light and dark with no horizontal overflow. Every row records the WebView's measured size from the accessibility tree and asserts it (1440 wide; exactly 900\u00d7600): a clamped resize never passes as the requested size."
       }
+    ],
+    "C36": [
+      {
+        "id": "C36-N01",
+        "check": "Home as the prototype draws it (R2App start=home) with a tenant whose read has landed: the heading, the one-line read summary (products, the core's read status, the needs-action count) and Refresh; the Explain banner while the calls are shown and gone when they are not; six product cards in three columns, each naming its product, its pill (Connected, Partial, Needs a role, Connecting, Failed or Not available), a figure or an em dash with its metric, and a last line; the Runtime card's figure is the read's detection events and the Gateway card's its day's requests; the two gated products carry their gate and the New tag; opening a card opens that product in Administration; Needs attention lists the items needing action with their own action, Acknowledge and Snooze sending the core intents, or its empty state naming the read; Quick actions open the Playground, the Harness, the API Client and Academy (D059 parity: the owner's approval of the composites is recorded in evidence/C36/parity/notes.md)."
+      },
+      {
+        "id": "C36-N02",
+        "check": "Keyboard and layout (T09): Tab from the heading reaches Refresh, each card, the attention row's controls and the quick actions in order, with the focus ring on a card; Enter on a card opens its product; Home at 1440 wide by the display's full working height and at 900\u00d7600 with 200% zoom, in light and dark, with no horizontal overflow; every row records the WebView's measured size from the accessibility tree and asserts it."
+      }
     ]
   }
 }

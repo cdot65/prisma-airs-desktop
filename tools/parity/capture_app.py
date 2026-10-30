@@ -57,6 +57,8 @@ def main():
     ap.add_argument("--no-tenant", action="store_true", help="capture without creating a tenant")
     ap.add_argument("--prepare", help="native-prepare.json to take the bundle from (default: the chunk's)")
     ap.add_argument("--measure", action="append", default=[], help="print the geometry of nodes whose label starts with this (after sizing)")
+    ap.add_argument("--read", action="store_true", help="read the tenant first (Home's Refresh), so the screens carry the synthetic plane's figures")
+    ap.add_argument("--press", action="append", default=[], help="on each screen, press the first button whose name contains this before capturing (a row to open, say)")
     args = ap.parse_args()
     screens = args.screen or ["home"]
     evidence = os.path.join(ROOT, "docs/planning/evidence", args.chunk)
@@ -108,11 +110,27 @@ def main():
                 label = (n.get("label") or n.get("value") or "")
                 if n.get("role") in ("AXWebArea",) or n.get("subrole") == "AXLandmarkNavigation" or any(label.startswith(m) for m in args.measure):
                     print("node", n.get("role"), n.get("subrole"), repr(label[:40]), n.get("pos"), n.get("size"), file=sys.stderr)
+        if args.read and not args.no_tenant:
+            app.menu("Go", "Home")
+            app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None, 15)
+            time.sleep(0.6)
+            # Home's Refresh (R2App, C36) or the earlier Home's Read now: the same readTenant intent.
+            read_button = "Refresh" if fx.App.node(app.tree(), "AXButton", "Refresh") else "Read now"
+            c29.press(app, "AXButton", read_button)
+            _, landed = app.wait_for(lambda t: app.has_text(t, "Read finished") and fx.App.node(t, "AXButton", read_button) is not None, 60)
+            print("read landed", landed, file=sys.stderr)
+            time.sleep(0.8)
         for screen in screens:
             menu, heading, start = SCREENS[screen]
             app.menu("Go", menu)
             app.wait_for(lambda t: fx.App.node(t, "AXHeading", heading) is not None, 15)
             time.sleep(1.0)
+            for prefix in args.press:
+                node = next((n for n in app.tree() if n.get("role") == "AXButton" and prefix in (n.get("label") or "")), None)
+                if node:
+                    app.ax("press", "AXButton", node["label"][:60])
+                    time.sleep(0.6)
+                print("pressed", prefix, node is not None, file=sys.stderr)
             for theme in ("Light", "Dark"):
                 c29.appearance(app, theme)
                 time.sleep(0.6)

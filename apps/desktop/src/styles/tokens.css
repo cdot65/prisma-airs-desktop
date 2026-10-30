@@ -157,6 +157,10 @@
         flex: 1 1 120px !important;
         min-width: 0;
     }
+    /* Home's attention and quick-action sections stack when the page is narrow (C36). */
+    [data-v2-shell] [data-slot='home-lower'] {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
 }
 /* The selected destination is accent-filled, so its ring is the ink-on-accent
  * colour; every other control keeps the accent ring. */

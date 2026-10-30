@@ -1,0 +1,967 @@
+diff --git a/apps/desktop/src/styles/tokens.css b/apps/desktop/src/styles/tokens.css
+index dc59a4fe..e3a1c67e 100644
+--- a/apps/desktop/src/styles/tokens.css
++++ b/apps/desktop/src/styles/tokens.css
+@@ -157,6 +157,10 @@
+         flex: 1 1 120px !important;
+         min-width: 0;
+     }
++    /* Home's attention and quick-action sections stack when the page is narrow (C36). */
++    [data-v2-shell] [data-slot='home-lower'] {
++        grid-template-columns: minmax(0, 1fr) !important;
++    }
+ }
+ /* The selected destination is accent-filled, so its ring is the ink-on-accent
+  * colour; every other control keeps the accent ring. */
+diff --git a/apps/desktop/src/v2/copy.ts b/apps/desktop/src/v2/copy.ts
+index 0986dfa9..13117429 100644
+--- a/apps/desktop/src/v2/copy.ts
++++ b/apps/desktop/src/v2/copy.ts
+@@ -179,6 +179,43 @@ export const GUARD_COPY = {
+ 
+ export const HOME_COPY = {
+     title: 'Home',
++    greeting: (account: string) => `Good ${(() => { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening' })()}, ${account.split(/\s+/)[0]}`,
++    refresh: 'Refresh',
++    recheck: 'Recheck',
++    cards: 'Product cards',
++    sub: {
++        products: (n: number) => `${n} product${n === 1 ? '' : 's'}`,
++        needAction: (n: number) => `${n} need${n === 1 ? 's' : ''} action`,
++        partial: (n: number) => `${n} source${n === 1 ? '' : 's'} partial`,
++    },
++    explain: 'Each card is one product: its headline figure for the period shown and how fresh it is. "Partial" means a source answered only in part, so the figure may be low. Open a card to manage that product in Administration.',
++    pill: { connected: 'Connected', partial: 'Partial', needsRole: 'Needs a role', connecting: 'Connecting', failed: 'Failed', unavailable: 'Not available' },
++    metric: { runtimeSecurity: 'detection events · last read', gateway: 'requests · today', redTeam: 'sources read', modelSkill: 'sources read', agenticIdentity: '', agenticEndpoint: '' } as Record<import('@prisma-airs/desktop-contracts').AdminProductId, string>,
++    cardNeedsRole: (detail: string | null) => `${detail ?? 'Missing read role'} · check again in Administration`,
++    runtimeViolating: (n: number) => `${n} violating session${n === 1 ? '' : 's'}`,
++    noDetections: 'No detections in this read',
++    gatewayErrorRate: (rate: number) => `Error rate ${rate.toFixed(1)}% today`,
++    gatewayNoRequests: (workspace: string) => `No requests today · ${workspace}`,
++    gatewayNoWorkspace: 'No Gateway workspace chosen · choose one in Administration',
++    usageNotRead: (workspace: string) => `Usage not read · ${workspace}`,
++    errorsUnknown: (workspace: string) => `Error count unknown · ${workspace}`,
++    chartNotRead: 'Sessions chart not read · figure may be low',
++    activityUnknown: 'Activity unknown · check again in Administration',
++    partialRead: (read: number, total: number) => `Partial · ${read} of ${total} sources`,
++    readOnly: 'Read-only here',
++    openRoleIssue: 'Open role issue',
++    acknowledge: 'Acknowledge',
++    quickActions: 'Quick actions',
++    quick: {
++        prompt: 'Test a prompt',
++        promptSub: 'AI Runtime Security · Playground',
++        harness: 'Ask the Harness',
++        harnessSub: 'Investigate with your tools',
++        request: 'Send a request',
++        requestSub: 'API Client · built-in catalog',
++        learn: 'Keep learning',
++        learnSub: 'Academy courses and labs',
++    },
+     noTenant: 'Add a tenant to start reading it.',
+     firstRead: 'First read pending',
+     reading: 'Reading…',
+diff --git a/apps/desktop/src/v2/home.tsx b/apps/desktop/src/v2/home.tsx
+index 41ad4d87..312f4ead 100644
+--- a/apps/desktop/src/v2/home.tsx
++++ b/apps/desktop/src/v2/home.tsx
+@@ -1,10 +1,9 @@
+ import { forwardRef } from 'react'
+-import type { FeatureId, ProductId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
+-import { FEATURE_ICONS } from '../shell/icons'
+-import { ENVIRONMENT_LABELS, HOME_COPY, READ_COPY, SHELL_COPY, SNOOZE_COPY, clockOf } from './copy'
+-import { type Act, destinationFeature, follow, holdWhat, toneOf } from './inbox/inbox'
++import type { AdminProduct, AdminProductId, FeatureId, InboxEntry, ProductId, ProductRead, ShellSnapshot } from '@prisma-airs/desktop-contracts'
++import { HOME_COPY, INBOX_COPY, READ_COPY, SHELL_COPY, SNOOZE_COPY, clockOf } from './copy'
++import { Glyph, PRODUCT_GLYPHS, type GlyphName } from './icons'
++import { type Act, destinationFeature, follow, holdWhat } from './inbox/inbox'
+ import { useShellStore } from './store'
+-import { Verdict } from './verdict'
+ 
+ export interface HomeProps {
+     snapshot: ShellSnapshot
+@@ -62,143 +61,357 @@ export function readLine(snapshot: ShellSnapshot, tenant: string | null): { text
+ }
+ 
+ /**
+- * Home (C28 skeleton, C30 attention and reads): the destination title row,
+- * the tenant line, the one read-status line from the core's ReadStatus, up
+- * to five items needing attention with their contextual action, Acknowledge
+- * and Snooze (whose label is the Inbox's, I11), one card per chosen product
+- * with its read state, and the destinations. Nothing here is invented:
+- * every line reads the snapshot.
++ * The one line under the greeting (R2App `homeSub`): the product count, the
++ * core's read-status line (I4: pending, reading, finished with its coverage,
++ * or failed, exactly as `readLine` says it) and the needs-action count.
++ */
++export function homeSub(snapshot: ShellSnapshot, tenant: string, products: number, needing: number): string {
++    const parts = [HOME_COPY.sub.products(products), readLine(snapshot, tenant).text]
++    if (needing > 0) parts.push(HOME_COPY.sub.needAction(needing))
++    return parts.join(' · ')
++}
++
++type Pill = { word: string; bg: string; fg: string; glyph: GlyphName }
++const PILLS: Record<'ok' | 'partial' | 'role' | 'pending' | 'failed' | 'gated', Pill> = {
++    ok: { word: HOME_COPY.pill.connected, bg: 'var(--v2-ok-bg)', fg: 'var(--v2-ok)', glyph: 'check' },
++    partial: { word: HOME_COPY.pill.partial, bg: 'var(--v2-flag-bg)', fg: 'var(--v2-flag)', glyph: 'alert' },
++    role: { word: HOME_COPY.pill.needsRole, bg: 'var(--v2-flag-bg)', fg: 'var(--v2-flag)', glyph: 'alert' },
++    pending: { word: HOME_COPY.pill.connecting, bg: 'var(--v2-inset)', fg: 'var(--v2-soft)', glyph: 'clock' },
++    failed: { word: HOME_COPY.pill.failed, bg: 'var(--v2-block-bg)', fg: 'var(--v2-block)', glyph: 'ban' },
++    gated: { word: HOME_COPY.pill.unavailable, bg: 'var(--v2-inset)', fg: 'var(--v2-faint)', glyph: 'lock' },
++}
++
++interface Card {
++    id: AdminProductId
++    /** The read can be asked for again (a role granted, a failure, partial coverage): the C30 recheck. */
++    recheck: ProductId | null
++    name: string
++    pill: Pill
++    value: string
++    valueColor: string
++    metric: string
++    spark: { h: number; hot: boolean }[]
++    sub: string
++    subColor: string
++    subGlyph: GlyphName
++    isNew: boolean
++    gated: boolean
++}
++
++/** The products the read reports on (the inventory ids with an admitted service). */
++const readIdOf = (id: AdminProductId): ProductId | null => (id === 'agenticIdentity' || id === 'agenticEndpoint' ? null : id)
++
++const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`
++const count = (n: number) => n.toLocaleString('en-US')
++
++/**
++ * One card per Administration product (R2App `cards`), from the core only:
++ * Runtime's headline is the read's detection events over its chart; the
++ * Gateway's is the chosen workspace's day; Red Teaming and model/skill scans
++ * carry their read state (the core publishes no figures for them); the two
++ * gated products carry their gate. Nothing scripted is drawn.
++ */
++export function cardOf(snapshot: ShellSnapshot, product: AdminProduct, attention: InboxEntry[]): Card {
++    const readId = readIdOf(product.id)
++    const read = snapshot.inbox.read
++    const state: ProductRead | undefined = readId ? read.products.find((p) => p.product === readId) : undefined
++    const recheck = readId && state && (state.state === 'needsRole' || state.state === 'failed' || state.state === 'incomplete') ? readId : null
++    const base = { id: product.id, name: product.label, isNew: product.availability.state === 'unavailable', gated: product.availability.state === 'unavailable', recheck }
++    const blank = (pill: Pill, sub: string, subColor = 'var(--v2-faint)', subGlyph: GlyphName = 'clock'): Card => ({ ...base, pill, value: '—', valueColor: 'var(--v2-faint)', metric: HOME_COPY.metric[product.id] ?? '', spark: [], sub, subColor, subGlyph })
++    if (product.availability.state === 'unavailable') return blank(PILLS.gated, product.availability.reason, 'var(--v2-faint)', 'lock')
++    if (!state || state.state === 'pending' || state.state === 'notRead') return blank(PILLS.pending, read.state === 'reading' ? HOME_COPY.reading : HOME_COPY.firstRead)
++    if (state.state === 'needsRole') return blank(PILLS.role, HOME_COPY.cardNeedsRole(state.detail), 'var(--v2-flag)', 'alert')
++    if (state.state === 'failed') return blank(PILLS.failed, state.detail ?? READ_COPY.productState.failed ?? 'Failed', 'var(--v2-block)', 'ban')
++    const pill = state.state === 'incomplete' ? PILLS.partial : PILLS.ok
++    const worst = attention.find((e) => e.product === readId)
++    const overview = snapshot.overview.read
++    // The worst attention item is the last line when there is one; else the line states what the
++    // read established, and names what it could not (R1): unknown is never an all-clear.
++    const worstLine = worst ? { sub: worst.title, subColor: worst.severity === 'bad' ? 'var(--v2-block)' : 'var(--v2-flag)', subGlyph: (worst.severity === 'bad' ? 'ban' : 'alert') as GlyphName } : null
++    if (product.id === 'runtimeSecurity' && overview) {
++        const events = overview.summary.detectionEvents
++        const buckets = overview.chart?.buckets ?? []
++        const max = Math.max(1, ...buckets.map((b) => b.violating))
++        const spark = buckets.slice(-12).map((b) => ({ h: Math.max(2, Math.round((b.violating / max) * 38)), hot: b.violating > 0 }))
++        const violating = overview.summary.violating
++        const line =
++            worstLine ??
++            (overview.chart === null || overview.chartFailure !== null
++                ? { sub: HOME_COPY.chartNotRead, subColor: 'var(--v2-flag)', subGlyph: 'alert' as GlyphName }
++                : violating === null
++                  ? { sub: HOME_COPY.activityUnknown, subColor: 'var(--v2-flag)', subGlyph: 'alert' as GlyphName }
++                  : violating > 0
++                    ? { sub: HOME_COPY.runtimeViolating(violating), subColor: 'var(--v2-soft)', subGlyph: 'check' as GlyphName }
++                    : { sub: HOME_COPY.noDetections, subColor: 'var(--v2-soft)', subGlyph: 'check' as GlyphName })
++        return {
++            ...base,
++            pill,
++            value: events === null ? '—' : count(events),
++            valueColor: events !== null && events > 0 ? 'var(--v2-block)' : 'var(--v2-ink)',
++            metric: HOME_COPY.metric.runtimeSecurity,
++            spark,
++            ...line,
++        }
++    }
++    if (product.id === 'gateway') {
++        const g = overview?.gateway ?? null
++        if (!g) {
++            // No workspace chosen (or no read yet): no day to draw, and the gate said (R2).
++            return { ...base, pill, value: '—', valueColor: 'var(--v2-faint)', metric: HOME_COPY.metric.gateway, spark: [], ...(worstLine ?? { sub: HOME_COPY.gatewayNoWorkspace, subColor: 'var(--v2-faint)', subGlyph: 'route' as GlyphName }) }
++        }
++        const requests = g.requests
++        const errors = g.errors
++        const rate = requests !== null && errors !== null && requests > 0 ? (errors / requests) * 100 : null
++        const line =
++            worstLine ??
++            (g.usageFailure !== null || requests === null
++                ? { sub: HOME_COPY.usageNotRead(g.workspaceName), subColor: 'var(--v2-flag)', subGlyph: 'alert' as GlyphName }
++                : errors === null
++                  ? { sub: HOME_COPY.errorsUnknown(g.workspaceName), subColor: 'var(--v2-flag)', subGlyph: 'alert' as GlyphName }
++                  : rate === null
++                    ? { sub: HOME_COPY.gatewayNoRequests(g.workspaceName), subColor: 'var(--v2-soft)', subGlyph: 'check' as GlyphName }
++                    : { sub: HOME_COPY.gatewayErrorRate(rate), subColor: rate > 5 ? 'var(--v2-block)' : 'var(--v2-soft)', subGlyph: (rate > 5 ? 'ban' : 'check') as GlyphName })
++        return {
++            ...base,
++            pill: g.partial ? PILLS.partial : pill,
++            value: requests === null ? '—' : count(requests),
++            valueColor: 'var(--v2-ink)',
++            metric: g.cost === null ? HOME_COPY.metric.gateway : `${HOME_COPY.metric.gateway} · ${dollars(g.cost)}`,
++            spark: [],
++            ...line,
++        }
++    }
++    // Read-state cards: the read's coverage is the figure the core has.
++    return {
++        ...base,
++        pill,
++        value: state.sourcesTotal > 0 ? `${state.sourcesRead}/${state.sourcesTotal}` : '—',
++        valueColor: 'var(--v2-ink)',
++        metric: HOME_COPY.metric[product.id] ?? READ_COPY.sources(state.sourcesRead, state.sourcesTotal),
++        spark: [],
++        sub: worst ? worst.title : state.detail ?? (state.state === 'incomplete' ? HOME_COPY.partialRead(state.sourcesRead, state.sourcesTotal) : HOME_COPY.readOnly),
++        subColor: worst ? (worst.severity === 'bad' ? 'var(--v2-block)' : 'var(--v2-flag)') : state.state === 'incomplete' ? 'var(--v2-flag)' : 'var(--v2-soft)',
++        subGlyph: worst ? (worst.severity === 'bad' ? 'ban' : 'alert') : state.state === 'incomplete' ? 'alert' : 'check',
++    }
++}
++
++const severityTile = (e: InboxEntry): { glyph: GlyphName; fg: string; bg: string } =>
++    e.severity === 'bad' ? { glyph: 'ban', fg: 'var(--v2-block)', bg: 'var(--v2-block-bg)' } : e.severity === 'warn' ? { glyph: 'alert', fg: 'var(--v2-flag)', bg: 'var(--v2-flag-bg)' } : { glyph: 'info', fg: 'var(--v2-soft)', bg: 'var(--v2-inset)' }
++
++/**
++ * Home as the prototype draws it (R2App start=home, C36): the greeting row
++ * with the read summary and Refresh, the Explain banner while the calls are
++ * shown, the six product cards, then Needs attention beside Quick actions.
++ * Every figure reads the snapshot; every action is a core intent whose
++ * outcome reaches the shell's surfaces (DESIGN-V2 §7).
+  */
+ export const Home = forwardRef<HTMLHeadingElement, HomeProps>(function Home({ snapshot, onAct, onNavigate }, ref) {
+     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) ?? null
+     const context = snapshot.active?.context ?? null
+-    const status = readLine(snapshot, tenant?.label ?? null)
+-    const attention = snapshot.inbox.items.filter((e) => e.needsAction && !e.hold).slice(0, 5)
+     const read = snapshot.inbox.read
+-    // Every action here is a core intent whose outcome reaches the shell's
+-    // surfaces, named for the tenant or the item (DESIGN-V2 §7).
++    const products = snapshot.administration?.products ?? []
++    const attention = snapshot.inbox.items.filter((e) => e.needsAction && !e.hold)
++    const shown = attention.slice(0, 5)
++    const needsRole = read.products.find((p) => p.state === 'needsRole') ?? null
++    const account = snapshot.harness.signIn?.account && snapshot.harness.signIn.failure === null ? snapshot.harness.signIn.account : null
+     const readNow = () => context && tenant && void onAct(SHELL_COPY.readOf(tenant.label), { kind: 'readTenant', context })
++    const hold = (kind: 'acknowledgeItem' | 'snoozeItem', id: string, title: string) => context && void onAct(holdWhat(kind, title), { kind, context, id })
++    // A recheck re-reads one product (C30); its admission is announced for the product.
+     const recheck = async (product: ProductId) => {
+         if (!context || !tenant) return
+         const label = READ_COPY.products[product] ?? product
+         const outcome = await onAct(SHELL_COPY.recheckOf(label, tenant.label), { kind: 'recheckProduct', context, product })
+         if (outcome.kind === 'admitted') useShellStore.getState().toast(READ_COPY.recheck(label), 'info', undefined, tenant.id, context)
+     }
+-    const hold = (kind: 'acknowledgeItem' | 'snoozeItem', id: string, title: string) => context && void onAct(holdWhat(kind, title), { kind, context, id })
++    const openProduct = (id: AdminProductId, tab?: string) => {
++        if (tenant) useShellStore.getState().arrive({ tenant: tenant.id, feature: 'administration', resource: null, item: null, product: id, tab })
++        onNavigate('administration')
++    }
++    const quick: { label: string; sub: string; key: string; glyph: GlyphName; go: () => void }[] = [
++        { label: HOME_COPY.quick.prompt, sub: HOME_COPY.quick.promptSub, key: '', glyph: 'play', go: () => openProduct('runtimeSecurity', 'playground') },
++        { label: HOME_COPY.quick.harness, sub: HOME_COPY.quick.harnessSub, key: '⌘3', glyph: 'bot', go: () => onNavigate('harness') },
++        { label: HOME_COPY.quick.request, sub: HOME_COPY.quick.requestSub, key: '⌘6', glyph: 'send', go: () => onNavigate('apiClient') },
++        { label: HOME_COPY.quick.learn, sub: HOME_COPY.quick.learnSub, key: '⌘4', glyph: 'cap', go: () => onNavigate('academy') },
++    ]
++    const button32 = 'flex h-8 min-h-0 items-center rounded-[7px] border text-[12px] whitespace-nowrap'
+     return (
+-        <section aria-labelledby='home-heading' data-slot='home' style={{ maxWidth: 'var(--v2-reading)' }}>
+-            <div className='flex flex-col gap-1'>
+-                <h1 ref={ref} id='home-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)' }}>
+-                    {HOME_COPY.title}
+-                </h1>
+-                {tenant && (
+-                    <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+-                        {tenant.label} · {ENVIRONMENT_LABELS[tenant.environment]}
+-                        {tenant.tsgId ? ` · TSG ${tenant.tsgId}` : ''}
++        <section aria-labelledby='home-heading' data-slot='home' className='flex flex-col' style={{ gap: 20 }}>
++            <div className='flex items-end' style={{ gap: 12 }}>
++                <div className='flex flex-col' style={{ gap: 2 }}>
++                    <h1 ref={ref} id='home-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
++                        {account ? HOME_COPY.greeting(account) : HOME_COPY.title}
++                    </h1>
++                    <p role='status' aria-live='polite' data-slot='read-status' data-tone={readLine(snapshot, tenant?.label ?? null).tone} className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
++                        {tenant ? homeSub(snapshot, tenant.label, products.length, attention.length) : HOME_COPY.noTenant}
+                     </p>
+-                )}
+-                <p role='status' aria-live='polite' data-slot='read-status' className='mt-1 flex items-center gap-3 text-[13px]'>
+-                    <Verdict tone={status.tone} word={status.text} />
+-                    {context && (
+-                        <button type='button' onClick={readNow} disabled={read.state === 'reading'} className='h-7 rounded-[7px] border px-2.5 text-[12px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
+-                            {HOME_COPY.readNow}
+-                        </button>
+-                    )}
+-                </p>
+-            </div>
+-            <div className='mt-6 rounded-[12px] border p-5' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+-                <div className='flex items-center justify-between'>
+-                    <h2 className='text-[15px] font-semibold'>{HOME_COPY.attention}</h2>
+-                    <button type='button' onClick={() => onNavigate('inbox')} className='text-[12px] underline' style={{ color: 'var(--v2-acc)' }}>
+-                        {HOME_COPY.openInbox}
+-                    </button>
+                 </div>
+-                {attention.length === 0 ? (
+-                    <p className='mt-2 text-[13px]' style={{ color: 'var(--v2-faint)' }}>
+-                        {attentionEmpty(snapshot)}
+-                    </p>
+-                ) : (
+-                    <ul data-slot='attention' className='mt-3 flex flex-col gap-2'>
+-                        {attention.map((e) => (
+-                            <li key={e.id} className='flex flex-wrap items-center gap-2 rounded-[10px] border px-3 py-2' style={{ borderColor: 'var(--v2-rule)' }}>
+-                                <Verdict tone={toneOf(e.severity)} word={e.severity === 'bad' ? 'Critical' : e.severity === 'warn' ? 'Warning' : 'Info'} />
+-                                <span className='flex-grow text-[13px] font-medium'>{e.title}</span>
+-                                <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+-                                    {e.product ? READ_COPY.products[e.product] : ''}
+-                                </span>
+-                                {destinationFeature(e) && e.actionLabel && tenant && (
+-                                    <button type='button' onClick={() => follow(e, tenant.id, onNavigate)} className='h-7 rounded-[7px] px-2.5 text-[12px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
+-                                        {e.actionLabel}
+-                                    </button>
+-                                )}
+-                                <button type='button' onClick={() => hold('acknowledgeItem', e.id, e.title)} className='h-7 rounded-[7px] border px-2.5 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }}>
+-                                    Acknowledge
+-                                </button>
+-                                <button type='button' title={SNOOZE_COPY.offer} aria-label={`${SNOOZE_COPY.offer}: ${e.title}`} onClick={() => hold('snoozeItem', e.id, e.title)} className='h-7 rounded-[7px] border px-2.5 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }}>
+-                                    {SNOOZE_COPY.offer}
+-                                </button>
+-                            </li>
+-                        ))}
+-                    </ul>
++                {context && (
++                    <button type='button' aria-live='polite' onClick={readNow} disabled={read.state === 'reading'} className={`${button32} ml-auto px-3.5 text-[13px] disabled:opacity-60`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
++                        {read.state === 'reading' ? HOME_COPY.reading : HOME_COPY.refresh}
++                    </button>
+                 )}
+             </div>
+-            {tenant && read.products.length > 0 && (
+-                <div className='mt-6'>
+-                    <h2 className='text-[15px] font-semibold'>{HOME_COPY.products}</h2>
+-                    <ul data-slot='products' className='mt-3 grid gap-3' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+-                        {read.products.map((p) => (
+-                            <li key={p.product} className='rounded-[12px] border p-4' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+-                                <p className='text-[13px] font-semibold'>{READ_COPY.products[p.product]}</p>
+-                                <p className='mt-2 flex flex-wrap items-center gap-2'>
+-                                    <Verdict tone={p.state === 'ok' ? 'allowed' : p.state === 'failed' ? 'blocked' : p.state === 'incomplete' || p.state === 'needsRole' ? 'flagged' : 'info'} word={READ_COPY.productState[p.state] ?? p.state} />
+-                                    <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+-                                        {READ_COPY.sources(p.sourcesRead, p.sourcesTotal)}
+-                                    </span>
+-                                </p>
+-                                {p.detail && (
+-                                    <p className='mt-1 text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+-                                        {p.detail}
+-                                    </p>
+-                                )}
+-                                {(p.state === 'needsRole' || p.state === 'failed' || p.state === 'incomplete') && context && (
+-                                    <button type='button' onClick={() => void recheck(p.product)} disabled={read.state === 'reading'} className='mt-2 h-7 rounded-[7px] border px-2.5 text-[12px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
+-                                        Recheck
+-                                    </button>
+-                                )}
+-                            </li>
+-                        ))}
+-                    </ul>
++            {snapshot.showCalls && (
++                <div data-slot='home-explain' className='flex gap-2 rounded-[10px] text-[13px] leading-[1.45]' style={{ padding: '12px 14px', background: 'var(--v2-acc-soft)', maxWidth: 860 }}>
++                    <Glyph name='info' size={15} stroke={2} color='var(--v2-acc)' className='mt-px' />
++                    <span>{HOME_COPY.explain}</span>
+                 </div>
+             )}
+-            <div className='mt-6'>
+-                <h2 className='text-[15px] font-semibold'>{HOME_COPY.destinations}</h2>
+-                <ul className='mt-3 grid gap-3' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+-                    {snapshot.features
+-                        .filter((f) => f.sidebar && f.id !== 'home')
+-                        .map((f) => {
+-                            const Icon = FEATURE_ICONS[f.id]
+-                            const unavailable = f.availability.state === 'unavailable'
+-                            return (
+-                                <li key={f.id}>
++            {/* Three columns at the board's width (each card at least 300px); fewer when the page is narrower (the collapsed rail, 200% zoom). */}
++            {tenant && products.length > 0 && (
++                <ul data-slot='cards' aria-label={HOME_COPY.cards} className='grid' style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
++                    {products.map((product) => {
++                        const c = cardOf(snapshot, product, attention)
++                        return (
++                            // The card is one button (the prototype's); a Recheck control, when the read allows one,
++                            // sits beside the card's last line above the stretched button, never inside it.
++                            <li key={c.id} className='relative flex'>
++                                <button
++                                    type='button'
++                                    data-slot='card'
++                                    data-product={c.id}
++                                    aria-label={`${c.name}: ${c.pill.word}, ${c.value} ${c.metric}, ${c.sub}${c.isNew ? ` · ${SHELL_COPY.newTag}` : ''}`}
++                                    onClick={() => openProduct(c.id)}
++                                    className='flex w-full flex-col rounded-[12px] border text-left after:absolute after:inset-0 after:rounded-[12px] after:content-[""]'
++                                    style={{ gap: 10, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}
++                                >
++                                    <span className='flex w-full items-center' style={{ gap: 9 }}>
++                                        <span className='grid size-7 shrink-0 place-items-center rounded-[8px]' style={{ background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
++                                            <Glyph name={PRODUCT_GLYPHS[c.id]} size={15} />
++                                        </span>
++                                        <b className='min-w-0 flex-grow truncate text-[13px]'>{c.name}</b>
++                                        <span className='flex shrink-0 items-center gap-1 rounded-full text-[12px] font-semibold whitespace-nowrap' style={{ padding: '2px 8px', background: c.pill.bg, color: c.pill.fg }}>
++                                            <Glyph name={c.pill.glyph} size={10} stroke={2.6} />
++                                            {c.pill.word}
++                                        </span>
++                                    </span>
++                                    <span className='flex w-full items-end' style={{ gap: 12 }}>
++                                        <span className='flex min-w-0 flex-1 flex-col'>
++                                            <span className='text-[26px] font-bold tabular-nums' style={{ letterSpacing: '-0.02em', color: c.valueColor }}>
++                                                {c.value}
++                                            </span>
++                                            <span className='text-[12px] leading-[1.35]' style={{ color: 'var(--v2-faint)' }}>
++                                                {c.metric}
++                                            </span>
++                                        </span>
++                                        <span aria-hidden='true' className='ml-auto flex h-[38px] w-[110px] shrink-0 items-end' style={{ gap: 3 }}>
++                                            {c.spark.map((b, i) => (
++                                                <span key={i} className='flex-1' style={{ height: b.h, borderRadius: '2px 2px 0 0', background: b.hot ? 'var(--v2-block)' : 'var(--v2-acc)' }} />
++                                            ))}
++                                        </span>
++                                    </span>
++                                    <span className='flex w-full items-center gap-1.5 text-[12px] font-semibold' style={{ paddingTop: 8, borderTop: '1px solid var(--v2-rule)', color: c.subColor }}>
++                                        <Glyph name={c.subGlyph} size={12} stroke={2.2} />
++                                        <span className='min-w-0 flex-grow truncate'>{c.sub}</span>
++                                        {c.isNew && (
++                                            <span className='shrink-0 rounded-full text-[12px] font-bold' style={{ padding: '1px 6px', background: 'var(--v2-acc-soft)', color: 'var(--v2-acc)' }}>
++                                                {SHELL_COPY.newTag}
++                                            </span>
++                                        )}
++                                    </span>
++                                </button>
++                                {c.recheck && context && (
+                                     <button
+                                         type='button'
+-                                        disabled={unavailable}
+-                                        onClick={() => onNavigate(f.id)}
+-                                        className='flex min-h-11 w-full items-center gap-3 rounded-[12px] border px-4 text-left text-[14px] font-medium disabled:opacity-60'
+-                                        style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}
++                                        onClick={() => void recheck(c.recheck!)}
++                                        disabled={read.state === 'reading'}
++                                        className='absolute right-5 bottom-[14px] z-10 h-7 rounded-[7px] border px-2.5 text-[12px] disabled:opacity-60'
++                                        style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}
+                                     >
+-                                        <Icon aria-hidden='true' size={16} />
+-                                        <span className='flex-grow'>{f.label}</span>
+-                                        {unavailable && f.availability.state === 'unavailable' && (
+-                                            <span className='text-[11px] uppercase' style={{ color: 'var(--v2-faint)' }}>
+-                                                {f.availability.plannedChunk}
+-                                            </span>
+-                                        )}
++                                        {HOME_COPY.recheck}
+                                     </button>
+-                                </li>
+-                            )
+-                        })}
++                                )}
++                            </li>
++                        )
++                    })}
+                 </ul>
++            )}
++            <div data-slot='home-lower' className='grid' style={{ gridTemplateColumns: 'minmax(0, 1.75fr) minmax(0, 1fr)', gap: 16 }}>
++                <section aria-label={HOME_COPY.attention} data-slot='attention-section' className='flex flex-col rounded-[12px] border' style={{ padding: '4px 0', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                    <div className='flex items-center' style={{ padding: '16px 18px 10px' }}>
++                        <h2 className='text-[13px] font-bold'>
++                            {HOME_COPY.attention}{' '}
++                            <span className='font-normal' style={{ color: 'var(--v2-faint)' }}>
++                                {attention.length > 0 ? attention.length : ''}
++                            </span>
++                        </h2>
++                        <button type='button' onClick={() => onNavigate('inbox')} className='ml-auto text-[12px] font-semibold' style={{ color: 'var(--v2-acc)' }}>
++                            {HOME_COPY.openInbox}
++                        </button>
++                    </div>
++                    {shown.length === 0 ? (
++                        <div className='flex flex-col items-center text-center leading-[1.5]' style={{ gap: 12, padding: '28px 18px', borderTop: '1px solid var(--v2-rule)', color: 'var(--v2-faint)' }}>
++                            <span>{attentionEmpty(snapshot)}</span>
++                            {needsRole && (
++                                <button type='button' onClick={() => openProduct(needsRole.product)} className={`${button32} px-3.5 font-semibold`} style={{ borderColor: 'var(--v2-flag)', background: 'var(--v2-flag-bg)', color: 'var(--v2-flag)' }}>
++                                    {HOME_COPY.openRoleIssue}
++                                </button>
++                            )}
++                        </div>
++                    ) : (
++                        <ul data-slot='attention' className='flex flex-col'>
++                            {shown.map((e) => {
++                                const tile = severityTile(e)
++                                return (
++                                    // One line at the board's width; at narrow widths (the collapsed rail, 200% zoom) the action
++                                    // group wraps under the text, which keeps at least 200px, and the controls keep their 32px.
++                                    <li key={e.id} className='flex flex-wrap items-center' style={{ gap: 12, padding: '12px 18px', borderTop: '1px solid var(--v2-rule)' }}>
++                                        <span aria-hidden='true' className='grid size-7 shrink-0 place-items-center rounded-[8px]' style={{ background: tile.bg, color: tile.fg }}>
++                                            <Glyph name={tile.glyph} size={14} stroke={2} />
++                                        </span>
++                                        <div className='min-w-0 flex-grow' style={{ flexBasis: 200 }}>
++                                            <div className='font-semibold [overflow-wrap:anywhere]'>{e.title}</div>
++                                            {/* The severity is a word as well as a colour and an icon (I9). */}
++                                            {/* The line wraps rather than clips (nothing is cut off at narrow widths or 200% zoom). */}
++                                            <div className='text-[12px] [overflow-wrap:anywhere]' style={{ color: 'var(--v2-faint)' }}>
++                                                <span data-slot='severity' className='font-semibold' style={{ color: tile.fg }}>
++                                                    {INBOX_COPY.severity[e.severity]}
++                                                </span>
++                                                {' · '}
++                                                {[e.product ? READ_COPY.products[e.product] : null, e.source, e.detail].filter(Boolean).join(' · ')}
++                                            </div>
++                                        </div>
++                                        <div className='flex shrink-0 items-center' style={{ gap: 12 }}>
++                                            {destinationFeature(e) && e.actionLabel && tenant && (
++                                                <button type='button' onClick={() => follow(e, tenant.id, onNavigate)} className={`${button32} shrink-0 px-3`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
++                                                    {e.actionLabel}
++                                                </button>
++                                            )}
++                                            <button type='button' aria-label={`${HOME_COPY.acknowledge}: ${e.title}`} title={HOME_COPY.acknowledge} onClick={() => hold('acknowledgeItem', e.id, e.title)} className='grid size-8 min-h-0 shrink-0 place-items-center rounded-[7px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
++                                                <Glyph name='check' size={12} stroke={2.2} />
++                                            </button>
++                                            <button type='button' aria-label={`${SNOOZE_COPY.offer}: ${e.title}`} title={SNOOZE_COPY.offer} onClick={() => hold('snoozeItem', e.id, e.title)} className='grid size-8 min-h-0 shrink-0 place-items-center rounded-[7px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
++                                                <Glyph name='clock' size={12} stroke={2} />
++                                            </button>
++                                        </div>
++                                    </li>
++                                )
++                            })}
++                        </ul>
++                    )}
++                </section>
++                <section aria-label={HOME_COPY.quickActions} data-slot='quick-actions' className='flex flex-col rounded-[12px] border' style={{ padding: '4px 0', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                    <h2 className='text-[13px] font-bold' style={{ padding: '16px 18px 10px' }}>
++                        {HOME_COPY.quickActions}
++                    </h2>
++                    {quick.map((q) => (
++                        <button key={q.label} type='button' data-inset-focus='' onClick={q.go} className='flex items-center text-left' style={{ gap: 12, padding: '12px 18px', borderTop: '1px solid var(--v2-rule)', color: 'var(--v2-ink)' }}>
++                            <span aria-hidden='true' className='grid size-7 shrink-0 place-items-center rounded-[8px]' style={{ background: 'var(--v2-acc-soft)', color: 'var(--v2-acc)' }}>
++                                <Glyph name={q.glyph} size={14} stroke={1.9} />
++                            </span>
++                            <span className='flex-grow'>
++                                <b className='font-semibold'>{q.label}</b>
++                                <br />
++                                <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
++                                    {q.sub}
++                                </span>
++                            </span>
++                            <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
++                                {q.key}
++                            </span>
++                        </button>
++                    ))}
++                </section>
+             </div>
+         </section>
+     )
+diff --git a/apps/desktop/src/v2/inbox/inbox.test.tsx b/apps/desktop/src/v2/inbox/inbox.test.tsx
+index 416a5020..a17de8da 100644
+--- a/apps/desktop/src/v2/inbox/inbox.test.tsx
++++ b/apps/desktop/src/v2/inbox/inbox.test.tsx
+@@ -144,7 +144,8 @@ describe('Inbox', () => {
+         const user = userEvent.setup()
+         const native = await launch({ ...fxInbox(), activeFeature: 'home' })
+         native.respond = () => ({ outcome: 'refusal', refusal: 'capabilityMissing' })
+-        await user.click(screen.getByRole('button', { name: 'Read now' }))
++        // Home's Refresh (R2App) is the same readTenant intent the Inbox's Read now sends.
++        await user.click(screen.getByRole('button', { name: 'Refresh' }))
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'readTenant', context: 'cx-aaaaaaaaaaaaaaaaaaaaaaaa' })
+         expect(await screen.findByText('The read of Northwind Health was refused (capabilityMissing). That is not available for the current tenant.')).toBeInTheDocument()
+         expect(document.querySelector('[data-slot="toast"]')?.getAttribute('data-kind')).toBe('warn')
+diff --git a/apps/desktop/src/v2/v2-shell.test.tsx b/apps/desktop/src/v2/v2-shell.test.tsx
+index 7f15f1d6..cec36a02 100644
+--- a/apps/desktop/src/v2/v2-shell.test.tsx
++++ b/apps/desktop/src/v2/v2-shell.test.tsx
+@@ -67,10 +67,10 @@ describe('v2 shell', () => {
+         // An unavailable destination dispatches nothing.
+         await user.click(rail().getByRole('button', { name: /Inbox/ }))
+         expect(intents(native).filter((k) => k === 'navigate')).toHaveLength(1)
+-        // A Home card is the same intent.
++        // A Home quick action is the same intent.
+         await native.push({ ...native.current, activeFeature: 'home' })
+-        await user.click(within(screen.getByRole('main')).getByRole('button', { name: /Test Cases/ }))
+-        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'library' })
++        await user.click(within(screen.getByRole('main')).getByRole('button', { name: /Ask the Harness/ }))
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'harness' })
+     })
+ 
+     it('reports a refused navigation on the status surface as a warn toast', async () => {
+diff --git a/crates/xtask/src/budgets.rs b/crates/xtask/src/budgets.rs
+index da917e33..63deb0e7 100644
+--- a/crates/xtask/src/budgets.rs
++++ b/crates/xtask/src/budgets.rs
+@@ -9,7 +9,7 @@
+ //! mismatched input fails.
+ 
+ use std::collections::BTreeMap;
+-use std::path::Path;
++use std::path::{Path, PathBuf};
+ 
+ use serde::{Deserialize, Serialize};
+ 
+@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
+     Ok(total)
+ }
+ 
+-const MIB: f64 = 1024.0 * 1024.0;
+-
+-/// Builds the complete unsigned production app and DMG, the sealed Harness
+-/// engine included (C19, D046; budgets.json version 5), and records their
+-/// sizes.
+-pub fn footprint(
+-    repo: &Repo,
+-    manifest: &Manifest,
+-    env: &Environment,
+-    subject: Subject,
+-) -> Result<Footprint> {
+-    let Some(chunk) = required(repo, manifest, subject)? else {
+-        return Err(invalid(format!(
+-            "{subject} does not contain the chunk that registered the budgets"
+-        )));
+-    };
+-    let (_, record, sha) = registration(repo, &chunk)?;
+-    let started_utc = now_utc();
+-    if started_utc < record.registered_utc {
+-        return Err(invalid("the clock is before the budget registration"));
+-    }
+-    let target = manifest.target.as_str();
++/// Builds the complete unsigned production app and DMG with the sealed
++/// Harness engine as a bundle resource (C19, D046): the frontend, then
++/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
++pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
+     // The sealed engine the production app ships with (C19).
+     crate::harness::unpack(repo)?;
+     let commands: Vec<Vec<String>> = [
+@@ -181,13 +163,58 @@ pub fn footprint(
+     let identifier = plist_value(&app, "CFBundleIdentifier")?;
+     if identifier != crate::native::PRODUCTION_IDENTIFIER {
+         return Err(invalid(format!(
+-            "footprint bundle has identifier {identifier}"
++            "the production bundle has identifier {identifier}"
+         )));
+     }
+     let version = plist_value(&app, "CFBundleShortVersionString")?;
+     let dmg = repo.join(format!(
+         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
+     ));
++    Ok(ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    })
++}
++
++/// A production build: the app, its DMG, the bundle identifier and the
++/// commands that built them.
++pub struct ProductionBuild {
++    pub app: PathBuf,
++    pub dmg: PathBuf,
++    pub identifier: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++const MIB: f64 = 1024.0 * 1024.0;
++
++/// Builds the complete unsigned production app and DMG, the sealed Harness
++/// engine included (C19, D046; budgets.json version 5), and records their
++/// sizes.
++pub fn footprint(
++    repo: &Repo,
++    manifest: &Manifest,
++    env: &Environment,
++    subject: Subject,
++) -> Result<Footprint> {
++    let Some(chunk) = required(repo, manifest, subject)? else {
++        return Err(invalid(format!(
++            "{subject} does not contain the chunk that registered the budgets"
++        )));
++    };
++    let (_, record, sha) = registration(repo, &chunk)?;
++    let started_utc = now_utc();
++    if started_utc < record.registered_utc {
++        return Err(invalid("the clock is before the budget registration"));
++    }
++    let target = manifest.target.as_str();
++    let ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    } = build_production(repo, env, target)?;
+     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
+     let relative = |p: &Path| {
+         p.strip_prefix(repo.root())
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index 1bef2d1a..92a71fda 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1278,6 +1278,16 @@
+         "id": "C35-N03",
+         "check": "Keyboard and layout (T09): Tab from the tenant button reaches the destinations, the status block, the header's search button, the Explain switch and Ask Harness in that order, with the focus ring on the search button; Space on the Explain switch flips the preference; Home, Inbox and Administration at 1440 wide by the display's full working height, and at 900\u00d7600 with 200% zoom, in light and dark with no horizontal overflow. Every row records the WebView's measured size from the accessibility tree and asserts it (1440 wide; exactly 900\u00d7600): a clamped resize never passes as the requested size."
+       }
++    ],
++    "C36": [
++      {
++        "id": "C36-N01",
++        "check": "Home as the prototype draws it (R2App start=home) with a tenant whose read has landed: the heading, the one-line read summary (products, the core's read status, the needs-action count) and Refresh; the Explain banner while the calls are shown and gone when they are not; six product cards in three columns, each naming its product, its pill (Connected, Partial, Needs a role, Connecting, Failed or Not available), a figure or an em dash with its metric, and a last line; the Runtime card's figure is the read's detection events and the Gateway card's its day's requests; the two gated products carry their gate and the New tag; opening a card opens that product in Administration; Needs attention lists the items needing action with their own action, Acknowledge and Snooze sending the core intents, or its empty state naming the read; Quick actions open the Playground, the Harness, the API Client and Academy (D059 parity: the owner's approval of the composites is recorded in evidence/C36/parity/notes.md)."
++      },
++      {
++        "id": "C36-N02",
++        "check": "Keyboard and layout (T09): Tab from the heading reaches Refresh, each card, the attention row's controls and the quick actions in order, with the focus ring on a card; Enter on a card opens its product; Home at 1440 wide by the display's full working height and at 900\u00d7600 with 200% zoom, in light and dark, with no horizontal overflow; every row records the WebView's measured size from the accessibility tree and asserts it."
++      }
+     ]
+   }
+ }
+diff --git a/docs/planning/chunks/C36.md b/docs/planning/chunks/C36.md
+index dad91221..05c8aa5b 100644
+--- a/docs/planning/chunks/C36.md
++++ b/docs/planning/chunks/C36.md
+@@ -1,6 +1,6 @@
+ # C36 — Home
+ 
+-Phase: P09 (re-cut, D059). Status: planned. Required predecessor: C35.
++Phase: P09 (re-cut, D059). Status: in progress (composites posted for the owner's approval). Required predecessor: C35.
+ 
+ ## Outcome
+ 
+diff --git a/tools/parity/capture_app.py b/tools/parity/capture_app.py
+index 6fd60f66..2febbd9a 100644
+--- a/tools/parity/capture_app.py
++++ b/tools/parity/capture_app.py
+@@ -57,6 +57,8 @@ def main():
+     ap.add_argument("--no-tenant", action="store_true", help="capture without creating a tenant")
+     ap.add_argument("--prepare", help="native-prepare.json to take the bundle from (default: the chunk's)")
+     ap.add_argument("--measure", action="append", default=[], help="print the geometry of nodes whose label starts with this (after sizing)")
++    ap.add_argument("--read", action="store_true", help="read the tenant first (Home's Refresh), so the screens carry the synthetic plane's figures")
++    ap.add_argument("--press", action="append", default=[], help="on each screen, press the first button whose name contains this before capturing (a row to open, say)")
+     args = ap.parse_args()
+     screens = args.screen or ["home"]
+     evidence = os.path.join(ROOT, "docs/planning/evidence", args.chunk)
+@@ -108,11 +110,27 @@ def main():
+                 label = (n.get("label") or n.get("value") or "")
+                 if n.get("role") in ("AXWebArea",) or n.get("subrole") == "AXLandmarkNavigation" or any(label.startswith(m) for m in args.measure):
+                     print("node", n.get("role"), n.get("subrole"), repr(label[:40]), n.get("pos"), n.get("size"), file=sys.stderr)
++        if args.read and not args.no_tenant:
++            app.menu("Go", "Home")
++            app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None, 15)
++            time.sleep(0.6)
++            # Home's Refresh (R2App, C36) or the earlier Home's Read now: the same readTenant intent.
++            read_button = "Refresh" if fx.App.node(app.tree(), "AXButton", "Refresh") else "Read now"
++            c29.press(app, "AXButton", read_button)
++            _, landed = app.wait_for(lambda t: app.has_text(t, "Read finished") and fx.App.node(t, "AXButton", read_button) is not None, 60)
++            print("read landed", landed, file=sys.stderr)
++            time.sleep(0.8)
+         for screen in screens:
+             menu, heading, start = SCREENS[screen]
+             app.menu("Go", menu)
+             app.wait_for(lambda t: fx.App.node(t, "AXHeading", heading) is not None, 15)
+             time.sleep(1.0)
++            for prefix in args.press:
++                node = next((n for n in app.tree() if n.get("role") == "AXButton" and prefix in (n.get("label") or "")), None)
++                if node:
++                    app.ax("press", "AXButton", node["label"][:60])
++                    time.sleep(0.6)
++                print("pressed", prefix, node is not None, file=sys.stderr)
+             for theme in ("Light", "Dark"):
+                 c29.appearance(app, theme)
+                 time.sleep(0.6)
+
+# Untracked files in scope:
+# + apps/desktop/src/v2/home.test.tsx
+# + crates/desktop-core/tests/ui_v2_home/main.rs
+# + docs/planning/evidence/C36/native-acceptance.json
+# + docs/planning/evidence/C36/native-prepare.json
+# + docs/planning/evidence/C36/native/captures/card-ring-plain.png
+# + docs/planning/evidence/C36/native/captures/card-ring.png
+# + docs/planning/evidence/C36/native/captures/home-1440x807-dark.png
+# + docs/planning/evidence/C36/native/captures/home-1440x807-light.png
+# + docs/planning/evidence/C36/native/captures/home-900x600-200-dark.png
+# + docs/planning/evidence/C36/native/captures/home-900x600-200-light.png
+# + docs/planning/evidence/C36/native/captures/home-dark.png
+# + docs/planning/evidence/C36/native/captures/home-light.png
+# + docs/planning/evidence/C36/native/observations.json
+# + docs/planning/evidence/C36/native/tree-admin-from-card.json
+# + docs/planning/evidence/C36/native/tree-home-1440x807-dark.json
+# + docs/planning/evidence/C36/native/tree-home-1440x807-light.json
+# + docs/planning/evidence/C36/native/tree-home-900x600-200-dark.json
+# + docs/planning/evidence/C36/native/tree-home-900x600-200-light.json
+# + docs/planning/evidence/C36/native/tree-home.json
+# + docs/planning/evidence/C36/native/tree-playground-from-quick-action.json
+# + docs/planning/evidence/C36/parity/bundle.json
+# + docs/planning/evidence/C36/parity/home-dark.png
+# + docs/planning/evidence/C36/parity/home-light.png
+# + docs/planning/evidence/C36/parity/notes.md
+# + docs/planning/evidence/C36/runs/attempt-01/bindings.exit
+# + docs/planning/evidence/C36/runs/attempt-01/bindings.log
+# + docs/planning/evidence/C36/runs/attempt-01/clippy-default.exit
+# + docs/planning/evidence/C36/runs/attempt-01/clippy-default.log
+# + docs/planning/evidence/C36/runs/attempt-01/clippy.exit
+# + docs/planning/evidence/C36/runs/attempt-01/clippy.log
+# + docs/planning/evidence/C36/runs/attempt-01/contracts-typecheck.exit
+# + docs/planning/evidence/C36/runs/attempt-01/contracts-typecheck.log
+# + docs/planning/evidence/C36/runs/attempt-01/core-fixtures.exit
+# + docs/planning/evidence/C36/runs/attempt-01/core-fixtures.flake-1.log
+# + docs/planning/evidence/C36/runs/attempt-01/core-fixtures.flake-2.log
+# + docs/planning/evidence/C36/runs/attempt-01/core-fixtures.log
+# + docs/planning/evidence/C36/runs/attempt-01/core-lib.exit
+# + docs/planning/evidence/C36/runs/attempt-01/core-lib.log
+# + docs/planning/evidence/C36/runs/attempt-01/desktop-build.exit
+# + docs/planning/evidence/C36/runs/attempt-01/desktop-build.log
+# + docs/planning/evidence/C36/runs/attempt-01/desktop-typecheck.exit
+# + docs/planning/evidence/C36/runs/attempt-01/desktop-typecheck.log
+# + docs/planning/evidence/C36/runs/attempt-01/fixture-command.exit
+# + docs/planning/evidence/C36/runs/attempt-01/fixture-command.log
+# + docs/planning/evidence/C36/runs/attempt-01/host.exit
+# + docs/planning/evidence/C36/runs/attempt-01/host.flake-1.log
+# + docs/planning/evidence/C36/runs/attempt-01/host.flake-2.log
+# + docs/planning/evidence/C36/runs/attempt-01/host.log
+# + docs/planning/evidence/C36/runs/attempt-01/inputs-after.sha256
+# + docs/planning/evidence/C36/runs/attempt-01/inputs-before.sha256
+# + docs/planning/evidence/C36/runs/attempt-01/notices.exit
+# + docs/planning/evidence/C36/runs/attempt-01/notices.log
+# + docs/planning/evidence/C36/runs/attempt-01/rustfmt.exit
+# + docs/planning/evidence/C36/runs/attempt-01/rustfmt.log
+# + docs/planning/evidence/C36/runs/attempt-01/shell-controller.exit
+# + docs/planning/evidence/C36/runs/attempt-01/shell-controller.log
+# + docs/planning/evidence/C36/runs/attempt-01/vitest-truth.exit
+# + docs/planning/evidence/C36/runs/attempt-01/vitest-truth.log
+# + docs/planning/evidence/C36/runs/attempt-01/vitest.exit
+# + docs/planning/evidence/C36/runs/attempt-01/vitest.log
+# + docs/planning/evidence/C36/runs/attempt-01/xtask-lib.exit
+# + docs/planning/evidence/C36/runs/attempt-01/xtask-lib.log
+# + docs/planning/evidence/C36/runs/attempt-02/bindings.exit
+# + docs/planning/evidence/C36/runs/attempt-02/bindings.log
+# + docs/planning/evidence/C36/runs/attempt-02/clippy-default.exit
+# + docs/planning/evidence/C36/runs/attempt-02/clippy-default.log
+# + docs/planning/evidence/C36/runs/attempt-02/clippy.exit
+# + docs/planning/evidence/C36/runs/attempt-02/clippy.log
+# + docs/planning/evidence/C36/runs/attempt-02/contracts-typecheck.exit
+# + docs/planning/evidence/C36/runs/attempt-02/contracts-typecheck.log
+# + docs/planning/evidence/C36/runs/attempt-02/core-fixtures.exit
+# + docs/planning/evidence/C36/runs/attempt-02/core-fixtures.flake-1.log
+# + docs/planning/evidence/C36/runs/attempt-02/core-fixtures.flake-2.log
+# + docs/planning/evidence/C36/runs/attempt-02/core-fixtures.log
+# + docs/planning/evidence/C36/runs/attempt-02/core-lib.exit
+# + docs/planning/evidence/C36/runs/attempt-02/core-lib.log
+# + docs/planning/evidence/C36/runs/attempt-02/desktop-build.exit
+# + docs/planning/evidence/C36/runs/attempt-02/desktop-build.log
+# + docs/planning/evidence/C36/runs/attempt-02/desktop-typecheck.exit
+# + docs/planning/evidence/C36/runs/attempt-02/desktop-typecheck.log
+# + docs/planning/evidence/C36/runs/attempt-02/fixture-command.exit
+# + docs/planning/evidence/C36/runs/attempt-02/fixture-command.log
+# + docs/planning/evidence/C36/runs/attempt-02/host.exit
+# + docs/planning/evidence/C36/runs/attempt-02/host.log
+# + docs/planning/evidence/C36/runs/attempt-02/inputs-after.sha256
+# + docs/planning/evidence/C36/runs/attempt-02/inputs-before.sha256
+# + docs/planning/evidence/C36/runs/attempt-02/notices.exit
+# + docs/planning/evidence/C36/runs/attempt-02/notices.log
+# + docs/planning/evidence/C36/runs/attempt-02/rustfmt.exit
+# + docs/planning/evidence/C36/runs/attempt-02/rustfmt.log
+# + docs/planning/evidence/C36/runs/attempt-02/shell-controller.exit
+# + docs/planning/evidence/C36/runs/attempt-02/shell-controller.log
+# + docs/planning/evidence/C36/runs/attempt-02/vitest-truth.exit
+# + docs/planning/evidence/C36/runs/attempt-02/vitest-truth.log
+# + docs/planning/evidence/C36/runs/attempt-02/vitest.exit
+# + docs/planning/evidence/C36/runs/attempt-02/vitest.log
+# + docs/planning/evidence/C36/runs/attempt-02/xtask-lib.exit
+# + docs/planning/evidence/C36/runs/attempt-02/xtask-lib.log
+# + docs/planning/evidence/C36/runs/attempt-03/bindings.exit
+# + docs/planning/evidence/C36/runs/attempt-03/bindings.log
+# + docs/planning/evidence/C36/runs/attempt-03/clippy-default.exit
+# + docs/planning/evidence/C36/runs/attempt-03/clippy-default.log
+# + docs/planning/evidence/C36/runs/attempt-03/clippy.exit
+# + docs/planning/evidence/C36/runs/attempt-03/clippy.log
+# + docs/planning/evidence/C36/runs/attempt-03/contracts-typecheck.exit
+# + docs/planning/evidence/C36/runs/attempt-03/contracts-typecheck.log
+# + docs/planning/evidence/C36/runs/attempt-03/core-fixtures.exit
+# + docs/planning/evidence/C36/runs/attempt-03/core-fixtures.log
+# + docs/planning/evidence/C36/runs/attempt-03/core-lib.exit
+# + docs/planning/evidence/C36/runs/attempt-03/core-lib.log
+# + docs/planning/evidence/C36/runs/attempt-03/desktop-build.exit
+# + docs/planning/evidence/C36/runs/attempt-03/desktop-build.log
+# + docs/planning/evidence/C36/runs/attempt-03/desktop-typecheck.exit
+# + docs/planning/evidence/C36/runs/attempt-03/desktop-typecheck.log
+# + docs/planning/evidence/C36/runs/attempt-03/fixture-command.exit
+# + docs/planning/evidence/C36/runs/attempt-03/fixture-command.log
+# + docs/planning/evidence/C36/runs/attempt-03/host.exit
+# + docs/planning/evidence/C36/runs/attempt-03/host.log
+# + docs/planning/evidence/C36/runs/attempt-03/inputs-after.sha256
+# + docs/planning/evidence/C36/runs/attempt-03/inputs-before.sha256
+# + docs/planning/evidence/C36/runs/attempt-03/notices.exit
+# + docs/planning/evidence/C36/runs/attempt-03/notices.log
+# + docs/planning/evidence/C36/runs/attempt-03/rustfmt.exit
+# + docs/planning/evidence/C36/runs/attempt-03/rustfmt.log
+# + docs/planning/evidence/C36/runs/attempt-03/shell-controller.exit
+# + docs/planning/evidence/C36/runs/attempt-03/shell-controller.log
+# + docs/planning/evidence/C36/runs/attempt-03/vitest-truth.exit
+# + docs/planning/evidence/C36/runs/attempt-03/vitest-truth.log
+# + docs/planning/evidence/C36/runs/attempt-03/vitest.exit
+# + docs/planning/evidence/C36/runs/attempt-03/vitest.log
+# + docs/planning/evidence/C36/runs/attempt-03/xtask-lib.exit
+# + docs/planning/evidence/C36/runs/attempt-03/xtask-lib.log
+# + docs/planning/evidence/C36/runs/attempt-04/bindings.exit
+# + docs/planning/evidence/C36/runs/attempt-04/bindings.log
+# + docs/planning/evidence/C36/runs/attempt-04/clippy-default.exit
+# + docs/planning/evidence/C36/runs/attempt-04/clippy-default.log
+# + docs/planning/evidence/C36/runs/attempt-04/clippy.exit
+# + docs/planning/evidence/C36/runs/attempt-04/clippy.log
+# + docs/planning/evidence/C36/runs/attempt-04/contracts-typecheck.exit
+# + docs/planning/evidence/C36/runs/attempt-04/contracts-typecheck.log
+# + docs/planning/evidence/C36/runs/attempt-04/core-fixtures.exit
+# + docs/planning/evidence/C36/runs/attempt-04/core-fixtures.log
+# + docs/planning/evidence/C36/runs/attempt-04/core-lib.exit
+# + docs/planning/evidence/C36/runs/attempt-04/core-lib.log
+# + docs/planning/evidence/C36/runs/attempt-04/desktop-build.exit
+# + docs/planning/evidence/C36/runs/attempt-04/desktop-build.log
+# + docs/planning/evidence/C36/runs/attempt-04/desktop-typecheck.exit
+# + docs/planning/evidence/C36/runs/attempt-04/desktop-typecheck.log
+# + docs/planning/evidence/C36/runs/attempt-04/fixture-command.exit
+# + docs/planning/evidence/C36/runs/attempt-04/fixture-command.log
+# + docs/planning/evidence/C36/runs/attempt-04/host.exit
+# + docs/planning/evidence/C36/runs/attempt-04/host.log
+# + docs/planning/evidence/C36/runs/attempt-04/inputs-after.sha256
+# + docs/planning/evidence/C36/runs/attempt-04/inputs-before.sha256
+# + docs/planning/evidence/C36/runs/attempt-04/notices.exit
+# + docs/planning/evidence/C36/runs/attempt-04/notices.log
+# + docs/planning/evidence/C36/runs/attempt-04/rustfmt.exit
+# + docs/planning/evidence/C36/runs/attempt-04/rustfmt.log
+# + docs/planning/evidence/C36/runs/attempt-04/shell-controller.exit
+# + docs/planning/evidence/C36/runs/attempt-04/shell-controller.log
+# + docs/planning/evidence/C36/runs/attempt-04/vitest-truth.exit
+# + docs/planning/evidence/C36/runs/attempt-04/vitest-truth.log
+# + docs/planning/evidence/C36/runs/attempt-04/vitest.exit
+# + docs/planning/evidence/C36/runs/attempt-04/vitest.log
+# + docs/planning/evidence/C36/runs/attempt-04/xtask-lib.exit
+# + docs/planning/evidence/C36/runs/attempt-04/xtask-lib.log
+# + docs/planning/evidence/C36/runs/hash-inputs.sh
+# + docs/planning/evidence/C36/runs/run-attempt-01.json
+# + docs/planning/evidence/C36/runs/run-attempt-02.json
+# + docs/planning/evidence/C36/runs/run-attempt-03.json
+# + docs/planning/evidence/C36/runs/run-attempt-04.json
+# + docs/planning/evidence/C36/runs/run-checks.sh
+# + docs/planning/evidence/C36/screens/home-dark.png
+# + docs/planning/evidence/C36/screens/home-light.png
+# + docs/planning/evidence/C36/screens/layouts-home-1440x807-dark.png
+# + docs/planning/evidence/C36/screens/layouts-home-1440x807-light.png
+# + docs/planning/evidence/C36/screens/layouts-home-900x600-200-dark.png
+# + docs/planning/evidence/C36/screens/layouts-home-900x600-200-light.png
+# + docs/planning/reviews/C36/attempt-01/diff.patch
+# + docs/planning/reviews/C36/attempt-01/message.txt
+# + docs/planning/reviews/C36/attempt-01/request.json
+# + docs/planning/reviews/C36/attempt-01/source-inventory.json
+# + docs/planning/reviews/C36/attempt-01/thread-reply.log
+# + docs/planning/reviews/C36/attempt-01/verdict-returned.json
+# + docs/planning/reviews/C36/attempt-02/diff.patch
+# + docs/planning/reviews/C36/attempt-02/message.txt
+# + docs/planning/reviews/C36/attempt-02/request.json
+# + docs/planning/reviews/C36/attempt-02/source-inventory.json
+# + docs/planning/reviews/C36/attempt-02/thread-reply.log
+# + docs/planning/reviews/C36/attempt-02/verdict-returned.json
+# + docs/planning/reviews/C36/attempt-03/diff.patch
+# + docs/planning/reviews/C36/attempt-03/message.txt
+# + docs/planning/reviews/C36/attempt-03/request.json
+# + docs/planning/reviews/C36/attempt-03/source-inventory.json
+# + docs/planning/reviews/C36/attempt-03/thread-reply.log
+# + docs/planning/reviews/C36/attempt-03/verdict-returned.json
+# + docs/planning/reviews/C36/remediation-attempt-01.md
+# + docs/planning/reviews/C36/remediation-attempt-02.md
+# + docs/planning/reviews/C36/remediation-attempt-03.md
+# + tools/native-acceptance/acceptance_c36.py
