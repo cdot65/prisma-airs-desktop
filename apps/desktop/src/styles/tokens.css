@@ -222,29 +222,48 @@
         border-top: 1px solid var(--v2-rule);
     }
 }
-/* The wizard (C43) below 760px (a 900-point window at 200%): the rail sits above the step as a strip, every grid is
-   one column, and the sheet grows with its content inside the viewport instead of holding its 1160px board. */
+/* The wizard (C43) below 760px (a 900-point window at 200%): the rail is a compact strip above the step (the step
+   marks keep their names for assistive technology but show their numbers), every grid is one column, and the step
+   scrolls between the strip and the pinned footer. */
 @media (max-width: 760px) {
     [data-v2-shell] [data-slot='wizard'],
     [data-slot='wizard'] {
         flex-direction: column;
-        height: auto !important;
     }
     [data-slot='wizard'] > nav {
         width: 100% !important;
-        padding: 14px 16px !important;
+        flex: 0 0 auto;
+        padding: 10px 12px 8px !important;
         border-right: 0 !important;
         border-bottom: 1px solid var(--v2-rule);
     }
+    [data-slot='wizard'] > nav > div:first-child {
+        margin-bottom: 8px !important;
+    }
     [data-slot='wizard'] > nav > ol {
         flex-direction: row;
-        overflow-x: auto;
+        flex-wrap: wrap;
+        gap: 4px !important;
     }
     [data-slot='wizard'] > nav > ol button {
+        width: auto;
+        height: 32px !important;
+        padding: 0 6px !important;
+        gap: 0 !important;
+    }
+    [data-slot='wizard'] > nav > ol button > span:not(:first-child) {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
         white-space: nowrap;
     }
     [data-slot='wizard'] > nav > [data-slot='privacy-note'] {
-        margin-top: 12px;
+        display: none;
+    }
+    [data-slot='wizard'] > nav > [data-slot='theme-button'] {
+        margin-top: 6px !important;
     }
     [data-slot='wizard'] main .grid {
         grid-template-columns: minmax(0, 1fr) !important;

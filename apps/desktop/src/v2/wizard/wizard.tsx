@@ -749,6 +749,8 @@ export function Wizard(props: WizardProps) {
                                 </div>
                                 <div className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }} data-slot='product-cards'>
                                     {PRODUCT_CARDS.map((card) => {
+                                        // An id without spaces (a label is not one): the description's targets.
+                                        const cardId = `product-${card.label.replace(/\W+/g, '-').toLowerCase()}`
                                         const unavailable = card.id === null
                                         const always = card.id === 'runtimeSecurity'
                                         const on = card.id !== null && setup.products.includes(card.id)
@@ -763,7 +765,7 @@ export function Wizard(props: WizardProps) {
                                                 aria-checked={on}
                                                 aria-disabled={unavailable || always ? true : undefined}
                                                 aria-label={card.label}
-                                                aria-describedby={`${card.label}-body ${card.label}-tags`}
+                                                aria-describedby={`${cardId}-body ${cardId}-tags`}
                                                 onClick={() => card.id && !always && void toggleProduct(card.id, !on)}
                                                 className='relative flex flex-col text-left'
                                                 style={{ gap: 10, minHeight: 176, padding: '18px 20px', border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-rule)'}`, borderRadius: 12, background: on ? 'var(--v2-acc-soft)' : 'var(--v2-paper)', color: 'var(--v2-ink)', opacity: unavailable ? 0.7 : 1, cursor: unavailable || always ? 'default' : 'pointer' }}
@@ -778,10 +780,10 @@ export function Wizard(props: WizardProps) {
                                                 <span className='block leading-[1.35]' style={{ paddingRight: 26 }}>
                                                     <b className='text-[14px]'>{card.label}</b>
                                                 </span>
-                                                <span id={`${card.label}-body`} className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
+                                                <span id={`${cardId}-body`} className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
                                                     {card.body}
                                                 </span>
-                                                <span id={`${card.label}-tags`} className='mt-auto flex flex-wrap' style={{ gap: 6 }}>
+                                                <span id={`${cardId}-tags`} className='mt-auto flex flex-wrap' style={{ gap: 6 }}>
                                                     {unavailable && <Verdict tone='info' word={C.products.unavailable} />}
                                                     {always && <Verdict tone='info' word={C.products.always} />}
                                                     {card.readOnly && <Verdict tone='info' word={C.products.readOnly} />}
