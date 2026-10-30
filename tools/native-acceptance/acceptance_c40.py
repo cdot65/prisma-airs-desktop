@@ -48,6 +48,24 @@ PILLS = ("AXCheckBox", "AXButton", "AXRadioButton")
 BTN = ("AXButton", "AXPopUpButton")
 
 
+def ring_any(app, label, plain_cap, name):
+    """c31.ring_on for a control whatever its AX role (New case opens a menu: an AXPopUpButton)."""
+    node = next((n for n in app.tree() if (n.get("label") or "") == label and n.get("role") in BTN), None)
+    app.ax("focus", node["role"] if node else "AXButton", label)
+    time.sleep(0.5)
+    focused_cap = c29.capture(app, name)
+    snap = app.tree()
+    web = next((n for n in snap if n.get("role") == "AXWebArea"), None)
+    btn = next((n for n in snap if (n.get("label") or "") == label and n.get("role") in BTN), None)
+    if not (web and btn and plain_cap and focused_cap):
+        return {"diff": 0, "focused": (fx.App.focused(snap) or {}).get("label")}
+    img_f = c31.c1.png_pixels(os.path.join(ROOT, focused_cap))
+    img_p = c31.c1.png_pixels(os.path.join(ROOT, plain_cap))
+    scale = img_f[0] / web["size"][0]
+    box = [btn["pos"][0] - web["pos"][0], btn["pos"][1] - web["pos"][1], btn["size"][0], btn["size"][1]]
+    return {"diff": c28.ring_diff(img_f, img_p, box, scale), "focused": (fx.App.focused(snap) or {}).get("label"), "capture": focused_cap, "plain": plain_cap}
+
+
 def press_any(app, label, timeout=8):
     """Presses the control with this exact label whatever role AX gives it (a button with aria-haspopup is an AXPopUpButton)."""
     tree, _ = app.wait_for(lambda t: any((n.get("label") or "") == label and n.get("role") in BTN for n in t), timeout)
@@ -406,7 +424,7 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     app.ax("focus", packs_btn["role"] if packs_btn else "AXButton", "Load starter packs…")
     time.sleep(0.4)
     plain = c29.capture(app, "cases-ring-plain")
-    n2["ring"] = c31.ring_on(app, "New case", plain, "cases-ring-new")
+    n2["ring"] = ring_any(app, "New case", plain, "cases-ring-new")
     layouts = {}
     size_window(app, pid, 1440, 900)
     for theme in ("Light", "Dark"):
