@@ -45,6 +45,18 @@ LOG = []
 TITLE_BAR = 28
 RED_TEAM_RUNS = "AI Red Teaming: hand the spec to a scan."
 PILLS = ("AXCheckBox", "AXButton", "AXRadioButton")
+BTN = ("AXButton", "AXPopUpButton")
+
+
+def press_any(app, label, timeout=8):
+    """Presses the control with this exact label whatever role AX gives it (a button with aria-haspopup is an AXPopUpButton)."""
+    tree, _ = app.wait_for(lambda t: any((n.get("label") or "") == label and n.get("role") in BTN for n in t), timeout)
+    node = next((n for n in tree if (n.get("label") or "") == label and n.get("role") in BTN), None)
+    if node is None:
+        raise RuntimeError(f"no button labelled {label}")
+    app.ax("press", node["role"], label)
+    time.sleep(0.5)
+
 
 
 def rel(path):
@@ -124,7 +136,7 @@ def table_usable(tree, zoom):
     row's action control at least 32 CSS px."""
     table = next((n for n in tree if n.get("role") == "AXTable" and (n.get("label") or "") == "Test Cases"), None)
     card = next((n for n in tree if n.get("role") == "AXGroup" and n.get("pos") and n.get("size") and table and contained(table, n) and n["size"][1] > table["size"][1] - 1 and n["size"][0] >= table["size"][0] - 1), None)
-    action = next((n for n in tree if n.get("role") == "AXButton" and (n.get("label") or "").startswith(("Open in Playground:", "Inspect:"))), None)
+    action = next((n for n in tree if n.get("role") in BTN and (n.get("label") or "").startswith(("Open in Playground:", "Inspect:"))), None)
     foot = next((n for n in tree if n.get("role") == "AXButton" and (n.get("label") or "") == "Next page"), None)
     out = {"table": table is not None, "action_size": action.get("size") if action else None, "action_ok": bool(action and action["size"][0] >= 32 * zoom - 1 and action["size"][1] >= 32 * zoom - 1),
            "foot": foot is not None, "zoom": zoom}
@@ -224,7 +236,7 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     n1["empty_state"] = app.has_text(tree, "No cases yet.")
     obs["tree_empty"] = c29.save_tree("cases-empty", tree)
     # Load starter packs… : the dialog with the bundled packs checked; Load selected adds them.
-    c29.press(app, "AXButton", "Load starter packs…", 15)
+    press_any(app, "Load starter packs…", 15)
     tree, n1["packs_dialog"] = app.wait_for(lambda t: dialog(t, "Load starter packs") is not None, 10)
     inside = within(tree, dialog(tree, "Load starter packs"))
     n1["packs_options"] = [(n.get("label"), n.get("value")) for n in inside if n.get("role") == "AXCheckBox"]
@@ -232,11 +244,11 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     obs["tree_packs"] = c29.save_tree("cases-packs", tree)
     obs["captures"]["cases-packs"] = {"light": c29.capture(app, "cases-packs-light")}
     c29.press(app, "AXButton", "Load selected")
-    tree, n1["packs"] = app.wait_for(lambda t: dialog(t, "Load starter packs") is None and len(labels(t, "AXButton", "Open in Playground:")) >= 1 and len(labels(t, "AXButton", "Inspect:")) >= 1, 20)
+    tree, n1["packs"] = app.wait_for(lambda t: dialog(t, "Load starter packs") is None and len(labels(t, "AXButton", "Open in Playground:")) >= 1 and len(labels(t, BTN, "Inspect:")) >= 1, 20)
     n1["pack_named"] = app.has_text(tree, "Runtime Security starter pack")
     n1["not_run"] = app.has_text(tree, "Not run")
     n1["runtime_rows"] = len(labels(tree, "AXButton", "Open in Playground:"))
-    n1["spec_rows"] = len(labels(tree, "AXButton", "Inspect:"))
+    n1["spec_rows"] = len(labels(tree, BTN, "Inspect:"))
     n1["count_line"] = next((x for x in app.texts(tree) if re.match(r"\d+ cases in Northwind Health · sealed on this Mac, per tenant", x)), None)
     n1["pills"] = labels(tree, PILLS, "All ") + labels(tree, PILLS, "Runtime Security ") + labels(tree, PILLS, "AI Red Teaming ")
     n1["range"] = next((x for x in app.texts(tree) if re.match(r"1–\d+ of \d+", x)), None)
@@ -261,7 +273,7 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
         time.sleep(0.6)
         t2 = app.tree()
         n1["filtered_runtime_rows"] = len(labels(t2, "AXButton", "Open in Playground:"))
-        n1["filtered_spec_rows"] = len(labels(t2, "AXButton", "Inspect:"))
+        n1["filtered_spec_rows"] = len(labels(t2, BTN, "Inspect:"))
         all_label = next((l for l in labels(t2, PILLS, "All ")), None)
         if all_label:
             app.ax("press", role, all_label)
@@ -269,20 +281,20 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     app.type_into("AXTextField", "Search cases", "zzz-no-such-case")
     tree, n1["search_empty"] = app.wait_for(lambda t: app.has_text(t, "No case matches.") and fx.App.node(t, "AXButton", "Clear search and filters") is not None, 8)
     c29.press(app, "AXButton", "Clear search and filters")
-    app.wait_for(lambda t: len(labels(t, "AXButton", "Inspect:")) >= 1, 8)
+    app.wait_for(lambda t: len(labels(t, BTN, "Inspect:")) >= 1, 8)
     # Inspect a Red Team spec: the detail sheet (520px, docked right), and no scan request at all.
     scans_before = len(endpoint.requests())
     tree = app.tree()
     red_inspect = None
-    for label in labels(tree, "AXButton", "Inspect:"):
-        app.ax("press", "AXButton", label)
+    for label in labels(tree, BTN, "Inspect:"):
+        press_any(app, label)
         t3, opened = app.wait_for(lambda t: dialog(t, "Case details") is not None, 6)
         if opened and app.has_text(t3, RED_TEAM_RUNS):
             red_inspect = label
             tree = t3
             break
         if opened:
-            c29.press(app, "AXButton", "Close details")
+            press_any(app, "Close details")
             app.wait_for(lambda t: dialog(t, "Case details") is None, 6)
     sheet = dialog(tree, "Case details")
     web = next((n for n in tree if n.get("role") == "AXWebArea" and n.get("size")), None)
@@ -292,8 +304,9 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     n1["never_run_note"] = app.has_text(tree, "This screen never runs a case")
     obs["tree_inspect"] = c29.save_tree("cases-inspect", tree)
     obs["captures"]["cases-inspect"] = {"light": c29.capture(app, "cases-inspect-light")}
-    c29.press(app, "AXButton", "Close details")
-    app.wait_for(lambda t: dialog(t, "Case details") is None, 6)
+    if sheet is not None:
+        press_any(app, "Close details")
+        app.wait_for(lambda t: dialog(t, "Case details") is None, 6)
     time.sleep(0.5)
     n1["inspect_scans"] = len(endpoint.requests()) - scans_before
     # Open the first Runtime case in the Playground; the operator runs it there; the result is recorded.
@@ -316,7 +329,7 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     def notice(text, timeout=12):
         return app.wait_for(lambda t: app.has_text(t, text), timeout)
 
-    c29.press(app, "AXButton", "New case")
+    press_any(app, "New case")
     tree, n1["new_dialog"] = app.wait_for(lambda t: dialog(t, "New test case") is not None and fx.App.node(t, "AXTextField", "Security profile") is not None, 10)
     app.type_into("AXTextField", "Name", "Native runtime case")
     app.type_into("AXTextField", "Security profile", "Production guardrails")
@@ -331,24 +344,24 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     role5 = next(n["role"] for n in t5 if (n.get("label") or "") == red5 and n.get("role") in PILLS)
     app.ax("press", role5, red5)
     time.sleep(0.5)
-    c29.press(app, "AXButton", "New case")
+    press_any(app, "New case")
     app.wait_for(lambda t: dialog(t, "New test case") is not None and fx.App.node(t, "AXTextField", "Name") is not None, 10)
     n1["spec_form"] = fx.App.node(app.tree(), "AXTextField", "Security profile") is None
     app.type_into("AXTextField", "Name", "Native red team spec")
     app.type_into("AXTextArea", "Input or test specification", "Attack the support bot.")
     c29.press(app, "AXButton", "Save case")
     _, n1["spec_saved"] = notice("Saved Native red team spec to this tenant's cases.")
-    n1["spec_inspect_only"] = fx.App.node(app.tree(), "AXButton", "Inspect: Native red team spec") is not None and fx.App.node(app.tree(), "AXButton", "Open in Playground: Native red team spec") is None
+    n1["spec_inspect_only"] = any(n.get("role") in BTN and (n.get("label") or "") == "Inspect: Native red team spec" for n in app.tree()) and fx.App.node(app.tree(), "AXButton", "Open in Playground: Native red team spec") is None
     all5 = next((l for l in labels(app.tree(), PILLS, "All ")), None)
     app.ax("press", role5, all5)
     time.sleep(0.5)
     # The ⋯ menu: Remove, and Copy to Tenant B.
-    c29.press(app, "AXButton", "More actions for Native runtime case")
+    press_any(app, "More actions for Native runtime case")
     tree, n1["menu"] = app.wait_for(lambda t: any(n.get("role") in ("AXMenuItem", "AXButton") and (n.get("label") or "") == "Remove case Native runtime case" for n in t), 6)
     item = next(n for n in tree if (n.get("label") or "") == "Remove case Native runtime case")
     app.ax("press", item["role"], "Remove case Native runtime case")
     _, n1["removed"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Open in Playground: Native runtime case") is None, 10)
-    c29.press(app, "AXButton", "More actions for Native red team spec")
+    press_any(app, "More actions for Native red team spec")
     tree, _ = app.wait_for(lambda t: any((n.get("label") or "") == "Copy Native red team spec to Tenant B" for n in t), 6)
     item = next(n for n in tree if (n.get("label") or "") == "Copy Native red team spec to Tenant B")
     app.ax("press", item["role"], "Copy Native red team spec to Tenant B")
@@ -356,7 +369,7 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     # Export and import through the packs dialog and the native sheets.
     out = os.path.join(work, "exports")
     os.makedirs(out)
-    c29.press(app, "AXButton", "Load starter packs…")
+    press_any(app, "Load starter packs…")
     app.wait_for(lambda t: dialog(t, "Load starter packs") is not None, 10)
     c29.press(app, "AXButton", "Export…")
     sheets.save_as(app, out)
@@ -376,7 +389,8 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
 
     # ---- N02: keyboard, ring, layouts ----
     n2 = {}
-    app.ax("focus", "AXButton", "Load starter packs…")
+    packs_btn = next((n for n in app.tree() if n.get("role") in BTN and (n.get("label") or "") == "Load starter packs…"), None)
+    app.ax("focus", packs_btn["role"] if packs_btn else "AXButton", "Load starter packs…")
     time.sleep(0.3)
     walk = []
     for _ in range(8):
@@ -389,7 +403,7 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     idx = [next((i for i, l in enumerate(walk) if l.startswith(k)), None) for k in keys]
     n2["order"] = list(zip(keys, idx))
     n2["reach_in_order"] = all(i is not None for i in idx[:3]) and idx[:3] == sorted(idx[:3])
-    app.ax("focus", "AXButton", "Load starter packs…")
+    app.ax("focus", packs_btn["role"] if packs_btn else "AXButton", "Load starter packs…")
     time.sleep(0.4)
     plain = c29.capture(app, "cases-ring-plain")
     n2["ring"] = c31.ring_on(app, "New case", plain, "cases-ring-new")
@@ -412,9 +426,9 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     for theme in ("Light", "Dark"):
         c29.appearance(app, theme)
         time.sleep(0.4)
-        first = next((n for n in app.tree() if n.get("role") == "AXButton" and (n.get("label") or "").startswith(("Open in Playground:", "Inspect:"))), None)
+        first = next((n for n in app.tree() if n.get("role") in BTN and (n.get("label") or "").startswith(("Open in Playground:", "Inspect:"))), None)
         if first:
-            app.ax("focus", "AXButton", first["label"][:60])
+            app.ax("focus", first["role"], first["label"][:60])
             time.sleep(0.4)
         o, tree = overflow(app)
         g = geometry(tree)
