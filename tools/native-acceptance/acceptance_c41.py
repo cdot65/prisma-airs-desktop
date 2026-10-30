@@ -47,6 +47,23 @@ TITLE_BAR = 28
 FIRST_BODY = '{"custom_topics":["Finance"]}'
 TABS = ("AXRadioButton", "AXButton", "AXCheckBox")
 
+ANY = ("AXButton", "AXPopUpButton", "AXCheckBox", "AXRadioButton")
+
+
+def node_any(tree, label):
+    return next((n for n in tree if (n.get("label") or "") == label and n.get("role") in ANY), None)
+
+
+def press_any(app, label, timeout=8):
+    """Presses the control with this exact label whatever role AX gives it: a button with aria-haspopup is an
+    AXPopUpButton, one with aria-pressed an AXCheckBox."""
+    tree, _ = app.wait_for(lambda t: node_any(t, label) is not None, timeout)
+    node = node_any(tree, label)
+    if node is None:
+        raise RuntimeError(f"no control labelled {label}")
+    app.ax("press", node["role"], label)
+    time.sleep(0.5)
+
 
 def rel(path):
     return os.path.relpath(path, ROOT)
@@ -232,13 +249,13 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
     if sheets.wait_sheet(app, timeout=4):
         sheets.open_file(app, collection_root)
     tree, n1["opened"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Open GET topics/list.request.toml") is not None, 15)
-    n1["chip"] = fx.App.node(tree, "AXButton", "Collection Topics API") is not None
+    n1["chip"] = node_any(tree, "Collection Topics API") is not None
     n1["environment_chip"] = any(n.get("role") in ("AXPopUpButton", "AXComboBox") and (n.get("label") or "") == "Environment" for n in tree)
     n1["lead"] = any("Collection Topics API · api · Northwind Health" in x for x in app.texts(tree))
     n1["folder"] = fx.App.node(tree, "AXButton", "Collapse folder topics") is not None
     n1["root_request"] = fx.App.node(tree, "AXButton", "Open GET health.request.toml") is not None
     n1["find"] = any(n.get("role") in ("AXTextField", "AXSearchField") and (n.get("label") or "") == "Find request" for n in tree)
-    n1["plus"] = fx.App.node(tree, "AXButton", "New request") is not None
+    n1["plus"] = node_any(tree, "New request") is not None
     n1["select_prompt"] = app.has_text(tree, "Select a request, or create one with New request.")
     obs["tree_opened"] = c29.save_tree("api-opened", tree)
     # Open the folder's request: a tab, the request line, the sub-tabs, the response pane.
@@ -273,7 +290,7 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
         n1["parity"][theme.lower()] = composite(app, theme, geometry(app.tree())["web"], prepared)
     c29.appearance(app, "Light")
     time.sleep(0.5)
-    c29.press(app, "AXButton", "Raw")
+    press_any(app, "Raw")
     tree, n1["raw_exact"] = app.wait_for(lambda t: app.has_text(t, FIRST_BODY), 6)
     headers_tab = next((l for l in labels(tree, TABS, "Headers") if l != "Headers"), None) or "Headers"
     role = next((n["role"] for n in tree if (n.get("label") or "") == headers_tab and n.get("role") in TABS and n is not None and (n.get("pos") or [0])[0] > 600), None)
@@ -300,7 +317,7 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
         oldest = entries[-1]
         app.ax("press", "AXButton", oldest["label"], sum(1 for n in entries[:-1] if n["label"] == oldest["label"]))
         time.sleep(1)
-        c29.press(app, "AXButton", "Raw")
+        press_any(app, "Raw")
         time.sleep(0.5)
     tree = app.tree()
     n1["old_unchanged"] = app.has_text(tree, FIRST_BODY) and not app.has_text(tree, "Travel")
@@ -325,14 +342,14 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
         text = f.read()
         n1["file_has_row"] = "[[query]]" in text and 'name = "page"' in text and 'value = "1"' in text
     # + creates a request draft: a new tab, "New · not saved yet".
-    c29.press(app, "AXButton", "New request")
+    press_any(app, "New request")
     tree, n1["new_dialog"] = app.wait_for(lambda t: dialog(t, "New request") is not None, 8)
     app.type_into("AXTextField", "Path (folder/name)", "topics/create")
     c29.press(app, "AXButton", "Create")
     tree, n1["new_tab"] = app.wait_for(lambda t: any(n.get("role") in TABS and (n.get("label") or "").startswith("GET create") for n in t) and any(r == "New · not saved yet" for r in c31.status_texts(t)), 10)
     obs["tree_new"] = c29.save_tree("api-new", tree)
     # The Collection chip's menu opens Environments in a docked sheet.
-    c29.press(app, "AXButton", "Collection Topics API")
+    press_any(app, "Collection Topics API")
     tree, n1["menu"] = app.wait_for(lambda t: any(n.get("role") in ("AXMenuItem", "AXButton") and (n.get("label") or "") == "Environments…" for n in t), 6)
     item = next((n for n in tree if (n.get("label") or "") == "Environments…"), None)
     if item:
