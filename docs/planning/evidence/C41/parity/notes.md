@@ -19,4 +19,4 @@ The board is the API Client: the title row with the Collection and Environment c
 
 ## Owner's judgement
 
-Recorded 2026-10-30: the owner directed the gates to proceed without a per-screen pause ("go go gog og o go gog o. stop stopping. go go go go go until we are 100% complete. stop stopping. go go go go go", then "please continue my guy", then "done. do it"). The composites are posted with these deviations for the record, and that direction is the judgement this gate runs on; the owner's own side-by-side look remains invited, and an objection reopens the chunk.
+The owner judged these composites (API Client: `parity/*.png`, prototype board left, fixture app right, light and dark) with the deviations above and approved them on 2026-10-30: "C39 C40 C41 C43 composites approved." This is the owner's judgement the gate runs on (D059); an objection from the owner reopens the parity judgement for this screen.
