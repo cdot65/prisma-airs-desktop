@@ -506,7 +506,8 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n4 = {}
     app.ax("focus", "AXButton", "Expand all")
     time.sleep(0.3)
-    walk = [(((f or {}).get("label")) or "")[:40] for f in app.tab_walk(16)]
+    # 30 Tabs: past Custom topics the strip, the toolbar and the table header sit before the first View.
+    walk = [(((f or {}).get("label")) or "")[:40] for f in app.tab_walk(30)]
     n4["walk"] = walk
     keys = ["Collapse all", "AI Runtime Security", "Overview", "Custom topics", "Details for"]
     idx = [next((i for i, l in enumerate(walk) if l.startswith(k)), None) for k in keys]
