@@ -329,9 +329,10 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
     const dirty = doc.new || doc.metadataDirty || !same(fields, doc.saved)
     const name = requestName(doc.relative)
     const state = doc.new ? C.state.new : dirty ? C.state.unsaved : C.state.saved
-    // A save's word ("Saved", "No changes to save") gives way to the state once the request is edited again.
+    // The status line's last word (a save's, a send's completion) gives way to the state once the request is
+    // edited again; only an action still in flight keeps its line.
     useEffect(() => {
-        if (dirty) setStatus((s) => (s === 'Saved' || s === 'No changes to save' ? '' : s))
+        if (dirty) setStatus((s) => (s === C.sending || s === C.waitingReview || s === 'Saving…' ? s : ''))
     }, [dirty])
     const url = splitUrl(fields.url)
 

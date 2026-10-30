@@ -21,7 +21,8 @@ type Closing = { kind: 'tab'; id: string; name: string } | { kind: 'collection' 
 const TOOLS: Tool[] = ['environments', 'secrets', 'schemas', 'import', 'git']
 const faint = { color: 'var(--v2-faint)' }
 const soft = { color: 'var(--v2-soft)' }
-const CHIP = 'flex h-8 min-h-0 items-center rounded-[7px] border text-[13px]'
+// A chip never widens the title row: it shrinks and truncates within it (a 900-point window at 200% overflowed by its width).
+const CHIP = 'flex h-8 max-w-full min-h-0 min-w-0 items-center truncate rounded-[7px] border text-[13px]'
 const chipStyle = {
     gap: 8,
     padding: '0 12px',
@@ -157,7 +158,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                 </p>
             </div>
             {collection ? (
-                <div className='ml-auto flex shrink-0 flex-wrap items-center' style={{ gap: 8 }} data-slot='api-chips'>
+                <div className='ml-auto flex min-w-0 max-w-full flex-wrap items-center' style={{ gap: 8 }} data-slot='api-chips'>
                     <span className='relative'>
                         <button
                             type='button'

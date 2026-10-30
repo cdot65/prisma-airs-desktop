@@ -332,6 +332,7 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
     app.type_into("AXTextField", "Name 1", "page")
     app.type_into("AXTextField", "Value 1", "1")
     tree, n1["unsaved"] = app.wait_for(lambda t: any(r == "Unsaved changes" for r in c31.status_texts(t)), 6)
+    n1["unsaved_seen"] = c31.status_texts(tree)[:4]
     c29.press(app, "AXButton", "Save")
     tree, n1["saved"] = app.wait_for(lambda t: any(r == "Saved" for r in c31.status_texts(t)), 10)
     preview = next((n for n in tree if n.get("role") in TABS and (n.get("label") or "") == "Preview"), None)
@@ -455,7 +456,7 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
         f"screen {n1['screen']} with the start panel {n1['start']}; opened through the sheet {n1['opened']}: chip {n1['chip']}, environment chip {n1['environment_chip']}, lead {n1['lead']}, folder {n1['folder']}, root request {n1['root_request']}, Find {n1['find']}, + {n1['plus']}, prompt {n1['select_prompt']}; "
         f"request opened {n1['request']}: tab {n1['tab']}, Method {n1['method']}, URL {n1.get('url_value')!r}, Send {n1['send']}, Save {n1['save']}, state Saved {n1['saved_state']}, sub-tabs {n1['sub_tabs']}, response tabs {n1['response_tabs']}, no response yet {n1['no_response']}; "
         f"Send announced {n1.get('status_text')!r} in a status region {n1['status']} with the body outside it {n1['body_shown']} (pill {n1['status_pill']}), exact under Raw {n1['raw_exact']}, Headers {n1['response_headers']}; after the service changed a new send reflected it {n1['second']}; History listed {n1['entries']} runs and the older one showed exactly the first response {n1['old_unchanged']}; "
-        f"a Params row unsaved {n1['unsaved']} then saved {n1['saved']}, Preview read ?page=1 {n1['preview_query']}, the file holds the line {n1['file_has_row']}; + opened the dialog {n1['new_dialog']} and a new tab {n1['new_tab']}; the chip menu {n1['menu']} opened Environments {n1['sheet']} docked at 620px {n1['sheet_docked']}; {n1['sent_total']} requests reached the loopback service; composites {sorted(n1['parity'].values())}",
+        f"a Params row unsaved {n1['unsaved']} (status {n1.get('unsaved_seen')}) then saved {n1['saved']}, Preview read ?page=1 {n1['preview_query']}, the file holds the line {n1['file_has_row']}; + opened the dialog {n1['new_dialog']} and a new tab {n1['new_tab']}; the chip menu {n1['menu']} opened Environments {n1['sheet']} docked at 620px {n1['sheet_docked']}; {n1['sent_total']} requests reached the loopback service; composites {sorted(n1['parity'].values())}",
         [run_rel, obs["tree_start"], obs["tree_opened"], obs["tree_request"], obs["tree_sent"], obs["tree_history"], obs["tree_preview"], obs["tree_new"], obs["tree_sheet"]] + caps("api-sent") + caps("api-history") + caps("api-sheet") + sorted(n1["parity"].values()))
     lay = n2["layouts"]
     ring_ok = (n2["ring"].get("diff") or 0) > 40 and n2["ring"].get("focused") == "Send"
