@@ -31,6 +31,7 @@ import fixture_app as fx  # noqa: E402
 import acceptance_c08 as c8  # noqa: E402
 import acceptance_c28 as c28  # noqa: E402
 import acceptance_c29 as c29  # noqa: E402
+import v2_setup as v2s  # noqa: E402
 import acceptance_c31 as c31  # noqa: E402
 import native_sheets as sheets  # noqa: E402
 
@@ -210,16 +211,8 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     sheets.enable()
     app.launch()
     pid = app.pid
-    app.open_settings()
-    app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
-    app.create_custom_tenant("Northwind Health", endpoint.origin)
-    app.save_key(c8.SCAN_KEY)
-    c8.save_client(app)
     # A second tenant, the destination of an explicit copy.
-    app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
-    app.create_custom_tenant("Tenant B", endpoint.origin)
-    app.make_active("Northwind Health")
-    c29.press(app, "AXCheckBox", "Use the new interface")
+    v2s.tenant_on_home(app, endpoint.origin, extra=("Tenant B",))
     app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None and c29.nav(t, "Destinations") is not None, 15)
     size_window(app, pid, 1440, 900)
 

@@ -35,6 +35,7 @@ import acceptance_c09 as c9  # noqa: E402
 import acceptance_c16 as c16  # noqa: E402
 import acceptance_c28 as c28  # noqa: E402
 import acceptance_c29 as c29  # noqa: E402
+import v2_setup as v2s  # noqa: E402
 import acceptance_c31 as c31  # noqa: E402
 
 ROOT = os.getcwd()
@@ -227,12 +228,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     obs = {"captures": {}}
     app.launch()
     pid = app.pid
-    app.open_settings()
-    app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
-    app.create_custom_tenant("Northwind Health", endpoint.origin)
-    app.save_key(c8.SCAN_KEY)
-    c8.save_client(app)
-    c29.press(app, "AXCheckBox", "Use the new interface")
+    v2s.tenant_on_home(app, endpoint.origin)
     app.wait_for(lambda t: c29.nav(t, "Destinations") is not None, 15)
     # The Gateway workspace Team A is chosen (C39b: the Gateway card's workspace-scoped tabs).
     app.menu("Go", "AI Gateway")

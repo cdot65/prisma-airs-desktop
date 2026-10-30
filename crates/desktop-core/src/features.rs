@@ -8,14 +8,16 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-/// Which desktop presentation the shell renders (D058). `Legacy` is the
-/// C01 shell; `V2` is the "Refined Native" shell introduced in C28 and the
-/// only one after C34. Persisted; changed only by `Intent::SetUiVariant`.
+/// Which desktop presentation the shell renders (D058). `Legacy` was the
+/// C01 shell, removed in C44; `V2` is the "Refined Native" shell introduced
+/// in C28 and the only one. The value stays on the wire for compatibility
+/// (the snapshot always says `v2`; `Intent::SetUiVariant` is accepted and
+/// ignored) and the persisted field is no longer read.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum UiVariant {
-    #[default]
     Legacy,
+    #[default]
     V2,
 }
 

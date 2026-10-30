@@ -22,6 +22,9 @@ import { ApiClient } from './workbench/api-client'
 import { CallsPanel } from './workbench/calls-panel'
 import { TestCases } from './workbench/test-cases'
 
+/** C44: the product destinations the catalogue still lists (Go, the palette), opened as Administration's products. */
+const PRODUCT_DESTINATION: Record<'runtime' | 'gateway' | 'redTeam', { product: AdminProductId; sequence: number }> = { runtime: { product: 'runtimeSecurity', sequence: -1 }, gateway: { product: 'gateway', sequence: -2 }, redTeam: { product: 'redTeam', sequence: -3 } }
+
 export interface V2ShellProps {
     snapshot: ShellSnapshot
     appearancePending: boolean
@@ -524,6 +527,18 @@ export function V2Shell(props: V2ShellProps) {
                         ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
                             // Not keyed by tenant: API Client documents are on this Mac.
                             <ApiClient ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
+                        ) : (feature.id === 'runtime' || feature.id === 'gateway' || feature.id === 'redTeam') && feature.availability.state === 'available' ? (
+                            // C44: the product destinations (Go, the palette) open Administration on their product; the legacy views are gone.
+                            <Administration
+                                key={snapshot.active?.context ?? 'none'}
+                                ref={heading}
+                                snapshot={snapshot}
+                                dispatch={props.dispatch}
+                                client={props.client}
+                                onAct={props.onAct}
+                                onNavigate={props.onNavigate}
+                                arrival={tenantNow ? { tenant: tenantNow, feature: 'administration', resource: null, item: null, ...PRODUCT_DESTINATION[feature.id] } : null}
+                            />
                         ) : (
                             <FeatureBody
                                 ref={heading}
@@ -534,7 +549,6 @@ export function V2Shell(props: V2ShellProps) {
                                 onNavigate={props.onNavigate}
                                 dispatch={props.dispatch}
                                 client={props.client}
-                                arrival={arrival && arrival.tenant === tenantNow && arrival.feature === feature.id ? arrival : null}
                             />
                         )}
                         <p role='status' aria-live='polite' data-slot='shell-status' className='mt-4 text-[13px]' style={{ color: 'var(--v2-soft)' }}>

@@ -8,15 +8,19 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { type AcademyView, DesktopClient, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, type Native, scriptedNative } from '../../test/native'
+import { type Native, scriptedNative } from '../../test/native'
+import { fxSwitcher } from '../../v2/fixtures'
 
-const withAcademy = (academy: AcademyView): ShellSnapshot => ({ ...baseSnapshot, academy })
+// C44: one presentation; Settings is the destination the core names in the snapshot.
+const withAcademy = (academy: AcademyView): ShellSnapshot => ({ ...fxSwitcher(), activeFeature: 'settings', academy })
 
 async function openSettings(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
-    const nav = await screen.findByRole('navigation', { name: 'Features' })
-    await user.click(within(nav).getByRole('button', { name: /Settings/ }))
+    // C44: one presentation; Settings is a Go destination the core names in the snapshot.
+    await screen.findByRole('navigation', { name: 'Destinations' })
+    await native.push({ ...native.current, activeFeature: 'settings' })
+    await screen.findByRole('group', { name: 'Academy account' })
     return user
 }
 

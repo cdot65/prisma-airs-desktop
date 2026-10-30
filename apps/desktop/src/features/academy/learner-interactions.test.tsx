@@ -11,7 +11,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AcademyView } from './academy-view'
+import { Academy as AcademyView } from '../../v2/academy/academy'
 import { ACADEMY_ORIGIN, ACCOUNT, academySnapshot, held, lostReply, result, scriptedNative, type Replies } from './test-support'
 
 function academy(path: string, replies: Replies, signedIn = true) {
@@ -61,7 +61,9 @@ describe('account sections', () => {
         async (path) => {
             const { calls } = academy(path, {}, false)
             expect(await screen.findByRole('heading', { level: 1, name: 'Sign in to continue' })).toBeInTheDocument()
-            expect(calls).toEqual([])
+            // The page sends nothing; the chrome's Learning paths row reads the public catalog (paths.list) as the guest.
+            expect(calls.filter((c) => c.procedure !== 'paths.list')).toEqual([])
+            expect(calls.every((c) => c.procedureKind === 'query')).toBe(true)
             const nav = screen.getByRole('navigation', { name: 'Academy sections' })
             expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual(['Learn'])
         }

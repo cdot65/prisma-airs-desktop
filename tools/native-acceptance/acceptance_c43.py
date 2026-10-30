@@ -226,8 +226,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     obs = {"captures": {}, "parity": {}}
     app.launch()
     pid = app.pid
-    app.open_settings()
-    press(app, "AXCheckBox", "Use the new interface")
+    # C44: the first run opens the wizard; there is no interface switch.
     tree, shown = app.wait_for(lambda t: heading(t, "Welcome to Prisma AIRS Desktop") is not None, 15)
     size_window(app, pid, 1440, 900)
     n1 = {"welcome": shown}
