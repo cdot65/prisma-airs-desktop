@@ -1,5 +1,5 @@
 import { createContext, forwardRef, lazy, Suspense, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Link, Outlet, redirect, RouterProvider } from '@tanstack/react-router'
 import {
     AssessmentIntroPage,
@@ -86,6 +86,12 @@ const PlaceContext = createContext<React.ReactNode>(null)
  * holds the procedure's raw reply; the row reads it through `pathRows`.
  */
 export const PATHS_LIST_KEY = [['paths', 'list'], { type: 'query' }] as const
+
+/** Academy's mutations that move a path's progress (tRPC mutation keys: the procedure path). */
+export const PROGRESS_MUTATIONS: readonly (readonly string[])[] = [
+    ['units', 'complete'],
+    ['units', 'submitKnowledgeCheck'],
+]
 
 function pathRows(rows: unknown): PathRow[] {
     if (!Array.isArray(rows)) return []
@@ -321,10 +327,26 @@ function LearnerTrail() {
 /** The Learning paths row: Academy's paths as its catalog lists them for this generation, read through the learner client. */
 function PathsRow() {
     const trpc = useLearnerTrpc() as unknown as { paths: { list: { query(): Promise<unknown> } } }
+    const queryClient = useQueryClient()
     const query = useQuery({
         queryKey: PATHS_LIST_KEY,
         queryFn: () => trpc.paths.list.query(),
     })
+    // The row stays mounted across the learner's routes, and Academy's own completion hooks refresh the unit,
+    // course and dashboard rollups but not paths.list. A unit completion or a knowledge-check submission that
+    // settles in this generation's cache rereads the row: on success for the new counts, on an error (an
+    // uncertain outcome included) to read Academy's truth back without replaying the mutation.
+    useEffect(
+        () =>
+            queryClient.getMutationCache().subscribe((event) => {
+                if (event.type !== 'updated' || (event.action.type !== 'success' && event.action.type !== 'error')) return
+                const key = event.mutation.options.mutationKey?.[0]
+                if (Array.isArray(key) && PROGRESS_MUTATIONS.some((m) => m.length === key.length && m.every((p, i) => p === key[i]))) {
+                    void queryClient.invalidateQueries({ queryKey: PATHS_LIST_KEY })
+                }
+            }),
+        [queryClient]
+    )
     const rows = pathRows(query.data)
     return (
         <section aria-labelledby='academy-paths' className='flex flex-col' style={{ gap: 12 }} data-slot='academy-paths'>

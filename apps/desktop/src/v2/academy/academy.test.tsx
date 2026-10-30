@@ -16,7 +16,7 @@ import { ACADEMY_ORIGIN, ACCOUNT, GUEST, academySnapshot, scriptedNative as acad
 import { scriptedNative } from '../../test/native'
 import { fxSwitcher } from '../fixtures'
 import { resetShellStore } from '../store'
-import { Academy, PATHS_LIST_KEY } from './academy'
+import { Academy, PATHS_LIST_KEY, themeFor } from './academy'
 
 beforeEach(() => resetShellStore())
 
@@ -246,7 +246,125 @@ describe('C42 Academy board', () => {
         expect(await screen.findByRole('heading', { level: 1, name: 'Not in the desktop app' })).toBeInTheDocument()
     })
 
-    it('mounts in the v2 shell for the Academy destination with the Rust-owned theme', async () => {
+    it('rereads the Learning paths row when a unit is completed or a knowledge check is submitted in the same generation, and after an uncertain completion reads Academy back without replaying it (attempt-02 R2)', async () => {
+        const user = userEvent.setup()
+        const sibling = (id: string, kind: string, order: number, title: string) => ({ id, kind, order, slug: String(order), title, xp: 100, estMinutes: 5, status: 'not_started', locked: false })
+        const MODULE = {
+            moduleId: 'm1',
+            title: 'Runtime module',
+            description: '',
+            concepts: [],
+            estMinutes: 10,
+            order: 1,
+            unitsDone: 0,
+            unitCount: 2,
+            percent: 0,
+            xpEarned: 0,
+            xpTotal: 200,
+            complete: false,
+            reuseCount: 1,
+            resumeUnitId: 'u1',
+        }
+        const LESSON = {
+            id: 'u1',
+            moduleId: 'm1',
+            kind: 'content',
+            order: 1,
+            slug: '1',
+            title: 'Only lesson',
+            xp: 100,
+            estMinutes: 5,
+            status: 'not_started',
+            bodyHtml: '<p>Text.</p>',
+            objectives: [],
+            inlineChecks: [],
+            sourceLessonId: null,
+            siblings: [sibling('u1', 'content', 1, 'Only lesson'), sibling('u-kc', 'knowledge_check', 2, 'A check')],
+            pathContext: { course: { courseId: 'runtime-security', title: 'Runtime Security Foundations', slug: 'runtime-security' }, moduleTitle: 'Runtime module', modules: [MODULE] },
+        }
+        const CHECK = { ...LESSON, id: 'u-kc', kind: 'knowledge_check', order: 2, slug: '2', title: 'A check', quizDrawCount: 1 }
+        const ATTEMPT = {
+            attemptId: '00000000-0000-4000-8000-000000000009',
+            unitId: 'u-kc',
+            questions: [
+                {
+                    id: 'q1',
+                    type: 'mcq',
+                    prompt: 'Which input is untrusted?',
+                    options: ['Retrieved content', 'Constants'],
+                    weight: 1,
+                    scope: 'module',
+                    lessonId: null,
+                    moduleId: 'm1',
+                    objectiveId: 'o1',
+                },
+            ],
+        }
+        // Academy's own count of units done on the path: the row must show it after each change.
+        let done = 1
+        let completes = 0
+        const native = academyNative((procedure, _learner, input) => {
+            switch (procedure) {
+                case 'paths.list':
+                    return [{ ...PATH, unitsDone: done }]
+                case 'library.list':
+                    return []
+                case 'units.get':
+                    return (input as { unitId?: string })?.unitId === 'u-kc' ? CHECK : LESSON
+                case 'units.listByModule':
+                    return LESSON.siblings
+                case 'units.listByPath':
+                    return [MODULE]
+                case 'units.complete':
+                    completes += 1
+                    // The first completion's receipt is lost: Academy may have recorded it.
+                    if (completes === 1) return { __result__: { kind: 'failed', failure: 'network', outcome: 'unknown' } }
+                    done = 2
+                    return { completed: true, award: null }
+                case 'units.startKnowledgeCheck':
+                    return ATTEMPT
+                case 'units.checkKcAnswer':
+                    return { correct: true, explanation: 'Yes.', correctValue: 0 }
+                case 'units.submitKnowledgeCheck':
+                    done = 3
+                    return { award: null, scorePercent: 100, passed: true, perObjective: [], results: [{ questionId: 'q1', correct: true }] }
+                default:
+                    return undefined
+            }
+        })
+        render(<Academy snapshot={academySnapshot(true, ACCOUNT)} client={native.client} onNavigate={vi.fn()} initialPath='/units/u1' />)
+        const mounted = document.querySelector('[data-slot="academy-v2"]')
+        await screen.findByRole('heading', { level: 1, name: 'Only lesson' })
+        const paths = await screen.findByRole('region', { name: 'Learning paths' })
+        expect(await within(paths).findByText('1 of 4 units · 30 min')).toBeInTheDocument()
+        const reads = () => native.calls.filter((i) => i.procedure === 'paths.list').length
+        expect(reads()).toBe(1)
+        // An uncertain completion: Academy's truth is read back (the row too), the completion is not replayed.
+        await user.click(screen.getByRole('button', { name: /Finish module|Complete & continue/ }))
+        await waitFor(() => expect(screen.getAllByRole('alert').some((a) => a.textContent?.includes('may have recorded'))).toBe(true))
+        await waitFor(() => expect(reads()).toBe(2))
+        expect(completes).toBe(1)
+        expect(within(paths).getByText('1 of 4 units · 30 min')).toBeInTheDocument()
+        // An ordinary completion: the row shows the new count without remounting the Academy.
+        await user.click(screen.getByRole('button', { name: /Finish module|Complete & continue/ }))
+        expect(await within(paths).findByText('2 of 4 units · 30 min')).toBeInTheDocument()
+        expect(completes).toBe(2)
+        // The knowledge check that follows: its submission moves the count again.
+        await user.click(await screen.findByRole('button', { name: 'Start knowledge check' }))
+        await user.click(await screen.findByLabelText('Retrieved content', { exact: true }))
+        await user.click(screen.getByRole('button', { name: 'Submit' }))
+        expect(await within(paths).findByText('3 of 4 units · 30 min')).toBeInTheDocument()
+        expect(native.calls.filter((i) => i.procedure === 'units.submitKnowledgeCheck')).toHaveLength(1)
+        expect(document.querySelector('[data-slot="academy-v2"]')).toBe(mounted)
+    })
+
+    it('maps the Rust-owned appearance to the learner host’s theme', () => {
+        expect(themeFor('dark')).toBe('gruvbox')
+        expect(themeFor('light')).toBe('paper')
+        expect(['gruvbox', 'paper']).toContain(themeFor('system'))
+    })
+
+    it('mounts in the v2 shell for the Academy destination (the shell hands the Rust-owned appearance to the learner host through themeFor)', async () => {
         const base = fxSwitcher()
         const snapshot: ShellSnapshot = {
             ...base,

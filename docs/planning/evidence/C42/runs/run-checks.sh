@@ -42,7 +42,7 @@ for try in 1 2; do
   fi
 done
 # The chunk's registered fixture command (docs/architecture/checks.json C42), exactly as the manifest runs it.
-run fixture-command cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_workbench
+run fixture-command cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_academy
 run host cargo test --locked -p desktop-host --features test-fixtures
 # The host's Academy device-flow tests (browser_callback.rs, outside this chunk) wait 5 s for a
 # state and flake under load: the same command is retried on the same frozen inputs, every
