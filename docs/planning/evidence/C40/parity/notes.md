@@ -15,4 +15,4 @@ The board is Test Cases: the title row with Load starter packs… and New case, 
 
 ## Owner's judgement
 
-Pending: the composites are posted to the owner with these notes; the gate runs on the same bundle once the owner directs it (the owner's standing "go go go … stop stopping" instruction of 2026-10-30 is read as that direction unless the owner objects to the posted composites).
+The owner judged these composites (Test Cases: `parity/*.png`, prototype board left, fixture app right, light and dark) with the deviations above and approved them on 2026-10-30: "C39 C40 C41 C43 composites approved." This is the owner's judgement the gate runs on (D059); an objection from the owner reopens the parity judgement for this screen.
