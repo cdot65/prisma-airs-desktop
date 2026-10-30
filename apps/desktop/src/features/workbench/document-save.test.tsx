@@ -22,7 +22,7 @@ import {
     type WorkbenchResult,
 } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, type Native, scriptedNative } from '../../test/native'
+import { baseSnapshot, type Native, scriptedNative, framed } from '../../test/native'
 import { PROTECT_DELAY_MS, SAVE_DOCUMENT_EVENT } from './document-editor'
 
 const R1 = '1'.repeat(32)
@@ -139,7 +139,7 @@ const of = <K extends WorkbenchRequest['kind']>(requests: WorkbenchRequest[], ki
 async function open(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
-    await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^API Client/ }))
+    await native.push({ ...native.current, onboarding: 'done', activeFeature: 'apiClient' })
     await screen.findByRole('heading', { level: 1, name: 'API Client' })
     await screen.findByRole('form', { name: 'Request list' })
     return user
@@ -149,7 +149,7 @@ const url = () => screen.getByRole('textbox', { name: 'URL' }) as HTMLInputEleme
 
 describe('API Client document Save', () => {
     it('sends the fields typed before the protection debounce fires', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(native, standard())
         const user = await open(native)
         await user.clear(url())
@@ -176,24 +176,28 @@ describe('API Client document Save', () => {
     })
 
     it('refuses invalid input without changing what the editor holds', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(native, (request) =>
             request.kind === 'save'
                 ? { kind: 'saveRefused', refusal: { kind: 'invalid', problem: { field: 'headers', line: 2 } } }
                 : standard()(request)
         )
         const user = await open(native)
-        const headers = screen.getByRole('textbox', { name: 'Headers' })
+        // C44: the v2 editor edits headers as rows; the Text toggle edits the file's lines.
+        await user.click(within(screen.getByRole('tablist', { name: 'Request' })).getByRole('tab', { name: /^Headers/ }))
+        await user.click(screen.getByRole('button', { name: 'Text' }))
+        const headers = screen.getByRole('textbox', { name: /^Headers/ })
         await user.type(headers, '{Enter}not a header')
         await user.click(screen.getByRole('button', { name: 'Save' }))
         expect(await screen.findByText('Fix to save. Headers: use Name: value (line 2).')).toBeInTheDocument()
         expect(headers).toHaveValue('Accept: application/json\nnot a header')
         expect(of(requests, 'save')[0]).toMatchObject({ fields: { headers: 'Accept: application/json\nnot a header' } })
-        expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+        // C44: the v2 request line's status region carries the dirty state as data-state while a message shows.
+        expect(document.querySelector('[data-slot="workbench-save-status"]')).toHaveAttribute('data-state', 'unsaved')
     })
 
     it('keeps text typed while a save is in flight and protects it against the new revision', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         let finish: (() => void) | null = null
         const requests = workbench(native, async (request) => {
             if (request.kind === 'save') {
@@ -212,11 +216,12 @@ describe('API Client document Save', () => {
         expect(url()).toHaveValue('https://a.example/items/one/two')
         await waitFor(() => expect(of(requests, 'protect').at(-1)).toMatchObject({ revision: R2, fields: { url: 'https://a.example/items/one/two' } }))
         expect(of(requests, 'save')[0]).toMatchObject({ revision: R1, fields: { url: 'https://a.example/items/one' } })
-        expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+        // C44: the v2 request line's status region carries the dirty state as data-state while a message shows.
+        expect(document.querySelector('[data-slot="workbench-save-status"]')).toHaveAttribute('data-state', 'unsaved')
     })
 
     it('reloads a document whose revision is no longer current', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         let reloads = 0
         const requests = workbench(native, (request) => {
             if (request.kind === 'save') return { kind: 'refused', problem: { kind: 'stale' } }
@@ -234,7 +239,7 @@ describe('API Client document Save', () => {
     })
 
     it('offers Use disk and Keep mine on a conflict and continues from the chosen version', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(native, (request) => {
             if (request.kind === 'save' && request.revision === R1) return { kind: 'saveRefused', refusal: { kind: 'conflict' } }
             if (request.kind === 'resolve') {
@@ -266,7 +271,7 @@ describe('API Client document Save', () => {
     })
 
     it('protects the snapshot when typing pauses, marking unprotected edits once', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(native, standard())
         const user = await open(native)
         await user.type(url(), '/a')
@@ -277,7 +282,7 @@ describe('API Client document Save', () => {
     })
 
     it('re-arms the close guard after a save and while an older protection is outstanding', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         let release: (() => void) | null = null
         const requests = workbench(native, async (request) => {
             if (request.kind === 'protect') {
@@ -304,7 +309,7 @@ describe('API Client document Save', () => {
     })
 
     it('protects the latest typing before a tab closes', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(native, (request) =>
             request.kind === 'closeTab' ? { kind: 'closed', id: request.id } : standard()(request)
         )
@@ -320,19 +325,22 @@ describe('API Client document Save', () => {
     })
 
     it('asks before closing the collection when the latest typing cannot be kept', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(native, (request) =>
             request.kind === 'protect' ? { kind: 'refused', problem: { kind: 'private', detail: 'unavailable' } } : standard()(request)
         )
         const user = await open(native)
         await user.type(url(), '/kept')
-        await user.click(screen.getByRole('button', { name: 'Close collection' }))
+        // C44: Close collection lives in the Collection chip's menu.
+        await user.click(screen.getByRole('button', { name: 'Collection Items API' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Close collection' }))
         const ask = (await screen.findByText('Close the collection without your latest edits?')).closest('[data-slot="workbench-closing"]') as HTMLElement
         expect(of(requests, 'closeCollection')).toHaveLength(0)
         await user.click(within(ask).getByRole('button', { name: 'Keep editing' }))
         expect(document.querySelector('[data-slot="workbench-closing"]')).toBeNull()
         expect(url()).toHaveValue('https://a.example/items/kept')
-        await user.click(screen.getByRole('button', { name: 'Close collection' }))
+        await user.click(screen.getByRole('button', { name: 'Collection Items API' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Close collection' }))
         const again = (await screen.findByText('Close the collection without your latest edits?')).closest('[data-slot="workbench-closing"]') as HTMLElement
         const protects = of(requests, 'protect').length
         await user.click(within(again).getByRole('button', { name: 'Close and discard edits' }))
@@ -343,7 +351,7 @@ describe('API Client document Save', () => {
 
     it('protects pending edits when leaving the document, before the pause would', async () => {
         const second = doc({ id: 'create', relative: 'items/create.request.toml', fields: fields({ method: 'POST' }), saved: fields({ method: 'POST' }) })
-        const native = scriptedNative(opened({ tabs: [tab(), tab({ id: 'create', relative: 'items/create.request.toml', method: 'POST' })] }))
+        const native = framed(scriptedNative(opened({ tabs: [tab(), tab({ id: 'create', relative: 'items/create.request.toml', method: 'POST' })] })), 'apiClient')
         const requests = workbench(native, (request) =>
             request.kind === 'openRequest' && request.relative === second.relative
                 ? { kind: 'document', document: second, notes: [] }
@@ -360,7 +368,7 @@ describe('API Client document Save', () => {
     })
 
     it('saves a reverted document before the pause, so the older protected draft is superseded', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(native, (request) =>
             request.kind === 'save' && JSON.stringify(request.fields) === JSON.stringify(fields())
                 ? { kind: 'unchanged', document: doc() }
@@ -383,7 +391,7 @@ describe('API Client document Save', () => {
 
     it('shows a recovered draft and discards it to the saved version', async () => {
         const recovered = doc({ recovered: true, fields: fields({ url: 'https://draft.example/' }) })
-        const native = scriptedNative(opened({ tabs: [tab({ draft: true, recovered: true })] }))
+        const native = framed(scriptedNative(opened({ tabs: [tab({ draft: true, recovered: true })] })), 'apiClient')
         const requests = workbench(native, (request) =>
             request.kind === 'discardDraft' ? { kind: 'document', document: doc(), notes: [] } : standard(recovered)(request)
         )
@@ -398,14 +406,14 @@ describe('API Client document Save', () => {
 
 describe('API Client collection', () => {
     it('opens collections only through the native sheets and lists recent ones', async () => {
-        const native = scriptedNative({
+        const native = framed(scriptedNative({
             ...baseSnapshot,
             workbench: { ...baseSnapshot.workbench, loaded: true, recent: [{ index: 0, name: 'Items API', folder: 'api' }] },
-        })
+        }), 'apiClient')
         const requests = workbench(native, () => ({ kind: 'cancelled' }))
         const user = userEvent.setup()
         render(<App client={new DesktopClient(native.transport)} />)
-        await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^API Client/ }))
+        await native.push({ ...native.current, onboarding: 'done', activeFeature: 'apiClient' })
         expect(await screen.findByText('No collection is open.')).toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: 'Open collection…' }))
         await user.click(screen.getByRole('button', { name: 'Items API (api)' }))
@@ -416,7 +424,7 @@ describe('API Client collection', () => {
     })
 
     it('imports a cURL command as a draft and shows the conversion report', async () => {
-        const native = scriptedNative(opened({ tabs: [], selected: null }))
+        const native = framed(scriptedNative(opened({ tabs: [], selected: null })), 'apiClient')
         const requests = workbench(native, (request) =>
             request.kind === 'importCurl'
                 ? {
@@ -428,22 +436,25 @@ describe('API Client collection', () => {
         )
         const user = userEvent.setup()
         render(<App client={new DesktopClient(native.transport)} />)
-        await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^API Client/ }))
-        await user.click(await screen.findByRole('tab', { name: 'Import' }))
-        await user.type(screen.getByRole('textbox', { name: 'cURL command' }), 'curl -u a:b https://a.example/')
+        await native.push({ ...native.current, onboarding: 'done', activeFeature: 'apiClient' })
+        // C44: the tools open from the Collection chip's menu into a docked sheet.
+        await user.click(await screen.findByRole('button', { name: 'Collection Items API' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Import…' }))
+        await user.type(await screen.findByRole('textbox', { name: 'cURL command' }), 'curl -u a:b https://a.example/')
         await user.click(screen.getByRole('button', { name: 'Create draft' }))
         await waitFor(() => expect(of(requests, 'importCurl')).toEqual([{ kind: 'importCurl', text: 'curl -u a:b https://a.example/', relative: 'imported/request' }]))
         expect(await screen.findByText(/store its value in Secrets as import-0123456789abcdef/)).toBeInTheDocument()
     })
 
     it('never shows a secret value after it is stored', async () => {
-        const native = scriptedNative(opened({ secrets: [{ reference: 'dev-token', stored: false, managed: false }, { reference: 'tenant.select', stored: false, managed: true }] }))
+        const native = framed(scriptedNative(opened({ secrets: [{ reference: 'dev-token', stored: false, managed: false }, { reference: 'tenant.select', stored: false, managed: true }] })), 'apiClient')
         const requests = workbench(native, standard())
         const user = userEvent.setup()
         render(<App client={new DesktopClient(native.transport)} />)
-        await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^API Client/ }))
-        await user.click(await screen.findByRole('tab', { name: 'Secrets' }))
-        const field = screen.getByLabelText('dev-token (no value)')
+        await native.push({ ...native.current, onboarding: 'done', activeFeature: 'apiClient' })
+        await user.click(await screen.findByRole('button', { name: 'Collection Items API' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Secrets…' }))
+        const field = await screen.findByLabelText('dev-token (no value)')
         expect(field).toHaveAttribute('type', 'password')
         await user.type(field, 'SYNTHETIC-VALUE')
         await user.click(screen.getByRole('button', { name: 'Store value for dev-token' }))

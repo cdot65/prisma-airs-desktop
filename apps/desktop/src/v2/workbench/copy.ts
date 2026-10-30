@@ -182,7 +182,8 @@ export const API_COPY = {
             : `This collection has problems to fix before files can change (${n} listed). Requests with problems are not shown.`,
     unsaved: (why: string) => `Drafts could not be protected on this Mac (${why}). Save or keep the app open until this clears.`,
     // The request tree.
-    tree: 'Request list',
+    // The tree's name must not collide with a request document's form ('Request <name>'): a request named list is 'Request list'.
+    tree: 'Requests',
     find: 'Find request',
     clearSearch: 'Clear search',
     noMatch: (q: string, n: number) => `No requests match “${q}”. ${n} ${n === 1 ? 'request is' : 'requests are'} in this collection.`,

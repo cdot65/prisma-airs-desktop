@@ -7,7 +7,7 @@ import { Btn } from '../controls'
 import { Glyph } from '../icons'
 import { Modal } from '../modal'
 import { API_COPY as C, methodColor } from './copy'
-import { type EditorHandle, RequestEditor } from './request-editor'
+import { type EditorHandle, NOTE_TEXT, RequestEditor } from './request-editor'
 import { RequestTree, requestName } from './request-tree'
 import { type Run, type Tool, ToolsSheet } from './tools-sheet'
 
@@ -109,10 +109,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
         loading.current = selectedTab.id
         void call({ kind: 'openRequest', relative: selectedTab.relative }).then((r) => {
             loading.current = null
-            if (r.kind === 'document') {
-                setDoc(r.document)
-                setNotes([])
-            }
+            if (r.kind === 'document') setDoc(r.document)
         })
     }, [selectedTab, doc, call])
     useEffect(() => {
@@ -421,11 +418,20 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                     {alerts}
                                 </div>
                             ) : null}
+                            {notes.length ? (
+                                <div className='flex flex-col text-[13px]' style={{ gap: 4, margin: '12px 20px 0', padding: '12px 14px', borderRadius: 10, background: 'var(--v2-acc-soft)' }} data-slot='workbench-notes'>
+                                    <p className='font-semibold'>{C.notes}</p>
+                                    <ul className='list-disc pl-5'>
+                                        {notes.map((n, i) => (
+                                            <li key={i}>{NOTE_TEXT(n)}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : null}
                             {doc && selectedTab && doc.id === selectedTab.id ? (
                                 <RequestEditor
                                     key={`${doc.id}:${doc.revision}:${doc.relative}`}
                                     initial={doc}
-                                    notes={notes}
                                     call={call}
                                     schemas={collection.schemas}
                                     historyKey={`${collection.id}:${state.running.length}`}

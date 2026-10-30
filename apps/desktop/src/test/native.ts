@@ -5,7 +5,7 @@
  * channel, as the Rust host would.
  */
 import { act } from '@testing-library/react'
-import type { DesktopTransport, Intent, MenuCommand, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
+import type { DesktopTransport, FeatureId, Intent, MenuCommand, ShellSnapshot, TenantView } from '@prisma-airs/desktop-contracts'
 import shellResponse from '@prisma-airs/desktop-contracts/fixtures/wire/observe-shell-response.json'
 
 export const baseSnapshot = shellResponse.snapshot as ShellSnapshot
@@ -120,5 +120,22 @@ export function scriptedNative(initial: ShellSnapshot): Native {
             },
         },
     }
+    return native
+}
+
+/**
+ * C44: frames a suite's snapshots in the v2 shell on one destination. The
+ * legacy suites built their snapshots from the wire fixture (first run not
+ * done, the legacy default destination) and chose the destination through
+ * the legacy rail; the v2 shell shows the destination the core names, so
+ * the initial snapshot and every later push that still carries the wire
+ * default are shown on `feature`. A push naming another destination keeps it.
+ */
+export function framed(native: Native, feature: FeatureId): Native {
+    const wireDefault = baseSnapshot.activeFeature
+    const frame = (s: ShellSnapshot): ShellSnapshot => ({ ...s, onboarding: 'done', activeFeature: s.activeFeature === wireDefault ? feature : s.activeFeature })
+    native.current = frame(native.current)
+    const push = native.push
+    native.push = (next) => push(frame(next))
     return native
 }

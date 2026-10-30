@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { DesktopClient, type DiagnosticsView, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, scriptedNative } from '../../test/native'
+import { baseSnapshot, scriptedNative, framed } from '../../test/native'
 
 const snapshot = (view: Partial<DiagnosticsView> = {}): ShellSnapshot => ({
     ...baseSnapshot,
@@ -17,10 +17,10 @@ const snapshot = (view: Partial<DiagnosticsView> = {}): ShellSnapshot => ({
 
 describe('diagnostics (C24)', () => {
     it('states what is kept, exports and clears only when asked, and announces the export', async () => {
-        const native = scriptedNative(snapshot())
+        const native = framed(scriptedNative(snapshot()), 'settings')
         const user = userEvent.setup()
         render(<App client={new DesktopClient(native.transport)} />)
-        await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Settings/ }))
+        await native.push({ ...native.current, onboarding: 'done', activeFeature: 'settings' })
         const group = await screen.findByRole('group', { name: 'Diagnostics' })
         expect(within(group).getByText(/Kept only on this Mac for 14 days and never sent anywhere/)).toBeInTheDocument()
         expect(within(group).getByText(/Prompts, responses, keys, tokens and names are never kept/)).toBeInTheDocument()
@@ -46,10 +46,10 @@ describe('diagnostics (C24)', () => {
     })
 
     it('announces a clearing, and says when one could not remove everything', async () => {
-        const native = scriptedNative(snapshot({ events: 12, clear: 'failed' }))
+        const native = framed(scriptedNative(snapshot({ events: 12, clear: 'failed' })), 'settings')
         const user = userEvent.setup()
         render(<App client={new DesktopClient(native.transport)} />)
-        await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Settings/ }))
+        await native.push({ ...native.current, onboarding: 'done', activeFeature: 'settings' })
         const group = await screen.findByRole('group', { name: 'Diagnostics' })
         // The events still kept are counted, and the failure is an alert.
         expect(within(group).getByText('12 events kept.')).toBeInTheDocument()
@@ -64,10 +64,10 @@ describe('diagnostics (C24)', () => {
     })
 
     it('says when a build keeps none', async () => {
-        const native = scriptedNative(snapshot({ available: false }))
+        const native = framed(scriptedNative(snapshot({ available: false })), 'settings')
         const user = userEvent.setup()
         render(<App client={new DesktopClient(native.transport)} />)
-        await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Settings/ }))
+        await native.push({ ...native.current, onboarding: 'done', activeFeature: 'settings' })
         const group = await screen.findByRole('group', { name: 'Diagnostics' })
         expect(within(group).getByText('This build keeps no diagnostics.')).toBeInTheDocument()
         expect(within(group).queryByRole('button')).toBeNull()

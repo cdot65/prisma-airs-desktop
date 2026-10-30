@@ -222,3 +222,16 @@
         border-top: 1px solid var(--v2-rule);
     }
 }
+/* C39a attempt-01 R1: below the width that fits the inventory's columns (900×600 at 200% is 450 CSS px) the rows stack their cells. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='administration-row'] {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 4px !important;
+    }
+    [data-v2-shell] [data-slot='administration-table'] > [role='row']:first-child {
+        display: none;
+    }
+    [data-v2-shell] [data-slot='administration-row'] > [role='cell']:last-child {
+        justify-content: flex-start;
+    }
+}

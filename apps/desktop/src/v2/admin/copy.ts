@@ -41,7 +41,9 @@ export const ADMIN_COPY = {
         itemsOf: (n: number, total: number) => `${n} of ${total} items`,
         read: (when: string) => `Read ${when}`,
         reading: (what: string) => `Reading ${what.toLowerCase()}…`,
-        noMatch: (what: string, q: string) => `No ${what.toLowerCase()} match “${q}”.`,
+        // The search covers the page that was read (C39a attempt-01 R3); other pages are reached with First page / Next page.
+        noMatch: (what: string, q: string, morePages = false) => `No ${what.toLowerCase()} on this page match “${q}”.${morePages ? ' Other pages are not searched: use First page and Next page.' : ''}`,
+        searchScope: 'Searches the page that was read.',
         empty: (what: string) => `The service reports no ${what.toLowerCase()} in this tenant.`,
         partial: (what: string) => `More ${what.toLowerCase()} follow. Rows not yet read are not shown and are not assumed absent.`,
         stale: (when: string) => `Showing rows read at ${when}. They may be out of date.`,

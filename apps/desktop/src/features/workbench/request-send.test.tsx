@@ -25,7 +25,7 @@ import {
     type WorkbenchResult,
 } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, type Native, scriptedNative, tenant, withTenant } from '../../test/native'
+import { baseSnapshot, type Native, scriptedNative, tenant, withTenant, framed } from '../../test/native'
 
 const R1 = '1'.repeat(32)
 const CONTEXT = 'cx-aaaaaaaaaaaaaaaaaaaaaaaa'
@@ -169,7 +169,7 @@ const of = <K extends WorkbenchRequest['kind']>(requests: WorkbenchRequest[], ki
 async function open(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
-    await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^API Client/ }))
+    await native.push({ ...native.current, onboarding: 'done', activeFeature: 'apiClient' })
     await screen.findByRole('form', { name: 'Request list' })
     return user
 }
@@ -178,7 +178,7 @@ const url = () => screen.getByRole('textbox', { name: 'URL' }) as HTMLInputEleme
 
 describe('API Client Send', () => {
     it('sends the fields typed before the protection debounce, with the active context', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(native, standard(() => ({ kind: 'ran', run: ran() })))
         const user = await open(native)
         await user.clear(url())
@@ -186,6 +186,8 @@ describe('API Client Send', () => {
         await user.click(screen.getByRole('button', { name: 'Send' }))
         const response = await screen.findByRole('region', { name: 'Response' })
         expect(within(response).getByText('HTTP 200 · 11 B · 42 ms')).toBeInTheDocument()
+        // C44: the v2 pane pretty-prints JSON first; Raw shows exactly what arrived.
+        await user.click(within(response).getByRole('button', { name: 'Raw' }))
         expect(within(response).getByLabelText('Response body')).toHaveTextContent('{"ok":true}')
         expect(of(requests, 'send')).toEqual([
             { kind: 'send', id: 'list', revision: R1, fields: fields({ url: 'http://127.0.0.1:8080/fresh' }), context: CONTEXT },
@@ -195,7 +197,7 @@ describe('API Client Send', () => {
     })
 
     it('shows a tenant change for review and applies the fresh snapshot with its review ID', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(
             native,
             standard((request) =>
@@ -230,7 +232,7 @@ describe('API Client Send', () => {
 
     it('explains refusals and uncertain outcomes, and never offers to resend', async () => {
         let attempt = 0
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         workbench(
             native,
             standard(() =>
@@ -249,7 +251,7 @@ describe('API Client Send', () => {
     })
 
     it('cancels a running request', async () => {
-        const native = scriptedNative(opened({ running: [{ run: 'run-00000000000000bb', request: 'list', method: 'POST', bytes: 2048 }] }))
+        const native = framed(scriptedNative(opened({ running: [{ run: 'run-00000000000000bb', request: 'list', method: 'POST', bytes: 2048 }] })), 'apiClient')
         const requests = workbench(native, standard(() => ({ kind: 'done' })))
         const user = await open(native)
         const running = await screen.findByText('Sending POST… 2.0 KB transferred')
@@ -258,7 +260,7 @@ describe('API Client Send', () => {
     })
 
     it('lists history, shows a run and saves its response through the native sheet', async () => {
-        const native = scriptedNative(opened())
+        const native = framed(scriptedNative(opened()), 'apiClient')
         const requests = workbench(
             native,
             standard((request) => {
@@ -272,7 +274,8 @@ describe('API Client Send', () => {
         await user.click(await screen.findByRole('button', { name: /^GET items\/list · HTTP 200/ }))
         const response = await screen.findByRole('region', { name: 'Response' })
         await user.click(within(response).getByRole('button', { name: 'Save response…' }))
-        expect(await within(response).findByText('Saved 11 B as list-response.json.')).toBeInTheDocument()
+        // C44: the pane's status line (outside the response region) announces the save.
+        expect(await screen.findByText('Saved 11 B as list-response.json.')).toBeInTheDocument()
         expect(of(requests, 'showRun')).toEqual([{ kind: 'showRun', run: 'run-0123456789abcdef' }])
         expect(of(requests, 'saveResponse')).toEqual([{ kind: 'saveResponse', run: 'run-0123456789abcdef' }])
         // Showing history sent nothing.

@@ -22,6 +22,7 @@ import {
     type RotationView,
     type ScanRecordView,
     type ShellSnapshot,
+    DeliveryOutcomeUnknown,
 } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
 import { scriptedNative, tenant, type Native } from '../../test/native'
@@ -1135,3 +1136,152 @@ function settledResult(operation = 'op-11'): ChangeResultView {
         provisioning: null,
     }
 }
+
+// ---- C39a attempt-01 E2, R2, R3: the v2 Playground's handlers and the table's reads through their v2 imports ----
+
+describe('v2 Playground handlers (C39a E2)', () => {
+    const scanning = (operation: string, progress: ScanRecordView['progress']): ScanRecordView => ({ operation, progress, outcome: null, stop: null, failure: null, discarded: false, result: null })
+
+    it('submits the fields as typed, says a refusal and an unconfirmed delivery without replaying, and cancels a running scan', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await user.click(within(runtime).getByRole('tab', { name: 'Playground' }))
+        const form = within(runtime).getByRole('form', { name: 'Scan a prompt or response' })
+        await user.type(within(form).getByLabelText('Profile name or ID'), 'chatbot-strict')
+        await user.type(within(form).getByLabelText('Prompt'), 'hello there')
+        const respond = native.respond
+        // Refused: said, nothing scanned.
+        native.respond = (intent: Intent) => (intent.kind === 'scan' ? { outcome: 'refusal', refusal: 'invalidInput' } : respond(intent))
+        await user.click(within(form).getByRole('button', { name: 'Scan' }))
+        expect(native.dispatched.filter((i) => i.kind === 'scan')).toHaveLength(1)
+        expect(native.dispatched.at(-1)).toMatchObject({ kind: 'scan', context: CONTEXT, draft: expect.objectContaining({ prompt: 'hello there' }) })
+        expect(await within(runtime).findByRole('alert')).toBeInTheDocument()
+        // Unknown delivery: said as unconfirmed, never resent on its own.
+        native.respond = (intent: Intent) => {
+            if (intent.kind === 'scan') throw new DeliveryOutcomeUnknown('lost')
+            return respond(intent)
+        }
+        await user.click(within(form).getByRole('button', { name: 'Scan' }))
+        // The delivery layer may re-present a lost delivery to learn its outcome; the view never resends on its own.
+        await waitFor(() => expect(within(runtime).getByRole('alert')).toHaveTextContent(/not confirm|unconfirmed|sent/i))
+        const sent = native.dispatched.length
+        await native.push({ ...native.current })
+        await new Promise((r) => setTimeout(r, 50))
+        expect(native.dispatched).toHaveLength(sent)
+        // Admitted: the running scan is shown and Cancel scan sends exactly one cancel for it.
+        native.respond = (intent: Intent) => (intent.kind === 'scan' ? { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-9', operation: 'op-9' } } : respond(intent))
+        await user.click(within(form).getByRole('button', { name: 'Scan' }))
+        await native.push({ ...native.current, scans: [scanning('op-9', 'running')] })
+        await user.click(await within(runtime).findByRole('button', { name: 'Cancel scan' }))
+        expect(native.dispatched.filter((i) => i.kind === 'cancelScan')).toEqual([{ kind: 'cancelScan', operation: 'op-9' }])
+    })
+
+    it('saves a case from the fields as typed and says only what the library established', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await user.click(within(runtime).getByRole('tab', { name: 'Playground' }))
+        const form = within(runtime).getByRole('form', { name: 'Scan a prompt or response' })
+        await user.type(within(form).getByLabelText('Profile name or ID'), 'chatbot-strict')
+        await user.type(within(form).getByLabelText('Prompt'), 'remember me')
+        await user.type(within(runtime).getByLabelText('Case name'), 'Greeting case')
+        await user.click(within(runtime).getByRole('button', { name: 'Save as test case…' }))
+        expect(native.dispatched.at(-1)).toMatchObject({ kind: 'saveCase', context: CONTEXT, draft: expect.objectContaining({ name: 'Greeting case', prompt: 'remember me', product: 'runtime-security' }) })
+        expect(within(runtime).getByText('Saving to this tenant’s case Library…')).toBeInTheDocument()
+        // Only the library's own notice establishes the save.
+        await native.push({ ...native.current, library: { ...native.current.library, notice: { kind: 'saved', name: 'Greeting case' } } })
+        expect(await within(runtime).findByText('Saved to this tenant’s case Library.')).toBeInTheDocument()
+    })
+})
+
+describe('v2 inventory table reads (C39a E2, R2, R3)', () => {
+    /** Two pages of custom topics: Finance on the second page only. */
+    function twoPages(native: Native) {
+        const requests: ManagementRequest[] = []
+        const respond = native.respond
+        const pending = new Map<string, ManagementRequest>()
+        native.respond = (intent: Intent) => {
+            if (intent.kind !== 'management') return respond(intent)
+            requests.push(intent.request)
+            const operation = `op-${requests.length + 500}`
+            pending.set(operation, intent.request)
+            return { outcome: 'receipt', receipt: { kind: 'admitted', request: `rq-${requests.length}`, operation } }
+        }
+        const other = { topic_id: 'topic-2', topic_name: 'Travel', topic_description: 'Trips' }
+        native.observeManagement = (operation) => {
+            const request = pending.get(operation)
+            if (request?.kind === 'page') {
+                const first = request.offset === 0
+                const items = first ? [other] : [TOPIC]
+                return {
+                    kind: 'management',
+                    result: { kind: 'page', page: { resource: request.resource, offset: request.offset, limit: request.limit, items: JSON.stringify(items), count: 1, nextOffset: first ? 1 : null, complete: !first, total: 2 } },
+                }
+            }
+            return { kind: 'management', result: { kind: 'failed', failure: 'unavailable', outcome: 'completed' } }
+        }
+        return requests
+    }
+
+    it('pages with Next page and First page, says the search is page-local, and starts again for a replaced context (E2, R3)', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        const requests = twoPages(native)
+        await user.click(within(runtime).getByRole('button', { name: 'Refresh' }))
+        await within(runtime).findByRole('button', { name: 'Details for Travel' })
+        const topicPages = () => requests.filter((r): r is Extract<ManagementRequest, { kind: 'page' }> => r.kind === 'page' && r.resource === 'topics')
+        expect(topicPages().at(-1)).toMatchObject({ kind: 'page', resource: 'topics', offset: 0 })
+        // The search covers the page that was read, and says so.
+        await user.type(within(runtime).getByRole('textbox', { name: 'Search custom topics' }), 'Finance')
+        expect(runtime.querySelector('[data-slot="administration-no-match"]')).toHaveTextContent('No custom topics on this page match “Finance”. Other pages are not searched: use First page and Next page.')
+        await user.clear(within(runtime).getByRole('textbox', { name: 'Search custom topics' }))
+        await user.click(within(runtime).getByRole('button', { name: 'Next page' }))
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        expect(topicPages().at(-1)).toMatchObject({ kind: 'page', resource: 'topics', offset: 1 })
+        await user.click(within(runtime).getByRole('button', { name: 'First page' }))
+        await within(runtime).findByRole('button', { name: 'Details for Travel' })
+        // A replaced context (a new credential) reads again from the first page under the new context.
+        const before = topicPages().length
+        await native.push({ ...native.current, active: { ...native.current.active!, context: 'cx-cccccccccccccccccccccccc' } })
+        await waitFor(() => expect(topicPages().length).toBeGreaterThan(before))
+        expect(native.dispatched.filter((i) => i.kind === 'management' && i.request.kind === 'page' && i.request.resource === 'topics').at(-1)).toMatchObject({ kind: 'management', context: 'cx-cccccccccccccccccccccccc', request: { kind: 'page', offset: 0 } })
+    })
+
+    it('keeps the rows with their read time when a refresh is denied (E2)', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        const respond = native.respond
+        native.respond = (intent: Intent) => (intent.kind === 'management' ? { outcome: 'refusal', refusal: 'deniedStore' } : respond(intent))
+        await user.click(within(runtime).getByRole('button', { name: 'Refresh' }))
+        expect(await within(runtime).findByRole('alert')).toBeInTheDocument()
+        expect(within(runtime).getByRole('button', { name: 'Details for Finance' })).toBeInTheDocument()
+        expect(runtime.querySelector('[data-slot="administration-foot"]')).toHaveTextContent(/Read \d/)
+    })
+
+    it('a detail closed before its reply arrives stays closed and keeps focus where it was (R2)', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        const observe = native.observeManagement
+        let release: (() => void) | null = null
+        native.observeManagement = (operation) =>
+            new Promise((resolve) => {
+                release = () => resolve(observe(operation))
+            })
+        await user.click(within(runtime).getByRole('button', { name: 'Details for Finance' }))
+        expect(await within(runtime).findByText('Reading details…')).toBeInTheDocument()
+        await user.click(within(runtime).getByRole('button', { name: 'Close details' }))
+        expect(runtime.querySelector('[data-slot="administration-detail"]')).toBeNull()
+        const active = document.activeElement
+        release!()
+        await new Promise((r) => setTimeout(r, 50))
+        expect(runtime.querySelector('[data-slot="administration-detail"]')).toBeNull()
+        expect(document.activeElement).toBe(active)
+        // A later refresh does not reopen what was dismissed.
+        native.observeManagement = observe
+        await user.click(within(runtime).getByRole('button', { name: 'Refresh' }))
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        expect(runtime.querySelector('[data-slot="administration-detail"]')).toBeNull()
+    })
+})

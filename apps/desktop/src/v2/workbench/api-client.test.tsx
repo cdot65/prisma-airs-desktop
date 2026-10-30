@@ -202,7 +202,7 @@ async function open(snapshot = board(), extra?: (request: WorkbenchRequest) => W
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
     await screen.findByRole('heading', { level: 1, name: 'API Client' })
-    const tree = await screen.findByRole('form', { name: 'Request list' })
+    const tree = await screen.findByRole('form', { name: 'Requests' })
     const line = () => document_().querySelector('[data-slot="workbench-request-line"]') as HTMLElement
     await waitFor(() => expect(line()).not.toBeNull())
     return { native, requests, user, tree, line }

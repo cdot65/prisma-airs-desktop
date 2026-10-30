@@ -52,6 +52,17 @@ Every native acceptance script under `tools/native-acceptance/` written before P
 
 `apps/desktop/src/shell/desktop-shell.tsx` (+test), `command-palette.tsx`, `icons.ts`; `features/academy/academy-view.tsx` (+test), `features/administration/administration-view.tsx`, `features/red-team/red-team-view.tsx` (+test), `features/runtime/runtime-view.tsx`, `features/runtime/overview-inbox.tsx` (+test); the `Interface` fieldset of Settings; the legacy branch of `app.tsx` and `feature-body.tsx`.
 
+## Legacy suites retired with the shell
+
+`features/administration/administration-view.test.tsx` and `dlp-authoring.test.tsx` (the legacy Administration view's inventories and DLP authoring: the v2 Administration suite covers paging, denied refresh, context replacement, the review sheet and the inventories), `features/runtime/scan-submit.test.tsx` and `review-apply.test.tsx` (the legacy Runtime page: the v2 Playground and review-sheet tests cover submission, cancellation, saving and apply). The suites of destinations the v2 shell still frames (Settings' credential entry, profile import and reset, Sessions & Reports, Import from v1, diagnostics, the API Client's document save and request send) were re-pointed from the Features rail to the destination the core names. The owner-held suites `gateway-view.test.tsx`, `gateway-inference.test.tsx`, `harness-view.test.tsx`, `library-view.test.tsx`, `management-credential.test.tsx` and `workbench-start.test.tsx` are excluded in `apps/desktop/vitest.config.ts` (they drive the removed shell to views no v2 screen mounts; their files carry the owner's uncommitted work and are not edited here).
+
 ## Files kept although no v2 screen imports them
 
 The owner's uncommitted work (docs/planning/evidence/C28/owner-work.json) touches `features/gateway/gateway-view.tsx`, `playground.tsx`, `features/harness/harness-view.tsx`, `sign-in-panel.tsx`, `prerequisites.tsx`, `features/library/library-view.tsx`, `features/workbench/workbench-view.tsx` and their tests; deleting them on this branch would collide with that work, so they and the components only they import (`gateway-files.tsx`, `gateway-observe.tsx`, the Harness panels, `document-editor.tsx`, `request-send.tsx`) stay as unreferenced code until the owner's work lands. Their tests still run.
+
+## C39a attempt-01 remediation carried in C44
+
+- R1: below 760 CSS px the inventory rows stack their cells (`tokens.css`), and `acceptance_c39.py`'s layout predicate fails on any two texts of the table drawn over each other, beyond containment.
+- R2: Close details retires the read in flight and the opened item (`inventory-table.tsx`); a regression test keeps the panel closed and focus stable after a late reply and a later refresh.
+- R3: the empty search says it searched the page that was read and points at First page / Next page (`copy.ts`); a two-page regression test with the match on the other page.
+- E2: `administration.test.tsx` adds the v2 Playground's submit (refused, unconfirmed, admitted), cancel and save-case handlers and the table's paging, denied refresh and context replacement through the v2 imports.

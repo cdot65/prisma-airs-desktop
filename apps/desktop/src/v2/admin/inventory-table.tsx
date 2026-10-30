@@ -401,8 +401,8 @@ export function InventoryTable({ snapshot, context, dispatch, observe, resource,
                         {C.table.empty(info.label)}
                     </div>
                 ) : page && needle.length > 0 && rows.length === 0 ? (
-                    <div className='text-center text-[13px]' style={{ padding: '24px 18px', borderTop: '1px solid var(--v2-rule)', color: 'var(--v2-faint)' }}>
-                        {C.table.noMatch(info.label, filter)}
+                    <div className='text-center text-[13px]' style={{ padding: '24px 18px', borderTop: '1px solid var(--v2-rule)', color: 'var(--v2-faint)' }} data-slot='administration-no-match'>
+                        {C.table.noMatch(info.label, filter, page.offset > 0 || !page.complete)}
                     </div>
                 ) : null}
                 <div className='flex flex-wrap items-center text-[12px]' style={{ gap: 10, padding: '12px 18px', borderTop: '1px solid var(--v2-rule)', color: 'var(--v2-faint)' }} data-slot='administration-foot'>
@@ -425,7 +425,13 @@ export function InventoryTable({ snapshot, context, dispatch, observe, resource,
                 <DetailPanel
                     state={detail}
                     info={info}
-                    onClose={() => setDetail(null)}
+                    onClose={() => {
+                        // Closing retires the read in flight and the opened item (C39a attempt-01 R2): a late
+                        // reply or a later refresh never reopens what was dismissed.
+                        detailToken.current += 1
+                        opened.current = null
+                        setDetail(null)
+                    }}
                     onChange={onReview}
                     label={label}
                     admitted={admittedIndex}

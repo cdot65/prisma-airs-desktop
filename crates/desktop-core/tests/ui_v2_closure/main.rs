@@ -65,9 +65,11 @@ fn v2_ids(snap: &ShellSnapshot) -> Vec<FeatureId> {
 
 #[tokio::test]
 async fn an_older_store_that_persisted_the_legacy_presentation_still_gets_v2() {
-    let mut state = PersistedState::default();
-    state.ui_variant = UiVariant::Legacy;
-    state.onboarding = OnboardingState::Done;
+    let state = PersistedState {
+        ui_variant: UiVariant::Legacy,
+        onboarding: OnboardingState::Done,
+        ..Default::default()
+    };
     let mut desk = Desk::from_state(state);
     let snap = desk.snap();
     assert_eq!(snap.ui_variant, UiVariant::V2);
@@ -94,8 +96,10 @@ async fn an_older_store_that_persisted_the_legacy_presentation_still_gets_v2() {
 
 #[tokio::test]
 async fn every_destination_the_legacy_shell_reached_is_a_v2_destination() {
-    let mut state = PersistedState::default();
-    state.onboarding = OnboardingState::Done;
+    let state = PersistedState {
+        onboarding: OnboardingState::Done,
+        ..Default::default()
+    };
     let mut desk = Desk::from_state(state);
     for feature in [
         "home",

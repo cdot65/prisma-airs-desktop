@@ -148,7 +148,20 @@ def table_usable(tree, zoom):
     foot = next((n for n in tree if n.get("role") == "AXStaticText" and re.match(r"Read \d{1,2}:\d\d", n.get("label") or n.get("value") or "")), None)
     current = tab_of(tree, "Custom topics")
     out = {"table_inside": contained(table, section), "view_inside": contained(view, section), "foot_inside": contained(foot, section), "tab_inside": contained(current, section), "zoom": zoom}
-    out["ok"] = all(out[k] for k in ("table_inside", "view_inside", "foot_inside", "tab_inside"))
+    # C39a attempt-01 R1: beyond containment, the row's texts must not overlap each other (a squeezed Name
+    # column drawing across ID is a failure even when every frame is inside the card).
+    inside = [n for n in tree[tree.index(table) + 1:] if n.get("role") == "AXStaticText" and n.get("pos") and n.get("size") and n["size"][0] > 0 and (n.get("label") or n.get("value"))]
+    inside = [n for n in inside if contained(n, table, slack=2)]
+    overlaps = []
+    for i, a in enumerate(inside):
+        for b in inside[i + 1:]:
+            same_line = abs(a["pos"][1] - b["pos"][1]) < 4
+            ax0, ax1, bx0, bx1 = a["pos"][0], a["pos"][0] + a["size"][0], b["pos"][0], b["pos"][0] + b["size"][0]
+            if same_line and min(ax1, bx1) - max(ax0, bx0) > 4 and (a.get("label") or a.get("value")) != (b.get("label") or b.get("value")):
+                overlaps.append([(a.get("label") or a.get("value"))[:30], (b.get("label") or b.get("value"))[:30]])
+    out["text_overlaps"] = overlaps[:6]
+    out["no_overlap"] = not overlaps
+    out["ok"] = all(out[k] for k in ("table_inside", "view_inside", "foot_inside", "tab_inside", "no_overlap"))
     return out
 
 

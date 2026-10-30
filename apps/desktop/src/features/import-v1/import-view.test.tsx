@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { DesktopClient, type ReceiptView, type ShellSnapshot, type V1ImportView } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, type Native, scriptedNative, tenant } from '../../test/native'
+import { baseSnapshot, type Native, scriptedNative, tenant, framed } from '../../test/native'
 
 const REVIEW = 'rv-0123456789abcdef'
 const RECEIPT = 'imp-0123456789abcdef'
@@ -53,14 +53,14 @@ const receipt = (overrides: Partial<ReceiptView> = {}): ReceiptView => ({
 async function open(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
-    await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Import from v1/ }))
+    await native.push({ ...native.current, onboarding: 'done', activeFeature: 'import' })
     await screen.findByRole('heading', { level: 1, name: 'Import from v1' })
     return user
 }
 
 describe('Import from v1 (C23)', () => {
     it('reads nothing until asked, then reviews the chosen categories and tenants', async () => {
-        const native = scriptedNative(snapshot())
+        const native = framed(scriptedNative(snapshot()), 'import')
         const user = await open(native)
         expect(screen.getByText(/v1 and its data are never changed/)).toBeInTheDocument()
         expect(native.dispatched).toEqual([])
@@ -108,7 +108,7 @@ describe('Import from v1 (C23)', () => {
                 },
             ],
         }
-        const native = scriptedNative(snapshot(inspected))
+        const native = framed(scriptedNative(snapshot(inspected)), 'import')
         const user = await open(native)
         await user.click(screen.getByRole('checkbox', { name: /^Saved cases/ }))
         screen.getByRole('button', { name: 'Review what would be imported' }).focus()
@@ -156,7 +156,7 @@ describe('Import from v1 (C23)', () => {
                 },
             ],
         }
-        const native = scriptedNative(snapshot({ ...inspected, plan }))
+        const native = framed(scriptedNative(snapshot({ ...inspected, plan })), 'import')
         const user = await open(native)
         const ready = screen.getByRole('checkbox', { name: /^Saved cases: Prod → Ours/ })
         expect(ready).toBeChecked()
@@ -196,7 +196,7 @@ describe('Import from v1 (C23)', () => {
             canResume: false,
             items: [{ category: 'cases', label: 'Prod', state: 'reverting', written: 2, kept: 0 }],
         })
-        const native = scriptedNative(snapshot({ ...inspected, receipts: [unsettled], problem: 'notRecorded' }))
+        const native = framed(scriptedNative(snapshot({ ...inspected, receipts: [unsettled], problem: 'notRecorded' })), 'import')
         const user = await open(native)
         expect(screen.getByText(/An import or its rollback did not finish, and nothing of it is shown/)).toBeInTheDocument()
         expect(screen.getByText(/its record could not be saved, so nothing more was written/)).toBeInTheDocument()
@@ -217,7 +217,7 @@ describe('Import from v1 (C23)', () => {
             canRollBack: false,
             items: [{ category: 'cases', label: 'Prod', state: 'reverted', written: 0, kept: 0 }],
         })
-        const native = scriptedNative(snapshot({ ...inspected, receipts: [undone] }))
+        const native = framed(scriptedNative(snapshot({ ...inspected, receipts: [undone] })), 'import')
         const user = await open(native)
         expect(screen.getByText(/Did not finish, so it was undone/)).toBeInTheDocument()
         expect(screen.queryByText(/An import or its rollback did not finish/)).toBeNull()
@@ -227,7 +227,7 @@ describe('Import from v1 (C23)', () => {
     })
 
     it('says a record lost in both copies holds what imports write, and releases it only when asked', async () => {
-        const native = scriptedNative(snapshot({ damagedReceipts: [RECEIPT] }))
+        const native = framed(scriptedNative(snapshot({ damagedReceipts: [RECEIPT] })), 'import')
         const user = await open(native)
         const alert = screen.getByText(/An import record is damaged in both of its copies/).closest('[role="alert"]')
         expect(alert).not.toBeNull()
@@ -243,7 +243,7 @@ describe('Import from v1 (C23)', () => {
     })
 
     it('says when the import records cannot be read at all', async () => {
-        const native = scriptedNative(snapshot({ receiptsUnreadable: true }))
+        const native = framed(scriptedNative(snapshot({ receiptsUnreadable: true })), 'import')
         await open(native)
         const alert = screen.getByText(/The import records can't be read/).closest('[role="alert"]')
         expect(alert).toHaveTextContent(/Restore access to the app's data folder, then reopen the app/)

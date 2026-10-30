@@ -30,7 +30,7 @@ export function completionText(record: { relative: string; status: number | null
     return `${requestName(record.relative)} · ${code} · ${duration}`
 }
 
-const NOTE_TEXT = (note: ImportNote): string => {
+export const NOTE_TEXT = (note: ImportNote): string => {
     switch (note.kind) {
         case 'flagOmitted':
             return 'Presentation and globbing flags were left out.'
@@ -71,7 +71,6 @@ export interface EditorHandle {
 
 interface Props {
     initial: DocumentView
-    notes: ImportNote[]
     call: WorkbenchCall
     schemas: string[]
     historyKey: string
@@ -92,7 +91,7 @@ interface Props {
  * that moment; typing pauses protect the snapshot on this Mac; a reply
  * never overwrites newer typing.
  */
-export function RequestEditor({ initial, notes, call, schemas, historyKey, onClosed, register, context = null, running = [], review = null }: Props) {
+export function RequestEditor({ initial, call, schemas, historyKey, onClosed, register, context = null, running = [], review = null }: Props) {
     const ids = useId()
     const [doc, setDoc] = useState(initial)
     const [fields, setFields] = useState(initial.fields)
@@ -720,26 +719,6 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
                     <Btn className='self-start' onClick={() => void discard()}>
                         {C.discardDraft}
                     </Btn>
-                </div>
-            ) : null}
-            {notes.length ? (
-                <div
-                    className='flex flex-col text-[13px]'
-                    style={{
-                        gap: 4,
-                        margin: '12px 20px 0',
-                        padding: '12px 14px',
-                        borderRadius: 10,
-                        background: 'var(--v2-acc-soft)',
-                    }}
-                    data-slot='workbench-notes'
-                >
-                    <p className='font-semibold'>{C.notes}</p>
-                    <ul className='list-disc pl-5'>
-                        {notes.map((n, i) => (
-                            <li key={i}>{NOTE_TEXT(n)}</li>
-                        ))}
-                    </ul>
                 </div>
             ) : null}
             <div
