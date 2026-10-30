@@ -137,6 +137,16 @@ def tab_of(tree, label):
     return next((n for n in tree if n.get("role") in ("AXRadioButton", "AXTab", "AXButton") and (n.get("label") or "").strip() == label), None)
 
 
+def tab_in(tree, product, label):
+    """The tab named `label` inside the product card named `product` (several cards have an Overview tab)."""
+    header, section = card(tree, product)
+    if not header:
+        return None
+    start = tree.index(header)
+    end = next((i for i in range(start + 1, len(tree)) if tree[i] in headers_of(tree)), len(tree))
+    return next((n for n in tree[start:end] if n.get("role") in ("AXRadioButton", "AXTab", "AXButton") and (n.get("label") or "").strip() == label), None)
+
+
 def table_usable(tree, zoom):
     """The Custom topics table at this zoom: header row, the first View and the footer inside the card's
     frame (nothing clipped); the tab strip's selected tab inside the card too."""
@@ -440,7 +450,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     t = tab_of(app.tree(), "Workspaces")
     app.ax("press", t["role"], "Workspaces")
     tree, n3["workspace_detail"] = app.wait_for(lambda t: app.has_text(t, "Settings of Team A as read from the service.") and fx.App.node(t, "AXButton", "Edit…") is not None, 20)
-    n3["workspace_chosen"] = any(n.get("role") == "AXRadioButton" and (n.get("label") or "") == "Team A" and str(n.get("value", "")).lower() in ("1", "true", "selected") for n in tree)
+    n3["workspace_chosen"] = any(n.get("role") == "AXRadioButton" and (n.get("label") or "").startswith("Team A") and str(n.get("value", "")).lower() in ("1", "true", "selected") for n in tree)
     obs["tree_gateway_workspaces"] = c29.save_tree("gateway-workspaces", tree)
     t = tab_of(app.tree(), "Routes")
     app.ax("press", t["role"], "Routes")
@@ -459,8 +469,8 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     c29.press(app, "AXButton", "AI Gateway")
     c29.press(app, "AXButton", "AI Red Teaming")
     tree, n3["red_team_tabs"] = app.wait_for(lambda t: tab_of(t, "Targets") is not None and tab_of(t, "Scans") is not None, 10)
-    t = tab_of(app.tree(), "Overview")
-    app.ax("press", t["role"], "Overview")
+    t = tab_in(app.tree(), "AI Red Teaming", "Overview")
+    app.ax("press", t["role"], "Overview", sum(1 for n in app.tree()[:app.tree().index(t)] if n.get("role") == t["role"] and (n.get("label") or "").strip() == "Overview"))
     tree, n3["red_team_tiles"] = app.wait_for(lambda t: any((n.get("label") or "") == "Red Teaming summary" for n in t) and app.has_text(t, "Targets scanned"), 20)
     n3["red_team_ranked"] = fx.App.node(tree, "AXHeading", "Scans by status") is not None
     obs["tree_red_team"] = c29.save_tree("red-team-overview", tree)
