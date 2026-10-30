@@ -1001,6 +1001,65 @@ describe('v2 Administration', () => {
         expectIcon(document.querySelector('[data-direction="prompt"] [data-verdict="clear"]'), /Not detected: no custom topic assigned to chatbot-strict matched/)
         expectIcon(document.querySelector('[data-direction="response"] [data-verdict="unreported"]'), /Not reported by the service for this scan/)
     })
+
+    // ---- C39a: the board (R2App start=admin) over the same behaviour ----
+
+    it('draws the product cards: description, headline figure from the read, status pill and alerts; Expand all and Collapse all (C39a)', async () => {
+        const base = fxAdmin()
+        const read = { ...base.inbox.read, products: [{ product: 'runtimeSecurity' as const, state: 'ok' as const, sourcesRead: 2, sourcesTotal: 2, detail: null }, { product: 'gateway' as const, state: 'needsRole' as const, sourcesRead: 0, sourcesTotal: 2, detail: null }] }
+        const overview = { ...base.overview, read: { readAt: 1_761_490_000, chart: { bucketSeconds: 3600, buckets: [{ time: '2026-10-26T10:00:00Z', total: 12, violating: 3, detections: null }, { time: '2026-10-26T11:00:00Z', total: 9, violating: 0, detections: null }] }, chartFailure: null, summary: { sessions: 21, violating: 3, benign: 18, detectionEvents: 38 }, keysComplete: true, keysFailure: null, items: [], gaps: [], gateway: null } }
+        const { user } = await launch({ ...base, inbox: { ...base.inbox, read, items: [{ id: 'e-1', kind: 'runtime', needsAction: true, severity: 'warn', title: '3 violating sessions', detail: '', source: 'Runtime Security', product: 'runtimeSecurity', target: null, actionLabel: null, facts: [], when: 1_761_490_000, hold: null }] }, overview })
+        expect(screen.getByText('Northwind Health · every change is reviewed before it is applied')).toBeInTheDocument()
+        const runtime = product('runtimeSecurity')
+        expect(within(runtime).getByText('LLM and MCP guardrails: prompts, responses and tool calls are checked as they happen.')).toBeInTheDocument()
+        expect(runtime.querySelector('[data-slot="admin-product-stat"]')).toHaveTextContent('38detections · 24h')
+        expect(runtime.querySelector('[data-slot="admin-product-pill"]')).toHaveTextContent('Connected')
+        expect(runtime.querySelector('[data-slot="admin-product-alerts"]')).toHaveTextContent('1 alert')
+        const gateway = product('gateway')
+        expect(gateway.querySelector('[data-slot="admin-product-pill"]')).toHaveTextContent('Needs a role')
+        expect(gateway.querySelector('[data-slot="admin-product-stat"]')).toHaveTextContent('—requests · today')
+        expect(product('agenticIdentity').querySelector('[data-slot="admin-product-pill"]')).toHaveTextContent('Not available')
+        // Only Runtime is open at first; Expand all opens every available product, Collapse all closes them.
+        expect(within(runtime).getByRole('button', { name: /AI Runtime Security/ })).toHaveAttribute('aria-expanded', 'true')
+        expect(within(gateway).getByRole('button', { name: /AI Gateway/ })).toHaveAttribute('aria-expanded', 'false')
+        await user.click(screen.getByRole('button', { name: 'Expand all' }))
+        for (const id of ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill']) expect(within(product(id)).getByRole('tablist')).toBeInTheDocument()
+        expect(within(product('agenticEndpoint')).queryByRole('tablist')).toBeNull()
+        await user.click(screen.getByRole('button', { name: 'Collapse all' }))
+        for (const id of ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill']) expect(within(product(id)).queryByRole('tablist')).toBeNull()
+    })
+
+    it('draws the Runtime Overview from the read: three tiles and the 24-hour bars; the table footer names the count and the read time (C39a)', async () => {
+        const base = fxAdmin()
+        const overview = { ...base.overview, read: { readAt: 1_761_490_000, chart: { bucketSeconds: 3600, buckets: Array.from({ length: 24 }, (_, i) => ({ time: `2026-10-26T${String(i).padStart(2, '0')}:00:00Z`, total: 10, violating: i % 6 === 0 ? 2 : 0, detections: null })) }, chartFailure: null, summary: { sessions: 240, violating: 8, benign: 232, detectionEvents: 8 }, keysComplete: false, keysFailure: null, items: [], gaps: [], gateway: null } }
+        const { user } = await launch({ ...base, overview })
+        const runtime = product('runtimeSecurity')
+        expect(await within(runtime).findByRole('button', { name: 'Details for Finance' })).toBeInTheDocument()
+        expect(runtime.querySelector('[data-slot="administration-foot"]')).toHaveTextContent(/1 item.*Read \d\d:\d\d/)
+        expect(within(runtime).getByRole('textbox', { name: 'Search custom topics' })).toBeInTheDocument()
+        await user.click(within(runtime).getByRole('tab', { name: 'Overview' }))
+        const tiles = Array.from(runtime.querySelectorAll('[data-slot="admin-kpi"]')).map((t) => t.textContent)
+        expect(tiles[0]).toContain('Detection events · 24h')
+        expect(tiles[0]).toContain('8')
+        expect(tiles[1]).toContain('Sessions · 24h')
+        expect(tiles[1]).toContain('240')
+        expect(tiles[2]).toContain('Violating · 24h')
+        expect(tiles[2]).toContain('API keys: Partial')
+        expect(runtime.querySelector('[data-slot="admin-sparkline"]')).toHaveAttribute('data-bars', '24')
+        expect(within(runtime).getByRole('img', { name: 'Activity, last 24 hours' })).toBeInTheDocument()
+    })
+
+    it('says when the chart was not read: the events tile names it and the bars are none (C39a)', async () => {
+        const base = fxAdmin()
+        const overview = { ...base.overview, read: { readAt: 1_761_490_000, chart: null, chartFailure: 'denied' as const, summary: { sessions: null, violating: null, benign: null, detectionEvents: null }, keysComplete: true, keysFailure: null, items: [], gaps: ['sessions chart'], gateway: null } }
+        const { user } = await launch({ ...base, overview })
+        const runtime = product('runtimeSecurity')
+        await user.click(within(runtime).getByRole('tab', { name: 'Overview' }))
+        expect(runtime.querySelectorAll('[data-slot="admin-kpi"]')[0]).toHaveTextContent('—')
+        expect(runtime.querySelectorAll('[data-slot="admin-kpi"]')[0]).toHaveTextContent('Sessions chart not read')
+        expect(within(runtime).getByRole('img', { name: 'Sessions chart not read' })).toBeInTheDocument()
+        expect(runtime.querySelector('[data-slot="admin-sparkline"]')).toHaveAttribute('data-bars', '0')
+    })
 })
 
 function settledResult(operation = 'op-11'): ChangeResultView {

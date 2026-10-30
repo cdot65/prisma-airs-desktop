@@ -1,0 +1,69 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C39",
+  "recorded_utc": "2026-10-30T10:00:38Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c39.py",
+  "host": "Mac17,3; macOS 27.0.1 (26A434)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "497d881704bb99bf6c11ccd20073f36695e3857ba69df0a1b16e7bbbed93502d",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C39-N01",
+      "description": "Administration as the prototype board draws it (R2App start=admin) with a tenant whose read has landed through the synthetic management plane: the heading and its line (tenant \u00b7 every change is reviewed before it is applied) with Expand all and Collapse all; the six product cards in order, each with its description, headline figure, status pill and alerts (AI Runtime Security: its detection events from the read, Connected; the agentic products Not available); AI Runtime Security open on Custom topics: the tab strip (Overview, Playground, Security profiles, Custom topics, Applications, API keys, DLP, Deployment profiles), the search field, New topic\u2026, the table's rows from the plane with View per row and the footer's count and read time; View opens the detail with exactly the admitted actions; the Overview tab's three tiles and 24-hour bars from the same read; the Playground tab's form (profile, prompt, response, application, Scan, Save as test case\u2026) and the verdict card after a synthetic scan; Expand all opens every available product and Collapse all closes them (D059 parity: the composites under evidence/C39/parity are captured by this script from this state, the owner's judgement recorded in parity/notes.md). Other products' tab bodies remain C39b's.",
+      "result": "pass",
+      "observation": "heading True, line True, Expand/Collapse all True; cards in order True (6); Runtime chrome True with a figure True; agentic products Not available True; tabs [True, True, True, True, True, True, True, True] with Custom topics selected True; table True with 2 row(s) and View ['Details for Finance', 'Details for Finance'], search True, New topic\u2026 True, footer {'count': '1 item', 'read': 'Read 05:58 AM'}; detail True with ['Edit\u2026', 'Delete\u2026', 'Close details']; Overview tiles True and bars True; Playground True fields {'Profile name or ID': True, 'Application name (optional)': True, 'Case name': True, 'textareas': 2}, scanned True \u2192 Allowed; Expand all True, Collapse all True; composites ['docs/planning/evidence/C39/parity/admin-dark.png', 'docs/planning/evidence/C39/parity/admin-light.png']",
+      "evidence": [
+        "docs/planning/evidence/C39/native/observations.json",
+        "docs/planning/evidence/C39/native/tree-admin.json",
+        "docs/planning/evidence/C39/native/tree-admin-detail.json",
+        "docs/planning/evidence/C39/native/tree-admin-overview.json",
+        "docs/planning/evidence/C39/native/tree-admin-playground.json",
+        "docs/planning/evidence/C39/native/captures/admin-light.png",
+        "docs/planning/evidence/C39/native/captures/admin-overview-light.png",
+        "docs/planning/evidence/C39/native/captures/admin-playground-light.png",
+        "docs/planning/evidence/C39/parity/admin-dark.png",
+        "docs/planning/evidence/C39/parity/admin-light.png"
+      ]
+    },
+    {
+      "id": "C39-N04",
+      "description": "Keyboard and layout (T09): Tab from the heading reaches Expand all, the Runtime card's header, its tabs and the table's first View in order, the focus ring on the first View; Administration at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with Runtime open on Custom topics and no horizontal overflow, the tab strip scrolling within the card rather than widening it, the table's header, first row and footer inside the card; every row records the WebView's measured size and the viewport from its own tree and asserts them.",
+      "result": "pass",
+      "observation": "Tab from Expand all reached [('Collapse all', 0), ('AI Runtime Security', 1), ('Overview', 2), ('Custom topics', 5), ('Details for', 13)] in order True; ring on the first View 1536 px; admin-1440x807-light: web [1440, 807] viewport [1440, 807] overflow 0 px, scroll bars 0, table/view/footer/tab inside the card True/True/True/True; admin-1440x807-dark: web [1440, 807] viewport [1440, 807] overflow 0 px, scroll bars 0, table/view/footer/tab inside the card True/True/True/True; admin-900x600-200-light: web [900, 1506] viewport [900, 600] overflow 0 px, scroll bars 0, table/view/footer/tab inside the card True/True/True/True; admin-900x600-200-dark: web [900, 1506] viewport [900, 600] overflow 0 px, scroll bars 0, table/view/footer/tab inside the card True/True/True/True",
+      "evidence": [
+        "docs/planning/evidence/C39/native/observations.json",
+        "docs/planning/evidence/C39/native/tree-admin-1440x807-light.json",
+        "docs/planning/evidence/C39/native/tree-admin-1440x807-dark.json",
+        "docs/planning/evidence/C39/native/tree-admin-900x600-200-light.json",
+        "docs/planning/evidence/C39/native/tree-admin-900x600-200-dark.json",
+        "docs/planning/evidence/C39/native/captures/admin-1440x807-light.png",
+        "docs/planning/evidence/C39/native/captures/admin-1440x807-dark.png",
+        "docs/planning/evidence/C39/native/captures/admin-900x600-200-light.png",
+        "docs/planning/evidence/C39/native/captures/admin-900x600-200-dark.png",
+        "docs/planning/evidence/C39/native/captures/admin-ring-plain.png",
+        "docs/planning/evidence/C39/native/captures/admin-ring-view.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size) beside it.",
+    "Synthetic scan and management endpoints only; the inventories are the synthetic plane's. C39-N02 (the review sheet) and C39-N03 (the other products) are C39b's checks.",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "admin-light.png",
+    "admin-overview-light.png",
+    "admin-playground-light.png",
+    "admin-ring-focused.png",
+    "admin-ring-plain.png",
+    "layouts-admin-1440x807-dark.png",
+    "layouts-admin-1440x807-light.png",
+    "layouts-admin-900x600-200-dark.png",
+    "layouts-admin-900x600-200-light.png"
+  ]
+}

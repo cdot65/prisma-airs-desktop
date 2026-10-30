@@ -60,7 +60,7 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
 | C36 | **Complete** (P09, D059): Home — the R2App greeting row, six product cards from the core's read, Needs attention beside Quick actions; parity composites approved by the owner (2026-10-29) | Attempts 01 (9/7/9/7/7), 02 (9/9/9/8/8) and 03 (9/8/9/8/8) remediated (`reviews/C36/remediation-attempt-0{1,2,3}.md`); attempt-04 **9/9/9/9/9 pass**, no required fixes. Deferred optional note: measure the attention text container rather than the title's width in C36-N02 |
 | C37 | Planned (P09, D059): Inbox fix-up | `docs/planning/chunks/C37.md` |
 | C38 | **In progress** (P09, D059): Harness — the R2App title band, 244px conversation rail, transcript with the 46px composer and 350px Decisions aside over the C19–C33 behaviour; setup panels and texts as v2 components; parity composites captured by the native script, awaiting the owner's judgement | `docs/planning/chunks/C38.md`; `tools/native-acceptance/acceptance_c38.py`; `crates/desktop-core/tests/ui_v2_harness_port/` |
-| C39 | Planned (P09, D059): Administration (a: Runtime Security; b: other products) | `docs/planning/chunks/C39.md` |
+| C39 | **In progress** (P09, D059): Administration — C39a: the R2App product cards, tab strip, Runtime Security Overview, Playground and inventory table as v2 components; C39b: the other products and the review sheet | `docs/planning/chunks/C39.md`; `tools/native-acceptance/acceptance_c39.py`; `crates/desktop-core/tests/ui_v2_admin/` |
 | C40 | Planned (P09, D059): Test Cases | `docs/planning/chunks/C40.md` |
 | C41 | Planned (P09, D059): API Client | `docs/planning/chunks/C41.md` |
 | C42 | Planned (P09, D059): Academy | `docs/planning/chunks/C42.md` |
