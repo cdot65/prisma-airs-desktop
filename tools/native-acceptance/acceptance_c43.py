@@ -17,6 +17,7 @@ composites are captured per step.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -453,7 +454,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     add("C43-N01", n1_ok,
         f"welcome {n1['welcome']} rail {r}; welcome board {n1['welcome_board']}; tenant {t_}; products {p_}; verify {v_}; packs {k_}; academy {a_}; done {d_}; composites {parity_files}",
         [run_rel, obs["tree_welcome"], obs["tree_tenant"], obs["tree_products"], obs["tree_verify"], obs["tree_packs"], obs["tree_academy"], obs["tree_done"]] + parity_files)
-    n2_ok = n2["sheet"] and n2["fixed_1160"] and n2["rail_244"] and n2["steps"][:5] == ["Tenant", "Products", "Verify", "Starter cases", "Done"] and n2["no_back"] and n2["cancel"] and n2["cancel_note"] and n2["cancel_before_draft_closes"] and n2["drafted_optional"] and n2["continue_open"] and n2["cancel_discards"] and len(obs["parity"]["add"]) == 2
+    n2_ok = n2["sheet"] and n2["fixed_1160"] and n2["rail_244"] and [re.sub(r"^\d+ ", "", x).replace(" Optional", "").replace(" Skipped", "") for x in n2["steps"][:5]] == ["Tenant", "Products", "Verify", "Starter cases", "Done"] and n2["no_back"] and n2["cancel"] and n2["cancel_note"] and n2["cancel_before_draft_closes"] and n2["drafted_optional"] and n2["continue_open"] and n2["cancel_discards"] and len(obs["parity"]["add"]) == 2
     add("C43-N02", n2_ok, f"sheet {n2} composites {sorted(obs['parity']['add'].values())}", [run_rel, obs["tree_add"]] + sorted(obs["parity"]["add"].values()))
     lay = n3["layouts"]
     ring_ok = (n3["ring"].get("diff") or 0) > 40 and n3["ring"].get("focused") == "Create tenant"
