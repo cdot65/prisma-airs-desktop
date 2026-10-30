@@ -138,7 +138,14 @@ fn shell_observation_matches_the_literal_snapshot() {
     response["snapshot"]["diagnostics"]["events"] =
         fixture("observe-shell-response.json")["snapshot"]["diagnostics"]["events"].clone();
     assert_eq!(response, fixture("observe-shell-response.json"));
-    let text = response.to_string();
+    // The v2 snapshot carries Administration's catalogue, in which `apiKeys`
+    // is the wire name of AI Gateway's API-key inventory kind (its actions,
+    // denials and the `managementResource::apiKeys` read), not a key: that
+    // identifier is excused from the sweep.
+    let text = response
+        .to_string()
+        .replace("apiKeys", "")
+        .replace("ApiKeys", "");
     for forbidden in ["secret", "token", "password", "apiKey", "credential"] {
         assert!(
             !text.to_lowercase().contains(&forbidden.to_lowercase()),
@@ -519,30 +526,22 @@ fn the_go_menu_is_reconciled_on_every_shell_subscription() {
     .expect("observe");
     assert_eq!(
         host.menu_variant(),
-        Some(desktop_core::features::UiVariant::Legacy)
+        Some(desktop_core::features::UiVariant::V2)
     );
-    // The variant changes; this subscription's update is treated as lost (the
-    // client resubscribes as it does after a Resync).
+    // C44: a variant intent is accepted and changes nothing; this subscription's
+    // update is treated as lost (the client resubscribes as it does after a
+    // Resync) and the menu is reconciled with the one presentation again.
     let mut body = fixture("dispatch-request.json");
     body["session"] = json!(session);
     body["sequence"] = json!("1");
-    body["intent"] = json!({"kind": "setUiVariant", "variant": "v2"});
-    call(&h.main, "desktop_dispatch", raw(&body)).expect("v2");
+    body["intent"] = json!({"kind": "setUiVariant", "variant": "legacy"});
+    call(&h.main, "desktop_dispatch", raw(&body)).expect("accepted, no-op");
     let mut again = fixture("observe-shell-request.json");
     again["scope"]["updates"] = json!("__CHANNEL__:9");
     call(&h.main, "desktop_observe", raw(&again)).expect("resubscribe");
     assert_eq!(
         host.menu_variant(),
         Some(desktop_core::features::UiVariant::V2)
-    );
-    body["sequence"] = json!("2");
-    body["intent"] = json!({"kind": "setUiVariant", "variant": "legacy"});
-    call(&h.main, "desktop_dispatch", raw(&body)).expect("legacy");
-    again["scope"]["updates"] = json!("__CHANNEL__:10");
-    call(&h.main, "desktop_observe", raw(&again)).expect("resubscribe again");
-    assert_eq!(
-        host.menu_variant(),
-        Some(desktop_core::features::UiVariant::Legacy)
     );
     let _ = &h.adapters;
 }
