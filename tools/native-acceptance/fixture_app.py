@@ -222,9 +222,16 @@ class App:
 
     # ---- flows ----
     def open_settings(self):
-        self.keys(",", "command down")
-        tree, _ = self.wait_for(lambda t: self.node(t, "AXHeading", "Settings") is not None)
-        return tree
+        """Opens Settings and waits until its form is in the tree (the heading
+        lands before the fields under load; a second ⌘, is sent if the sheet
+        did not open)."""
+        ready = lambda t: self.node(t, "AXHeading", "Settings") is not None and self.node(t, "AXTextField", "TSG ID (optional)") is not None
+        for _ in range(2):
+            self.keys(",", "command down")
+            tree, ok = self.wait_for(ready, 20)
+            if ok:
+                return tree
+        raise RuntimeError("Settings did not open with its tenant form")
 
     def open_runtime(self):
         self.ax("press", "AXButton", "Runtime Security")

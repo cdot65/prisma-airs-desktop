@@ -141,6 +141,239 @@ export const CALLS_COPY = {
     bytes: (n: number) => `${n} bytes sent`,
 } as const
 
+/** The v2 API Client (C41): R2App start=api over the C14/C15 workbench behaviour. Tests assert these exact strings. */
 export const API_COPY = {
     title: 'API Client',
+    lead: (collection: string, where: string) => `Collection ${collection} · ${where} · requests with tenant credentials go only to known operations`,
+    leadNone: 'Collections live in your folders (Git-friendly TOML). Drafts, private environments, secret values, history and cookies stay on this Mac.',
+    chips: {
+        collection: 'Collection',
+        environment: 'Environment',
+        builtIn: 'built-in',
+        noEnvironment: 'none',
+        envOrigin: {
+            shared: 'shared',
+            local: 'private',
+            both: 'shared + private',
+        } as Record<string, string>,
+    },
+    network: {
+        loopbackOnly: 'This build sends API Client requests to loopback addresses only.',
+        none: 'This build does not send API Client requests.',
+    },
+    unavailable: "The API Client's private folder is not available in this build.",
+    privateFailure: (why: string) => `Private API Client data is unavailable (${why}). Drafts cannot be protected until it opens.`,
+    opening: 'Opening the API Client…',
+    working: 'Working…',
+    // The collection menu (the Collection chip) and the tools it opens.
+    menu: 'Collection actions',
+    refresh: 'Refresh',
+    tools: {
+        environments: 'Environments…',
+        secrets: 'Secrets…',
+        schemas: 'Schemas…',
+        import: 'Import…',
+        git: 'Git…',
+    },
+    closeCollection: 'Close collection',
+    issues: (n: number, complete: boolean) =>
+        complete
+            ? `Some files need attention (${n} listed). Requests sharing an identity are not shown, and their files are not changed.`
+            : `This collection has problems to fix before files can change (${n} listed). Requests with problems are not shown.`,
+    unsaved: (why: string) => `Drafts could not be protected on this Mac (${why}). Save or keep the app open until this clears.`,
+    // The request tree.
+    tree: 'Request list',
+    find: 'Find request',
+    clearSearch: 'Clear search',
+    noMatch: (q: string, n: number) => `No requests match “${q}”. ${n} ${n === 1 ? 'request is' : 'requests are'} in this collection.`,
+    noRequests: 'This collection has no requests yet.',
+    newRequest: 'New request',
+    newRequestTitle: 'New request',
+    newRequestLead: 'The request stays a private draft until you Save it.',
+    newRequestPath: 'Path (folder/name)',
+    newFolder: 'New folder',
+    newFolderPath: 'Folder path',
+    create: 'Create',
+    cancel: 'Cancel',
+    openRequest: (method: string, relative: string) => `Open ${method} ${relative}`,
+    folder: (name: string, open: boolean) => `${open ? 'Collapse' : 'Expand'} folder ${name}`,
+    tooMany: (shown: number, of: number) => `Showing ${shown} of ${of}; refine the search.`,
+    // Open requests and the request line.
+    openRequests: 'Open requests',
+    closeTab: (name: string) => `Close tab ${name}`,
+    selectRequest: 'Select a request, or create one with New request.',
+    method: 'Method',
+    url: 'URL',
+    send: 'Send',
+    save: 'Save',
+    state: {
+        saved: 'Saved',
+        unsaved: 'Unsaved changes',
+        new: 'New · not saved yet',
+    },
+    conflict: {
+        changed: 'Changed on disk',
+        deleted: 'Deleted on disk',
+        interrupted: 'Interrupted save',
+        changedText: 'The files changed since this request was opened. Choose which version to continue from; both are kept privately first.',
+        interruptedText: 'An earlier save of this request did not finish. Choose which version to continue from; both are kept privately first.',
+        useDisk: 'Use disk',
+        keepMine: 'Keep mine',
+    },
+    recovered: 'Recovered draft',
+    recoveredText: 'Unsaved changes from an earlier session were restored. Save to keep them in the collection.',
+    discardDraft: 'Discard draft',
+    discardChanges: 'Discard changes',
+    notes: 'Conversion report',
+    // The request's sub-tabs (the prototype's six).
+    request: 'Request',
+    sub: {
+        params: 'Params',
+        headers: 'Headers',
+        body: 'Body',
+        auth: 'Auth',
+        variables: 'Variables',
+        preview: 'Preview',
+    },
+    subText: {
+        params: 'Query parameters are appended to the URL in order. Disabled rows are kept in the file but not sent.',
+        headers: 'Headers are sent as written. Secret values come from the Keychain through {{references}} and are never written here.',
+        body: 'The body as it will be sent, edited as text. Secrets are never part of it.',
+        bodyFixed: 'This body is not text or is larger than 4 MiB; it is kept exactly as it is.',
+        auth: '[auth] names the kind (none, basic, bearer, api-key or oauth2) and secret references; [variables] holds strings or { secret = "reference" }. Values are entered in Secrets, never here.',
+        variables: 'The variables the selected environment and this request resolve to, as Preview reads them. Secret values are masked.',
+        preview: 'The request exactly as it will be sent, with secrets masked. Nothing is sent from here.',
+    },
+    table: 'Table',
+    text: 'Text',
+    textOnly: 'Some rows have no separator; edit them as text.',
+    addRow: { params: '+ Add parameter', headers: '+ Add header' },
+    columns: {
+        enabled: 'Enabled',
+        name: 'Name',
+        value: 'Value',
+        remove: 'Remove',
+    },
+    removeRow: (name: string) => `Remove row ${name || 'without a name'}`,
+    rowEnabled: (name: string) => `Row ${name || 'without a name'} enabled`,
+    rowName: 'Name',
+    rowValue: 'Value',
+    bodyKind: 'Body kind',
+    body: 'Body',
+    settings: 'Auth and variables (TOML)',
+    schema: 'Schema',
+    noSchema: 'No schema',
+    readPreview: 'Read the preview',
+    previewHint: 'Preview prepares the request from what you have typed; Send prepares it again.',
+    // The response pane.
+    pane: 'Response pane',
+    noResponse: 'Send to see the response here.',
+    noResponseYet: 'No response yet',
+    sending: 'Sending…',
+    waitingReview: 'Waiting for your confirmation…',
+    reviewBelow: 'This change to the tenant needs your review below.',
+    response: 'Response',
+    responseTabs: {
+        body: 'Body',
+        headers: 'Headers',
+        details: 'Details',
+        history: 'History',
+    },
+    pretty: 'Pretty',
+    raw: 'Raw',
+    copy: 'Copy',
+    copied: 'Copied the response body.',
+    copyFailed: 'The response body could not be copied.',
+    saveResponse: 'Save response…',
+    saved: (size: string, name: string) => `Saved ${size} as ${name}.`,
+    responseBody: 'Response body',
+    responseHeaders: 'Response headers',
+    notText: 'The body is not text; save it to open it elsewhere.',
+    firstBytes: (size: string) => `Showing the first ${size}.`,
+    noBody: 'The response has no body.',
+    details: {
+        request: 'Request',
+        status: 'Status',
+        duration: 'Duration',
+        size: 'Size',
+        when: 'Sent',
+        credential: 'Credential',
+        operation: 'Operation',
+        stored: 'Stored body',
+        yes: 'complete',
+        no: 'not stored',
+        anonymous: 'none (anonymous request)',
+    },
+    uncertain: 'The request may have reached the server; no response arrived. It was not sent again. Check the result before sending again.',
+    redirect: (to: string) => `Redirect to ${to} was not followed. Send a request to it to follow it.`,
+    tokenDropped: 'The server refused the token; it was dropped. Send again to get a new one (nothing was resent).',
+    cancel_: 'Cancel request',
+    sendingProgress: (method: string, size: string) => `Sending ${method}… ${size} transferred`,
+    // History (the response pane's History tab).
+    historyLead: 'Requests sent from this collection on this Mac (30 days, up to 200). History shows what happened; nothing here sends anything again.',
+    historyEmpty: 'No requests sent yet.',
+    older: 'Older requests',
+    clearHistory: 'Clear history',
+    clearCookies: 'Clear cookies',
+    cookiesCleared: 'Cookies cleared.',
+    showRun: (summary: string) => `Show ${summary}`,
+    // Review of a tenant-credential change.
+    review: {
+        title: (operation: string) => `Review this change to the tenant: ${operation}`,
+        goes: (destination: string) => `Goes to ${destination} with the active tenant's credential. It is sent once and never again by itself.`,
+        files: (files: string) => `Files sent as they are now: ${files}`,
+        expires: (at: string) =>
+            `Secret values are masked. The review expires at ${at}; any change to the request, its files or environment needs a new review.`,
+        apply: 'Send to tenant…',
+        dismiss: 'Dismiss review',
+    },
+    // Closing with unprotected edits.
+    closing: {
+        tab: (name: string) => `Close ${name} without your latest edits?`,
+        collection: 'Close the collection without your latest edits?',
+        text: 'The latest edits could not be kept on this Mac. Keep editing to try again, or close and discard them.',
+        keep: 'Keep editing',
+        discard: 'Close and discard edits',
+    },
+    // The start panel (no collection open).
+    start: {
+        none: 'No collection is open.',
+        open: 'Open collection…',
+        create: 'New collection…',
+        builtIn: 'Open Strata Cloud Manager',
+        builtInNote: "Strata Cloud Manager: the built-in collection of 193 SCM and Prisma AIRS request specifications, kept in this app's private folder.",
+        recent: 'Recent collections',
+        adoption: 'Import your v1 API Client profile',
+        adoptionLead:
+            'Recent collections and their private environments are copied. The v1 profile is only read. Secret values, drafts, history and cookies do not transfer: store secret values again here.',
+        adoptionNone: 'The v1 profile lists no collections that still exist.',
+        importSelected: 'Import selected',
+        startEmpty: 'Start empty',
+        readAdoption: 'Import v1 API Client profile…',
+    },
+    footer: {
+        ready: 'Ready',
+        requests: (n: number) => `${n} ${n === 1 ? 'request' : 'requests'}`,
+        archives: (n: number) => `${n} earlier ${n === 1 ? 'version' : 'versions'} kept privately`,
+    },
 } as const
+
+/** The method's colour (R2App mColor). */
+export function methodColor(method: string): string {
+    switch (method.toUpperCase()) {
+        case 'GET':
+            return 'var(--v2-ok)'
+        case 'POST':
+            return 'var(--v2-acc)'
+        case 'PUT':
+        case 'PATCH':
+            return 'var(--v2-flag)'
+        case 'DELETE':
+            return 'var(--v2-block)'
+        default:
+            return 'var(--v2-soft)'
+    }
+}
+
+export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
+export const BODY_KINDS = ['text', 'json', 'form', 'multipart', 'file']

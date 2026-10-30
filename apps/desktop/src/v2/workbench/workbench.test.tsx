@@ -347,8 +347,10 @@ describe('v2 API Client', () => {
         const status = document.querySelector('[data-slot="workbench-save-status"]') as HTMLElement
         await waitFor(() => expect(status).toHaveTextContent('list · 200 · 42 ms'))
         expect(status).toHaveAttribute('role', 'status')
-        // The body is shown, outside the live region.
+        // The body is shown, outside the live region: pretty-printed first (C41), exactly as received under Raw.
         const response = await screen.findByRole('region', { name: 'Response' })
+        expect(within(response).getByLabelText('Response body')).toHaveTextContent('"custom_topics": [ "Finance" ]')
+        await user.click(within(response).getByRole('button', { name: 'Raw' }))
         expect(within(response).getByLabelText('Response body')).toHaveTextContent('{"custom_topics":["Finance"]}')
         expect(status.textContent).not.toContain('custom_topics')
         expect(status.contains(response)).toBe(false)

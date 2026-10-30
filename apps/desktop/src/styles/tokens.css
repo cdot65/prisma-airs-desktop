@@ -196,3 +196,29 @@
         animation: none !important;
     }
 }
+
+/* C41 API Client: the pretty JSON view numbers its lines from a counter (the numbers are not part of the body's text). */
+[data-v2-shell] [data-slot='json-lines'] {
+    counter-reset: line;
+    white-space: pre;
+}
+[data-v2-shell] [data-slot='json-lines'] > [data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 34px;
+    padding-right: 12px;
+    text-align: right;
+    color: var(--v2-faint);
+}
+/* The request's columns and the response pane stack below the width that fits them (the prototype is fixed-width). */
+@media (max-width: 1180px) {
+    [data-v2-shell] [data-slot='workbench-columns'] {
+        flex-wrap: wrap;
+    }
+    [data-v2-shell] [data-slot='workbench-response-pane'] {
+        flex: 1 1 100% !important;
+        max-width: none !important;
+        border-top: 1px solid var(--v2-rule);
+    }
+}
