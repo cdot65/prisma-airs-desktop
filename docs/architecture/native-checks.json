@@ -1288,6 +1288,16 @@
         "id": "C36-N02",
         "check": "Keyboard and layout (T09): Tab from the heading reaches Refresh, each card, the attention row's controls and the quick actions in order, with the focus ring on a card; Enter on a card opens its product; Home at 1440 wide by the display's full working height and at 900\u00d7600 with 200% zoom, in light and dark, with no horizontal overflow; every row records the WebView's measured size from the accessibility tree and asserts it."
       }
+    ],
+    "C37": [
+      {
+        "id": "C37-N01",
+        "check": "The Inbox as the prototype draws it (R2App start=inbox) with a tenant whose read has landed: the heading and its line naming the tenant; a 430px list card with the filter tabs (All, Needs action, Updates, Snoozed, each with its count) over the rows (severity tile and word, title, product and source, when; an acknowledged row marked) and a footer naming the read's coverage; selecting a row fills the detail card (severity tile and word, product and source, the 22px title, the body, the facts as a three-column grid, the entry's own action, Acknowledge or Mark as needing action, Snooze or Unsnooze); the empty states name the read (first read pending, failed, partial, nothing needs action) and offer Open role issue when a product needs one; snooze, acknowledge and unsnooze stay the C30 core intents with the core's return time stated the same in the row, the detail and the toast (D059 parity: the owner's approval of the composites is recorded in evidence/C37/parity/notes.md)."
+      },
+      {
+        "id": "C37-N02",
+        "check": "Keyboard and layout (T09): Tab from the heading reaches Read now, the filter tabs, the rows and the detail's actions in order, with the focus ring on a row; Enter on a row opens its detail; the Inbox at 1440 wide by the display's full working height and at 900\u00d7600 with 200% zoom (the list and the detail one under the other), in light and dark, with no horizontal overflow; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
     ]
   }
 }
