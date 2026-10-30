@@ -38,7 +38,7 @@ PARITY = os.path.join(EVIDENCE, "parity")
 DC = os.path.join(ROOT, "tools/parity")
 LOG = []
 TITLE_BAR = 28
-TAGS = ("AXRadioButton", "AXCheckBox", "AXButton")
+TAGS = ("AXRadioButton", "AXCheckBox", "AXButton", "AXPopUpButton", "AXDisclosureTriangle")
 STEP_BOARDS = {"welcome": "welcome", "tenant": "tenant", "products": "products", "verify": "verify", "packs": "cases", "academy": "academy", "done": "done"}
 
 
@@ -275,7 +275,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n1["tenant"]["management_card"] = app.has_text(tree, "Management credentials · OAuth 2.0") and fx.App.node(tree, "AXButton", "Where do I find these?") is not None
     n1["tenant"]["gateway_switch"] = any(n.get("role") == "AXCheckBox" and (n.get("label") or "") == "Set up an AI Gateway workspace now" for n in tree)
     n1["tenant"]["continue_needs_key"] = (fx.App.node(tree, "AXButton", "Save the scan key to continue") or {}).get("enabled") is False
-    press(app, "AXButton", "Where do I find these?")
+    press_any(app, "Where do I find these?")
     tree, help_open = app.wait_for(lambda t: app.has_text(t, "Service accounts"), 6)
     n1["tenant"]["help"] = help_open
     app.type_into("AXTextField", "Scan API key", c8.SCAN_KEY, secure=True)
