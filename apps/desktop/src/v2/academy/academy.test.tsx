@@ -342,6 +342,8 @@ describe('C42 Academy board', () => {
         await screen.findByRole('heading', { level: 1, name: 'Only lesson' })
         const paths = await screen.findByRole('region', { name: 'Learning paths' })
         expect(await within(paths).findByText('1 of 4 units · 30 min')).toBeInTheDocument()
+        // The card's summary is the contract's tagline, inside the Learning paths card.
+        expect(within(paths).getByText('Protect prompts and responses at runtime.')).toBeInTheDocument()
         const reads = () => native.calls.filter((i) => i.procedure === 'paths.list').length
         expect(reads()).toBe(1)
         // An uncertain completion: Academy's truth is read back (the row too), the completion is not replayed.

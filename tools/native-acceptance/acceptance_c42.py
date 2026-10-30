@@ -254,7 +254,8 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
     n1["path_cards"] = links(tree, "Open ")
     n1["path_units"] = any(" units" in (x.get("label") or "") for x in tree)
     # The card's summary is the contract's tagline (attempt-03 R3), as the synthetic catalog's paths.list names it.
-    n1["path_tagline"] = app.has_text(tree, "Protect prompts and responses at runtime.")
+    paths_group = group(tree, "Learning paths")
+    n1["path_tagline"] = paths_group is not None and any("Protect prompts and responses at runtime." in (x.get("label") or x.get("value") or "") for x in within(tree, paths_group))
     # A guest reads the catalog with no credential.
     guest_calls = [r for r in academy.requests() if r.get("procedure")]
     n1["guest_calls"] = sorted({c["procedure"] for c in guest_calls})
