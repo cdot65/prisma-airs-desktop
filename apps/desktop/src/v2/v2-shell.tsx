@@ -17,6 +17,7 @@ import { TenantSwitcher } from './tenant-switcher'
 import { Toasts } from './toasts'
 import { Modal, useModalsOpen } from './modal'
 import { Wizard } from './wizard/wizard'
+import { Academy } from './academy/academy'
 import { ApiClient } from './workbench/api-client'
 import { CallsPanel } from './workbench/calls-panel'
 import { TestCases } from './workbench/test-cases'
@@ -517,6 +518,9 @@ export function V2Shell(props: V2ShellProps) {
                         ) : feature.id === 'library' && feature.availability.state === 'available' ? (
                             // Keyed by context: a new tenant starts at its first page, nothing inspected.
                             <TestCases key={snapshot.active?.context ?? 'none'} ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
+                        ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
+                            // Not keyed by tenant: the learner generation is the account's, not the tenant's.
+                            <Academy ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
                         ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
                             // Not keyed by tenant: API Client documents are on this Mac.
                             <ApiClient ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
