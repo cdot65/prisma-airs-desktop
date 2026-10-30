@@ -170,6 +170,22 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
         )
     }
 
+    // The import/export status lines: on the page, and inside the packs dialog while it is open (the page behind
+    // an open dialog is inert, so a save or cancel from the dialog is answered where the operator is looking).
+    const transfer = (
+        <>
+            {library.notice ? (
+                <p role='status' className='text-[13px]' style={soft} data-slot='cases-notice'>
+                    {noticeText(library.notice)}
+                </p>
+            ) : null}
+            {library.export ? (
+                <p role={library.export.state === 'failed' ? 'alert' : 'status'} className='text-[13px]' style={{ color: library.export.state === 'failed' ? 'var(--v2-block)' : 'var(--v2-soft)' }} data-slot='cases-export' data-state={library.export.state}>
+                    {library.export.state === 'saving' ? C.export.saving : library.export.state === 'saved' ? C.export.saved(library.export.name ?? '') : library.export.state === 'cancelled' ? C.export.cancelled : C.export.failed}
+                </p>
+            ) : null}
+        </>
+    )
     return (
         <section aria-labelledby='cases-heading' data-slot='cases-v2' className='flex min-w-0 flex-col' style={{ gap: 20 }}>
             {heading}
@@ -200,19 +216,10 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
                     {CASE_PROBLEM_TEXT[library.problem] ?? library.problem}
                 </p>
             ) : null}
-            {library.notice ? (
-                <p role='status' className='text-[13px]' style={soft} data-slot='cases-notice'>
-                    {noticeText(library.notice)}
-                </p>
-            ) : null}
+            {transfer}
             {message ? (
                 <p role='alert' className='text-[13px]'>
                     {message}
-                </p>
-            ) : null}
-            {library.export ? (
-                <p role={library.export.state === 'failed' ? 'alert' : 'status'} className='text-[13px]' style={{ color: library.export.state === 'failed' ? 'var(--v2-block)' : 'var(--v2-soft)' }} data-slot='cases-export' data-state={library.export.state}>
-                    {library.export.state === 'saving' ? C.export.saving : library.export.state === 'saved' ? C.export.saved(library.export.name ?? '') : library.export.state === 'cancelled' ? C.export.cancelled : C.export.failed}
                 </p>
             ) : null}
             <section className='shrink-0 overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='cases-card'>
@@ -357,6 +364,7 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
                               onImport={() => void send({ kind: 'importCases', context })}
                               onExport={() => void send({ kind: 'exportCases', context })}
                               onCancel={() => setPacks(false)}
+                              status={transfer}
                           />
                       </Modal>,
                       document.body
@@ -452,7 +460,7 @@ function CaseDetails({ c, tenant, onClose }: { c: CaseView; tenant: string; onCl
 }
 
 /** Load starter packs: the bundled packs and the public examples as checks, loaded together; the operator's own cases move by file. */
-function PacksDialog({ tenant, fetching, choosing, hasCases, onLoad, onImport, onExport, onCancel }: { tenant: string; fetching: boolean; choosing: boolean; hasCases: boolean; onLoad: (sources: ('bundled' | 'public')[]) => Promise<void>; onImport: () => void; onExport: () => void; onCancel: () => void }) {
+function PacksDialog({ tenant, fetching, choosing, hasCases, onLoad, onImport, onExport, onCancel, status }: { tenant: string; fetching: boolean; choosing: boolean; hasCases: boolean; onLoad: (sources: ('bundled' | 'public')[]) => Promise<void>; onImport: () => void; onExport: () => void; onCancel: () => void; status: React.ReactNode }) {
     const [bundled, setBundled] = useState(true)
     const [pub, setPub] = useState(false)
     const [busy, setBusy] = useState(false)
@@ -485,6 +493,7 @@ function PacksDialog({ tenant, fetching, choosing, hasCases, onLoad, onImport, o
             <p className='text-[12px]' style={faint} data-slot='cases-transfer-note'>
                 {C.transferNote}
             </p>
+            {status}
             <div className='flex flex-wrap items-center' style={{ gap: 8 }}>
                 <span className='text-[12px]' style={faint}>
                     {P.transfer}

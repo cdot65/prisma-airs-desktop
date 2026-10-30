@@ -229,6 +229,12 @@ describe('v2 Test Cases: export (attempt-02 R3)', () => {
         await user.click(screen.getByRole('button', { name: 'Load starter packs…' }))
         const packs = await screen.findByRole('dialog', { name: 'Load starter packs' })
         expect(within(packs).getByText('Exports hold prompts and responses as plaintext. Imports must belong to this tenant.')).toBeInTheDocument()
+        // A save or cancel answered from the dialog is shown inside it (the page behind it is inert), and an import's notice too.
+        await native.push({ ...native.current, library: { ...native.current.library, export: { kind: 'cases', state: 'saved', name: 'prisma-airs-test-cases.json' } } })
+        await waitFor(() => expect(within(packs).getByRole('status')).toHaveTextContent('Saved prisma-airs-test-cases.json.'))
+        await native.push({ ...native.current, library: { ...native.current.library, export: null, notice: { kind: 'imported', added: 0 } } })
+        await waitFor(() => expect(within(packs).getByRole('status')).toHaveTextContent('Every case in that file is already in the library.'))
+        await native.push({ ...native.current, library: { ...native.current.library, notice: null } })
         await user.click(within(packs).getByRole('button', { name: 'Cancel' }))
         const shown = () => document.querySelector('[data-slot="cases-export"]') as HTMLElement | null
         const states: [NonNullable<ShellSnapshot['library']['export']>, 'status' | 'alert', string][] = [
