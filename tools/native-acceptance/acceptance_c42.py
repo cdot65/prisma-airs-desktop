@@ -253,6 +253,8 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
     n1["paths_heading"] = paths_h is not None
     n1["path_cards"] = links(tree, "Open ")
     n1["path_units"] = any(" units" in (x.get("label") or "") for x in tree)
+    # The card's summary is the contract's tagline (attempt-03 R3), as the synthetic catalog's paths.list names it.
+    n1["path_tagline"] = app.has_text(tree, "Protect prompts and responses at runtime.")
     # A guest reads the catalog with no credential.
     guest_calls = [r for r in academy.requests() if r.get("procedure")]
     n1["guest_calls"] = sorted({c["procedure"] for c in guest_calls})
@@ -391,11 +393,11 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
         checks.append({"id": cid, "description": inventory[cid], "result": "pass" if passed else "fail", "observation": observation, "evidence": [e for e in evidence if e]})
 
     caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
-    n1_ok = (all(n1.get(k) for k in ("guest_screen", "lead", "guest_pill", "frame", "catalog_in_pages", "guest_note", "guest_open_settings", "paths_heading", "path_units", "guest_no_credential", "paths_list_read", "chrome_inside",
+    n1_ok = (all(n1.get(k) for k in ("guest_screen", "lead", "guest_pill", "frame", "catalog_in_pages", "guest_note", "guest_open_settings", "paths_heading", "path_units", "path_tagline", "guest_no_credential", "paths_list_read", "chrome_inside",
                                      "path_opened", "path_title", "path_get_slug", "signed_in", "account_screen", "account_pill", "no_guest_pill", "signed_in_note", "account_credential"))
              and n1["guest_sections"] == ["Learn"] and len(n1["path_cards"]) >= 1 and not n1["path_miss"] and n1["account_sections"] == ["Home", "Learn", "Program", "Downloads", "Notifications", "Settings"] and len(n1["parity"]) == 2)
     add("C42-N01", n1_ok,
-        f"guest: screen {n1['guest_screen']} lead {n1['lead']} pill {n1['guest_pill']}; frame {n1['frame']} with the catalog in the pages card {n1['catalog_in_pages']}; Your place: note {n1['guest_note']}, Open Settings {n1['guest_open_settings']}, sections {n1['guest_sections']}; Learning paths {n1['paths_heading']} cards {n1['path_cards']} with units {n1['path_units']}; "
+        f"guest: screen {n1['guest_screen']} lead {n1['lead']} pill {n1['guest_pill']}; frame {n1['frame']} with the catalog in the pages card {n1['catalog_in_pages']}; Your place: note {n1['guest_note']}, Open Settings {n1['guest_open_settings']}, sections {n1['guest_sections']}; Learning paths {n1['paths_heading']} cards {n1['path_cards']} with units {n1['path_units']} and the catalog's tagline {n1['path_tagline']}; "
         f"guest calls {n1['guest_calls']} without a credential {n1['guest_no_credential']} (paths.list {n1['paths_list_read']}); learner chrome inside the region {n1['chrome_inside']}; a card opened its page {n1['path_opened']}: the path's title as the page heading {n1['path_title']}, not a miss {not n1['path_miss']}, read by its slug ({n1['path_calls']}; paths.get with the slug {n1['path_get_slug']}), the trail naming it {n1['trail']}; "
         f"signed in {n1['signed_in']}: pill {n1['account_pill']} (guest pill gone {n1['no_guest_pill']}), note {n1['signed_in_note']}, sections {n1['account_sections']}, calls {n1['account_calls']} with the credential {n1['account_credential']}; composites {sorted(n1['parity'].values())}",
         [run_rel, obs["tree_guest"], obs.get("tree_path"), obs["tree_account"]] + caps("academy-guest") + caps("academy-account") + sorted(n1["parity"].values()))

@@ -18,13 +18,18 @@ import { fxSwitcher } from '../fixtures'
 import { resetShellStore } from '../store'
 import { Academy, PATHS_LIST_KEY, themeFor } from './academy'
 
-beforeEach(() => resetShellStore())
+beforeEach(() => {
+    resetShellStore()
+    window.scrollTo = vi.fn() as never
+    // The WebView has matchMedia; jsdom does not (the lab runner reads the desktop-width layout).
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as never
+})
 
 const PATH = {
     id: 'path-runtime',
     slug: 'runtime-path',
     title: 'Runtime Security Path',
-    description: 'Protect prompts and responses at runtime.',
+    tagline: 'Protect prompts and responses at runtime.',
     familyKey: 'prisma-airs',
     iconKey: null,
     tone: 'info',
@@ -40,7 +45,7 @@ const GATEWAY = {
     id: 'path-gateway',
     slug: 'gateway-path',
     title: 'AI Gateway Path',
-    description: 'Route and govern model traffic.',
+    tagline: 'Route and govern model traffic.',
     familyKey: 'gateway',
     unitsDone: 0,
     estMinutes: 45,
@@ -357,6 +362,108 @@ describe('C42 Academy board', () => {
         expect(native.calls.filter((i) => i.procedure === 'units.submitKnowledgeCheck')).toHaveLength(1)
         expect(document.querySelector('[data-slot="academy-v2"]')).toBe(mounted)
     })
+
+    it('rereads the Learning paths row when a desktop lab is submitted in the same generation: after a passed lab, and after an uncertain submission as a readback without replaying it (attempt-03 R2)', async () => {
+        const user = userEvent.setup()
+        const ATTEMPT = '00000000-0000-4000-8000-0000000000a1'
+        const LAB = {
+            id: 'u-lab',
+            moduleId: 'm1',
+            kind: 'lab',
+            order: 3,
+            slug: '3',
+            title: 'Lab unit',
+            xp: 100,
+            estMinutes: 5,
+            status: 'not_started',
+            siblings: [],
+            pathContext: null,
+            locked: false,
+            unlockHint: null,
+            labKind: 'scan',
+            labId: 'lab-1',
+            placement: { courseId: 'runtime-security', order: 1 },
+            lab: { id: 'lab-1' },
+        }
+        const attempt = (draftVersion: number) => ({
+            attemptId: ATTEMPT,
+            accountId: 'user_2fixturelearner',
+            labId: 'lab-1',
+            courseId: 'runtime-security',
+            courseTitle: 'Runtime Security Foundations',
+            revision: 'rev-1',
+            status: 'in_progress',
+            draftVersion,
+            draft: { commands: [], steps: {}, debrief: '' },
+            result: {},
+            conflicts: [],
+            locked: false,
+            lockReason: null,
+            createdAt: '2026-10-30T00:00:00.000Z',
+            title: 'Guided lab',
+            brief: 'Simulated sandbox brief.',
+            mode: 'guided',
+            seed: null,
+            steps: [],
+            triage: null,
+            engineVersion: 'editorial-1',
+            timed: false,
+            estMinutes: 10,
+        })
+        let done = 1
+        let version = 0
+        let submits = 0
+        const native = academyNative((procedure, _learner, input) => {
+            switch (procedure) {
+                case 'paths.list':
+                    return [{ ...PATH, unitsDone: done }]
+                case 'library.list':
+                    return []
+                case 'units.get':
+                    return LAB
+                case 'units.listByModule':
+                    return []
+                case 'labs.get':
+                    return { lab: { kind: 'scan', id: 'lab-1', title: 'Block it', brief: 'Brief.' }, progress: {} }
+                case 'desktop.attempt.list':
+                    return { accountId: 'user_2fixturelearner', attempts: [], nextCursor: null }
+                case 'desktop.attempt.start':
+                case 'desktop.attempt.get':
+                    return attempt(version)
+                case 'desktop.draft.save':
+                    version += 1
+                    return { status: 'saved', draftVersion: version, draft: (input as { draft: unknown }).draft }
+                case 'desktop.attempt.submit':
+                    submits += 1
+                    // The first submission's receipt is lost: Academy may have graded it.
+                    if (submits === 1) return { __result__: { kind: 'failed', failure: 'network', outcome: 'unknown' } }
+                    done = 4
+                    return { passed: true, findings: [], decision: null }
+                default:
+                    return undefined
+            }
+        })
+        render(<Academy snapshot={academySnapshot(true, ACCOUNT)} client={native.client} onNavigate={vi.fn()} initialPath='/units/u-lab' />)
+        const mounted = document.querySelector('[data-slot="academy-v2"]')
+        const paths = await screen.findByRole('region', { name: 'Learning paths' })
+        expect(await within(paths).findByText('1 of 4 units · 30 min')).toBeInTheDocument()
+        const reads = () => native.calls.filter((i) => i.procedure === 'paths.list').length
+        expect(reads()).toBe(1)
+        await user.click(await screen.findByRole('button', { name: 'Start lab' }, { timeout: 15000 }))
+        // An uncertain submission: Academy's truth is read back (the row too); the submission is not replayed by the row.
+        await user.click(await screen.findByRole('button', { name: 'Submit lab' }, { timeout: 15000 }))
+        await waitFor(() => expect(screen.getAllByRole('alert').some((a) => a.textContent?.includes('may have recorded'))).toBe(true))
+        await waitFor(() => expect(reads()).toBe(2))
+        expect(submits).toBe(1)
+        expect(within(paths).getByText('1 of 4 units · 30 min')).toBeInTheDocument()
+        // The lab passes on the next submission (the runner's same submission id): the row shows the new count.
+        await user.click(screen.getByRole('button', { name: 'Submit lab' }))
+        expect(await within(paths).findByText('4 of 4 units · 30 min')).toBeInTheDocument()
+        expect(submits).toBe(2)
+        const ids = native.calls.filter((i) => i.procedure === 'desktop.attempt.submit').map((i) => (JSON.parse(i.input ?? '{}') as { json: { submissionId: string } }).json.submissionId)
+        expect(new Set(ids).size).toBe(1)
+        expect(document.querySelector('[data-slot="academy-v2"]')).toBe(mounted)
+    }, 30000)
 
     it('maps the Rust-owned appearance to the learner host’s theme', () => {
         expect(themeFor('dark')).toBe('gruvbox')

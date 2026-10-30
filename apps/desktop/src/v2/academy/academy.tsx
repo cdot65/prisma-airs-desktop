@@ -61,7 +61,8 @@ interface PathRow {
     id: string
     slug: string
     title: string
-    description: string
+    /** The path's one-line summary, as `paths.list` names it. */
+    tagline: string
     familyKey: string | null
     unitCount: number
     unitsDone: number
@@ -91,6 +92,8 @@ export const PATHS_LIST_KEY = [['paths', 'list'], { type: 'query' }] as const
 export const PROGRESS_MUTATIONS: readonly (readonly string[])[] = [
     ['units', 'complete'],
     ['units', 'submitKnowledgeCheck'],
+    // A desktop lab's submission completes its unit when it passes (the hosted grade decides).
+    ['desktop', 'attempt', 'submit'],
 ]
 
 function pathRows(rows: unknown): PathRow[] {
@@ -104,7 +107,7 @@ function pathRows(rows: unknown): PathRow[] {
                 id: o.id,
                 slug: o.slug,
                 title: o.title,
-                description: typeof o.description === 'string' ? o.description : '',
+                tagline: typeof o.tagline === 'string' ? o.tagline : '',
                 familyKey: typeof o.familyKey === 'string' ? o.familyKey : null,
                 unitCount: typeof o.unitCount === 'number' ? o.unitCount : 0,
                 unitsDone: typeof o.unitsDone === 'number' ? o.unitsDone : 0,
@@ -391,7 +394,7 @@ function PathsRow() {
                                     ) : null}
                                 </span>
                                 <span className='text-[12px]' style={{ minHeight: 32, ...soft }}>
-                                    {p.description}
+                                    {p.tagline}
                                 </span>
                                 <span
                                     className='rounded-full'

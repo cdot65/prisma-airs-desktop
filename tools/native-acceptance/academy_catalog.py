@@ -177,7 +177,7 @@ def build(root):
               "iconKey": None, "estMinutes": 150, "status": "published"}
     return {
         "paths.list": [{"id": "path-runtime", "slug": PATH_SLUG, "title": "Runtime Security Path",
-                        "description": "Protect prompts and responses at runtime.", "familyKey": "prisma-airs",
+                        "tagline": "Protect prompts and responses at runtime.", "familyKey": "prisma-airs",
                         "iconKey": None, "tone": "info", "courseCount": 1, "estMinutes": 150, "unitCount": 28,
                         "unitsDone": 0, "locked": False, "lockReason": None}],
         # The path's own page (`paths.get` by slug, the shape the router returns:
