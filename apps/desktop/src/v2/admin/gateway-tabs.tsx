@@ -359,7 +359,7 @@ export function GatewayProduct({ snapshot, context, dispatch, observe, onNavigat
                 <div role='radiogroup' aria-label='Gateway workspace' className='flex flex-col' style={{ gap: 4 }}>
                     {workspaces.map((w) => (
                         <label key={w.id} className='flex items-center text-[13px]' style={{ gap: 8 }}>
-                            <input type='radio' name={`${ids}-workspace`} value={w.id} checked={selected?.workspace.id === w.id} onChange={() => void choose(w.id)} className='size-4 min-h-0' />
+                            <input type='radio' name={`${ids}-workspace`} value={w.id} aria-label={w.name} checked={selected?.workspace.id === w.id} onChange={() => void choose(w.id)} className='size-4 min-h-0' />
                             <span>{w.name}</span>
                             <span className='font-mono text-[12px]' style={faint}>
                                 {w.slug}

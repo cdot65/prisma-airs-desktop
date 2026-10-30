@@ -196,3 +196,16 @@
         animation: none !important;
     }
 }
+/* C39b attempt-01: below the width that fits a table's columns (900×600 at 200% is 450 CSS px) the v2 admin tables stack their cells and hide the header row. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='admin-tab'] [role='table'] > [role='row'] {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 4px !important;
+    }
+    [data-v2-shell] [data-slot='admin-tab'] [role='table'] > [role='row']:first-child {
+        display: none;
+    }
+    [data-v2-shell] [data-slot='admin-tab'] [role='table'] [role='cell'] {
+        white-space: normal;
+    }
+}
