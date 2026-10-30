@@ -45,6 +45,7 @@ LOG = []
 TITLE_BAR = 28
 CATALOG = "What will you take up next?"
 GUEST_NOTE = "Browsing as a guest"
+PATH_TITLE = "Runtime Security Path"  # the catalog's path (academy_catalog.PATH_SLUG)
 # Learner chrome that must never appear outside the Academy region.
 LEARNER_MARKERS = [GUEST_NOTE, "Reading progress", "Complete & continue", "Academy location", "Start knowledge check"]
 
@@ -265,13 +266,26 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
     obs["captures"]["academy-guest"] = {"light": c29.capture(app, "academy-guest-light")}
     # A path card opens its page within the destination.
     if n1["path_cards"]:
+        mark_path = len(academy.requests())
         app.ax("press", "AXLink", n1["path_cards"][0])
-        tree, n1["path_opened"] = app.wait_for(lambda t: heading(t, CATALOG) is None and group(t, "Academy pages") is not None and heading(t, "AI Security Academy") is not None, 15)
+        tree, n1["path_opened"] = app.wait_for(lambda t: heading(t, CATALOG) is None and group(t, "Academy pages") is not None and heading(t, "AI Security Academy") is not None
+                                               and heading(t, PATH_TITLE) is not None, 15)
+        pages = group(tree, "Academy pages")
+        # The real path page: its title as the page heading inside the pages card, no miss, read by its slug.
+        n1["path_title"] = any(x.get("role") == "AXHeading" and (x.get("label") or "") == PATH_TITLE for x in within(tree, pages)) if pages else False
+        n1["path_miss"] = app.has_text(tree, "Path not found.")
+        path_calls = [r for r in academy.requests()[mark_path:] if r.get("procedure") == "paths.get"]
+        n1["path_get_slug"] = any(academy_catalog.PATH_SLUG in (c.get("input") or "") for c in path_calls)
+        n1["path_calls"] = sorted({r["procedure"] for r in academy.requests()[mark_path:] if r.get("procedure")})
         trail = group(tree, "Academy location")
-        n1["trail"] = trail is not None
+        n1["trail"] = trail is not None and any(PATH_TITLE in (x.get("label") or "") for x in within(tree, trail))
         obs["tree_path"] = c29.save_tree("academy-path", tree)
     else:
         n1["path_opened"] = False
+        n1["path_title"] = False
+        n1["path_miss"] = True
+        n1["path_get_slug"] = False
+        n1["path_calls"] = []
         n1["trail"] = False
     # ---- sign in from Settings; the account generation ----
     academy.mode(approval="granted", displayName="Ada Lovelace")
@@ -378,11 +392,11 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
 
     caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
     n1_ok = (all(n1.get(k) for k in ("guest_screen", "lead", "guest_pill", "frame", "catalog_in_pages", "guest_note", "guest_open_settings", "paths_heading", "path_units", "guest_no_credential", "paths_list_read", "chrome_inside",
-                                     "path_opened", "signed_in", "account_screen", "account_pill", "no_guest_pill", "signed_in_note", "account_credential"))
-             and n1["guest_sections"] == ["Learn"] and len(n1["path_cards"]) >= 1 and n1["account_sections"] == ["Home", "Learn", "Program", "Downloads", "Notifications", "Settings"] and len(n1["parity"]) == 2)
+                                     "path_opened", "path_title", "path_get_slug", "signed_in", "account_screen", "account_pill", "no_guest_pill", "signed_in_note", "account_credential"))
+             and n1["guest_sections"] == ["Learn"] and len(n1["path_cards"]) >= 1 and not n1["path_miss"] and n1["account_sections"] == ["Home", "Learn", "Program", "Downloads", "Notifications", "Settings"] and len(n1["parity"]) == 2)
     add("C42-N01", n1_ok,
         f"guest: screen {n1['guest_screen']} lead {n1['lead']} pill {n1['guest_pill']}; frame {n1['frame']} with the catalog in the pages card {n1['catalog_in_pages']}; Your place: note {n1['guest_note']}, Open Settings {n1['guest_open_settings']}, sections {n1['guest_sections']}; Learning paths {n1['paths_heading']} cards {n1['path_cards']} with units {n1['path_units']}; "
-        f"guest calls {n1['guest_calls']} without a credential {n1['guest_no_credential']} (paths.list {n1['paths_list_read']}); learner chrome inside the region {n1['chrome_inside']}; a card opened its page {n1['path_opened']} with the trail {n1['trail']}; "
+        f"guest calls {n1['guest_calls']} without a credential {n1['guest_no_credential']} (paths.list {n1['paths_list_read']}); learner chrome inside the region {n1['chrome_inside']}; a card opened its page {n1['path_opened']}: the path's title as the page heading {n1['path_title']}, not a miss {not n1['path_miss']}, read by its slug ({n1['path_calls']}; paths.get with the slug {n1['path_get_slug']}), the trail naming it {n1['trail']}; "
         f"signed in {n1['signed_in']}: pill {n1['account_pill']} (guest pill gone {n1['no_guest_pill']}), note {n1['signed_in_note']}, sections {n1['account_sections']}, calls {n1['account_calls']} with the credential {n1['account_credential']}; composites {sorted(n1['parity'].values())}",
         [run_rel, obs["tree_guest"], obs.get("tree_path"), obs["tree_account"]] + caps("academy-guest") + caps("academy-account") + sorted(n1["parity"].values()))
     lay = n2["layouts"]

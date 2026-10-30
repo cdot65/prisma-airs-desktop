@@ -8,13 +8,15 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createTRPCReact, getQueryKey } from '@trpc/react-query'
+import type { AnyRouter } from '@trpc/server'
 import { DesktopClient, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
 import { ACADEMY_ORIGIN, ACCOUNT, GUEST, academySnapshot, scriptedNative as academyNative } from '../../features/academy/test-support'
 import { scriptedNative } from '../../test/native'
 import { fxSwitcher } from '../fixtures'
 import { resetShellStore } from '../store'
-import { Academy } from './academy'
+import { Academy, PATHS_LIST_KEY } from './academy'
 
 beforeEach(() => resetShellStore())
 
@@ -43,6 +45,47 @@ const GATEWAY = {
     unitsDone: 0,
     estMinutes: 45,
     locked: true,
+}
+
+/** The path's own page as `paths.get` returns it (the router's shape: the sections and their course cards). */
+const PATH_PAGE = {
+    id: PATH.id,
+    slug: PATH.slug,
+    title: PATH.title,
+    tagline: 'Protect prompts and responses at runtime.',
+    description: 'Scan what reaches the model and what comes back.',
+    level: 'associate',
+    programId: null,
+    iconKey: null,
+    tone: 'info',
+    sections: [
+        {
+            id: 'sec-1',
+            title: 'Foundations',
+            description: 'The scan loop and its verdicts.',
+            order: 0,
+            courses: [
+                {
+                    id: 'runtime-security',
+                    slug: 'runtime-security',
+                    title: 'Runtime Security Foundations',
+                    description: 'Scan prompts and responses at runtime.',
+                    level: 'associate',
+                    coursePurpose: null,
+                    iconKey: null,
+                    tone: 'info',
+                    estMinutes: 150,
+                    order: 0,
+                    unitCount: 4,
+                    unitsDone: 1,
+                    moduleCount: 2,
+                    modulesComplete: 0,
+                    status: 'published',
+                    teaser: null,
+                },
+            ],
+        },
+    ],
 }
 
 const replies = { 'paths.list': [PATH, GATEWAY], 'library.list': [] }
@@ -84,15 +127,60 @@ describe('C42 Academy board', () => {
         expect(screen.queryByRole('link', { name: /sign up/i })).toBeNull()
     })
 
-    it('a path card opens its page within the destination and the trail shows the place', async () => {
+    it('a path card opens the real path page within the destination: read by its slug, titled by the path, named in the trail', async () => {
         const user = userEvent.setup()
-        const native = academyNative({ ...replies, 'paths.get': { ...PATH, courses: [] } })
+        // `paths.get` answers the catalog's slug only (the server's NOT_FOUND for any other).
+        const native = academyNative((procedure, _learner, input) =>
+            procedure === 'paths.list'
+                ? [PATH, GATEWAY]
+                : procedure === 'library.list'
+                  ? []
+                  : procedure === 'paths.get' && (input as { pathSlug?: string })?.pathSlug === PATH.slug
+                    ? PATH_PAGE
+                    : undefined
+        )
         render(<Academy snapshot={academySnapshot(false)} client={native.client} onNavigate={vi.fn()} />)
         const paths = await screen.findByRole('region', { name: 'Learning paths' })
         await user.click(await within(paths).findByRole('link', { name: 'Open Runtime Security Path' }))
         const pages = await screen.findByRole('region', { name: 'Academy pages' })
-        await waitFor(() => expect(within(pages).queryByRole('heading', { level: 1, name: 'What will you take up next?' })).toBeNull())
-        expect(native.calls.some((i) => i.procedure.startsWith('paths.'))).toBe(true)
+        expect(await within(pages).findByRole('heading', { level: 1, name: 'Runtime Security Path' })).toBeInTheDocument()
+        expect(within(pages).queryByRole('heading', { level: 1, name: 'What will you take up next?' })).toBeNull()
+        expect(within(pages).queryByText('Path not found.')).toBeNull()
+        expect(within(pages).getByText('Foundations')).toBeInTheDocument()
+        expect(within(pages).getByText('Runtime Security Foundations')).toBeInTheDocument()
+        const trail = within(pages).getByRole('navigation', { name: 'Academy location' })
+        expect(trail).toHaveTextContent('Runtime Security Path')
+        const get = native.calls.filter((i) => i.procedure === 'paths.get')
+        expect(get.map((i) => JSON.parse(i.input ?? '{}'))).toEqual([{ json: { pathSlug: 'runtime-path' } }])
+    })
+
+    it('the Learning paths row reads through the key Academy’s own paths.list query uses, holding the raw reply', () => {
+        // tRPC react-query's key for `trpc.paths.list.useQuery()`: `utils.paths.list.invalidate()` (after a course reset
+        // or an enrollment change) matches it by prefix, and the embed's prefetch fills the same entry.
+        const t = createTRPCReact<AnyRouter>() as unknown as { paths: { list: unknown } }
+        const key = (getQueryKey as unknown as (procedure: unknown, input?: unknown, type?: string) => unknown)(t.paths.list, undefined, 'query')
+        expect(PATHS_LIST_KEY).toEqual(key)
+    })
+
+    it('Your place follows the snapshot while the router stays mounted', async () => {
+        const native = academyNative(replies)
+        const signedIn = academySnapshot(true, ACCOUNT)
+        const view = render(<Academy snapshot={signedIn} client={native.client} onNavigate={vi.fn()} />)
+        const pages = await screen.findByRole('region', { name: 'Academy pages' })
+        const heading = await within(pages).findByRole('heading', { level: 1 })
+        expect(document.querySelector('[data-slot="academy-drafts"]')).toBeNull()
+        // The same generation (same learner, same account): the router is not rebuilt; the right card re-renders.
+        await act(async () =>
+            view.rerender(
+                <Academy
+                    snapshot={academySnapshot(true, ACCOUNT, { localDrafts: [{ id: 'd1', kind: 'lab', attemptId: 'a1', unitId: 'u1', title: 'Lab 1', savedAt: '2026-10-30T00:00:00Z' } as never] })}
+                    client={native.client}
+                    onNavigate={vi.fn()}
+                />
+            )
+        )
+        expect(document.querySelector('[data-slot="academy-drafts"]')).toHaveTextContent('1 piece of lab work saved on this Mac, not sent')
+        expect(within(screen.getByRole('region', { name: 'Academy pages' })).getByRole('heading', { level: 1 })).toBe(heading)
     })
 
     it('signed in: the learner’s name pill, the account sections, the drafts note; a new generation starts its own cache', async () => {

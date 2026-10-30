@@ -1,4 +1,4 @@
-import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { createContext, forwardRef, lazy, Suspense, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Link, Outlet, redirect, RouterProvider } from '@tanstack/react-router'
 import {
@@ -69,6 +69,24 @@ interface PathRow {
     locked: boolean
 }
 
+/**
+ * The learner's place (the right card's state lines), provided by `Academy`
+ * from the snapshot and read by the router's root on every render, so the
+ * card follows the snapshot while the router (memoised per generation)
+ * stays mounted.
+ */
+const PlaceContext = createContext<React.ReactNode>(null)
+
+/**
+ * The React Query key Academy's own `trpc.paths.list.useQuery()` uses
+ * (tRPC react-query: the procedure path split, then `{ type: 'query' }`
+ * with no input). Sharing it means one cache entry per generation: the
+ * embed's prefetch fills it, and `utils.paths.list.invalidate()` after a
+ * course reset or an enrollment change refetches this row too. The entry
+ * holds the procedure's raw reply; the row reads it through `pathRows`.
+ */
+export const PATHS_LIST_KEY = [['paths', 'list'], { type: 'query' }] as const
+
 function pathRows(rows: unknown): PathRow[] {
     if (!Array.isArray(rows)) return []
     return rows.flatMap((r) => {
@@ -100,28 +118,31 @@ const FAMILY_GLYPH: Record<string, GlyphName> = { 'prisma-airs': 'shield', runti
  * around the page: the page on the left, the learner's place on the right,
  * the Learning paths row beneath.
  */
-function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string, signedIn: boolean, place: () => React.ReactNode, learner: string) {
+function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string, signedIn: boolean) {
     const root = createRootRoute({
-        component: () => (
-            <>
-                <div className='grid min-w-0' style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: 16 }} data-slot='academy-frame'>
-                    <section aria-label={C.pages} className='flex min-w-0 flex-col' style={{ ...CARD, padding: '20px 22px', gap: 10 }} data-slot='academy-pages'>
-                        <LearnerTrail />
-                        <LearnerStatus />
-                        <Outlet />
-                    </section>
-                    <section aria-label={C.place} className='flex min-w-0 flex-col self-start' style={{ ...CARD, padding: '20px 22px', gap: 10 }} data-slot='academy-place'>
-                        <span className='text-[11px] font-bold tracking-[0.05em] uppercase' style={faint}>
-                            {C.place}
-                        </span>
-                        {place()}
-                        <AcademyNav signedIn={signedIn} />
-                        <OfflineNotice />
-                    </section>
-                </div>
-                <PathsRow learner={learner} />
-            </>
-        ),
+        component: () => {
+            const place = useContext(PlaceContext)
+            return (
+                <>
+                    <div className='grid min-w-0' style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: 16 }} data-slot='academy-frame'>
+                        <section aria-label={C.pages} className='flex min-w-0 flex-col' style={{ ...CARD, padding: '20px 22px', gap: 10 }} data-slot='academy-pages'>
+                            <LearnerTrail />
+                            <LearnerStatus />
+                            <Outlet />
+                        </section>
+                        <section aria-label={C.place} className='flex min-w-0 flex-col self-start' style={{ ...CARD, padding: '20px 22px', gap: 10 }} data-slot='academy-place'>
+                            <span className='text-[11px] font-bold tracking-[0.05em] uppercase' style={faint}>
+                                {C.place}
+                            </span>
+                            {place}
+                            <AcademyNav signedIn={signedIn} />
+                            <OfflineNotice />
+                        </section>
+                    </div>
+                    <PathsRow />
+                </>
+            )
+        },
         notFoundComponent: () => <NotInThisBuild />,
     })
     const signInFirst = () => <SignInHere onNavigate={onNavigate} />
@@ -298,12 +319,13 @@ function LearnerTrail() {
 }
 
 /** The Learning paths row: Academy's paths as its catalog lists them for this generation, read through the learner client. */
-function PathsRow({ learner }: { learner: string }) {
+function PathsRow() {
     const trpc = useLearnerTrpc() as unknown as { paths: { list: { query(): Promise<unknown> } } }
     const query = useQuery({
-        queryKey: ['v2', 'academy', 'paths', learner],
-        queryFn: async () => pathRows(await trpc.paths.list.query()),
+        queryKey: PATHS_LIST_KEY,
+        queryFn: () => trpc.paths.list.query(),
     })
+    const rows = pathRows(query.data)
     return (
         <section aria-labelledby='academy-paths' className='flex flex-col' style={{ gap: 12 }} data-slot='academy-paths'>
             <h2 id='academy-paths' className='text-[15px] font-bold' style={{ marginTop: 6 }}>
@@ -317,13 +339,13 @@ function PathsRow({ learner }: { learner: string }) {
                 <p role='alert' className='text-[13px]' style={faint}>
                     {C.pathsFailed}
                 </p>
-            ) : query.data.length === 0 ? (
+            ) : rows.length === 0 ? (
                 <p className='text-[13px]' style={faint}>
                     {C.pathsEmpty}
                 </p>
             ) : (
                 <div className='grid' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }} data-slot='academy-path-cards'>
-                    {query.data.map((p) => {
+                    {rows.map((p) => {
                         const pct = p.unitCount > 0 ? Math.round((100 * p.unitsDone) / p.unitCount) : 0
                         return (
                             <Link
@@ -504,31 +526,19 @@ function AcademyRoutes({
     container,
     initialPath,
     signedIn,
-    place,
     learner,
 }: {
     onNavigate: (id: FeatureId) => void
     container: React.RefObject<HTMLElement | null>
     initialPath: string
     signedIn: boolean
-    place: () => React.ReactNode
+    /** The generation: the router (and its history) is rebuilt per learner reference. */
     learner: string
 }) {
     const navigate = useRef(onNavigate)
     navigate.current = onNavigate
-    const placeRef = useRef(place)
-    placeRef.current = place
-    const router = useMemo(
-        () =>
-            academyRouter(
-                (id) => navigate.current(id),
-                initialPath,
-                signedIn,
-                () => placeRef.current(),
-                learner
-            ),
-        [initialPath, signedIn, learner]
-    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `learner` keys the router to the generation
+    const router = useMemo(() => academyRouter((id) => navigate.current(id), initialPath, signedIn), [initialPath, signedIn, learner])
     useHeadingFocus(container, router)
     const links = useLessonLinks(router)
     return (
@@ -610,7 +620,7 @@ export const Academy = forwardRef<HTMLHeadingElement, AcademyProps>(function Aca
         </div>
     )
 
-    const place = () => (
+    const place = (
         <>
             {displayName ? (
                 <p className='text-[13px]' style={soft}>
@@ -649,7 +659,9 @@ export const Academy = forwardRef<HTMLHeadingElement, AcademyProps>(function Aca
             {band}
             <LearnerProvider client={client} learner={learner} accountId={accountId} displayName={displayName} theme={themeFor(snapshot.appearance)} webOrigin={snapshot.academyOrigin}>
                 <OfflineWorkProvider value={{ client, learner, offline }}>
-                    <AcademyRoutes onNavigate={onNavigate} container={container} initialPath={initialPath} signedIn={accountId !== null} place={place} learner={learner} />
+                    <PlaceContext.Provider value={place}>
+                        <AcademyRoutes onNavigate={onNavigate} container={container} initialPath={initialPath} signedIn={accountId !== null} learner={learner} />
+                    </PlaceContext.Provider>
                 </OfflineWorkProvider>
                 <CompletionMoments />
                 {snapshot.fixtureBuild ? (
