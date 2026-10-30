@@ -16,4 +16,4 @@ The board is the Inbox: the title row, the 430px list card (filter tabs with cou
 
 ## Owner's approval
 
-Pending.
+Approved by the owner on 2026-10-30 ("looks good") on the composites captured after a read with the first row opened (bundle in `bundle.json`); the gate runs on that approval.
