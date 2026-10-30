@@ -429,8 +429,8 @@ describe('C41 API Client board', () => {
         // stays shown and the list request is not re-opened (which made the core select it again in a native run).
         const opens = requests.filter((r) => r.kind === 'openRequest').length
         await native.push(withDraft(collection.selected!))
-        // Only the tree's form carries that name now: the list request's editor is not re-opened over the draft.
-        expect(screen.getAllByRole('form', { name: 'Request list' })).toHaveLength(1)
+        // The list request's editor (the form with the URL field) is not re-opened over the draft.
+        expect(screen.queryAllByRole('form', { name: 'Request list' }).filter((f) => within(f).queryByRole('textbox', { name: 'URL' }))).toHaveLength(0)
         expect(requests.filter((r) => r.kind === 'openRequest')).toHaveLength(opens)
         // The core's next snapshot lists the draft as the selected tab; the editor shows it new.
         await native.push(withDraft('create'))
