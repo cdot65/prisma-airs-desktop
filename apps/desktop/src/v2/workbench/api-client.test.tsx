@@ -322,6 +322,12 @@ describe('C41 API Client board', () => {
         await user.click(within(line()).getByRole('button', { name: 'Send' }))
         const status = document_().querySelector('[data-slot="workbench-save-status"]') as HTMLElement
         await waitFor(() => expect(status).toHaveTextContent('list · 200 · 42 ms'))
+        // An edit after the send: the line says the state, not the last send (the native run saw the send's word stay).
+        await user.type(within(line()).getByRole('textbox', { name: 'URL' }), '?x=1')
+        expect(status).toHaveTextContent('Unsaved changes')
+        expect(status).toHaveAttribute('data-state', 'unsaved')
+        await user.clear(within(line()).getByRole('textbox', { name: 'URL' }))
+        await user.type(within(line()).getByRole('textbox', { name: 'URL' }), 'http://127.0.0.1:8080/topics')
         const pane = screen.getByRole('region', { name: 'Response pane' })
         expect(within(pane).getByText('200 OK')).toBeInTheDocument()
         expect(within(pane).getByText('42 ms')).toBeInTheDocument()
