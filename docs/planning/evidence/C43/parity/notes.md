@@ -19,4 +19,4 @@ The board is the onboarding wizard: the 320px rail (244px in add mode) with the 
 
 ## Owner's judgement
 
-Recorded 2026-10-30: the owner directed the gates to proceed without a per-screen pause ("go go gog og o go gog o. stop stopping. go go go go go until we are 100% complete. stop stopping. go go go go go", then "please continue my guy", "done. do it", and "no matter what autonomy I give you, you keep stopping"). The composites are posted with these deviations for the record, and that direction is the judgement this gate runs on; the owner's own side-by-side look remains invited, and an objection reopens the chunk.
+The owner judged these composites (the Wizard, per step: `parity/*.png`, prototype board left, fixture app right, light and dark) with the deviations above and approved them on 2026-10-30: "C39 C40 C41 C43 composites approved." This is the owner's judgement the gate runs on (D059); an objection from the owner reopens the parity judgement for this screen.
