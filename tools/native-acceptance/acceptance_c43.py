@@ -250,7 +250,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     # ---- N01: every first-run step ----
     tree = app.tree()
     n1["rail"] = {"brand": any("Prisma AIRS" in (n.get("label") or "") for n in rail(tree)), "steps": step_labels(tree),
-                  "optional_tags": sum(1 for n in rail(tree) if (n.get("label") or "") == "Optional"), "privacy": any("Secrets go straight to the macOS Keychain" in (n.get("label") or "") for n in rail(tree)),
+                  "optional_tags": sum(1 for n in rail(tree) if (n.get("label") or "").endswith(" Optional")), "privacy": any("Secrets go straight to the macOS Keychain" in (n.get("label") or "") for n in rail(tree)),
                   "theme_button": any((n.get("label") or "").endswith(" appearance") for n in rail(tree))}
     n1["welcome_board"] = {"cards": all(app.has_text(tree, c) for c in ("Built on the public APIs", "See the calls as you go", "Learn by doing")),
                            "no_import_box": fx.App.node(tree, "AXButton", "Import from v1…") is None, "no_back": fx.App.node(tree, "AXButton", "Back") is None,
@@ -332,7 +332,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     obs["parity"]["academy"] = composites_for(app, "academy", prepared)
     press(app, "AXButton", "Skip for now")
     tree, ok = app.wait_for(lambda t: heading(t, "Northwind Health is ready") is not None, 10)
-    n1["done"] = {"shown": ok, "skipped_tag": any((n.get("label") or "") == "Skipped" for n in rail(tree)), "summary": all(app.has_text(tree, k) for k in ("Scan key", "Management client", "Products", "Starter cases", "Academy")),
+    n1["done"] = {"shown": ok, "skipped_tag": any((n.get("label") or "").endswith(" Skipped") for n in rail(tree)), "summary": all(app.has_text(tree, k) for k in ("Scan key", "Management client", "Products", "Starter cases", "Academy")),
                   "change": len(labels(tree, "AXButton", "Change ")) >= 5, "next_up": all(app.has_text(tree, k) for k in ("Home", "Inbox", "Ask the Harness")), "progress": app.has_text(tree, "Step 7 of 7"),
                   "open": fx.App.node(tree, "AXButton", "Open Prisma AIRS") is not None}
     obs["tree_done"] = c29.save_tree("wizard-done", tree)
@@ -398,7 +398,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         f = fx.App.focused(app.tree()) or {}
         walk.append(f.get("label") or "")
     n3["walk"] = walk
-    n3["reach"] = {"field": "Display name" in walk, "primary": any(w in ("Create the tenant to continue", "Create tenant") for w in walk)}
+    n3["reach"] = {"field": any(w.startswith("Display name") for w in walk), "primary": any(w in ("Create the tenant to continue", "Create tenant") for w in walk)}
     app.ax("focus", "AXTextField", "Display name")
     time.sleep(0.4)
     plain = c29.capture(app, "wizard-ring-plain")
