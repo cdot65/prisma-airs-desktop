@@ -184,12 +184,13 @@ async fn the_rails_product_children_are_the_inventory_with_the_gated_two_named()
             _ => assert_eq!(product.availability, AdminAvailability::Available),
         }
     }
-    // The legacy shell never publishes the inventory (its own fixed matrix).
+    // C44: there is one presentation; a variant intent is accepted and changes nothing, so the
+    // inventory stays published (the legacy shell, which kept its own fixed matrix, is gone).
     let mut desk = desk;
     desk.send(json!({"kind": "setUiVariant", "variant": "legacy"}))
         .await
-        .expect("legacy");
-    assert!(desk.snap().administration.is_none());
+        .expect("accepted, no-op");
+    assert!(desk.snap().administration.is_some());
 }
 
 #[tokio::test]
