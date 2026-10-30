@@ -222,3 +222,31 @@
         border-top: 1px solid var(--v2-rule);
     }
 }
+/* The wizard (C43) below 760px (a 900-point window at 200%): the rail sits above the step as a strip, every grid is
+   one column, and the sheet grows with its content inside the viewport instead of holding its 1160px board. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='wizard'],
+    [data-slot='wizard'] {
+        flex-direction: column;
+        height: auto !important;
+    }
+    [data-slot='wizard'] > nav {
+        width: 100% !important;
+        padding: 14px 16px !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--v2-rule);
+    }
+    [data-slot='wizard'] > nav > ol {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+    [data-slot='wizard'] > nav > ol button {
+        white-space: nowrap;
+    }
+    [data-slot='wizard'] > nav > [data-slot='privacy-note'] {
+        margin-top: 12px;
+    }
+    [data-slot='wizard'] main .grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+}

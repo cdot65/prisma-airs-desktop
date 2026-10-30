@@ -763,7 +763,7 @@ export function Wizard(props: WizardProps) {
                                                 aria-checked={on}
                                                 aria-disabled={unavailable || always ? true : undefined}
                                                 aria-label={card.label}
-                                                aria-describedby={`${card.label}-body`}
+                                                aria-describedby={`${card.label}-body ${card.label}-tags`}
                                                 onClick={() => card.id && !always && void toggleProduct(card.id, !on)}
                                                 className='relative flex flex-col text-left'
                                                 style={{ gap: 10, minHeight: 176, padding: '18px 20px', border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-rule)'}`, borderRadius: 12, background: on ? 'var(--v2-acc-soft)' : 'var(--v2-paper)', color: 'var(--v2-ink)', opacity: unavailable ? 0.7 : 1, cursor: unavailable || always ? 'default' : 'pointer' }}
@@ -781,7 +781,7 @@ export function Wizard(props: WizardProps) {
                                                 <span id={`${card.label}-body`} className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
                                                     {card.body}
                                                 </span>
-                                                <span className='mt-auto flex flex-wrap' style={{ gap: 6 }}>
+                                                <span id={`${card.label}-tags`} className='mt-auto flex flex-wrap' style={{ gap: 6 }}>
                                                     {unavailable && <Verdict tone='info' word={C.products.unavailable} />}
                                                     {always && <Verdict tone='info' word={C.products.always} />}
                                                     {card.readOnly && <Verdict tone='info' word={C.products.readOnly} />}
