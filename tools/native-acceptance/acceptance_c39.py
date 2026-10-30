@@ -253,7 +253,9 @@ def ring_by_tab(app, prefix, name):
     time.sleep(0.4)
     focused_cap = c29.capture(app, f"{name}-view")
     snap = app.tree()
-    web = next((n for n in snap if n.get("role") == "AXWebArea"), None)
+    # The capture is the viewport (the page is scrolled to the View): the box is measured from the scroll area's
+    # origin, not the web area's (the document, taller than the window), which put the box below the image.
+    web = next((n for n in snap if n.get("role") == "AXScrollArea" and n.get("size") and n.get("pos")), None) or next((n for n in snap if n.get("role") == "AXWebArea"), None)
     btn = fx.App.focused(snap)
     if not (web and btn and btn.get("pos") and btn.get("size") and plain_cap and focused_cap and (btn.get("label") or "").startswith(prefix)):
         return {"diff": 0, "focused": (btn or {}).get("label")}
