@@ -221,6 +221,12 @@ def run():
         shutil.rmtree(work, ignore_errors=True)
 
 
+def open_add_sheet(app):
+    """The tenant menu (Go › Switch Tenant…) then its last entry, Add a tenant."""
+    c29.open_switcher(app) if hasattr(c29, "open_switcher") else press(app, "AXButton", "Switch tenant")
+    press(app, "AXButton", "Add a tenant")
+
+
 def exercise(app, endpoint, mgmt, prepared, FINAL):
     global NATIVE
     obs = {"captures": {}, "parity": {}}
@@ -339,8 +345,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
 
     # ---- N02: the add-tenant sheet ----
     n2 = {}
-    c29.open_switcher(app) if hasattr(c29, "open_switcher") else press(app, "AXButton", "Switch tenant")
-    press(app, "AXButton", "Add a tenant")
+    open_add_sheet(app)
     tree, sheet = app.wait_for(lambda t: c29.dialog(t) is not None, 10)
     d = c29.dialog(tree)
     web = next((n for n in tree if n.get("role") == "AXWebArea" and n.get("size")), None)
@@ -366,7 +371,8 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n2["cancel_before_draft_closes"] = closed
     n2["tenants_after_cancel"] = len(c29.tenant_rows(tree)) if hasattr(c29, "tenant_rows") else None
     # Drafted: the scan card is Optional and Continue is open; Cancel discards the draft.
-    press(app, "AXButton", "Add a tenant")
+    # (Closing the sheet closes the tenant menu: it is reopened before each entry.)
+    open_add_sheet(app)
     app.wait_for(lambda t: c29.dialog(t) is not None, 10)
     app.type_into("AXTextField", "Display name", "Coastal Bank")
     app.type_into("AXTextField", "TSG ID", "1001464285")
@@ -381,7 +387,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
 
     # ---- N03: keyboard, ring, layouts (first-run steps are gone: use the add sheet's Tenant and Verify) ----
     n3 = {}
-    press(app, "AXButton", "Add a tenant")
+    open_add_sheet(app)
     tree, _ = app.wait_for(lambda t: c29.dialog(t) is not None, 10)
     app.ax("focus", "AXButton", "Tenant")
     time.sleep(0.3)
