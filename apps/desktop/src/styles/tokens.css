@@ -173,6 +173,18 @@
     [data-v2-shell] [data-slot='home-lower'] {
         grid-template-columns: minmax(0, 1fr) !important;
     }
+    /* The Inbox's list and detail cards stack when the page is narrow (C37): each card takes its
+       own height (the list up to half the viewport, scrolling inside) and the page scrolls. */
+    [data-v2-shell] [data-slot='inbox-columns'] {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-rows: auto auto;
+        min-height: auto !important;
+        flex-grow: 0 !important;
+    }
+    [data-v2-shell] [data-slot='inbox-list'] {
+        min-height: 240px;
+        max-height: 50vh;
+    }
 }
 /* The Harness composer is one pill: the ring is the pill's when its box is typed in (C38). */
 [data-v2-shell] [data-slot='harness-composer']:focus-within {

@@ -1,9 +1,10 @@
 import { forwardRef, useEffect } from 'react'
-import type { FeatureId, InboxEntry, Intent, ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import type { FeatureId, InboxEntry, Intent, ProductId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import type { DispatchOutcome } from '../../features/tenants/dispatch'
 import { INBOX_COPY as C, READ_COPY, SHELL_COPY, SNOOZE_COPY, clockOf } from '../copy'
+import { Glyph, type GlyphName } from '../icons'
 import { useShellStore } from '../store'
-import { Verdict, type VerdictTone } from '../verdict'
+import type { VerdictTone } from '../verdict'
 
 /**
  * Sends one intent and reports its outcome on the shell's surfaces (DESIGN-V2
@@ -52,6 +53,11 @@ export function tabOf(entry: InboxEntry): InboxTab {
     if (entry.needsAction && !entry.hold) return 'action'
     return 'updates'
 }
+
+const severityTile = (severity: InboxEntry['severity']): { glyph: GlyphName; fg: string; bg: string } =>
+    severity === 'bad' ? { glyph: 'ban', fg: 'var(--v2-block)', bg: 'var(--v2-block-bg)' } : severity === 'warn' ? { glyph: 'alert', fg: 'var(--v2-flag)', bg: 'var(--v2-flag-bg)' } : { glyph: 'info', fg: 'var(--v2-soft)', bg: 'var(--v2-inset)' }
+
+const button32 = 'flex h-8 min-h-0 items-center rounded-[7px] text-[13px] whitespace-nowrap'
 
 /**
  * The Inbox (C30, screens/inbox-reads.md): the active tenant's entries from
@@ -103,9 +109,11 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
                 ? C.emptyUnread(clockOf(read.settledAt), read.sourcesMissing.length)
                 : visible.length === 0
                   ? tab === 'all' || tab === 'action'
-                      ? stale
-                          ? C.emptyStale(clockOf(read.lastReadAt ?? 0))
-                          : C.emptyClear
+                      ? read.sourcesMissing.length > 0
+                          ? C.emptyPartial(read.products.reduce((n, p) => n + p.sourcesRead, 0), read.products.reduce((n, p) => n + p.sourcesTotal, 0), read.sourcesMissing)
+                          : stale
+                            ? C.emptyStale(clockOf(read.lastReadAt ?? 0))
+                            : C.emptyClear
                       : C.emptyTab
                   : null
     const partialLine =
@@ -121,135 +129,202 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
                   ? C.stale(clockOf(read.lastReadAt ?? 0))
                   : null
 
+    // The empty states' role issue, the footer's coverage lines and the product hand-off (C37, R2App).
+    const needsRole = read.products.find((p) => p.state === 'needsRole') ?? null
+    const openProduct = (id: ProductId) => {
+        if (tenant) useShellStore.getState().arrive({ tenant: tenant.id, feature: 'administration', resource: null, item: null, product: id })
+        onNavigate('administration')
+    }
+    const sourcesRead = read.products.reduce((n, p) => n + p.sourcesRead, 0)
+    const sourcesTotal = read.products.reduce((n, p) => n + p.sourcesTotal, 0)
+    const readAt = read.lastReadAt ?? read.settledAt
+    const footLine1 = !tenant || readAt === null ? C.footNoReads(tenant?.label ?? '') : read.sourcesMissing.length > 0 ? C.footPartial(sourcesRead, sourcesTotal, clockOf(readAt)) : C.footAll(clockOf(readAt))
+    const gateway = snapshot.overview.read?.gateway ?? null
+    const footLine2 = gateway ? C.footGateway(gateway.workspaceName, gateway.policies) : (snapshot.overview.read?.gaps[0] ?? '')
+
     return (
-        <section aria-labelledby='inbox-heading' data-slot='inbox' className='flex min-h-0 flex-col gap-4'>
-            <div className='flex items-end justify-between gap-4'>
+        <section aria-labelledby='inbox-heading' data-slot='inbox' className='flex min-h-0 flex-grow flex-col' style={{ gap: 20 }}>
+            <div className='flex items-end' style={{ gap: 12 }}>
                 <div>
-                    <h1 ref={ref} id='inbox-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)' }}>
+                    <h1 ref={ref} id='inbox-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
                         {C.title}
                     </h1>
-                    {partialLine && (
-                        <p role='status' className='mt-1 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                            {partialLine}
-                        </p>
-                    )}
+                    <p role='status' data-slot='inbox-sub' className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
+                        {tenant ? C.sub(tenant.label) : C.emptyPending}
+                        {partialLine ? ` · ${partialLine}` : ''}
+                    </p>
                 </div>
                 {context && (
-                    <button type='button' onClick={readNow} disabled={read.state === 'reading'} className='h-8 rounded-[7px] border px-3 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
-                        {C.readNow}
+                    <button type='button' onClick={readNow} disabled={read.state === 'reading'} className={`${button32} ml-auto border px-3.5 disabled:opacity-60`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
+                        {read.state === 'reading' ? C.reading : C.readNow}
                     </button>
                 )}
             </div>
-            <div role='tablist' aria-label={C.title} className='flex gap-1'>
-                {TABS.map((t) => (
-                    <button
-                        key={t}
-                        role='tab'
-                        type='button'
-                        aria-selected={tab === t}
-                        onClick={() => selectInbox(tenantKey, { tab: t, item: selectedId })}
-                        className='h-8 rounded-[7px] px-3 text-[13px]'
-                        style={{ background: tab === t ? 'var(--v2-sel)' : 'transparent', color: tab === t ? 'var(--v2-sel-ink)' : 'var(--v2-ink)' }}
-                    >
-                        {C.tabs[t]} <span style={{ opacity: 0.7 }}>{counts[t]}</span>
-                    </button>
-                ))}
-            </div>
-            {/* Two columns while both fit; one under the other at 200% zoom or a narrow window (no horizontal clipping). */}
-            <div data-slot='inbox-columns' className='grid min-h-0 min-w-0 gap-4' style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' }}>
-                <div className='min-w-0'>
-                    {empty ? (
-                        <p role='status' data-slot='inbox-empty' className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                            {empty}
-                        </p>
-                    ) : (
-                        <ul aria-label={C.ariaList} className='flex flex-col gap-1'>
-                            {visible.map((e) => (
-                                <li key={e.id}>
-                                    <button
-                                        type='button'
-                                        aria-current={selected?.id === e.id ? 'true' : undefined}
-                                        onClick={() => selectInbox(tenantKey, { tab, item: e.id })}
-                                        className='flex w-full min-w-0 flex-col gap-1 rounded-[12px] border px-4 py-3 text-left break-words'
-                                        style={{ borderColor: selected?.id === e.id ? 'var(--v2-acc)' : 'var(--v2-rule)', background: 'var(--v2-paper)' }}
-                                    >
-                                        <span className='flex flex-wrap items-center gap-2'>
-                                            <Verdict tone={toneOf(e.severity)} word={C.severity[e.severity]} />
-                                            <span className='min-w-0 text-[14px] font-medium'>{e.title}</span>
-                                            {e.hold?.kind === 'acknowledge' && <span className='text-[11px]' style={{ color: 'var(--v2-faint)' }}>{C.acknowledged}</span>}
-                                        </span>
-                                        <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                                            {e.product ? READ_COPY.products[e.product] : C.kind[e.kind]} · {e.source} · {clockOf(e.when)}
-                                            {e.hold?.kind === 'snooze' && e.hold.returnsAt !== null ? ` · ${SNOOZE_COPY.returns(e.hold.returnsAt)}` : ''}
-                                        </span>
-                                    </button>
-                                </li>
+            {/* The list column is the prototype's 430px beside the detail; one under the other when both cannot fit (200% zoom, a narrow window). */}
+            <div data-slot='inbox-columns' className='grid min-h-0 min-w-0 flex-grow' style={{ gridTemplateColumns: 'minmax(0, 430px) minmax(0, 1fr)', gap: 20 }}>
+                <section aria-label={C.listCard} data-slot='inbox-list' className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                    <div className='flex items-center' style={{ padding: '14px 18px', gap: 10, borderBottom: '1px solid var(--v2-rule)' }}>
+                        <div role='tablist' aria-label={C.filter} className='flex rounded-[8px]' style={{ padding: 2, background: 'var(--v2-inset)' }}>
+                            {TABS.map((t) => (
+                                <button
+                                    key={t}
+                                    role='tab'
+                                    type='button'
+                                    id={`itab-${t}`}
+                                    aria-controls='inbox-panel'
+                                    aria-selected={tab === t}
+                                    onClick={() => selectInbox(tenantKey, { tab: t, item: selectedId })}
+                                    className='h-7 min-h-0 rounded-[6px] px-3 text-[12px] font-semibold'
+                                    style={{ background: tab === t ? 'var(--v2-paper)' : 'transparent', boxShadow: tab === t ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', color: 'var(--v2-ink)' }}
+                                >
+                                    {C.tabs[t]}{' '}
+                                    <span className='font-medium' style={{ color: 'var(--v2-faint)' }}>
+                                        {counts[t]}
+                                    </span>
+                                </button>
                             ))}
-                        </ul>
-                    )}
-                </div>
-                <aside aria-label={C.detail} data-slot='inbox-detail' className='min-w-0 rounded-[12px] border p-5 break-words' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
-                    {!selected ? (
-                        <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                            {C.selectHint}
-                        </p>
-                    ) : (
-                        <div className='flex flex-col gap-3'>
-                            <div className='flex flex-wrap items-center gap-2'>
-                                <Verdict tone={toneOf(selected.severity)} word={C.severity[selected.severity]} />
-                                <h2 className='min-w-0 text-[16px] font-semibold'>{selected.title}</h2>
+                        </div>
+                    </div>
+                    <div role='tabpanel' id='inbox-panel' aria-labelledby={`itab-${tab}`} className='min-h-0 flex-grow overflow-auto'>
+                        {empty ? (
+                            <div role='status' data-slot='inbox-empty' className='flex flex-col items-center text-center leading-[1.5]' style={{ gap: 12, padding: '32px 18px', color: 'var(--v2-faint)' }}>
+                                <span>{empty}</span>
+                                {needsRole && context && (
+                                    <button type='button' onClick={() => openProduct(needsRole.product)} className={`${button32} border px-3.5 font-semibold`} style={{ borderColor: 'var(--v2-flag)', background: 'var(--v2-flag-bg)', color: 'var(--v2-flag)' }}>
+                                        {C.openRoleIssue}
+                                    </button>
+                                )}
                             </div>
-                            <p className='text-[13px]'>{selected.detail}</p>
-                            {selected.facts.length > 0 && (
-                                <table className='text-[12px]'>
-                                    <caption className='sr-only'>{C.facts}</caption>
-                                    <tbody>
-                                        {selected.facts.map((f) => (
-                                            <tr key={f.label}>
-                                                <th scope='row' className='pr-3 text-left font-medium'>
-                                                    {f.label}
-                                                </th>
-                                                <td>{f.value}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                            <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
-                                <span className='font-semibold'>{C.why}: </span>
-                                {C.whyText[selected.kind]}
+                        ) : (
+                            <ul aria-label={C.ariaList} className='flex flex-col'>
+                                {visible.map((e) => {
+                                    const tile = severityTile(e.severity)
+                                    const current = selected?.id === e.id
+                                    return (
+                                        <li key={e.id}>
+                                            <button
+                                                type='button'
+                                                aria-current={current ? 'true' : undefined}
+                                                data-inset-focus=''
+                                                onClick={() => selectInbox(tenantKey, { tab, item: e.id })}
+                                                className='flex w-full min-w-0 items-start text-left'
+                                                style={{ gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', background: current ? 'var(--v2-inset)' : 'transparent', boxShadow: current ? 'inset 3px 0 0 var(--v2-acc)' : 'none', color: 'var(--v2-ink)' }}
+                                            >
+                                                <span aria-hidden='true' className='grid size-[26px] shrink-0 place-items-center rounded-[7px]' style={{ background: tile.bg, color: tile.fg }}>
+                                                    <Glyph name={tile.glyph} size={13} stroke={2} />
+                                                </span>
+                                                <span className='min-w-0 flex-grow'>
+                                                    <span className='block font-semibold [overflow-wrap:anywhere]'>{e.title}</span>
+                                                    <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                                        {/* The severity is a word as well as a colour and an icon (I9). */}
+                                                        <span data-slot='severity' className='font-semibold' style={{ color: tile.fg }}>
+                                                            {C.severity[e.severity]}
+                                                        </span>
+                                                        {' · '}
+                                                        {e.product ? READ_COPY.products[e.product] : C.kind[e.kind]} · {e.source}
+                                                        {e.hold?.kind === 'snooze' && e.hold.returnsAt !== null ? ` · ${SNOOZE_COPY.returns(e.hold.returnsAt)}` : ''}
+                                                    </span>
+                                                    {e.hold?.kind === 'acknowledge' && (
+                                                        <span className='ml-2 inline-flex items-center gap-1 text-[12px] font-semibold' style={{ color: 'var(--v2-ok)' }}>
+                                                            <Glyph name='check' size={11} stroke={2.6} />
+                                                            {C.acknowledged}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                                    {clockOf(e.when)}
+                                                </span>
+                                            </button>
+                                        </li>
+                                    )
+                                })}
+                            </ul>
+                        )}
+                    </div>
+                    <div data-slot='inbox-foot' className='text-[12px] leading-[1.6]' style={{ padding: '14px 18px', borderTop: '1px solid var(--v2-rule)', color: 'var(--v2-faint)' }}>
+                        <span>{footLine1}</span>
+                        <br />
+                        <span>{footLine2}</span>
+                    </div>
+                </section>
+                <aside aria-label={C.detail} data-slot='inbox-detail' className='flex min-w-0 flex-col rounded-[12px] border break-words' style={{ padding: '28px 30px', gap: 18, borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                    {!selected ? (
+                        <div className='flex flex-grow flex-col items-center justify-center text-center leading-[1.5]' style={{ gap: 12, color: 'var(--v2-faint)' }}>
+                            <span>{empty ?? C.selectHint}</span>
+                        </div>
+                    ) : (
+                        <>
+                            <div className='flex items-center' style={{ gap: 10 }}>
+                                <span aria-hidden='true' className='grid size-[34px] place-items-center rounded-[9px]' style={{ background: severityTile(selected.severity).bg, color: severityTile(selected.severity).fg }}>
+                                    <Glyph name={severityTile(selected.severity).glyph} size={17} stroke={2} />
+                                </span>
+                                <span className='rounded-full text-[12px] font-semibold' style={{ padding: '2px 9px', background: severityTile(selected.severity).bg, color: severityTile(selected.severity).fg }}>
+                                    {C.severity[selected.severity]}
+                                </span>
+                                <span style={{ color: 'var(--v2-faint)' }}>
+                                    {selected.product ? READ_COPY.products[selected.product] : C.kind[selected.kind]} · {selected.source}
+                                </span>
+                            </div>
+                            <h2 className='min-w-0 text-[22px] font-bold' style={{ letterSpacing: '-0.01em' }}>
+                                {selected.title}
+                            </h2>
+                            <p className='text-[14px] leading-[1.55]' style={{ color: 'var(--v2-soft)' }}>
+                                {selected.detail}
                             </p>
+                            {selected.facts.length > 0 && (
+                                <dl aria-label={C.facts} className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+                                    {selected.facts.map((f) => (
+                                        <div key={f.label} className='rounded-[10px]' style={{ padding: '12px 14px', background: 'var(--v2-inset)' }}>
+                                            <dt className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+                                                {f.label}
+                                            </dt>
+                                            <dd className='font-semibold' style={{ marginTop: 2 }}>
+                                                {f.value}
+                                            </dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            )}
+                            {snapshot.showCalls && (
+                                <div data-slot='inbox-why' className='flex gap-2 rounded-[10px] text-[13px] leading-[1.45]' style={{ padding: '12px 14px', background: 'var(--v2-acc-soft)', maxWidth: 860 }}>
+                                    <Glyph name='info' size={15} stroke={2} color='var(--v2-acc)' className='mt-px' />
+                                    <span>
+                                        <span className='font-semibold'>{C.why}: </span>
+                                        {C.whyText[selected.kind]}
+                                    </span>
+                                </div>
+                            )}
                             {selected.hold?.kind === 'snooze' && selected.hold.returnsAt !== null && (
-                                <p data-slot='snooze-returns' className='text-[12px]'>
+                                <p data-slot='snooze-returns' className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
                                     {SNOOZE_COPY.returns(selected.hold.returnsAt)}
                                 </p>
                             )}
-                            <div className='flex flex-wrap gap-2'>
+                            <div className='flex flex-wrap' style={{ gap: 8, marginTop: 'auto' }}>
                                 {destinationFeature(selected) && selected.actionLabel && (
-                                    <button type='button' onClick={() => tenant && follow(selected, tenant.id, onNavigate)} className='h-8 rounded-[7px] px-3 text-[13px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
+                                    <button type='button' onClick={() => tenant && follow(selected, tenant.id, onNavigate)} className={`${button32} px-[18px] font-semibold`} style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
                                         {selected.actionLabel}
                                     </button>
                                 )}
                                 {selected.hold?.kind === 'acknowledge' ? (
-                                    <button type='button' onClick={() => void act(selected, 'unsnoozeItem')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                                    <button type='button' aria-pressed='true' onClick={() => void act(selected, 'unsnoozeItem')} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
                                         {C.needsAction}
                                     </button>
                                 ) : (
-                                    <button type='button' onClick={() => void act(selected, 'acknowledgeItem')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                                    <button type='button' aria-pressed='false' onClick={() => void act(selected, 'acknowledgeItem')} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
                                         {C.acknowledge}
                                     </button>
                                 )}
                                 {selected.hold?.kind === 'snooze' ? (
-                                    <button type='button' onClick={() => void act(selected, 'unsnoozeItem')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                                    <button type='button' onClick={() => void act(selected, 'unsnoozeItem')} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
                                         {C.unsnooze}
                                     </button>
                                 ) : (
-                                    <button type='button' title={SNOOZE_COPY.offer} aria-label={`${SNOOZE_COPY.offer}: ${selected.title}`} onClick={() => void act(selected, 'snoozeItem')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                                    <button type='button' title={SNOOZE_COPY.offer} aria-label={`${SNOOZE_COPY.offer}: ${selected.title}`} onClick={() => void act(selected, 'snoozeItem')} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
                                         {SNOOZE_COPY.offer}
                                     </button>
                                 )}
                             </div>
-                        </div>
+                        </>
                     )}
                 </aside>
             </div>

@@ -1366,6 +1366,16 @@
         "id": "C44-N01",
         "check": "One presentation (P09 closure): the fixture app's first run is the wizard with no Features rail and no 'Use the new interface' switch anywhere; after the tenant is set up, every destination the catalogue lists is opened from the Go menu (Home, Inbox, Harness, Academy, Test Cases, API Client, Administration; Runtime Security, AI Gateway and Red Team & Models opening Administration on their product; Sessions & Reports and Settings framed by the v2 shell (Import from v1 removed, D060)) under the v2 Destinations rail, each captured in light and dark at 1440×900 as the whole-app screenshot set under evidence/C44/parity/app, with no plaintext secret in any destination's tree; the legacy scripts' assertions are mapped to their replacement drivers in evidence/C44/legacy-script-map.md."
       }
+    ],
+    "C37": [
+      {
+        "id": "C37-N01",
+        "check": "The Inbox as the prototype draws it (R2App start=inbox) with a tenant whose read has landed: the heading and its line naming the tenant; a 430px list card with the filter tabs (All, Needs action, Updates, Snoozed, each with its count) over the rows (severity tile and word, title, product and source, when; an acknowledged row marked) and a footer naming the read's coverage; selecting a row fills the detail card (severity tile and word, product and source, the 22px title, the body, the facts as a three-column grid, the entry's own action, Acknowledge or Mark as needing action, Snooze or Unsnooze); the empty states name the read (first read pending; the failed first read, every source answering 500; with the sessions chart denied, AI Runtime Security needing a role: Open role issue offered, the footer's partial coverage, the empty pane qualifying what was read and naming the unread source rather than a bare all-clear, and the issue opening that product in Administration); snooze, acknowledge and unsnooze stay the C30 core intents with the core's return time stated the same in the row, the detail and the toast (D059 parity: the composites under evidence/C37/parity are captured by this script from the populated state with the first row opened, parity/bundle.json rewritten with the bundle they came from, and the owner's approval of them is recorded in parity/notes.md)."
+      },
+      {
+        "id": "C37-N02",
+        "check": "Keyboard and layout (T09): the Inbox at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the list populated; at each layout no horizontal overflow, the list card at least 160 CSS px tall with its tabs, first row and footer inside its own frame (nothing clipped), Tab from Read now reaching a tab then a row, and Enter on a focused row the detail does not show (scrolled into the viewport by its focus) changing the detail to it; the focus ring on the first row; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
     ]
   }
 }

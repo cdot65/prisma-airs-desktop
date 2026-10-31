@@ -13,7 +13,7 @@ import { DeliveryOutcomeUnknown, DesktopClient, type ShellSnapshot } from '@pris
 import { App } from '../../app'
 import { scriptedNative, type Native } from '../../test/native'
 import { fxFresh, fxInbox } from '../fixtures'
-import { resetShellStore } from '../store'
+import { resetShellStore, useShellStore } from '../store'
 
 async function launch(snapshot: ShellSnapshot): Promise<Native> {
     const native = scriptedNative(snapshot)
@@ -39,7 +39,7 @@ describe('Inbox', () => {
         await user.click(rows[0] as HTMLElement)
         const detail = screen.getByRole('complementary', { name: 'Details' })
         expect(within(detail).getByRole('heading', { level: 2, name: 'Runtime expires in 5 days' })).toBeInTheDocument()
-        expect(within(detail).getByRole('row', { name: /Expires/ })).toBeInTheDocument()
+        expect(within(detail).getByText('Expires')).toBeInTheDocument()
         expect(within(detail).getByText(/Why this matters/)).toBeInTheDocument()
         await user.click(within(detail).getByRole('button', { name: 'Open API keys' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'administration' })
@@ -408,5 +408,59 @@ describe('Inbox', () => {
         await native.push(fxInbox())
         await waitFor(() => expect(screen.getByRole('tab', { name: /Snoozed/ })).toHaveAttribute('aria-selected', 'true'))
         expect(within(screen.getByRole('complementary', { name: 'Details' })).getByRole('heading', { level: 2, name: 'Gateway workspace Team A over quota' })).toBeInTheDocument()
+    })
+    // ---- C37: the Inbox as the prototype draws it (appended to describe('Inbox') in inbox.test.tsx) ----
+
+    it('draws the list card with the filter tabs and counts, rows with the severity word, product, source and time, and the footer naming the read (C37)', async () => {
+        await launch(fxInbox())
+        expect(document.querySelector('[data-slot="inbox-sub"]')?.textContent).toContain('Everything that needs you in Northwind Health · newest first')
+        const tablist = screen.getByRole('tablist', { name: 'Inbox filter' })
+        expect(within(tablist).getAllByRole('tab').map((t) => t.textContent)).toEqual(['All 4', 'Needs action 2', 'Updates 1', 'Snoozed 1'])
+        expect(screen.getByRole('region', { name: 'Inbox list' })).toBeInTheDocument()
+        const list = screen.getByRole('list', { name: 'Inbox items' })
+        const rows = within(list).getAllByRole('listitem')
+        expect(rows).toHaveLength(4)
+        expect(rows[0]!.querySelector('[data-slot="severity"]')?.textContent).toBe('Warning')
+        expect(rows[0]).toHaveTextContent('Runtime expires in 5 days')
+        expect(rows[0]).toHaveTextContent('Warning · AI Runtime Security · API keys · read 07:45')
+        expect(rows[0]!.textContent).toMatch(/\d\d:\d\d$/)
+        // The snoozed row carries the core's return time.
+        expect(within(list).getByText(/Returns /)).toBeInTheDocument()
+        expect(document.querySelector('[data-slot="inbox-foot"]')?.textContent).toMatch(/^3 of 4 sources read at \d\d:\d\d\./)
+    })
+
+    it('fills the detail card from a row: severity, product and source, the title, the body, the facts grid, the entry’s own action and the holds; Why this matters only while the calls are shown (C37)', async () => {
+        const user = userEvent.setup()
+        const native = await launch(fxInbox())
+        const detail = () => screen.getByRole('complementary', { name: 'Details' })
+        expect(detail()).toHaveTextContent('Select an item to see its details.')
+        await user.click(screen.getByRole('button', { name: /Runtime expires in 5 days/ }))
+        expect(within(detail()).getByRole('heading', { level: 2 })).toHaveTextContent('Runtime expires in 5 days')
+        expect(detail()).toHaveTextContent('Warning')
+        expect(detail()).toHaveTextContent('AI Runtime Security · API keys · read 07:45')
+        const facts = detail().querySelector('dl[aria-label="Facts"]') as HTMLElement
+        expect(Array.from(facts.querySelectorAll('dt')).map((t) => t.textContent)).toEqual(['Key', 'Expires'])
+        expect(within(detail()).getByRole('button', { name: 'Open API keys' })).toBeInTheDocument()
+        expect(within(detail()).getByRole('button', { name: 'Acknowledge' })).toHaveAttribute('aria-pressed', 'false')
+        expect(within(detail()).getByRole('button', { name: /^Snooze 24 hours/ })).toBeInTheDocument()
+        expect(document.querySelector('[data-slot="inbox-why"]')).not.toBeNull()
+        await native.push({ ...native.current, showCalls: false })
+        expect(document.querySelector('[data-slot="inbox-why"]')).toBeNull()
+    })
+
+    it('offers Open role issue in the empty state when a product needs a role, opening that product in Administration (C37)', async () => {
+        const user = userEvent.setup()
+        const base = fxInbox()
+        const native = await launch({
+            ...base,
+            inbox: { ...base.inbox, items: [], read: { ...base.inbox.read, products: [{ product: 'gateway', state: 'needsRole', sourcesRead: 0, sourcesTotal: 2, detail: 'Missing read role' }], sourcesMissing: ['Gateway usage', 'Gateway limits'] } },
+        })
+        // A partial read never claims an all-clear: what was read is qualified and the unread source named (attempt-02 R1).
+        expect(document.querySelector('[data-slot="inbox-empty"]')?.textContent).toContain('Nothing needs action in what was read (0 of 2 sources)')
+        expect(document.querySelector('[data-slot="inbox-empty"]')?.textContent).toMatch(/Activity for .* is unknown until it can be read\./)
+        expect(document.querySelector('[data-slot="inbox-empty"]')?.textContent).not.toMatch(/^Nothing needs action\.$/)
+        await user.click(screen.getByRole('button', { name: 'Open role issue' }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'administration' })
+        expect(useShellStore.getState().arrival).toMatchObject({ feature: 'administration', product: 'gateway' })
     })
 })
