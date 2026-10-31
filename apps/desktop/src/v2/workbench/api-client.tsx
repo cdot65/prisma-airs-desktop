@@ -57,7 +57,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // in flight resolving out of order replaced the current request's document with the earlier one's).
     const loadGen = useRef(0)
     // A load that failed, by request id, with its reason: shown in place of the editor with Try again (no automatic retry).
-    const [loadFailure, setLoadFailure] = useState<{ id: string; text: string } | null>(null)
+    const [loadFailure, setLoadFailure] = useState<{ id: string; relative: string; text: string } | null>(null)
     const editors = useRef(new Map<string, EditorHandle>())
     const [closing, setClosing] = useState<Closing | null>(null)
     // The Collection chip: where focus returns when its menu or a tool it opened closes (the menu item is gone by then).
@@ -108,12 +108,12 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // request's document, or resurrected a closed one).
     const collectionRef = useRef<string | null>(collection?.id ?? null)
     collectionRef.current = collection?.id ?? null
-    type Load = { gen: number; asked: string | null; id: string | null }
-    const beginLoad = (id: string | null): Load => {
+    type Load = { gen: number; asked: string | null; id: string | null; relative: string | null }
+    const beginLoad = (id: string | null, relative: string | null = null): Load => {
         const gen = ++loadGen.current
         loading.current = id
         setLoadFailure(null)
-        return { gen, asked: collectionRef.current, id }
+        return { gen, asked: collectionRef.current, id, relative }
     }
     /** Shows a load's document if the load is still current; a failure of a selected request's load is shown with its reason. */
     const settleLoad = (load: Load, r: Awaited<ReturnType<WorkbenchCall>> | null, keepNotes: boolean): boolean => {
@@ -124,7 +124,9 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
             setNotes(keepNotes ? r.notes : [])
             return true
         }
-        if (load.id !== null && r?.kind !== 'cancelled') setLoadFailure({ id: load.id, text: (r && resultText(r)) ?? C.unknownFailure })
+        // The failure names the request it was for: the core keeps the previous selection when a read fails, so a
+        // tree entry's failure must show without that request ever being selected.
+        if (load.id !== null && load.relative !== null && r?.kind !== 'cancelled') setLoadFailure({ id: load.id, relative: load.relative, text: (r && resultText(r)) ?? C.unknownFailure })
         return false
     }
 
@@ -148,7 +150,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     }, [collectionId])
     // Opens a request (the selected tab, or a tree entry); only the latest load's reply counts.
     const open = (tab: { id: string; relative: string }) => {
-        const load = beginLoad(tab.id)
+        const load = beginLoad(tab.id, tab.relative)
         void call({ kind: 'openRequest', relative: tab.relative }).then(
             (r) => settleLoad(load, r, false),
             () => settleLoad(load, null, false)
@@ -478,10 +480,10 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                     {alerts}
                                 </div>
                             ) : null}
-                            {selectedTab && loadFailure?.id === selectedTab.id && doc?.id !== selectedTab.id ? (
-                                <div role='alert' className='flex flex-wrap items-center text-[13px]' style={{ gap: 10, margin: '16px 20px', padding: '12px 14px', borderRadius: 10, background: 'var(--v2-block-bg)' }} data-slot='workbench-load-failed'>
-                                    <span className='min-w-0 flex-grow'>{C.loadFailed(requestName(selectedTab.relative), loadFailure.text)}</span>
-                                    <Btn onClick={() => open(selectedTab)}>{C.tryAgain}</Btn>
+                            {loadFailure && doc?.id !== loadFailure.id ? (
+                                <div role='alert' className='flex flex-wrap items-center text-[13px]' style={{ gap: 10, margin: '16px 20px 0', padding: '12px 14px', borderRadius: 10, background: 'var(--v2-block-bg)' }} data-slot='workbench-load-failed'>
+                                    <span className='min-w-0 flex-grow'>{C.loadFailed(requestName(loadFailure.relative), loadFailure.text)}</span>
+                                    <Btn onClick={() => open({ id: loadFailure.id, relative: loadFailure.relative })}>{C.tryAgain}</Btn>
                                 </div>
                             ) : null}
                             {doc && selectedTab && doc.id === selectedTab.id ? (
@@ -539,11 +541,14 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                             collection={collection}
                             run={run}
                             onClose={() => setTool(null)}
-                            onCreated={(r) => {
-                                // A cURL import's draft is a load of this collection too.
-                                settleLoad(beginLoad(null), r, true)
-                                setTool(null)
+                            importCurl={async (text, relative) => {
+                                // A cURL import's draft is a load of this collection: begun before the call, settled against it.
+                                const load = beginLoad(null)
+                                const r = await run({ kind: 'importCurl', text, relative })
+                                settleLoad(load, r, true)
+                                return r
                             }}
+                            onCreated={() => setTool(null)}
                             returnFocus={chip.current}
                         />
                     ) : null}

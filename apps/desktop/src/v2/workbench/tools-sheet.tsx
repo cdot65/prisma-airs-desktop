@@ -21,8 +21,14 @@ interface Props {
     collection: CollectionView
     run: Run
     onClose: () => void
-    /** A cURL import created a draft (the sheet closes and the request shows). */
+    /** A cURL import created a draft (the sheet closes; the API Client already shows the request). */
     onCreated: (r: Awaited<ReturnType<WorkbenchCall>>) => void
+    /**
+     * Dispatches a cURL import as a load of the collection: the API Client begins the load (its collection and
+     * generation) before the call and settles the reply against it, so a reply arriving after a selection change
+     * or a collection boundary is ignored instead of taking a fresh lifetime.
+     */
+    importCurl: (text: string, relative: string) => ReturnType<WorkbenchCall>
     /** Where focus returns on close: the Collection chip, since the menu item that opened the sheet closes with its menu (I8). */
     returnFocus?: HTMLElement | null
 }
@@ -32,18 +38,19 @@ interface Props {
  * secrets, schemas, imports and Git. Values entered for secrets go to the
  * Keychain through the core and are never shown again.
  */
-export function ToolsSheet({ tool, state, collection, run: runOutside, onClose, onCreated, returnFocus = null }: Props) {
+export function ToolsSheet({ tool, state, collection, run: runOutside, onClose, onCreated, importCurl: importOutside, returnFocus = null }: Props) {
     const title = C.tools[tool].replace(/…$/, '')
     // A failed action is said inside the sheet: the page behind it is inert and hidden from assistive technology while
     // the sheet is open, so the API Client's own alert there reaches no one. Entered work and focus are untouched.
     const [failure, setFailure] = useState('')
-    const run: Run = async (request) => {
-        const r = await runOutside(request)
+    const noted = (r: Awaited<ReturnType<WorkbenchCall>>) => {
         const text = resultText(r)
         if (text) setFailure(text)
         else if (r.kind !== 'cancelled') setFailure('')
         return r
     }
+    const run: Run = async (request) => noted(await runOutside(request))
+    const importCurl = async (text: string, relative: string) => noted(await importOutside(text, relative))
     return createPortal(
         <Modal label={title} sheet width={620} onClose={onClose} returnFocus={returnFocus} data-slot='workbench-tools'>
             <div className='flex flex-col' style={{ gap: 14 }} data-slot={`workbench-${tool}`}>
@@ -65,7 +72,7 @@ export function ToolsSheet({ tool, state, collection, run: runOutside, onClose, 
                 ) : tool === 'schemas' ? (
                     <Schemas collection={collection} run={run} />
                 ) : tool === 'import' ? (
-                    <Import state={state} run={run} onCreated={onCreated} />
+                    <Import state={state} run={run} importCurl={importCurl} onCreated={onCreated} />
                 ) : (
                     <Git git={state.git} run={run} />
                 )}
@@ -279,7 +286,7 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
     )
 }
 
-function Import({ state, run, onCreated }: { state: WorkbenchState; run: Run; onCreated: (r: Awaited<ReturnType<WorkbenchCall>>) => void }) {
+function Import({ state, run, importCurl, onCreated }: { state: WorkbenchState; run: Run; importCurl: (text: string, relative: string) => ReturnType<WorkbenchCall>; onCreated: (r: Awaited<ReturnType<WorkbenchCall>>) => void }) {
     const ids = useId()
     const [text, setText] = useState('')
     const [path, setPath] = useState('imported/request')
@@ -292,7 +299,7 @@ function Import({ state, run, onCreated }: { state: WorkbenchState; run: Run; on
                 style={{ gap: 8 }}
                 onSubmit={(e) => {
                     e.preventDefault()
-                    void run({ kind: 'importCurl', text, relative: path }).then((r) => {
+                    void importCurl(text, path).then((r) => {
                         if (r.kind === 'document') {
                             setText('')
                             onCreated(r)

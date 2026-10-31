@@ -652,6 +652,96 @@ describe('C41 API Client board', () => {
         expect(within(screen.getByRole('dialog', { name: 'New folder' })).getByRole('textbox', { name: 'Folder path' })).toHaveValue('topics/list')
     })
 
+    it('a cURL import\'s late reply never replaces the current selection: held past the draft\'s selection, the sheet closing and another selection, it is ignored (attempt-07 R1)', async () => {
+        const docFor = (id: string, relative: string, url: string) => ({ kind: 'document' as const, document: { ...document().document, id, relative, new: id === 'imported', fields: { ...fields, url }, saved: { ...fields, url } }, notes: [] })
+        const { user, requests, native, line } = await open(board(), (request) =>
+            request.kind === 'openRequest' && request.relative === 'imported/request.request.toml' ? docFor('imported', 'imported/request.request.toml', 'http://127.0.0.1:8080/imported') : request.kind === 'openRequest' && request.relative === 'health.request.toml' ? docFor('health', 'health.request.toml', 'http://127.0.0.1:8080/health') : null
+        )
+        let release: ((r: WorkbenchResult) => void) | null = null
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'importCurl') return new Promise<{ kind: 'workbench'; result: WorkbenchResult }>((resolve) => (release = (result) => resolve({ kind: 'workbench', result })))
+            return observe(operation)
+        }
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Import…' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Import' })
+        await user.type(within(sheet).getByRole('textbox', { name: 'cURL command' }), 'curl http://127.0.0.1:8080/imported')
+        await user.click(within(sheet).getByRole('button', { name: 'Create draft' }))
+        await waitFor(() => expect(release).not.toBeNull())
+        // The core selects the draft (its own tab), the sheet is closed, and health is selected and loaded.
+        const base = board()
+        const collection = base.workbench.collection!
+        const tab = (id: string, relative: string, isNew = false) => ({ id, relative, method: 'GET', draft: isNew, new: isNew, recovered: false, conflict: null, interrupted: false })
+        const snap = (selected: string) => ({ ...base, workbench: { ...base.workbench, collection: { ...collection, tabs: [...collection.tabs, tab('imported', 'imported/request.request.toml', true), tab('health', 'health.request.toml')], selected } } })
+        await native.push(snap('imported'))
+        // The page behind the open sheet is aria-hidden: the editor is queried as hidden until the sheet closes.
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL', hidden: true })).toHaveValue('http://127.0.0.1:8080/imported'))
+        await user.click(within(sheet).getByRole('button', { name: 'Close Import' }))
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Import' })).toBeNull())
+        await native.push(snap('health'))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/health'))
+        // The import's reply, released now, belongs to a superseded load: health stays with its editor.
+        release!(docFor('imported', 'imported/request.request.toml', 'http://127.0.0.1:8080/imported'))
+        await new Promise((r) => setTimeout(r, 50))
+        expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/health')
+        expect(within(line()).getByRole('button', { name: 'Send' })).toBeInTheDocument()
+        expect(screen.getByRole('region', { name: 'Response pane' })).toBeInTheDocument()
+    })
+
+    it('a cURL import\'s reply held across a collection close and re-open is ignored; the re-opened selection loads afresh (attempt-07 R1)', async () => {
+        const { user, requests, native } = await open()
+        let release: ((r: WorkbenchResult) => void) | null = null
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'importCurl') return new Promise<{ kind: 'workbench'; result: WorkbenchResult }>((resolve) => (release = (result) => resolve({ kind: 'workbench', result })))
+            return observe(operation)
+        }
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Import…' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Import' })
+        await user.type(within(sheet).getByRole('textbox', { name: 'cURL command' }), 'curl http://127.0.0.1:8080/x')
+        await user.click(within(sheet).getByRole('button', { name: 'Create draft' }))
+        await waitFor(() => expect(release).not.toBeNull())
+        await user.click(within(sheet).getByRole('button', { name: 'Close Import' }))
+        const closed = board()
+        await native.push({ ...closed, workbench: { ...closed.workbench, collection: null } })
+        expect(await screen.findByText('No collection is open.')).toBeInTheDocument()
+        await native.push(board())
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics'))
+        release!({ ...document(), document: { ...document().document, id: 'imported', relative: 'imported/request.request.toml', new: true, fields: { ...fields, url: 'http://127.0.0.1:8080/x' }, saved: { ...fields, url: 'http://127.0.0.1:8080/x' } } })
+        await new Promise((r) => setTimeout(r, 50))
+        expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics')
+        expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toBeNull()
+    })
+
+    it('an unselected tree entry whose load is refused, then lost, says so above the current editor, which stays; Try again reopens it once each time (attempt-07 R2)', async () => {
+        let mode: 'refused' | 'lost' = 'refused'
+        const { user, requests, tree, line, native } = await open(board(), (request) => (request.kind === 'openRequest' && request.relative === 'health.request.toml' && mode === 'refused' ? { kind: 'refused', problem: { kind: 'project', detail: 'missing' } } : null))
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'openRequest' && req.relative === 'health.request.toml' && mode === 'lost') return Promise.reject(new Error('observation lost'))
+            return observe(operation)
+        }
+        const opens = () => requests.filter((r) => r.kind === 'openRequest' && r.relative === 'health.request.toml').length
+        await user.click(within(tree).getByRole('button', { name: 'Open GET health.request.toml' }))
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toHaveTextContent('health could not be opened: That file is missing.'))
+        expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toHaveAttribute('role', 'alert')
+        // The previous editor stays: the core left the selection unchanged.
+        expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics')
+        expect(opens()).toBe(1)
+        await new Promise((r) => setTimeout(r, 100))
+        expect(opens()).toBe(1)
+        mode = 'lost'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(opens()).toBe(2))
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toHaveTextContent('health could not be opened: The desktop did not report how the request ended.'))
+        expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics')
+    })
+
     it('reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection', async () => {
         const { user, requests } = await open()
         await user.click(screen.getByRole('tab', { name: 'Preview' }))
