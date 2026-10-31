@@ -175,15 +175,16 @@ def table_usable(tree, zoom):
     label_of = lambda n: (n.get("label") or n.get("value") or "")  # noqa: E731
     headers = [next((n for n in texts if label_of(n) == h), None) for h in ("Case", "Product", "Input or specification", "Last result")]
     case_name = (action.get("label") or "").split(": ", 1)[1] if action and ": " in (action.get("label") or "") else None
-    name = next((n for n in texts if case_name and label_of(n) == case_name), None)
-    # The row's nodes lie between its name and its action in tree order.
-    start = tree.index(name) if name else None
-    end = tree.index(action) if action else None
-    row = tree[start + 1:end] if start is not None and end is not None and end > start else []
-    result = next((n for n in row if (n.get("role") in BTN and label_of(n).endswith(f"Show the result of {case_name}")) or (n.get("role") == "AXStaticText" and label_of(n) == "Not run")), None)
-    product_words = ("Runtime Security", "AI Gateway", "AI Red Teaming", "Model Security", "Skill Scanning")
-    inputs = [n for n in row if n.get("role") == "AXStaticText" and n is not result and label_of(n) not in product_words and not label_of(n).startswith("at ") and label_of(n) != "Not run" and not label_of(n).startswith(("Starter", "Bundled"))]
-    input_text = max(inputs, key=lambda n: len(label_of(n)), default=None)
+    # The row is the AXRow holding the action; its regions are its cells in column order (name, product, input,
+    # result, action), not guessed from text lengths (the longest text was the pack's name, never the input).
+    row_node = next((n for n in tree if n.get("role") == "AXRow" and action and n.get("pos") and n.get("size") and contained(action, n)), None)
+    cells = [n for n in tree if row_node and n.get("role") == "AXCell" and n.get("pos") and n.get("size") and contained(n, row_node)]
+    out["row_cells"] = len(cells)
+    cell_texts = lambda i: [n for n in texts if len(cells) > i and contained(n, cells[i], slack=2)] if cells else []  # noqa: E731
+    name = next((n for n in cell_texts(0) if case_name and label_of(n) == case_name), None)
+    result = next((n for n in tree if len(cells) > 3 and n.get("pos") and n.get("size") and contained(n, cells[3], slack=2) and ((n.get("role") in BTN and label_of(n).endswith(f"Show the result of {case_name}")) or (n.get("role") == "AXStaticText" and label_of(n) == "Not run"))), None)
+    inputs = [n for n in cell_texts(2) if n is not result]
+    input_text = inputs[0] if inputs else None
     regions = {"name": name, "input": input_text, "result": result, "action": action, **{f"header_{i}": h for i, h in enumerate(headers)}}
     out["regions"] = {k: label_of(v)[:40] if v else None for k, v in regions.items()}
     present = {k: box(v) for k, v in regions.items() if v}
@@ -192,7 +193,7 @@ def table_usable(tree, zoom):
     keys = list(present)
     overlaps = [(a, b) for i, a in enumerate(keys) for b in keys[i + 1:] if not apart(present[a], present[b])]
     out["overlaps"] = overlaps
-    out["readable"] = out["regions_present"] and out["regions_wide"] and not overlaps
+    out["readable"] = len(cells) >= 5 and out["regions_present"] and out["regions_wide"] and not overlaps
     out["ok"] = out["table"] and out["action_ok"] and out["foot"] and out["action_inside"] and out["readable"]
     return out
 
@@ -310,6 +311,21 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     n1["pills"] = labels(tree, PILLS, "All ") + labels(tree, PILLS, "Runtime Security ") + labels(tree, PILLS, "AI Red Teaming ")
     n1["range"] = next((x for x in app.texts(tree) if re.match(r"1–\d+ of \d+", x)), None)
     obs["tree_cases"] = c29.save_tree("cases", tree)
+    # The Explain banner: on with the shell's "Show the calls" switch (the explain mode), off with it; both themes.
+    EXPLAIN = "AI Runtime Security cases run in its Playground."
+    n1["explain_absent_before"] = not app.has_text(tree, EXPLAIN)
+    c29.press(app, "AXCheckBox", "Show the calls")
+    tree, n1["explain_shown"] = app.wait_for(lambda t: app.has_text(t, EXPLAIN), 8)
+    obs["tree_explain"] = c29.save_tree("cases-explain", tree)
+    obs["captures"]["cases-explain"] = {}
+    for theme in ("Light", "Dark"):
+        c29.appearance(app, theme)
+        time.sleep(0.6)
+        obs["captures"]["cases-explain"][theme.lower()] = c29.capture(app, f"cases-explain-{theme.lower()}")
+    c29.appearance(app, "Light")
+    time.sleep(0.4)
+    c29.press(app, "AXCheckBox", "Show the calls")
+    tree, n1["explain_hidden"] = app.wait_for(lambda t: not app.has_text(t, EXPLAIN), 8)
     obs["captures"]["cases"] = c29.matrix(app, "cases")
     # The parity composites, from this state, in both themes.
     app.ax("focus", "AXHeading", "Test Cases")
@@ -519,15 +535,15 @@ def exercise(app, endpoint, mgmt, prepared, work, FINAL):
     caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
     n1_ok = (all(n1.get(k) for k in ("screen", "empty_line", "empty_state", "packs_dialog", "packs_transfer", "packs", "pack_named", "not_run", "search_empty", "inspect_sheet", "sheet_docked", "red_team_runs_from", "never_run_note",
                                      "playground", "no_scan_on_open", "scanned", "result_recorded", "new_dialog", "runtime_saved", "new_closed", "runtime_listed", "spec_form", "spec_saved", "spec_inspect_only", "menu", "removed", "copied",
-                                     "export_saved", "export_file", "export_cancelled", "imported", "no_scan"))
+                                     "export_saved", "export_file", "export_cancelled", "imported", "no_scan", "explain_absent_before", "explain_shown", "explain_hidden"))
              and len(n1.get("packs_options", [])) == 2 and n1["runtime_rows"] >= 1 and n1["spec_rows"] >= 1 and bool(n1.get("count_line")) and len(n1.get("pills", [])) >= 3 and bool(n1.get("range"))
              and n1.get("filtered_runtime_rows") == 0 and (n1.get("filtered_spec_rows") or 0) >= 1 and n1["inspect_scans"] == 0 and n1["scans_total"] == 1 and len(n1["parity"]) == 2)
     add("C40-N01", n1_ok,
         f"screen {n1['screen']} with the count line {n1.get('count_line')!r}; empty first {n1['empty_state']}; the packs dialog {n1['packs_dialog']} with {n1.get('packs_options')} and Import…/Export… {n1['packs_transfer']}; loaded {n1['packs']} ({n1['runtime_rows']} runtime, {n1['spec_rows']} spec rows, pack named {n1['pack_named']}, Not run {n1['not_run']}); pills {n1.get('pills')}, range {n1.get('range')}; "
         f"filter {n1.get('filter_label')} → {n1.get('filtered_runtime_rows')}/{n1.get('filtered_spec_rows')}; search empty with Clear {n1['search_empty']}; Inspect opened the sheet {n1['inspect_sheet']} docked at 520px {n1['sheet_docked']} naming Red Teaming {n1['red_team_runs_from']} and the never-run note {n1['never_run_note']}, {n1['inspect_scans']} scan requests; "
         f"Open in Playground {n1['playground']} without a scan {n1['no_scan_on_open']}, scanned there {n1['scanned']} and recorded {n1['result_recorded']} ({n1['scans_total']} request); New case dialog {n1['new_dialog']}: runtime saved {n1['runtime_saved']} and listed {n1['runtime_listed']}, spec form {n1['spec_form']} saved {n1['spec_saved']} inspect-only {n1['spec_inspect_only']}; ⋯ menu {n1['menu']}: removed {n1['removed']}, copied to Tenant B {n1['copied']}; "
-        f"export saved {n1['export_saved']} (file {n1['export_file']}) / cancelled {n1['export_cancelled']}, import of the same file {n1['imported']}; no scan from the library {n1['no_scan']}; composites {sorted(n1['parity'].values())}",
-        [run_rel, obs["tree_empty"], obs["tree_packs"], obs["tree_cases"], obs["tree_inspect"], obs["tree_result"], obs["tree_library"]] + caps("cases-packs") + caps("cases") + caps("cases-inspect") + caps("cases-result") + sorted(n1["parity"].values()))
+        f"export saved {n1['export_saved']} (file {n1['export_file']}) / cancelled {n1['export_cancelled']}, import of the same file {n1['imported']}; no scan from the library {n1['no_scan']}; the Explain banner absent before {n1.get('explain_absent_before')}, shown with the shell's Show the calls switch {n1.get('explain_shown')} (captured light and dark) and gone with it off {n1.get('explain_hidden')}; composites {sorted(n1['parity'].values())}",
+        [run_rel, obs["tree_empty"], obs["tree_packs"], obs["tree_cases"], obs["tree_inspect"], obs["tree_result"], obs["tree_library"], obs.get("tree_explain")] + caps("cases-explain") + caps("cases-packs") + caps("cases") + caps("cases-inspect") + caps("cases-result") + sorted(n1["parity"].values()))
     lay = n2["layouts"]
     ring_ok = (n2["ring"].get("diff") or 0) > 40 and n2["ring"].get("focused") == "New case"
     layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["table"]["ok"] for v in lay.values()) \
