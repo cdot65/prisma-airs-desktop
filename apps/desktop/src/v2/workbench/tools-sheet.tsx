@@ -23,6 +23,8 @@ interface Props {
     onClose: () => void
     /** A cURL import created a draft (the sheet closes and the request shows). */
     onCreated: (r: Awaited<ReturnType<WorkbenchCall>>) => void
+    /** Where focus returns on close: the Collection chip, since the menu item that opened the sheet closes with its menu (I8). */
+    returnFocus?: HTMLElement | null
 }
 
 /**
@@ -30,10 +32,10 @@ interface Props {
  * secrets, schemas, imports and Git. Values entered for secrets go to the
  * Keychain through the core and are never shown again.
  */
-export function ToolsSheet({ tool, state, collection, run, onClose, onCreated }: Props) {
+export function ToolsSheet({ tool, state, collection, run, onClose, onCreated, returnFocus = null }: Props) {
     const title = C.tools[tool].replace(/…$/, '')
     return createPortal(
-        <Modal label={title} sheet width={620} onClose={onClose} data-slot='workbench-tools'>
+        <Modal label={title} sheet width={620} onClose={onClose} returnFocus={returnFocus} data-slot='workbench-tools'>
             <div className='flex flex-col' style={{ gap: 14 }} data-slot={`workbench-${tool}`}>
                 <div className='flex items-center' style={{ gap: 10 }}>
                     <h2 className={H2}>{title}</h2>

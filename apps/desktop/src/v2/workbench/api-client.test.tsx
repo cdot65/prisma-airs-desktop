@@ -3,9 +3,11 @@
  * DesktopClient and parser over scripted workbench results. The board (the
  * chips, the tree, the tabs, the request line, the sub-tabs, the response
  * pane), the Params table writing the file's lines, the response tabs and
- * History, the collection menu and its sheet, creating a request, and
- * closing with unprotected edits. Nothing here sends by itself: every
- * request the view makes is listed and asserted.
+ * History, the collection menu and its sheet (opened from the keyboard,
+ * focus returned to the chip), nested folders, re-opening a collection,
+ * creating a request, sends from dirty and new requests, and closing with
+ * unprotected edits. Nothing here sends by itself: every request the view
+ * makes is listed and asserted.
  */
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -455,6 +457,140 @@ describe('C41 API Client board', () => {
         await waitFor(() => expect(requests.filter((r) => r.kind === 'closeTab')).toHaveLength(3))
         expect(requests.filter((r) => r.kind === 'closeTab').map((r) => (r.kind === 'closeTab' ? r.discard : null))).toEqual([false, false, true])
         expect(requests.filter((r) => r.kind === 'closeTab')[2]).toMatchObject({ kind: 'closeTab', id: 'list', discard: true })
+    })
+
+    it('re-opens the selected request when the same collection is closed and opened again: following its selection is scoped to the open collection', async () => {
+        const { user, requests, native } = await open()
+        const opens = () => requests.filter((r) => r.kind === 'openRequest').length
+        expect(opens()).toBe(1)
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Close collection' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'closeCollection')).toHaveLength(1))
+        const closed = board()
+        await native.push({ ...closed, workbench: { ...closed.workbench, collection: null } })
+        expect(await screen.findByText('No collection is open.')).toBeInTheDocument()
+        expect(screen.queryByRole('textbox', { name: 'URL' })).toBeNull()
+        // The same collection, with the same persisted selection: its document is opened and shown again.
+        await native.push(board())
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics'))
+        expect(within(screen.getByRole('tablist', { name: 'Open requests' })).getByRole('tab', { name: 'GET list' })).toHaveAttribute('aria-selected', 'true')
+        expect(opens()).toBe(2)
+    })
+
+    it('draws nested folders as a hierarchy: a collapsed folder hides its whole subtree, a folder counts every request under it, and search still finds them', async () => {
+        const snapshot = board()
+        const collection = snapshot.workbench.collection!
+        const { tree, user } = await open({
+            ...snapshot,
+            workbench: {
+                ...snapshot.workbench,
+                collection: {
+                    ...collection,
+                    folders: [...collection.folders, 'products', 'products/runtime'],
+                    requests: [
+                        ...collection.requests,
+                        { relative: 'products/list.request.toml', id: 'plist', method: 'GET', url: 'http://127.0.0.1:8080/products' },
+                        { relative: 'products/runtime/scan.request.toml', id: 'scan', method: 'POST', url: 'http://127.0.0.1:8080/scan' },
+                    ],
+                },
+            },
+        })
+        expect(within(tree).getByRole('button', { name: 'Collapse folder products' })).toHaveTextContent('products2')
+        expect(within(tree).getByRole('button', { name: 'Collapse folder products/runtime' })).toHaveTextContent('runtime1')
+        expect(within(tree).getByRole('button', { name: 'Open POST products/runtime/scan.request.toml' })).toBeInTheDocument()
+        await user.click(within(tree).getByRole('button', { name: 'Collapse folder products' }))
+        expect(within(tree).queryByRole('button', { name: /folder products\/runtime/ })).toBeNull()
+        expect(within(tree).queryByRole('button', { name: 'Open POST products/runtime/scan.request.toml' })).toBeNull()
+        expect(within(tree).queryByRole('button', { name: 'Open GET products/list.request.toml' })).toBeNull()
+        expect(within(tree).getByRole('button', { name: 'Expand folder products' })).toHaveTextContent('products2')
+        // The other folder and the root request are untouched.
+        expect(within(tree).getByRole('button', { name: 'Open GET topics/list.request.toml' })).toBeInTheDocument()
+        expect(within(tree).getByRole('button', { name: 'Open GET health.request.toml' })).toBeInTheDocument()
+        await user.type(within(tree).getByRole('searchbox', { name: 'Find request' }), 'scan')
+        expect(within(tree).getByRole('button', { name: 'Open POST products/runtime/scan.request.toml' })).toBeInTheDocument()
+        await user.clear(within(tree).getByRole('searchbox', { name: 'Find request' }))
+        await user.click(within(tree).getByRole('button', { name: 'Expand folder products' }))
+        expect(within(tree).getByRole('button', { name: 'Collapse folder products/runtime' })).toBeInTheDocument()
+        expect(within(tree).getByRole('button', { name: 'Open POST products/runtime/scan.request.toml' })).toBeInTheDocument()
+        // Collapsing the inner folder alone hides only its request.
+        await user.click(within(tree).getByRole('button', { name: 'Collapse folder products/runtime' }))
+        expect(within(tree).queryByRole('button', { name: 'Open POST products/runtime/scan.request.toml' })).toBeNull()
+        expect(within(tree).getByRole('button', { name: 'Open GET products/list.request.toml' })).toBeInTheDocument()
+    })
+
+    it('opens a collection tool from the keyboard; closing the sheet by Escape or its close control returns focus to the Collection chip, as the menu does on Escape (I8, T09)', async () => {
+        const { user } = await open()
+        const chip = screen.getByRole('button', { name: 'Collection AIRS' })
+        const openEnvironments = async () => {
+            chip.focus()
+            await user.keyboard('{Enter}')
+            const menu = screen.getByRole('menu', { name: 'Collection actions' })
+            await user.tab()
+            expect(within(menu).getByRole('menuitem', { name: 'Refresh' })).toHaveFocus()
+            await user.tab()
+            expect(within(menu).getByRole('menuitem', { name: 'Environments…' })).toHaveFocus()
+            await user.keyboard('{Enter}')
+            const sheet = await screen.findByRole('dialog', { name: 'Environments' })
+            expect(screen.queryByRole('menu')).toBeNull()
+            expect(sheet.contains(document_().activeElement)).toBe(true)
+            return sheet
+        }
+        await openEnvironments()
+        await user.keyboard('{Escape}')
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Environments' })).toBeNull())
+        await waitFor(() => expect(chip).toHaveFocus())
+        const sheet = await openEnvironments()
+        await user.click(within(sheet).getByRole('button', { name: 'Close Environments' }))
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Environments' })).toBeNull())
+        await waitFor(() => expect(chip).toHaveFocus())
+        // The menu alone: Escape closes it and focus is back on the chip.
+        await user.keyboard('{Enter}')
+        await user.tab()
+        expect(screen.getByRole('menuitem', { name: 'Refresh' })).toHaveFocus()
+        await user.keyboard('{Escape}')
+        expect(screen.queryByRole('menu')).toBeNull()
+        expect(chip).toHaveFocus()
+    })
+
+    it('a send from an already dirty request announces its completion once; the next edit says the state again', async () => {
+        const { user, line } = await open()
+        const status = () => document_().querySelector('[data-slot="workbench-save-status"]') as HTMLElement
+        await user.type(within(line()).getByRole('textbox', { name: 'URL' }), '?x=1')
+        expect(status()).toHaveTextContent('Unsaved changes')
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(status()).toHaveTextContent('list · 200 · 42 ms'))
+        // Dirty before and after: the completion still gives way to the state on the next edit.
+        await user.type(within(line()).getByRole('textbox', { name: 'URL' }), '&y=2')
+        expect(status()).toHaveTextContent('Unsaved changes')
+        expect(status()).toHaveAttribute('data-state', 'unsaved')
+    })
+
+    it('a send from a new request announces its completion once; the next edit says "New · not saved yet" again', async () => {
+        const next = board()
+        const collection = next.workbench.collection!
+        const draftTab = { id: 'create', relative: 'topics/create.request.toml', method: 'GET', draft: true, new: true, recovered: false, conflict: null, interrupted: false }
+        const draft = {
+            kind: 'document' as const,
+            document: {
+                ...document().document,
+                id: 'create',
+                relative: 'topics/create.request.toml',
+                new: true,
+                fields: { ...fields, url: 'http://127.0.0.1:8080/created' },
+                saved: { ...fields, url: 'http://127.0.0.1:8080/created' },
+            },
+            notes: [],
+        }
+        const { user, line } = await open({ ...next, workbench: { ...next.workbench, collection: { ...collection, tabs: [draftTab], selected: 'create' } } }, (request) =>
+            request.kind === 'openRequest' ? draft : request.kind === 'send' ? { kind: 'ran', run: { ...ran, record: { ...ran.record, request: 'create', relative: 'topics/create.request.toml' } } } : null
+        )
+        const status = () => document_().querySelector('[data-slot="workbench-save-status"]') as HTMLElement
+        expect(status()).toHaveTextContent('New · not saved yet')
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(status()).toHaveTextContent('create · 200 · 42 ms'))
+        await user.type(within(line()).getByRole('textbox', { name: 'URL' }), '?x=1')
+        expect(status()).toHaveTextContent('New · not saved yet')
+        expect(status()).toHaveAttribute('data-state', 'new')
     })
 
     it('shows the start panel with the recents and the v1 import when no collection is open, and the built-in collection opens from it', async () => {

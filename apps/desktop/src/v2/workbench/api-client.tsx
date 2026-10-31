@@ -55,6 +55,8 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     const loading = useRef<string | null>(null)
     const editors = useRef(new Map<string, EditorHandle>())
     const [closing, setClosing] = useState<Closing | null>(null)
+    // The Collection chip: where focus returns when its menu or a tool it opened closes (the menu item is gone by then).
+    const chip = useRef<HTMLButtonElement>(null)
 
     // A refusal stays shown until the next action that succeeds (a cancelled sheet keeps it).
     const run: Run = async (request) => {
@@ -109,6 +111,13 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // draft is shown from the core's reply before the snapshot naming it selected arrives, and re-opening the
     // previously selected request in between made the core select that one again (the draft's tab lost).
     const followed = useRef<string | null>(null)
+    // Following is scoped to one open collection: closing it forgets the followed selection, so the same
+    // collection re-opened with its persisted selection opens that request again (the editor was left blank).
+    const collectionId = collection?.id ?? null
+    useEffect(() => {
+        followed.current = null
+        if (collectionId === null) setDoc(null)
+    }, [collectionId])
     useEffect(() => {
         if (!selectedTab || followed.current === selectedTab.id) return
         followed.current = selectedTab.id
@@ -122,17 +131,18 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
             }
         })
     }, [selectedTab, doc, call])
-    useEffect(() => {
-        if (!collection) setDoc(null)
-    }, [collection])
     const loaded = state.loaded
     useEffect(() => {
         if (!loaded) void call({ kind: 'load' })
     }, [loaded, call])
-    // The collection menu closes on Escape and on a click elsewhere.
+    // The collection menu closes on Escape (focus back on the chip) and on a click elsewhere.
     useEffect(() => {
         if (!menu) return
-        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(false)
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return
+            setMenu(false)
+            chip.current?.focus()
+        }
         const onClick = () => setMenu(false)
         window.addEventListener('keydown', onKey)
         window.addEventListener('click', onClick)
@@ -167,6 +177,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                 <div className='ml-auto flex min-w-0 max-w-full flex-wrap items-center' style={{ gap: 8 }} data-slot='api-chips'>
                     <span className='relative'>
                         <button
+                            ref={chip}
                             type='button'
                             aria-haspopup='menu'
                             aria-expanded={menu}
@@ -487,6 +498,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                 show(r)
                                 setTool(null)
                             }}
+                            returnFocus={chip.current}
                         />
                     ) : null}
                 </>

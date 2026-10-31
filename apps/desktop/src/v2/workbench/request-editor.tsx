@@ -169,10 +169,17 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
         }
     }, [flush, abandon])
 
+    // The status line's last word (a save's, a send's completion, a refusal) gives way to the state once the
+    // request is edited again; only an action still in flight keeps its line.
+    const settle = () => setStatus((s) => (s === C.sending || s === C.waitingReview || s === 'Saving…' ? s : ''))
+
     const edit = (patch: Partial<Fields>) => {
         const next = { ...fieldsRef.current, ...patch }
         fieldsRef.current = next
         setFields(next)
+        // Every edit, not only the one that first makes the request dirty: a send from an already dirty (or new)
+        // request left its completion standing through the next edits, since dirty never changed.
+        settle()
         const generation = ++editGen.current
         if (markedGen.current <= sentGen.current) {
             markedGen.current = generation
@@ -329,8 +336,7 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
     const dirty = doc.new || doc.metadataDirty || !same(fields, doc.saved)
     const name = requestName(doc.relative)
     const state = doc.new ? C.state.new : dirty ? C.state.unsaved : C.state.saved
-    // The status line's last word (a save's, a send's completion) gives way to the state once the request is
-    // edited again; only an action still in flight keeps its line.
+    // Metadata changes the core reports (a schema association) make the request dirty without an edit here.
     useEffect(() => {
         if (dirty) setStatus((s) => (s === C.sending || s === C.waitingReview || s === 'Saving…' ? s : ''))
     }, [dirty])
