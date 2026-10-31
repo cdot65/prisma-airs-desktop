@@ -11,7 +11,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { DeliveryOutcomeUnknown, DesktopClient, type ConversationView, type HarnessHistoryView, type HarnessMcpView, type HarnessSignInView, type Intent, type McpServerView, parseShellSnapshot, type RotationView, type SavedConversationView, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import { DeliveryOutcomeUnknown, DesktopClient, type ConversationView, type HarnessHistoryView, type HarnessMcpView, type HarnessSignInView, type Intent, type McpServerView, parseShellSnapshot, type Refusal, type RotationView, type SavedConversationView, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import blocks from '@prisma-airs/desktop-contracts/fixtures/wire/harness-lifecycle-blocks.json'
 import keys from '@prisma-airs/desktop-contracts/fixtures/wire/harness-lifecycle-keys.json'
 import mcp from '@prisma-airs/desktop-contracts/fixtures/wire/harness-lifecycle-mcp.json'
@@ -1795,10 +1795,50 @@ describe('v2 Harness', () => {
         expect(within(panel).getByText(/^The MCP servers could not be read:/)).toBeInTheDocument()
         expect(within(panel).getByText('Only the first 500 servers are shown.')).toBeInTheDocument()
         expect(within(panel).getByRole('button', { name: 'Sign in to S1 again' })).toBeInTheDocument()
-        // A refused enable is said.
-        native.respond = (intent: Intent) => (intent.kind === 'enableMcpServer' ? { outcome: 'refusal', refusal: 'invalidInput' } : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
-        await user.click(within(panel).getByRole('checkbox', { name: 'Use S7 in new conversations' }))
-        expect(await screen.findByText(/That was not done\. At most eight servers can be on/)).toBeInTheDocument()
+        // A refusal keeps the native reason unless this action fixes its meaning (attempt-03 R1): turning S7 off is never
+        // a limit or catalog failure, so invalidInput, deniedStore and staleContext say their own recovery.
+        const refuse = (kind: Intent['kind'], refusal: Refusal) => {
+            native.respond = (intent: Intent) => (intent.kind === kind ? { outcome: 'refusal', refusal } : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
+        }
+        const off = () => within(panel).getByRole('checkbox', { name: 'Use S7 in new conversations' })
+        refuse('enableMcpServer', 'invalidInput')
+        await user.click(off())
+        expect(await screen.findByText('That was not done. Check the entered values and try again.')).toBeInTheDocument()
+        refuse('enableMcpServer', 'deniedStore')
+        await user.click(off())
+        expect(await screen.findByText('That was not done. Local desktop data or the credential store is not available.')).toBeInTheDocument()
+        refuse('enableMcpServer', 'staleContext')
+        await user.click(off())
+        expect(await screen.findByText('That was not done. The active tenant changed before this was applied. Check the current tenant and try again.')).toBeInTheDocument()
+        expect(screen.queryByText(/At most eight servers/)).not.toBeInTheDocument()
+        // With seven on, S8 can be turned on: the bound (busy) and an unknown server (invalidInput) keep the panel's
+        // wording, storage and context refusals their own.
+        await native.push({ ...native.current, harness: { ...native.current.harness, mcp: mcpOf(many.map((m, i) => (i === 7 ? { ...m, enabled: false } : m)), { failure: 'unavailable', complete: false }) } })
+        const on8 = async () => user.click(await within(panel).findByRole('checkbox', { name: 'Use S8 in new conversations' }))
+        refuse('enableMcpServer', 'busy')
+        await on8()
+        expect(await screen.findByText('That was not done. At most eight servers can be on.')).toBeInTheDocument()
+        refuse('enableMcpServer', 'invalidInput')
+        await on8()
+        expect(await screen.findByText('That was not done. Only servers in this workspace’s catalog that the engine accepts can be turned on.')).toBeInTheDocument()
+        refuse('enableMcpServer', 'deniedStore')
+        await on8()
+        expect(await screen.findByText('That was not done. Local desktop data or the credential store is not available.')).toBeInTheDocument()
+        refuse('enableMcpServer', 'staleContext')
+        await on8()
+        expect(await screen.findByText('That was not done. The active tenant changed before this was applied. Check the current tenant and try again.')).toBeInTheDocument()
+        // Starting a sign-in: busy is another sign-in in progress; storage and context refusals say their own recovery.
+        const signIn = () => user.click(within(panel).getByRole('button', { name: 'Sign in to S8' }))
+        refuse('signInMcpServer', 'busy')
+        await signIn()
+        expect(await screen.findByText('Sign-in could not start. Another sign-in is in progress.')).toBeInTheDocument()
+        refuse('signInMcpServer', 'deniedStore')
+        await signIn()
+        expect(await screen.findByText('That was not done. Local desktop data or the credential store is not available.')).toBeInTheDocument()
+        refuse('signInMcpServer', 'staleContext')
+        await signIn()
+        expect(await screen.findByText('That was not done. The active tenant changed before this was applied. Check the current tenant and try again.')).toBeInTheDocument()
+        expect(screen.queryByText(/Another sign-in is in progress/)).not.toBeInTheDocument()
     })
 
     it('lists, opens, continues, exports and deletes saved conversations, says why one cannot be continued, names unreadable ones and a locked store, through the v2 history panel (C20, attempt-01 E2)', async () => {

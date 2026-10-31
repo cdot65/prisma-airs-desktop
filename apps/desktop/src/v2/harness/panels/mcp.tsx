@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import type { ContextRef, HarnessMcpView, McpServerView, SelectedWorkspace } from '@prisma-airs/desktop-contracts'
+import type { ContextRef, HarnessMcpView, McpServerView, Refusal, SelectedWorkspace } from '@prisma-airs/desktop-contracts'
 import { MANAGEMENT_FAILURE_TEXT } from '../../../features/administration/management-read'
 import type { Dispatch } from '../../../features/tenants/dispatch'
 import { MCP_MAX_ON, MCP_SIGN_IN_FAILURE_TEXT, MCP_STEP_TEXT, actionOutcomeText } from '../text'
@@ -42,6 +42,20 @@ const faint = { color: 'var(--v2-faint)' }
  */
 const CHECK = 'Check the servers shown here before trying again.'
 
+// The panel's own wording only for the refusals whose meaning this action fixes (crates/desktop-core/src/authority/
+// harness_mcp.rs): turning a server on is refused as invalidInput when it is not a supported catalog server and as busy
+// at the eight-server bound; starting a sign-in is refused as invalidInput for an unknown server and as busy while
+// another sign-in is in progress. Every other refusal (storage denied or locked, a retired context, …) keeps its own
+// reason and recovery, and turning a server off has no special wording (attempt-03 R1).
+const ENABLE_REFUSED: Partial<Record<Refusal, string>> = {
+    invalidInput: 'That was not done. Only servers in this workspace’s catalog that the engine accepts can be turned on.',
+    busy: 'That was not done. At most eight servers can be on.',
+}
+const SIGN_IN_REFUSED: Partial<Record<Refusal, string>> = {
+    invalidInput: 'Sign-in could not start. The server is not in this workspace’s catalog.',
+    busy: 'Sign-in could not start. Another sign-in is in progress.',
+}
+
 export function McpPanel({ context, selected, mcp, running, dispatch, onMessage }: Props) {
     const ids = useId()
     const [busy, setBusy] = useState(false)
@@ -55,12 +69,12 @@ export function McpPanel({ context, selected, mcp, running, dispatch, onMessage 
 
     // An unknown delivery stays Not confirmed naming the action (a sign-out or a change of which servers are on
     // may have happened; the catalog shown here is the state to reconcile with); a refusal says this panel's
-    // reason for it when it has one, else the refusal's own.
-    async function send(intent: Parameters<Dispatch>[0], action: string, refused?: string) {
+    // reason for that refusal kind when the action fixes its meaning, else the refusal's own.
+    async function send(intent: Parameters<Dispatch>[0], action: string, refused?: Partial<Record<Refusal, string>>) {
         onMessage(null)
         setBusy(true)
         try {
-            onMessage(actionOutcomeText(await dispatch(intent), action, CHECK, () => refused))
+            onMessage(actionOutcomeText(await dispatch(intent), action, CHECK, (refusal) => refused?.[refusal]))
         } finally {
             setBusy(false)
         }
@@ -110,7 +124,7 @@ export function McpPanel({ context, selected, mcp, running, dispatch, onMessage 
                                             void send(
                                                 { kind: 'enableMcpServer', context, workspace, server: s.id, enabled: event.target.checked },
                                                 event.target.checked ? `turning ${s.name} on` : `turning ${s.name} off`,
-                                                'That was not done. At most eight servers can be on, and only ones in the catalog.'
+                                                event.target.checked ? ENABLE_REFUSED : undefined
                                             )
                                         }
                                     />
@@ -138,7 +152,7 @@ export function McpPanel({ context, selected, mcp, running, dispatch, onMessage 
                                     ) : (
                                         <Btn
                                             disabled={busy || !s.supported || signingIn}
-                                            onClick={() => void send({ kind: 'signInMcpServer', context, workspace, server: s.id }, `starting the sign-in to ${s.name}`, 'Sign-in could not start. Another may be in progress.')}
+                                            onClick={() => void send({ kind: 'signInMcpServer', context, workspace, server: s.id }, `starting the sign-in to ${s.name}`, SIGN_IN_REFUSED)}
                                         >
                                             {holdsSignIn ? `Sign in to ${s.name} again` : `Sign in to ${s.name}`}
                                         </Btn>
@@ -159,7 +173,7 @@ export function McpPanel({ context, selected, mcp, running, dispatch, onMessage 
                     Turning a server off, signing in again or signing out ends the running conversation that uses it.
                 </p>
             ) : null}
-            <Btn tier='tertiary' className='self-start' disabled={here && mcp.state === 'loading'} onClick={() => void send({ kind: 'listMcpServers', context, workspace }, 'reading the servers', 'The servers could not be read.')}>
+            <Btn tier='tertiary' className='self-start' disabled={here && mcp.state === 'loading'} onClick={() => void send({ kind: 'listMcpServers', context, workspace }, 'reading the servers')}>
                 Read the servers again
             </Btn>
         </section>
