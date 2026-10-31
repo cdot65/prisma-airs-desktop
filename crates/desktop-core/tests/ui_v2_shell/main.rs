@@ -133,7 +133,10 @@ async fn the_catalogue_is_v2_whatever_variant_is_asked_for_and_survives_a_restar
     // import, which left the catalogue under D060 (the legacy catalogue itself goes with C45).
     for id in features::catalogue().iter().map(|f| f.id) {
         if id == FeatureId::Import {
-            assert!(snap.features.iter().all(|f| f.id != id), "Import still listed (D060)");
+            assert!(
+                snap.features.iter().all(|f| f.id != id),
+                "Import still listed (D060)"
+            );
             continue;
         }
         assert!(snap.features.iter().any(|f| f.id == id), "{id:?} dropped");
