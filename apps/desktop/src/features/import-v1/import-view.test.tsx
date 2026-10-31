@@ -5,7 +5,7 @@
  * status as text, only ready items can be imported, focus moves to the
  * result, an unsettled import offers Roll back, and an undone one Import again.
  */
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { DesktopClient, type ReceiptView, type ShellSnapshot, type V1ImportView } from '@prisma-airs/desktop-contracts'
@@ -172,8 +172,11 @@ describe('Import from v1 (C23)', () => {
         await native.push(snapshot({ ...inspected, plan: null, receipts: [receipt()] }))
         await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Imports' })).toHaveFocus())
         expect(screen.getByText(/Saved cases: Prod · imported · 2 entries/)).toBeInTheDocument()
-        await user.click(screen.getByRole('button', { name: 'Roll back…' }))
+        // Pressed without moving focus (an assistive press, or a click while the result heading holds focus): the
+        // cancelled confirmation must still return focus to the button that asked.
+        fireEvent.click(screen.getByRole('button', { name: 'Roll back…' }))
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'rollBackV1Import', receipt: RECEIPT }))
+        expect(screen.getByRole('button', { name: 'Roll back…' })).not.toHaveFocus()
         // The native sheet is cancelled: focus returns to Roll back.
         await native.push(snapshot({ ...inspected, plan: null, receipts: [receipt()], activity: 'confirming' }))
         await native.push(snapshot({ ...inspected, plan: null, receipts: [receipt()] }))

@@ -155,7 +155,8 @@ export const ImportView = forwardRef<HTMLHeadingElement, Props>(function ImportV
         previous.current = view.activity
         if (view.activity !== null) return
         const kept = was === 'confirming' && asked.current ? rollBackRefs.current[asked.current] : null
-        if (kept) kept.focus()
+        // The button that asked is still there only when the confirmation was cancelled; confirmed, it is gone.
+        if (kept?.isConnected) kept.focus()
         else if (was === 'importing' || was === 'rollingBack' || was === 'confirming') resultRef.current?.focus()
     }, [view.activity])
 
@@ -412,11 +413,11 @@ export const ImportView = forwardRef<HTMLHeadingElement, Props>(function ImportV
                                 receipt={r}
                                 busy={busy}
                                 run={run}
-                                rollBackRef={(el) => {
-                                    rollBackRefs.current[r.id] = el
-                                }}
-                                onRollBack={() => {
+                                onRollBack={(button) => {
+                                    // The button asked, taken from its own click: the shared Button forwards no ref,
+                                    // so a ref never held it and a cancelled confirmation fell back to the result.
                                     asked.current = r.id
+                                    rollBackRefs.current[r.id] = button
                                 }}
                             />
                         ))}
@@ -436,14 +437,12 @@ function ReceiptRow({
     receipt,
     busy,
     run,
-    rollBackRef,
     onRollBack,
 }: {
     receipt: ReceiptView
     busy: boolean
     run: (i: Parameters<Dispatch>[0]) => Promise<void>
-    rollBackRef: (el: HTMLButtonElement | null) => void
-    onRollBack: () => void
+    onRollBack: (button: HTMLButtonElement) => void
 }) {
     const when = new Date(receipt.created * 1000).toLocaleString()
     const state =
@@ -478,12 +477,11 @@ function ReceiptRow({
                 ) : null}
                 {receipt.canRollBack ? (
                     <Button
-                        ref={rollBackRef}
                         type='button'
                         tier='tertiary'
                         disabled={busy}
-                        onClick={() => {
-                            onRollBack()
+                        onClick={(e) => {
+                            onRollBack(e.currentTarget as HTMLButtonElement)
                             void run({ kind: 'rollBackV1Import', receipt: receipt.id })
                         }}
                     >
