@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { DocumentView, ImportNote, ShellSnapshot, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../../features/tenants/dispatch'
@@ -103,15 +103,29 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
         }
     }
 
-    // A document result is shown only for the collection it was asked of (a result after the collection closed, or
-    // another opened, would resurrect it).
+    // Every document-producing call is a load bound to the collection it was asked of and to a generation; a reply
+    // from an earlier generation, or from a collection no longer open, is dropped (a late reply replaced the current
+    // request's document, or resurrected a closed one).
     const collectionRef = useRef<string | null>(collection?.id ?? null)
     collectionRef.current = collection?.id ?? null
-    const show = (r: Awaited<ReturnType<WorkbenchCall>>, asked: string | null = collectionRef.current) => {
-        if (r.kind === 'document' && asked !== null && asked === collectionRef.current) {
+    type Load = { gen: number; asked: string | null; id: string | null }
+    const beginLoad = (id: string | null): Load => {
+        const gen = ++loadGen.current
+        loading.current = id
+        setLoadFailure(null)
+        return { gen, asked: collectionRef.current, id }
+    }
+    /** Shows a load's document if the load is still current; a failure of a selected request's load is shown with its reason. */
+    const settleLoad = (load: Load, r: Awaited<ReturnType<WorkbenchCall>> | null, keepNotes: boolean): boolean => {
+        if (load.gen !== loadGen.current || load.asked === null || load.asked !== collectionRef.current) return false
+        if (loading.current === load.id) loading.current = null
+        if (r?.kind === 'document') {
             setDoc(r.document)
-            setNotes(r.notes)
+            setNotes(keepNotes ? r.notes : [])
+            return true
         }
+        if (load.id !== null && r?.kind !== 'cancelled') setLoadFailure({ id: load.id, text: (r && resultText(r)) ?? C.unknownFailure })
+        return false
     }
 
     const selected = collection?.selected ?? null
@@ -124,44 +138,35 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // collection re-opened with its persisted selection opens that request again (the editor was left blank).
     const collectionId = collection?.id ?? null
     useEffect(() => {
+        // A collection boundary retires every load in flight (its reply is ignored) and the loading marker with it, so
+        // the re-opened collection's selected request is loaded afresh.
         followed.current = null
         loadGen.current += 1
+        loading.current = null
         setLoadFailure(null)
         if (collectionId === null) setDoc(null)
     }, [collectionId])
-    // Opens the selected request; only the latest load's result counts, and a failure is shown with its reason.
-    const open = useCallback(
-        (tab: { id: string; relative: string }) => {
-            const gen = ++loadGen.current
-            const asked = collectionRef.current
-            loading.current = tab.id
-            setLoadFailure(null)
-            void call({ kind: 'openRequest', relative: tab.relative }).then(
-                (r) => {
-                    if (gen !== loadGen.current || asked !== collectionRef.current) return
-                    loading.current = null
-                    if (r.kind === 'document') {
-                        setDoc(r.document)
-                        setNotes([])
-                    } else if (r.kind !== 'cancelled') {
-                        setLoadFailure({ id: tab.id, text: resultText(r) ?? C.unknownFailure })
-                    }
-                },
-                () => {
-                    if (gen !== loadGen.current || asked !== collectionRef.current) return
-                    loading.current = null
-                    setLoadFailure({ id: tab.id, text: C.unknownFailure })
-                }
-            )
-        },
-        [call]
-    )
+    // Opens a request (the selected tab, or a tree entry); only the latest load's reply counts.
+    const open = (tab: { id: string; relative: string }) => {
+        const load = beginLoad(tab.id)
+        void call({ kind: 'openRequest', relative: tab.relative }).then(
+            (r) => settleLoad(load, r, false),
+            () => settleLoad(load, null, false)
+        )
+    }
+    const openRef = useRef(open)
+    openRef.current = open
     useEffect(() => {
         if (!selectedTab || followed.current === selectedTab.id) return
         followed.current = selectedTab.id
+        // A load of another request still in flight is obsolete once the selection moves on: its reply must not land.
+        if (loading.current !== null && loading.current !== selectedTab.id) {
+            loadGen.current += 1
+            loading.current = null
+        }
         if (doc?.id === selectedTab.id || loading.current === selectedTab.id) return
-        open(selectedTab)
-    }, [selectedTab, doc, open])
+        openRef.current(selectedTab)
+    }, [selectedTab, doc])
     const loaded = state.loaded
     useEffect(() => {
         if (!loaded) void call({ kind: 'load' })
@@ -377,11 +382,14 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                     <div className='flex min-h-0 flex-grow' data-slot='api-body'>
                         <RequestTree
                             collection={collection}
-                            onOpen={(relative) => void run({ kind: 'openRequest', relative }).then(show)}
+                            onOpen={open}
                             onCreate={async (kind, relative) => {
+                                // A new request's document is a load too: bound to this collection and the current generation.
+                                const load = kind === 'request' ? beginLoad(null) : null
                                 const r = await run(kind === 'request' ? { kind: 'newRequest', relative } : { kind: 'newFolder', relative })
-                                if (kind === 'request') show(r)
-                                return r.kind === 'document' || r.kind === 'done'
+                                if (load) settleLoad(load, r, true)
+                                // The dialog says a refusal or a lost delivery itself (the page behind it is inert).
+                                return r.kind === 'document' || r.kind === 'done' || r.kind === 'cancelled' ? null : (resultText(r) ?? C.unknownFailure)
                             }}
                         />
                         <div className='flex min-h-0 min-w-0 flex-grow flex-col' data-slot='api-main'>
@@ -532,7 +540,8 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                             run={run}
                             onClose={() => setTool(null)}
                             onCreated={(r) => {
-                                show(r)
+                                // A cURL import's draft is a load of this collection too.
+                                settleLoad(beginLoad(null), r, true)
                                 setTool(null)
                             }}
                             returnFocus={chip.current}

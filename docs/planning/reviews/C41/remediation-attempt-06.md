@@ -1,0 +1,7 @@
+# C41 remediation after attempt-06 (9/8/9/8/8, accepted at 8 under D034; the push to 9)
+
+| Finding | Remediation | Where |
+|---|---|---|
+| R1 a tree click's late reply replaced the current selection | Every document-producing call is a load: `beginLoad` takes the generation and the collection asked, `settleLoad` shows the document only while both are current. The tree's open, the selected tab's load, a new request's draft and a cURL import's draft all go through it. Test: a tree click's reply held while the core selects that tab and then the first again; one load, the late reply changes nothing | `api-client.tsx`, `request-tree.tsx`, `api-client.test.tsx` |
+| R2 a re-opened collection's pending first load was never retried | The collection boundary retires the loading marker with the generation, so the re-opened collection's selected request loads afresh; the previous lifetime's reply is ignored. Test: the first load held, the collection closed and re-opened, a second load shows the request, the old reply changes nothing and shows no failure | `api-client.tsx`, `api-client.test.tsx` |
+| R3 a creation failure was said only behind the inert dialog | `onCreate` resolves to the failure's text (null when created or cancelled); the dialog shows it as an alert and stays open with the path and focus. Test: a duplicate path refused for a request, a bad path refused for a folder, each said in the dialog | `request-tree.tsx`, `api-client.tsx`, `api-client.test.tsx` |

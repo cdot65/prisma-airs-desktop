@@ -571,6 +571,87 @@ describe('C41 API Client board', () => {
         expect(sheet.contains(document_().activeElement)).toBe(true)
     })
 
+    it('a tree click\'s late reply never replaces the current selection: the selection moves on while the reply is held, and its release changes nothing (attempt-06 R1)', async () => {
+        const { user, requests, native, tree, line } = await open()
+        const pending = new Map<string, (r: WorkbenchResult) => void>()
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'openRequest' && req.relative === 'health.request.toml') {
+                return new Promise<{ kind: 'workbench'; result: WorkbenchResult }>((resolve) => pending.set(req.relative, (result) => resolve({ kind: 'workbench', result })))
+            }
+            return observe(operation)
+        }
+        const base = board()
+        const collection = base.workbench.collection!
+        const healthTab = { id: 'health', relative: 'health.request.toml', method: 'GET', draft: false, new: false, recovered: false, conflict: null, interrupted: false }
+        const snap = (selected: string) => ({ ...base, workbench: { ...base.workbench, collection: { ...collection, tabs: [...collection.tabs, healthTab], selected } } })
+        // The tree opens health; its reply is held while the core selects health, then list again.
+        await user.click(within(tree).getByRole('button', { name: 'Open GET health.request.toml' }))
+        await waitFor(() => expect(pending.has('health.request.toml')).toBe(true))
+        await native.push(snap('health'))
+        await native.push(snap('list'))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics'))
+        // One load of health only (the selection following it saw the load in flight), and its late reply is ignored.
+        expect(requests.filter((r) => r.kind === 'openRequest' && r.relative === 'health.request.toml')).toHaveLength(1)
+        pending.get('health.request.toml')!({ ...document(), document: { ...document().document, id: 'health', relative: 'health.request.toml', fields: { ...fields, url: 'http://127.0.0.1:8080/health' }, saved: { ...fields, url: 'http://127.0.0.1:8080/health' } } })
+        await new Promise((r) => setTimeout(r, 50))
+        expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics')
+        expect(within(line()).getByRole('button', { name: 'Send' })).toBeInTheDocument()
+        expect(within(screen.getByRole('tablist', { name: 'Open requests' })).getByRole('tab', { name: 'GET list' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('closing and re-opening a collection while its selected request\'s first load is held loads it afresh, and the old reply is ignored (attempt-06 R2)', async () => {
+        const snapshot = board()
+        const native = scriptedNative(snapshot)
+        const requests = workbench(native, answers())
+        const pending: ((r: WorkbenchResult) => void)[] = []
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'openRequest' && pending.length === 0) {
+                return new Promise<{ kind: 'workbench'; result: WorkbenchResult }>((resolve) => pending.push((result) => resolve({ kind: 'workbench', result })))
+            }
+            return observe(operation)
+        }
+        render(<App client={new DesktopClient(native.transport)} />)
+        await screen.findByRole('heading', { level: 1, name: 'API Client' })
+        await waitFor(() => expect(pending).toHaveLength(1))
+        expect(screen.queryByRole('textbox', { name: 'URL' })).toBeNull()
+        // The collection closes and the same one re-opens with list still selected: one fresh load.
+        await native.push({ ...snapshot, workbench: { ...snapshot.workbench, collection: null } })
+        expect(await screen.findByText('No collection is open.')).toBeInTheDocument()
+        await native.push(board())
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'openRequest')).toHaveLength(2))
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics'))
+        // The first lifetime's reply settles late: nothing changes, no failure is shown.
+        pending[0]!({ ...document(), document: { ...document().document, fields: { ...fields, url: 'http://127.0.0.1:8080/stale' }, saved: { ...fields, url: 'http://127.0.0.1:8080/stale' } } })
+        await new Promise((r) => setTimeout(r, 50))
+        expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics')
+        expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toBeNull()
+    })
+
+    it('a refused or undelivered creation is said inside the New request dialog, for a request and for a folder, with the path and focus kept (attempt-06 R3)', async () => {
+        const { user, tree } = await open(board(), (request) =>
+            request.kind === 'newRequest' ? { kind: 'refused', problem: { kind: 'project', detail: 'exists' } } : request.kind === 'newFolder' ? { kind: 'refused', problem: { kind: 'project', detail: 'badPath' } } : null
+        )
+        await user.click(within(tree).getByRole('button', { name: 'New request' }))
+        const dialog = await screen.findByRole('dialog', { name: 'New request' })
+        const path = within(dialog).getByRole('textbox', { name: 'Path (folder/name)' })
+        await user.type(path, 'topics/list')
+        await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+        const alert = await within(dialog).findByRole('alert')
+        expect(alert).toHaveTextContent('Something already exists there; nothing was replaced.')
+        expect(screen.getByRole('dialog', { name: 'New request' })).toBeInTheDocument()
+        expect(path).toHaveValue('topics/list')
+        expect(dialog.contains(document_().activeElement)).toBe(true)
+        // A folder: its own refusal replaces the text.
+        await user.click(within(dialog).getByRole('radio', { name: 'New folder' }))
+        await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+        await waitFor(() => expect(within(screen.getByRole('dialog', { name: 'New folder' })).getByRole('alert')).toHaveTextContent('Use a path inside the collection: folder/name, no leading dot, slash or "..".'))
+        expect(within(screen.getByRole('dialog', { name: 'New folder' })).getByRole('textbox', { name: 'Folder path' })).toHaveValue('topics/list')
+    })
+
     it('reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection', async () => {
         const { user, requests } = await open()
         await user.click(screen.getByRole('tab', { name: 'Preview' }))

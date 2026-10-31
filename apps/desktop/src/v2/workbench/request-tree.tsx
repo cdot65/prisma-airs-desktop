@@ -9,9 +9,9 @@ import { API_COPY as C, methodColor } from './copy'
 interface Props {
     collection: CollectionView
     /** Opens a request (the core reads its document). */
-    onOpen: (relative: string) => void
-    /** Creates a request draft or a folder; resolves whether it was created. */
-    onCreate: (kind: 'request' | 'folder', relative: string) => Promise<boolean>
+    onOpen: (entry: { id: string; relative: string }) => void
+    /** Creates a request draft or a folder; resolves to null when created, else the failure's text (said in the dialog). */
+    onCreate: (kind: 'request' | 'folder', relative: string) => Promise<string | null>
 }
 
 const LIMIT = 300
@@ -35,6 +35,8 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
     const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
     const [creating, setCreating] = useState<null | 'request' | 'folder'>(null)
     const [path, setPath] = useState('')
+    // A creation that failed, said inside the dialog (the page behind it is inert and hidden while it is open).
+    const [failure, setFailure] = useState('')
     const selected = collection.tabs.find((t) => t.id === collection.selected)?.relative ?? null
     const needle = query.trim().toLowerCase()
 
@@ -68,7 +70,7 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
             type='button'
             aria-label={C.openRequest(r.method, r.relative)}
             aria-current={r.relative === selected ? 'true' : undefined}
-            onClick={() => onOpen(r.relative)}
+            onClick={() => onOpen({ id: r.id, relative: r.relative })}
             className='flex w-full min-h-0 items-center rounded-[6px] text-left text-[12.5px]'
             style={{
                 gap: 6,
@@ -186,6 +188,7 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
                     title={C.newRequest}
                     onClick={() => {
                         setPath('')
+                        setFailure('')
                         setCreating('request')
                     }}
                     className='grid size-8 min-h-0 shrink-0 place-items-center rounded-[7px] border text-[15px]'
@@ -221,7 +224,10 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
                               onSubmit={(e) => {
                                   e.preventDefault()
                                   const kind = creating
-                                  void onCreate(kind, path.trim()).then((ok) => ok && setCreating(null))
+                                  void onCreate(kind, path.trim()).then((failed) => {
+                                      if (failed) setFailure(failed)
+                                      else setCreating(null)
+                                  })
                               }}
                           >
                               <h2 className='text-[17px] font-bold'>{creating === 'request' ? C.newRequestTitle : C.newFolder}</h2>
@@ -240,6 +246,11 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
                               {creating === 'request' ? (
                                   <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
                                       {C.newRequestLead}
+                                  </p>
+                              ) : null}
+                              {failure ? (
+                                  <p role='alert' className='rounded-[8px] text-[13px]' style={{ padding: '10px 12px', background: 'var(--v2-block-bg)' }} data-slot='new-request-failure'>
+                                      {failure}
                                   </p>
                               ) : null}
                               <div className='flex justify-end' style={{ gap: 8 }}>
