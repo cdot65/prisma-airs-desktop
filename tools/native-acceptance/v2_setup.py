@@ -95,6 +95,9 @@ def tenant_on_home(app, endpoint_origin, label="Northwind Health", client=True, 
         # The core keeps the active tenant on create (the wizard's placeholder here): the new tenant is made
         # active before its credentials are saved, so Settings attaches them to it and not to the placeholder.
         results[f"active {name}"] = bool(app.make_active(name)[1])
+        # A tenant switch leaves Settings (the shell returns to Home): Settings is opened again for the credentials
+        # and for the next tenant's form (the first run after the switch found no key field).
+        app.open_settings()
         if name == label:
             results["scan key"] = bool(app.save_key(c8.SCAN_KEY)[1])
             if client:
