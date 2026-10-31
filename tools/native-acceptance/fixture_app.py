@@ -93,19 +93,25 @@ class App:
         return self.pid
 
     # ---- accessibility ----
+    def dump_tree(self, tag):
+        """Keeps the current tree beside the probe for diagnosis; returns its path and a one-line summary."""
+        dump = os.path.join(os.path.dirname(self.ax_bin), f"ax-{tag}-{time.strftime('%H%M%S')}.json")
+        try:
+            tree = self.tree()
+            with open(dump, "w") as f:
+                json.dump(tree, f)
+            heads = [n.get("label") for n in tree if n.get("role") == "AXHeading"][:6]
+            return f"{dump} ({len(tree)} nodes; headings {heads}; window {bool(self.node(tree, 'AXWindow', ''))}; pid {self.pid} running {self.running_pid()})"
+        except Exception as e:  # noqa: BLE001 - the diagnosis must not mask the failure
+            return f"(tree unavailable: {e})"
+
     def ax(self, command, *args):
         out = sh([self.ax_bin, command, str(self.pid), *[str(a) for a in args]])
         if command == "tree":
             return json.loads(out.stdout or "[]")
         if out.returncode != 0:
             # The tree at the failure, kept beside the probe for diagnosis (a control the driver expected was not there).
-            dump = os.path.join(os.path.dirname(self.ax_bin), f"ax-failure-{time.strftime('%H%M%S')}.json")
-            try:
-                with open(dump, "w") as f:
-                    json.dump(self.tree(), f)
-            except Exception:  # noqa: BLE001 - the diagnosis must not mask the failure
-                dump = "(tree unavailable)"
-            raise RuntimeError(f"ax {command} {args}: {out.stderr.strip()} [tree: {dump}]")
+            raise RuntimeError(f"ax {command} {args}: {out.stderr.strip()} [tree: {self.dump_tree('failure')}]")
         return out.stdout
 
     def tree(self):
@@ -238,7 +244,7 @@ class App:
             tree, ok = self.wait_for(ready, 20)
             if ok:
                 return tree
-        raise RuntimeError("Settings did not open with its tenant form")
+        raise RuntimeError(f"Settings did not open with its tenant form [tree: {self.dump_tree('settings')}]")
 
     def open_runtime(self):
         self.ax("press", "AXButton", "Runtime Security")
