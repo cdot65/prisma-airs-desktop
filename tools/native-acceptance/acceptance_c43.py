@@ -166,12 +166,23 @@ def composite(app, step, theme, web_size, prepared, mode="firstRun"):
     return rel(out)
 
 
+def web_size_of(app, tries=12):
+    """The WebView's size from the tree, read again while the tree has no web area yet (right after an appearance
+    change the tree is re-published and a read in between returned none, which crashed the add sheet's composite)."""
+    for _ in range(tries):
+        web = geometry(app.tree())["web"]
+        if web:
+            return web
+        time.sleep(0.3)
+    raise RuntimeError("the WebView's size did not appear in the accessibility tree")
+
+
 def composites_for(app, step, prepared, mode="firstRun"):
     out = {}
     for theme in ("Light", "Dark"):
         c29.appearance(app, theme)
         time.sleep(0.8)
-        out[theme.lower()] = composite(app, step, theme, geometry(app.tree())["web"], prepared, mode)
+        out[theme.lower()] = composite(app, step, theme, web_size_of(app), prepared, mode)
     c29.appearance(app, "Light")
     time.sleep(0.5)
     return out
@@ -363,7 +374,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     for theme in ("Light", "Dark"):
         c29.appearance(app, theme)
         time.sleep(0.8)
-        obs["parity"]["add"][theme.lower()] = composite(app, "tenant", theme, geometry(app.tree())["web"], prepared, mode="add")
+        obs["parity"]["add"][theme.lower()] = composite(app, "tenant", theme, web_size_of(app), prepared, mode="add")
     c29.appearance(app, "Light")
     time.sleep(0.5)
     press(app, "AXButton", "Cancel")
