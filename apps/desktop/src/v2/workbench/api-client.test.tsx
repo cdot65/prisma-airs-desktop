@@ -407,6 +407,40 @@ describe('C41 API Client board', () => {
         expect(requests.filter((r) => r.kind === 'send')).toHaveLength(1)
     })
 
+    it('keeps a transfer in flight, with Cancel request, in view while an older run from History is being inspected; Cancel dispatches the active run once, history stays as recorded, nothing is resent (attempt-03 R1)', async () => {
+        const { user, requests, native, line } = await open()
+        // Hold the send's result: the transfer stays in flight for the rest of the test.
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const sent = requests.find((r, i) => r.kind === 'send' && `op-${i + 1}` === operation)
+            return sent ? new Promise(() => {}) : observe(operation)
+        }
+        const pane = screen.getByRole('region', { name: 'Response pane' })
+        await user.click(within(pane).getByRole('tab', { name: 'History' }))
+        const runs = await within(pane).findAllByRole('button', { name: /^GET topics\/list · HTTP 200/ })
+        await user.click(runs[1]!)
+        await waitFor(() => expect(within(pane).getByRole('region', { name: 'Response' })).toBeInTheDocument())
+        expect(within(pane).getByText('17 ms')).toBeInTheDocument()
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'send')).toHaveLength(1))
+        const base = board()
+        await native.push({ ...base, workbench: { ...base.workbench, running: [{ run: 'run-00000000000000bb', request: 'list', method: 'GET', bytes: 2048 }] } })
+        // The old run stays shown as recorded; the transfer's progress and Cancel are in view above it.
+        const running = await waitFor(() => {
+            const el = pane.querySelector('[data-slot="workbench-running"]') as HTMLElement | null
+            expect(el).not.toBeNull()
+            return el as HTMLElement
+        })
+        expect(running).toHaveAttribute('role', 'status')
+        expect(running).toHaveTextContent('Sending GET')
+        expect(within(pane).getByText('17 ms')).toBeInTheDocument()
+        expect(within(line()).getByRole('button', { name: 'Send' })).toBeDisabled()
+        await user.click(within(running).getByRole('button', { name: 'Cancel request' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'cancel')).toEqual([{ kind: 'cancel', run: 'run-00000000000000bb' }]))
+        expect(requests.filter((r) => r.kind === 'send')).toHaveLength(1)
+        expect(within(pane).getByText('17 ms')).toBeInTheDocument()
+    })
+
     it('reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection', async () => {
         const { user, requests } = await open()
         await user.click(screen.getByRole('tab', { name: 'Preview' }))
