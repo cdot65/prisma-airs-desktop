@@ -34,7 +34,7 @@ export interface WizardProps {
      * draft); firstRun: the shell takes over once onboarding is done.
      */
     onClose: (added?: string) => void
-    onNavigate: (feature: 'import' | 'home') => void
+    onNavigate: (feature: 'home') => void
     /** Board fixtures and tests only: open on a later step. */
     initial?: WizardInitial
     /**
@@ -579,13 +579,6 @@ export function Wizard(props: WizardProps) {
                                         </li>
                                     ))}
                                 </ul>
-                                <div className='flex items-center rounded-[12px]' style={{ gap: 12, padding: '14px 16px', border: '1px dashed var(--v2-rule)' }} data-slot='import-box'>
-                                    <Glyph name='folder' size={16} color='var(--v2-soft)' />
-                                    <span className='flex-grow'>
-                                        <b>{C.welcome.importTitle}</b> <span style={{ color: 'var(--v2-soft)' }}>{C.welcome.importText}</span>
-                                    </span>
-                                    <Secondary label={C.welcome.importButton} onClick={() => props.onNavigate('import')} />
-                                </div>
                             </div>
                         )}
                         {step === 'tenant' && (
@@ -599,9 +592,6 @@ export function Wizard(props: WizardProps) {
                                             {C.tenant.lead}
                                         </p>
                                     </div>
-                                    <button type='button' onClick={() => props.onNavigate('import')} className='ml-auto text-[13px] font-semibold' style={{ color: 'var(--v2-acc)' }} title={C.tenant.importHint}>
-                                        {C.tenant.importV1}
-                                    </button>
                                 </div>
                                 <form onSubmit={(e) => void submitProfile(e)} aria-busy={busy} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='tenant-form'>
                                     <div className='flex items-center' style={{ gap: 8 }}>

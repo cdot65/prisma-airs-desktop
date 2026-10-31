@@ -1,7 +1,6 @@
 import { forwardRef, useCallback } from 'react'
 import type { DesktopClient, FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import { SessionsView } from '../features/sessions/sessions-view'
-import { ImportView } from '../features/import-v1/import-view'
 import type { Dispatch } from '../features/tenants/dispatch'
 import { SettingsView, UnavailableView } from './feature-view'
 
@@ -48,8 +47,6 @@ export const FeatureBody = forwardRef<HTMLHeadingElement, FeatureBodyProps>(func
                     observe={observeManagement}
                     onNavigate={props.onNavigate}
                 />
-            ) : feature.id === 'import' && feature.availability.state === 'available' ? (
-                <ImportView ref={heading} snapshot={snapshot} dispatch={props.dispatch} />
             ) : (
                 <UnavailableView ref={heading} feature={feature} />
             )}

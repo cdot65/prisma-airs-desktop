@@ -113,7 +113,6 @@ async fn every_destination_the_legacy_shell_reached_is_a_v2_destination() {
         "gateway",
         "redTeam",
         "sessions",
-        "import",
         "settings",
     ] {
         desk.send(json!({"kind": "navigate", "feature": feature}))

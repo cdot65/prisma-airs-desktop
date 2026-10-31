@@ -51,12 +51,11 @@ DESTINATIONS = [
     ("AI Gateway", "Administration", "AI Gateway"),
     ("Red Team & Models", "Administration", "AI Red Teaming"),
     ("Sessions & Reports", "Investigate sessions", None),
-    ("Import from v1", "Import from v1", None),
     ("Settings", "Settings", None),
 ]
 SECRETS = (c8.SCAN_KEY, c8.SECRET)
 # The drivers whose records on this bundle the cumulative gate requires (legacy-script-map.md).
-CUMULATIVE = ["C10", "C11", "C23", "C35", "C36", "C37", "C38", "C39", "C40", "C41", "C42", "C43"]
+CUMULATIVE = ["C10", "C11", "C35", "C36", "C37", "C38", "C39", "C40", "C41", "C42", "C43"]  # C23 retired (D060)
 
 
 def rel(path):
@@ -198,7 +197,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     # The cumulative gate: every mapped driver's record on this same bundle (tools/native-acceptance/run_on_v2.py
     # files them under native/cumulative/<CNN>/), bound to the prepared executable; a missing, stale or failing one
     # fails C44-N01. The set is the drivers the legacy-script map names as replacements and the pre-P09 drivers it
-    # keeps running on the one presentation (C10, C11, C23).
+    # keeps running on the one presentation (C10, C11; C23 retired by D060).
     cumulative = {}
     for chunk in CUMULATIVE:
         path = os.path.join(EVIDENCE, "native", "cumulative", chunk, "native-acceptance.json")

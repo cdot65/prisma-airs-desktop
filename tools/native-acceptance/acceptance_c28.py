@@ -260,7 +260,7 @@ def run():
     obs["go_switch_tenant"] = ("Switch Tenant…", "T") in obs["go_v2"]
     want = [("Home", "1"), ("Inbox", "2"), ("Harness", "3"), ("Academy", "4"), ("Test Cases", "5"), ("API Client", "6"), ("Administration", "7")]
     obs["go_v2_ok"] = go[:7] == want and all(c is None for _, c in go[7:]) and {n for n, _ in go[7:]} == {
-        "Runtime Security", "AI Gateway", "Red Team Models", "Sessions Reports", "Import from v1", "Settings"}
+        "Runtime Security", "AI Gateway", "Red Team Models", "Sessions Reports", "Settings"}
     app.menu("Go", "Harness")
     tree, harness = app.wait_for(lambda t: any(b.get("current") == "page" and b["label"].startswith("Harness") for b in rail_buttons(t)), 10)
     obs["go_harness_current"] = harness

@@ -319,7 +319,6 @@ pub fn catalogue_for(variant: UiVariant) -> Vec<FeatureEntry> {
             FeatureEntry::available(FeatureId::Gateway, "AI Gateway", None, false),
             FeatureEntry::available(FeatureId::RedTeam, "Red Team & Models", None, false),
             FeatureEntry::available(FeatureId::Sessions, "Sessions & Reports", None, false),
-            FeatureEntry::available(FeatureId::Import, "Import from v1", None, false),
             FeatureEntry::available(FeatureId::Settings, "Settings", None, false),
         ],
     }

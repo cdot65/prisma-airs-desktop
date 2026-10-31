@@ -2498,3 +2498,13 @@ Exact identity strings, dependency pins, import compatibility, named numeric
 budgets, and designated live environments require explicit evidence/specification
 at their declared gates. They are not secretly assumed complete or reasons to
 repeat settled product questions. No application implementation has started.
+
+## D060 — No import from the alpha; this desktop is v1
+
+Decided by the owner on 2026-10-31, in the owner's words: "i really really really don't want to have an import from v1. in fact, i plan on calling this v1 since the previous was an alpha."
+
+- The previous desktop (`/Users/cdot/development/cdot65/prisma-airs-desktop`) is the alpha. Nothing is imported from it: the reviewed import of alpha work (C23: the Import from v1 destination and view, the wizard's "Used Prisma AIRS Desktop 1?" box and the tenant step's import link, the first-run import frame) is removed from the one presentation in C44, its native checks C23-N01..N09 are retired without replacement, and the legacy-script map and the C44 cumulative set drop `acceptance_c23.py`.
+- Still to decide the same way, in a follow-up chunk the owner names (proposed C45): the core's alpha-import intents and reader (`import_v1_domain`, the `V1Import*` intents, the host adapters), Settings' file-based "Import tenant profiles" and the API Client's "Import v1 API Client profile" adoption, which are alpha-import surfaces too; their removal changes contracts and earlier chunks' tests and is not done inside the P09 closure.
+- Naming: this desktop becomes v1 and the previous one the alpha. The rename touches the application identity that lets the two coexist (bundle identifiers, data roots, Keychain namespaces, D001-era identities) and the whole document set; it is its own chunk after P09, not a find-and-replace.
+- The product name shown today stays "Prisma AIRS Desktop v2" until that chunk.
+

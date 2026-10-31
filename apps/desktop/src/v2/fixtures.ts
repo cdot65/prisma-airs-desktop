@@ -20,7 +20,6 @@ export const V2_FEATURES: FeatureEntry[] = [
     { id: 'gateway', label: 'AI Gateway', availability: { state: 'available' }, shortcut: null, sidebar: false },
     { id: 'redTeam', label: 'Red Team & Models', availability: { state: 'available' }, shortcut: null, sidebar: false },
     { id: 'sessions', label: 'Sessions & Reports', availability: { state: 'available' }, shortcut: null, sidebar: false },
-    { id: 'import', label: 'Import from v1', availability: { state: 'available' }, shortcut: null, sidebar: false },
     { id: 'settings', label: 'Settings', availability: { state: 'available' }, shortcut: null, sidebar: false },
 ]
 

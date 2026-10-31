@@ -196,36 +196,6 @@ describe('first-run wizard', () => {
         expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'], resolution: null })
     })
 
-    it('reaches the reviewed v1 import from the tenant step and comes back to the setup', async () => {
-        const user = userEvent.setup()
-        const native = await launch({ ...fxOnboarding(), onboarding: 'inProgress' })
-        await user.click(screen.getByRole('button', { name: 'Import from Prisma AIRS Desktop v1' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'import' })
-        await native.push({ ...native.current, activeFeature: 'import' })
-        expect(await screen.findByRole('heading', { level: 1, name: 'Import from v1' })).toBeInTheDocument()
-        expect(screen.queryByRole('heading', { level: 1, name: 'Connect your tenant' })).toBeNull()
-        await user.click(screen.getByRole('button', { name: 'Back to setup' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'home' })
-        await native.push({ ...native.current, activeFeature: 'home' })
-        expect(await screen.findByRole('heading', { level: 1, name: 'Connect your tenant' })).toBeInTheDocument()
-    })
-
-    it('a committed import ends the first run: the shell opens on the imported tenant', async () => {
-        const user = userEvent.setup()
-        const native = await launch({ ...fxOnboarding(), onboarding: 'inProgress' })
-        await user.click(screen.getByRole('button', { name: 'Import from Prisma AIRS Desktop v1' }))
-        await native.push({ ...native.current, activeFeature: 'import' })
-        await screen.findByRole('heading', { level: 1, name: 'Import from v1' })
-        // The reviewed import commits its tenant; the core reports onboarding done and no draft.
-        const imported = tenant({ id: 'tn-00000000c0a57a10', label: 'Imported', tsgId: '2222222222' })
-        await native.push(withTenant({ ...native.current, onboarding: 'done', setup: null, activeFeature: 'home' }, imported))
-        expect(await screen.findByRole('navigation', { name: 'Destinations' })).toBeInTheDocument()
-        expect(screen.queryByRole('heading', { level: 1, name: 'Connect your tenant' })).toBeNull()
-        expect(screen.getByRole('button', { name: /^Switch tenant: Imported/ })).toBeInTheDocument()
-    })
-})
-
-describe('add-tenant sheet', () => {
     it('opens from the switcher as a modal with the 244px rail and no Welcome or Academy step; Cancel before a draft sends nothing', async () => {
         const user = userEvent.setup()
         const native = await launch(fxSwitcher())

@@ -29,9 +29,6 @@ export const WIZARD_COPY = {
             { icon: 'eye' as const, title: 'See the calls as you go', body: 'With “Show the calls” on, each request the app sends is shown as it happens, with its response.' },
             { icon: 'cap' as const, title: 'Learn by doing', body: 'Scan a prompt, read a tenant, review a change. The Academy explains the why; this app shows the how.' },
         ],
-        importTitle: 'Used Prisma AIRS Desktop 1?',
-        importText: 'Bring over your tenants and saved cases instead of typing them again.',
-        importButton: 'Import from v1…',
         continue: 'Set up a tenant',
     },
     tenant: {
@@ -86,8 +83,6 @@ export const WIZARD_COPY = {
         workspaceKey: 'Workspace inference key',
         saveWorkspaceKey: 'Save workspace key',
         workspaceKeySaved: 'Workspace key saved in the Keychain.',
-        importV1: 'Import from Prisma AIRS Desktop v1',
-        importHint: 'Opens the reviewed import; secrets are always entered again.',
         continue: 'Continue',
         continueNeedsDraft: 'Create the tenant to continue',
         continueNeedsKey: 'Save the scan key to continue',

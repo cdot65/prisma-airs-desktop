@@ -19,7 +19,6 @@ import v2_setup as v2s
 GO = {
     "Sessions &": "Sessions & Reports",
     "Sessions & Reports": "Sessions & Reports",
-    "Import from v1": "Import from v1",
     "Runtime Security": "Runtime Security",
     "Runtime": "Runtime Security",
     "AI Gateway": "AI Gateway",

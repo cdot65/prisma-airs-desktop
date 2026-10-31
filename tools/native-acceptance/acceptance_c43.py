@@ -247,7 +247,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
                   "optional_tags": sum(1 for n in rail(tree) if (n.get("label") or "") == "Optional"), "privacy": any("Secrets go straight to the macOS Keychain" in (n.get("label") or "") for n in rail(tree)),
                   "theme_button": any((n.get("label") or "").endswith(" appearance") for n in rail(tree))}
     n1["welcome_board"] = {"cards": all(app.has_text(tree, c) for c in ("Built on the public APIs", "See the calls as you go", "Learn by doing")),
-                           "import_box": fx.App.node(tree, "AXButton", "Import from v1…") is not None, "no_back": fx.App.node(tree, "AXButton", "Back") is None,
+                           "no_import_box": fx.App.node(tree, "AXButton", "Import from v1…") is None, "no_back": fx.App.node(tree, "AXButton", "Back") is None,
                            "progress": app.has_text(tree, "Step 1 of 7"), "primary": fx.App.node(tree, "AXButton", "Set up a tenant") is not None}
     obs["tree_welcome"] = c29.save_tree("wizard-welcome", tree)
     obs["parity"]["welcome"] = composites_for(app, "welcome", prepared)

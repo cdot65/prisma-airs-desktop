@@ -40,7 +40,7 @@ REPLACEMENT = {
     "C20": "C38-N01 (the Decisions aside, the sign-in panel)",
     "C21": "C38-N01 (the project panel)",
     "C22": "C38-N01 (the MCP summary)",
-    "C23": "itself (acceptance_c23.py on the v2 shell through legacy_v2: Import from v1 from the Go menu)",
+    "C23": "retired by D060: no import from the alpha; the destination, view and wizard links are removed (no replacement)",
     "C24": "C44-N01 (the no-plaintext-secret sweep over every destination's tree)",
     "C25": "the C29 live Vulture row (owner-run; out of the fixture gate)",
     "C28": "C35-N01..N03",
@@ -50,7 +50,7 @@ REPLACEMENT = {
     "C32": "C38-N01..N02",
     "C33": "C40-N01..N02, C41-N01..N02",
 }
-SELF = {"C10", "C11", "C23"}
+SELF = {"C10", "C11"}
 
 
 def results(chunk):

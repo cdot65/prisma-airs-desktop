@@ -12,8 +12,6 @@ export const SHELL_COPY = {
     tenantNone: 'No tenant yet',
     addTenant: 'Add a tenant…',
     tenantAdded: (tenant: string) => `${tenant} is set up and active.`,
-    backToSetup: 'Back to setup',
-    importDuringSetup: 'Importing a v1 profile creates its tenant and opens Prisma AIRS on it; add its scan key in Administration. Secrets are always entered again.',
     palette: 'Go to…',
     paletteLabel: 'Command palette',
     paletteInput: 'Go to a destination, tenant or action',
