@@ -108,6 +108,11 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // request's document, or resurrected a closed one).
     const collectionRef = useRef<string | null>(collection?.id ?? null)
     collectionRef.current = collection?.id ?? null
+    const selectedRef = useRef<string | null>(collection?.selected ?? null)
+    selectedRef.current = collection?.selected ?? null
+    // A cURL import's conversion report that arrived after the core had already selected its draft (the selection's
+    // own load superseded the import): kept for that draft, shown when its document shows.
+    const lateNotes = useRef<{ id: string; notes: ImportNote[] } | null>(null)
     type Load = { gen: number; asked: string | null; id: string | null; relative: string | null }
     const beginLoad = (id: string | null, relative: string | null = null): Load => {
         const gen = ++loadGen.current
@@ -117,11 +122,23 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     }
     /** Shows a load's document if the load is still current; a failure of a selected request's load is shown with its reason. */
     const settleLoad = (load: Load, r: Awaited<ReturnType<WorkbenchCall>> | null, keepNotes: boolean): boolean => {
-        if (load.gen !== loadGen.current || load.asked === null || load.asked !== collectionRef.current) return false
+        if (load.asked === null || load.asked !== collectionRef.current) return false
+        if (load.gen !== loadGen.current) {
+            // Superseded, but a current import's report is not lost: when the reply's document is the selected request
+            // (its snapshot came first and its own load took over), its notes are shown with that document.
+            if (keepNotes && r?.kind === 'document' && r.notes.length > 0 && selectedRef.current === r.document.id) {
+                // Shown now if that document is already up (the editor renders only for the selected document), else
+                // when its own load lands.
+                lateNotes.current = { id: r.document.id, notes: r.notes }
+                setNotes(r.notes)
+            }
+            return false
+        }
         if (loading.current === load.id) loading.current = null
         if (r?.kind === 'document') {
             setDoc(r.document)
-            setNotes(keepNotes ? r.notes : [])
+            setNotes(keepNotes ? r.notes : lateNotes.current?.id === r.document.id ? lateNotes.current.notes : [])
+            if (lateNotes.current && lateNotes.current.id !== r.document.id) lateNotes.current = null
             return true
         }
         // The failure names the request it was for: the core keeps the previous selection when a read fails, so a

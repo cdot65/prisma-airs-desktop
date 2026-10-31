@@ -9,7 +9,7 @@
  * unprotected edits. Nothing here sends by itself: every request the view
  * makes is listed and asserted.
  */
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DesktopClient, type Intent, type RunView, type ShellSnapshot, type WorkbenchRequest, type WorkbenchResult } from '@prisma-airs/desktop-contracts'
@@ -740,6 +740,121 @@ describe('C41 API Client board', () => {
         await waitFor(() => expect(opens()).toBe(2))
         await waitFor(() => expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toHaveTextContent('health could not be opened: The desktop did not report how the request ended.'))
         expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics')
+    })
+
+    it('a cURL import\'s conversion report shows with its draft whether the result or the selecting snapshot arrives first; later selections stay protected (attempt-08 R2)', async () => {
+        const NOTES = [{ kind: 'headerReplaced' as const, variable: 'token', reference: 'imported.token' }]
+        const imported = (notes: typeof NOTES) => ({ kind: 'document' as const, document: { ...document().document, id: 'imported', relative: 'imported/request.request.toml', new: true, fields: { ...fields, url: 'http://127.0.0.1:8080/imported' }, saved: { ...fields, url: 'http://127.0.0.1:8080/imported' } }, notes })
+        const { user, requests, native, line } = await open(board(), (request) => (request.kind === 'openRequest' && request.relative === 'imported/request.request.toml' ? imported([]) : null))
+        let release: ((r: WorkbenchResult) => void) | null = null
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'importCurl') return new Promise<{ kind: 'workbench'; result: WorkbenchResult }>((resolve) => (release = (result) => resolve({ kind: 'workbench', result })))
+            return observe(operation)
+        }
+        const base = board()
+        const collection = base.workbench.collection!
+        const draftTab = { id: 'imported', relative: 'imported/request.request.toml', method: 'GET', draft: true, new: true, recovered: false, conflict: null, interrupted: false }
+        const snap = (selected: string) => ({ ...base, workbench: { ...base.workbench, collection: { ...collection, tabs: [...collection.tabs, draftTab], selected } } })
+        // Snapshot first: the core selects the draft (its own load, empty notes) before the import's result arrives.
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Import…' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Import' })
+        await user.type(within(sheet).getByRole('textbox', { name: 'cURL command' }), 'curl -H "Authorization: Bearer x" http://127.0.0.1:8080/imported')
+        await user.click(within(sheet).getByRole('button', { name: 'Create draft' }))
+        await waitFor(() => expect(release).not.toBeNull())
+        await native.push(snap('imported'))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL', hidden: true })).toHaveValue('http://127.0.0.1:8080/imported'))
+        await act(async () => release!(imported(NOTES)))
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Import' })).toBeNull())
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-notes"]')).toHaveTextContent('A credential header now uses {{token}}: store its value in Secrets as imported.token.'))
+        // A later selection is still protected: list is selected and shown without the report.
+        await native.push(snap('list'))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics'))
+        expect(document_().querySelector('[data-slot="workbench-notes"]')).toBeNull()
+    })
+
+    it('a cURL import\'s conversion report shows when the result arrives before the selecting snapshot (attempt-08 R2)', async () => {
+        const NOTES = [{ kind: 'authRemoved' as const, reference: 'imported.auth' }]
+        const imported = { kind: 'document' as const, document: { ...document().document, id: 'imported', relative: 'imported/request.request.toml', new: true, fields: { ...fields, url: 'http://127.0.0.1:8080/imported' }, saved: { ...fields, url: 'http://127.0.0.1:8080/imported' } }, notes: NOTES }
+        const { user, native, line } = await open(board(), (request) => (request.kind === 'importCurl' ? imported : null))
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Import…' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Import' })
+        await user.type(within(sheet).getByRole('textbox', { name: 'cURL command' }), 'curl -u a:b http://127.0.0.1:8080/imported')
+        await user.click(within(sheet).getByRole('button', { name: 'Create draft' }))
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Import' })).toBeNull())
+        const base = board()
+        const collection = base.workbench.collection!
+        const draftTab = { id: 'imported', relative: 'imported/request.request.toml', method: 'GET', draft: true, new: true, recovered: false, conflict: null, interrupted: false }
+        await native.push({ ...base, workbench: { ...base.workbench, collection: { ...collection, tabs: [...collection.tabs, draftTab], selected: 'imported' } } })
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/imported'))
+        expect(document_().querySelector('[data-slot="workbench-notes"]')).toHaveTextContent('The authentication credential was removed: store its value in Secrets as imported.auth.')
+    })
+
+    it('typing while an environment or schema save is pending is kept: the reply brings the revision, the next Save sends the newer text (attempt-08 R1)', async () => {
+        // Revisions are digests to the client's parser.
+        let envRevision = '1'.repeat(64)
+        let schemaRevision = 'a'.repeat(64)
+        const { user, requests, native } = await open(board(), (request) =>
+            request.kind === 'openEnvironment'
+                ? { kind: 'environment', name: request.name, private: request.private, text: 'v = 1', revision: envRevision }
+                : request.kind === 'saveEnvironment'
+                  ? { kind: 'environment', name: request.name, private: request.private, text: request.text, revision: (envRevision = '2'.repeat(64)) }
+                  : request.kind === 'openSchema'
+                    ? { kind: 'schema', schema: { relative: request.relative, text: '{"version":1}', revision: schemaRevision } }
+                    : request.kind === 'saveSchema'
+                      ? { kind: 'schema', schema: { relative: request.relative, text: request.text, revision: (schemaRevision = 'b'.repeat(64)) } }
+                      : null
+        )
+        const held: ((r: WorkbenchResult) => void)[] = []
+        const observe = native.observeWorkbench
+        native.observeWorkbench = async (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'saveEnvironment' || req?.kind === 'saveSchema') {
+                const r = await observe(operation)
+                return new Promise((resolve) => held.push(() => resolve(r)))
+            }
+            return observe(operation)
+        }
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Environments…' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Environments' })
+        await user.click(within(sheet).getByRole('button', { name: 'Edit private local' }))
+        const editor = within(await within(sheet).findByRole('form', { name: 'Private environment local' })).getByRole('textbox')
+        await user.clear(editor)
+        await user.type(editor, 'v = 2')
+        await user.click(within(sheet).getByRole('button', { name: 'Save environment' }))
+        await waitFor(() => expect(held).toHaveLength(1))
+        await user.type(editor, '3')
+        expect(editor).toHaveValue('v = 23')
+        await act(async () => held[0]!({ kind: 'done' }))
+        await new Promise((r) => setTimeout(r, 20))
+        expect(editor).toHaveValue('v = 23')
+        await user.click(within(sheet).getByRole('button', { name: 'Save environment' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'saveEnvironment')).toHaveLength(2))
+        expect(requests.filter((r) => r.kind === 'saveEnvironment').at(-1)).toMatchObject({ kind: 'saveEnvironment', name: 'local', private: true, text: 'v = 23', revision: '2'.repeat(64) })
+        await act(async () => held[1]!({ kind: 'done' }))
+        await user.click(within(sheet).getByRole('button', { name: 'Close Environments' }))
+        // The schema editor likewise.
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Schemas…' }))
+        const schemas = await screen.findByRole('dialog', { name: 'Schemas' })
+        await user.type(within(schemas).getByRole('textbox', { name: 'New schema path (.json, .yaml or .yml)' }), 'topics.json')
+        await user.click(within(schemas).getByRole('button', { name: 'New schema' }))
+        const schemaEditor = within(await within(schemas).findByRole('form', { name: 'Schema topics.json' })).getByRole('textbox')
+        await user.type(schemaEditor, '{{"version":2}')
+        await user.click(within(schemas).getByRole('button', { name: 'Save schema' }))
+        await waitFor(() => expect(held).toHaveLength(3))
+        await user.type(schemaEditor, '3')
+        expect(schemaEditor).toHaveValue('{"version":2}3')
+        await act(async () => held[2]!({ kind: 'done' }))
+        await new Promise((r) => setTimeout(r, 20))
+        expect(schemaEditor).toHaveValue('{"version":2}3')
+        await user.click(within(schemas).getByRole('button', { name: 'Save schema' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'saveSchema')).toHaveLength(2))
+        expect(requests.filter((r) => r.kind === 'saveSchema').at(-1)).toMatchObject({ kind: 'saveSchema', relative: 'topics.json', text: '{"version":2}3', revision: 'b'.repeat(64) })
     })
 
     it('reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection', async () => {

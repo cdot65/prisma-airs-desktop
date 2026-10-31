@@ -137,6 +137,10 @@ function Environments({ collection, run }: { collection: CollectionView; run: Ru
                     style={{ gap: 8 }}
                     onSubmit={(e) => {
                         e.preventDefault()
+                        // The reply is bound to the environment it saved and to the text it was sent: it brings the new
+                        // revision, and the editor's text only if nothing newer was typed meanwhile (a save's reply had
+                        // replaced the editor, losing typing made while it was pending).
+                        const sent = { name: open.name, private: open.private, text: open.text }
                         void run({
                             kind: 'saveEnvironment',
                             name: open.name,
@@ -145,12 +149,7 @@ function Environments({ collection, run }: { collection: CollectionView; run: Ru
                             text: open.text,
                         }).then((r) => {
                             if (r.kind === 'environment')
-                                setOpen({
-                                    name: r.name,
-                                    private: r.private,
-                                    text: r.text,
-                                    revision: r.revision,
-                                })
+                                setOpen((o) => (o && o.name === sent.name && o.private === sent.private ? { ...o, revision: r.revision, text: o.text === sent.text ? r.text : o.text } : o))
                         })
                     }}
                 >
@@ -260,12 +259,16 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
                     style={{ gap: 8 }}
                     onSubmit={(e) => {
                         e.preventDefault()
+                        const sent = { relative: open.relative, text: open.text }
                         void run({
                             kind: 'saveSchema',
                             relative: open.relative,
                             revision: open.revision,
                             text: open.text,
-                        }).then((r) => r.kind === 'schema' && setOpen(r.schema))
+                        }).then((r) => {
+                            // Bound to the schema it saved and the text it was sent: the new revision, the text only if nothing newer was typed.
+                            if (r.kind === 'schema') setOpen((o) => (o && o.relative === sent.relative ? { ...o, revision: r.schema.revision, text: o.text === sent.text ? r.schema.text : o.text } : o))
+                        })
                     }}
                 >
                     <label className={LABEL} htmlFor={`${ids}-schema-text`} style={{ gap: 4 }}>
