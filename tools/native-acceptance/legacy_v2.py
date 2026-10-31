@@ -39,6 +39,9 @@ def open_settings(self):
 def create_custom_tenant(self, label, origin):
     out = _create(self, label, origin)
     self.make_active(label)
+    # The switch leaves Settings for Home: the pre-P09 driver's next step types the credentials into Settings, so it
+    # is opened again here (the first run on this build found Home where it expected the key field).
+    _open_settings(self)
     return out
 
 
