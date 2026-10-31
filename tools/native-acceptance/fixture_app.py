@@ -98,7 +98,14 @@ class App:
         if command == "tree":
             return json.loads(out.stdout or "[]")
         if out.returncode != 0:
-            raise RuntimeError(f"ax {command} {args}: {out.stderr.strip()}")
+            # The tree at the failure, kept beside the probe for diagnosis (a control the driver expected was not there).
+            dump = os.path.join(os.path.dirname(self.ax_bin), f"ax-failure-{time.strftime('%H%M%S')}.json")
+            try:
+                with open(dump, "w") as f:
+                    json.dump(self.tree(), f)
+            except Exception:  # noqa: BLE001 - the diagnosis must not mask the failure
+                dump = "(tree unavailable)"
+            raise RuntimeError(f"ax {command} {args}: {out.stderr.strip()} [tree: {dump}]")
         return out.stdout
 
     def tree(self):
