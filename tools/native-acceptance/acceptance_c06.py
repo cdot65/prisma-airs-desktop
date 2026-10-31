@@ -46,7 +46,8 @@ UNKNOWN = "We could not confirm submission"
 PENDING = "Grading your written answers"
 LAB_PASSED = "Lab passed. Academy recorded it on your account."
 # Builds after C06 add the desktop's Downloads entry (C07).
-NAV_SIGNED_IN = ["Home", "Learn", "Program"] + ([] if SUBJECT == "C06" else ["Downloads"]) + ["Notifications", "Settings"]
+# The app is past C07 whichever subject runs this driver: Downloads is in the signed-in navigation.
+NAV_SIGNED_IN = ["Home", "Learn", "Program", "Downloads", "Notifications", "Settings"]
 GENERIC_FAILURE = "Something went wrong"
 PROCEDURES = json.load(open(os.path.join(ROOT, "packages/desktop-contracts/fixtures/academy/learner-procedures.json")))
 PUBLIC = set(PROCEDURES["public"])
@@ -659,8 +660,7 @@ def signed_out_items(items):
     """Learner items that must be gone after sign-out. From C07 the
     account's offline key stays with its locked offline work (lab work is
     kept on this Mac until Academy confirms it); reset removes it."""
-    if SUBJECT == "C06":
-        return items
+    # The app is past C07 whichever subject runs this driver: the offline key stays after sign-out.
     return [i for i in items if i != offline_key("user_2fixturelearner")]
 
 
