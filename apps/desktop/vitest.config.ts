@@ -24,6 +24,7 @@ export default defineConfig({
             'src/features/tenants/management-credential.test.tsx',
             'src/features/workbench/workbench-start.test.tsx',
         ],
-        css: false,
+        // Stylesheets are not processed, except one read as text (`?raw`) by a test asserting a rule's scope.
+        css: { include: [/\.css\?raw$/] },
     },
 })

@@ -46,6 +46,7 @@ LOG = []
 TITLE_BAR = 28
 CATALOG = "What will you take up next?"
 GUEST_NOTE = "Browsing as a guest"
+PATH_TITLE = "Runtime Security Path"  # the catalog's path (academy_catalog.PATH_SLUG)
 # Learner chrome that must never appear outside the Academy region.
 LEARNER_MARKERS = [GUEST_NOTE, "Reading progress", "Complete & continue", "Academy location", "Start knowledge check"]
 
@@ -128,8 +129,39 @@ def board_usable(tree, zoom):
     return out
 
 
+def _lum(c):
+    def ch(v):
+        v = v / 255
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2])
+
+
+def ring_contrast(img_f, img_p, box, scale, band=8, inset=6):
+    """The focus ring's contrast: over the border band of `box` (as c28.ring_diff walks it), the pixels that
+    changed between the plain and the focused capture are the ring; each ring pixel's WCAG contrast against the
+    surface it replaced (the plain capture's pixel there) is computed and the median returned, with the count.
+    Only this control's box is measured, so another control's ring appearing or disappearing elsewhere counts
+    for nothing."""
+    w, h = img_f[0], img_f[1]
+    x, y, bw, bh = [int(v * scale) for v in box]
+    ratios = []
+    for yy in range(max(0, y - band), min(h, y + bh + band)):
+        for xx in range(max(0, x - band), min(w, x + bw + band)):
+            if x + inset <= xx < x + bw - inset and y + inset <= yy < y + bh - inset:
+                continue
+            cf, cp = c1.pixel(img_f, xx, yy), c1.pixel(img_p, xx, yy)
+            if sum(abs(cf[i] - cp[i]) for i in range(3)) > 24:
+                lf, lp = _lum(cf), _lum(cp)
+                ratios.append((max(lf, lp) + 0.05) / (min(lf, lp) + 0.05))
+    ratios.sort()
+    return {"pixels": len(ratios), "median_contrast": round(ratios[len(ratios) // 2], 2) if ratios else 0.0, "min_quartile_contrast": round(ratios[len(ratios) // 4], 2) if ratios else 0.0}
+
+
 def ring_on_link(app, label, plain_cap, name):
-    """Ring pixels around link `label` focused, against a capture with it unfocused (c31.ring_on for links)."""
+    """The focus ring on link `label`: `plain_cap` is a capture of the same page with focus on a control far from
+    the link (never a neighbouring link, whose own ring disappearing would count), so every changed pixel in the
+    link's border band is this ring. Returns the changed-pixel count (c28.ring_diff), the ring's contrast against
+    the surface it is drawn on (ring_contrast: at least 3:1 is the pass), the link's current state and the captures."""
     app.ax("focus", "AXLink", label)
     time.sleep(0.5)
     focused_cap = c29.capture(app, name)
@@ -137,12 +169,18 @@ def ring_on_link(app, label, plain_cap, name):
     web = next((n for n in snap if n.get("role") == "AXWebArea"), None)
     link = next((n for n in snap if n.get("role") == "AXLink" and (n.get("label") or "") == label and n.get("pos") and n.get("size")), None)
     if not (web and link and plain_cap and focused_cap):
-        return {"diff": 0, "focused": (fx.App.focused(snap) or {}).get("label")}
+        return {"diff": 0, "contrast": {}, "focused": (fx.App.focused(snap) or {}).get("label")}
     img_f = c1.png_pixels(os.path.join(ROOT, focused_cap))
     img_p = c1.png_pixels(os.path.join(ROOT, plain_cap))
     scale = img_f[0] / web["size"][0]
     box = [link["pos"][0] - web["pos"][0], link["pos"][1] - web["pos"][1], link["size"][0], link["size"][1]]
-    return {"diff": c28.ring_diff(img_f, img_p, box, scale), "focused": (fx.App.focused(snap) or {}).get("label"), "plain": plain_cap, "capture": focused_cap}
+    return {"diff": c28.ring_diff(img_f, img_p, box, scale), "contrast": ring_contrast(img_f, img_p, box, scale), "current": link.get("current"),
+            "focused": (fx.App.focused(snap) or {}).get("label"), "plain": plain_cap, "capture": focused_cap}
+
+
+def ring_ok(ring):
+    """A ring is present (changed pixels in the control's band) and contrasts at least 3:1 with its surface."""
+    return bool(ring) and (ring.get("diff") or 0) > 40 and (ring.get("contrast") or {}).get("median_contrast", 0) >= 3.0
 
 
 def composite(app, theme, web_size, prepared):
@@ -248,6 +286,9 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
     n1["paths_heading"] = paths_h is not None
     n1["path_cards"] = links(tree, "Open ")
     n1["path_units"] = any(" units" in (x.get("label") or "") for x in tree)
+    # The card's summary is the contract's tagline (attempt-03 R3), as the synthetic catalog's paths.list names it.
+    paths_group = group(tree, "Learning paths")
+    n1["path_tagline"] = paths_group is not None and any("Protect prompts and responses at runtime." in (x.get("label") or x.get("value") or "") for x in within(tree, paths_group))
     # A guest reads the catalog with no credential.
     guest_calls = [r for r in academy.requests() if r.get("procedure")]
     n1["guest_calls"] = sorted({c["procedure"] for c in guest_calls})
@@ -261,13 +302,26 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
     obs["captures"]["academy-guest"] = {"light": c29.capture(app, "academy-guest-light")}
     # A path card opens its page within the destination.
     if n1["path_cards"]:
+        mark_path = len(academy.requests())
         app.ax("press", "AXLink", n1["path_cards"][0])
-        tree, n1["path_opened"] = app.wait_for(lambda t: heading(t, CATALOG) is None and group(t, "Academy pages") is not None and heading(t, "AI Security Academy") is not None, 15)
+        tree, n1["path_opened"] = app.wait_for(lambda t: heading(t, CATALOG) is None and group(t, "Academy pages") is not None and heading(t, "AI Security Academy") is not None
+                                               and heading(t, PATH_TITLE) is not None, 15)
+        pages = group(tree, "Academy pages")
+        # The real path page: its title as the page heading inside the pages card, no miss, read by its slug.
+        n1["path_title"] = any(x.get("role") == "AXHeading" and (x.get("label") or "") == PATH_TITLE for x in within(tree, pages)) if pages else False
+        n1["path_miss"] = app.has_text(tree, "Path not found.")
+        path_calls = [r for r in academy.requests()[mark_path:] if r.get("procedure") == "paths.get"]
+        n1["path_get_slug"] = any(academy_catalog.PATH_SLUG in (c.get("input") or "") for c in path_calls)
+        n1["path_calls"] = sorted({r["procedure"] for r in academy.requests()[mark_path:] if r.get("procedure")})
         trail = group(tree, "Academy location")
-        n1["trail"] = trail is not None
+        n1["trail"] = trail is not None and any(PATH_TITLE in (x.get("label") or "") for x in within(tree, trail))
         obs["tree_path"] = c29.save_tree("academy-path", tree)
     else:
         n1["path_opened"] = False
+        n1["path_title"] = False
+        n1["path_miss"] = True
+        n1["path_get_slug"] = False
+        n1["path_calls"] = []
         n1["trail"] = False
     # ---- sign in from Settings; the account generation ----
     academy.mode(approval="granted", displayName="Ada Lovelace")
@@ -319,11 +373,30 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
             walk.append(f.get("label") or "")
     n2["walk"] = walk
     n2["reach"] = {"section": any(w in n1["account_sections"][1:] for w in walk), "card": any(w.startswith("Open ") for w in walk)}
+    # The focus ring on the selected (aria-current) section link and on an unselected one, in both themes: the
+    # plain capture has focus on the page heading, far from the links, so a neighbour's ring never enters the
+    # measure; the ring must contrast at least 3:1 with the surface it is drawn on (DESIGN-V2 section 8).
+    rings = {}
     if first:
-        app.ax("focus", "AXLink", first)
-        time.sleep(0.4)
-    plain = c29.capture(app, "academy-ring-plain")
-    n2["ring"] = ring_on_link(app, n1["account_sections"][1] if len(n1["account_sections"]) > 1 else first, plain, "academy-ring") if first else {}
+        tree = app.tree()
+        section_links = [n for n in within(tree, group(tree, "Academy sections")) if n.get("role") == "AXLink"]
+        selected = next(((n.get("label") or "") for n in section_links if n.get("current") == "page"), None)
+        unselected = next(((n.get("label") or "") for n in section_links if n.get("current") != "page"), None)
+        for theme in ("Light", "Dark"):
+            c29.appearance(app, theme)
+            time.sleep(0.6)
+            app.ax("focus", "AXHeading", "AI Security Academy")
+            time.sleep(0.4)
+            plain = c29.capture(app, f"academy-ring-plain-{theme.lower()}")
+            for kind, label in (("selected", selected), ("unselected", unselected)):
+                if label:
+                    rings[f"{kind}_{theme.lower()}"] = ring_on_link(app, label, plain, f"academy-ring-{kind}-{theme.lower()}")
+                    app.ax("focus", "AXHeading", "AI Security Academy")
+                    time.sleep(0.3)
+        c29.appearance(app, "Light")
+        time.sleep(0.5)
+    n2["rings"] = rings
+    n2["ring"] = rings.get("selected_light") or rings.get("unselected_light") or {}
     layouts = {}
     size_window(app, pid, 1440, 900)
     for theme in ("Light", "Dark"):
@@ -358,7 +431,14 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
     size_window(app, pid, 1440, 900)
     n2["layouts"] = layouts
     obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
-    obs["captures"]["academy-ring"] = {"plain": n2["ring"].get("plain"), "focused": n2["ring"].get("capture")}
+    # Variant names (the screens copy names files "<name>-<variant>.png"): plain-<theme>, <kind>-<theme>.
+    obs["captures"]["academy-ring"] = {}
+    for k, r in n2["rings"].items():
+        kind, theme = k.split("_", 1)
+        if r.get("plain"):
+            obs["captures"]["academy-ring"][f"plain-{theme}"] = r["plain"]
+        if r.get("capture"):
+            obs["captures"]["academy-ring"][f"{kind}-{theme}"] = r["capture"]
     obs["n2"] = n2
     app.quit()
 
@@ -373,20 +453,22 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
         checks.append({"id": cid, "description": inventory[cid], "result": "pass" if passed else "fail", "observation": observation, "evidence": [e for e in evidence if e]})
 
     caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
-    n1_ok = (all(n1.get(k) for k in ("guest_screen", "lead", "guest_pill", "frame", "catalog_in_pages", "guest_note", "guest_open_settings", "paths_heading", "path_units", "guest_no_credential", "paths_list_read", "chrome_inside",
-                                     "path_opened", "signed_in", "account_screen", "account_pill", "no_guest_pill", "signed_in_note", "account_credential"))
-             and n1["guest_sections"] == ["Learn"] and len(n1["path_cards"]) >= 1 and n1["account_sections"] == ["Home", "Learn", "Program", "Downloads", "Notifications", "Settings"] and len(n1["parity"]) == 2)
+    n1_ok = (all(n1.get(k) for k in ("guest_screen", "lead", "guest_pill", "frame", "catalog_in_pages", "guest_note", "guest_open_settings", "paths_heading", "path_units", "path_tagline", "guest_no_credential", "paths_list_read", "chrome_inside",
+                                     "path_opened", "path_title", "path_get_slug", "signed_in", "account_screen", "account_pill", "no_guest_pill", "signed_in_note", "account_credential"))
+             and n1["guest_sections"] == ["Learn"] and len(n1["path_cards"]) >= 1 and not n1["path_miss"] and n1["account_sections"] == ["Home", "Learn", "Program", "Downloads", "Notifications", "Settings"] and len(n1["parity"]) == 2)
     add("C42-N01", n1_ok,
-        f"guest: screen {n1['guest_screen']} lead {n1['lead']} pill {n1['guest_pill']}; frame {n1['frame']} with the catalog in the pages card {n1['catalog_in_pages']}; Your place: note {n1['guest_note']}, Open Settings {n1['guest_open_settings']}, sections {n1['guest_sections']}; Learning paths {n1['paths_heading']} cards {n1['path_cards']} with units {n1['path_units']}; "
-        f"guest calls {n1['guest_calls']} without a credential {n1['guest_no_credential']} (paths.list {n1['paths_list_read']}); learner chrome inside the region {n1['chrome_inside']}; a card opened its page {n1['path_opened']} with the trail {n1['trail']}; "
+        f"guest: screen {n1['guest_screen']} lead {n1['lead']} pill {n1['guest_pill']}; frame {n1['frame']} with the catalog in the pages card {n1['catalog_in_pages']}; Your place: note {n1['guest_note']}, Open Settings {n1['guest_open_settings']}, sections {n1['guest_sections']}; Learning paths {n1['paths_heading']} cards {n1['path_cards']} with units {n1['path_units']} and the catalog's tagline {n1['path_tagline']}; "
+        f"guest calls {n1['guest_calls']} without a credential {n1['guest_no_credential']} (paths.list {n1['paths_list_read']}); learner chrome inside the region {n1['chrome_inside']}; a card opened its page {n1['path_opened']}: the path's title as the page heading {n1['path_title']}, not a miss {not n1['path_miss']}, read by its slug ({n1['path_calls']}; paths.get with the slug {n1['path_get_slug']}), the trail naming it {n1['trail']}; "
         f"signed in {n1['signed_in']}: pill {n1['account_pill']} (guest pill gone {n1['no_guest_pill']}), note {n1['signed_in_note']}, sections {n1['account_sections']}, calls {n1['account_calls']} with the credential {n1['account_credential']}; composites {sorted(n1['parity'].values())}",
         [run_rel, obs["tree_guest"], obs.get("tree_path"), obs["tree_account"]] + caps("academy-guest") + caps("academy-account") + sorted(n1["parity"].values()))
     lay = n2["layouts"]
-    ring_ok = (n2["ring"].get("diff") or 0) > 40
+    rings_ok = len(n2["rings"]) == 4 and all(ring_ok(r) for r in n2["rings"].values())
     layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["board"]["ok"] for v in lay.values()) \
         and sum(1 for v in lay.values() if v.get("width_1440")) == 2 and sum(1 for v in lay.values() if v.get("window_900x600")) == 2
-    add("C42-N02", n2["reach"]["section"] and n2["reach"]["card"] and ring_ok and layouts_ok,
-        f"Tab from the first section reached {n2['walk']} (a section {n2['reach']['section']}, a path card {n2['reach']['card']}); ring on a section link {n2['ring'].get('diff')} px; "
+    add("C42-N02", n2["reach"]["section"] and n2["reach"]["card"] and rings_ok and layouts_ok,
+        f"Tab from the first section reached {n2['walk']} (a section {n2['reach']['section']}, a path card {n2['reach']['card']}); focus rings against a plain capture focused on the page heading: "
+        + ", ".join(f"{k} ({r.get('focused')!r}, current {r.get('current')!r}) {r.get('diff')} px at median {r.get('contrast', {}).get('median_contrast')}:1 (lower quartile {r.get('contrast', {}).get('min_quartile_contrast')}:1)" for k, r in n2["rings"].items())
+        + f" — all four present and at least 3:1 {rings_ok}; "
         + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, board {v['board']}" for k, v in lay.items()),
         [run_rel] + [v["tree"] for v in lay.values()] + caps("layouts") + caps("academy-ring"))
 

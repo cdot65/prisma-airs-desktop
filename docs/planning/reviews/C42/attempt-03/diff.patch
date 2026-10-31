@@ -1,0 +1,2204 @@
+diff --git a/apps/desktop/src/v2/academy/academy.test.tsx b/apps/desktop/src/v2/academy/academy.test.tsx
+new file mode 100644
+index 00000000..0d3c27c7
+--- /dev/null
++++ b/apps/desktop/src/v2/academy/academy.test.tsx
+@@ -0,0 +1,384 @@
++/**
++ * C42: the Academy as R2App draws it (start=academy) around Academy's own
++ * learner pages over the native learner transport: the title row's pills,
++ * the frame (the pages beside Your place), the Learning paths row read
++ * through the generation's client, guest and account generations, sign-in
++ * routed to Settings, the offline pill, and the v2 shell mounting it.
++ */
++import { act, render, screen, waitFor, within } from '@testing-library/react'
++import userEvent from '@testing-library/user-event'
++import { beforeEach, describe, expect, it, vi } from 'vitest'
++import { createTRPCReact, getQueryKey } from '@trpc/react-query'
++import type { AnyRouter } from '@trpc/server'
++import { DesktopClient, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
++import { App } from '../../app'
++import { ACADEMY_ORIGIN, ACCOUNT, GUEST, academySnapshot, scriptedNative as academyNative } from '../../features/academy/test-support'
++import { scriptedNative } from '../../test/native'
++import { fxSwitcher } from '../fixtures'
++import { resetShellStore } from '../store'
++import { Academy, PATHS_LIST_KEY, themeFor } from './academy'
++
++beforeEach(() => resetShellStore())
++
++const PATH = {
++    id: 'path-runtime',
++    slug: 'runtime-path',
++    title: 'Runtime Security Path',
++    description: 'Protect prompts and responses at runtime.',
++    familyKey: 'prisma-airs',
++    iconKey: null,
++    tone: 'info',
++    courseCount: 1,
++    estMinutes: 30,
++    unitCount: 4,
++    unitsDone: 1,
++    locked: false,
++    lockReason: null,
++}
++const GATEWAY = {
++    ...PATH,
++    id: 'path-gateway',
++    slug: 'gateway-path',
++    title: 'AI Gateway Path',
++    description: 'Route and govern model traffic.',
++    familyKey: 'gateway',
++    unitsDone: 0,
++    estMinutes: 45,
++    locked: true,
++}
++
++/** The path's own page as `paths.get` returns it (the router's shape: the sections and their course cards). */
++const PATH_PAGE = {
++    id: PATH.id,
++    slug: PATH.slug,
++    title: PATH.title,
++    tagline: 'Protect prompts and responses at runtime.',
++    description: 'Scan what reaches the model and what comes back.',
++    level: 'associate',
++    programId: null,
++    iconKey: null,
++    tone: 'info',
++    sections: [
++        {
++            id: 'sec-1',
++            title: 'Foundations',
++            description: 'The scan loop and its verdicts.',
++            order: 0,
++            courses: [
++                {
++                    id: 'runtime-security',
++                    slug: 'runtime-security',
++                    title: 'Runtime Security Foundations',
++                    description: 'Scan prompts and responses at runtime.',
++                    level: 'associate',
++                    coursePurpose: null,
++                    iconKey: null,
++                    tone: 'info',
++                    estMinutes: 150,
++                    order: 0,
++                    unitCount: 4,
++                    unitsDone: 1,
++                    moduleCount: 2,
++                    modulesComplete: 0,
++                    status: 'published',
++                    teaser: null,
++                },
++            ],
++        },
++    ],
++}
++
++const replies = { 'paths.list': [PATH, GATEWAY], 'library.list': [] }
++
++describe('C42 Academy board', () => {
++    it('draws the chrome around the guest catalog: the pills, the frame, Your place, the Learning paths row from paths.list, through the guest generation only', async () => {
++        const native = academyNative(replies)
++        render(<Academy snapshot={academySnapshot(false)} client={native.client} onNavigate={vi.fn()} />)
++        expect(screen.getByRole('heading', { level: 1, name: 'AI Security Academy' })).toBeInTheDocument()
++        expect(screen.getByText('Learn each product with your own tenant beside you')).toBeInTheDocument()
++        expect(document.querySelector('[data-slot="academy-account"]')).toHaveTextContent('Browsing as a guest')
++        expect(document.querySelector('[data-slot="academy-offline-pill"]')).toBeNull()
++        // The learner pages in the left card, Academy's own catalog heading.
++        const pages = await screen.findByRole('region', { name: 'Academy pages' })
++        expect(await within(pages).findByRole('heading', { level: 1, name: 'What will you take up next?' })).toBeInTheDocument()
++        expect((await within(pages).findAllByText('Runtime Security Path')).length).toBeGreaterThan(0)
++        // Your place: the guest note, Open Settings and Learn only.
++        const place = screen.getByRole('region', { name: 'Your place' })
++        expect(within(place).getByText('Sign in from Settings to track progress and take knowledge checks.')).toBeInTheDocument()
++        expect(within(place).getByRole('button', { name: 'Open Settings' })).toBeInTheDocument()
++        const nav = within(place).getByRole('navigation', { name: 'Academy sections' })
++        expect(
++            within(nav)
++                .getAllByRole('link')
++                .map((l) => l.textContent)
++        ).toEqual(['Learn'])
++        expect(within(nav).getByRole('link', { name: 'Learn' })).toHaveAttribute('aria-current', 'page')
++        // The Learning paths row: the catalog's paths as cards with their units.
++        const paths = await screen.findByRole('region', { name: 'Learning paths' })
++        const cards = await within(paths).findAllByRole('link', { name: /^Open / })
++        expect(cards.map((c) => c.getAttribute('aria-label'))).toEqual(['Open Runtime Security Path', 'Open AI Gateway Path'])
++        expect(cards[0]).toHaveTextContent('1 of 4 units · 30 min')
++        expect(within(cards[0]!).getByRole('progressbar', { name: 'Runtime Security Path progress' })).toHaveAttribute('aria-valuenow', '25')
++        expect(cards[1]).toHaveTextContent('Locked')
++        // Every call went through the guest generation, as public queries.
++        expect(native.calls.map((i) => [i.procedure, i.procedureKind, i.learner])).toEqual(expect.arrayContaining([['paths.list', 'query', GUEST]]))
++        expect(new Set(native.calls.map((i) => i.learner))).toEqual(new Set([GUEST]))
++        expect(document.querySelector('[data-slot="academy-v2"]')).not.toBeNull()
++        expect(screen.queryByRole('link', { name: /sign up/i })).toBeNull()
++    })
++
++    it('a path card opens the real path page within the destination: read by its slug, titled by the path, named in the trail', async () => {
++        const user = userEvent.setup()
++        // `paths.get` answers the catalog's slug only (the server's NOT_FOUND for any other).
++        const native = academyNative((procedure, _learner, input) =>
++            procedure === 'paths.list'
++                ? [PATH, GATEWAY]
++                : procedure === 'library.list'
++                  ? []
++                  : procedure === 'paths.get' && (input as { pathSlug?: string })?.pathSlug === PATH.slug
++                    ? PATH_PAGE
++                    : undefined
++        )
++        render(<Academy snapshot={academySnapshot(false)} client={native.client} onNavigate={vi.fn()} />)
++        const paths = await screen.findByRole('region', { name: 'Learning paths' })
++        await user.click(await within(paths).findByRole('link', { name: 'Open Runtime Security Path' }))
++        const pages = await screen.findByRole('region', { name: 'Academy pages' })
++        expect(await within(pages).findByRole('heading', { level: 1, name: 'Runtime Security Path' })).toBeInTheDocument()
++        expect(within(pages).queryByRole('heading', { level: 1, name: 'What will you take up next?' })).toBeNull()
++        expect(within(pages).queryByText('Path not found.')).toBeNull()
++        expect(within(pages).getByText('Foundations')).toBeInTheDocument()
++        expect(within(pages).getByText('Runtime Security Foundations')).toBeInTheDocument()
++        const trail = within(pages).getByRole('navigation', { name: 'Academy location' })
++        expect(trail).toHaveTextContent('Runtime Security Path')
++        const get = native.calls.filter((i) => i.procedure === 'paths.get')
++        expect(get.map((i) => JSON.parse(i.input ?? '{}'))).toEqual([{ json: { pathSlug: 'runtime-path' } }])
++    })
++
++    it('the Learning paths row reads through the key Academy’s own paths.list query uses, holding the raw reply', () => {
++        // tRPC react-query's key for `trpc.paths.list.useQuery()`: `utils.paths.list.invalidate()` (after a course reset
++        // or an enrollment change) matches it by prefix, and the embed's prefetch fills the same entry.
++        const t = createTRPCReact<AnyRouter>() as unknown as { paths: { list: unknown } }
++        const key = (getQueryKey as unknown as (procedure: unknown, input?: unknown, type?: string) => unknown)(t.paths.list, undefined, 'query')
++        expect(PATHS_LIST_KEY).toEqual(key)
++    })
++
++    it('Your place follows the snapshot while the router stays mounted', async () => {
++        const native = academyNative(replies)
++        const signedIn = academySnapshot(true, ACCOUNT)
++        const view = render(<Academy snapshot={signedIn} client={native.client} onNavigate={vi.fn()} />)
++        const pages = await screen.findByRole('region', { name: 'Academy pages' })
++        const heading = await within(pages).findByRole('heading', { level: 1 })
++        expect(document.querySelector('[data-slot="academy-drafts"]')).toBeNull()
++        // The same generation (same learner, same account): the router is not rebuilt; the right card re-renders.
++        await act(async () =>
++            view.rerender(
++                <Academy
++                    snapshot={academySnapshot(true, ACCOUNT, { localDrafts: [{ id: 'd1', kind: 'lab', attemptId: 'a1', unitId: 'u1', title: 'Lab 1', savedAt: '2026-10-30T00:00:00Z' } as never] })}
++                    client={native.client}
++                    onNavigate={vi.fn()}
++                />
++            )
++        )
++        expect(document.querySelector('[data-slot="academy-drafts"]')).toHaveTextContent('1 piece of lab work saved on this Mac, not sent')
++        expect(within(screen.getByRole('region', { name: 'Academy pages' })).getByRole('heading', { level: 1 })).toBe(heading)
++    })
++
++    it('signed in: the learner’s name pill, the account sections, the drafts note; a new generation starts its own cache', async () => {
++        const titled = (title: string) => ({ ...PATH, title })
++        const native = academyNative((procedure, learner) =>
++            procedure === 'paths.list' ? [learner === GUEST ? titled('Guest Path') : titled('Account Path')] : procedure === 'library.list' ? [] : undefined
++        )
++        const view = render(<Academy snapshot={academySnapshot(false)} client={native.client} onNavigate={vi.fn()} />)
++        expect(await screen.findByRole('link', { name: 'Open Guest Path' })).toBeInTheDocument()
++        await act(async () =>
++            view.rerender(
++                <Academy
++                    snapshot={academySnapshot(true, ACCOUNT, { localDrafts: [{ id: 'd1', kind: 'lab', attemptId: 'a1', unitId: 'u1', title: 'Lab 1', savedAt: '2026-10-30T00:00:00Z' } as never] })}
++                    client={native.client}
++                    onNavigate={vi.fn()}
++                />
++            )
++        )
++        expect(document.querySelector('[data-slot="academy-account"]')).toHaveTextContent('Ada Lovelace')
++        expect(screen.queryByText('Browsing as a guest')).toBeNull()
++        expect(screen.queryByRole('link', { name: 'Open Guest Path' })).toBeNull()
++        expect(await screen.findByRole('link', { name: 'Open Account Path' })).toBeInTheDocument()
++        const place = screen.getByRole('region', { name: 'Your place' })
++        expect(within(place).getByText('Signed in as Ada Lovelace. Progress and knowledge checks are kept by Academy.')).toBeInTheDocument()
++        const nav = within(place).getByRole('navigation', { name: 'Academy sections' })
++        expect(
++            within(nav)
++                .getAllByRole('link')
++                .map((l) => l.textContent)
++        ).toEqual(['Home', 'Learn', 'Program', 'Downloads', 'Notifications', 'Settings'])
++        expect(document.querySelector('[data-slot="academy-drafts"]')).toHaveTextContent('1 piece of lab work saved on this Mac, not sent')
++        const order = native.calls.map((i) => i.learner)
++        expect(order.indexOf(ACCOUNT)).toBeGreaterThan(order.lastIndexOf(GUEST))
++    })
++
++    it('says when Academy cannot be reached (pill and notice) and counts the downloads kept on this Mac', async () => {
++        const native = academyNative(replies)
++        const offline = {
++            reachable: false,
++            state: 'ready' as const,
++            downloads: [{ courseId: 'c1', title: 'Runtime basics', status: 'current', version: '1', keptAt: '2026-10-30T00:00:00Z' } as never],
++        }
++        render(<Academy snapshot={academySnapshot(true, ACCOUNT, offline)} client={native.client} onNavigate={vi.fn()} />)
++        expect(document.querySelector('[data-slot="academy-offline-pill"]')).toHaveTextContent('Academy cannot be reached')
++        expect(document.querySelector('[data-slot="academy-downloads-pill"]')).toHaveTextContent('1 course offline')
++        expect(await screen.findByText(/Academy can't be reached\. Downloaded courses/)).toBeInTheDocument()
++    })
++
++    it('routes sign-in to Settings and moves focus to the catalog heading on the way back; routes outside this build say so', async () => {
++        const user = userEvent.setup()
++        const onNavigate = vi.fn()
++        const native = academyNative(replies)
++        const view = render(<Academy snapshot={academySnapshot(false)} client={native.client} onNavigate={onNavigate} initialPath='/sign-in' />)
++        const pages = await screen.findByRole('region', { name: 'Academy pages' })
++        expect(await within(pages).findByRole('heading', { level: 1, name: 'Sign in to continue' })).toBeInTheDocument()
++        await user.click(within(pages).getByRole('button', { name: 'Open Settings' }))
++        expect(onNavigate).toHaveBeenCalledWith('settings')
++        await user.click(within(pages).getByRole('link', { name: 'Back to the catalog' }))
++        const heading = await within(pages).findByRole('heading', { level: 1, name: 'What will you take up next?' })
++        await waitFor(() => expect(heading).toHaveFocus())
++        view.unmount()
++        render(<Academy snapshot={academySnapshot(true)} client={native.client} onNavigate={onNavigate} initialPath='/admin' />)
++        expect(await screen.findByRole('heading', { level: 1, name: 'Not in the desktop app' })).toBeInTheDocument()
++    })
++
++    it('rereads the Learning paths row when a unit is completed or a knowledge check is submitted in the same generation, and after an uncertain completion reads Academy back without replaying it (attempt-02 R2)', async () => {
++        const user = userEvent.setup()
++        const sibling = (id: string, kind: string, order: number, title: string) => ({ id, kind, order, slug: String(order), title, xp: 100, estMinutes: 5, status: 'not_started', locked: false })
++        const MODULE = {
++            moduleId: 'm1',
++            title: 'Runtime module',
++            description: '',
++            concepts: [],
++            estMinutes: 10,
++            order: 1,
++            unitsDone: 0,
++            unitCount: 2,
++            percent: 0,
++            xpEarned: 0,
++            xpTotal: 200,
++            complete: false,
++            reuseCount: 1,
++            resumeUnitId: 'u1',
++        }
++        const LESSON = {
++            id: 'u1',
++            moduleId: 'm1',
++            kind: 'content',
++            order: 1,
++            slug: '1',
++            title: 'Only lesson',
++            xp: 100,
++            estMinutes: 5,
++            status: 'not_started',
++            bodyHtml: '<p>Text.</p>',
++            objectives: [],
++            inlineChecks: [],
++            sourceLessonId: null,
++            siblings: [sibling('u1', 'content', 1, 'Only lesson'), sibling('u-kc', 'knowledge_check', 2, 'A check')],
++            pathContext: { course: { courseId: 'runtime-security', title: 'Runtime Security Foundations', slug: 'runtime-security' }, moduleTitle: 'Runtime module', modules: [MODULE] },
++        }
++        const CHECK = { ...LESSON, id: 'u-kc', kind: 'knowledge_check', order: 2, slug: '2', title: 'A check', quizDrawCount: 1 }
++        const ATTEMPT = {
++            attemptId: '00000000-0000-4000-8000-000000000009',
++            unitId: 'u-kc',
++            questions: [
++                {
++                    id: 'q1',
++                    type: 'mcq',
++                    prompt: 'Which input is untrusted?',
++                    options: ['Retrieved content', 'Constants'],
++                    weight: 1,
++                    scope: 'module',
++                    lessonId: null,
++                    moduleId: 'm1',
++                    objectiveId: 'o1',
++                },
++            ],
++        }
++        // Academy's own count of units done on the path: the row must show it after each change.
++        let done = 1
++        let completes = 0
++        const native = academyNative((procedure, _learner, input) => {
++            switch (procedure) {
++                case 'paths.list':
++                    return [{ ...PATH, unitsDone: done }]
++                case 'library.list':
++                    return []
++                case 'units.get':
++                    return (input as { unitId?: string })?.unitId === 'u-kc' ? CHECK : LESSON
++                case 'units.listByModule':
++                    return LESSON.siblings
++                case 'units.listByPath':
++                    return [MODULE]
++                case 'units.complete':
++                    completes += 1
++                    // The first completion's receipt is lost: Academy may have recorded it.
++                    if (completes === 1) return { __result__: { kind: 'failed', failure: 'network', outcome: 'unknown' } }
++                    done = 2
++                    return { completed: true, award: null }
++                case 'units.startKnowledgeCheck':
++                    return ATTEMPT
++                case 'units.checkKcAnswer':
++                    return { correct: true, explanation: 'Yes.', correctValue: 0 }
++                case 'units.submitKnowledgeCheck':
++                    done = 3
++                    return { award: null, scorePercent: 100, passed: true, perObjective: [], results: [{ questionId: 'q1', correct: true }] }
++                default:
++                    return undefined
++            }
++        })
++        render(<Academy snapshot={academySnapshot(true, ACCOUNT)} client={native.client} onNavigate={vi.fn()} initialPath='/units/u1' />)
++        const mounted = document.querySelector('[data-slot="academy-v2"]')
++        await screen.findByRole('heading', { level: 1, name: 'Only lesson' })
++        const paths = await screen.findByRole('region', { name: 'Learning paths' })
++        expect(await within(paths).findByText('1 of 4 units · 30 min')).toBeInTheDocument()
++        const reads = () => native.calls.filter((i) => i.procedure === 'paths.list').length
++        expect(reads()).toBe(1)
++        // An uncertain completion: Academy's truth is read back (the row too), the completion is not replayed.
++        await user.click(screen.getByRole('button', { name: /Finish module|Complete & continue/ }))
++        await waitFor(() => expect(screen.getAllByRole('alert').some((a) => a.textContent?.includes('may have recorded'))).toBe(true))
++        await waitFor(() => expect(reads()).toBe(2))
++        expect(completes).toBe(1)
++        expect(within(paths).getByText('1 of 4 units · 30 min')).toBeInTheDocument()
++        // An ordinary completion: the row shows the new count without remounting the Academy.
++        await user.click(screen.getByRole('button', { name: /Finish module|Complete & continue/ }))
++        expect(await within(paths).findByText('2 of 4 units · 30 min')).toBeInTheDocument()
++        expect(completes).toBe(2)
++        // The knowledge check that follows: its submission moves the count again.
++        await user.click(await screen.findByRole('button', { name: 'Start knowledge check' }))
++        await user.click(await screen.findByLabelText('Retrieved content', { exact: true }))
++        await user.click(screen.getByRole('button', { name: 'Submit' }))
++        expect(await within(paths).findByText('3 of 4 units · 30 min')).toBeInTheDocument()
++        expect(native.calls.filter((i) => i.procedure === 'units.submitKnowledgeCheck')).toHaveLength(1)
++        expect(document.querySelector('[data-slot="academy-v2"]')).toBe(mounted)
++    })
++
++    it('maps the Rust-owned appearance to the learner host’s theme', () => {
++        expect(themeFor('dark')).toBe('gruvbox')
++        expect(themeFor('light')).toBe('paper')
++        expect(['gruvbox', 'paper']).toContain(themeFor('system'))
++    })
++
++    it('mounts in the v2 shell for the Academy destination (the shell hands the Rust-owned appearance to the learner host through themeFor)', async () => {
++        const base = fxSwitcher()
++        const snapshot: ShellSnapshot = {
++            ...base,
++            activeFeature: 'academy',
++            learner: GUEST,
++            academyOrigin: ACADEMY_ORIGIN,
++            academy: { state: 'signedOut' },
++            academyOffline: { state: 'signedOut', reachable: true, downloads: [], localDrafts: [] },
++        }
++        const native = scriptedNative(snapshot)
++        render(<App client={new DesktopClient(native.transport)} />)
++        expect(await screen.findByRole('heading', { level: 1, name: 'AI Security Academy' })).toBeInTheDocument()
++        expect(document.querySelector('[data-slot="academy-v2"]')).not.toBeNull()
++        expect(document.querySelector('[data-slot="academy"]')).toBeNull()
++        expect(screen.getByRole('region', { name: 'Your place' })).toBeInTheDocument()
++    })
++})
+diff --git a/apps/desktop/src/v2/academy/academy.tsx b/apps/desktop/src/v2/academy/academy.tsx
+new file mode 100644
+index 00000000..f01b8cff
+--- /dev/null
++++ b/apps/desktop/src/v2/academy/academy.tsx
+@@ -0,0 +1,697 @@
++import { createContext, forwardRef, lazy, Suspense, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
++import { useQuery, useQueryClient } from '@tanstack/react-query'
++import { createMemoryHistory, createRootRoute, createRoute, createRouter, Link, Outlet, redirect, RouterProvider } from '@tanstack/react-router'
++import {
++    AssessmentIntroPage,
++    AssessmentPage,
++    CertificatePage,
++    CompletionMoments,
++    CoursePage,
++    currentCourseSlug,
++    DossierPage,
++    HomePage,
++    IdentityPracticalPage,
++    LEARNER_ACCOUNT_NAV,
++    LEARNER_NAV,
++    LearnerAccountPage,
++    LearnPage,
++    MyCertificatePage,
++    NotificationsPage,
++    OnboardingPage,
++    OrientationPage,
++    PathLandingPage,
++    ProgramHubPage,
++    ShiftEntryPage,
++    ShopPage,
++    UnitPage,
++    useLearnerPageHeader,
++    WeeklyBoardPage,
++} from '@ai-security-academy/learner'
++import type { DesktopClient, FeatureId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
++import { LearnerProvider, useLearnerTrpc } from '../../features/academy/learner-provider'
++import { DownloadsPage, OfflineNotice, OfflineWorkProvider } from '../../features/academy/offline-work'
++import { Btn } from '../controls'
++import { Glyph, type GlyphName } from '../icons'
++import { ACADEMY_COPY as C } from './copy'
++
++export interface AcademyProps {
++    snapshot: ShellSnapshot
++    client: DesktopClient
++    onNavigate: (id: FeatureId) => void
++    /** The learner path to open (default `/learn`). */
++    initialPath?: string
++}
++
++// Fixture builds only; never loaded otherwise.
++const LearnerCallProbe = lazy(() => import('../../features/academy/learner-call-probe'))
++
++const faint = { color: 'var(--v2-faint)' }
++const soft = { color: 'var(--v2-soft)' }
++const CARD = { background: 'var(--v2-paper)', border: '1px solid var(--v2-rule)', borderRadius: 12 }
++
++/** The Rust-owned appearance as the learner host's theme. */
++export function themeFor(appearance: ShellSnapshot['appearance']): 'gruvbox' | 'paper' {
++    if (appearance === 'dark') return 'gruvbox'
++    if (appearance === 'light') return 'paper'
++    return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'gruvbox' : 'paper'
++}
++
++/** A learning path as Academy's catalog lists it (the fields the row draws). */
++interface PathRow {
++    id: string
++    slug: string
++    title: string
++    description: string
++    familyKey: string | null
++    unitCount: number
++    unitsDone: number
++    estMinutes: number | null
++    locked: boolean
++}
++
++/**
++ * The learner's place (the right card's state lines), provided by `Academy`
++ * from the snapshot and read by the router's root on every render, so the
++ * card follows the snapshot while the router (memoised per generation)
++ * stays mounted.
++ */
++const PlaceContext = createContext<React.ReactNode>(null)
++
++/**
++ * The React Query key Academy's own `trpc.paths.list.useQuery()` uses
++ * (tRPC react-query: the procedure path split, then `{ type: 'query' }`
++ * with no input). Sharing it means one cache entry per generation: the
++ * embed's prefetch fills it, and `utils.paths.list.invalidate()` after a
++ * course reset or an enrollment change refetches this row too. The entry
++ * holds the procedure's raw reply; the row reads it through `pathRows`.
++ */
++export const PATHS_LIST_KEY = [['paths', 'list'], { type: 'query' }] as const
++
++/** Academy's mutations that move a path's progress (tRPC mutation keys: the procedure path). */
++export const PROGRESS_MUTATIONS: readonly (readonly string[])[] = [
++    ['units', 'complete'],
++    ['units', 'submitKnowledgeCheck'],
++]
++
++function pathRows(rows: unknown): PathRow[] {
++    if (!Array.isArray(rows)) return []
++    return rows.flatMap((r) => {
++        if (!r || typeof r !== 'object') return []
++        const o = r as Record<string, unknown>
++        if (typeof o.id !== 'string' || typeof o.slug !== 'string' || typeof o.title !== 'string') return []
++        return [
++            {
++                id: o.id,
++                slug: o.slug,
++                title: o.title,
++                description: typeof o.description === 'string' ? o.description : '',
++                familyKey: typeof o.familyKey === 'string' ? o.familyKey : null,
++                unitCount: typeof o.unitCount === 'number' ? o.unitCount : 0,
++                unitsDone: typeof o.unitsDone === 'number' ? o.unitsDone : 0,
++                estMinutes: typeof o.estMinutes === 'number' ? o.estMinutes : null,
++                locked: o.locked === true,
++            },
++        ]
++    })
++}
++
++const FAMILY_GLYPH: Record<string, GlyphName> = { 'prisma-airs': 'shield', runtime: 'shield', gateway: 'route', 'red-teaming': 'cross', models: 'box', skills: 'code' }
++
++/**
++ * Builds the in-memory learner router (one per mounted generation), the
++ * legacy destination's routes: reading routes serve guests too; account
++ * routes ask a guest to sign in. The root draws the prototype's frame
++ * around the page: the page on the left, the learner's place on the right,
++ * the Learning paths row beneath.
++ */
++function academyRouter(onNavigate: (id: FeatureId) => void, initialPath: string, signedIn: boolean) {
++    const root = createRootRoute({
++        component: () => {
++            const place = useContext(PlaceContext)
++            return (
++                <>
++                    <div className='grid min-w-0' style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: 16 }} data-slot='academy-frame'>
++                        <section aria-label={C.pages} className='flex min-w-0 flex-col' style={{ ...CARD, padding: '20px 22px', gap: 10 }} data-slot='academy-pages'>
++                            <LearnerTrail />
++                            <LearnerStatus />
++                            <Outlet />
++                        </section>
++                        <section aria-label={C.place} className='flex min-w-0 flex-col self-start' style={{ ...CARD, padding: '20px 22px', gap: 10 }} data-slot='academy-place'>
++                            <span className='text-[11px] font-bold tracking-[0.05em] uppercase' style={faint}>
++                                {C.place}
++                            </span>
++                            {place}
++                            <AcademyNav signedIn={signedIn} />
++                            <OfflineNotice />
++                        </section>
++                    </div>
++                    <PathsRow />
++                </>
++            )
++        },
++        notFoundComponent: () => <NotInThisBuild />,
++    })
++    const signInFirst = () => <SignInHere onNavigate={onNavigate} />
++    const account = (path: string, Page: () => React.ReactNode) => createRoute({ getParentRoute: () => root, path, component: signedIn ? () => <>{Page()}</> : signInFirst })
++    const index = account('/', () => <HomePage />)
++    const program = account('/program', () => <ProgramHubPage />)
++    const downloads = account('/downloads', () => <DownloadsPage />)
++    const assessment = account('/assessment', () => <AssessmentPage />)
++    const assessmentIntro = account('/assessment/intro', () => <AssessmentIntroPage />)
++    const identityPractical = account('/assessment/identity-practical', () => <IdentityPracticalPage />)
++    const exam = createRoute({
++        getParentRoute: () => root,
++        path: '/exam',
++        beforeLoad: () => {
++            throw redirect({ to: '/assessment', replace: true })
++        },
++    })
++    const certificates = account('/certificate', () => <MyCertificatePage />)
++    const certificate = createRoute({
++        getParentRoute: () => root,
++        path: '/certificate/$certId',
++        component: signedIn
++            ? function CertificateRoute() {
++                  return <CertificatePage certId={certificate.useParams().certId} />
++              }
++            : signInFirst,
++    })
++    const shift = account('/shift', () => <ShiftEntryPage />)
++    const dossier = account('/dossier', () => <DossierPage />)
++    const leaderboard = account('/leaderboard', () => <WeeklyBoardPage />)
++    const settings = account('/settings', () => <LearnerAccountPage />)
++    const notifications = account('/notifications', () => <NotificationsPage />)
++    const shop = account('/shop', () => <ShopPage />)
++    const orientation = account('/orientation', () => <OrientationPage />)
++    const onboarding = account('/onboarding', () => <OnboardingPage />)
++    const learn = createRoute({ getParentRoute: () => root, path: '/learn', component: LearnPage })
++    const paths = createRoute({
++        getParentRoute: () => root,
++        path: '/paths',
++        beforeLoad: () => {
++            throw redirect({ to: '/learn', replace: true })
++        },
++    })
++    const path = createRoute({
++        getParentRoute: () => root,
++        path: '/paths/$pathSlug',
++        component: function PathRoute() {
++            return <PathLandingPage pathSlug={path.useParams().pathSlug} />
++        },
++    })
++    const course = createRoute({
++        getParentRoute: () => root,
++        path: '/courses/$courseSlug',
++        beforeLoad: ({ params }) => {
++            const current = currentCourseSlug(params.courseSlug)
++            if (current) throw redirect({ to: '/courses/$courseSlug', params: { courseSlug: current }, replace: true })
++        },
++        component: function CourseRoute() {
++            return <CoursePage courseSlug={course.useParams().courseSlug} />
++        },
++    })
++    const unit = createRoute({
++        getParentRoute: () => root,
++        path: '/units/$unitId',
++        component: function UnitRoute() {
++            return <UnitPage unitId={unit.useParams().unitId} />
++        },
++    })
++    const signIn = createRoute({ getParentRoute: () => root, path: '/sign-in', component: () => <SignInHere onNavigate={onNavigate} /> })
++    return createRouter({
++        routeTree: root.addChildren([
++            index,
++            learn,
++            paths,
++            path,
++            course,
++            unit,
++            signIn,
++            program,
++            assessment,
++            assessmentIntro,
++            identityPractical,
++            exam,
++            certificates,
++            certificate,
++            shift,
++            dossier,
++            leaderboard,
++            settings,
++            notifications,
++            shop,
++            orientation,
++            onboarding,
++            downloads,
++        ]),
++        history: createMemoryHistory({ initialEntries: [initialPath] }),
++        defaultPreload: false,
++        defaultErrorComponent: PageFailed,
++    })
++}
++
++/** Academy's own sections (guests see Learn only) and, signed in, Downloads, Notifications and Settings. */
++function AcademyNav({ signedIn }: { signedIn: boolean }) {
++    const items = LEARNER_NAV.filter((item) => signedIn || item.to === '/learn')
++    return (
++        <nav aria-label={C.sections} data-slot='academy-nav' className='flex flex-wrap items-center' style={{ gap: 4 }}>
++            {items.map((item) => (
++                <NavLink key={item.to} to={item.to} label={item.label} />
++            ))}
++            {signedIn ? (
++                <span data-slot='academy-account-nav' className='flex flex-wrap' style={{ gap: 4 }}>
++                    <NavLink to='/downloads' label={C.downloadsLink} />
++                    {LEARNER_ACCOUNT_NAV.map((item) => (
++                        <NavLink key={item.to} to={item.to} label={item.label} />
++                    ))}
++                </span>
++            ) : null}
++        </nav>
++    )
++}
++
++function NavLink({ to, label }: { to: string; label: string }) {
++    return (
++        <Link
++            to={to}
++            activeOptions={{ exact: to === '/' }}
++            activeProps={{ 'aria-current': 'page', style: { background: 'var(--v2-acc-soft)', color: 'var(--v2-ink)' } }}
++            className='inline-flex h-8 items-center rounded-[7px] px-3 text-[13px] font-medium'
++            style={{ color: 'var(--v2-soft)' }}
++        >
++            {label}
++        </Link>
++    )
++}
++
++/** Session-critical status a learner page publishes (the assessment's timer), kept in view. */
++function LearnerStatus() {
++    const { status } = useLearnerPageHeader()
++    if (!status) return null
++    return (
++        <div data-slot='academy-status' className='sticky top-0 z-10 flex min-h-11 items-center justify-end gap-3 py-2' style={{ background: 'var(--v2-paper)' }}>
++            {status}
++        </div>
++    )
++}
++
++/** The trail each learner page publishes (Learn › Course › Unit), as links within the destination. */
++function LearnerTrail() {
++    const { breadcrumbs } = useLearnerPageHeader()
++    if (breadcrumbs.length === 0) return null
++    return (
++        <nav aria-label='Academy location' data-slot='academy-trail'>
++            <ol className='flex flex-wrap items-center text-[13px]' style={{ gap: 4, ...soft }}>
++                {breadcrumbs.map((crumb, index) => {
++                    const last = index === breadcrumbs.length - 1
++                    return (
++                        <li key={`${index}-${crumb.label}`} className='flex items-center' style={{ gap: 4 }}>
++                            {crumb.to && !last ? (
++                                <Link to={crumb.to} className='inline-flex min-h-8 items-center underline'>
++                                    {crumb.label}
++                                </Link>
++                            ) : (
++                                <span aria-current={last ? 'page' : undefined} style={last ? { color: 'var(--v2-ink)' } : undefined}>
++                                    {crumb.label}
++                                </span>
++                            )}
++                            {last ? null : <span aria-hidden='true'>›</span>}
++                        </li>
++                    )
++                })}
++            </ol>
++        </nav>
++    )
++}
++
++/** The Learning paths row: Academy's paths as its catalog lists them for this generation, read through the learner client. */
++function PathsRow() {
++    const trpc = useLearnerTrpc() as unknown as { paths: { list: { query(): Promise<unknown> } } }
++    const queryClient = useQueryClient()
++    const query = useQuery({
++        queryKey: PATHS_LIST_KEY,
++        queryFn: () => trpc.paths.list.query(),
++    })
++    // The row stays mounted across the learner's routes, and Academy's own completion hooks refresh the unit,
++    // course and dashboard rollups but not paths.list. A unit completion or a knowledge-check submission that
++    // settles in this generation's cache rereads the row: on success for the new counts, on an error (an
++    // uncertain outcome included) to read Academy's truth back without replaying the mutation.
++    useEffect(
++        () =>
++            queryClient.getMutationCache().subscribe((event) => {
++                if (event.type !== 'updated' || (event.action.type !== 'success' && event.action.type !== 'error')) return
++                const key = event.mutation.options.mutationKey?.[0]
++                if (Array.isArray(key) && PROGRESS_MUTATIONS.some((m) => m.length === key.length && m.every((p, i) => p === key[i]))) {
++                    void queryClient.invalidateQueries({ queryKey: PATHS_LIST_KEY })
++                }
++            }),
++        [queryClient]
++    )
++    const rows = pathRows(query.data)
++    return (
++        <section aria-labelledby='academy-paths' className='flex flex-col' style={{ gap: 12 }} data-slot='academy-paths'>
++            <h2 id='academy-paths' className='text-[15px] font-bold' style={{ marginTop: 6 }}>
++                {C.paths}
++            </h2>
++            {query.isPending ? (
++                <p role='status' className='text-[13px]' style={faint}>
++                    {C.pathsReading}
++                </p>
++            ) : query.isError ? (
++                <p role='alert' className='text-[13px]' style={faint}>
++                    {C.pathsFailed}
++                </p>
++            ) : rows.length === 0 ? (
++                <p className='text-[13px]' style={faint}>
++                    {C.pathsEmpty}
++                </p>
++            ) : (
++                <div className='grid' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }} data-slot='academy-path-cards'>
++                    {rows.map((p) => {
++                        const pct = p.unitCount > 0 ? Math.round((100 * p.unitsDone) / p.unitCount) : 0
++                        return (
++                            <Link
++                                key={p.id}
++                                to='/paths/$pathSlug'
++                                params={{ pathSlug: p.slug }}
++                                aria-label={C.openPath(p.title)}
++                                className='flex min-w-0 flex-col'
++                                style={{ ...CARD, padding: '18px 20px', gap: 10, color: 'var(--v2-ink)' }}
++                                data-slot='academy-path'
++                            >
++                                <span className='flex items-center' style={{ gap: 9 }}>
++                                    <span className='grid shrink-0 place-items-center rounded-[8px]' style={{ width: 28, height: 28, background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
++                                        <Glyph name={FAMILY_GLYPH[p.familyKey ?? ''] ?? 'cap'} size={14} color='var(--v2-soft)' />
++                                    </span>
++                                    <b className='min-w-0 truncate'>{p.title}</b>
++                                    {p.locked ? (
++                                        <span className='ml-auto text-[12px]' style={faint}>
++                                            {C.pathLocked}
++                                        </span>
++                                    ) : null}
++                                </span>
++                                <span className='text-[12px]' style={{ minHeight: 32, ...soft }}>
++                                    {p.description}
++                                </span>
++                                <span
++                                    className='rounded-full'
++                                    style={{ height: 5, background: 'var(--v2-inset)' }}
++                                    role='progressbar'
++                                    aria-valuemin={0}
++                                    aria-valuemax={100}
++                                    aria-valuenow={pct}
++                                    aria-label={`${p.title} progress`}
++                                >
++                                    <span className='block h-full rounded-full' style={{ width: `${pct}%`, background: 'var(--v2-acc)' }} />
++                                </span>
++                                <span className='text-[12px]' style={faint}>
++                                    {C.pathMeta(p.unitCount, p.unitsDone, p.estMinutes)}
++                                </span>
++                            </Link>
++                        )
++                    })}
++                </div>
++            )}
++        </section>
++    )
++}
++
++function SignInHere({ onNavigate }: { onNavigate: (id: FeatureId) => void }) {
++    return (
++        <section aria-labelledby='academy-sign-in' className='flex flex-col' style={{ gap: 12, padding: '20px 0' }}>
++            <h1 id='academy-sign-in' className='text-[22px] font-bold'>
++                {C.signInTitle}
++            </h1>
++            <p className='text-[14px]' style={soft}>
++                {C.signInText}
++            </p>
++            <div className='flex items-center' style={{ gap: 10 }}>
++                <Btn tier='primary' onClick={() => onNavigate('settings')}>
++                    {C.openSettings}
++                </Btn>
++                <Link to='/learn' className='text-[13px] underline' style={soft}>
++                    {C.backToCatalog}
++                </Link>
++            </div>
++        </section>
++    )
++}
++
++function PageFailed() {
++    return (
++        <section aria-labelledby='academy-failed' className='flex flex-col' style={{ gap: 12, padding: '20px 0' }}>
++            <h1 id='academy-failed' className='text-[22px] font-bold'>
++                {C.failedTitle}
++            </h1>
++            <p className='text-[14px]' style={soft}>
++                {C.failedText}
++            </p>
++            <Link to='/learn' className='text-[13px] underline'>
++                {C.backToCatalog}
++            </Link>
++        </section>
++    )
++}
++
++function NotInThisBuild() {
++    return (
++        <section aria-labelledby='academy-later' className='flex flex-col' style={{ gap: 12, padding: '20px 0' }}>
++            <h1 id='academy-later' className='text-[22px] font-bold'>
++                {C.notHereTitle}
++            </h1>
++            <p className='rounded-[10px] text-[13px]' style={{ padding: '12px 14px', background: 'var(--v2-acc-soft)' }}>
++                {C.notHereText}
++            </p>
++            <Link to='/learn' className='text-[13px] underline'>
++                {C.backToCatalog}
++            </Link>
++        </section>
++    )
++}
++
++function focusHeading(heading: HTMLElement) {
++    if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1')
++    heading.focus()
++}
++
++/** Moves focus to the page heading after each navigation (keyboard and VoiceOver users). */
++function useHeadingFocus(container: React.RefObject<HTMLElement | null>, router: ReturnType<typeof academyRouter>) {
++    useEffect(() => {
++        let tries = 0
++        let frame = 0
++        const tryFocus = () => {
++            const active = document.activeElement
++            if (active && active !== document.body && !container.current?.contains(active)) return
++            const heading = container.current?.querySelector('[data-slot="academy-pages"] h1')
++            if (heading instanceof HTMLElement) {
++                focusHeading(heading)
++            } else if (tries++ < 300) {
++                frame = requestAnimationFrame(tryFocus)
++            }
++        }
++        const unsubscribe = router.subscribe('onResolved', ({ pathChanged }) => {
++            if (!pathChanged) return
++            tries = 0
++            cancelAnimationFrame(frame)
++            frame = requestAnimationFrame(tryFocus)
++        })
++        return () => {
++            unsubscribe()
++            cancelAnimationFrame(frame)
++        }
++    }, [container, router])
++}
++
++/**
++ * Lesson bodies are server-compiled HTML whose links are plain anchors. A
++ * learner path routes within the destination; an in-page anchor scrolls;
++ * any other address stays out of the window and the learner is told.
++ */
++function useLessonLinks(router: ReturnType<typeof academyRouter>) {
++    const [notice, setNotice] = useState<string | null>(null)
++    const onClick = useCallback(
++        (event: React.MouseEvent<HTMLElement>) => {
++            if (event.defaultPrevented) return
++            const anchor = (event.target as Element | null)?.closest?.('a[href]')
++            if (!anchor || !event.currentTarget.contains(anchor)) return
++            event.preventDefault()
++            const href = anchor.getAttribute('href') ?? ''
++            if (href.startsWith('#')) {
++                const target = href.length > 1 ? event.currentTarget.querySelector(`[id="${CSS.escape(href.slice(1))}"]`) : null
++                target?.scrollIntoView({ block: 'start' })
++                setNotice(null)
++                return
++            }
++            let url: URL
++            try {
++                url = new URL(href, window.location.href)
++            } catch {
++                setNotice(C.linkUnopenable)
++                return
++            }
++            if (url.origin === window.location.origin) {
++                setNotice(null)
++                void router.navigate({ to: `${url.pathname}${url.search}${url.hash}` })
++            } else if (url.protocol === 'https:' || url.protocol === 'http:') {
++                setNotice(C.linkOutside(url.host, url.href))
++            } else {
++                setNotice(C.linkUnopenable)
++            }
++        },
++        [router]
++    )
++    return { notice, onClick }
++}
++
++function AcademyRoutes({
++    onNavigate,
++    container,
++    initialPath,
++    signedIn,
++    learner,
++}: {
++    onNavigate: (id: FeatureId) => void
++    container: React.RefObject<HTMLElement | null>
++    initialPath: string
++    signedIn: boolean
++    /** The generation: the router (and its history) is rebuilt per learner reference. */
++    learner: string
++}) {
++    const navigate = useRef(onNavigate)
++    navigate.current = onNavigate
++    // eslint-disable-next-line react-hooks/exhaustive-deps -- `learner` keys the router to the generation
++    const router = useMemo(() => academyRouter((id) => navigate.current(id), initialPath, signedIn), [initialPath, signedIn, learner])
++    useHeadingFocus(container, router)
++    const links = useLessonLinks(router)
++    return (
++        <div onClick={links.onClick} className='flex min-w-0 flex-col' style={{ gap: 20 }}>
++            <p role='status' aria-live='polite' data-slot='academy-link-notice' className='text-[13px] empty:hidden' style={soft}>
++                {links.notice}
++            </p>
++            <RouterProvider router={router} />
++        </div>
++    )
++}
++
++/**
++ * The Academy as R2App draws it (C42): the title row with the learner's
++ * pills, the 1.4fr/1fr frame (Academy's own learner pages on the left,
++ * the learner's place on the right) and the Learning paths row, around
++ * the hosted learner pages with the Rust-owned theme. Signed out, the
++ * guest generation reads the public catalog; signed in, the account
++ * generation. Learner effects mount only here. The embed's content is
++ * Academy's own (P19); nothing here signs in or sends on its own.
++ */
++export const Academy = forwardRef<HTMLHeadingElement, AcademyProps>(function Academy({ snapshot, client, onNavigate, initialPath = '/learn' }, ref) {
++    const container = useRef<HTMLElement>(null)
++    useImperativeHandle(ref, () => {
++        const target = container.current
++        return {
++            focus: () => {
++                const heading = target?.querySelector('[data-slot="academy-pages"] h1')
++                if (heading instanceof HTMLElement) focusHeading(heading)
++                else target?.querySelector<HTMLElement>('h1')?.focus()
++            },
++        } as unknown as HTMLHeadingElement
++    })
++    const learner = snapshot.learner
++    const view = snapshot.academy
++    const offline = snapshot.academyOffline
++    const accountId = view.state === 'signedIn' ? view.accountId : null
++    const displayName = view.state === 'signedIn' ? view.displayName : null
++    const unreachable = !offline.reachable && offline.state !== 'signedOut'
++
++    const band = (
++        <div data-slot='page-header-v2' className='flex flex-wrap items-end' style={{ gap: 12 }}>
++            <div className='min-w-0'>
++                <h1 id='academy-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
++                    {C.title}
++                </h1>
++                <p className='text-[14px]' style={{ marginTop: 4, ...soft }}>
++                    {C.lead}
++                </p>
++            </div>
++            <span className='ml-auto flex flex-wrap items-center' style={{ gap: 8 }} data-slot='academy-pills'>
++                <span
++                    className='flex items-center rounded-full text-[13px] font-semibold'
++                    style={{ height: 26, padding: '0 12px', gap: 6, background: displayName ? 'var(--v2-acc-soft)' : 'var(--v2-inset)', color: displayName ? 'var(--v2-acc)' : 'var(--v2-soft)' }}
++                    data-slot='academy-account'
++                >
++                    <Glyph name={displayName ? 'cap' : 'eye'} size={12} color='currentColor' />
++                    {displayName ? C.signedIn(displayName) : C.guest}
++                </span>
++                {unreachable ? (
++                    <span
++                        className='flex items-center rounded-full text-[13px] font-semibold'
++                        style={{ height: 26, padding: '0 12px', gap: 6, background: 'var(--v2-flag-bg)', color: 'var(--v2-flag)' }}
++                        data-slot='academy-offline-pill'
++                    >
++                        {C.offline}
++                    </span>
++                ) : null}
++                {accountId && offline.downloads.length ? (
++                    <span
++                        className='flex items-center rounded-full text-[13px] font-semibold'
++                        style={{ height: 26, padding: '0 12px', background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}
++                        data-slot='academy-downloads-pill'
++                    >
++                        {C.downloads(offline.downloads.length)}
++                    </span>
++                ) : null}
++            </span>
++        </div>
++    )
++
++    const place = (
++        <>
++            {displayName ? (
++                <p className='text-[13px]' style={soft}>
++                    {C.signedInNote(displayName)}
++                </p>
++            ) : (
++                <>
++                    <p className='text-[13px]' style={soft} data-slot='academy-guest'>
++                        {C.guestNote}
++                    </p>
++                    <Btn className='self-start' onClick={() => onNavigate('settings')}>
++                        {C.openSettings}
++                    </Btn>
++                </>
++            )}
++            {accountId && offline.localDrafts.length ? (
++                <p className='text-[12px]' style={faint} data-slot='academy-drafts'>
++                    {C.drafts(offline.localDrafts.length)}
++                </p>
++            ) : null}
++        </>
++    )
++
++    if (!learner) {
++        return (
++            <section ref={container} tabIndex={-1} aria-label={C.region} data-slot='academy-v2' className='flex min-w-0 flex-col' style={{ gap: 20 }}>
++                {band}
++                <p role='status' className='text-[13px]' style={soft}>
++                    {C.starting}
++                </p>
++            </section>
++        )
++    }
++    return (
++        <section ref={container} tabIndex={-1} aria-label={C.region} data-slot='academy-v2' className='flex min-w-0 flex-col outline-none' style={{ gap: 20 }}>
++            {band}
++            <LearnerProvider client={client} learner={learner} accountId={accountId} displayName={displayName} theme={themeFor(snapshot.appearance)} webOrigin={snapshot.academyOrigin}>
++                <OfflineWorkProvider value={{ client, learner, offline }}>
++                    <PlaceContext.Provider value={place}>
++                        <AcademyRoutes onNavigate={onNavigate} container={container} initialPath={initialPath} signedIn={accountId !== null} learner={learner} />
++                    </PlaceContext.Provider>
++                </OfflineWorkProvider>
++                <CompletionMoments />
++                {snapshot.fixtureBuild ? (
++                    <Suspense fallback={null}>
++                        <LearnerCallProbe />
++                    </Suspense>
++                ) : null}
++            </LearnerProvider>
++        </section>
++    )
++})
+diff --git a/apps/desktop/src/v2/academy/copy.ts b/apps/desktop/src/v2/academy/copy.ts
+new file mode 100644
+index 00000000..905af980
+--- /dev/null
++++ b/apps/desktop/src/v2/academy/copy.ts
+@@ -0,0 +1,40 @@
++/** Copy for the v2 Academy (C42): R2App start=academy. Tests assert these exact strings. */
++export const ACADEMY_COPY = {
++    title: 'AI Security Academy',
++    lead: 'Learn each product with your own tenant beside you',
++    region: 'Academy',
++    starting: 'Academy is starting…',
++    // The title row's pills: who is learning, and whether Academy can be reached.
++    guest: 'Browsing as a guest',
++    signedIn: (name: string) => name,
++    offline: 'Academy cannot be reached',
++    downloads: (n: number) => `${n} ${n === 1 ? 'course' : 'courses'} offline`,
++    // The frame: the learner pages on the left, the learner's place on the right.
++    pages: 'Academy pages',
++    place: 'Your place',
++    sections: 'Academy sections',
++    guestNote: 'Sign in from Settings to track progress and take knowledge checks.',
++    openSettings: 'Open Settings',
++    signedInNote: (name: string) => `Signed in as ${name}. Progress and knowledge checks are kept by Academy.`,
++    offlineNote: "Academy can't be reached. Downloaded courses and lab work saved on this Mac still open. Nothing is sent until you choose to send it again.",
++    downloadsLink: 'Downloads',
++    drafts: (n: number) => `${n} ${n === 1 ? 'piece' : 'pieces'} of lab work saved on this Mac, not sent`,
++    // The Learning paths row: Academy's paths as the catalog lists them.
++    paths: 'Learning paths',
++    pathsReading: 'Reading the catalog…',
++    pathsFailed: 'The catalog could not be read.',
++    pathsEmpty: 'Academy lists no learning paths for this account.',
++    pathMeta: (units: number, done: number, minutes: number | null) => `${done} of ${units} units${minutes ? ` · ${minutes} min` : ''}`,
++    pathLocked: 'Locked',
++    openPath: (title: string) => `Open ${title}`,
++    // Routes the desktop does not carry, failures, sign-in.
++    signInTitle: 'Sign in to continue',
++    signInText: 'Your Academy account is set up in Settings. Signing in opens Academy in your browser; the desktop never sees your password.',
++    backToCatalog: 'Back to the catalog',
++    failedTitle: 'This page could not be shown',
++    failedText: 'Something in this Academy page did not load correctly. Your progress is kept by Academy.',
++    notHereTitle: 'Not in the desktop app',
++    notHereText: 'This part of Academy is not part of the desktop app. Learning, the Program, assessments, certificates and your account are here.',
++    linkOutside: (host: string, href: string) => `This link goes to ${host}, outside the desktop app, and was not opened: ${href}`,
++    linkUnopenable: 'This link cannot be opened from the desktop app.',
++} as const
+diff --git a/apps/desktop/src/v2/v2-shell.tsx b/apps/desktop/src/v2/v2-shell.tsx
+index 7c1960fc..d6f9a96f 100644
+--- a/apps/desktop/src/v2/v2-shell.tsx
++++ b/apps/desktop/src/v2/v2-shell.tsx
+@@ -17,6 +17,7 @@ import { TenantSwitcher } from './tenant-switcher'
+ import { Toasts } from './toasts'
+ import { Modal, useModalsOpen } from './modal'
+ import { Wizard } from './wizard/wizard'
++import { Academy } from './academy/academy'
+ import { ApiClient } from './workbench/api-client'
+ import { CallsPanel } from './workbench/calls-panel'
+ import { TestCases } from './workbench/test-cases'
+@@ -517,6 +518,9 @@ export function V2Shell(props: V2ShellProps) {
+                         ) : feature.id === 'library' && feature.availability.state === 'available' ? (
+                             // Keyed by context: a new tenant starts at its first page, nothing inspected.
+                             <TestCases key={snapshot.active?.context ?? 'none'} ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
++                        ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
++                            // Not keyed by tenant: the learner generation is the account's, not the tenant's.
++                            <Academy ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
+                         ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
+                             // Not keyed by tenant: API Client documents are on this Mac.
+                             <ApiClient ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
+diff --git a/crates/desktop-core/tests/ui_v2_academy/main.rs b/crates/desktop-core/tests/ui_v2_academy/main.rs
+new file mode 100644
+index 00000000..3f383524
+--- /dev/null
++++ b/crates/desktop-core/tests/ui_v2_academy/main.rs
+@@ -0,0 +1,93 @@
++//! C42: the Academy as the R2App board draws it, through the production
++//! authority interface against a synthetic Academy (docs/planning/chunks/
++//! C42.md). What the chrome draws from: the snapshot's `academy`,
++//! `learner`, `academyOrigin` and `academyOffline` as a guest and after
++//! signing in (a new learner generation); the Learning paths row's
++//! `paths.list` is a public query the guest generation reads without any
++//! credential and the account generation reads with its token. Nothing
++//! here signs in or sends by itself: every call is an intent the view would
++//! send.
++
++include!("../academy_identity/harness.rs");
++
++fn paths_reply() -> Value {
++    json!({"result": {"data": {"json": [{
++        "id": "path-runtime", "slug": "runtime-path", "title": "Runtime Security Path",
++        "description": "Protect prompts and responses at runtime.", "familyKey": "prisma-airs",
++        "iconKey": null, "tone": "info", "courseCount": 1, "estMinutes": 30,
++        "unitCount": 4, "unitsDone": 0, "locked": false, "lockReason": null}]}}})
++}
++
++fn snapshot_json(desk: &Desk) -> Value {
++    serde_json::to_value(desk.snap()).expect("json")
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn the_chrome_draws_from_the_snapshot_as_a_guest_then_as_the_account() {
++    let mut desk = desk().await;
++    let origin = desk.script.lock().expect("script").origin.clone();
++    // A guest: signed out, the guest generation, Academy's origin, offline work signed out and reachable.
++    let s = snapshot_json(&desk);
++    assert_eq!(s["academy"]["state"], "signedOut", "{s}");
++    let guest = s["learner"].as_str().expect("guest learner").to_owned();
++    assert_eq!(s["academyOrigin"], origin);
++    assert_eq!(s["academyOffline"]["state"], "signedOut");
++    assert_eq!(s["academyOffline"]["reachable"], true);
++    assert_eq!(s["academyOffline"]["downloads"], json!([]));
++    // The Learning paths row: a public query, sent without any credential.
++    desk.script.lock().expect("script").trpc = vec![("paths.list".into(), 200, paths_reply())];
++    let reply = desk
++        .call_as(&guest, "paths.list", "query", None)
++        .await
++        .expect("admitted");
++    assert_eq!(data_of(reply)["json"][0]["title"], "Runtime Security Path");
++    let seen = &trpc(&desk, "paths.list")[0];
++    assert_eq!(seen.header("authorization"), None);
++    assert_eq!(seen.request_line.split(' ').next(), Some("GET"));
++    // Signed in from Settings: the account's name, a new generation, offline work for the account.
++    desk.sign_in().await;
++    let s = snapshot_json(&desk);
++    assert_eq!(s["academy"]["state"], "signedIn", "{s}");
++    assert_eq!(s["academy"]["displayName"], "Ada Lovelace");
++    let account = s["learner"].as_str().expect("account learner").to_owned();
++    assert_ne!(account, guest, "a new generation");
++    assert_eq!(s["academy"]["learner"], account);
++    assert_ne!(s["academyOffline"]["state"], "signedOut");
++    // The row's query as the account carries its token.
++    desk.script.lock().expect("script").trpc = vec![("paths.list".into(), 200, paths_reply())];
++    desk.call("paths.list", "query", None)
++        .await
++        .expect("admitted");
++    let calls = trpc(&desk, "paths.list");
++    assert_eq!(calls.len(), 2);
++    assert_eq!(calls[1].header("authorization"), Some("Bearer access-1"));
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn a_guest_generation_cannot_read_account_pages_the_frame_offers_only_when_signed_in() {
++    let mut desk = desk().await;
++    let guest = desk.current_learner();
++    // The frame offers Home, Program, Downloads, Notifications and Settings only when signed in:
++    // the guest generation is refused their reads before anything is sent.
++    for procedure in ["progress.get", "notifications.list", "settings.get"] {
++        let refused = desk.call_as(&guest, procedure, "query", None).await.err();
++        assert_eq!(refused, Some(Refusal::CapabilityMissing), "{procedure}");
++    }
++    assert!(
++        desk.server
++            .seen()
++            .iter()
++            .all(|s| !s.request_line.contains("/api/trpc/progress"))
++    );
++}
++
++fn data_of(result: AcademyCallResult) -> Value {
++    let AcademyCallResult::Data { data } = result else {
++        panic!("{result:?}")
++    };
++    serde_json::from_str(&data).expect("json")
++}
++
++fn trpc(desk: &Desk, procedure: &str) -> Vec<Seen> {
++    desk.requests(&format!("/api/trpc/{procedure}"))
++}
+diff --git a/crates/xtask/src/budgets.rs b/crates/xtask/src/budgets.rs
+index da917e33..63deb0e7 100644
+--- a/crates/xtask/src/budgets.rs
++++ b/crates/xtask/src/budgets.rs
+@@ -9,7 +9,7 @@
+ //! mismatched input fails.
+ 
+ use std::collections::BTreeMap;
+-use std::path::Path;
++use std::path::{Path, PathBuf};
+ 
+ use serde::{Deserialize, Serialize};
+ 
+@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
+     Ok(total)
+ }
+ 
+-const MIB: f64 = 1024.0 * 1024.0;
+-
+-/// Builds the complete unsigned production app and DMG, the sealed Harness
+-/// engine included (C19, D046; budgets.json version 5), and records their
+-/// sizes.
+-pub fn footprint(
+-    repo: &Repo,
+-    manifest: &Manifest,
+-    env: &Environment,
+-    subject: Subject,
+-) -> Result<Footprint> {
+-    let Some(chunk) = required(repo, manifest, subject)? else {
+-        return Err(invalid(format!(
+-            "{subject} does not contain the chunk that registered the budgets"
+-        )));
+-    };
+-    let (_, record, sha) = registration(repo, &chunk)?;
+-    let started_utc = now_utc();
+-    if started_utc < record.registered_utc {
+-        return Err(invalid("the clock is before the budget registration"));
+-    }
+-    let target = manifest.target.as_str();
++/// Builds the complete unsigned production app and DMG with the sealed
++/// Harness engine as a bundle resource (C19, D046): the frontend, then
++/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
++pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
+     // The sealed engine the production app ships with (C19).
+     crate::harness::unpack(repo)?;
+     let commands: Vec<Vec<String>> = [
+@@ -181,13 +163,58 @@ pub fn footprint(
+     let identifier = plist_value(&app, "CFBundleIdentifier")?;
+     if identifier != crate::native::PRODUCTION_IDENTIFIER {
+         return Err(invalid(format!(
+-            "footprint bundle has identifier {identifier}"
++            "the production bundle has identifier {identifier}"
+         )));
+     }
+     let version = plist_value(&app, "CFBundleShortVersionString")?;
+     let dmg = repo.join(format!(
+         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
+     ));
++    Ok(ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    })
++}
++
++/// A production build: the app, its DMG, the bundle identifier and the
++/// commands that built them.
++pub struct ProductionBuild {
++    pub app: PathBuf,
++    pub dmg: PathBuf,
++    pub identifier: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++const MIB: f64 = 1024.0 * 1024.0;
++
++/// Builds the complete unsigned production app and DMG, the sealed Harness
++/// engine included (C19, D046; budgets.json version 5), and records their
++/// sizes.
++pub fn footprint(
++    repo: &Repo,
++    manifest: &Manifest,
++    env: &Environment,
++    subject: Subject,
++) -> Result<Footprint> {
++    let Some(chunk) = required(repo, manifest, subject)? else {
++        return Err(invalid(format!(
++            "{subject} does not contain the chunk that registered the budgets"
++        )));
++    };
++    let (_, record, sha) = registration(repo, &chunk)?;
++    let started_utc = now_utc();
++    if started_utc < record.registered_utc {
++        return Err(invalid("the clock is before the budget registration"));
++    }
++    let target = manifest.target.as_str();
++    let ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    } = build_production(repo, env, target)?;
+     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
+     let relative = |p: &Path| {
+         p.strip_prefix(repo.root())
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index 424d9f9f..4a55ca20 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1336,6 +1336,16 @@
+         "id": "C41-N02",
+         "check": "Keyboard and layout (T09): from the URL field Tab reaches Send, Space sends and the completion is announced; the focus ring on Send; the API Client at 1440 wide by the display's working height and at 900×600 with 200% zoom, in light and dark, with the request open and sent, no horizontal page overflow, the tree, the request line and the response pane present with Send at least 32 CSS px; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+       }
++    ],
++    "C42": [
++      {
++        "id": "C42-N01",
++        "check": "The Academy as the prototype board draws it (R2App start=academy) around Academy's own learner pages with the Rust-owned theme: the title row (heading, lead, the account pill saying Browsing as a guest then the signed-in learner's name), the 1.4fr/1fr frame (the learner pages on the left with Academy's catalog heading and its trail; Your place on the right with the guest note and Open Settings, then signed in the sections Home · Learn · Program · Downloads · Notifications · Settings), the Learning paths row listing the synthetic catalog's paths as cards with their units and a card opening its path page; the guest generation reads the public catalog with no credential and the account generation after Sign in to Academy from Settings; the learner chrome stays inside the Academy region; the theme follows the appearance (light and dark captures) (D059 parity: the composites under evidence/C42/parity are captured by this script from the signed-in catalog state, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
++      },
++      {
++        "id": "C42-N02",
++        "check": "Keyboard and layout (T09): Tab from the first section link reaches the next section and a path card in order, the focus ring on a section link; the Academy at 1440 wide by the display's working height and at 900×600 with 200% zoom, in light and dark, signed in on the catalog, no horizontal page overflow, the frame's two cards and the Learning paths cards present with a path card at least 32 CSS px tall; every row records the WebView's measured size and the viewport from its own tree and asserts them."
++      }
+     ]
+   }
+ }
+diff --git a/docs/planning/evidence/C42/parity/notes.md b/docs/planning/evidence/C42/parity/notes.md
+new file mode 100644
+index 00000000..e106b68d
+--- /dev/null
++++ b/docs/planning/evidence/C42/parity/notes.md
+@@ -0,0 +1,30 @@
++# C42 parity notes — Academy (R2App start=academy)
++
++Composites: prototype board left, fixture app right, both at the window's measured web area (1440 wide on this Mac), light and dark, captured by `tools/native-acceptance/acceptance_c42.py` against the bundle in `native-prepare.json` after signing in to the synthetic Academy, on its catalog.
++
++The board is the Academy: the title row with the learner's pills, the 1.4fr/1fr frame and the Learning paths row of cards. C42 draws that chrome around Academy's own learner pages (the hosted embed, `@ai-security-academy/learner`, over the native learner transport) with the Rust-owned theme; the composite is judged on the chrome, the embed's content is the Academy's own (P19). `AcademyView` is not imported; the learner provider and the offline work (infrastructure, not views) are shared with the legacy destination until C44 removes it.
++
++## Deviations from the board, and why
++
++- **Pills.** The prototype scripts a streak and XP (Academy gamification stays in the Academy feature); the port's pills say who is learning (Browsing as a guest, or the signed-in name), whether Academy can be reached, and how many courses are kept offline.
++- **The left card** is Academy's current page (the catalog, a path, a course, a unit) rather than the prototype's scripted "Continue · Unit 3 of 8" card: continuing a lesson is the embed's own content.
++- **The right card** ("Your place") holds the learner's state and Academy's sections (Learn for a guest; Home · Learn · Program · Downloads · Notifications · Settings signed in) and the offline notice, instead of the prototype's scripted quick check.
++- **Learning paths** are the paths Academy's catalog lists for this generation (`paths.list`, the same public query the catalog page makes), with their units done and minutes; a card opens its path page in the left card. The prototype scripts six paths with percentages.
++- **Narrow windows.** The path cards reflow to as many columns as fit (the prototype fixes three); the frame keeps two columns.
++- **Sign-in** stays in Settings (Open Settings), as the legacy destination does; the learner chrome (trail, status, link notice) stays inside the Academy region.
++
++## Judgement of the composites
++
++Looked at side by side on 2026-10-30 (`academy-light.png`, `academy-dark.png`; prototype left, app right, both 1440 wide):
++
++- **The frame matches the board.** The sidebar, the title bar with Search or go to… ⌘K, Explain and Ask Harness, the title row (AI Security Academy / Learn each product with your own tenant beside you), the pill at the right of the title row, the two-column card frame with the wider card on the left and the YOUR PLACE card on the right (its eyebrow, its state line, its section chips) sit where the board puts them, at the same weights and radii, in both themes. The dark theme keeps the board's surfaces and the orange accent.
++- **The pills differ by design.** The board's streak and XP pills are not drawn (gamification stays in Academy); the app draws the learner's pill (Ada Lovelace signed in; Browsing as a guest otherwise). Accepted deviation, recorded above.
++- **The left card is the embed, not the board's scripted CONTINUE card.** The composite shows Academy's catalog page (Learn, What will you take up next?, the search, the Paths/Courses/Labs chips, the Prisma AIRS family and its Runtime Security Path card) in the app's card where the board scripts a Continue lesson card. The embed's own typography (its 40px display heading) is larger than the board's card title; that is Academy's content (P19) and is not restyled by this chunk.
++- **The Learning paths row is below the fold in the composite.** The board shows six path cards under the frame at 1440×814; the app's row is drawn (the native tree records the Learning paths heading and the Open Runtime Security Path card, checks N01/N02) but the embedded catalog is taller than the board's card, so at this window height the row starts below the captured viewport. The row's cards follow the board's card layout (title, description, progress bar, units line) with the catalog's one path instead of six. This is the one visible gap: a shorter left card would surface the row; it is a consequence of hosting the catalog page itself and is left as is.
++- **No other differences** in spacing, colour or type were found in either theme.
++
++Verdict for this gate: the chrome is at parity with the board; the two content deviations (pills, the embed in the left card) are the chunk's design; the row below the fold is noted as the remaining gap.
++
++## Owner's approval
++
++The owner judged both composites with the deviations above (the pills, the embedded catalog in the left card, the Learning paths row below the viewport) and approved them on 2026-10-30: "C42 composites approved." This is the owner's judgement the gate runs on (D059); an objection from the owner reopens the parity judgement for this screen.
+diff --git a/docs/planning/evidence/C42/runs/hash-inputs.sh b/docs/planning/evidence/C42/runs/hash-inputs.sh
+new file mode 100755
+index 00000000..fbe16ea8
+--- /dev/null
++++ b/docs/planning/evidence/C42/runs/hash-inputs.sh
+@@ -0,0 +1,22 @@
++#!/bin/bash
++# Deterministic inventory of the inputs C42's checks compile, test or build:
++# the Rust crates and host, the desktop app sources and configuration, the
++# contracts package sources and fixtures, the Academy shared source actually
++# consumed (.work/academy/src and its installed packages, staged from
++# .inputs/academy), the native acceptance tools, the lockfiles, the workspace
++# and toolchain manifests, the harness pin and every docs/architecture/*.json.
++# Every listed path must exist: a missing one fails the inventory (exit 2)
++# instead of producing a partial digest.
++# Usage: hash-inputs.sh <repo-root> <inventory-out>; prints the digest.
++set -euo pipefail
++cd "$1"
++DIRS=(crates apps/desktop/src apps/desktop/src-tauri packages/desktop-contracts/src packages/desktop-contracts/fixtures tools/native-acceptance tools/parity tools/academy .work/academy/src .work/academy/packages .inputs/academy)
++FILES=(Cargo.toml Cargo.lock rust-toolchain.toml pnpm-lock.yaml package.json pnpm-workspace.yaml resources/harness/pin.json apps/desktop/package.json apps/desktop/index.html packages/desktop-contracts/package.json packages/desktop-contracts/tsconfig.json)
++for p in "${DIRS[@]}"; do [ -d "$p" ] || { echo "inventory: missing directory $p" >&2; exit 2; }; done
++for p in "${FILES[@]}"; do [ -f "$p" ] || { echo "inventory: missing file $p" >&2; exit 2; }; done
++{
++  find "${DIRS[@]}" -type f -not -path '*/target/*' -not -path '*/node_modules/*' -not -path '*/gen/schemas/*' -not -path '*/.git/*' -print0 | sort -z | xargs -0 shasum -a 256
++  shasum -a 256 "${FILES[@]}" apps/desktop/*.ts apps/desktop/*.json docs/architecture/*.json
++} | LC_ALL=C sort -k2 > "$2"
++[ -s "$2" ] || { echo "inventory: empty" >&2; exit 2; }
++shasum -a 256 "$2" | cut -d' ' -f1
+diff --git a/docs/planning/evidence/C42/runs/run-checks.sh b/docs/planning/evidence/C42/runs/run-checks.sh
+new file mode 100755
+index 00000000..5d3b18cb
+--- /dev/null
++++ b/docs/planning/evidence/C42/runs/run-checks.sh
+@@ -0,0 +1,79 @@
++#!/bin/bash
++# C42 check runs with a source-bound record. Usage: run-checks.sh <attempt>
++# Runs on the approved toolchain (rustup 1.99.0, node 24.21.0, repo pnpm).
++set -o pipefail
++ATTEMPT=${1:-attempt-01}
++cd "$(dirname "$0")/../../../../.."
++export PATH="$PWD/.tools/bin:$HOME/.cargo/bin:$HOME/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin"
++unset RUSTFLAGS CARGO_BUILD_RUSTFLAGS CARGO_TARGET_DIR
++# Timing-sensitive suites (4 s "eventually" waits, engine bootstraps) flake when ten test threads
++# per binary share this Mac with the owner's browser and a second session; four threads per
++# binary keep the same tests and assertions, only less contention. Recorded in the run record.
++export RUST_TEST_THREADS=4
++R=docs/planning/evidence/C42/runs
++E=$R/$ATTEMPT
++mkdir -p "$E"
++# Flake logs are same-input retries of this run only: earlier runs' logs are removed first.
++rm -f $E/core-fixtures.flake-*.log $E/host.flake-*.log
++BEFORE=$($R/hash-inputs.sh "$PWD" $E/inputs-before.sha256) || { echo "input inventory failed; run invalid"; exit 2; }
++[ -n "$BEFORE" ] || { echo "input inventory produced no digest; run invalid"; exit 2; }
++# Configuration and build flags the controller fingerprints: itemised and hashed together.
++BUILD_FLAGS=$(shasum -a 256 docs/architecture/checks.json docs/architecture/native-checks.json docs/architecture/toolchain.json docs/architecture/budgets.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/tauri.fixture.conf.json apps/desktop/src-tauri/capabilities/*.json rust-toolchain.toml 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
++export BUILD_FLAGS
++run() { local name=$1; shift; local log=$E/$name.log; echo "\$ $*" > "$log"; "$@" >> "$log" 2>&1; local rc=$?; echo "EXIT $rc" >> "$log"; echo "$name exit=$rc"; echo $rc > $E/$name.exit; }
++run rustfmt cargo fmt --all -- --check
++run clippy cargo clippy --locked -p desktop-core -p desktop-host -p xtask --features test-fixtures --all-targets -- -D warnings
++run clippy-default cargo clippy --locked --workspace --all-targets -- -D warnings
++run notices cargo run --locked -q -p xtask -- notices --check
++run bindings cargo run --locked -q -p xtask -- bindings --check
++run contracts-typecheck pnpm --filter @prisma-airs/desktop-contracts exec tsc --noEmit
++run desktop-typecheck pnpm --filter @prisma-airs/desktop exec tsc --noEmit
++run vitest pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.config.ts
++run vitest-truth pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.truth.config.ts
++run core-lib cargo test --locked -p desktop-core --lib
++run core-fixtures cargo test --locked -p desktop-core --features test-fixtures
++# A timing-sensitive test (Harness-engine turns, or the transport's connection-release
++# check) can flake under the full-suite load: the exact same
++# command is retried on the same frozen inputs, every failed run kept as evidence.
++for try in 1 2; do
++  if [ "$(cat $E/core-fixtures.exit)" != "0" ]; then
++    cp $E/core-fixtures.log $E/core-fixtures.flake-$try.log
++    run core-fixtures cargo test --locked -p desktop-core --features test-fixtures
++  fi
++done
++# The chunk's registered fixture command (docs/architecture/checks.json C42), exactly as the manifest runs it.
++run fixture-command cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_academy
++run host cargo test --locked -p desktop-host --features test-fixtures
++# The host's Academy device-flow tests (browser_callback.rs, outside this chunk) wait 5 s for a
++# state and flake under load: the same command is retried on the same frozen inputs, every
++# failed run kept as evidence.
++for try in 1 2; do
++  if [ "$(cat $E/host.exit)" != "0" ]; then
++    cp $E/host.log $E/host.flake-$try.log
++    run host cargo test --locked -p desktop-host --features test-fixtures
++  fi
++done
++run xtask-lib cargo test --locked -p xtask --lib
++run shell-controller cargo test --locked -p xtask --features test-fixtures --test shell_controller
++run desktop-build pnpm --filter @prisma-airs/desktop build
++AFTER=$($R/hash-inputs.sh "$PWD" $E/inputs-after.sha256) || { echo "input inventory failed after the runs; run invalid"; exit 2; }
++[ -n "$AFTER" ] || { echo "input inventory produced no digest after the runs; run invalid"; exit 2; }
++python3 -I - "$E" "$BEFORE" "$AFTER" "$ATTEMPT" <<'PY'
++import json,sys,subprocess,os,time,hashlib
++E,b,a,attempt=sys.argv[1:5]
++def ver(c):
++    try: return subprocess.check_output(c,text=True,stderr=subprocess.STDOUT).strip()
++    except Exception as e: return str(e)
++sha=lambda p: hashlib.sha256(open(p,"rb").read()).hexdigest()
++names=["rustfmt","clippy","clippy-default","notices","bindings","contracts-typecheck","desktop-typecheck","vitest","vitest-truth","core-lib","core-fixtures","fixture-command","host","xtask-lib","shell-controller","desktop-build"]
++rec={"subject":"C42","attempt":attempt,"time":time.strftime("%Y-%m-%dT%H:%M:%S%z"),"cwd":os.getcwd(),
++ "toolchain":{"rustc":ver(["rustc","-V"]),"cargo":ver(["cargo","-V"]),"node":ver(["node","-v"]),"pnpm":ver(["pnpm","-v"]),"rustup_active":ver(["rustup","show","active-toolchain"])},
++ "environment":{"PATH":os.environ["PATH"],"RUSTFLAGS":os.environ.get("RUSTFLAGS"),"CARGO_TARGET_DIR":os.environ.get("CARGO_TARGET_DIR"),"RUST_TEST_THREADS":os.environ.get("RUST_TEST_THREADS")},
++ "build_flags":{"digest":os.environ.get("BUILD_FLAGS"),"covers":"checks.json, native-checks.json, toolchain.json, budgets.json, tauri.conf.json, tauri.fixture.conf.json, src-tauri/capabilities/*.json, rust-toolchain.toml"},"inputs":{"procedure":f"{E}/../hash-inputs.sh","procedure_sha256":sha(f"{E}/../hash-inputs.sh"),"before_inventory_sha256":sha(f"{E}/inputs-before.sha256"),"before_digest":b,"after_inventory_sha256":sha(f"{E}/inputs-after.sha256"),"after_digest":a,"unchanged":a==b,"members":sum(1 for _ in open(f"{E}/inputs-before.sha256"))},
++ "runs":{}}
++for n in names:
++    log=f"{E}/{n}.log"
++    rec["runs"][n]={"exit":int(open(f"{E}/{n}.exit").read().strip()),"log":log,"log_sha256":sha(log),"summary":[l.strip() for l in open(log,errors="replace") if l.startswith("test result") or "Test Files" in l or "Tests  " in l or l.startswith("EXIT")][-4:]}
++json.dump(rec,open(f"{E}/../run-{attempt}.json","w"),indent=2)
++print(json.dumps({k:v["exit"] for k,v in rec["runs"].items()}),"inputs unchanged:",a==b,"members:",rec["inputs"]["members"])
++PY
+diff --git a/docs/planning/reviews/C42/remediation-attempt-02.md b/docs/planning/reviews/C42/remediation-attempt-02.md
+new file mode 100644
+index 00000000..8556d2f3
+--- /dev/null
++++ b/docs/planning/reviews/C42/remediation-attempt-02.md
+@@ -0,0 +1,13 @@
++# C42 remediation after attempt-02 (9/8/9/8/8: B1 predecessor record, R2 partial, E2 owner's judgement)
++
++| Finding | Remediation | Where |
++|---|---|---|
++| B1 C41 has no review record in the supplied checkout | Structural: C41's gate runs ahead of C42's attempt-03 in the queue; attempt-03's packet carries C41's verdict path. The ledger entry itself waits on C26 (status.md, P09 ledger note). | queue order |
++| R2 the Learning paths row shared `paths.list`'s key (invalidated by reset/enrollment) but a unit completion or a knowledge-check submission never invalidates that key, so the row's counts stayed stale while Academy's unit/course rollups refreshed | `PathsRow` subscribes to the generation's mutation cache: when a mutation keyed `units.complete` or `units.submitKnowledgeCheck` (`PROGRESS_MUTATIONS`) settles with success or error, `paths.list` is invalidated and reread — on success for the new counts, on an error (an uncertain outcome included) to read Academy's truth back without replaying the mutation. Academy's hooks are untouched. | `v2/academy/academy.tsx` |
++| R2 acceptance | A production-provider regression renders the Academy on a unit, completes it with the first receipt lost (the row rereads once, the completion is not replayed, the count stays), completes it (the row shows 2 of 4), then starts, answers and submits the knowledge check that follows (3 of 4), all in one generation without remounting the Academy. | `academy.test.tsx` ("rereads the Learning paths row…", attempt-02 R2) |
++| E2 the parity notes' judgement is the reviewer's own and the owner's standing direction; the reviewer requires the owner's explicit judgement of these composites | The owner was shown `parity/academy-{light,dark}.png` with the deviations listed and approved them on 2026-10-30 ("C42 composites approved"); `parity/notes.md` records the approval. | `parity/notes.md` |
++| S run-checks.sh labelled ui_v2_workbench as C42's fixture command | Corrected to ui_v2_academy. | `evidence/C42/runs/run-checks.sh` |
++| S the shell-mount test's title claimed theme coverage | Retitled; a unit test pins `themeFor` (dark→gruvbox, light→paper, system follows the system). | `academy.test.tsx` |
++| S stack the frame at narrow effective widths | Not changed in this generation (the frame keeps two columns; the prototype is fixed-width). | — |
++
++Commands: `npx tsc --noEmit` clean; `npx vitest run src/v2/academy` 10 passed. Attempt-03 (rebuild, native, checks, packet, Codex) runs through the queue after C41's gate.
+diff --git a/docs/planning/status.md b/docs/planning/status.md
+index 2c8f33a2..9423a119 100644
+--- a/docs/planning/status.md
++++ b/docs/planning/status.md
+@@ -63,7 +63,7 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
+ | C39 | **In progress** (P09, D059): Administration — C39a: the R2App product cards, tab strip, Runtime Security Overview, Playground and inventory table as v2 components; C39b: the other products and the review sheet | `docs/planning/chunks/C39.md`; `tools/native-acceptance/acceptance_c39.py`; `crates/desktop-core/tests/ui_v2_admin/` |
+ | C40 | **In progress** (P09, D059): Test Cases — the R2App title row, Explain banner, one table card with search, product pills, result pills, the action and ⋯ menu, the packs and new-case dialogs and the detail sheet over the C33 behaviour | `docs/planning/chunks/C40.md`; `tools/native-acceptance/acceptance_c40.py` |
+ | C41 | **In progress** (P09, D059): API Client — the R2App title row with the Collection and Environment chips, the 286px request tree, open-request tabs, the request line, the six request sub-tabs with the Params/Headers tables and the response pane with Body/Headers/Details/History over the C14/C15 behaviour | `docs/planning/chunks/C41.md`; `tools/native-acceptance/acceptance_c41.py`; `crates/desktop-core/tests/ui_v2_api/` |
+-| C42 | Planned (P09, D059): Academy | `docs/planning/chunks/C42.md` |
++| C42 | **In progress** (P09, D059): Academy — the R2App title row with the learner's pills, the 1.4fr/1fr frame (Academy's learner pages beside Your place) and the Learning paths row around the hosted learner pages with the Rust-owned theme | `docs/planning/chunks/C42.md`; `tools/native-acceptance/acceptance_c42.py`; `crates/desktop-core/tests/ui_v2_academy/` |
+ | C43 | Planned (P09, D059): Wizard re-port | `docs/planning/chunks/C43.md` |
+ | C44 | Planned (P09, D059): legacy shell removal, P09 closure | `docs/planning/chunks/C44.md` |
+ 
+diff --git a/tools/native-acceptance/academy_catalog.py b/tools/native-acceptance/academy_catalog.py
+index 5f5c2e48..dbddc8f2 100644
+--- a/tools/native-acceptance/academy_catalog.py
++++ b/tools/native-acceptance/academy_catalog.py
+@@ -180,6 +180,18 @@ def build(root):
+                         "description": "Protect prompts and responses at runtime.", "familyKey": "prisma-airs",
+                         "iconKey": None, "tone": "info", "courseCount": 1, "estMinutes": 150, "unitCount": 28,
+                         "unitsDone": 0, "locked": False, "lockReason": None}],
++        # The path's own page (`paths.get` by slug, the shape the router returns:
++        # the sections and their course cards); any other slug is NOT_FOUND.
++        "paths.get": {"by": "pathSlug", "values": {PATH_SLUG: {
++            "id": "path-runtime", "slug": PATH_SLUG, "title": "Runtime Security Path",
++            "tagline": "Protect prompts and responses at runtime.",
++            "description": "Scan what reaches the model and what comes back, then act on the verdicts.",
++            "level": "associate", "programId": None, "iconKey": None, "tone": "info",
++            "sections": [{"id": "sec-runtime-1", "title": "Foundations", "description": "The scan loop and its verdicts.", "order": 0,
++                          "courses": [{"id": COURSE, "slug": COURSE, "title": course["title"], "description": course["description"],
++                                       "level": "associate", "coursePurpose": None, "iconKey": None, "tone": "info", "estMinutes": 150,
++                                       "order": 0, "unitCount": 28, "unitsDone": 0, "moduleCount": len(MODULES), "modulesComplete": 0,
++                                       "status": "published", "teaser": None}]}]}}},
+         "library.list": [
+             {"type": "course", "id": COURSE, "slug": COURSE, "title": course["title"],
+              "description": course["description"], "durationMinutes": 150, "level": "Associate",
+diff --git a/tools/native-acceptance/acceptance_c42.py b/tools/native-acceptance/acceptance_c42.py
+new file mode 100644
+index 00000000..64303b06
+--- /dev/null
++++ b/tools/native-acceptance/acceptance_c42.py
+@@ -0,0 +1,450 @@
++#!/usr/bin/env python3
++"""C42 native acceptance (D059): the Academy as the prototype board draws it
++(R2App start=academy) around Academy's own learner pages, driven through
++the real fixture window against the synthetic Academy endpoint
++(academy_server.py with academy_catalog.py) and the synthetic scan and
++management endpoints.
++
++Run from the repository root after `xtask native-prepare --chunk C42`.
++Requires the macOS Accessibility grant. Synthetic services only; the fixture
++data root is removed at the end.
++
++Checks (docs/architecture/native-checks.json, C42): the board (title row
++with the account pill, the frame with the learner pages and Your place,
++the Learning paths row from the catalog, a path card opening its page) as
++a guest and signed in, the learner chrome inside the region, the theme
++following the appearance (N01); keyboard reach, the focus ring and the
++measured layouts in both themes (N02). The parity composites are captured
++from the signed-in catalog state.
++"""
++
++import json
++import os
++import shutil
++import subprocess
++import sys
++import tempfile
++import time
++
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
++import fixture_app as fx  # noqa: E402
++import academy_catalog  # noqa: E402
++import acceptance_c01 as c1  # noqa: E402
++import acceptance_c08 as c8  # noqa: E402
++import acceptance_c28 as c28  # noqa: E402
++import acceptance_c29 as c29  # noqa: E402
++import acceptance_c31 as c31  # noqa: E402
++
++ROOT = os.getcwd()
++EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C42")
++NATIVE = os.path.join(EVIDENCE, "native")
++RECORD = os.path.join(EVIDENCE, "native-acceptance.json")
++PARITY = os.path.join(EVIDENCE, "parity")
++DC = os.path.join(ROOT, "tools/parity")
++LOG = []
++TITLE_BAR = 28
++CATALOG = "What will you take up next?"
++GUEST_NOTE = "Browsing as a guest"
++PATH_TITLE = "Runtime Security Path"  # the catalog's path (academy_catalog.PATH_SLUG)
++# Learner chrome that must never appear outside the Academy region.
++LEARNER_MARKERS = [GUEST_NOTE, "Reading progress", "Complete & continue", "Academy location", "Start knowledge check"]
++
++
++def rel(path):
++    return os.path.relpath(path, ROOT)
++
++
++def heading(tree, label, level=None):
++    return next((n for n in tree if n.get("role") == "AXHeading" and (n.get("label") or "") == label and (level is None or n.get("value") == level)), None)
++
++
++def group(tree, label):
++    return next((n for n in tree if n.get("role") == "AXGroup" and (n.get("label") or "") == label), None)
++
++
++def within(tree, node):
++    if not node:
++        return []
++    i = tree.index(node)
++    out = []
++    for m in tree[i + 1:]:
++        if m.get("depth", 0) <= node.get("depth", 0):
++            break
++        out.append(m)
++    return out
++
++
++def links(nodes, prefix=""):
++    out = []
++    for n in nodes:
++        label = n.get("label") or ""
++        if n.get("role") == "AXLink" and label.startswith(prefix) and label not in out:
++            out.append(label)
++    return out
++
++
++def geometry(tree):
++    web = next((n for n in tree if n.get("role") == "AXWebArea" and n.get("size")), None)
++    scroll = next((n for n in tree if n.get("role") == "AXScrollArea" and n.get("size")), None)
++    win = next((n for n in tree if n.get("role") == "AXWindow"), None)
++    return {"web": [int(web["size"][0]), int(web["size"][1])] if web else None,
++            "viewport": [int(scroll["size"][0]), int(scroll["size"][1])] if scroll else None,
++            "window": win.get("size") if win else None}
++
++
++def size_window(app, pid, w, h):
++    fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {pid}) to set position of window 1 to {{0, 0}}'])
++    requested = [w, h + TITLE_BAR]
++    for _ in range(3):
++        c28.set_window_size(pid, requested[0], requested[1])
++        time.sleep(0.8)
++        g = geometry(app.tree())
++        vp = g["viewport"] or g["web"]
++        if not vp or vp[1] == h:
++            break
++        requested = [requested[0], requested[1] + (h - vp[1])]
++    return c29.window_frame(pid)
++
++
++def overflow(app):
++    tree = app.tree()
++    win = next((n for n in tree if n.get("role") == "AXWindow"), None)
++    nodes = [n for n in tree if n.get("pos") and n.get("size") and n["size"][0] > 0
++             and n.get("role") in ("AXButton", "AXStaticText", "AXTextField", "AXTextArea", "AXLink", "AXHeading", "AXCheckBox", "AXRadioButton")]
++    right = max(n["pos"][0] + n["size"][0] for n in nodes) if nodes and win else None
++    hbars = [n for n in tree if n.get("role") == "AXScrollBar" and (n.get("orientation") == "horizontal" or (n.get("size") and n["size"][0] > n["size"][1]))]
++    return {"overflow_px": max(0, right - (win["pos"][0] + win["size"][0])) if right is not None else None, "horizontal_scrollbars": len(hbars)}, tree
++
++
++def board_usable(tree, zoom):
++    """The board at this zoom: the two frame cards, the Learning paths heading and a path card at least 32 CSS px tall."""
++    pages = group(tree, "Academy pages")
++    place = group(tree, "Your place")
++    paths_h = heading(tree, "Learning paths")
++    card = next((n for n in tree if n.get("role") == "AXLink" and (n.get("label") or "").startswith("Open ") and n.get("size")), None)
++    out = {"pages": pages is not None, "place": place is not None, "paths": paths_h is not None, "card_size": card.get("size") if card else None,
++           "card_ok": bool(card and card["size"][1] >= 32 * zoom - 1), "zoom": zoom}
++    out["ok"] = out["pages"] and out["place"] and out["paths"] and out["card_ok"]
++    return out
++
++
++def ring_on_link(app, label, plain_cap, name):
++    """Ring pixels around link `label` focused, against a capture with it unfocused (c31.ring_on for links)."""
++    app.ax("focus", "AXLink", label)
++    time.sleep(0.5)
++    focused_cap = c29.capture(app, name)
++    snap = app.tree()
++    web = next((n for n in snap if n.get("role") == "AXWebArea"), None)
++    link = next((n for n in snap if n.get("role") == "AXLink" and (n.get("label") or "") == label and n.get("pos") and n.get("size")), None)
++    if not (web and link and plain_cap and focused_cap):
++        return {"diff": 0, "focused": (fx.App.focused(snap) or {}).get("label")}
++    img_f = c1.png_pixels(os.path.join(ROOT, focused_cap))
++    img_p = c1.png_pixels(os.path.join(ROOT, plain_cap))
++    scale = img_f[0] / web["size"][0]
++    box = [link["pos"][0] - web["pos"][0], link["pos"][1] - web["pos"][1], link["size"][0], link["size"][1]]
++    return {"diff": c28.ring_diff(img_f, img_p, box, scale), "focused": (fx.App.focused(snap) or {}).get("label"), "plain": plain_cap, "capture": focused_cap}
++
++
++def composite(app, theme, web_size, prepared):
++    name = f"academy-{theme.lower()}"
++    cap = c29.capture(app, f"parity-{name}")
++    if not cap:
++        raise SystemExit(f"no capture for {name}")
++    os.makedirs(os.path.join(PARITY, "app"), exist_ok=True)
++    os.makedirs(os.path.join(PARITY, "proto"), exist_ok=True)
++    with open(os.path.join(PARITY, "bundle.json"), "w") as f:
++        json.dump({"bundle": prepared["bundle"], "executable_sha256": prepared["executable_sha256"], "from": "native-prepare.json",
++                   "captured_by": "tools/native-acceptance/acceptance_c42.py", "captured_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, f, indent=2)
++        f.write("\n")
++    app_png = os.path.join(PARITY, "app", f"{name}.png")
++    shutil.copy(os.path.join(ROOT, cap), app_png)
++    web_w, web_h = web_size
++    proto_png = os.path.join(PARITY, "proto", f"{name}.png")
++    subprocess.run([sys.executable, "-I", os.path.join(DC, "dc_render.py"), "--board", "R2App", "--prop", "start=academy",
++                    "--prop", f"theme={theme.lower()}", "--width", str(web_w), "--height", str(web_h), "--out", proto_png], check=True, capture_output=True)
++    out = os.path.join(PARITY, f"{name}.png")
++    subprocess.run([sys.executable, "-I", os.path.join(DC, "compose.py"), "--left", proto_png, "--right", app_png,
++                    "--out", out, "--title", f"Academy · {theme.lower()} · {web_w}×{web_h}"], check=True, capture_output=True)
++    return rel(out)
++
++
++def main():
++    try:
++        return run()
++    finally:
++        fx.sh(["pkill", "-f", fx.PROCESS])
++        fx.clean_fixture_root()
++
++
++def run():
++    global NATIVE
++    prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
++    bundle = os.path.join(ROOT, prepared["bundle"])
++    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
++    if c8.sha256(exe) != prepared["executable_sha256"]:
++        raise SystemExit("prepared executable changed since native-prepare")
++    work = tempfile.mkdtemp(prefix="airs-v2-c42-acceptance-")
++    FINAL = NATIVE
++    NATIVE = NATIVE + ".staging"
++    if os.path.isdir(NATIVE):
++        shutil.rmtree(NATIVE)
++    os.makedirs(NATIVE)
++    c29.NATIVE = NATIVE
++    if os.path.isdir(c29.CAPTURES):
++        shutil.rmtree(c29.CAPTURES)
++    app = fx.App(bundle, work, LOG)
++    c29._APP = app
++    app.quit()
++    fx.clean_fixture_root()
++    time.sleep(1.5)
++    endpoint = fx.ScanEndpoint(os.path.join(work, "endpoint"), c8.SCAN_KEY)
++    endpoint.install_roots()
++    endpoint.start()
++    mgmt = c8.MgmtEndpoint(os.path.join(work, "endpoint"), os.path.join(work, "mgmt"))
++    mgmt.install()
++    mgmt.start()
++    mgmt.mode()
++    academy = fx.AcademyEndpoint(os.path.join(work, "academy"))
++    with open(os.path.join(academy.dir, "catalog.json"), "w") as f:
++        json.dump(academy_catalog.build(ROOT), f)
++    academy.install()
++    academy.start()
++    try:
++        return exercise(app, endpoint, mgmt, academy, prepared, work, FINAL)
++    finally:
++        academy.stop()
++        endpoint.stop()
++        mgmt.stop()
++        shutil.rmtree(work, ignore_errors=True)
++
++
++def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
++    global NATIVE
++    obs = {"captures": {}, "origin": academy.origin}
++    app.launch()
++    pid = app.pid
++    app.open_settings()
++    app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
++    app.create_custom_tenant("Northwind Health", endpoint.origin)
++    app.save_key(c8.SCAN_KEY)
++    c8.save_client(app)
++    c29.press(app, "AXCheckBox", "Use the new interface")
++    app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None and c29.nav(t, "Destinations") is not None, 15)
++    size_window(app, pid, 1440, 900)
++
++    def go_academy():
++        app.menu("Go", "Academy")
++        return app.wait_for(lambda t: heading(t, "AI Security Academy") is not None and heading(t, CATALOG) is not None, 20)
++
++    # ---- N01: the board, as a guest ----
++    n1 = {}
++    tree, n1["guest_screen"] = go_academy()
++    n1["lead"] = app.has_text(tree, "Learn each product with your own tenant beside you")
++    n1["guest_pill"] = app.has_text(tree, GUEST_NOTE)
++    pages = group(tree, "Academy pages")
++    place = group(tree, "Your place")
++    n1["frame"] = pages is not None and place is not None
++    n1["catalog_in_pages"] = heading(within(tree, pages), CATALOG) is not None
++    n1["guest_note"] = any("Sign in from Settings to track progress" in (x.get("label") or "") for x in within(tree, place))
++    n1["guest_open_settings"] = any(x.get("role") == "AXButton" and (x.get("label") or "") == "Open Settings" for x in within(tree, place))
++    sections = group(tree, "Academy sections")
++    n1["guest_sections"] = links(within(tree, sections)) if sections else []
++    paths_h = heading(tree, "Learning paths")
++    n1["paths_heading"] = paths_h is not None
++    n1["path_cards"] = links(tree, "Open ")
++    n1["path_units"] = any(" units" in (x.get("label") or "") for x in tree)
++    # A guest reads the catalog with no credential.
++    guest_calls = [r for r in academy.requests() if r.get("procedure")]
++    n1["guest_calls"] = sorted({c["procedure"] for c in guest_calls})
++    n1["guest_no_credential"] = bool(guest_calls) and all(not c.get("authorization") for c in guest_calls)
++    n1["paths_list_read"] = any(c["procedure"] == "paths.list" for c in guest_calls)
++    # Learner chrome stays inside the region.
++    region = group(tree, "Academy")
++    inside = within(tree, region) if region else []
++    n1["chrome_inside"] = region is not None and all(not any(m in (x.get("label") or "") for m in LEARNER_MARKERS) for x in tree if x not in inside and x is not region)
++    obs["tree_guest"] = c29.save_tree("academy-guest", tree)
++    obs["captures"]["academy-guest"] = {"light": c29.capture(app, "academy-guest-light")}
++    # A path card opens its page within the destination.
++    if n1["path_cards"]:
++        mark_path = len(academy.requests())
++        app.ax("press", "AXLink", n1["path_cards"][0])
++        tree, n1["path_opened"] = app.wait_for(lambda t: heading(t, CATALOG) is None and group(t, "Academy pages") is not None and heading(t, "AI Security Academy") is not None
++                                               and heading(t, PATH_TITLE) is not None, 15)
++        pages = group(tree, "Academy pages")
++        # The real path page: its title as the page heading inside the pages card, no miss, read by its slug.
++        n1["path_title"] = any(x.get("role") == "AXHeading" and (x.get("label") or "") == PATH_TITLE for x in within(tree, pages)) if pages else False
++        n1["path_miss"] = app.has_text(tree, "Path not found.")
++        path_calls = [r for r in academy.requests()[mark_path:] if r.get("procedure") == "paths.get"]
++        n1["path_get_slug"] = any(academy_catalog.PATH_SLUG in (c.get("input") or "") for c in path_calls)
++        n1["path_calls"] = sorted({r["procedure"] for r in academy.requests()[mark_path:] if r.get("procedure")})
++        trail = group(tree, "Academy location")
++        n1["trail"] = trail is not None and any(PATH_TITLE in (x.get("label") or "") for x in within(tree, trail))
++        obs["tree_path"] = c29.save_tree("academy-path", tree)
++    else:
++        n1["path_opened"] = False
++        n1["path_title"] = False
++        n1["path_miss"] = True
++        n1["path_get_slug"] = False
++        n1["path_calls"] = []
++        n1["trail"] = False
++    # ---- sign in from Settings; the account generation ----
++    academy.mode(approval="granted", displayName="Ada Lovelace")
++    app.open_settings()
++    app.ax("press", "AXButton", "Sign in to Academy")
++    _, n1["signed_in"] = app.wait_for(lambda t: app.has_text(t, "Signed in to Academy as"), 20)
++    mark = len(academy.requests())
++    app.menu("Go", "Home")
++    app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None, 10)
++    tree, n1["account_screen"] = go_academy()
++    time.sleep(1)
++    tree = app.tree()
++    n1["account_pill"] = app.has_text(tree, "Ada Lovelace")
++    n1["no_guest_pill"] = not app.has_text(tree, GUEST_NOTE)
++    place = group(tree, "Your place")
++    n1["signed_in_note"] = any("Signed in as Ada Lovelace" in (x.get("label") or "") for x in within(tree, place))
++    sections = group(tree, "Academy sections")
++    n1["account_sections"] = links(within(tree, sections)) if sections else []
++    account_calls = [r for r in academy.requests()[mark:] if r.get("procedure")]
++    n1["account_calls"] = sorted({c["procedure"] for c in account_calls})
++    n1["account_credential"] = any(c.get("authorization") for c in account_calls)
++    obs["tree_account"] = c29.save_tree("academy-account", tree)
++    obs["captures"]["academy-account"] = c29.matrix(app, "academy-account")
++    # The parity composites, from this state, in both themes (the theme follows the appearance).
++    app.ax("focus", "AXHeading", "AI Security Academy")
++    time.sleep(0.3)
++    n1["parity"] = {}
++    for theme in ("Light", "Dark"):
++        c29.appearance(app, theme)
++        time.sleep(0.9)
++        n1["parity"][theme.lower()] = composite(app, theme, geometry(app.tree())["web"], prepared)
++    c29.appearance(app, "Light")
++    time.sleep(0.5)
++    obs["n1"] = n1
++
++    # ---- N02: keyboard, ring, layouts ----
++    n2 = {}
++    tree = app.tree()
++    sections = group(tree, "Academy sections")
++    first = links(within(tree, sections))[0] if sections and links(within(tree, sections)) else None
++    walk = []
++    if first:
++        app.ax("focus", "AXLink", first)
++        time.sleep(0.3)
++        for _ in range(8):
++            app.keycode(48)
++            time.sleep(0.15)
++            f = fx.App.focused(app.tree()) or {}
++            walk.append(f.get("label") or "")
++    n2["walk"] = walk
++    n2["reach"] = {"section": any(w in n1["account_sections"][1:] for w in walk), "card": any(w.startswith("Open ") for w in walk)}
++    if first:
++        app.ax("focus", "AXLink", first)
++        time.sleep(0.4)
++    plain = c29.capture(app, "academy-ring-plain")
++    n2["ring"] = ring_on_link(app, n1["account_sections"][1] if len(n1["account_sections"]) > 1 else first, plain, "academy-ring") if first else {}
++    layouts = {}
++    size_window(app, pid, 1440, 900)
++    for theme in ("Light", "Dark"):
++        c29.appearance(app, theme)
++        time.sleep(0.5)
++        o, tree = overflow(app)
++        g = geometry(tree)
++        o["geometry"] = g
++        o["width_1440"] = bool(g["web"] and g["web"][0] == 1440)
++        o["board"] = board_usable(tree, 1)
++        name = f"academy-{g['web'][0]}x{g['web'][1]}-{theme.lower()}" if g["web"] else f"academy-unknown-{theme.lower()}"
++        o["capture"] = c29.capture(app, name)
++        o["tree"] = c29.save_tree(name, tree)
++        layouts[name] = o
++    size_window(app, pid, 900, 600)
++    c29.zoom(app, 10)
++    for theme in ("Light", "Dark"):
++        c29.appearance(app, theme)
++        time.sleep(0.5)
++        o, tree = overflow(app)
++        g = geometry(tree)
++        vp = g["viewport"] or g["web"]
++        o["geometry"] = g
++        o["window_900x600"] = bool(vp and vp[0] == 900 and vp[1] == 600 and g["web"] and g["web"][0] == 900)
++        o["board"] = board_usable(tree, 2)
++        name = f"academy-{vp[0]}x{vp[1]}-200-{theme.lower()}" if vp else f"academy-unknown-200-{theme.lower()}"
++        o["capture"] = c29.capture(app, name)
++        o["tree"] = c29.save_tree(name, tree)
++        layouts[name] = o
++    c29.zoom(app, -10)
++    c29.appearance(app, "Match System")
++    size_window(app, pid, 1440, 900)
++    n2["layouts"] = layouts
++    obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
++    obs["captures"]["academy-ring"] = {"plain": n2["ring"].get("plain"), "focused": n2["ring"].get("capture")}
++    obs["n2"] = n2
++    app.quit()
++
++    run_path = os.path.join(NATIVE, "observations.json")
++    with open(run_path, "w") as f:
++        json.dump(json.loads(json.dumps({"observations": obs, "log": LOG}).replace(rel(NATIVE), rel(FINAL))), f, indent=1)
++    run_rel = rel(run_path)
++    inventory = {c["id"]: c["check"] for c in json.load(open(os.path.join(ROOT, "docs/architecture/native-checks.json")))["chunks"]["C42"]}
++    checks = []
++
++    def add(cid, passed, observation, evidence):
++        checks.append({"id": cid, "description": inventory[cid], "result": "pass" if passed else "fail", "observation": observation, "evidence": [e for e in evidence if e]})
++
++    caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
++    n1_ok = (all(n1.get(k) for k in ("guest_screen", "lead", "guest_pill", "frame", "catalog_in_pages", "guest_note", "guest_open_settings", "paths_heading", "path_units", "guest_no_credential", "paths_list_read", "chrome_inside",
++                                     "path_opened", "path_title", "path_get_slug", "signed_in", "account_screen", "account_pill", "no_guest_pill", "signed_in_note", "account_credential"))
++             and n1["guest_sections"] == ["Learn"] and len(n1["path_cards"]) >= 1 and not n1["path_miss"] and n1["account_sections"] == ["Home", "Learn", "Program", "Downloads", "Notifications", "Settings"] and len(n1["parity"]) == 2)
++    add("C42-N01", n1_ok,
++        f"guest: screen {n1['guest_screen']} lead {n1['lead']} pill {n1['guest_pill']}; frame {n1['frame']} with the catalog in the pages card {n1['catalog_in_pages']}; Your place: note {n1['guest_note']}, Open Settings {n1['guest_open_settings']}, sections {n1['guest_sections']}; Learning paths {n1['paths_heading']} cards {n1['path_cards']} with units {n1['path_units']}; "
++        f"guest calls {n1['guest_calls']} without a credential {n1['guest_no_credential']} (paths.list {n1['paths_list_read']}); learner chrome inside the region {n1['chrome_inside']}; a card opened its page {n1['path_opened']}: the path's title as the page heading {n1['path_title']}, not a miss {not n1['path_miss']}, read by its slug ({n1['path_calls']}; paths.get with the slug {n1['path_get_slug']}), the trail naming it {n1['trail']}; "
++        f"signed in {n1['signed_in']}: pill {n1['account_pill']} (guest pill gone {n1['no_guest_pill']}), note {n1['signed_in_note']}, sections {n1['account_sections']}, calls {n1['account_calls']} with the credential {n1['account_credential']}; composites {sorted(n1['parity'].values())}",
++        [run_rel, obs["tree_guest"], obs.get("tree_path"), obs["tree_account"]] + caps("academy-guest") + caps("academy-account") + sorted(n1["parity"].values()))
++    lay = n2["layouts"]
++    ring_ok = (n2["ring"].get("diff") or 0) > 40
++    layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["board"]["ok"] for v in lay.values()) \
++        and sum(1 for v in lay.values() if v.get("width_1440")) == 2 and sum(1 for v in lay.values() if v.get("window_900x600")) == 2
++    add("C42-N02", n2["reach"]["section"] and n2["reach"]["card"] and ring_ok and layouts_ok,
++        f"Tab from the first section reached {n2['walk']} (a section {n2['reach']['section']}, a path card {n2['reach']['card']}); ring on a section link {n2['ring'].get('diff')} px; "
++        + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, board {v['board']}" for k, v in lay.items()),
++        [run_rel] + [v["tree"] for v in lay.values()] + caps("layouts") + caps("academy-ring"))
++
++    hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
++    os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"
++    record = {
++        "schema": "airs-v2/native-acceptance/1", "subject": "C42", "recorded_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "method": "cua",
++        "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c42.py",
++        "host": f"{hw}; macOS {os_ver}",
++        "app": {"bundle": prepared["bundle"], "identifier": prepared["identifier"], "executable_sha256": prepared["executable_sha256"], "fixture": True},
++        "checks": checks,
++        "limitations": [
++            "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size) beside it; the embed's content is the synthetic Academy catalog's, judged as Academy's own (P19).",
++            "Synthetic Academy, scan and management endpoints only; the device sign-in is the synthetic endpoint's granted approval.",
++            "Spoken VoiceOver output was not recorded.",
++        ],
++    }
++    screens = os.path.join(EVIDENCE, "screens")
++    if os.path.isdir(screens):
++        shutil.rmtree(screens)
++    os.makedirs(screens, exist_ok=True)
++    for name, variants in obs["captures"].items():
++        for variant, src in variants.items():
++            if src:
++                shutil.copy(os.path.join(ROOT, src), os.path.join(screens, f"{name}-{variant}.png"))
++    record["screens"] = sorted(os.listdir(screens))
++    if os.path.isdir(FINAL):
++        shutil.rmtree(FINAL)
++    os.rename(NATIVE, FINAL)
++    staged_rel, final_rel = rel(NATIVE), rel(FINAL)
++    for c in checks:
++        c["evidence"] = [e.replace(staged_rel, final_rel) for e in c["evidence"]]
++    NATIVE = FINAL
++    with open(RECORD, "w") as f:
++        json.dump(record, f, indent=2)
++        f.write("\n")
++    for c in checks:
++        print(c["result"].upper(), c["id"], c["observation"][:220])
++    return 0 if all(c["result"] == "pass" for c in checks) else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+
+# Untracked files in scope:
+# + docs/planning/evidence/C42/native-acceptance.json
+# + docs/planning/evidence/C42/native-prepare.json
+# + docs/planning/evidence/C42/native/captures/academy-1440x809-dark.png
+# + docs/planning/evidence/C42/native/captures/academy-1440x809-light.png
+# + docs/planning/evidence/C42/native/captures/academy-900x600-200-dark.png
+# + docs/planning/evidence/C42/native/captures/academy-900x600-200-light.png
+# + docs/planning/evidence/C42/native/captures/academy-account-dark-100.png
+# + docs/planning/evidence/C42/native/captures/academy-account-dark-200.png
+# + docs/planning/evidence/C42/native/captures/academy-account-light-100.png
+# + docs/planning/evidence/C42/native/captures/academy-account-light-200.png
+# + docs/planning/evidence/C42/native/captures/academy-guest-light.png
+# + docs/planning/evidence/C42/native/captures/academy-ring-plain.png
+# + docs/planning/evidence/C42/native/captures/academy-ring.png
+# + docs/planning/evidence/C42/native/captures/parity-academy-dark.png
+# + docs/planning/evidence/C42/native/captures/parity-academy-light.png
+# + docs/planning/evidence/C42/native/observations.json
+# + docs/planning/evidence/C42/native/tree-academy-1440x809-dark.json
+# + docs/planning/evidence/C42/native/tree-academy-1440x809-light.json
+# + docs/planning/evidence/C42/native/tree-academy-900x600-200-dark.json
+# + docs/planning/evidence/C42/native/tree-academy-900x600-200-light.json
+# + docs/planning/evidence/C42/native/tree-academy-account.json
+# + docs/planning/evidence/C42/native/tree-academy-guest.json
+# + docs/planning/evidence/C42/native/tree-academy-path.json
+# + docs/planning/evidence/C42/parity/academy-dark.png
+# + docs/planning/evidence/C42/parity/academy-light.png
+# + docs/planning/evidence/C42/parity/bundle.json
+# + docs/planning/evidence/C42/runs/attempt-01/bindings.exit
+# + docs/planning/evidence/C42/runs/attempt-01/bindings.log
+# + docs/planning/evidence/C42/runs/attempt-01/clippy-default.exit
+# + docs/planning/evidence/C42/runs/attempt-01/clippy-default.log
+# + docs/planning/evidence/C42/runs/attempt-01/clippy.exit
+# + docs/planning/evidence/C42/runs/attempt-01/clippy.log
+# + docs/planning/evidence/C42/runs/attempt-01/contracts-typecheck.exit
+# + docs/planning/evidence/C42/runs/attempt-01/contracts-typecheck.log
+# + docs/planning/evidence/C42/runs/attempt-01/core-fixtures.exit
+# + docs/planning/evidence/C42/runs/attempt-01/core-fixtures.flake-1.log
+# + docs/planning/evidence/C42/runs/attempt-01/core-fixtures.log
+# + docs/planning/evidence/C42/runs/attempt-01/core-lib.exit
+# + docs/planning/evidence/C42/runs/attempt-01/core-lib.log
+# + docs/planning/evidence/C42/runs/attempt-01/desktop-build.exit
+# + docs/planning/evidence/C42/runs/attempt-01/desktop-build.log
+# + docs/planning/evidence/C42/runs/attempt-01/desktop-typecheck.exit
+# + docs/planning/evidence/C42/runs/attempt-01/desktop-typecheck.log
+# + docs/planning/evidence/C42/runs/attempt-01/fixture-command.exit
+# + docs/planning/evidence/C42/runs/attempt-01/fixture-command.log
+# + docs/planning/evidence/C42/runs/attempt-01/host.exit
+# + docs/planning/evidence/C42/runs/attempt-01/host.log
+# + docs/planning/evidence/C42/runs/attempt-01/inputs-after.sha256
+# + docs/planning/evidence/C42/runs/attempt-01/inputs-before.sha256
+# + docs/planning/evidence/C42/runs/attempt-01/notices.exit
+# + docs/planning/evidence/C42/runs/attempt-01/notices.log
+# + docs/planning/evidence/C42/runs/attempt-01/rustfmt.exit
+# + docs/planning/evidence/C42/runs/attempt-01/rustfmt.log
+# + docs/planning/evidence/C42/runs/attempt-01/shell-controller.exit
+# + docs/planning/evidence/C42/runs/attempt-01/shell-controller.log
+# + docs/planning/evidence/C42/runs/attempt-01/vitest-truth.exit
+# + docs/planning/evidence/C42/runs/attempt-01/vitest-truth.log
+# + docs/planning/evidence/C42/runs/attempt-01/vitest.exit
+# + docs/planning/evidence/C42/runs/attempt-01/vitest.log
+# + docs/planning/evidence/C42/runs/attempt-01/xtask-lib.exit
+# + docs/planning/evidence/C42/runs/attempt-01/xtask-lib.log
+# + docs/planning/evidence/C42/runs/attempt-02/bindings.exit
+# + docs/planning/evidence/C42/runs/attempt-02/bindings.log
+# + docs/planning/evidence/C42/runs/attempt-02/clippy-default.exit
+# + docs/planning/evidence/C42/runs/attempt-02/clippy-default.log
+# + docs/planning/evidence/C42/runs/attempt-02/clippy.exit
+# + docs/planning/evidence/C42/runs/attempt-02/clippy.log
+# + docs/planning/evidence/C42/runs/attempt-02/contracts-typecheck.exit
+# + docs/planning/evidence/C42/runs/attempt-02/contracts-typecheck.log
+# + docs/planning/evidence/C42/runs/attempt-02/core-fixtures.exit
+# + docs/planning/evidence/C42/runs/attempt-02/core-fixtures.log
+# + docs/planning/evidence/C42/runs/attempt-02/core-lib.exit
+# + docs/planning/evidence/C42/runs/attempt-02/core-lib.log
+# + docs/planning/evidence/C42/runs/attempt-02/desktop-build.exit
+# + docs/planning/evidence/C42/runs/attempt-02/desktop-build.log
+# + docs/planning/evidence/C42/runs/attempt-02/desktop-typecheck.exit
+# + docs/planning/evidence/C42/runs/attempt-02/desktop-typecheck.log
+# + docs/planning/evidence/C42/runs/attempt-02/fixture-command.exit
+# + docs/planning/evidence/C42/runs/attempt-02/fixture-command.log
+# + docs/planning/evidence/C42/runs/attempt-02/host.exit
+# + docs/planning/evidence/C42/runs/attempt-02/host.log
+# + docs/planning/evidence/C42/runs/attempt-02/inputs-after.sha256
+# + docs/planning/evidence/C42/runs/attempt-02/inputs-before.sha256
+# + docs/planning/evidence/C42/runs/attempt-02/notices.exit
+# + docs/planning/evidence/C42/runs/attempt-02/notices.log
+# + docs/planning/evidence/C42/runs/attempt-02/rustfmt.exit
+# + docs/planning/evidence/C42/runs/attempt-02/rustfmt.log
+# + docs/planning/evidence/C42/runs/attempt-02/shell-controller.exit
+# + docs/planning/evidence/C42/runs/attempt-02/shell-controller.log
+# + docs/planning/evidence/C42/runs/attempt-02/vitest-truth.exit
+# + docs/planning/evidence/C42/runs/attempt-02/vitest-truth.log
+# + docs/planning/evidence/C42/runs/attempt-02/vitest.exit
+# + docs/planning/evidence/C42/runs/attempt-02/vitest.log
+# + docs/planning/evidence/C42/runs/attempt-02/xtask-lib.exit
+# + docs/planning/evidence/C42/runs/attempt-02/xtask-lib.log
+# + docs/planning/evidence/C42/runs/attempt-03/bindings.exit
+# + docs/planning/evidence/C42/runs/attempt-03/bindings.log
+# + docs/planning/evidence/C42/runs/attempt-03/clippy-default.exit
+# + docs/planning/evidence/C42/runs/attempt-03/clippy-default.log
+# + docs/planning/evidence/C42/runs/attempt-03/clippy.exit
+# + docs/planning/evidence/C42/runs/attempt-03/clippy.log
+# + docs/planning/evidence/C42/runs/attempt-03/contracts-typecheck.exit
+# + docs/planning/evidence/C42/runs/attempt-03/contracts-typecheck.log
+# + docs/planning/evidence/C42/runs/attempt-03/core-fixtures.exit
+# + docs/planning/evidence/C42/runs/attempt-03/core-fixtures.log
+# + docs/planning/evidence/C42/runs/attempt-03/core-lib.exit
+# + docs/planning/evidence/C42/runs/attempt-03/core-lib.log
+# + docs/planning/evidence/C42/runs/attempt-03/desktop-build.exit
+# + docs/planning/evidence/C42/runs/attempt-03/desktop-build.log
+# + docs/planning/evidence/C42/runs/attempt-03/desktop-typecheck.exit
+# + docs/planning/evidence/C42/runs/attempt-03/desktop-typecheck.log
+# + docs/planning/evidence/C42/runs/attempt-03/fixture-command.exit
+# + docs/planning/evidence/C42/runs/attempt-03/fixture-command.log
+# + docs/planning/evidence/C42/runs/attempt-03/host.exit
+# + docs/planning/evidence/C42/runs/attempt-03/host.log
+# + docs/planning/evidence/C42/runs/attempt-03/inputs-after.sha256
+# + docs/planning/evidence/C42/runs/attempt-03/inputs-before.sha256
+# + docs/planning/evidence/C42/runs/attempt-03/notices.exit
+# + docs/planning/evidence/C42/runs/attempt-03/notices.log
+# + docs/planning/evidence/C42/runs/attempt-03/rustfmt.exit
+# + docs/planning/evidence/C42/runs/attempt-03/rustfmt.log
+# + docs/planning/evidence/C42/runs/attempt-03/shell-controller.exit
+# + docs/planning/evidence/C42/runs/attempt-03/shell-controller.log
+# + docs/planning/evidence/C42/runs/attempt-03/vitest-truth.exit
+# + docs/planning/evidence/C42/runs/attempt-03/vitest-truth.log
+# + docs/planning/evidence/C42/runs/attempt-03/vitest.exit
+# + docs/planning/evidence/C42/runs/attempt-03/vitest.log
+# + docs/planning/evidence/C42/runs/attempt-03/xtask-lib.exit
+# + docs/planning/evidence/C42/runs/attempt-03/xtask-lib.log
+# + docs/planning/evidence/C42/runs/run-attempt-01.json
+# + docs/planning/evidence/C42/runs/run-attempt-02.json
+# + docs/planning/evidence/C42/runs/run-attempt-03.json
+# + docs/planning/evidence/C42/screens/academy-account-dark-100.png
+# + docs/planning/evidence/C42/screens/academy-account-dark-200.png
+# + docs/planning/evidence/C42/screens/academy-account-light-100.png
+# + docs/planning/evidence/C42/screens/academy-account-light-200.png
+# + docs/planning/evidence/C42/screens/academy-guest-light.png
+# + docs/planning/evidence/C42/screens/academy-ring-focused.png
+# + docs/planning/evidence/C42/screens/academy-ring-plain.png
+# + docs/planning/evidence/C42/screens/layouts-academy-1440x809-dark.png
+# + docs/planning/evidence/C42/screens/layouts-academy-1440x809-light.png
+# + docs/planning/evidence/C42/screens/layouts-academy-900x600-200-dark.png
+# + docs/planning/evidence/C42/screens/layouts-academy-900x600-200-light.png
+# + docs/planning/reviews/C42/attempt-01/diff.patch
+# + docs/planning/reviews/C42/attempt-01/message.txt
+# + docs/planning/reviews/C42/attempt-01/request.json
+# + docs/planning/reviews/C42/attempt-01/source-inventory.json
+# + docs/planning/reviews/C42/attempt-01/thread-reply.log
+# + docs/planning/reviews/C42/attempt-01/verdict-returned.json
+# + docs/planning/reviews/C42/attempt-02/diff.patch
+# + docs/planning/reviews/C42/attempt-02/message.txt
+# + docs/planning/reviews/C42/attempt-02/request.json
+# + docs/planning/reviews/C42/attempt-02/source-inventory.json
+# + docs/planning/reviews/C42/attempt-02/thread-reply.log
+# + docs/planning/reviews/C42/attempt-02/verdict-returned.json
