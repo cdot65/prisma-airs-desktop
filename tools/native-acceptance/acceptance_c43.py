@@ -439,8 +439,13 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         size_window(app, pid, 1440, 900)
         return out
 
-    # Keyboard (T09) on the drafted Tenant step: Tab from the rail's current step mark reaches the step's first field
-    # (the optional scan key) and the footer's primary (Continue, enabled) in that order; the ring on that primary.
+    # Keyboard (T09) on the drafted Tenant step: Tab from the rail's current step mark reaches the step's first control
+    # (in add mode the optional scan-key card is closed: its switch comes first) and the footer's primary (Continue,
+    # enabled) in that order; the ring on that primary, against a capture with focus on the rail mark.
+    tree = app.tree()
+    d = c29.dialog(tree)
+    controls = [n for n in within(tree, d) if n.get("role") in ("AXCheckBox", "AXTextField", "AXPopUpButton", "AXRadioButton") and n.get("label")] if d else []
+    n3["first_control"] = controls[0]["label"] if controls else None
     app.ax("focus", "AXButton", "1 Tenant")
     time.sleep(0.3)
     walk = []
@@ -452,10 +457,10 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         if walk[-1] == "Continue":
             break
     n3["walk"] = walk
-    first_field = next((i for i, w in enumerate(walk) if w.startswith("Scan API key")), None)
+    first_field = next((i for i, w in enumerate(walk) if w and (w == n3["first_control"] or w.startswith("Scan API key"))), None)
     primary_at = next((i for i, w in enumerate(walk) if w == "Continue"), None)
     n3["reach"] = {"field": first_field is not None, "primary": primary_at is not None, "in_order": first_field is not None and primary_at is not None and first_field < primary_at}
-    app.ax("focus", "AXTextField", "Scan API key")
+    app.ax("focus", "AXButton", "1 Tenant")
     time.sleep(0.4)
     plain = c29.capture(app, "wizard-ring-plain")
     n3["ring"] = c31.ring_on(app, "Continue", plain, "wizard-ring")
@@ -532,7 +537,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     layouts_ok = len(lay) == 8 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["primary"]["ok"] and v["dialog"] and v["size_ok"] for v in lay.values()) \
         and sum(1 for v in lay.values() if v["step"] == "tenant") == 4 and sum(1 for v in lay.values() if v["step"] == "verify") == 4
     add("C43-N03", n3["drafted"] and n3["reach"]["field"] and n3["reach"]["primary"] and n3["reach"]["in_order"] and ring_ok and layouts_ok,
-        f"on the drafted Tenant step, Tab from the rail's 1 Tenant reached {n3['walk']} (first field {n3['reach']['field']}, footer primary Continue {n3['reach']['primary']}, in that order {n3['reach']['in_order']}); ring on the footer's Continue {n3['ring'].get('diff')} px (focused {n3['ring'].get('focused')!r}); "
+        f"on the drafted Tenant step, Tab from the rail's 1 Tenant reached {n3['walk']} (the step's first control {n3.get('first_control')!r} {n3['reach']['field']}, footer primary Continue {n3['reach']['primary']}, in that order {n3['reach']['in_order']}); ring on the footer's Continue {n3['ring'].get('diff')} px (focused {n3['ring'].get('focused')!r}, plain capture focused on the rail mark); "
         + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} (asserted {v['size_ok']}) overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, primary {v['primary']}, dialog {v['dialog']}" for k, v in lay.items()),
         [run_rel] + [v["tree"] for v in lay.values()] + [v for v in obs["captures"]["layouts"].values() if v] + [v for v in obs["captures"]["wizard-ring"].values() if v])
 
