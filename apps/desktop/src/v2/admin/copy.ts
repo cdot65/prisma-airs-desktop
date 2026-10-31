@@ -34,6 +34,11 @@ export const ADMIN_COPY = {
     } as Record<string, string>,
     alerts: (n: number) => (n === 1 ? '1 alert' : `${n} alerts`),
     table: {
+        /** An inventory this desktop reads but never changes says so (the legacy Administration's wording, kept). */
+        readOnlyInventory: {
+            deploymentProfiles: 'Read only. Deployment profiles are used when creating API keys; they are not changed here.',
+            dlpCatalog: 'Read only. The DLP profiles AIRS provides are read here; they are not changed from the desktop.',
+        } as Partial<Record<string, string>>,
         search: (tab: string) => `Search ${tab.toLowerCase()}`,
         view: 'View',
         details: (name: string) => `Details for ${name}`,

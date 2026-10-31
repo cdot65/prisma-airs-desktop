@@ -122,6 +122,8 @@ describe('DLP authoring', () => {
         await chooseInventory(user, 'Deployment profiles')
         expect(await screen.findByRole('tab', { name: 'Deployment profiles' })).toHaveAttribute('aria-selected', 'true')
         expect(screen.queryByRole('button', { name: /^New / })).toBeNull()
+        // And say so (the legacy Administration's read-only note, kept on the one presentation).
+        expect(screen.getByText('Read only. Deployment profiles are used when creating API keys; they are not changed here.')).toBeInTheDocument()
     })
 
     it('builds a dictionary draft from the metadata and typed keywords when Review is pressed', async () => {

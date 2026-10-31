@@ -355,6 +355,11 @@ export function InventoryTable({ snapshot, context, dispatch, observe, resource,
                     ) : null}
                 </div>
             ) : null}
+            {!admitted.some((a) => a.kind === kindHere) && C.table.readOnlyInventory[resource] ? (
+                <p className='text-[12.5px]' style={{ color: 'var(--v2-soft)' }} data-slot='administration-read-only'>
+                    {C.table.readOnlyInventory[resource]}
+                </p>
+            ) : null}
             <div className='overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)' }}>
                 <div role='table' aria-label={info.label} data-slot='administration-table'>
                     <div role='row' className='grid text-[12px] font-semibold' style={{ gridTemplateColumns: grid, gap: 12, padding: '12px 18px', background: 'var(--v2-inset)', color: 'var(--v2-faint)' }}>
