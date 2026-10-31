@@ -159,30 +159,44 @@ def table_usable(tree, zoom):
     current = tab_of(tree, "Custom topics")
     out = {"table_inside": contained(table, section), "view_inside": contained(view, section), "foot_inside": contained(foot, section), "tab_inside": contained(current, section), "zoom": zoom}
     # C39b attempt-01 R4: the column headers stay in the accessibility tree at every width, and once the rows
-    # stack (200%) each stacked value carries its column's name, so a reader is never left with bare values.
-    texts_in = [n for n in tree[tree.index(table) + 1:] if n.get("role") == "AXStaticText" and (n.get("label") or n.get("value")) and contained(n, table, slack=2)]
-    labels = [(n.get("label") or n.get("value") or "") for n in texts_in]
+    # stack (200%) each stacked value carries its column's name, so a reader is never left with bare values. The
+    # name is the cell's generated label, which the accessibility tree exposes either joined with the value
+    # ("ID: 1111…") or as its own text ("ID", ": ") read right before the value inside the same cell; both
+    # carry the name to the reader.
+    after = tree[tree.index(table) + 1:]
+    texts_in = [n for n in after if n.get("role") == "AXStaticText" and (n.get("label") or n.get("value")) and contained(n, table, slack=2)]
+    cells = [n for n in after if n.get("role") == "AXCell" and n.get("pos") and n.get("size") and contained(n, table, slack=2)]
+    text_of = lambda n: (n.get("label") or n.get("value") or "")  # noqa: E731
+    cell_of = lambda n: next((i for i, c in enumerate(cells) if contained(n, c, slack=2)), None)  # noqa: E731
+    labels = [text_of(n) for n in texts_in]
     headers = [h for h in ("Name", "ID", "Used by") if h in labels]
     out["headers"] = headers
     out["headers_ok"] = headers == ["Name", "ID", "Used by"]
     if zoom >= 2:
-        values = [l for l in labels if l not in ("Name", "ID", "Used by") and not re.match(r"Read \d{1,2}:\d\d", l)]
-        labelled = [l for l in values if l.startswith(("Name: ", "ID: ", "Used by: "))]
-        out["stacked_labelled"] = {"values": len(values), "labelled": len(labelled)}
-        out["labels_ok"] = bool(values) and len(labelled) == len(values)
+        by_cell = {}
+        for n in texts_in:
+            c = cell_of(n)
+            if c is not None:
+                by_cell.setdefault(c, []).append(text_of(n))
+        value_cells = [ts for ts in by_cell.values() if any(t not in ("Name", "ID", "Used by", ": ", "Actions") and not re.match(r"Read \d{1,2}:\d\d", t) for t in ts)]
+        labelled = [ts for ts in value_cells if ts[0] in ("Name", "ID", "Used by") or ts[0].startswith(("Name: ", "ID: ", "Used by: "))]
+        out["stacked_labelled"] = {"values": len(value_cells), "labelled": len(labelled), "sample": value_cells[:3]}
+        out["labels_ok"] = bool(value_cells) and len(labelled) == len(value_cells)
     else:
         out["labels_ok"] = True
-    # C39a attempt-01 R1: beyond containment, the row's texts must not overlap each other (a squeezed Name
-    # column drawing across ID is a failure even when every frame is inside the card).
-    inside = [n for n in tree[tree.index(table) + 1:] if n.get("role") == "AXStaticText" and n.get("pos") and n.get("size") and n["size"][0] > 0 and (n.get("label") or n.get("value"))]
-    inside = [n for n in inside if contained(n, table, slack=2)]
+    # C39a attempt-01 R1: beyond containment, texts of different cells must not overlap on a line (a squeezed Name
+    # column drawing across ID is a failure even when every frame is inside the card). Texts of one cell (a label
+    # and its wrapped value) share the cell by design.
+    inside = [n for n in texts_in if n.get("pos") and n.get("size") and n["size"][0] > 0]
     overlaps = []
     for i, a in enumerate(inside):
         for b in inside[i + 1:]:
+            if cell_of(a) is not None and cell_of(a) == cell_of(b):
+                continue
             same_line = abs(a["pos"][1] - b["pos"][1]) < 4
             ax0, ax1, bx0, bx1 = a["pos"][0], a["pos"][0] + a["size"][0], b["pos"][0], b["pos"][0] + b["size"][0]
-            if same_line and min(ax1, bx1) - max(ax0, bx0) > 4 and (a.get("label") or a.get("value")) != (b.get("label") or b.get("value")):
-                overlaps.append([(a.get("label") or a.get("value"))[:30], (b.get("label") or b.get("value"))[:30]])
+            if same_line and min(ax1, bx1) - max(ax0, bx0) > 4 and text_of(a) != text_of(b):
+                overlaps.append([text_of(a)[:30], text_of(b)[:30]])
     out["text_overlaps"] = overlaps[:6]
     out["no_overlap"] = not overlaps
     out["ok"] = all(out[k] for k in ("table_inside", "view_inside", "foot_inside", "tab_inside", "no_overlap", "headers_ok", "labels_ok"))
