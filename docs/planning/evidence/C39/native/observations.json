@@ -10,9 +10,18 @@
    "admin-playground": {
     "light": "docs/planning/evidence/C39/native/captures/admin-playground-light.png"
    },
+   "review-applied": {
+    "light": "docs/planning/evidence/C39/native/captures/review-applied-light.png"
+   },
+   "gateway-routes": {
+    "light": "docs/planning/evidence/C39/native/captures/gateway-routes-light.png"
+   },
+   "red-team-overview": {
+    "light": "docs/planning/evidence/C39/native/captures/red-team-overview-light.png"
+   },
    "layouts": {
-    "admin-1440x807-light": "docs/planning/evidence/C39/native/captures/admin-1440x807-light.png",
-    "admin-1440x807-dark": "docs/planning/evidence/C39/native/captures/admin-1440x807-dark.png",
+    "admin-1440x1456-light": "docs/planning/evidence/C39/native/captures/admin-1440x1456-light.png",
+    "admin-1440x1456-dark": "docs/planning/evidence/C39/native/captures/admin-1440x1456-dark.png",
     "admin-900x600-200-light": "docs/planning/evidence/C39/native/captures/admin-900x600-200-light.png",
     "admin-900x600-200-dark": "docs/planning/evidence/C39/native/captures/admin-900x600-200-dark.png"
    },
@@ -31,7 +40,7 @@
    "expand_collapse": true,
    "cards": [
     "AI Runtime Security LLM and MCP guardrails: prompts, responses and tool calls are checked ",
-    "AI Gateway LLM, MCP and Agent Gateway, integrated with Idira through AIS. \u2014\nrequests \u00b7 tod",
+    "AI Gateway LLM, MCP and Agent Gateway, integrated with Idira through AIS. 120\nrequests \u00b7 t",
     "AI Red Teaming Read-only Automated testing of application, agent and model guardrails. \u2014\ns",
     "Model and skill scans Read-only Scans AI artifacts before they ship: models, Skills and co",
     "Agentic Identity Security New Secures MCP tool invocations, with identities from Idira and",
@@ -62,7 +71,7 @@
    "new_topic": true,
    "footer": {
     "count": "1 item",
-    "read": "Read 05:58 AM"
+    "read": "Read 09:48 AM"
    },
    "parity": {
     "light": "docs/planning/evidence/C39/parity/admin-light.png",
@@ -88,6 +97,60 @@
    "expanded_all": true,
    "collapsed_all": true
   },
+  "tree_sheet": "docs/planning/evidence/C39/native/tree-review-sheet.json",
+  "tree_applied": "docs/planning/evidence/C39/native/tree-review-applied.json",
+  "n2": {
+   "sheet": true,
+   "sheet_frame": [
+    820,
+    127,
+    1440,
+    971
+   ],
+   "sheet_docked": true,
+   "sheet_title": true,
+   "sheet_state": true,
+   "sheet_close": true,
+   "parity": {
+    "light": "docs/planning/evidence/C39/parity/review-light.png",
+    "dark": "docs/planning/evidence/C39/parity/review-dark.png"
+   },
+   "state_ready": true,
+   "disabled_empty": true,
+   "disabled_wrong": true,
+   "enabled_match": true,
+   "native_confirmation": true,
+   "confirmation_title": true,
+   "live": true,
+   "state_applied": true,
+   "writes": 1,
+   "closed": true
+  },
+  "tree_gateway_workspaces": "docs/planning/evidence/C39/native/tree-gateway-workspaces.json",
+  "tree_gateway_routes": "docs/planning/evidence/C39/native/tree-gateway-routes.json",
+  "tree_red_team": "docs/planning/evidence/C39/native/tree-red-team-overview.json",
+  "tree_models": "docs/planning/evidence/C39/native/tree-model-scans.json",
+  "n3": {
+   "gateway_tabs": true,
+   "workspace_detail": true,
+   "workspace_chosen": true,
+   "routes_table": true,
+   "routes_search": true,
+   "routes_create": true,
+   "route_detail": true,
+   "keys_table": true,
+   "keys_kinds": true,
+   "red_team_tabs": true,
+   "red_team_tiles": true,
+   "red_team_ranked": true,
+   "targets_table": true,
+   "targets_results": true,
+   "scans_heading": true,
+   "scans_no_tiles": true,
+   "models_tabs": true,
+   "model_scans": true,
+   "codebase_unavailable": true
+  },
   "n4": {
    "walk": [
     "Collapse all",
@@ -105,7 +168,21 @@
     "New topic\u2026",
     "Details for Finance",
     "AI Gateway LLM, MCP and Agent Gateway, i",
-    "AI Red Teaming Read-only Automated testi"
+    "Overview",
+    "Workspaces",
+    "Routes",
+    "Providers",
+    "Guardrails",
+    "Keys",
+    "Integrations",
+    "Logs",
+    "MCP servers",
+    "Service keys",
+    "User keys",
+    "Search service keys",
+    "Refresh service keys",
+    "New key\u2026",
+    "Details for team-a-key-1"
    ],
    "order": [
     [
@@ -137,21 +214,21 @@
     "plain": "docs/planning/evidence/C39/native/captures/admin-ring-plain.png"
    },
    "layouts": {
-    "admin-1440x807-light": {
+    "admin-1440x1456-light": {
      "overflow_px": 0,
      "horizontal_scrollbars": 0,
      "geometry": {
       "web": [
        1440,
-       807
+       1456
       ],
       "viewport": [
        1440,
-       807
+       900
       ],
       "window": [
        1440,
-       839
+       932
       ]
      },
      "width_1440": true,
@@ -161,26 +238,35 @@
       "foot_inside": true,
       "tab_inside": true,
       "zoom": 1,
+      "headers": [
+       "Name",
+       "ID",
+       "Used by"
+      ],
+      "headers_ok": true,
+      "labels_ok": true,
+      "text_overlaps": [],
+      "no_overlap": true,
       "ok": true
      },
-     "capture": "docs/planning/evidence/C39/native/captures/admin-1440x807-light.png",
-     "tree": "docs/planning/evidence/C39/native/tree-admin-1440x807-light.json"
+     "capture": "docs/planning/evidence/C39/native/captures/admin-1440x1456-light.png",
+     "tree": "docs/planning/evidence/C39/native/tree-admin-1440x1456-light.json"
     },
-    "admin-1440x807-dark": {
+    "admin-1440x1456-dark": {
      "overflow_px": 0,
      "horizontal_scrollbars": 0,
      "geometry": {
       "web": [
        1440,
-       807
+       1456
       ],
       "viewport": [
        1440,
-       807
+       900
       ],
       "window": [
        1440,
-       839
+       932
       ]
      },
      "width_1440": true,
@@ -190,10 +276,19 @@
       "foot_inside": true,
       "tab_inside": true,
       "zoom": 1,
+      "headers": [
+       "Name",
+       "ID",
+       "Used by"
+      ],
+      "headers_ok": true,
+      "labels_ok": true,
+      "text_overlaps": [],
+      "no_overlap": true,
       "ok": true
      },
-     "capture": "docs/planning/evidence/C39/native/captures/admin-1440x807-dark.png",
-     "tree": "docs/planning/evidence/C39/native/tree-admin-1440x807-dark.json"
+     "capture": "docs/planning/evidence/C39/native/captures/admin-1440x1456-dark.png",
+     "tree": "docs/planning/evidence/C39/native/tree-admin-1440x1456-dark.json"
     },
     "admin-900x600-200-light": {
      "overflow_px": 0,
@@ -201,7 +296,7 @@
      "geometry": {
       "web": [
        900,
-       1506
+       5279
       ],
       "viewport": [
        900,
@@ -219,6 +314,45 @@
       "foot_inside": true,
       "tab_inside": true,
       "zoom": 2,
+      "headers": [
+       "Name",
+       "ID",
+       "Used by"
+      ],
+      "headers_ok": true,
+      "stacked_labelled": {
+       "values": 3,
+       "labelled": 3,
+       "sample": [
+        [
+         "Name",
+         ": ",
+         "Finance",
+         "Name",
+         ": ",
+         "Finance"
+        ],
+        [
+         "ID",
+         ": ",
+         "11111111-1111-4111-8111-111111111111",
+         "ID",
+         ": ",
+         "11111111-1111-4111-8111-111111111111"
+        ],
+        [
+         "Used by",
+         ": ",
+         "No profile",
+         "Used by",
+         ": ",
+         "No profile"
+        ]
+       ]
+      },
+      "labels_ok": true,
+      "text_overlaps": [],
+      "no_overlap": true,
       "ok": true
      },
      "capture": "docs/planning/evidence/C39/native/captures/admin-900x600-200-light.png",
@@ -230,7 +364,7 @@
      "geometry": {
       "web": [
        900,
-       1506
+       5279
       ],
       "viewport": [
        900,
@@ -248,6 +382,45 @@
       "foot_inside": true,
       "tab_inside": true,
       "zoom": 2,
+      "headers": [
+       "Name",
+       "ID",
+       "Used by"
+      ],
+      "headers_ok": true,
+      "stacked_labelled": {
+       "values": 3,
+       "labelled": 3,
+       "sample": [
+        [
+         "Name",
+         ": ",
+         "Finance",
+         "Name",
+         ": ",
+         "Finance"
+        ],
+        [
+         "ID",
+         ": ",
+         "11111111-1111-4111-8111-111111111111",
+         "ID",
+         ": ",
+         "11111111-1111-4111-8111-111111111111"
+        ],
+        [
+         "Used by",
+         ": ",
+         "No profile",
+         "Used by",
+         ": ",
+         "No profile"
+        ]
+       ]
+      },
+      "labels_ok": true,
+      "text_overlaps": [],
+      "no_overlap": true,
       "ok": true
      },
      "capture": "docs/planning/evidence/C39/native/captures/admin-900x600-200-dark.png",
@@ -258,52 +431,88 @@
  },
  "log": [
   {
-   "t": "05:58:09",
+   "t": "09:47:24",
+   "step": "typed",
+   "field": "Display name",
+   "attempts": 1
+  },
+  {
+   "t": "09:47:26",
+   "step": "typed",
+   "field": "TSG ID",
+   "attempts": 1
+  },
+  {
+   "t": "09:47:29",
+   "step": "typed",
+   "field": "Scan API key",
+   "attempts": 1
+  },
+  {
+   "t": "09:47:38",
    "step": "typed",
    "field": "TSG ID (optional)",
    "attempts": 1
   },
   {
-   "t": "05:58:11",
+   "t": "09:47:39",
    "step": "typed",
    "field": "Label",
    "attempts": 1
   },
   {
-   "t": "05:58:13",
+   "t": "09:47:42",
    "step": "typed",
    "field": "Endpoint origin",
    "attempts": 1
   },
   {
-   "t": "05:58:16",
+   "t": "09:47:46",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "05:58:19",
+   "t": "09:47:49",
    "step": "typed",
    "field": "Client ID",
    "attempts": 1
   },
   {
-   "t": "05:58:21",
+   "t": "09:47:51",
    "step": "typed",
    "field": "Client secret",
    "attempts": 1
   },
   {
-   "t": "05:58:55",
+   "t": "09:49:03",
    "step": "typed",
    "field": "Profile name or ID",
    "attempts": 1
   },
   {
-   "t": "05:58:57",
+   "t": "09:49:05",
    "step": "typed",
    "field": "Prompt",
    "attempts": 1
+  },
+  {
+   "t": "09:49:47",
+   "step": "typed",
+   "field": "custom topic draft (JSON)",
+   "attempts": 2
+  },
+  {
+   "t": "09:49:49",
+   "step": "typed",
+   "field": "Type Finance to confirm",
+   "attempts": 1
+  },
+  {
+   "t": "09:49:55",
+   "step": "typed",
+   "field": "Type Finance to confirm",
+   "attempts": 2
   }
  ]
 }
