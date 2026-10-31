@@ -16,6 +16,7 @@ import { ACADEMY_ORIGIN, ACCOUNT, GUEST, academySnapshot, scriptedNative as acad
 import { scriptedNative } from '../../test/native'
 import { fxSwitcher } from '../fixtures'
 import { resetShellStore } from '../store'
+import tokensCss from '../../styles/tokens.css?raw'
 import { Academy, PATHS_LIST_KEY, themeFor } from './academy'
 
 beforeEach(() => {
@@ -471,6 +472,21 @@ describe('C42 Academy board', () => {
         expect(themeFor('dark')).toBe('gruvbox')
         expect(themeFor('light')).toBe('paper')
         expect(['gruvbox', 'paper']).toContain(themeFor('system'))
+    })
+
+    it('keeps the accent focus ring on its section links, current or not: the shell\'s ink-on-accent ring is scoped to the accent-filled sidebar destination (attempt-05 R1)', async () => {
+        const css: string = tokensCss
+        // The override names the sidebar destination (data-inset-focus) and never a bare aria-current='page'.
+        expect(css).toMatch(/\[data-v2-shell\] \[data-inset-focus\]\[aria-current='page'\]:focus-visible \{\s*outline-color: var\(--v2-sel-ink\);/)
+        expect(css).not.toMatch(/\[data-v2-shell\] \[aria-current='page'\]:focus-visible/)
+        const native = academyNative((procedure) => (procedure === 'paths.list' ? [PATH] : procedure === 'library.list' ? [] : undefined))
+        render(<Academy snapshot={academySnapshot(true, ACCOUNT)} client={native.client} onNavigate={vi.fn()} />)
+        const place = await screen.findByRole('region', { name: 'Your place' })
+        const nav = within(place).getByRole('navigation', { name: 'Academy sections' })
+        const current = within(nav).getAllByRole('link').find((l) => l.getAttribute('aria-current') === 'page')
+        expect(current).toBeDefined()
+        // A current section link is an accent-soft link, not an accent-filled destination: no inset-focus marker on any of them.
+        for (const link of within(nav).getAllByRole('link')) expect(link).not.toHaveAttribute('data-inset-focus')
     })
 
     it('mounts in the v2 shell for the Academy destination (the shell hands the Rust-owned appearance to the learner host through themeFor)', async () => {

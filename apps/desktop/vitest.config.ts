@@ -10,6 +10,7 @@ export default defineConfig({
         globals: true,
         setupFiles: ['./src/test/setup.ts'],
         include: ['src/**/*.test.{ts,tsx}'],
-        css: false,
+        // Stylesheets are not processed, except one read as text (`?raw`) by a test asserting a rule's scope.
+        css: { include: [/\.css\?raw$/] },
     },
 })

@@ -13,7 +13,7 @@ include!("../academy_identity/harness.rs");
 fn paths_reply() -> Value {
     json!({"result": {"data": {"json": [{
         "id": "path-runtime", "slug": "runtime-path", "title": "Runtime Security Path",
-        "description": "Protect prompts and responses at runtime.", "familyKey": "prisma-airs",
+        "tagline": "Protect prompts and responses at runtime.", "familyKey": "prisma-airs",
         "iconKey": null, "tone": "info", "courseCount": 1, "estMinutes": 30,
         "unitCount": 4, "unitsDone": 0, "locked": false, "lockReason": null}]}}})
 }

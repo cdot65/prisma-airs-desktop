@@ -128,8 +128,39 @@ def board_usable(tree, zoom):
     return out
 
 
+def _lum(c):
+    def ch(v):
+        v = v / 255
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2])
+
+
+def ring_contrast(img_f, img_p, box, scale, band=8, inset=6):
+    """The focus ring's contrast: over the border band of `box` (as c28.ring_diff walks it), the pixels that
+    changed between the plain and the focused capture are the ring; each ring pixel's WCAG contrast against the
+    surface it replaced (the plain capture's pixel there) is computed and the median returned, with the count.
+    Only this control's box is measured, so another control's ring appearing or disappearing elsewhere counts
+    for nothing."""
+    w, h = img_f[0], img_f[1]
+    x, y, bw, bh = [int(v * scale) for v in box]
+    ratios = []
+    for yy in range(max(0, y - band), min(h, y + bh + band)):
+        for xx in range(max(0, x - band), min(w, x + bw + band)):
+            if x + inset <= xx < x + bw - inset and y + inset <= yy < y + bh - inset:
+                continue
+            cf, cp = c1.pixel(img_f, xx, yy), c1.pixel(img_p, xx, yy)
+            if sum(abs(cf[i] - cp[i]) for i in range(3)) > 24:
+                lf, lp = _lum(cf), _lum(cp)
+                ratios.append((max(lf, lp) + 0.05) / (min(lf, lp) + 0.05))
+    ratios.sort()
+    return {"pixels": len(ratios), "median_contrast": round(ratios[len(ratios) // 2], 2) if ratios else 0.0, "min_quartile_contrast": round(ratios[len(ratios) // 4], 2) if ratios else 0.0}
+
+
 def ring_on_link(app, label, plain_cap, name):
-    """Ring pixels around link `label` focused, against a capture with it unfocused (c31.ring_on for links)."""
+    """The focus ring on link `label`: `plain_cap` is a capture of the same page with focus on a control far from
+    the link (never a neighbouring link, whose own ring disappearing would count), so every changed pixel in the
+    link's border band is this ring. Returns the changed-pixel count (c28.ring_diff), the ring's contrast against
+    the surface it is drawn on (ring_contrast: at least 3:1 is the pass), the link's current state and the captures."""
     app.ax("focus", "AXLink", label)
     time.sleep(0.5)
     focused_cap = c29.capture(app, name)
@@ -137,12 +168,18 @@ def ring_on_link(app, label, plain_cap, name):
     web = next((n for n in snap if n.get("role") == "AXWebArea"), None)
     link = next((n for n in snap if n.get("role") == "AXLink" and (n.get("label") or "") == label and n.get("pos") and n.get("size")), None)
     if not (web and link and plain_cap and focused_cap):
-        return {"diff": 0, "focused": (fx.App.focused(snap) or {}).get("label")}
+        return {"diff": 0, "contrast": {}, "focused": (fx.App.focused(snap) or {}).get("label")}
     img_f = c1.png_pixels(os.path.join(ROOT, focused_cap))
     img_p = c1.png_pixels(os.path.join(ROOT, plain_cap))
     scale = img_f[0] / web["size"][0]
     box = [link["pos"][0] - web["pos"][0], link["pos"][1] - web["pos"][1], link["size"][0], link["size"][1]]
-    return {"diff": c28.ring_diff(img_f, img_p, box, scale), "focused": (fx.App.focused(snap) or {}).get("label"), "plain": plain_cap, "capture": focused_cap}
+    return {"diff": c28.ring_diff(img_f, img_p, box, scale), "contrast": ring_contrast(img_f, img_p, box, scale), "current": link.get("current"),
+            "focused": (fx.App.focused(snap) or {}).get("label"), "plain": plain_cap, "capture": focused_cap}
+
+
+def ring_ok(ring):
+    """A ring is present (changed pixels in the control's band) and contrasts at least 3:1 with its surface."""
+    return bool(ring) and (ring.get("diff") or 0) > 40 and (ring.get("contrast") or {}).get("median_contrast", 0) >= 3.0
 
 
 def composite(app, theme, web_size, prepared):
@@ -340,11 +377,30 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
             walk.append(f.get("label") or "")
     n2["walk"] = walk
     n2["reach"] = {"section": any(w in n1["account_sections"][1:] for w in walk), "card": any(w.startswith("Open ") for w in walk)}
+    # The focus ring on the selected (aria-current) section link and on an unselected one, in both themes: the
+    # plain capture has focus on the page heading, far from the links, so a neighbour's ring never enters the
+    # measure; the ring must contrast at least 3:1 with the surface it is drawn on (DESIGN-V2 section 8).
+    rings = {}
     if first:
-        app.ax("focus", "AXLink", first)
-        time.sleep(0.4)
-    plain = c29.capture(app, "academy-ring-plain")
-    n2["ring"] = ring_on_link(app, n1["account_sections"][1] if len(n1["account_sections"]) > 1 else first, plain, "academy-ring") if first else {}
+        tree = app.tree()
+        section_links = [n for n in within(tree, group(tree, "Academy sections")) if n.get("role") == "AXLink"]
+        selected = next(((n.get("label") or "") for n in section_links if n.get("current") == "page"), None)
+        unselected = next(((n.get("label") or "") for n in section_links if n.get("current") != "page"), None)
+        for theme in ("Light", "Dark"):
+            c29.appearance(app, theme)
+            time.sleep(0.6)
+            app.ax("focus", "AXHeading", "AI Security Academy")
+            time.sleep(0.4)
+            plain = c29.capture(app, f"academy-ring-plain-{theme.lower()}")
+            for kind, label in (("selected", selected), ("unselected", unselected)):
+                if label:
+                    rings[f"{kind}_{theme.lower()}"] = ring_on_link(app, label, plain, f"academy-ring-{kind}-{theme.lower()}")
+                    app.ax("focus", "AXHeading", "AI Security Academy")
+                    time.sleep(0.3)
+        c29.appearance(app, "Light")
+        time.sleep(0.5)
+    n2["rings"] = rings
+    n2["ring"] = rings.get("selected_light") or rings.get("unselected_light") or {}
     layouts = {}
     size_window(app, pid, 1440, 900)
     for theme in ("Light", "Dark"):
@@ -379,7 +435,7 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
     size_window(app, pid, 1440, 900)
     n2["layouts"] = layouts
     obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
-    obs["captures"]["academy-ring"] = {"plain": n2["ring"].get("plain"), "focused": n2["ring"].get("capture")}
+    obs["captures"]["academy-ring"] = {k: v for r in n2["rings"].values() for k, v in ((r.get("plain"), r.get("plain")), (r.get("capture"), r.get("capture"))) if k}
     obs["n2"] = n2
     app.quit()
 
@@ -403,11 +459,13 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
         f"signed in {n1['signed_in']}: pill {n1['account_pill']} (guest pill gone {n1['no_guest_pill']}), note {n1['signed_in_note']}, sections {n1['account_sections']}, calls {n1['account_calls']} with the credential {n1['account_credential']}; composites {sorted(n1['parity'].values())}",
         [run_rel, obs["tree_guest"], obs.get("tree_path"), obs["tree_account"]] + caps("academy-guest") + caps("academy-account") + sorted(n1["parity"].values()))
     lay = n2["layouts"]
-    ring_ok = (n2["ring"].get("diff") or 0) > 40
+    rings_ok = len(n2["rings"]) == 4 and all(ring_ok(r) for r in n2["rings"].values())
     layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["board"]["ok"] for v in lay.values()) \
         and sum(1 for v in lay.values() if v.get("width_1440")) == 2 and sum(1 for v in lay.values() if v.get("window_900x600")) == 2
-    add("C42-N02", n2["reach"]["section"] and n2["reach"]["card"] and ring_ok and layouts_ok,
-        f"Tab from the first section reached {n2['walk']} (a section {n2['reach']['section']}, a path card {n2['reach']['card']}); ring on a section link {n2['ring'].get('diff')} px; "
+    add("C42-N02", n2["reach"]["section"] and n2["reach"]["card"] and rings_ok and layouts_ok,
+        f"Tab from the first section reached {n2['walk']} (a section {n2['reach']['section']}, a path card {n2['reach']['card']}); focus rings against a plain capture focused on the page heading: "
+        + ", ".join(f"{k} ({r.get('focused')!r}, current {r.get('current')!r}) {r.get('diff')} px at median {r.get('contrast', {}).get('median_contrast')}:1 (lower quartile {r.get('contrast', {}).get('min_quartile_contrast')}:1)" for k, r in n2["rings"].items())
+        + f" — all four present and at least 3:1 {rings_ok}; "
         + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, board {v['board']}" for k, v in lay.items()),
         [run_rel] + [v["tree"] for v in lay.values()] + caps("layouts") + caps("academy-ring"))
 
