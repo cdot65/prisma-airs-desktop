@@ -236,7 +236,15 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     c8.text(app, "2 workspaces", 15)
     app.ax("press", "AXRadioButton", "Team A")
     c8.text(app, "Team A", 10)
-    c16.tab(app, "Playground")
+    # On the one presentation (C44) the Gateway card's tabs are radio buttons whose AX value reads 1 even when
+    # unselected, so the tab is pressed by its exact role and the Playground form is awaited before typing.
+    tab = next((n for n in app.tree() if n.get("role") in ("AXRadioButton", "AXTab", "AXButton") and (n.get("label") or "").strip() == "Playground"), None)
+    if tab is None:
+        raise RuntimeError(f"no Playground tab [tree: {app.dump_tree('gateway-no-playground')}]")
+    app.ax("press", tab["role"], "Playground")
+    tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXTextField", "Runtime endpoint") is not None, 12)
+    if not shown:
+        raise RuntimeError(f"the Playground form did not open [tree: {app.dump_tree('gateway-playground')}]")
     app.type_into("AXTextField", "Runtime endpoint", runtime)
     app.type_into("AXTextField", "Workspace API key with completions access", INFERENCE_KEY, secure=True)
     app.ax("press", "AXButton", "Store key for Team A")

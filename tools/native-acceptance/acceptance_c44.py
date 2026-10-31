@@ -158,15 +158,17 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         app.menu("Go", item)
         tree, d["opened"] = app.wait_for(lambda t: heading(t, head) is not None, 20)
         if product:
-            # The product's card is open (its Collapse control is present) and its tab strip is drawn (an Overview
-            # tab inside the card): a collapsed card or the mere presence of the product's name does not pass.
+            # The product's card is open: its header button (the card's own toggle, labelled with the product and its
+            # description) is followed by its tab strip, the AXTabGroup "<product> tabs", holding an Overview tab. A
+            # collapsed card draws no tab group, and the product's name alone (every card's header) does not pass.
+            # (The first attempt-02 run looked for a "Collapse <product>" control the card never labels that way.)
             def product_open(t):
-                collapse = next((n for n in t if (n.get("label") or "") == f"Collapse {product}"), None)
-                if collapse is None:
+                strip = next((n for n in t if n.get("role") == "AXTabGroup" and (n.get("label") or "") == f"{product} tabs"), None)
+                header = next((n for n in t if n.get("role") == "AXButton" and (n.get("label") or "").startswith(product)), None)
+                if strip is None or header is None:
                     return False
-                i = t.index(collapse)
-                depth = collapse.get("depth", 0)
-                for m in t[i + 1:i + 400]:
+                i = t.index(strip)
+                for m in t[i + 1:i + 60]:
                     if m.get("role") in ("AXRadioButton", "AXTab") and (m.get("label") or "") == "Overview":
                         return True
                 return False
@@ -249,6 +251,11 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
             if src:
                 shutil.copy(os.path.join(ROOT, src), os.path.join(screens, f"{name}-{variant}.png"))
     record["screens"] = sorted(os.listdir(screens))
+    # The cumulative drivers' records (run_on_v2.py, before this driver) live under native/cumulative: they move
+    # into the staged folder so the swap keeps them (the first cumulative run lost them here).
+    kept = os.path.join(FINAL, "cumulative")
+    if os.path.isdir(kept):
+        shutil.move(kept, os.path.join(NATIVE, "cumulative"))
     if os.path.isdir(FINAL):
         shutil.rmtree(FINAL)
     os.rename(NATIVE, FINAL)

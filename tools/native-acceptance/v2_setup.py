@@ -86,7 +86,16 @@ def tenant_on_home(app, endpoint_origin, label="Northwind Health", client=True, 
     used as before. `extra` names further tenants to add on the same endpoint.
     """
     if wizard_showing(app, timeout=6):
-        first_run(app, endpoint_origin, label=PLACEHOLDER, client=False)
+        tree, home = first_run(app, endpoint_origin, label=PLACEHOLDER, client=False)
+        if not home:
+            # The last press can be lost while the ready step is still settling: press Open Prisma AIRS once more
+            # if it is there, else report the step the wizard is on instead of failing later in Settings.
+            if fx.App.node(tree, "AXButton", "Open Prisma AIRS") is not None:
+                _press(app, "AXButton", "Open Prisma AIRS")
+                tree, home = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None, 25)
+            if not home:
+                heads = [n.get("label") for n in tree if n.get("role") == "AXHeading"]
+                raise RuntimeError(f"the wizard did not reach Home (headings {heads}) [tree: {app.dump_tree('wizard-not-home')}]")
     app.open_settings()
     results = {}
     for name in (label, *extra):

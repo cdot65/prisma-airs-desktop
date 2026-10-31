@@ -32,10 +32,11 @@ mod.NATIVE = os.path.join(out, "native")
 mod.RECORD = os.path.join(out, "native-acceptance.json")
 if hasattr(mod, "PARITY"):
     mod.PARITY = os.path.join(out, "parity")
-# Captures and trees the shared helpers write go under this run too.
+# Trees and the copies of captures the shared helpers write go under this run too. c29.CAPTURES stays the
+# fixture app's own capture folder (the system temp dir the app writes "Capture Window" files to): the first
+# cumulative run redirected it and every v2 driver's first capture found nothing ("no capture for admin-light").
 import acceptance_c29 as c29  # noqa: E402
 c29.NATIVE = mod.NATIVE
-c29.CAPTURES = os.path.join(mod.NATIVE, "captures")
 code = mod.main()
 try:
     r = json.load(open(mod.RECORD))
