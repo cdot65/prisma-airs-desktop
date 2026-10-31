@@ -262,10 +262,15 @@ class App:
         return self.wait_for(lambda t: self.has_text(t, "Scan key saved in the Keychain."))
 
     def make_active(self, label):
-        if self.has_text(self.tree(), f"Active tenant: {label}"):
+        """Makes `label` the active tenant from Settings' list; confirmed by Settings' active-tenant text or, since the
+        v2 shell leaves Settings for Home on a switch, by the shell's tenant switcher naming it."""
+        def active(t):
+            return self.has_text(t, f"Active tenant: {label}") or self.has_text(t, f"{label} (active)") \
+                or any((n.get("label") or "").startswith("Switch tenant: ") and label in (n.get("label") or "") for n in t)
+        if active(self.tree()):
             return self.tree(), True
         self.ax("press", "AXButton", f"Make {label} active")
-        return self.wait_for(lambda t: self.has_text(t, f"Active tenant: {label}") or self.has_text(t, f"{label} (active)"))
+        return self.wait_for(active)
 
 
 def clean_fixture_root():
