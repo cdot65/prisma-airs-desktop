@@ -161,8 +161,9 @@ def table_usable(tree, zoom):
         out["action_inside"] = contained(action, table) or (card is not None and contained(action, card))
     else:
         out["action_inside"] = False
-    # Readable regions (attempt-01 R1/E2): the header words, the first row's case name, its input, its result and
-    # its action each have a width and none of them overlaps another; the 200% layout once stacked them.
+    # Readable regions (attempt-01 R1/E2, attempt-02 R1): the header words and one case row's four regions, bound
+    # to that row by its action's label (the case name): the name, the input, the result (the verdict button or
+    # "Not run") and the action each exist, are at least 24 CSS px wide and none overlaps another.
     def box(n):
         return (n["pos"][0], n["pos"][1], n["pos"][0] + n["size"][0], n["pos"][1] + n["size"][1]) if n and n.get("pos") and n.get("size") else None
 
@@ -171,16 +172,23 @@ def table_usable(tree, zoom):
 
     inside = [n for n in tree if table and n.get("pos") and n.get("size") and contained(n, table)] if table else []
     texts = [n for n in inside if n.get("role") == "AXStaticText" and (n.get("label") or n.get("value"))]
-    headers = [next((n for n in texts if (n.get("label") or n.get("value")) == h), None) for h in ("Case", "Product", "Input or specification", "Last result")]
-    header_bottom = max((n["pos"][1] + n["size"][1] for n in headers if n), default=None)
-    row_texts = [n for n in texts if header_bottom is not None and n["pos"][1] >= header_bottom and n not in headers]
-    name = row_texts[0] if row_texts else None
-    result = next((n for n in inside if (n.get("role") in BTN and (n.get("label") or "").startswith("Show the result of")) or (n.get("role") == "AXStaticText" and (n.get("label") or n.get("value")) == "Not run")), None)
-    regions = {"name": name, "result": result, "action": action, **{f"header_{i}": h for i, h in enumerate(headers)}}
-    out["regions"] = {k: (v.get("label") or v.get("value") or "")[:30] if v else None for k, v in regions.items()}
+    label_of = lambda n: (n.get("label") or n.get("value") or "")  # noqa: E731
+    headers = [next((n for n in texts if label_of(n) == h), None) for h in ("Case", "Product", "Input or specification", "Last result")]
+    case_name = (action.get("label") or "").split(": ", 1)[1] if action and ": " in (action.get("label") or "") else None
+    name = next((n for n in texts if case_name and label_of(n) == case_name), None)
+    # The row's nodes lie between its name and its action in tree order.
+    start = tree.index(name) if name else None
+    end = tree.index(action) if action else None
+    row = tree[start + 1:end] if start is not None and end is not None and end > start else []
+    result = next((n for n in row if (n.get("role") in BTN and label_of(n).endswith(f"Show the result of {case_name}")) or (n.get("role") == "AXStaticText" and label_of(n) == "Not run")), None)
+    product_words = ("Runtime Security", "AI Gateway", "AI Red Teaming", "Model Security", "Skill Scanning")
+    inputs = [n for n in row if n.get("role") == "AXStaticText" and n is not result and label_of(n) not in product_words and not label_of(n).startswith("at ") and label_of(n) != "Not run" and not label_of(n).startswith(("Starter", "Bundled"))]
+    input_text = max(inputs, key=lambda n: len(label_of(n)), default=None)
+    regions = {"name": name, "input": input_text, "result": result, "action": action, **{f"header_{i}": h for i, h in enumerate(headers)}}
+    out["regions"] = {k: label_of(v)[:40] if v else None for k, v in regions.items()}
     present = {k: box(v) for k, v in regions.items() if v}
     out["regions_present"] = len(present) == len(regions)
-    out["regions_wide"] = all(b[2] - b[0] >= 24 * zoom for b in present.values())
+    out["regions_wide"] = all(b[2] - b[0] >= 24 * zoom and b[3] - b[1] >= 8 * zoom for b in present.values())
     keys = list(present)
     overlaps = [(a, b) for i, a in enumerate(keys) for b in keys[i + 1:] if not apart(present[a], present[b])]
     out["overlaps"] = overlaps

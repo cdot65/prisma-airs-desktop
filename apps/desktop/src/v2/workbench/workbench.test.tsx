@@ -294,6 +294,27 @@ describe('v2 Test Cases: the result sheet, Inspect and dialog feedback (attempt-
         expect(await within(packs).findByRole('alert')).toHaveTextContent('Case belongs to another tenant; use explicit copy.')
         expect(screen.getByRole('dialog', { name: 'Load starter packs' })).toBeInTheDocument()
     })
+
+    it('an import whose write failed is explained inside the open packs dialog, with the cases kept and Save again there (attempt-02 R2)', async () => {
+        const { native, user } = await launch(fxCases())
+        await screen.findByRole('heading', { level: 1, name: 'Test Cases' })
+        // The page is inert behind the dialog: the rows are counted in the DOM, not the accessibility tree.
+        const caseRows = () => document.querySelectorAll('[data-slot="case-row"]').length
+        const before = caseRows()
+        await user.click(screen.getByRole('button', { name: 'Load starter packs…' }))
+        const packs = await screen.findByRole('dialog', { name: 'Load starter packs' })
+        await user.click(within(packs).getByRole('button', { name: 'Import…' }))
+        // The core read the file but could not store the library: the work is shown, not saved.
+        await native.push({ ...native.current, library: { ...native.current.library, unsaved: 'unavailable', problem: 'notSaved', notice: { kind: 'imported', added: 2 } } })
+        const alerts = await within(packs).findAllByRole('alert')
+        expect(alerts.map((a) => a.textContent).join(' ')).toContain('The last change could not be saved on this Mac (The library could not be read or saved on this Mac.). It is shown here but will be lost when the app quits.')
+        expect(alerts.map((a) => a.textContent).join(' ')).toContain('The change was made in the library shown here but could not be saved on this Mac.')
+        expect(within(packs).getByRole('status')).toHaveTextContent('Imported 2 cases.')
+        expect(caseRows()).toBe(before)
+        await user.click(within(packs).getByRole('button', { name: 'Save again' }))
+        expect(native.dispatched).toContainEqual({ kind: 'saveLibraryAgain', context: native.current.active!.context })
+        expect(screen.getByRole('dialog', { name: 'Load starter packs' })).toBeInTheDocument()
+    })
 })
 
 describe('v2 Test Cases: export (attempt-02 R3)', () => {

@@ -175,6 +175,16 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
     // open with its fields, so the operator can correct and try again.
     const problems = (
         <>
+            {library.unsaved ? (
+                // The last change (an import included) is shown but not stored: said with its reason and Save again
+                // wherever the operator is, the open dialog included (attempt-02 R2).
+                <div role='alert' className='flex flex-col rounded-[10px] text-[13px]' style={{ gap: 8, padding: '12px 14px', background: 'var(--v2-block-bg)' }} data-slot='cases-unsaved'>
+                    <p>{C.unsaved(C.failure[library.unsaved] ?? library.unsaved)}</p>
+                    <Btn className='self-start' onClick={() => void send({ kind: 'saveLibraryAgain', context })}>
+                        {C.saveAgain}
+                    </Btn>
+                </div>
+            ) : null}
             {library.problem ? (
                 <p role='alert' className='text-[13px]' style={{ color: 'var(--v2-block)' }} data-slot='cases-problem'>
                     {CASE_PROBLEM_TEXT[library.problem] ?? library.problem}
@@ -217,14 +227,6 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
                     <p>{C.failure[library.failure] ?? C.failed}</p>
                     <Btn className='self-start' onClick={() => void send({ kind: 'openLibrary', context })}>
                         {C.reopen}
-                    </Btn>
-                </div>
-            ) : null}
-            {library.unsaved ? (
-                <div role='alert' className='flex flex-col rounded-[10px] text-[13px]' style={{ gap: 8, padding: '12px 14px', background: 'var(--v2-block-bg)' }} data-slot='cases-unsaved'>
-                    <p>{C.unsaved(C.failure[library.unsaved] ?? library.unsaved)}</p>
-                    <Btn className='self-start' onClick={() => void send({ kind: 'saveLibraryAgain', context })}>
-                        {C.saveAgain}
                     </Btn>
                 </div>
             ) : null}
