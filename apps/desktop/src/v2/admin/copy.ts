@@ -1,6 +1,22 @@
 /** Every string the v2 Administration, review and rotation surfaces show (C31). */
 export const ADMIN_COPY = {
     title: 'Administration',
+    /** The chosen Gateway workspace's inference key (C18), kept in the Keychain; the wizard's tenant step saves it first, the Gateway card's Workspaces tab replaces or removes it (C44: the legacy Playground form is gone). */
+    workspaceKey: {
+        title: 'Workspace key',
+        hint: 'The inference key the Harness and the Gateway Playground send for this workspace, kept in the macOS Keychain. The key itself is never shown.',
+        endpoint: 'Inference endpoint',
+        endpointHint: 'The https address the workspace key is sent to.',
+        key: 'Workspace inference key',
+        save: 'Save workspace key',
+        replace: 'Replace workspace key',
+        remove: 'Remove workspace key',
+        saved: 'Workspace key saved in the Keychain.',
+        removed: 'Workspace key removed.',
+        errors: { endpoint: 'Enter the https address of the inference endpoint.', key: 'Enter the workspace inference key.' },
+        state: { missing: 'Not saved', storing: 'Saving…', ready: 'Saved in the Keychain', failed: 'Not saved' } as Record<string, string>,
+        otherWorkspace: (name: string) => `The saved key belongs to ${name}; saving one here replaces it.`,
+    },
     lead: (tenant: string) => `${tenant} · every change is reviewed before it is applied`,
     expandAll: 'Expand all',
     collapseAll: 'Collapse all',

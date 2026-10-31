@@ -236,19 +236,15 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     c8.text(app, "2 workspaces", 15)
     app.ax("press", "AXRadioButton", "Team A")
     c8.text(app, "Team A", 10)
-    # On the one presentation (C44) the Gateway card's tabs are radio buttons whose AX value reads 1 even when
-    # unselected, so the tab is pressed by its exact role and the Playground form is awaited before typing.
-    tab = next((n for n in app.tree() if n.get("role") in ("AXRadioButton", "AXTab", "AXButton") and (n.get("label") or "").strip() == "Playground"), None)
-    if tab is None:
-        raise RuntimeError(f"no Playground tab [tree: {app.dump_tree('gateway-no-playground')}]")
-    app.ax("press", tab["role"], "Playground")
-    tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXTextField", "Runtime endpoint") is not None, 12)
+    # On the one presentation (C44) the workspace's inference key is saved in the Gateway card's Workspaces tab
+    # (the legacy Playground form is gone): the endpoint, the key and Save workspace key, then the Keychain state.
+    tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXTextField", "Inference endpoint") is not None, 12)
     if not shown:
-        raise RuntimeError(f"the Playground form did not open [tree: {app.dump_tree('gateway-playground')}]")
-    app.type_into("AXTextField", "Runtime endpoint", runtime)
-    app.type_into("AXTextField", "Workspace API key with completions access", INFERENCE_KEY, secure=True)
-    app.ax("press", "AXButton", "Store key for Team A")
-    c8.text(app, "stored", 12)
+        raise RuntimeError(f"the workspace key form did not show for Team A [tree: {app.dump_tree('gateway-workspace-key')}]")
+    app.type_into("AXTextField", "Inference endpoint", runtime)
+    app.type_into("AXTextField", "Workspace inference key", INFERENCE_KEY, secure=True)
+    app.ax("press", "AXButton", "Save workspace key")
+    c8.text(app, "Workspace key saved in the Keychain.", 12)
 
     # ---- N01: the board over a running conversation; the decision held and decided in the aside ----
     n1 = {}

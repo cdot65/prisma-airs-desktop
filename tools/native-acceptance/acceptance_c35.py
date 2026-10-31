@@ -267,13 +267,18 @@ def exercise(app, endpoint, prepared, FINAL):
     n2["identity"] = "Northwind Health" in texts and "Production" in texts and f"TSG {c8.TSG}" in texts
     rows = [n for n in within(tree, group(tree, "Switch tenant")) if n.get("role") in CONTROLS]
     n2["tenant_rows"] = [n.get("label") for n in rows]
-    n2["current_checked"] = bool(rows and str(rows[0].get("value", "")).strip() in ("1", "True", "true", "checked"))
+    checked = lambda n: str(n.get("value", "")).strip() in ("1", "True", "true", "checked")  # noqa: E731
+    # On the one presentation (C44) the wizard's placeholder tenant is listed too, so the current tenant's row is
+    # found by its check (and must be Northwind Health), not assumed first.
+    current = next((i for i, n in enumerate(rows) if checked(n)), None)
+    n2["current_checked"] = current is not None and (rows[current].get("label") or "").startswith("Northwind Health")
     obs["captures"]["tenant-menu"] = {"light": c29.capture(app, "tenant-menu-light")}
     # The rows' ⌃n hints are drawn inside named buttons (not separate accessible text); the
-    # hint is proven by its key: ⌃1 picks the first (current) tenant and closes the menu.
-    app.keycode(18, "control down")
+    # hint is proven by its key: ⌃n picks the current tenant's row and closes the menu.
+    app.keycode((18, 19, 20, 21, 23, 22, 26, 28, 25)[current or 0], "control down")
     _, n2["hint"] = app.wait_for(lambda t: group(t, "Tenants") is None, 8)
     time.sleep(0.4)
+    trigger = starts(app.tree(), CONTROLS, "Switch tenant") or trigger
     app.ax("press", trigger["role"], trigger["label"])
     app.wait_for(lambda t: group(t, "Tenants") is not None, 8)
     time.sleep(0.4)

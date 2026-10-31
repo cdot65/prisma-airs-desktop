@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import type {
     AdminAction,
     ChangeAction,
@@ -392,6 +392,7 @@ export function GatewayProduct({ snapshot, context, dispatch, observe, onNavigat
             <div className='flex flex-col' style={{ gap: 18 }}>
                 {chooser}
                 {selected ? <WorkspacePanel name={selected.workspace.name} held={space} onRefresh={() => void readWorkspace()} actions={actions} onChange={(action) => start(gatewayChange('workspaces', action, selected.workspace.id, selected.workspace.name, null))} /> : null}
+                {selected && tenant ? <WorkspaceKey key={`${tenant.id}:${selected.workspace.id}`} tenant={tenant} selected={selected} context={context} dispatch={dispatch} /> : null}
                 <LocalWork local={local} context={context} dispatch={dispatch} onOpen={openKept} />
                 <p className='text-[12px]' style={faint} data-slot='gateway-not-here'>
                     Identity administration (users, roles and IAM scopes beyond the workspace’s binding) is not available in the desktop.
@@ -735,6 +736,112 @@ function WorkspacePanel({ name, held, onRefresh, onChange, actions }: { name: st
  * authority, so reconnecting sends nothing. A Playground draft is listed and
  * discarded here; it is edited in the Playground.
  */
+/**
+ * The chosen workspace's inference key (C18) on the one presentation (C44): its Keychain state from the tenant's
+ * snapshot, the endpoint and key fields, and Save or Replace (configureInferenceCredential, keychain) or Remove
+ * (removeInferenceCredential). The key is read back only as a state; the field is emptied as soon as it is sent.
+ */
+function WorkspaceKey({ tenant, selected, context, dispatch }: { tenant: ShellSnapshot['tenants'][number]; selected: NonNullable<ShellSnapshot['gateway']['selected']>; context: ContextRef; dispatch: Dispatch }) {
+    const K = C.workspaceKey
+    const ids = useId()
+    const keyRef = useRef<HTMLInputElement>(null)
+    const [endpoint, setEndpoint] = useState('')
+    const [errors, setErrors] = useState<{ endpoint: string; key: string }>({ endpoint: '', key: '' })
+    const [busy, setBusy] = useState(false)
+    const [message, setMessage] = useState<string | null>(null)
+    const key = tenant.inference
+    const here = key.target !== null && key.target.workspace.id === selected.workspace.id
+    const ready = key.state === 'ready' && here
+    async function save(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+        const field = keyRef.current
+        if (!field) return
+        const secret = field.value
+        field.value = ''
+        setMessage(null)
+        if (!/^https:\/\/\S+$/.test(endpoint.trim())) return setErrors({ endpoint: K.errors.endpoint, key: '' })
+        if (!secret) return setErrors({ endpoint: '', key: K.errors.key })
+        setErrors({ endpoint: '', key: '' })
+        setBusy(true)
+        try {
+            const outcome = await dispatch({ kind: 'configureInferenceCredential', context, mode: 'keychain', workspace: selected.reference, endpoint: endpoint.trim(), secret })
+            setMessage(outcome.kind === 'admitted' ? K.saved : (outcomeMessage(outcome) ?? 'That was not done.'))
+            if (outcome.kind === 'admitted') setEndpoint('')
+        } finally {
+            setBusy(false)
+        }
+    }
+    async function remove() {
+        setMessage(null)
+        setBusy(true)
+        try {
+            const outcome = await dispatch({ kind: 'removeInferenceCredential', context })
+            setMessage(outcome.kind === 'admitted' ? K.removed : (outcomeMessage(outcome) ?? 'That was not done.'))
+        } finally {
+            setBusy(false)
+        }
+    }
+    return (
+        <form onSubmit={(e) => void save(e)} aria-labelledby={`${ids}-title`} className='flex flex-col rounded-[10px] border p-3' style={{ gap: 10, ...cardStyle }} data-slot='gateway-workspace-key'>
+            <div className='flex flex-wrap items-baseline' style={{ gap: 10 }}>
+                <h4 id={`${ids}-title`} className='text-[13px] font-bold'>
+                    {K.title}
+                </h4>
+                <span className='text-[12px]' style={ready ? { color: 'var(--v2-ok)' } : faint} data-slot='gateway-workspace-key-state'>
+                    {ready ? `${K.state.ready}${key.target?.endpoint ? ` · ${key.target.endpoint}` : ''}` : K.state[key.state] ?? K.state.missing}
+                </span>
+            </div>
+            <p className='text-[12px]' style={faint}>
+                {K.hint}
+            </p>
+            {key.state === 'ready' && key.target && !here ? (
+                <p className='text-[12px]' style={faint}>
+                    {K.otherWorkspace(key.target.workspace.name)}
+                </p>
+            ) : null}
+            <label className='flex flex-col text-[12px]' style={{ gap: 4 }}>
+                <span>{K.endpoint}</span>
+                <Field aria-label={K.endpoint} value={endpoint} onChange={(e) => setEndpoint(e.target.value)} placeholder='https://' autoComplete='off' spellCheck={false} aria-invalid={errors.endpoint ? true : undefined} aria-describedby={`${ids}-endpoint-hint`} />
+                <span id={`${ids}-endpoint-hint`} style={faint}>
+                    {errors.endpoint || K.endpointHint}
+                </span>
+            </label>
+            <label className='flex flex-col text-[12px]' style={{ gap: 4 }}>
+                <span>{K.key}</span>
+                <input
+                    ref={keyRef}
+                    type='password'
+                    aria-label={K.key}
+                    autoComplete='off'
+                    aria-invalid={errors.key ? true : undefined}
+                    className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px]'
+                    style={{ borderColor: 'var(--v2-ctl)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}
+                />
+                {errors.key ? (
+                    <span role='alert' style={{ color: 'var(--v2-flag)' }}>
+                        {errors.key}
+                    </span>
+                ) : null}
+            </label>
+            <div className='flex flex-wrap' style={{ gap: 8 }}>
+                <Btn tier='primary' type='submit' disabled={busy}>
+                    {ready ? K.replace : K.save}
+                </Btn>
+                {key.state === 'ready' ? (
+                    <Btn tier='tertiary' type='button' disabled={busy} onClick={() => void remove()}>
+                        {K.remove}
+                    </Btn>
+                ) : null}
+            </div>
+            {message ? (
+                <p role='status' className='text-[12px]'>
+                    {message}
+                </p>
+            ) : null}
+        </form>
+    )
+}
+
 function LocalWork({ local, context, dispatch, onOpen }: { local: GatewayLocalView; context: ContextRef; dispatch: Dispatch; onOpen: (kept: GatewayDraft | GatewayRecord, draftId: string | undefined) => void }) {
     const ids = useId()
     const [message, setMessage] = useState<string | null>(null)

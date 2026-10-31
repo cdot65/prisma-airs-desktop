@@ -1085,6 +1085,46 @@ describe('v2 Administration', () => {
         expect(panel).toHaveTextContent('Workspace Team A')
     })
 
+    it('saves, replaces and removes the chosen workspace\u2019s inference key from the Gateway card\u2019s Workspaces tab; the key never stays in the page (C44, the legacy Playground form is gone)', async () => {
+        const base = fxAdmin({ gateway: GATEWAY })
+        const { native, user } = await launch(base)
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Workspaces' }))
+        const panel = panelOf(product('gateway'))
+        const form = await waitFor(() => {
+            const found = panel.querySelector('[data-slot="gateway-workspace-key"]')
+            expect(found).not.toBeNull()
+            return found as HTMLElement
+        })
+        expect(form).toHaveTextContent('Not saved')
+        // An endpoint that is not https is refused in the page: nothing is sent.
+        await user.type(within(form).getByLabelText('Inference endpoint'), 'http://gw.example.test')
+        await user.type(within(form).getByLabelText('Workspace inference key'), 'SYNTHETIC-KEY-1')
+        await user.click(within(form).getByRole('button', { name: 'Save workspace key' }))
+        expect(within(form).getByText('Enter the https address of the inference endpoint.')).toBeInTheDocument()
+        expect(native.dispatched.filter((i) => i.kind === 'configureInferenceCredential')).toEqual([])
+        expect((within(form).getByLabelText('Workspace inference key') as HTMLInputElement).value).toBe('')
+        // The https endpoint and a key are sent once, to the Keychain, for the chosen workspace; the field is emptied.
+        await user.clear(within(form).getByLabelText('Inference endpoint'))
+        await user.type(within(form).getByLabelText('Inference endpoint'), 'https://gw.example.test/rt/v1')
+        await user.type(within(form).getByLabelText('Workspace inference key'), 'SYNTHETIC-KEY-2')
+        await user.click(within(form).getByRole('button', { name: 'Save workspace key' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'configureInferenceCredential', context: base.active!.context, mode: 'keychain', workspace: GATEWAY.selected!.reference, endpoint: 'https://gw.example.test/rt/v1', secret: 'SYNTHETIC-KEY-2' })
+        )
+        expect(await within(form).findByText('Workspace key saved in the Keychain.')).toBeInTheDocument()
+        expect((within(form).getByLabelText('Workspace inference key') as HTMLInputElement).value).toBe('')
+        expect(form.textContent).not.toContain('SYNTHETIC-KEY')
+        // The core's state: saved for this workspace → Replace and Remove; removing dispatches the removal.
+        const tenant = native.current.tenants.find((t) => t.id === native.current.active?.tenant)!
+        await native.push({ ...native.current, tenants: native.current.tenants.map((t) => (t.id === tenant.id ? { ...t, inference: { state: 'ready' as const, mode: 'keychain' as const, failure: null, target: { workspace: WS, endpoint: 'https://gw.example.test/rt/v1' } } } : t)) })
+        expect(await within(form).findByText(/Saved in the Keychain/)).toBeInTheDocument()
+        expect(within(form).getByRole('button', { name: 'Replace workspace key' })).toBeInTheDocument()
+        await user.click(within(form).getByRole('button', { name: 'Remove workspace key' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'removeInferenceCredential', context: base.active!.context }))
+        expect(await within(form).findByText('Workspace key removed.')).toBeInTheDocument()
+    })
+
     it('lists Gateway routes as a table with View per row and the inventory actions in the detail; the Red Team overview draws its tiles and ranked bars (C39b)', async () => {
         const { user } = await launch(fxAdmin({ gateway: GATEWAY }))
         await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
