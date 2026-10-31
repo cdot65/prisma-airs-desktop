@@ -274,4 +274,16 @@
     [data-slot='wizard'] main .grid {
         grid-template-columns: minmax(0, 1fr) !important;
     }
+    /* The strip drops the brand row (the sheet is already named), and the footer's hint or status keeps to two
+       lines: at 900×600 and 200% the add sheet is 279 CSS px tall, and a long hint made the footer taller than the
+       sheet, pushing its primary below the window. */
+    [data-slot='wizard'] > nav > div:first-child {
+        display: none;
+    }
+    [data-slot='wizard-footer'] [data-slot='wizard-status'] > span {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
 }
