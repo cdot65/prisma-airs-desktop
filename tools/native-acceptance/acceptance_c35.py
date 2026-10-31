@@ -240,7 +240,9 @@ def exercise(app, endpoint, prepared, FINAL):
         app.ax("press", "AXButton", settings["label"])
         _, n1["settings_opened"] = c29.heading(app, "Settings")
         tree = app.tree()
-        n1["classic_in_settings"] = labelled(tree, ("AXCheckBox",), "Use the new interface") is not None
+        # On the one presentation (C44) Settings has no interface switch: the fact asserted is its absence (the
+        # chunk's own gate on main asserted its presence while the legacy shell still existed).
+        n1["classic_in_settings"] = labelled(tree, ("AXCheckBox",), "Use the new interface") is None
         n1["classic_not_in_rail"] = starts(within(tree, c29.nav(tree, "Destinations")), CONTROLS, "Return to the classic") is None
     obs["n1"] = n1
 
@@ -397,7 +399,7 @@ def exercise(app, endpoint, prepared, FINAL):
              and n1.get("explain_flipped") and n1.get("explain_back") and n1["theme_toggle"] and n1.get("theme_switched") and n1.get("theme_back")
              and n1.get("harness_opened") and n1["settings_button"] and n1.get("settings_opened") and n1.get("classic_in_settings") and n1.get("classic_not_in_rail"))
     add("C35-N01", n1_ok,
-        f"rail listed {n1['nav']} with ⌘ hints {n1['nav_hints']}; products {n1['products']} with {n1['new_tags']} New tags, hidden by the chevron {n1.get('products_hidden')} and shown again {n1.get('products_shown_again')}; status rows {n1['status_rows']} and Connected {n1['connected']}; header: title {n1['header_title']}, search button {n1['search']['size']} at top {n1['search']['top']} ({n1['search_260'] and n1['search_in_header']}), Explain as {n1['explain_role']} flipping the calls panel {n1.get('explain_flipped')} and back {n1.get('explain_back')}, Ask Harness opened the Harness {n1.get('harness_opened')}; theme toggle luminance {n1.get('theme')} switched {n1.get('theme_switched')} and back {n1.get('theme_back')}; Settings ⌘, opened Settings {n1.get('settings_opened')} where the classic switch lives {n1.get('classic_in_settings')} and not in the rail {n1.get('classic_not_in_rail')}",
+        f"rail listed {n1['nav']} with ⌘ hints {n1['nav_hints']}; products {n1['products']} with {n1['new_tags']} New tags, hidden by the chevron {n1.get('products_hidden')} and shown again {n1.get('products_shown_again')}; status rows {n1['status_rows']} and Connected {n1['connected']}; header: title {n1['header_title']}, search button {n1['search']['size']} at top {n1['search']['top']} ({n1['search_260'] and n1['search_in_header']}), Explain as {n1['explain_role']} flipping the calls panel {n1.get('explain_flipped')} and back {n1.get('explain_back')}, Ask Harness opened the Harness {n1.get('harness_opened')}; theme toggle luminance {n1.get('theme')} switched {n1.get('theme_switched')} and back {n1.get('theme_back')}; Settings ⌘, opened Settings {n1.get('settings_opened')} with no interface switch, the one presentation (C44) {n1.get('classic_in_settings')} and not in the rail {n1.get('classic_not_in_rail')}",
         [run_rel, obs["tree_home"]] + caps("home"))
     n2_ok = (n2["menu_open"] and n2["menu_360"] and all(n2["menu_rows"].values()) and n2["identity"] and len(n2["tenant_rows"]) >= 1 and n2["hint"] and n2["menu_closed"] and n2["focus_back"]
              and n2["palette_open"] and n2["palette_640"] and all(n2["groups"].values()) and n2["footer"] and n2["options"] and n2["hints"] and n2["narrowed"] and n2["enter_navigated"] and n2["palette_closed"])
