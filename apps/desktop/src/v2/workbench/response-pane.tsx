@@ -110,6 +110,17 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
     }
 
     const first = running[0] ?? null
+    // Every transfer in flight is in view with its own Cancel, whatever response is being inspected (a run from
+    // History shown while a new send runs hid the progress and the cancellation behind the old record; the core
+    // runs several sends of one document at once, and only the first was shown).
+    const progress = running.map((r, i) => (
+        <span key={r.run} role='status' aria-live='polite' className='flex w-full flex-wrap items-center text-[12.5px]' style={{ gap: 8 }} data-slot='workbench-running'>
+            {C.sendingProgress(r.method, sizeText(r.bytes))}
+            <Btn className='h-7' aria-label={running.length > 1 ? `${C.cancel_} ${i + 1} of ${running.length}` : undefined} onClick={() => void call({ kind: 'cancel', run: r.run })}>
+                {C.cancel_}
+            </Btn>
+        </span>
+    ))
     const head = record ? (
         <>
             <span
@@ -131,14 +142,7 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
                 {fromHistory ? `${requestName(record.relative)} · ${clockOf(record.at)}` : clockOf(record.at)}
             </span>
         </>
-    ) : first ? (
-        <span role='status' aria-live='polite' className='flex flex-wrap items-center text-[12.5px]' style={{ gap: 8 }} data-slot='workbench-running'>
-            {C.sendingProgress(first.method, sizeText(first.bytes))}
-            <Btn className='h-7' onClick={() => void call({ kind: 'cancel', run: first.run })}>
-                {C.cancel_}
-            </Btn>
-        </span>
-    ) : (
+    ) : first ? null : (
         <span style={faint}>{C.noResponseYet}</span>
     )
 
@@ -150,7 +154,7 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
             style={{ flex: '0 0 40%', minWidth: 'min(100%, 340px)', maxWidth: 440 }}
         >
             <div
-                className='flex items-center text-[13px]'
+                className='flex flex-wrap items-center text-[13px]'
                 style={{
                     gap: 10,
                     minHeight: 48,
@@ -159,6 +163,7 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
                 }}
                 data-slot='response-head'
             >
+                {progress}
                 {head}
             </div>
             {review ? (

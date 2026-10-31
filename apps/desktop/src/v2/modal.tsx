@@ -15,6 +15,12 @@ interface ModalProps {
     radius?: number
     /** A sheet docked to the window's right edge under the header (R2App's review sheet, 620px wide, full height). */
     sheet?: boolean
+    /**
+     * The control focus returns to on close when the opener itself will be gone
+     * by then (a menu item that closes with its menu as the dialog opens): an
+     * explicit surviving target instead of whatever had focus at mount.
+     */
+    returnFocus?: HTMLElement | null
     'data-slot'?: string
 }
 
@@ -30,7 +36,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * on the window for Escape alone, for when focus has left it (a native
  * sheet returned focus elsewhere), and closes only itself.
  */
-export function Modal({ label, onClose, children, width = 560, padding = 20, top, radius = 12, sheet = false, ...rest }: ModalProps) {
+export function Modal({ label, onClose, children, width = 560, padding = 20, top, radius = 12, sheet = false, returnFocus = null, ...rest }: ModalProps) {
     const id = useId()
     const pushModal = useShellStore((s) => s.pushModal)
     const popModal = useShellStore((s) => s.popModal)
@@ -38,6 +44,8 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
     const topmost = modals.length > 0 && modals[modals.length - 1] === id
     const dialog = useRef<HTMLDivElement>(null)
     const opener = useRef<HTMLElement | null>(null)
+    const returnRef = useRef(returnFocus)
+    returnRef.current = returnFocus
     const focusedOnce = useRef(false)
 
     useEffect(() => {
@@ -47,7 +55,7 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
             popModal(id)
             // After the commit: the page behind is still inert during cleanup,
             // and an inert ancestor refuses focus (observed in WebKit).
-            const target = opener.current
+            const target = returnRef.current ?? opener.current
             queueMicrotask(() => {
                 // Only when nothing else took focus meanwhile (⌘T replacing the
                 // palette hands focus to the tenant list, which must keep it).

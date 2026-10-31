@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { type JSX, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { CollectionView, RequestEntry } from '@prisma-airs/desktop-contracts'
 import { Btn, Field } from '../controls'
@@ -9,9 +9,9 @@ import { API_COPY as C, methodColor } from './copy'
 interface Props {
     collection: CollectionView
     /** Opens a request (the core reads its document). */
-    onOpen: (relative: string) => void
-    /** Creates a request draft or a folder; resolves whether it was created. */
-    onCreate: (kind: 'request' | 'folder', relative: string) => Promise<boolean>
+    onOpen: (entry: { id: string; relative: string }) => void
+    /** Creates a request draft or a folder; resolves to null when created, else the failure's text (said in the dialog). */
+    onCreate: (kind: 'request' | 'folder', relative: string) => Promise<string | null>
 }
 
 const LIMIT = 300
@@ -35,17 +35,31 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
     const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
     const [creating, setCreating] = useState<null | 'request' | 'folder'>(null)
     const [path, setPath] = useState('')
+    // A creation that failed, said inside the dialog (the page behind it is inert and hidden while it is open).
+    const [failure, setFailure] = useState('')
     const selected = collection.tabs.find((t) => t.id === collection.selected)?.relative ?? null
     const needle = query.trim().toLowerCase()
 
-    const { folders, byFolder } = useMemo(() => {
+    // The hierarchy: every folder (listed, or implied by a request's path or a deeper folder), its direct
+    // requests, its child folders and the count of every request under it, as the prototype's tree draws them.
+    const { children, byFolder, counts } = useMemo(() => {
         const byFolder = new Map<string, RequestEntry[]>()
+        const folders = new Set<string>()
+        const add = (f: string) => {
+            for (let i = f.indexOf('/'); i !== -1; i = f.indexOf('/', i + 1)) folders.add(f.slice(0, i))
+            if (f !== '') folders.add(f)
+        }
+        for (const f of collection.folders) add(f)
         for (const r of collection.requests) {
             const f = folderOf(r.relative)
+            add(f)
             byFolder.set(f, [...(byFolder.get(f) ?? []), r])
         }
-        const folders = [...new Set([...collection.folders, ...byFolder.keys()].filter((f) => f !== ''))].sort()
-        return { folders, byFolder }
+        const children = new Map<string, string[]>()
+        for (const f of [...folders].sort()) children.set(folderOf(f), [...(children.get(folderOf(f)) ?? []), f])
+        const counts = new Map<string, number>()
+        for (const f of folders) counts.set(f, collection.requests.filter((r) => r.relative.startsWith(`${f}/`)).length)
+        return { children, byFolder, counts }
     }, [collection.requests, collection.folders])
 
     const matching = needle === '' ? null : collection.requests.filter((r) => `${r.method} ${r.relative} ${r.url}`.toLowerCase().includes(needle))
@@ -56,7 +70,7 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
             type='button'
             aria-label={C.openRequest(r.method, r.relative)}
             aria-current={r.relative === selected ? 'true' : undefined}
-            onClick={() => onOpen(r.relative)}
+            onClick={() => onOpen({ id: r.id, relative: r.relative })}
             className='flex w-full min-h-0 items-center rounded-[6px] text-left text-[12.5px]'
             style={{
                 gap: 6,
@@ -84,43 +98,41 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
         })
 
     let shown = 0
-    const list = matching
-        ? matching.slice(0, LIMIT).map((r) => request(r, 0))
-        : [
-              ...folders.map((f) => {
-                  const open = !collapsed.has(f)
-                  const items = byFolder.get(f) ?? []
-                  const depth = f.split('/').length - 1
-                  return (
-                      <div key={`f:${f}`} data-slot='tree-folder'>
-                          <button
-                              type='button'
-                              aria-expanded={open}
-                              aria-label={C.folder(f, open)}
-                              onClick={() => toggle(f)}
-                              className='flex w-full min-h-0 items-center rounded-[6px] text-left text-[12.5px] font-semibold'
-                              style={{
-                                  gap: 6,
-                                  height: 30,
-                                  padding: `0 8px 0 ${8 + depth * 14}px`,
-                                  color: 'var(--v2-ink)',
-                              }}
-                          >
-                              <span className='inline-flex shrink-0' style={{ transform: open ? 'none' : 'rotate(-90deg)' }}>
-                                  <Glyph name='chev' size={10} color='var(--v2-faint)' />
-                              </span>
-                              <Glyph name='folder' size={13} color='var(--v2-faint)' />
-                              <span className='min-w-0 flex-grow truncate'>{f.split('/').pop()}</span>
-                              <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
-                                  {items.length}
-                              </span>
-                          </button>
-                          {open ? items.slice(0, Math.max(0, LIMIT - shown)).map((r) => ((shown += 1), request(r, depth + 1))) : null}
-                      </div>
-                  )
-              }),
-              ...(byFolder.get('') ?? []).slice(0, Math.max(0, LIMIT - shown)).map((r) => request(r, 0)),
-          ]
+    const requests = (f: string, depth: number) => (byFolder.get(f) ?? []).slice(0, Math.max(0, LIMIT - shown)).map((r) => ((shown += 1), request(r, depth)))
+    // A collapsed folder hides its whole subtree: its requests, its child folders and theirs.
+    const folder = (f: string): JSX.Element => {
+        const open = !collapsed.has(f)
+        const depth = f.split('/').length - 1
+        return (
+            <div key={`f:${f}`} data-slot='tree-folder'>
+                <button
+                    type='button'
+                    aria-expanded={open}
+                    aria-label={C.folder(f, open)}
+                    onClick={() => toggle(f)}
+                    className='flex w-full min-h-0 items-center rounded-[6px] text-left text-[12.5px] font-semibold'
+                    style={{
+                        gap: 6,
+                        height: 30,
+                        padding: `0 8px 0 ${8 + depth * 14}px`,
+                        color: 'var(--v2-ink)',
+                    }}
+                >
+                    <span className='inline-flex shrink-0' style={{ transform: open ? 'none' : 'rotate(-90deg)' }}>
+                        <Glyph name='chev' size={10} color='var(--v2-faint)' />
+                    </span>
+                    <Glyph name='folder' size={13} color='var(--v2-faint)' />
+                    <span className='min-w-0 flex-grow truncate'>{f.split('/').pop()}</span>
+                    <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }} data-slot='tree-folder-count'>
+                        {counts.get(f) ?? 0}
+                    </span>
+                </button>
+                {open ? (children.get(f) ?? []).map(folder) : null}
+                {open ? requests(f, depth + 1) : null}
+            </div>
+        )
+    }
+    const list = matching ? matching.slice(0, LIMIT).map((r) => request(r, 0)) : [...(children.get('') ?? []).map(folder), ...requests('', 0)]
 
     const total = matching ? matching.length : collection.requests.length
 
@@ -176,6 +188,7 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
                     title={C.newRequest}
                     onClick={() => {
                         setPath('')
+                        setFailure('')
                         setCreating('request')
                     }}
                     className='grid size-8 min-h-0 shrink-0 place-items-center rounded-[7px] border text-[15px]'
@@ -211,7 +224,10 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
                               onSubmit={(e) => {
                                   e.preventDefault()
                                   const kind = creating
-                                  void onCreate(kind, path.trim()).then((ok) => ok && setCreating(null))
+                                  void onCreate(kind, path.trim()).then((failed) => {
+                                      if (failed) setFailure(failed)
+                                      else setCreating(null)
+                                  })
                               }}
                           >
                               <h2 className='text-[17px] font-bold'>{creating === 'request' ? C.newRequestTitle : C.newFolder}</h2>
@@ -230,6 +246,11 @@ export function RequestTree({ collection, onOpen, onCreate }: Props) {
                               {creating === 'request' ? (
                                   <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
                                       {C.newRequestLead}
+                                  </p>
+                              ) : null}
+                              {failure ? (
+                                  <p role='alert' className='rounded-[8px] text-[13px]' style={{ padding: '10px 12px', background: 'var(--v2-block-bg)' }} data-slot='new-request-failure'>
+                                      {failure}
                                   </p>
                               ) : null}
                               <div className='flex justify-end' style={{ gap: 8 }}>

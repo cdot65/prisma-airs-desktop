@@ -7,7 +7,7 @@ import { Btn } from '../controls'
 import { Glyph } from '../icons'
 import { Modal } from '../modal'
 import { API_COPY as C, methodColor } from './copy'
-import { type EditorHandle, NOTE_TEXT, RequestEditor } from './request-editor'
+import { type EditorHandle, RequestEditor } from './request-editor'
 import { RequestTree, requestName } from './request-tree'
 import { type Run, type Tool, ToolsSheet } from './tools-sheet'
 
@@ -51,10 +51,20 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     const [tool, setTool] = useState<Tool | null>(null)
     const [menu, setMenu] = useState(false)
     const [doc, setDoc] = useState<DocumentView | null>(null)
+    // Counts documents arriving from the core: the editor is keyed by it, so a reloaded document always starts a fresh
+    // editor (the same id and revision under one key kept the old editor's fields).
+    const [docSeq, setDocSeq] = useState(0)
     const [notes, setNotes] = useState<ImportNote[]>([])
     const loading = useRef<string | null>(null)
+    // Each load of the selected request has a generation; a result from an earlier load is obsolete (two selections
+    // in flight resolving out of order replaced the current request's document with the earlier one's).
+    const loadGen = useRef(0)
+    // A load that failed, by request id, with its reason: shown in place of the editor with Try again (no automatic retry).
+    const [loadFailure, setLoadFailure] = useState<{ id: string; relative: string; text: string } | null>(null)
     const editors = useRef(new Map<string, EditorHandle>())
     const [closing, setClosing] = useState<Closing | null>(null)
+    // The Collection chip: where focus returns when its menu or a tool it opened closes (the menu item is gone by then).
+    const chip = useRef<HTMLButtonElement>(null)
 
     // A refusal stays shown until the next action that succeeds (a cancelled sheet keeps it).
     const run: Run = async (request) => {
@@ -96,11 +106,49 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
         }
     }
 
-    const show = (r: Awaited<ReturnType<WorkbenchCall>>) => {
-        if (r.kind === 'document') {
-            setDoc(r.document)
-            setNotes(r.notes)
+    // Every document-producing call is a load bound to the collection it was asked of and to a generation; a reply
+    // from an earlier generation, or from a collection no longer open, is dropped (a late reply replaced the current
+    // request's document, or resurrected a closed one).
+    const collectionRef = useRef<string | null>(collection?.id ?? null)
+    collectionRef.current = collection?.id ?? null
+    const selectedRef = useRef<string | null>(collection?.selected ?? null)
+    selectedRef.current = collection?.selected ?? null
+    // A cURL import's conversion report that arrived after the core had already selected its draft (the selection's
+    // own load superseded the import): kept for that draft, shown when its document shows.
+    const lateNotes = useRef<{ id: string; notes: ImportNote[] } | null>(null)
+    type Load = { gen: number; asked: string | null; id: string | null; relative: string | null }
+    const beginLoad = (id: string | null, relative: string | null = null): Load => {
+        const gen = ++loadGen.current
+        loading.current = id
+        setLoadFailure(null)
+        return { gen, asked: collectionRef.current, id, relative }
+    }
+    /** Shows a load's document if the load is still current; a failure of a selected request's load is shown with its reason. */
+    const settleLoad = (load: Load, r: Awaited<ReturnType<WorkbenchCall>> | null, keepNotes: boolean): boolean => {
+        if (load.asked === null || load.asked !== collectionRef.current) return false
+        if (load.gen !== loadGen.current) {
+            // Superseded, but a current import's report is not lost: when the reply's document is the selected request
+            // (its snapshot came first and its own load took over), its notes are shown with that document.
+            if (keepNotes && r?.kind === 'document' && r.notes.length > 0 && selectedRef.current === r.document.id) {
+                // Shown now if that document is already up (the editor renders only for the selected document), else
+                // when its own load lands.
+                lateNotes.current = { id: r.document.id, notes: r.notes }
+                setNotes(r.notes)
+            }
+            return false
         }
+        if (loading.current === load.id) loading.current = null
+        if (r?.kind === 'document') {
+            setDoc(r.document)
+            setDocSeq((n) => n + 1)
+            setNotes(keepNotes ? r.notes : lateNotes.current?.id === r.document.id ? lateNotes.current.notes : [])
+            if (lateNotes.current && lateNotes.current.id !== r.document.id) lateNotes.current = null
+            return true
+        }
+        // The failure names the request it was for: the core keeps the previous selection when a read fails, so a
+        // tree entry's failure must show without that request ever being selected.
+        if (load.id !== null && load.relative !== null && r?.kind !== 'cancelled') setLoadFailure({ id: load.id, relative: load.relative, text: (r && resultText(r)) ?? C.unknownFailure })
+        return false
     }
 
     const selected = collection?.selected ?? null
@@ -109,27 +157,72 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // draft is shown from the core's reply before the snapshot naming it selected arrives, and re-opening the
     // previously selected request in between made the core select that one again (the draft's tab lost).
     const followed = useRef<string | null>(null)
+    // Following is scoped to one open collection: closing it forgets the followed selection, so the same
+    // collection re-opened with its persisted selection opens that request again (the editor was left blank).
+    const collectionId = collection?.id ?? null
+    useEffect(() => {
+        // A collection boundary retires every load in flight (its reply is ignored) and the loading marker with it, so
+        // the re-opened collection's selected request is loaded afresh.
+        followed.current = null
+        loadGen.current += 1
+        loading.current = null
+        setLoadFailure(null)
+        if (collectionId === null) setDoc(null)
+    }, [collectionId])
+    // Opens a request (the selected tab, or a tree entry); only the latest load's reply counts.
+    const open = (tab: { id: string; relative: string }) => {
+        const load = beginLoad(tab.id, tab.relative)
+        void call({ kind: 'openRequest', relative: tab.relative }).then(
+            (r) => settleLoad(load, r, false),
+            () => settleLoad(load, null, false)
+        )
+    }
+    const openRef = useRef(open)
+    openRef.current = open
+    // The document whose editor is up: the editor owns newer fields and revisions, so once it has unmounted (the
+    // selection moved away) the retained DocumentView is obsolete and a return to that request reloads it from the
+    // core (the old snapshot remounted could be saved over a protected draft, or sent).
+    const editorFor = useRef<string | null>(null)
+    // The document whose editor was up and has since unmounted: obsolete, reloaded on return. A document that never
+    // had its editor up (an import's or a draft's reply shown ahead of its snapshot) is fresh and is reused.
+    const staleDoc = useRef<string | null>(null)
+    const editorUp = doc !== null && selectedTab !== null && doc.id === selectedTab.id
     useEffect(() => {
         if (!selectedTab || followed.current === selectedTab.id) return
         followed.current = selectedTab.id
-        if (doc?.id === selectedTab.id || loading.current === selectedTab.id) return
-        loading.current = selectedTab.id
-        void call({ kind: 'openRequest', relative: selectedTab.relative }).then((r) => {
+        // A load of another request still in flight is obsolete once the selection moves on: its reply must not land.
+        if (loading.current !== null && loading.current !== selectedTab.id) {
+            loadGen.current += 1
             loading.current = null
-            if (r.kind === 'document') setDoc(r.document)
-        })
-    }, [selectedTab, doc, call])
+        }
+        if ((doc?.id === selectedTab.id && staleDoc.current !== selectedTab.id) || loading.current === selectedTab.id) return
+        // A stale document is not shown while its reload is in flight: remounted, its editor would start from the old
+        // fields and keep them when the fresh document arrived under the same key.
+        if (doc?.id === selectedTab.id) setDoc(null)
+        openRef.current(selectedTab)
+    }, [selectedTab, doc])
+    // Recorded after the selection was followed, so that effect sees which editor was up before this render.
     useEffect(() => {
-        if (!collection) setDoc(null)
-    }, [collection])
+        if (editorUp && doc) {
+            editorFor.current = doc.id
+            staleDoc.current = null
+        } else if (editorFor.current !== null) {
+            staleDoc.current = editorFor.current
+            editorFor.current = null
+        }
+    }, [editorUp, doc])
     const loaded = state.loaded
     useEffect(() => {
         if (!loaded) void call({ kind: 'load' })
     }, [loaded, call])
-    // The collection menu closes on Escape and on a click elsewhere.
+    // The collection menu closes on Escape (focus back on the chip) and on a click elsewhere.
     useEffect(() => {
         if (!menu) return
-        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(false)
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return
+            setMenu(false)
+            chip.current?.focus()
+        }
         const onClick = () => setMenu(false)
         window.addEventListener('keydown', onKey)
         window.addEventListener('click', onClick)
@@ -164,6 +257,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                 <div className='ml-auto flex min-w-0 max-w-full flex-wrap items-center' style={{ gap: 8 }} data-slot='api-chips'>
                     <span className='relative'>
                         <button
+                            ref={chip}
                             type='button'
                             aria-haspopup='menu'
                             aria-expanded={menu}
@@ -332,11 +426,14 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                     <div className='flex min-h-0 flex-grow' data-slot='api-body'>
                         <RequestTree
                             collection={collection}
-                            onOpen={(relative) => void run({ kind: 'openRequest', relative }).then(show)}
+                            onOpen={open}
                             onCreate={async (kind, relative) => {
+                                // A new request's document is a load too: bound to this collection and the current generation.
+                                const load = kind === 'request' ? beginLoad(null) : null
                                 const r = await run(kind === 'request' ? { kind: 'newRequest', relative } : { kind: 'newFolder', relative })
-                                if (kind === 'request') show(r)
-                                return r.kind === 'document' || r.kind === 'done'
+                                if (load) settleLoad(load, r, true)
+                                // The dialog says a refusal or a lost delivery itself (the page behind it is inert).
+                                return r.kind === 'document' || r.kind === 'done' || r.kind === 'cancelled' ? null : (resultText(r) ?? C.unknownFailure)
                             }}
                         />
                         <div className='flex min-h-0 min-w-0 flex-grow flex-col' data-slot='api-main'>
@@ -425,20 +522,17 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                     {alerts}
                                 </div>
                             ) : null}
-                            {notes.length ? (
-                                <div className='flex flex-col text-[13px]' style={{ gap: 4, margin: '12px 20px 0', padding: '12px 14px', borderRadius: 10, background: 'var(--v2-acc-soft)' }} data-slot='workbench-notes'>
-                                    <p className='font-semibold'>{C.notes}</p>
-                                    <ul className='list-disc pl-5'>
-                                        {notes.map((n, i) => (
-                                            <li key={i}>{NOTE_TEXT(n)}</li>
-                                        ))}
-                                    </ul>
+                            {loadFailure && doc?.id !== loadFailure.id ? (
+                                <div role='alert' className='flex flex-wrap items-center text-[13px]' style={{ gap: 10, margin: '16px 20px 0', padding: '12px 14px', borderRadius: 10, background: 'var(--v2-block-bg)' }} data-slot='workbench-load-failed'>
+                                    <span className='min-w-0 flex-grow'>{C.loadFailed(requestName(loadFailure.relative), loadFailure.text)}</span>
+                                    <Btn onClick={() => open({ id: loadFailure.id, relative: loadFailure.relative })}>{C.tryAgain}</Btn>
                                 </div>
                             ) : null}
                             {doc && selectedTab && doc.id === selectedTab.id ? (
                                 <RequestEditor
-                                    key={`${doc.id}:${doc.revision}:${doc.relative}`}
+                                    key={`${doc.id}:${doc.revision}:${doc.relative}:${docSeq}`}
                                     initial={doc}
+                                    notes={notes}
                                     call={call}
                                     schemas={collection.schemas}
                                     historyKey={`${collection.id}:${state.running.length}`}
@@ -489,10 +583,15 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                             collection={collection}
                             run={run}
                             onClose={() => setTool(null)}
-                            onCreated={(r) => {
-                                show(r)
-                                setTool(null)
+                            importCurl={async (text, relative) => {
+                                // A cURL import's draft is a load of this collection: begun before the call, settled against it.
+                                const load = beginLoad(null)
+                                const r = await run({ kind: 'importCurl', text, relative })
+                                settleLoad(load, r, true)
+                                return r
                             }}
+                            onCreated={() => setTool(null)}
+                            returnFocus={chip.current}
                         />
                     ) : null}
                 </>

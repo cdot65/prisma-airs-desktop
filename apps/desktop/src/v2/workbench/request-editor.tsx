@@ -30,7 +30,7 @@ export function completionText(record: { relative: string; status: number | null
     return `${requestName(record.relative)} · ${code} · ${duration}`
 }
 
-export const NOTE_TEXT = (note: ImportNote): string => {
+const NOTE_TEXT = (note: ImportNote): string => {
     switch (note.kind) {
         case 'flagOmitted':
             return 'Presentation and globbing flags were left out.'
@@ -71,6 +71,7 @@ export interface EditorHandle {
 
 interface Props {
     initial: DocumentView
+    notes: ImportNote[]
     call: WorkbenchCall
     schemas: string[]
     historyKey: string
@@ -91,7 +92,7 @@ interface Props {
  * that moment; typing pauses protect the snapshot on this Mac; a reply
  * never overwrites newer typing.
  */
-export function RequestEditor({ initial, call, schemas, historyKey, onClosed, register, context = null, running = [], review = null }: Props) {
+export function RequestEditor({ initial, notes, call, schemas, historyKey, onClosed, register, context = null, running = [], review = null }: Props) {
     const ids = useId()
     const [doc, setDoc] = useState(initial)
     const [fields, setFields] = useState(initial.fields)
@@ -168,10 +169,17 @@ export function RequestEditor({ initial, call, schemas, historyKey, onClosed, re
         }
     }, [flush, abandon])
 
+    // The status line's last word (a save's, a send's completion, a refusal) gives way to the state once the
+    // request is edited again; only an action still in flight keeps its line.
+    const settle = () => setStatus((s) => (s === C.sending || s === C.waitingReview || s === 'Saving…' ? s : ''))
+
     const edit = (patch: Partial<Fields>) => {
         const next = { ...fieldsRef.current, ...patch }
         fieldsRef.current = next
         setFields(next)
+        // Every edit, not only the one that first makes the request dirty: a send from an already dirty (or new)
+        // request left its completion standing through the next edits, since dirty never changed.
+        settle()
         const generation = ++editGen.current
         if (markedGen.current <= sentGen.current) {
             markedGen.current = generation
@@ -328,8 +336,7 @@ export function RequestEditor({ initial, call, schemas, historyKey, onClosed, re
     const dirty = doc.new || doc.metadataDirty || !same(fields, doc.saved)
     const name = requestName(doc.relative)
     const state = doc.new ? C.state.new : dirty ? C.state.unsaved : C.state.saved
-    // The status line's last word (a save's, a send's completion) gives way to the state once the request is
-    // edited again; only an action still in flight keeps its line.
+    // Metadata changes the core reports (a schema association) make the request dirty without an edit here.
     useEffect(() => {
         if (dirty) setStatus((s) => (s === C.sending || s === C.waitingReview || s === 'Saving…' ? s : ''))
     }, [dirty])
@@ -724,6 +731,26 @@ export function RequestEditor({ initial, call, schemas, historyKey, onClosed, re
                     <Btn className='self-start' onClick={() => void discard()}>
                         {C.discardDraft}
                     </Btn>
+                </div>
+            ) : null}
+            {notes.length ? (
+                <div
+                    className='flex flex-col text-[13px]'
+                    style={{
+                        gap: 4,
+                        margin: '12px 20px 0',
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        background: 'var(--v2-acc-soft)',
+                    }}
+                    data-slot='workbench-notes'
+                >
+                    <p className='font-semibold'>{C.notes}</p>
+                    <ul className='list-disc pl-5'>
+                        {notes.map((n, i) => (
+                            <li key={i}>{NOTE_TEXT(n)}</li>
+                        ))}
+                    </ul>
                 </div>
             ) : null}
             <div

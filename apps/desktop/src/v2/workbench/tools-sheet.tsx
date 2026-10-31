@@ -1,7 +1,7 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { CollectionView, GitView, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
-import type { WorkbenchCall } from '../../features/workbench/workbench-call'
+import { type WorkbenchCall, resultText } from '../../features/workbench/workbench-call'
 import { Btn, Field } from '../controls'
 import { Modal } from '../modal'
 import { API_COPY as C } from './copy'
@@ -21,8 +21,16 @@ interface Props {
     collection: CollectionView
     run: Run
     onClose: () => void
-    /** A cURL import created a draft (the sheet closes and the request shows). */
+    /** A cURL import created a draft (the sheet closes; the API Client already shows the request). */
     onCreated: (r: Awaited<ReturnType<WorkbenchCall>>) => void
+    /**
+     * Dispatches a cURL import as a load of the collection: the API Client begins the load (its collection and
+     * generation) before the call and settles the reply against it, so a reply arriving after a selection change
+     * or a collection boundary is ignored instead of taking a fresh lifetime.
+     */
+    importCurl: (text: string, relative: string) => ReturnType<WorkbenchCall>
+    /** Where focus returns on close: the Collection chip, since the menu item that opened the sheet closes with its menu (I8). */
+    returnFocus?: HTMLElement | null
 }
 
 /**
@@ -30,10 +38,21 @@ interface Props {
  * secrets, schemas, imports and Git. Values entered for secrets go to the
  * Keychain through the core and are never shown again.
  */
-export function ToolsSheet({ tool, state, collection, run, onClose, onCreated }: Props) {
+export function ToolsSheet({ tool, state, collection, run: runOutside, onClose, onCreated, importCurl: importOutside, returnFocus = null }: Props) {
     const title = C.tools[tool].replace(/…$/, '')
+    // A failed action is said inside the sheet: the page behind it is inert and hidden from assistive technology while
+    // the sheet is open, so the API Client's own alert there reaches no one. Entered work and focus are untouched.
+    const [failure, setFailure] = useState('')
+    const noted = (r: Awaited<ReturnType<WorkbenchCall>>) => {
+        const text = resultText(r)
+        if (text) setFailure(text)
+        else if (r.kind !== 'cancelled') setFailure('')
+        return r
+    }
+    const run: Run = async (request) => noted(await runOutside(request))
+    const importCurl = async (text: string, relative: string) => noted(await importOutside(text, relative))
     return createPortal(
-        <Modal label={title} sheet width={620} onClose={onClose} data-slot='workbench-tools'>
+        <Modal label={title} sheet width={620} onClose={onClose} returnFocus={returnFocus} data-slot='workbench-tools'>
             <div className='flex flex-col' style={{ gap: 14 }} data-slot={`workbench-${tool}`}>
                 <div className='flex items-center' style={{ gap: 10 }}>
                     <h2 className={H2}>{title}</h2>
@@ -41,6 +60,11 @@ export function ToolsSheet({ tool, state, collection, run, onClose, onCreated }:
                         ×
                     </Btn>
                 </div>
+                {failure ? (
+                    <p role='alert' className='rounded-[8px] text-[13px]' style={{ padding: '10px 12px', background: 'var(--v2-block-bg)', color: 'var(--v2-ink)' }} data-slot='workbench-tools-failure'>
+                        {failure}
+                    </p>
+                ) : null}
                 {tool === 'environments' ? (
                     <Environments collection={collection} run={run} />
                 ) : tool === 'secrets' ? (
@@ -48,7 +72,7 @@ export function ToolsSheet({ tool, state, collection, run, onClose, onCreated }:
                 ) : tool === 'schemas' ? (
                     <Schemas collection={collection} run={run} />
                 ) : tool === 'import' ? (
-                    <Import state={state} run={run} onCreated={onCreated} />
+                    <Import state={state} run={run} importCurl={importCurl} onCreated={onCreated} />
                 ) : (
                     <Git git={state.git} run={run} />
                 )}
@@ -67,8 +91,13 @@ function Environments({ collection, run }: { collection: CollectionView; run: Ru
         revision: string | null
     } | null>(null)
     const [name, setName] = useState('')
+    // Each open of an editor is a generation; a reply from an earlier generation (superseded by another open, a new
+    // environment or Close) is dropped, so it cannot replace the editor or its typing.
+    const openGen = useRef(0)
     const load = async (env: string, priv: boolean) => {
+        const gen = ++openGen.current
         const r = await run({ kind: 'openEnvironment', name: env, private: priv })
+        if (gen !== openGen.current) return
         if (r.kind === 'environment')
             setOpen({
                 name: r.name,
@@ -113,6 +142,10 @@ function Environments({ collection, run }: { collection: CollectionView; run: Ru
                     style={{ gap: 8 }}
                     onSubmit={(e) => {
                         e.preventDefault()
+                        // The reply is bound to the environment it saved and to the text it was sent: it brings the new
+                        // revision, and the editor's text only if nothing newer was typed meanwhile (a save's reply had
+                        // replaced the editor, losing typing made while it was pending).
+                        const sent = { name: open.name, private: open.private, text: open.text }
                         void run({
                             kind: 'saveEnvironment',
                             name: open.name,
@@ -121,12 +154,7 @@ function Environments({ collection, run }: { collection: CollectionView; run: Ru
                             text: open.text,
                         }).then((r) => {
                             if (r.kind === 'environment')
-                                setOpen({
-                                    name: r.name,
-                                    private: r.private,
-                                    text: r.text,
-                                    revision: r.revision,
-                                })
+                                setOpen((o) => (o && o.name === sent.name && o.private === sent.private ? { ...o, revision: r.revision, text: o.text === sent.text ? r.text : o.text } : o))
                         })
                     }}
                 >
@@ -143,7 +171,10 @@ function Environments({ collection, run }: { collection: CollectionView; run: Ru
                                 Delete private environment
                             </Btn>
                         ) : null}
-                        <Btn tier='tertiary' onClick={() => setOpen(null)}>
+                        <Btn tier='tertiary' onClick={() => {
+                                openGen.current += 1
+                                setOpen(null)
+                            }}>
                             Close
                         </Btn>
                     </div>
@@ -210,13 +241,20 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
         revision: string | null
     } | null>(null)
     const [path, setPath] = useState('')
+    const openGen = useRef(0)
+    const load = async (relative: string) => {
+        const gen = ++openGen.current
+        const r = await run({ kind: 'openSchema', relative })
+        if (gen !== openGen.current) return
+        if (r.kind === 'schema') setOpen(r.schema)
+    }
     return (
         <section aria-label='Schemas' className='flex flex-col text-[13px]' style={{ gap: 12 }}>
             <p style={soft}>JSON or YAML schema text, edited without validation or request generation. Associate one from a request's Body tab.</p>
             <ul className='flex flex-col' style={{ gap: 6 }}>
                 {collection.schemas.map((s) => (
                     <li key={s}>
-                        <Btn onClick={() => void run({ kind: 'openSchema', relative: s }).then((r) => r.kind === 'schema' && setOpen(r.schema))}>{`Edit ${s}`}</Btn>
+                        <Btn onClick={() => void load(s)}>{`Edit ${s}`}</Btn>
                     </li>
                 ))}
             </ul>
@@ -225,7 +263,13 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
                     New schema path (.json, .yaml or .yml)
                     <Field id={`${ids}-schema`} value={path} onChange={(e) => setPath(e.target.value)} autoComplete='off' spellCheck={false} />
                 </label>
-                <Btn disabled={!path} onClick={() => setOpen({ relative: path, text: '', revision: null })}>
+                <Btn
+                    disabled={!path}
+                    onClick={() => {
+                        openGen.current += 1
+                        setOpen({ relative: path, text: '', revision: null })
+                    }}
+                >
                     New schema
                 </Btn>
             </div>
@@ -236,12 +280,16 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
                     style={{ gap: 8 }}
                     onSubmit={(e) => {
                         e.preventDefault()
+                        const sent = { relative: open.relative, text: open.text }
                         void run({
                             kind: 'saveSchema',
                             relative: open.relative,
                             revision: open.revision,
                             text: open.text,
-                        }).then((r) => r.kind === 'schema' && setOpen(r.schema))
+                        }).then((r) => {
+                            // Bound to the schema it saved and the text it was sent: the new revision, the text only if nothing newer was typed.
+                            if (r.kind === 'schema') setOpen((o) => (o && o.relative === sent.relative ? { ...o, revision: r.schema.revision, text: o.text === sent.text ? r.schema.text : o.text } : o))
+                        })
                     }}
                 >
                     <label className={LABEL} htmlFor={`${ids}-schema-text`} style={{ gap: 4 }}>
@@ -252,7 +300,10 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
                         <Btn tier='primary' type='submit'>
                             Save schema
                         </Btn>
-                        <Btn tier='tertiary' onClick={() => setOpen(null)}>
+                        <Btn tier='tertiary' onClick={() => {
+                                openGen.current += 1
+                                setOpen(null)
+                            }}>
                             Close
                         </Btn>
                     </div>
@@ -262,7 +313,7 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
     )
 }
 
-function Import({ state, run, onCreated }: { state: WorkbenchState; run: Run; onCreated: (r: Awaited<ReturnType<WorkbenchCall>>) => void }) {
+function Import({ state, run, importCurl, onCreated }: { state: WorkbenchState; run: Run; importCurl: (text: string, relative: string) => ReturnType<WorkbenchCall>; onCreated: (r: Awaited<ReturnType<WorkbenchCall>>) => void }) {
     const ids = useId()
     const [text, setText] = useState('')
     const [path, setPath] = useState('imported/request')
@@ -275,7 +326,7 @@ function Import({ state, run, onCreated }: { state: WorkbenchState; run: Run; on
                 style={{ gap: 8 }}
                 onSubmit={(e) => {
                     e.preventDefault()
-                    void run({ kind: 'importCurl', text, relative: path }).then((r) => {
+                    void importCurl(text, path).then((r) => {
                         if (r.kind === 'document') {
                             setText('')
                             onCreated(r)

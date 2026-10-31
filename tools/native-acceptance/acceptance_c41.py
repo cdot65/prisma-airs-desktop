@@ -122,7 +122,10 @@ def board_usable(tree, zoom):
     find = next((n for n in tree if n.get("role") in ("AXTextField", "AXSearchField") and (n.get("label") or "") == "Find request"), None)
     url = fx.App.node(tree, "AXTextField", "URL")
     send = fx.App.node(tree, "AXButton", "Send")
-    body_tab = next((n for n in tree if n.get("role") in TABS and (n.get("label") or "") == "Body" and n.get("pos") and n.get("size")), None)
+    history = next((n for n in tree if n.get("role") in TABS and (n.get("label") or "") == "History" and n.get("pos")), None)
+    bodies = [n for n in tree if n.get("role") in TABS and (n.get("label") or "") == "Body" and n.get("pos") and n.get("size")]
+    # The response pane's Body tab is the one in History's tab group (nearest to it), not the request editor's Body sub-tab.
+    body_tab = min(bodies, key=lambda n: abs(n["pos"][0] - history["pos"][0]) + abs(n["pos"][1] - history["pos"][1])) if bodies and history else None
     out = {"find": find is not None, "url": url is not None, "send_size": send.get("size") if send else None,
            "send_ok": bool(send and send["size"][0] >= 32 * zoom - 1 and send["size"][1] >= 32 * zoom - 1), "response_tabs": body_tab is not None, "zoom": zoom}
     out["ok"] = out["find"] and out["url"] and out["send_ok"] and out["response_tabs"]
@@ -359,6 +362,36 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
     obs["captures"]["api-sheet"] = {"light": c29.capture(app, "api-sheet-light")}
     c29.press(app, "AXButton", "Close Environments")
     app.wait_for(lambda t: dialog(t, "Environments") is None, 6)
+    # From the keyboard (I8, T09): Space on the chip opens its menu, Tab reaches Environments…, Space opens the
+    # sheet; Escape (then, again, the sheet's close control) closes it and focus returns to the chip, which opened
+    # the sheet: its menu item is gone by then.
+    focus_label = lambda t: ((fx.App.focused(t) or {}).get("label") or "")  # noqa: E731
+    kb = {}
+    for way in ("escape", "button"):
+        app.ax("focus", "AXPopUpButton", "Collection Topics API")
+        time.sleep(0.3)
+        app.keycode(49)
+        tree, kb[f"{way}_menu"] = app.wait_for(lambda t: any((n.get("label") or "") == "Environments…" for n in t), 6)
+        walk = []
+        for _ in range(4):
+            app.keycode(48)
+            walk.append(focus_label(app.tree()))
+            if walk[-1] == "Environments…":
+                break
+        kb[f"{way}_walk"] = walk
+        app.keycode(49)
+        tree, kb[f"{way}_sheet"] = app.wait_for(lambda t: dialog(t, "Environments") is not None, 8)
+        kb[f"{way}_focus_in_sheet"] = focus_label(tree)
+        if way == "escape":
+            app.keycode(53)
+        else:
+            c29.press(app, "AXButton", "Close Environments")
+        app.wait_for(lambda t: dialog(t, "Environments") is None, 6)
+        tree, kb[f"{way}_focus_back"] = app.wait_for(lambda t: focus_label(t) == "Collection Topics API", 6)
+        kb[f"{way}_focus_after"] = focus_label(tree)
+        obs[f"tree_focus_{way}"] = c29.save_tree(f"api-focus-{way}", tree)
+    n1["keyboard_sheet"] = kb
+    n1["sheet_focus_back"] = all(kb[f"{w}_menu"] and kb[f"{w}_sheet"] and kb[f"{w}_focus_back"] and kb[f"{w}_walk"][-1:] == ["Environments…"] for w in ("escape", "button"))
     # Back on the sent request for the layouts: nothing was sent by the view itself.
     n1["sent_total"] = len(api.requests("/topics"))
     obs["n1"] = n1
@@ -446,14 +479,14 @@ def exercise(app, endpoint, mgmt, api, api_dir, prepared, work, FINAL):
     caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
     n1_ok = (all(n1.get(k) for k in ("screen", "start", "opened", "chip", "environment_chip", "lead", "folder", "root_request", "find", "plus", "select_prompt", "request", "tab", "method", "send", "save", "saved_state",
                                      "no_response", "status", "body_shown", "status_pill", "raw_exact", "response_headers", "second", "history", "old_unchanged", "unsaved", "saved", "preview_query", "file_has_row",
-                                     "new_dialog", "new_tab", "menu", "sheet", "sheet_docked"))
+                                     "new_dialog", "new_tab", "menu", "sheet", "sheet_docked", "sheet_focus_back"))
              and n1.get("url_value", "").endswith("/topics") and len(n1["sub_tabs"]) == 6 and len(n1["response_tabs"]) == 4 and n1["entries"] >= 2 and n1["api_requests"] == 2 and n1["sent_total"] == 2 and len(n1["parity"]) == 2)
     add("C41-N01", n1_ok,
         f"screen {n1['screen']} with the start panel {n1['start']}; opened through the sheet {n1['opened']}: chip {n1['chip']}, environment chip {n1['environment_chip']}, lead {n1['lead']}, folder {n1['folder']}, root request {n1['root_request']}, Find {n1['find']}, + {n1['plus']}, prompt {n1['select_prompt']}; "
         f"request opened {n1['request']}: tab {n1['tab']}, Method {n1['method']}, URL {n1.get('url_value')!r}, Send {n1['send']}, Save {n1['save']}, state Saved {n1['saved_state']}, sub-tabs {n1['sub_tabs']}, response tabs {n1['response_tabs']}, no response yet {n1['no_response']}; "
         f"Send announced {n1.get('status_text')!r} in a status region {n1['status']} with the body outside it {n1['body_shown']} (pill {n1['status_pill']}), exact under Raw {n1['raw_exact']}, Headers {n1['response_headers']}; after the service changed a new send reflected it {n1['second']}; History listed {n1['entries']} runs and the older one showed exactly the first response {n1['old_unchanged']}; "
-        f"a Params row unsaved {n1['unsaved']} (status {n1.get('unsaved_seen')}) then saved {n1['saved']}, Preview read ?page=1 {n1['preview_query']}, the file holds the line {n1['file_has_row']}; + opened the dialog {n1['new_dialog']} and a new tab {n1['new_tab']}; the chip menu {n1['menu']} opened Environments {n1['sheet']} docked at 620px {n1['sheet_docked']}; {n1['sent_total']} requests reached the loopback service; composites {sorted(n1['parity'].values())}",
-        [run_rel, obs["tree_start"], obs["tree_opened"], obs["tree_request"], obs["tree_sent"], obs["tree_history"], obs["tree_preview"], obs["tree_new"], obs["tree_sheet"]] + caps("api-sent") + caps("api-history") + caps("api-sheet") + sorted(n1["parity"].values()))
+        f"a Params row unsaved {n1['unsaved']} (status {n1.get('unsaved_seen')}) then saved {n1['saved']}, Preview read ?page=1 {n1['preview_query']}, the file holds the line {n1['file_has_row']}; + opened the dialog {n1['new_dialog']} and a new tab {n1['new_tab']}; the chip menu {n1['menu']} opened Environments {n1['sheet']} docked at 620px {n1['sheet_docked']}; from the keyboard Space on the chip, Tab {n1['keyboard_sheet']['escape_walk']} and Space opened the sheet (focus in it on {n1['keyboard_sheet'].get('escape_focus_in_sheet')!r}), Escape closed it and focus returned to {n1['keyboard_sheet'].get('escape_focus_after')!r}, the close control likewise to {n1['keyboard_sheet'].get('button_focus_after')!r} ({n1['sheet_focus_back']}); {n1['sent_total']} requests reached the loopback service; composites {sorted(n1['parity'].values())}",
+        [run_rel, obs["tree_start"], obs["tree_opened"], obs["tree_request"], obs["tree_sent"], obs["tree_history"], obs["tree_preview"], obs["tree_new"], obs["tree_sheet"], obs.get("tree_focus_escape"), obs.get("tree_focus_button")] + caps("api-sent") + caps("api-history") + caps("api-sheet") + sorted(n1["parity"].values()))
     lay = n2["layouts"]
     ring_ok = (n2["ring"].get("diff") or 0) > 40 and n2["ring"].get("focused") == "Send"
     layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["board"]["ok"] for v in lay.values()) \
