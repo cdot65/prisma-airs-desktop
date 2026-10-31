@@ -549,7 +549,9 @@ export function Wizard(props: WizardProps) {
                     {dark ? C.themeDark : C.themeLight}
                 </button>
             </nav>
-            <div className='flex min-w-0 flex-grow flex-col'>
+            {/* min-h-0: in the column layout below 760px this column must shrink below its content, so the step scrolls
+                and the footer stays pinned inside the sheet (a 900-point window at 200% put the footer 2000 points down). */}
+            <div className='flex min-h-0 min-w-0 flex-grow flex-col'>
                 <main className='min-h-0 flex-grow overflow-auto' style={{ padding: isAdd ? '26px 32px 22px' : '32px 44px 28px' }}>
                     <section aria-labelledby={headingId} className='flex flex-col' style={{ gap: 18, maxWidth: 860 }}>
                         {step === 'welcome' && (
@@ -748,19 +750,26 @@ export function Wizard(props: WizardProps) {
                                         const lastStep = run && !run.stale && card.id ? run.steps.find((s) => s.product === card.id && s.line !== 'managementClient') : undefined
                                         const missing = reads === C.products.readsWith.clientMissing || reads === C.products.readsWith.scanMissing
                                         return (
-                                            <button
+                                            // A label around a native checkbox, not a checkbox-role button: a checkbox's children are
+                                            // presentational to assistive technology, which hid the body and the tags ("Always on",
+                                            // "Not available in this release"); as the label's text they are read, and the control keeps
+                                            // the card's name, description and state. The card shows the control's focus ring.
+                                            <label
                                                 key={card.label}
-                                                type='button'
-                                                role='checkbox'
-                                                aria-checked={on}
-                                                aria-disabled={unavailable || always ? true : undefined}
-                                                aria-label={card.label}
-                                                aria-describedby={`${cardId}-body ${cardId}-tags`}
-                                                onClick={() => card.id && !always && void toggleProduct(card.id, !on)}
                                                 className='relative flex flex-col text-left'
                                                 style={{ gap: 10, minHeight: 176, padding: '18px 20px', border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-rule)'}`, borderRadius: 12, background: on ? 'var(--v2-acc-soft)' : 'var(--v2-paper)', color: 'var(--v2-ink)', opacity: unavailable ? 0.7 : 1, cursor: unavailable || always ? 'default' : 'pointer' }}
                                                 data-slot='product-card'
                                             >
+                                                <input
+                                                    type='checkbox'
+                                                    className='sr-only'
+                                                    checked={on}
+                                                    aria-disabled={unavailable || always ? true : undefined}
+                                                    aria-label={card.label}
+                                                    aria-describedby={`${cardId}-body ${cardId}-tags`}
+                                                    onChange={() => card.id && !always && void toggleProduct(card.id, !on)}
+                                                    data-slot='product-choice'
+                                                />
                                                 <span className='absolute grid place-items-center rounded-full' style={{ top: 14, right: 14, width: 20, height: 20, border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-ctl)'}`, background: on ? 'var(--v2-acc)' : 'transparent', color: 'var(--v2-acc-ink)' }}>
                                                     {on && <Glyph name='check' size={11} color='var(--v2-acc-ink)' />}
                                                 </span>
@@ -780,7 +789,7 @@ export function Wizard(props: WizardProps) {
                                                     {reads && !unavailable && <Verdict tone={missing ? 'flagged' : 'allowed'} word={reads} />}
                                                     {lastStep && lastStep.state !== 'pending' && <Verdict tone={toneOf(lastStep.state)} word={C.verify.state[lastStep.state]} />}
                                                 </span>
-                                            </button>
+                                            </label>
                                         )
                                     })}
                                 </div>
