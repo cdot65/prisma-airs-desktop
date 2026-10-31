@@ -271,8 +271,10 @@ class App:
         """Makes `label` the active tenant from Settings' list; confirmed by Settings' active-tenant text or, since the
         v2 shell leaves Settings for Home on a switch, by the shell's tenant switcher naming it."""
         def active(t):
+            # The switcher names the active tenant first ("Switch tenant: Prod · Production · TSG …"): the label is
+            # matched as that first part, not as a substring (Prod is one of Production).
             return self.has_text(t, f"Active tenant: {label}") or self.has_text(t, f"{label} (active)") \
-                or any((n.get("label") or "").startswith("Switch tenant: ") and label in (n.get("label") or "") for n in t)
+                or any((n.get("label") or "") == f"Switch tenant: {label}" or (n.get("label") or "").startswith(f"Switch tenant: {label} ·") for n in t)
         if active(self.tree()):
             return self.tree(), True
         self.ax("press", "AXButton", f"Make {label} active")
