@@ -110,16 +110,17 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
     }
 
     const first = running[0] ?? null
-    // A transfer in flight is always in view with its Cancel, whatever response is being inspected (a run from
-    // History shown while a new send runs hid the progress and the cancellation behind the old record).
-    const progress = first ? (
-        <span role='status' aria-live='polite' className='flex flex-wrap items-center text-[12.5px]' style={{ gap: 8 }} data-slot='workbench-running'>
-            {C.sendingProgress(first.method, sizeText(first.bytes))}
-            <Btn className='h-7' onClick={() => void call({ kind: 'cancel', run: first.run })}>
+    // Every transfer in flight is in view with its own Cancel, whatever response is being inspected (a run from
+    // History shown while a new send runs hid the progress and the cancellation behind the old record; the core
+    // runs several sends of one document at once, and only the first was shown).
+    const progress = running.map((r, i) => (
+        <span key={r.run} role='status' aria-live='polite' className='flex w-full flex-wrap items-center text-[12.5px]' style={{ gap: 8 }} data-slot='workbench-running'>
+            {C.sendingProgress(r.method, sizeText(r.bytes))}
+            <Btn className='h-7' aria-label={running.length > 1 ? `${C.cancel_} ${i + 1} of ${running.length}` : undefined} onClick={() => void call({ kind: 'cancel', run: r.run })}>
                 {C.cancel_}
             </Btn>
         </span>
-    ) : null
+    ))
     const head = record ? (
         <>
             <span

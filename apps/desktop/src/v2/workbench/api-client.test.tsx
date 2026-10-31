@@ -441,6 +441,54 @@ describe('C41 API Client board', () => {
         expect(within(pane).getByText('17 ms')).toBeInTheDocument()
     })
 
+    it('shows every transfer in flight for the request with its own Cancel: two deferred sends across a tab round trip, each cancelled by its own id exactly once, nothing resent (attempt-04 R1)', async () => {
+        const health = {
+            kind: 'document' as const,
+            document: { ...document().document, id: 'health', relative: 'health.request.toml', fields: { ...fields, url: 'http://127.0.0.1:8080/health' }, saved: { ...fields, url: 'http://127.0.0.1:8080/health' } },
+            notes: [],
+        }
+        const { user, requests, native, line } = await open(board(), (request) => (request.kind === 'openRequest' && request.relative === 'health.request.toml' ? health : null))
+        // Every send's result is held: the transfers stay in flight.
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const sent = requests.find((r, i) => r.kind === 'send' && `op-${i + 1}` === operation)
+            return sent ? new Promise(() => {}) : observe(operation)
+        }
+        const base = board()
+        const collection = base.workbench.collection!
+        const healthTab = { id: 'health', relative: 'health.request.toml', method: 'GET', draft: false, new: false, recovered: false, conflict: null, interrupted: false }
+        const snap = (selected: string, running: { run: string; request: string; method: string; bytes: number }[]) => ({
+            ...base,
+            workbench: { ...base.workbench, running, collection: { ...collection, tabs: [...collection.tabs, healthTab], selected } },
+        })
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'send')).toHaveLength(1))
+        const first = { run: 'run-000000000000aaaa', request: 'list', method: 'GET', bytes: 512 }
+        // The round trip: the core selects the health tab, then the list tab again (the editor mounts afresh).
+        await native.push(snap('health', [first]))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/health'))
+        await user.click(within(screen.getByRole('tablist', { name: 'Open requests' })).getByRole('tab', { name: 'GET list' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'selectTab')).toHaveLength(1))
+        await native.push(snap('list', [first]))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics'))
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'send')).toHaveLength(2))
+        const second = { run: 'run-000000000000bbbb', request: 'list', method: 'GET', bytes: 0 }
+        await native.push(snap('list', [first, second]))
+        const pane = screen.getByRole('region', { name: 'Response pane' })
+        await waitFor(() => expect(pane.querySelectorAll('[data-slot="workbench-running"]')).toHaveLength(2))
+        const cancels = within(pane).getAllByRole('button', { name: /^Cancel request/ })
+        expect(cancels.map((b) => b.getAttribute('aria-label'))).toEqual(['Cancel request 1 of 2', 'Cancel request 2 of 2'])
+        // The second transfer is cancelled by its own id; the first stays untouched.
+        await user.click(cancels[1]!)
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'cancel')).toEqual([{ kind: 'cancel', run: second.run }]))
+        await native.push(snap('list', [first]))
+        await waitFor(() => expect(pane.querySelectorAll('[data-slot="workbench-running"]')).toHaveLength(1))
+        await user.click(within(pane).getByRole('button', { name: 'Cancel request' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'cancel').map((r) => (r.kind === 'cancel' ? r.run : ''))).toEqual([second.run, first.run]))
+        expect(requests.filter((r) => r.kind === 'send')).toHaveLength(2)
+    })
+
     it('reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection', async () => {
         const { user, requests } = await open()
         await user.click(screen.getByRole('tab', { name: 'Preview' }))
