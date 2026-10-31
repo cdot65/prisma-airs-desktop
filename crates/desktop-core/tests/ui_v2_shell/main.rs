@@ -129,8 +129,13 @@ async fn the_catalogue_is_v2_whatever_variant_is_asked_for_and_survives_a_restar
         ]
     );
     assert!(shortcuts[7..].iter().all(Option::is_none));
-    // Every destination the legacy shell listed is still reachable from the v2 catalogue.
+    // Every destination the legacy shell listed is still reachable from the v2 catalogue, except the alpha
+    // import, which left the catalogue under D060 (the legacy catalogue itself goes with C45).
     for id in features::catalogue().iter().map(|f| f.id) {
+        if id == FeatureId::Import {
+            assert!(snap.features.iter().all(|f| f.id != id), "Import still listed (D060)");
+            continue;
+        }
         assert!(snap.features.iter().any(|f| f.id == id), "{id:?} dropped");
     }
     // Nothing about the presentation is persisted by the switch; a restart is v2 on Home.

@@ -14,7 +14,7 @@ R=docs/planning/evidence/C44/runs
 E=$R/$ATTEMPT
 mkdir -p "$E"
 # Flake logs are same-input retries of this run only: earlier runs' logs are removed first.
-rm -f $E/core-fixtures.flake-*.log $E/host.flake-*.log
+rm -f $E/core-lib.flake-*.log $E/core-fixtures.flake-*.log $E/host.flake-*.log
 BEFORE=$($R/hash-inputs.sh "$PWD" $E/inputs-before.sha256) || { echo "input inventory failed; run invalid"; exit 2; }
 [ -n "$BEFORE" ] || { echo "input inventory produced no digest; run invalid"; exit 2; }
 # Configuration and build flags the controller fingerprints: itemised and hashed together.
@@ -31,6 +31,15 @@ run desktop-typecheck pnpm --filter @prisma-airs/desktop exec tsc --noEmit
 run vitest pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.config.ts
 run vitest-truth pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.truth.config.ts
 run core-lib cargo test --locked -p desktop-core --lib
+# One library test (workbench::profile sealed_files_open_only_under_their_key_and_name) reads the first entry of
+# its fresh directory and flaked once under the full suite's load while passing alone: the same command is
+# retried on the same frozen inputs, every failed run kept as evidence.
+for try in 1 2; do
+  if [ "$(cat $E/core-lib.exit)" != "0" ]; then
+    cp $E/core-lib.log $E/core-lib.flake-$try.log
+    run core-lib cargo test --locked -p desktop-core --lib
+  fi
+done
 run core-fixtures cargo test --locked -p desktop-core --features test-fixtures
 # A timing-sensitive test (Harness-engine turns, or the transport's connection-release
 # check) can flake under the full-suite load: the exact same
