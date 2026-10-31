@@ -435,7 +435,14 @@ def exercise(app, endpoint, mgmt, academy, prepared, work, FINAL):
     size_window(app, pid, 1440, 900)
     n2["layouts"] = layouts
     obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
-    obs["captures"]["academy-ring"] = {k: v for r in n2["rings"].values() for k, v in ((r.get("plain"), r.get("plain")), (r.get("capture"), r.get("capture"))) if k}
+    # Variant names (the screens copy names files "<name>-<variant>.png"): plain-<theme>, <kind>-<theme>.
+    obs["captures"]["academy-ring"] = {}
+    for k, r in n2["rings"].items():
+        kind, theme = k.split("_", 1)
+        if r.get("plain"):
+            obs["captures"]["academy-ring"][f"plain-{theme}"] = r["plain"]
+        if r.get("capture"):
+            obs["captures"]["academy-ring"][f"{kind}-{theme}"] = r["capture"]
     obs["n2"] = n2
     app.quit()
 
