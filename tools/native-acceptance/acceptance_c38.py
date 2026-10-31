@@ -237,7 +237,12 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     app.ax("press", "AXRadioButton", "Team A")
     c8.text(app, "Team A", 10)
     # On the one presentation (C44) the workspace's inference key is saved in the Gateway card's Workspaces tab
-    # (the legacy Playground form is gone): the endpoint, the key and Save workspace key, then the Keychain state.
+    # (the legacy Playground form is gone): the Workspaces tab (the card opens on its Overview), the endpoint, the
+    # key and Save workspace key, then the Keychain state.
+    ws_tab = next((n for n in app.tree() if n.get("role") in ("AXRadioButton", "AXTab") and (n.get("label") or "").strip() == "Workspaces"), None)
+    if ws_tab is None:
+        raise RuntimeError(f"no Workspaces tab in the Gateway card [tree: {app.dump_tree('gateway-no-workspaces-tab')}]")
+    app.ax("press", ws_tab["role"], "Workspaces")
     tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXTextField", "Inference endpoint") is not None, 12)
     if not shown:
         raise RuntimeError(f"the workspace key form did not show for Team A [tree: {app.dump_tree('gateway-workspace-key')}]")
