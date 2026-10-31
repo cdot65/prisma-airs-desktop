@@ -72,11 +72,12 @@ def _runtime_card(self):
 
 
 def _runtime_tab(self, label):
+    """Selects a tab of the Runtime card. Pressed every time: the tree reports a value of 1 on tabs that are not
+    selected (the C10 run read Data filtering profiles where it expected Deployment profiles), and pressing the
+    selected tab again changes nothing."""
     _runtime_card(self)
-    tree = self.tree()
-    if not any(n.get("role") == "AXRadioButton" and (n.get("label") or "") == label and n.get("value") in (1, "1", True) for n in tree):
-        _ax(self, "press", "AXRadioButton", label)
-        time.sleep(0.6)
+    _ax(self, "press", "AXRadioButton", label)
+    time.sleep(0.8)
 
 
 def ax(self, command, *args):
