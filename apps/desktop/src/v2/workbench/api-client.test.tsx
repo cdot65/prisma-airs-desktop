@@ -204,7 +204,12 @@ async function open(snapshot = board(), extra?: (request: WorkbenchRequest) => W
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
     await screen.findByRole('heading', { level: 1, name: 'API Client' })
-    const tree = await screen.findByRole('form', { name: 'Request list' })
+    // The tree by its slot: the list request's editor is a form named "Request list" too, and it may already be there.
+    const tree = await waitFor(() => {
+        const el = document_().querySelector('[data-slot="request-tree"]') as HTMLElement | null
+        expect(el).not.toBeNull()
+        return el as HTMLElement
+    })
     const line = () => document_().querySelector('[data-slot="workbench-request-line"]') as HTMLElement
     await waitFor(() => expect(line()).not.toBeNull())
     return { native, requests, user, tree, line }
@@ -317,6 +322,41 @@ describe('C41 API Client board', () => {
         // The Headers rows read the file's "Name: value" lines.
         await user.click(screen.getByRole('tab', { name: 'Headers 1' }))
         expect(within(screen.getByRole('table', { name: 'Headers' })).getByRole('textbox', { name: 'Name 1' })).toHaveValue('Accept')
+    })
+
+    it('keeps a value as typed, word by word, in Params and Headers, and leaves a padded query value verbatim when another row is edited: Save and Send carry the exact lines (attempt-02 R1)', async () => {
+        const { user, requests, line } = await open(board(), (request) => (request.kind === 'openRequest' ? document({ query: 'q=  padded  ' }) : null))
+        const status = () => document_().querySelector('[data-slot="workbench-save-status"]') as HTMLElement
+        const params = screen.getByRole('table', { name: 'Params' })
+        // The padded value is shown as written, not trimmed.
+        expect(within(params).getByRole('textbox', { name: 'Value 1' })).toHaveValue('  padded  ')
+        await user.click(screen.getByRole('button', { name: '+ Add parameter' }))
+        await user.type(within(params).getByRole('textbox', { name: 'Name 2' }), 'note')
+        // Character by character, the space included: the controlled table must keep it for the next word.
+        await user.type(within(params).getByRole('textbox', { name: 'Value 2' }), 'hello world')
+        expect(within(params).getByRole('textbox', { name: 'Value 2' })).toHaveValue('hello world')
+        expect(within(params).getByRole('textbox', { name: 'Value 1' })).toHaveValue('  padded  ')
+        await user.click(screen.getByRole('tab', { name: 'Headers 1' }))
+        const headers = screen.getByRole('table', { name: 'Headers' })
+        await user.click(screen.getByRole('button', { name: '+ Add header' }))
+        await user.type(within(headers).getByRole('textbox', { name: 'Name 2' }), 'X-Note')
+        await user.type(within(headers).getByRole('textbox', { name: 'Value 2' }), 'hello world')
+        expect(within(headers).getByRole('textbox', { name: 'Value 2' })).toHaveValue('hello world')
+        expect(within(headers).getByRole('textbox', { name: 'Value 1' })).toHaveValue('application/json')
+        expect(status()).toHaveTextContent('Unsaved changes')
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'send')).toHaveLength(1))
+        expect(requests.filter((r) => r.kind === 'send').at(-1)).toMatchObject({
+            fields: { query: 'q=  padded  \nnote=hello world', headers: 'Accept: application/json\nX-Note: hello world' },
+        })
+        await user.click(within(line()).getByRole('button', { name: 'Save' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'save')).toHaveLength(1))
+        expect(requests.filter((r) => r.kind === 'save').at(-1)).toMatchObject({
+            fields: { query: 'q=  padded  \nnote=hello world', headers: 'Accept: application/json\nX-Note: hello world' },
+        })
+        // Text mode shows the same lines.
+        await user.click(screen.getByRole('button', { name: 'Text' }))
+        expect(screen.getByRole('textbox', { name: /^Headers/ })).toHaveValue('Accept: application/json\nX-Note: hello world')
     })
 
     it('shows the response under Body (pretty, then Raw), Headers, Details and History, where an older run is shown as recorded (I5)', async () => {
