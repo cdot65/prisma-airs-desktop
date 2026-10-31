@@ -247,6 +247,9 @@ class App:
         return self.wait_for(lambda t: self.node(t, "AXButton", f"Delete {label}") is not None)
 
     def save_key(self, key):
+        # The credential form re-renders when the tenant becomes active; wait for its field (the first launch after
+        # a reboot, caches cold, had the field appear after the driver looked for it).
+        self.wait_for(lambda t: self.node(t, "AXTextField", "AIRS API key") is not None, 12)
         self.type_into("AXTextField", "AIRS API key", key, secure=True)
         self.keycode(36)
         return self.wait_for(lambda t: self.has_text(t, "Scan key saved in the Keychain."))
