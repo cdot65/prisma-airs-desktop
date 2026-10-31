@@ -443,6 +443,12 @@ describe('API Client collection', () => {
         await user.type(await screen.findByRole('textbox', { name: 'cURL command' }), 'curl -u a:b https://a.example/')
         await user.click(screen.getByRole('button', { name: 'Create draft' }))
         await waitFor(() => expect(of(requests, 'importCurl')).toEqual([{ kind: 'importCurl', text: 'curl -u a:b https://a.example/', relative: 'imported/request' }]))
+        // The core lists the draft and selects it (C41: the import's document is shown from the reply, the editor for the
+        // selected request); the conversion report rides with that document.
+        await native.push({
+            ...native.current,
+            workbench: { ...native.current.workbench, collection: collection({ tabs: [tab({ id: 'abc', relative: 'imported/request.request.toml', draft: true, new: true })], selected: 'abc' }) },
+        })
         expect(await screen.findByText(/store its value in Secrets as import-0123456789abcdef/)).toBeInTheDocument()
     })
 

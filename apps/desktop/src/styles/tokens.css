@@ -387,20 +387,10 @@
         gap: 4px !important;
     }
     [data-v2-shell] [data-slot='admin-tab'] [role='table'] > [role='row']:first-child {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0 0 0 0);
-        white-space: nowrap;
+        display: none;
     }
     [data-v2-shell] [data-slot='admin-tab'] [role='table'] [role='cell'] {
         white-space: normal;
-    }
-    [data-v2-shell] [data-slot='admin-tab'] [role='table'] [role='cell'][data-label]::before {
-        content: attr(data-label) ': ';
-        font-weight: 600;
-        color: var(--v2-faint);
     }
 }
 /* Narrower still (a 900-point window at 200%): the request tree sits above the editor instead of beside it. */
@@ -414,4 +404,20 @@
         border-right: 0 !important;
         border-bottom: 1px solid var(--v2-rule);
     }
+}
+/* Test Cases (C40): below 760px (a 900-point window at 200%) each row is two lines: the case and its product, the
+   input, then the result and the action; the five-column grid cannot hold readable cells there. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='cases-table'] [role='row'] {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        row-gap: 8px !important;
+    }
+    [data-v2-shell] [data-slot='cases-table'] [role='row'] > :nth-child(3) {
+        grid-column: 1 / -1;
+    }
+}
+/* The wizard's Environment segmented control (C43): native radios inside labels; the segment shows the ring. */
+[data-slot='environment-choice']:has(> input:focus-visible) {
+    outline: 2px solid var(--v2-acc);
+    outline-offset: 1px;
 }
