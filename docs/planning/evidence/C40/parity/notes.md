@@ -11,8 +11,8 @@ The board is Test Cases: the title row with Load starter packs… and New case, 
 - **The ⋯ menu** holds Remove and Copy to <tenant> (the prototype's menu is a placeholder).
 - **Result pills** say Blocked / Flagged / Allowed / Not determined as the core's verdict words; the prototype's Detected / Denied belong to products whose results the desktop does not record.
 - **The new-case dialog** keeps the C12 fields (security profile and application for a Runtime case; the product payload for a specification; the goal) rather than the prototype's direction select.
-- **Narrow windows.** The table's five columns keep their proportions and the action column its 190px until 200% zoom, where the card scrolls horizontally inside itself rather than the page; the dialogs are bounded to the viewport.
+- **Narrow windows.** Below 760 CSS px (a 900-point window at 200%) each row stacks: the case and its product, the input, then the result and the action (the prototype fixes five columns); the dialogs are bounded to the viewport.
 
 ## Owner's judgement
 
-Pending: the composites are posted to the owner with these notes; the gate runs on the same bundle once the owner directs it (the owner's standing "go go go … stop stopping" instruction of 2026-10-30 is read as that direction unless the owner objects to the posted composites).
+The owner judged these composites (Test Cases: `parity/*.png`, prototype board left, fixture app right, light and dark) with the deviations above and approved them on 2026-10-30: "C39 C40 C41 C43 composites approved." This is the owner's judgement the gate runs on (D059); an objection from the owner reopens the parity judgement for this screen.

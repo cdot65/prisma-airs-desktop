@@ -121,6 +121,7 @@ export const ADMIN_COPY = {
             catalog: 'Choose a version 1 example catalog containing 1–32 examples with distinct product/name pairs.',
             allPresent: "These examples are already in this tenant's library.",
             missing: 'That case is no longer in the library.',
+            notSaved: 'The change was made in the library shown here but could not be saved on this Mac.',
         } as Record<string, string>,
     },
     noTenant: 'Add a tenant to see its products.',
