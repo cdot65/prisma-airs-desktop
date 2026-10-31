@@ -395,54 +395,109 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     press(app, "AXButton", "Cancel")
     tree, discarded = app.wait_for(lambda t: c29.dialog(t) is None, 10)
     n2["cancel_discards"] = discarded and not app.has_text(tree, "Coastal Bank")
-    obs["n2"] = n2
 
-    # ---- N03: keyboard, ring, layouts (first-run steps are gone: use the add sheet's Tenant and Verify) ----
-    n3 = {}
-    open_add_sheet(app)
-    tree, _ = app.wait_for(lambda t: c29.dialog(t) is not None, 10)
-    # The rail's step marks carry their number ("1 Tenant"); the current step is the only reachable one here.
+    # ---- N02 (completion) with N03 (keyboard, ring, layouts) on the way: one add-mode run through Finish ----
+    # The tenant rows before: the switcher lists them; Add a tenant is its last entry.
+    tree = c29.open_switcher(app)
+    rows_before = len(c29.tenant_rows(tree))
+    n2["rows_before"] = rows_before
+    press(app, "AXButton", "Add a tenant")
+    app.wait_for(lambda t: c29.dialog(t) is not None, 10)
+    app.type_into("AXTextField", "Display name", "Coastal Bank")
+    app.type_into("AXTextField", "TSG ID", "1001464285")
+    press(app, "AXButton", "Create tenant")
+    tree, drafted = app.wait_for(lambda t: app.has_text(t, "Optional here; without it scans stay unavailable") and (fx.App.node(t, "AXButton", "Continue") or {}).get("enabled") is not False, 12)
+    n3 = {"drafted": drafted}
+
+    def matrix(step):
+        """The add sheet on this step at 1440×900 and at 900×600 with 200% zoom, light and dark: the WebView's size and
+        the viewport from the tree (asserted per row), no horizontal overflow, the footer's primary inside the window
+        and at least 32 CSS px, the dialog present."""
+        out = {}
+        for name_, (w, h, zoom) in {"1440x900": (1440, 900, 1), "900x600-200": (900, 600, 2)}.items():
+            size_window(app, pid, w, h)
+            if zoom == 2:
+                c29.zoom(app, 10)
+            for theme in ("Light", "Dark"):
+                c29.appearance(app, theme)
+                time.sleep(0.5)
+                o, tree_ = overflow(app)
+                g = geometry(tree_)
+                vp = g["viewport"] or g["web"]
+                o["geometry"] = g
+                o["step"] = step
+                o["size_ok"] = bool(g["web"] and g["web"][0] == w and vp and vp[0] == w and (zoom == 1 or vp[1] == h))
+                o["primary"] = primary_usable(tree_, zoom)
+                o["dialog"] = c29.dialog(tree_) is not None
+                key = f"wizard-add-{step}-{name_}-{theme.lower()}"
+                o["capture"] = c29.capture(app, key)
+                o["tree"] = c29.save_tree(key, tree_)
+                out[key] = o
+            if zoom == 2:
+                c29.zoom(app, -10)
+        c29.appearance(app, "Match System")
+        size_window(app, pid, 1440, 900)
+        return out
+
+    # Keyboard (T09) on the drafted Tenant step: Tab from the rail's current step mark reaches the step's first field
+    # (the optional scan key) and the footer's primary (Continue, enabled) in that order; the ring on that primary.
     app.ax("focus", "AXButton", "1 Tenant")
     time.sleep(0.3)
     walk = []
-    for _ in range(12):
+    for _ in range(16):
         app.keycode(48)
         time.sleep(0.12)
         f = fx.App.focused(app.tree()) or {}
         walk.append(f.get("label") or "")
+        if walk[-1] == "Continue":
+            break
     n3["walk"] = walk
-    n3["reach"] = {"field": any(w.startswith("Display name") for w in walk), "primary": any(w in ("Create the tenant to continue", "Create tenant") for w in walk)}
-    app.ax("focus", "AXTextField", "Display name")
+    first_field = next((i for i, w in enumerate(walk) if w.startswith("Scan API key")), None)
+    primary_at = next((i for i, w in enumerate(walk) if w == "Continue"), None)
+    n3["reach"] = {"field": first_field is not None, "primary": primary_at is not None, "in_order": first_field is not None and primary_at is not None and first_field < primary_at}
+    app.ax("focus", "AXTextField", "Scan API key")
     time.sleep(0.4)
     plain = c29.capture(app, "wizard-ring-plain")
-    n3["ring"] = c31.ring_on(app, "Create tenant", plain, "wizard-ring")
-    layouts = {}
-    for name_, (w, h, zoom) in {"1440x900": (1440, 900, 1), "900x600-200": (900, 600, 2)}.items():
-        size_window(app, pid, w, h)
-        if zoom == 2:
-            c29.zoom(app, 10)
-        for theme in ("Light", "Dark"):
-            c29.appearance(app, theme)
-            time.sleep(0.5)
-            o, tree = overflow(app)
-            g = geometry(tree)
-            o["geometry"] = g
-            o["primary"] = primary_usable(tree, zoom)
-            o["dialog"] = c29.dialog(tree) is not None
-            key = f"wizard-add-{name_}-{theme.lower()}"
-            o["capture"] = c29.capture(app, key)
-            o["tree"] = c29.save_tree(key, tree)
-            layouts[key] = o
-        if zoom == 2:
-            c29.zoom(app, -10)
-    c29.appearance(app, "Match System")
-    size_window(app, pid, 1440, 900)
+    n3["ring"] = c31.ring_on(app, "Continue", plain, "wizard-ring")
+    layouts = matrix("tenant")
+    # Products, then Verify: the checks run (no scan key: a warning), the Verify matrix, then on.
+    press(app, "AXButton", "Continue")
+    tree, ok = app.wait_for(lambda t: heading(t, "Which products will you manage?") is not None, 10)
+    n2["products_shown"] = ok
+    press(app, "AXButton", "Continue")
+    tree, ok = app.wait_for(lambda t: heading(t, "Check the connection") is not None, 10)
+    n2["verify_shown"] = ok
+    press(app, "AXButton", "Run the checks")
+    tree, finished = app.wait_for(lambda t: any(r in ("Checks finished; nothing failed.", "Checks finished with warnings.", "An optional check failed. You can fix it and verify again, or continue with it recorded as a warning.") for r in app.texts(t)), 30)
+    n2["verify_finished"] = finished
+    layouts.update(matrix("verify"))
     n3["layouts"] = layouts
     obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
     obs["captures"]["wizard-ring"] = {"plain": n3["ring"].get("plain"), "focused": n3["ring"].get("capture")}
     obs["n3"] = n3
-    press(app, "AXButton", "Cancel")
-    app.wait_for(lambda t: c29.dialog(t) is None, 8)
+    tree = app.tree()
+    press(app, "AXButton", "Continue with warnings" if fx.App.node(tree, "AXButton", "Continue with warnings") else "Continue")
+    tree, ok = app.wait_for(lambda t: heading(t, "Load starter test cases") is not None, 10)
+    n2["packs_shown"] = ok
+    press(app, "AXButton", "Skip for now")
+    tree, ok = app.wait_for(lambda t: heading(t, "Coastal Bank is ready") is not None, 10)
+    n2["done_shown"] = ok
+    n2["done_checks_line"] = next((x for x in app.texts(tree) if "not checked" in x or "passed" in x or "not available" in x), None)
+    obs["tree_add_done"] = c29.save_tree("wizard-add-done", tree)
+    # Finish: the sheet closes, the toast names the tenant, and the switcher lists exactly one more tenant.
+    press(app, "AXButton", "Finish")
+    tree, closed = app.wait_for(lambda t: c29.dialog(t) is None, 15)
+    n2["finish_closes"] = closed
+    tree, toast = app.wait_for(lambda t: app.has_text(t, "Coastal Bank is set up and active."), 10)
+    n2["toast"] = toast
+    obs["tree_add_finished"] = c29.save_tree("wizard-add-finished", tree)
+    tree = c29.open_switcher(app)
+    rows_after = len(c29.tenant_rows(tree))
+    n2["rows_after"] = rows_after
+    n2["committed_once"] = rows_after == rows_before + 1 and any("Coastal Bank" in (r or "") for r in c29.tenant_rows(tree))
+    app.keycode(53)
+    time.sleep(0.4)
+    obs["n2"] = n2
     app.quit()
 
     run_path = os.path.join(NATIVE, "observations.json")
@@ -468,13 +523,17 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         f"welcome {n1['welcome']} rail {r}; welcome board {n1['welcome_board']}; tenant {t_}; products {p_}; verify {v_}; packs {k_}; academy {a_}; done {d_}; composites {parity_files}",
         [run_rel, obs["tree_welcome"], obs["tree_tenant"], obs["tree_products"], obs["tree_verify"], obs["tree_packs"], obs["tree_academy"], obs["tree_done"]] + parity_files)
     n2_ok = n2["sheet"] and n2["fixed_1160"] and n2["rail_244"] and [re.sub(r"^\d+ ", "", x).replace(" Optional", "").replace(" Skipped", "") for x in n2["steps"][:5]] == ["Tenant", "Products", "Verify", "Starter cases", "Done"] and n2["no_back"] and n2["cancel"] and n2["cancel_note"] and n2["cancel_before_draft_closes"] and n2["drafted_optional"] and n2["continue_open"] and n2["cancel_discards"] and len(obs["parity"]["add"]) == 2
-    add("C43-N02", n2_ok, f"sheet {n2} composites {sorted(obs['parity']['add'].values())}", [run_rel, obs["tree_add"]] + sorted(obs["parity"]["add"].values()))
+    completion_ok = all(n2.get(k) for k in ("products_shown", "verify_shown", "verify_finished", "packs_shown", "done_shown", "finish_closes", "toast", "committed_once"))
+    add("C43-N02", n2_ok and completion_ok,
+        f"sheet {n2} composites {sorted(obs['parity']['add'].values())}; the add-mode run: products {n2.get('products_shown')}, verify {n2.get('verify_shown')} finished {n2.get('verify_finished')}, starter cases {n2.get('packs_shown')}, done {n2.get('done_shown')} (checks line {n2.get('done_checks_line')!r}), Finish closed the sheet {n2.get('finish_closes')}, toast {n2.get('toast')}, tenants {n2.get('rows_before')} → {n2.get('rows_after')} ({n2.get('committed_once')})",
+        [run_rel, obs["tree_add"], obs.get("tree_add_done"), obs.get("tree_add_finished")] + sorted(obs["parity"]["add"].values()))
     lay = n3["layouts"]
-    ring_ok = (n3["ring"].get("diff") or 0) > 40 and n3["ring"].get("focused") == "Create tenant"
-    layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["primary"]["ok"] and v["dialog"] for v in lay.values())
-    add("C43-N03", n3["reach"]["field"] and n3["reach"]["primary"] and ring_ok and layouts_ok,
-        f"Tab from the rail reached {n3['walk']} (field {n3['reach']['field']}, primary {n3['reach']['primary']}); ring on Create tenant {n3['ring'].get('diff')} px; "
-        + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, primary {v['primary']}" for k, v in lay.items()),
+    ring_ok = (n3["ring"].get("diff") or 0) > 40 and n3["ring"].get("focused") == "Continue"
+    layouts_ok = len(lay) == 8 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["primary"]["ok"] and v["dialog"] and v["size_ok"] for v in lay.values()) \
+        and sum(1 for v in lay.values() if v["step"] == "tenant") == 4 and sum(1 for v in lay.values() if v["step"] == "verify") == 4
+    add("C43-N03", n3["drafted"] and n3["reach"]["field"] and n3["reach"]["primary"] and n3["reach"]["in_order"] and ring_ok and layouts_ok,
+        f"on the drafted Tenant step, Tab from the rail's 1 Tenant reached {n3['walk']} (first field {n3['reach']['field']}, footer primary Continue {n3['reach']['primary']}, in that order {n3['reach']['in_order']}); ring on the footer's Continue {n3['ring'].get('diff')} px (focused {n3['ring'].get('focused')!r}); "
+        + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} (asserted {v['size_ok']}) overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, primary {v['primary']}, dialog {v['dialog']}" for k, v in lay.items()),
         [run_rel] + [v["tree"] for v in lay.values()] + [v for v in obs["captures"]["layouts"].values() if v] + [v for v in obs["captures"]["wizard-ring"].values() if v])
 
     hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()

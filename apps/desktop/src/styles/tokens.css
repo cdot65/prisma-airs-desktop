@@ -228,6 +228,11 @@
     outline: 2px solid var(--v2-acc);
     outline-offset: 2px;
 }
+/* The wizard's Environment segmented control (C43): native radios inside labels; the segment shows the ring. */
+[data-slot='environment-choice']:has(> input:focus-visible) {
+    outline: 2px solid var(--v2-acc);
+    outline-offset: 1px;
+}
 /* The wizard (C43) below 760px (a 900-point window at 200%): the rail is a compact strip above the step (the step
    marks keep their names for assistive technology but show their numbers), every grid is one column, and the step
    scrolls between the strip and the pinned footer. */

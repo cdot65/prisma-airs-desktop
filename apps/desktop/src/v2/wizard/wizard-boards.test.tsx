@@ -120,6 +120,9 @@ describe('R2Onboard boards', () => {
         const { dispatch } = mount(fxOn.done())
         expect(screen.getByRole('heading', { level: 1, name: /is ready$/ })).toBeInTheDocument()
         expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Products: AI Runtime Security')
+        // The checks line counts the verification states (a stored key, a skipped client, two unavailable products): never "All passed".
+        expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Checks: 1 stored, not checked · 1 not checked · 2 not available')
+        expect(document.querySelector('[data-slot="summary"]')).not.toHaveTextContent('All passed')
         await user.click(screen.getByRole('button', { name: 'Open Prisma AIRS' }))
         expect(dispatch).toHaveBeenCalledWith({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'], resolution: null })
         expect(screen.getByRole('button', { name: 'Opening…' })).toBeDisabled()

@@ -199,7 +199,16 @@ export const WIZARD_COPY = {
             products: 'Products',
             checks: 'Checks',
             checksPassed: 'All passed',
-            checksWarnings: (n: number) => `Passed · ${n} ${n === 1 ? 'warning' : 'warnings'}`,
+            // The checks line counts each verification state (P26: a stored or skipped credential is not a passed check).
+            checkCounts: {
+                pass: (n: number) => `${n} passed`,
+                warning: (n: number) => `${n} ${n === 1 ? 'warning' : 'warnings'}`,
+                fail: (n: number) => `${n} failed`,
+                stored: (n: number) => `${n} stored, not checked`,
+                skipped: (n: number) => `${n} not checked`,
+                unavailable: (n: number) => `${n} not available`,
+                pending: (n: number) => `${n} pending`,
+            },
             packs: 'Starter cases',
             academy: 'Academy',
             academySkipped: 'Skipped · join any time from Academy',
