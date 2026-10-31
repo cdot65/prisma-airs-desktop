@@ -489,6 +489,88 @@ describe('C41 API Client board', () => {
         expect(requests.filter((r) => r.kind === 'send')).toHaveLength(2)
     })
 
+    it('an obsolete document result never replaces the current selection: two selections in flight resolve out of order and the later selection stays usable (attempt-05 R1)', async () => {
+        const docFor = (id: string, relative: string, url: string) => ({ kind: 'document' as const, document: { ...document().document, id, relative, fields: { ...fields, url }, saved: { ...fields, url } }, notes: [] })
+        const { requests, native, line } = await open()
+        // Deferred results for the two later loads: each is resolved by hand.
+        const pending = new Map<string, (r: WorkbenchResult) => void>()
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'openRequest' && req.relative !== 'topics/list.request.toml') {
+                return new Promise<{ kind: 'workbench'; result: WorkbenchResult }>((resolve) => pending.set(req.relative, (result) => resolve({ kind: 'workbench', result })))
+            }
+            return observe(operation)
+        }
+        const base = board()
+        const collection = base.workbench.collection!
+        const tab = (id: string, relative: string) => ({ id, relative, method: 'GET', draft: false, new: false, recovered: false, conflict: null, interrupted: false })
+        const snap = (selected: string) => ({ ...base, workbench: { ...base.workbench, collection: { ...collection, tabs: [...collection.tabs, tab('b', 'b.request.toml'), tab('c', 'c.request.toml')], selected } } })
+        await native.push(snap('b'))
+        await waitFor(() => expect(pending.has('b.request.toml')).toBe(true))
+        await native.push(snap('c'))
+        await waitFor(() => expect(pending.has('c.request.toml')).toBe(true))
+        pending.get('c.request.toml')!(docFor('c', 'c.request.toml', 'http://127.0.0.1:8080/c'))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/c'))
+        // B's late result: C stays selected and its editor, Send and response pane stay.
+        pending.get('b.request.toml')!(docFor('b', 'b.request.toml', 'http://127.0.0.1:8080/b'))
+        await new Promise((r) => setTimeout(r, 50))
+        expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/c')
+        expect(within(line()).getByRole('button', { name: 'Send' })).toBeInTheDocument()
+        expect(screen.getByRole('region', { name: 'Response pane' })).toBeInTheDocument()
+        expect(within(screen.getByRole('tablist', { name: 'Open requests' })).getByRole('tab', { name: 'GET c' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('a selected request whose load fails says why and offers Try again, which reopens it once; a lost delivery is said too (attempt-05 R2)', async () => {
+        let mode: 'refused' | 'lost' | 'ok' = 'refused'
+        const { user, requests, native, line } = await open(board(), (request) => (request.kind === 'openRequest' && request.relative === 'health.request.toml' && mode === 'refused' ? { kind: 'refused', problem: { kind: 'unprotected' } } : null))
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'openRequest' && req.relative === 'health.request.toml' && mode === 'lost') return Promise.reject(new Error('observation lost'))
+            if (req?.kind === 'openRequest' && req.relative === 'health.request.toml' && mode === 'ok') {
+                return Promise.resolve({ kind: 'workbench' as const, result: { ...document(), document: { ...document().document, id: 'health', relative: 'health.request.toml', fields: { ...fields, url: 'http://127.0.0.1:8080/health' }, saved: { ...fields, url: 'http://127.0.0.1:8080/health' } } } })
+            }
+            return observe(operation)
+        }
+        const base = board()
+        const collection = base.workbench.collection!
+        const healthTab = { id: 'health', relative: 'health.request.toml', method: 'GET', draft: false, new: false, recovered: false, conflict: null, interrupted: false }
+        await native.push({ ...base, workbench: { ...base.workbench, collection: { ...collection, tabs: [...collection.tabs, healthTab], selected: 'health' } } })
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toHaveTextContent('health could not be opened:'))
+        expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toHaveAttribute('role', 'alert')
+        expect(screen.queryByRole('textbox', { name: 'URL' })).toBeNull()
+        const opens = () => requests.filter((r) => r.kind === 'openRequest' && r.relative === 'health.request.toml').length
+        expect(opens()).toBe(1)
+        // No automatic retry: the count stays until Try again.
+        await new Promise((r) => setTimeout(r, 100))
+        expect(opens()).toBe(1)
+        mode = 'lost'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(opens()).toBe(2))
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toHaveTextContent('health could not be opened: The desktop did not report how the request ended. Check the request before trying again.'))
+        mode = 'ok'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(opens()).toBe(3))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/health'))
+        expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toBeNull()
+    })
+
+    it('a tool\'s failure is said inside its sheet, with the entered work and focus kept (attempt-05 R3)', async () => {
+        const { user } = await open(board(), (request) => (request.kind === 'importCurl' ? { kind: 'refused', problem: { kind: 'unprotected' } } : null))
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Import…' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Import' })
+        const curl = within(sheet).getByRole('textbox', { name: 'cURL command' })
+        await user.type(curl, 'curl http://127.0.0.1:8080/x')
+        await user.click(within(sheet).getByRole('button', { name: 'Create draft' }))
+        const alert = await within(sheet).findByRole('alert')
+        expect(alert).toHaveTextContent(/./)
+        expect(screen.getByRole('dialog', { name: 'Import' })).toBeInTheDocument()
+        expect(curl).toHaveValue('curl http://127.0.0.1:8080/x')
+        expect(sheet.contains(document_().activeElement)).toBe(true)
+    })
+
     it('reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection', async () => {
         const { user, requests } = await open()
         await user.click(screen.getByRole('tab', { name: 'Preview' }))

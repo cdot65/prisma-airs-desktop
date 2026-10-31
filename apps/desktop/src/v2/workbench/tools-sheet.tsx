@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { CollectionView, GitView, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
-import type { WorkbenchCall } from '../../features/workbench/workbench-call'
+import { type WorkbenchCall, resultText } from '../../features/workbench/workbench-call'
 import { Btn, Field } from '../controls'
 import { Modal } from '../modal'
 import { API_COPY as C } from './copy'
@@ -32,8 +32,18 @@ interface Props {
  * secrets, schemas, imports and Git. Values entered for secrets go to the
  * Keychain through the core and are never shown again.
  */
-export function ToolsSheet({ tool, state, collection, run, onClose, onCreated, returnFocus = null }: Props) {
+export function ToolsSheet({ tool, state, collection, run: runOutside, onClose, onCreated, returnFocus = null }: Props) {
     const title = C.tools[tool].replace(/…$/, '')
+    // A failed action is said inside the sheet: the page behind it is inert and hidden from assistive technology while
+    // the sheet is open, so the API Client's own alert there reaches no one. Entered work and focus are untouched.
+    const [failure, setFailure] = useState('')
+    const run: Run = async (request) => {
+        const r = await runOutside(request)
+        const text = resultText(r)
+        if (text) setFailure(text)
+        else if (r.kind !== 'cancelled') setFailure('')
+        return r
+    }
     return createPortal(
         <Modal label={title} sheet width={620} onClose={onClose} returnFocus={returnFocus} data-slot='workbench-tools'>
             <div className='flex flex-col' style={{ gap: 14 }} data-slot={`workbench-${tool}`}>
@@ -43,6 +53,11 @@ export function ToolsSheet({ tool, state, collection, run, onClose, onCreated, r
                         ×
                     </Btn>
                 </div>
+                {failure ? (
+                    <p role='alert' className='rounded-[8px] text-[13px]' style={{ padding: '10px 12px', background: 'var(--v2-block-bg)', color: 'var(--v2-ink)' }} data-slot='workbench-tools-failure'>
+                        {failure}
+                    </p>
+                ) : null}
                 {tool === 'environments' ? (
                     <Environments collection={collection} run={run} />
                 ) : tool === 'secrets' ? (

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { DocumentView, ImportNote, ShellSnapshot, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../../features/tenants/dispatch'
@@ -53,6 +53,11 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     const [doc, setDoc] = useState<DocumentView | null>(null)
     const [notes, setNotes] = useState<ImportNote[]>([])
     const loading = useRef<string | null>(null)
+    // Each load of the selected request has a generation; a result from an earlier load is obsolete (two selections
+    // in flight resolving out of order replaced the current request's document with the earlier one's).
+    const loadGen = useRef(0)
+    // A load that failed, by request id, with its reason: shown in place of the editor with Try again (no automatic retry).
+    const [loadFailure, setLoadFailure] = useState<{ id: string; text: string } | null>(null)
     const editors = useRef(new Map<string, EditorHandle>())
     const [closing, setClosing] = useState<Closing | null>(null)
     // The Collection chip: where focus returns when its menu or a tool it opened closes (the menu item is gone by then).
@@ -98,8 +103,12 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
         }
     }
 
-    const show = (r: Awaited<ReturnType<WorkbenchCall>>) => {
-        if (r.kind === 'document') {
+    // A document result is shown only for the collection it was asked of (a result after the collection closed, or
+    // another opened, would resurrect it).
+    const collectionRef = useRef<string | null>(collection?.id ?? null)
+    collectionRef.current = collection?.id ?? null
+    const show = (r: Awaited<ReturnType<WorkbenchCall>>, asked: string | null = collectionRef.current) => {
+        if (r.kind === 'document' && asked !== null && asked === collectionRef.current) {
             setDoc(r.document)
             setNotes(r.notes)
         }
@@ -116,21 +125,43 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     const collectionId = collection?.id ?? null
     useEffect(() => {
         followed.current = null
+        loadGen.current += 1
+        setLoadFailure(null)
         if (collectionId === null) setDoc(null)
     }, [collectionId])
+    // Opens the selected request; only the latest load's result counts, and a failure is shown with its reason.
+    const open = useCallback(
+        (tab: { id: string; relative: string }) => {
+            const gen = ++loadGen.current
+            const asked = collectionRef.current
+            loading.current = tab.id
+            setLoadFailure(null)
+            void call({ kind: 'openRequest', relative: tab.relative }).then(
+                (r) => {
+                    if (gen !== loadGen.current || asked !== collectionRef.current) return
+                    loading.current = null
+                    if (r.kind === 'document') {
+                        setDoc(r.document)
+                        setNotes([])
+                    } else if (r.kind !== 'cancelled') {
+                        setLoadFailure({ id: tab.id, text: resultText(r) ?? C.unknownFailure })
+                    }
+                },
+                () => {
+                    if (gen !== loadGen.current || asked !== collectionRef.current) return
+                    loading.current = null
+                    setLoadFailure({ id: tab.id, text: C.unknownFailure })
+                }
+            )
+        },
+        [call]
+    )
     useEffect(() => {
         if (!selectedTab || followed.current === selectedTab.id) return
         followed.current = selectedTab.id
         if (doc?.id === selectedTab.id || loading.current === selectedTab.id) return
-        loading.current = selectedTab.id
-        void call({ kind: 'openRequest', relative: selectedTab.relative }).then((r) => {
-            loading.current = null
-            if (r.kind === 'document') {
-                setDoc(r.document)
-                setNotes([])
-            }
-        })
-    }, [selectedTab, doc, call])
+        open(selectedTab)
+    }, [selectedTab, doc, open])
     const loaded = state.loaded
     useEffect(() => {
         if (!loaded) void call({ kind: 'load' })
@@ -437,6 +468,12 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                             {alerts !== null ? (
                                 <div className='flex flex-col empty:hidden' style={{ gap: 8, padding: '0 20px' }}>
                                     {alerts}
+                                </div>
+                            ) : null}
+                            {selectedTab && loadFailure?.id === selectedTab.id && doc?.id !== selectedTab.id ? (
+                                <div role='alert' className='flex flex-wrap items-center text-[13px]' style={{ gap: 10, margin: '16px 20px', padding: '12px 14px', borderRadius: 10, background: 'var(--v2-block-bg)' }} data-slot='workbench-load-failed'>
+                                    <span className='min-w-0 flex-grow'>{C.loadFailed(requestName(selectedTab.relative), loadFailure.text)}</span>
+                                    <Btn onClick={() => open(selectedTab)}>{C.tryAgain}</Btn>
                                 </div>
                             ) : null}
                             {doc && selectedTab && doc.id === selectedTab.id ? (
