@@ -1,60 +1,31 @@
 #!/usr/bin/env python3
-"""Writes the assertion-level legacy-script map (C44): every native check a
-pre-P09 script recorded (docs/architecture/native-checks.json), what it
-asserts, the driver that asserts it on the one presentation, and that
-driver's result on the C44 bundle (native/cumulative/<CNN>/). Run from the
-repository root after the cumulative drivers; prints the table to stdout
-and rewrites the table section of docs/planning/evidence/C44/legacy-script-map.md."""
+"""Writes the assertion-level legacy-script map (C44): every native check a pre-P09 script recorded
+(docs/architecture/native-checks.json), what it asserts, where it stands on the one presentation
+(tools/native-acceptance/legacy_assertions.py: exercised by a v2 check, self-run through legacy_v2, ported into a v2
+check, or retired with its reason) and the result of each target on the C44 bundle (native/cumulative/<CNN>/ for the
+cumulative drivers, the root C44 record for C44-N01). Run from the repository root after the native stage; prints the
+table and rewrites the table section of docs/planning/evidence/C44/legacy-script-map.md."""
 
 import json
 import os
 import re
+import sys
+from collections import Counter
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import legacy_assertions as la  # noqa: E402
 
 ROOT = os.getcwd()
 CHECKS = json.load(open(os.path.join(ROOT, "docs/architecture/native-checks.json")))["chunks"]
 CUM = os.path.join(ROOT, "docs/planning/evidence/C44/native/cumulative")
+ROOT_RECORD = os.path.join(ROOT, "docs/planning/evidence/C44/native-acceptance.json")
 MAP = os.path.join(ROOT, "docs/planning/evidence/C44/legacy-script-map.md")
-
-# Where each legacy chunk's assertions run now: a driver kept running on the v2 shell (itself), or the v2
-# driver(s) that assert the same requirement (the replacement check ids).
-REPLACEMENT = {
-    "C01": "C35-N01..N03, C44-N01 (the shell, the rail, the topbar, Settings)",
-    "C02": "C43-N01..N02 (the wizard), C35-N02 (the tenant menu), C44-N01 (Settings)",
-    "C03": "C39-N01 (the Playground in the Runtime card), C40-N01 (a case run there)",
-    "C04": "C42-N01 (sign in from Settings, the account generation)",
-    "C05": "C42-N01..N02 (the Academy chrome around the learner pages)",
-    "C06": "C42-N01 (the embed's own graded workflows, P19)",
-    "C07": "C42-N01 (the offline pill and notice)",
-    "C08": "C39-N01..N04 (Administration's reads), C44-N01",
-    "C09": "C39-N02 (the review sheet, Runtime changes)",
-    "C10": "itself (acceptance_c10.py on the v2 shell through legacy_v2: the Runtime card's DLP tab)",
-    "C11": "itself (acceptance_c11.py on the v2 shell through legacy_v2: Sessions & Reports from the Go menu)",
-    "C12": "C40-N01..N02 (Test Cases)",
-    "C13": "C39-N03 (the observation products' tabs)",
-    "C14": "C41-N01..N02 (the API Client)",
-    "C15": "C41-N01..N02 (the API Client's execution and loopback service)",
-    "C16": "C39-N03 (the Gateway card's tabs)",
-    "C17": "C39-N02 (the review sheet, Gateway changes)",
-    "C18": "C39-N03 (the Gateway card's Playground tab)",
-    "C19": "C38-N01..N02 (the Harness)",
-    "C20": "C38-N01 (the Decisions aside, the sign-in panel)",
-    "C21": "C38-N01 (the project panel)",
-    "C22": "C38-N01 (the MCP summary)",
-    "C23": "retired by D060: no import from the alpha; the destination, view and wizard links are removed (no replacement)",
-    "C24": "C44-N01 (the no-plaintext-secret sweep over every destination's tree)",
-    "C25": "the C29 live Vulture row (owner-run; out of the fixture gate)",
-    "C28": "C35-N01..N03",
-    "C29": "C43-N01..N03",
-    "C30": "C37-N01..N03, C36-N01..N02",
-    "C31": "C39-N01..N04",
-    "C32": "C38-N01..N02",
-    "C33": "C40-N01..N02, C41-N01..N02",
-}
-SELF = {"C10", "C11"}
+KIND = {la.X: "exercised", la.S: "self-run", la.P: "ported", la.R: "retired"}
+LEGACY = [c for c in CHECKS if re.fullmatch(r"C(0[1-9]|1\d|2[0-9]|3[0-3])", c)]
 
 
 def results(chunk):
-    path = os.path.join(CUM, chunk, "native-acceptance.json")
+    path = ROOT_RECORD if chunk == "C44" else os.path.join(CUM, chunk, "native-acceptance.json")
     try:
         rec = json.load(open(path))
         return {c["id"]: c["result"] for c in rec["checks"]}
@@ -62,45 +33,42 @@ def results(chunk):
         return {}
 
 
-def replacement_ids(text):
-    out = []
-    for m in re.finditer(r"(C\d\d)-N(\d\d)(?:\.\.N(\d\d))?", text):
-        c, a, b = m.group(1), int(m.group(2)), m.group(3)
-        for n in range(a, (int(b) if b else a) + 1):
-            out.append(f"{c}-N{n:02d}")
-    return out
-
-
-rows = []
-for chunk in sorted(REPLACEMENT):
-    checks = CHECKS.get(chunk, [])
-    if not checks:
-        continue
-    own = results(chunk) if chunk in SELF else None
-    for c in checks:
+rows, missing_entries, counts = [], [], Counter()
+for chunk in LEGACY:
+    for c in CHECKS[chunk]:
         what = re.sub(r"\s+", " ", c["check"]).strip()
         if len(what) > 170:
             what = what[:167] + "…"
-        if chunk in SELF:
-            where = REPLACEMENT[chunk]
-            result = (own or {}).get(c["id"], "not run")
+        entry = la.ASSERTIONS.get(c["id"])
+        if entry is None:
+            missing_entries.append(c["id"])
+            rows.append((c["id"], what, "UNMAPPED", "—", "—"))
+            continue
+        kind, targets, note = entry
+        counts[kind] += 1
+        if kind == la.R:
+            rows.append((c["id"], what, KIND[kind], note, "retired"))
         else:
-            where = REPLACEMENT[chunk]
-            ids = replacement_ids(where)
-            per = []
-            for rid in ids:
-                r = results(rid.split("-")[0]).get(rid)
-                per.append(f"{rid} {r or 'not run'}")
-            result = ", ".join(per) if per else "—"
-        rows.append((c["id"], what, where, result))
+            per = [f"{t} {results(t.split('-')[0]).get(t, 'not run')}" for t in targets]
+            where = (", ".join(targets) + (f" — {note}" if note else "")) if targets else note
+            rows.append((c["id"], what, KIND[kind], where, ", ".join(per) or "—"))
 
-table = ["| Legacy check | What it asserts | Where it is asserted on the one presentation | Result on the C44 bundle |", "|---|---|---|---|"]
+table = ["| Legacy check | What it asserts | Standing | Where it is asserted on the one presentation (or why it is retired) | Result on the C44 bundle |", "|---|---|---|---|---|"]
 for r in rows:
     table.append("| " + " | ".join(x.replace("|", "\\|") for x in r) + " |")
-text = "\n".join(table) + "\n"
+summary = (f"{sum(counts.values())} legacy assertions: {counts.get(la.X, 0)} exercised by v2 checks, {counts.get(la.S, 0)} self-run through legacy_v2, "
+           f"{counts.get(la.P, 0)} ported into v2 checks, {counts.get(la.R, 0)} retired with a reason"
+           + (f"; UNMAPPED: {missing_entries}" if missing_entries else "") + ".")
+text = summary + "\n\n" + "\n".join(table) + "\n"
 print(text)
 md = open(MAP).read()
 start = md.index("## Every legacy assertion")
-end = md.index("\n## ", start + 10)
-md = md[:start] + "## Every legacy assertion, where it runs now, and its result on this bundle\n\nGenerated by `tools/native-acceptance/legacy_map.py` from `docs/architecture/native-checks.json` and the cumulative records under `native/cumulative/`.\n\n" + text + md[end:]
+end = md.index("\n## ", start + 10) if "\n## " in md[start + 10:] else len(md)
+md = (md[:start] + "## Every legacy assertion, where it stands now, and its result on this bundle\n\n"
+      "Generated by `tools/native-acceptance/legacy_map.py` from `docs/architecture/native-checks.json`, `tools/native-acceptance/legacy_assertions.py` "
+      "(the per-assertion standing: exercised, self-run, ported, retired) and the records under `native/cumulative/` and the root C44 record, after the native stage. "
+      "A retirement names the suite that holds the behaviour where it survives in the core; that suite result does not stand in for a native assertion. "
+      "The gate (`acceptance_c44.py`, C44-N01) fails when an exercised, self-run or ported assertion has a target missing or failing on this bundle.\n\n" + text + md[end:])
 open(MAP, "w").write(md)
+if missing_entries:
+    sys.exit(1)

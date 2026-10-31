@@ -28,6 +28,8 @@ import acceptance_c08 as c8  # noqa: E402
 import acceptance_c28 as c28  # noqa: E402
 import acceptance_c29 as c29  # noqa: E402
 import v2_setup as v2s  # noqa: E402
+import acceptance_c24 as c24  # noqa: E402  (the startup network sample and the Node-free sweep, carried over)
+import legacy_assertions as la  # noqa: E402
 
 ROOT = os.getcwd()
 EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C44")
@@ -55,7 +57,11 @@ DESTINATIONS = [
 ]
 SECRETS = (c8.SCAN_KEY, c8.SECRET)
 # The drivers whose records on this bundle the cumulative gate requires (legacy-script-map.md).
-CUMULATIVE = ["C10", "C11", "C35", "C36", "C37", "C38", "C39", "C40", "C41", "C42", "C43"]  # C23 retired (D060)
+# The pre-P09 drivers that run on the one presentation through legacy_v2 (legacy_assertions: kind s) and the v2 drivers.
+CUMULATIVE = sorted(({t.split("-")[0] for k, ts, _ in la.ASSERTIONS.values() if k in (la.X, la.S, la.P) for t in ts} - {"C44"})
+                    | {"C10", "C11", "C35", "C36", "C37", "C38", "C39", "C40", "C41", "C42", "C43"})
+# Learner chrome that must not appear outside Academy (C01-N12, carried over).
+LEARNER_WORDS = ("XP", "streak", "credits", "earned skins", "badge")
 
 
 def rel(path):
@@ -152,7 +158,22 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         json.dump({"bundle": prepared["bundle"], "executable_sha256": prepared["executable_sha256"], "from": "native-prepare.json",
                    "captured_by": "tools/native-acceptance/acceptance_c44.py", "captured_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, f, indent=2)
         f.write("\n")
+    # ⌘-shortcuts through the native menu (C01-N05, carried over): ⌘2 opens the Inbox and ⌘, Settings; Go › Home after.
+    app.keycode(19, "command down")
+    _, n1["shortcut_inbox"] = app.wait_for(lambda t: heading(t, "Inbox") is not None, 10)
+    app.keycode(43, "command down")
+    _, n1["shortcut_settings"] = app.wait_for(lambda t: heading(t, "Settings") is not None, 10)
+    app.menu("Go", "Home")
+    app.wait_for(lambda t: heading(t, "Home") is not None, 10)
+    # The built stylesheet carries the shared prefers-reduced-motion clamp (C01-N11, carried over; the same build the
+    # bundle embeds): no v2 control depends on motion.
+    css_dir = os.path.join(ROOT, "apps/desktop/dist/assets")
+    css = "".join(open(os.path.join(css_dir, f)).read() for f in os.listdir(css_dir) if f.endswith(".css")) if os.path.isdir(css_dir) else ""
+    n1["reduced_motion_clamp"] = "prefers-reduced-motion" in css and "animation" in css
+    # The prepared bundle is Node-free and no Node, Bun or Deno process runs beside the app (C15-N09, C24-N05).
+    n1["node_free"] = c24.node_free(prepared["bundle"])
     secret_hits = []
+    learner_hits = []
     for item, head, product in DESTINATIONS:
         d = {}
         app.menu("Go", item)
@@ -178,6 +199,9 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         d["no_interface_switch"] = fx.App.node(tree, "AXCheckBox", "Use the new interface") is None
         key = item.lower().replace(" & ", "-").replace(" ", "-")
         d["tree"] = c29.save_tree(f"all-{key}", tree)
+        if item != "Academy":
+            words = " ".join(app.texts(tree))
+            learner_hits += [f"{item}: {w}" for w in LEARNER_WORDS if f" {w} " in f" {words} " or words.startswith(w + " ") or words.endswith(" " + w)]
         for s in SECRETS:
             if app.has_text(tree, s):
                 secret_hits.append((item, s[:4] + "…"))
@@ -194,6 +218,24 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         obs["destinations"][item] = d
         obs["captures"][f"all-{key}"] = dict(d["captures"])
     n1["secret_hits"] = secret_hits
+    n1["learner_hits"] = learner_hits
+    n1["runtime_processes"] = fx.sh(["pgrep", "-x", "node|bun|deno"]).stdout.split() if False else [l for l in fx.sh(["pgrep", "-l", "-f", r"(^|/)(node|bun|deno)( |$)"]).stdout.splitlines() if "run_on_v2" not in l]
+    # Persistence and startup (C02-N03, C08-N10, C01-N13, C24-N03 carried over): quit, relaunch with the configured
+    # tenant, sample the app's and its WebKit processes' internet sockets for 15 s, then the tenant is still active
+    # with its client (Administration reads again) and no wizard shows.
+    app.quit()
+    webkit_before = c24.webkit_pids()
+    app.launch()
+    sockets, lines, sampled = c24.network(app, webkit_before, seconds=15)
+    net_path = os.path.join(NATIVE, "startup-network-samples.log")
+    with open(net_path, "w") as f:
+        f.write("\n".join([f"sampled pid={p} ({n})" for p, n in sorted(sampled.items())] + lines) + "\n")
+    tree, n1["relaunch_home"] = app.wait_for(lambda t: heading(t, "Home") is not None and heading(t, v2s.WELCOME) is None, 20)
+    n1["relaunch_tenant"] = any((n.get("label") or "").startswith("Switch tenant: Northwind Health") for n in tree)
+    app.menu("Go", "Administration")
+    tree, n1["relaunch_admin"] = app.wait_for(lambda t: heading(t, "Administration") is not None and app.has_text(t, "Connected"), 25)
+    obs["tree_relaunch"] = c29.save_tree("relaunch-administration", tree)
+    n1["startup"] = {"sockets": sockets, "webkit_sampled": sum(1 for n in sampled.values() if "WebKit" in n), "log": rel(net_path)}
     obs["n1"] = n1
     app.quit()
     # The cumulative gate: every mapped driver's record on this same bundle (tools/native-acceptance/run_on_v2.py
@@ -219,14 +261,42 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     checks = []
     dest = obs["destinations"]
     all_ok = all(d["opened"] and d.get("product_opened", True) and d["no_features_rail"] and d["destinations_rail"] and d["no_interface_switch"] and all(d["captures"].values()) for d in dest.values())
-    cumulative_ok = all(v["bound"] and v["checks"] and all(r == "pass" for r in v["checks"].values()) for v in cumulative.values())
-    cumulative_text = "; ".join(f"{k}: " + ("not run" if not v["checks"] else ("stale bundle; " if not v["bound"] else "") + ", ".join(f"{i} {r}" for i, r in v["checks"].items())) for k, v in cumulative.items())
-    passed = n1["first_run_is_wizard"] and n1["no_features_rail_at_start"] and all_ok and not secret_hits and len(dest) == len(DESTINATIONS) and cumulative_ok
+    # A record must be present and bound to this executable. Every check of a v2 driver must pass; of a self-run legacy
+    # driver the checks the map keeps (its targets) must pass — a legacy check the map retires or supersedes (C24-N06,
+    # the legacy cumulative matrix, is this check) is reported but not required.
+    mapped_targets = {t for k, ts, _ in la.ASSERTIONS.values() if k in (la.X, la.S, la.P) for t in ts}
+    def record_ok(chunk, v):
+        if not (v["bound"] and v["checks"]):
+            return False
+        required = [i for i in v["checks"] if i in mapped_targets] if chunk < "C28" else list(v["checks"])
+        return bool(required) and all(v["checks"][i] == "pass" for i in required)
+    cumulative_ok = all(record_ok(k, v) for k, v in cumulative.items())
+    carried = (n1["shortcut_inbox"] and n1["shortcut_settings"] and n1["reduced_motion_clamp"] and not n1["node_free"] and not n1["runtime_processes"]
+               and not learner_hits and n1["relaunch_home"] and n1["relaunch_tenant"] and n1["relaunch_admin"]
+               and n1["startup"]["sockets"] == 0 and n1["startup"]["webkit_sampled"] > 0)
+    # Every legacy assertion the map keeps (exercised, self-run or ported) has its targets passing on this bundle;
+    # a retirement carries its reason. C44-N01's own targets are this check's other facts.
+    results_by_id = {i: r for v in cumulative.values() for i, r in v["checks"].items()}
+    own_ok = n1["first_run_is_wizard"] and n1["no_features_rail_at_start"] and all_ok and not secret_hits and len(dest) == len(DESTINATIONS) and cumulative_ok and carried
+    results_by_id["C44-N01"] = "pass" if own_ok else "fail"
+    uncovered = []
+    for lid, (kind, targets, note) in la.ASSERTIONS.items():
+        if kind == la.R:
+            if not note:
+                uncovered.append(f"{lid} (retired without a reason)")
+        elif not targets or any(results_by_id.get(t) != "pass" for t in targets):
+            uncovered.append(lid + " → " + ", ".join(t + " " + str(results_by_id.get(t, "not run")) for t in targets))
+    from collections import Counter
+    kinds = Counter(k for k, _, _ in la.ASSERTIONS.values())
+    coverage_text = f"legacy assertions mapped: {len(la.ASSERTIONS)} ({kinds.get(la.X, 0)} exercised, {kinds.get(la.S, 0)} self-run, {kinds.get(la.P, 0)} ported, {kinds.get(la.R, 0)} retired with reasons); without a passing target on this bundle: {uncovered or 'none'}"
+    obs["coverage"] = {"uncovered": uncovered, "kinds": dict(kinds)}
+    cumulative_text = "; ".join(f"{k}: " + ("not run" if not v["checks"] else ("stale bundle; " if not v["bound"] else "") + ", ".join(f"{i} {r}" + ("" if i in mapped_targets or k >= "C28" else " (not required: retired or superseded in the map)") for i, r in v["checks"].items())) for k, v in cumulative.items())
+    passed = own_ok and not uncovered
     checks.append({"id": "C44-N01", "description": inventory["C44-N01"], "result": "pass" if passed else "fail",
                    "observation": f"window requested 1440×900, got window {obs['geometry']['window']} viewport {obs['geometry']['viewport']} (the display's menu bar and the title bar take the rest); first run is the wizard {n1['first_run_is_wizard']} (no Features rail {n1['no_features_rail_at_start']}); "
                    + "; ".join(f"{k}: opened {v['opened']}" + (f", product {v.get('product_opened')}" if 'product_opened' in v else "") + f", no legacy rail {v['no_features_rail']}, Destinations {v['destinations_rail']}, no switch {v['no_interface_switch']}, captures {sorted(v['captures'])}" for k, v in dest.items())
-                   + f"; plaintext secrets in any tree: {secret_hits}; cumulative records on this bundle: {cumulative_text}",
-                   "evidence": [run_rel] + [v["tree"] for v in dest.values()] + [c for v in dest.values() for c in v["captures"].values() if c] + [v["record"] for v in cumulative.values() if v["checks"]]})
+                   + f"; plaintext secrets in any tree: {secret_hits}; learner chrome outside Academy: {learner_hits}; ⌘2 opened the Inbox {n1['shortcut_inbox']} and ⌘, Settings {n1['shortcut_settings']}; the built stylesheet carries the reduced-motion clamp {n1['reduced_motion_clamp']}; Node or JavaScript runtime files in the bundle: {n1['node_free']}; runtime processes beside the app: {n1['runtime_processes']}; after a relaunch Home with no wizard {n1['relaunch_home']}, the tenant active {n1['relaunch_tenant']}, Administration reading with the kept client {n1['relaunch_admin']}, internet sockets over 15 s of startup {n1['startup']['sockets']} (WebKit processes sampled {n1['startup']['webkit_sampled']}); cumulative records on this bundle: {cumulative_text}; {coverage_text}",
+                   "evidence": [run_rel, obs["tree_relaunch"], n1["startup"]["log"]] + [v["tree"] for v in dest.values()] + [c for v in dest.values() for c in v["captures"].values() if c] + [v["record"] for v in cumulative.values() if v["checks"]]})
 
     hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
     os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"

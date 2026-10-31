@@ -512,7 +512,9 @@ def evaluate(prepared, o):
         [o["tree_reconnected"]])
 
     lk = o["lock"]
-    add("C07-N06", lk["guest_nav"] == ["Learn"] and lk["other_signed_in"] and lk["other_empty"] and not lk["other_sees_course"]
+    # On the one presentation the Academy page's guest navigation also lists the Learning paths' "Open … Path" links
+    # (C42); what the check asserts is that a guest has Learn and no Downloads.
+    add("C07-N06", "Learn" in lk["guest_nav"] and "Downloads" not in lk["guest_nav"] and lk["other_signed_in"] and lk["other_empty"] and not lk["other_sees_course"]
         and lk["first_files_unchanged"] and lk["first_again"] and lk["first_listed"],
         f"signed out, Academy navigation {lk['guest_nav']} (no Downloads); another account signed in: {lk['other_signed_in']} and sees 'No courses are downloaded yet.': {lk['other_empty']}, "
         f"the first account's course: {lk['other_sees_course']}; the first account's sealed files unchanged: {lk['first_files_unchanged']}; the first account signed in again: {lk['first_again']} and its download is listed: {lk['first_listed']}",

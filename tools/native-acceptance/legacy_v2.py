@@ -26,6 +26,10 @@ GO = {
     "Administration": "Administration",
     # The legacy Case Library is the Test Cases destination.
     "Case Library": "Test Cases",
+    "Academy": "Academy",
+    "Harness": "Harness",
+    "Home": "Home",
+    "API Client": "API Client",
 }
 
 # The legacy Administration sidebar's inventories: on the v2 shell they are the AI Runtime Security card's DLP tab
@@ -79,9 +83,31 @@ def _runtime_tab(self, label):
     time.sleep(0.8)
 
 
+def _playground(self):
+    """The Runtime card's Playground tab with its scan form shown: the legacy Runtime Security view's scan form is the
+    AI Runtime Security card's Playground tab on the one presentation (Go › Runtime Security lands on the card's
+    default tab)."""
+    _runtime_tab(self, "Playground")
+    self.wait_for(lambda t: self.node(t, "AXTextField", "Profile name or ID") is not None, 12)
+
+
+def open_runtime(self):
+    self.menu("Go", "Runtime Security")
+    self.wait_for(lambda t: self.node(t, "AXHeading", "Administration") is not None, 12)
+    _playground(self)
+    return self.tree()
+
+
 def ax(self, command, *args):
     if command in ("press", "focus") and len(args) >= 2 and args[0] == "AXButton" and args[1] in GO and self.node(self.tree(), "AXButton", args[1]) is None:
+        # A pre-P09 driver may open a destination before any tenant exists (the legacy shell allowed it); on the one
+        # presentation the first run is the wizard, walked once with the placeholder tenant first.
+        if v2s.wizard_showing(self, timeout=1):
+            v2s.first_run(self, None, label=v2s.PLACEHOLDER, tsg=PLACEHOLDER_TSG, client=False)
         self.menu("Go", GO[args[1]])
+        if GO[args[1]] == "Runtime Security":
+            self.wait_for(lambda t: self.node(t, "AXHeading", "Administration") is not None, 12)
+            _playground(self)
         return ""
     if command == "press" and len(args) == 2 and args[0] == "AXButton" and args[1] in DLP_INVENTORIES:
         # A legacy DLP inventory: the Runtime card's DLP tab, then its segment.
@@ -109,6 +135,7 @@ def ax(self, command, *args):
 
 
 fx.App.open_settings = open_settings
+fx.App.open_runtime = open_runtime
 fx.App.create_custom_tenant = create_custom_tenant
 fx.App.ax = ax
 

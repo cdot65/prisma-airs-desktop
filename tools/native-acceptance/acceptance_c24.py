@@ -155,19 +155,19 @@ def run():
     obs["seed"] = {"stored": stored, "scanned": scanned and len(endpoint.requests()) == before + 1}
     obs["tree_scan"] = save_tree("scan", tree)
 
-    # ---- N04 (staging): import the v1 work ----
-    app.ax("press", "AXButton", "Import from v1")
-    app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Import from v1") is not None, 10)
-    c23.press(app, "Look for v1 data")
-    c8.text(app, "v1’s data was found.", 12)
-    for label in ("Tenants (names and TSG IDs)", "Saved cases", "FP/FN reports"):
-        c23.press(app, label)
-    c23.press(app, "Review what would be imported")
-    tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Review") is not None, 20)
-    importer = next(l for l in c23.labelled(tree, "AXButton", "Import ") if l != "Import from v1")
-    c23.press(app, importer)
-    tree, imported = c8.text(app, "Imported ·", 30)
-    obs["staged"] = {"imported": imported}
+    # ---- N04 (staging): local work to find again offline. The alpha import is retired (D060): the cases come from
+    # Test Cases' starter packs (Load starter packs… → Load selected); FP/FN reports and the import receipt are not
+    # staged (the report flow is C11's, run on this presentation by acceptance_c11.py).
+    app.ax("press", "AXButton", "Case Library")
+    app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Test Cases") is not None, 12)
+    opener = next((n for n in app.tree() if n.get("role") in ("AXButton", "AXPopUpButton") and (n.get("label") or "") == "Load starter packs…"), None)
+    if opener is None:
+        raise RuntimeError(f"no Load starter packs… [tree: {app.dump_tree('cases-no-packs')}]")
+    app.ax("press", opener["role"], "Load starter packs…")
+    app.wait_for(lambda t: fx.App.node(t, "AXButton", "Load selected") is not None, 10)
+    app.ax("press", "AXButton", "Load selected")
+    tree, staged = c8.text(app, "Prompt injection", 20)
+    obs["staged"] = {"imported": staged, "how": "starter packs (the alpha import retired, D060)"}
 
     # ---- N01: diagnostics in Settings ----
     app.open_settings()
@@ -274,15 +274,13 @@ def run():
     before = webkit_pids()
     app.launch()
     app.open_settings()
-    # v1’s Prod shares Canary Tenant’s TSG ID, so its work was imported there.
     app.make_active("Canary Tenant")
     app.ax("press", "AXButton", "Case Library")
-    tree, cases = c8.text(app, "Injection", 15)
+    tree, cases = c8.text(app, "Prompt injection", 15)
     obs["tree_offline_library"] = save_tree("offline-library", tree)
     app.ax("press", "AXButton", "Sessions & Reports")
-    tree, reports = c8.text(app, "FP/FN reports (1)", 15)
-    app.ax("press", "AXButton", "Import from v1")
-    tree, receipt = c8.text(app, "Imported ·", 15)
+    tree, reports = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Investigate sessions") is not None, 15)
+    receipt = None  # the alpha import and its receipt are retired (D060)
     app.open_settings()
     tree, diag = c8.text(app, "events kept.", 10)
     obs["tree_offline_settings"] = save_tree("offline-settings", tree)
@@ -290,7 +288,7 @@ def run():
     endpoint.start()
     mgmt.start()
     mgmt.mode()
-    for label in ("Case Library", "Sessions & Reports", "Runtime Security", "Import from v1"):
+    for label in ("Case Library", "Sessions & Reports", "Runtime Security"):
         app.ax("press", "AXButton", label)
         time.sleep(2.0)
     # The services are reachable again; the app and its WebKit processes
@@ -352,8 +350,10 @@ def evaluate(prepared, o):
         f"sockets over 8 s {o['offline']['reconnect_sockets']} (WebKit sampled: {o['offline']['reconnect_webkit_sampled']})",
         [n["log"]])
     f = o["offline"]
-    add("C24-N04", o["staged"]["imported"] and f["cases"] and f["reports"] and f["receipt"] and f["diagnostics"]
-        and f["sent_on_reconnect"] == 0, f"offline {f}", [o["tree_offline_library"], o["tree_offline_settings"]])
+    add("C24-N04", o["staged"]["imported"] and f["cases"] and f["reports"] and f["diagnostics"]
+        and f["sent_on_reconnect"] == 0,
+        f"offline {f}; staged through {o['staged']['how']}: the saved cases listed in Test Cases, Sessions & Reports opened, the diagnostics kept; the alpha import's reports and receipt are retired (D060)",
+        [o["tree_offline_library"], o["tree_offline_settings"]])
     add("C24-N05", not o["node_free"], f"Node or JavaScript runtime files in the bundle: {o['node_free']}", [])
     e = o["earlier"]
     k = o["keyboard"]

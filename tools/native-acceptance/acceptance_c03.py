@@ -28,6 +28,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fixture_app as fx  # noqa: E402
+import v2_setup as v2s  # noqa: E402
 
 ROOT = os.getcwd()
 # A phase review runs every member chunk's checks into the phase's own
@@ -124,11 +125,14 @@ def run():
 
     # ---- launch 1: offline (endpoint not running) ----
     app.launch()
-    tree = app.tree()
-    obs["runtime_available"] = fx.App.node(tree, "AXButton", "Runtime Security") is not None and not any(
-        (n.get("label") or "").startswith("Runtime Security") and "Not available" in (n.get("label") or "") for n in tree)
-    obs["landing"] = fx.App.node(tree, "AXHeading", "Scan a prompt or response") is not None
-    obs["no_tenant_guidance"] = app.has_text(tree, "Add a tenant and its scan key in Settings to run scans.")
+    tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXHeading", v2s.WELCOME) is not None, 15)
+    # On the one presentation the first run lands on the wizard (no legacy landing heading, no 'not available'
+    # destination): the wizard asks for the tenant before any scan, and Runtime Security is the Go menu's destination,
+    # opened below once a tenant exists (its Playground form is the fact).
+    wizard = fx.App.node(tree, "AXHeading", v2s.WELCOME) is not None
+    obs["landing"] = wizard
+    obs["no_tenant_guidance"] = wizard and fx.App.node(tree, "AXButton", "Set up a tenant") is not None
+    obs["runtime_available"] = None
     obs["tree_landing"] = save_tree("landing-no-tenant", tree)
     app.open_settings()
     tree, created = app.create_custom_tenant("Tenant A", endpoint.origin)
@@ -139,6 +143,7 @@ def run():
     obs["tenant_b"] = created_b
     app.make_active("Tenant A")
     tree = app.open_runtime()
+    obs["runtime_available"] = fx.App.node(tree, "AXHeading", "Administration") is not None and fx.App.node(tree, "AXTextField", "Profile name or ID") is not None
     # C12 added the Playground / Overview & Inbox tabs and the case controls.
     obs["tab_order"] = app.tab_walk(18)
     # Offline scan (connection refused).
@@ -350,8 +355,9 @@ def reach_scan(app, zoom):
         if f and f.get("role") == "AXButton" and f.get("label") == "Scan" and "prompt" in found:
             found["scan"] = {"pos": f["pos"], "size": f["size"]}
             break
+    # Inside the window: the v2 shell has no bottom fade (the legacy 60 CSS px band).
     ok = all(k in found and found[k]["pos"][1] >= window["pos"][1]
-             and found[k]["pos"][1] + found[k]["size"][1] <= bottom - 60 * zoom for k in ("prompt", "scan"))
+             and found[k]["pos"][1] + found[k]["size"][1] <= bottom + 1 for k in ("prompt", "scan"))
     return {"zoom": zoom, "window": {"pos": window["pos"], "size": window["size"]}, "found": found, "clear": ok}
 
 
@@ -394,7 +400,7 @@ def evaluate(prepared, o):
     seq = [w for w in want if w in labels]
     in_order = seq == want and [labels.index(w) for w in want] == sorted(labels.index(w) for w in want)
     add("C03-N01", o["runtime_available"] and o["landing"] and o["no_tenant_guidance"] and in_order,
-        f"Runtime Security available without 'Not available': {o['runtime_available']}; landing heading: {o['landing']}; Settings guidance without a tenant: "
+        f"Runtime Security opens the Runtime card's Playground (one presentation): {o['runtime_available']}; the first run lands on the wizard: {o['landing']}; the wizard asks for the tenant before any scan: "
         f"{o['no_tenant_guidance']}; Tab reached {seq} in order: {in_order}",
         [o["tree_landing"]])
     lit = o["literal"]
