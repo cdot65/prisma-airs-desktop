@@ -443,7 +443,8 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     def add(cid, passed, observation, evidence):
         checks.append({"id": cid, "description": inventory[cid], "result": "pass" if passed else "fail", "observation": observation, "evidence": [e for e in evidence if e]})
 
-    parity_files = sorted(p for step in obs["parity"].values() for p in step.values())
+    # The first-run steps' composites (seven steps, both themes); the add sheet's pair is N02's.
+    parity_files = sorted(p for step, files in obs["parity"].items() if step != "add" for p in files.values())
     r, t_, p_, v_, k_, a_, d_ = n1["rail"], n1["tenant"], n1["products"], n1["verify"], n1["packs"], n1["academy"], n1["done"]
     n1_ok = (n1["welcome"] and r["brand"] and r["optional_tags"] >= 2 and r["privacy"] and r["theme_button"] and len(r["steps"]) >= 7
              and all(n1["welcome_board"].values()) and all(t_.get(k) for k in ("shown", "heading_focused", "card", "environment_control", "region", "continue_names_missing", "progress", "validation", "drafted", "management_card", "gateway_switch", "continue_needs_key", "help", "key_saved", "hint_in_footer", "client_saved"))

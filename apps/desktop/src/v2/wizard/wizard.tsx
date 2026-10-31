@@ -488,7 +488,7 @@ export function Wizard(props: WizardProps) {
     )
 
     return (
-        <div data-slot='wizard' data-mode={mode} className='flex' style={{ height: isAdd ? 'min(780px, 84vh)' : '100vh', minHeight: 0, background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
+        <div data-slot='wizard' data-mode={mode} className='flex' style={{ height: isAdd ? 'min(780px, 92vh)' : '100vh', minHeight: 0, background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
             <nav aria-label='Setup steps' className='flex shrink-0 flex-col' style={{ width: isAdd ? 244 : 320, padding: isAdd ? '22px 16px 16px' : '22px 20px 20px', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}>
                 <div className='flex items-center' style={{ gap: 12, marginBottom: 28 }}>
                     <span className='grid shrink-0 place-items-center rounded-[10px]' style={{ width: 40, height: 40, background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }} data-slot='brand-tile'>
