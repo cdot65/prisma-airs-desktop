@@ -1,0 +1,105 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C43",
+  "recorded_utc": "2026-10-31T14:19:58Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c43.py",
+  "host": "Mac17,3; macOS 27.2 (26B123)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "50d26f83707f1b1ed048d66b6c0e20d809dfec0bc414f6d2de1a792a8137c973",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C43-N01",
+      "description": "The first-run wizard as the prototype board draws it (R2Onboard, every step): the 320px rail with the brand tile, the numbered steps turning to checks as they are done, the Optional tags on Starter cases and Academy (Skipped once skipped), the privacy note and the appearance button; the pinned footer with Back, the hint, Step n of m, Skip for now and the primary; Welcome (tile, two paragraphs, three cards, the v1 import box); Connect your tenant (the Tenant card's 2-column grid with the Environment segmented control and the Region select, Create tenant; then the scan key card tagged Required, the Management credentials card with Where do I find these?, the AI Gateway workspace card with its switch); Which products will you manage? (the 3-column product cards as checkboxes, Runtime always on, AIS and AES unavailable, the no-scan-key banner before a key is saved); Check the connection (the status banner, the Checks card with one row per line, Run the checks, Fix and verify again after a failure, Continue with warnings); Load starter test cases (the pack rows as checkboxes with counts, the summary, Skip for now); Join the AI Security Academy (Your account and What is sent cards, Skip for now); <name> is ready (the summary card with Change links, the three next-up cards, Open Prisma AIRS completing once) \u2014 the C29 behaviour unchanged (D059 parity: the composites under evidence/C43/parity are captured by this script per step, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md).",
+      "result": "pass",
+      "observation": "welcome True rail {'brand': True, 'steps': ['1 Welcome', '2 Tenant', '3 Products', '4 Verify', '5 Starter cases Optional', '6 Academy Optional', '7 Done', 'Dark appearance'], 'optional_tags': 4, 'privacy': True, 'theme_button': True}; welcome board {'cards': True, 'import_box': True, 'no_back': True, 'progress': True, 'primary': True}; tenant {'shown': True, 'heading_focused': True, 'card': True, 'environment_control': True, 'region': True, 'continue_names_missing': True, 'progress': True, 'back': True, 'validation': True, 'drafted': True, 'scan_required_tag': True, 'management_card': True, 'gateway_switch': True, 'continue_needs_key': True, 'help': True, 'key_saved': True, 'hint_in_footer': True, 'client_saved': True}; products {'shown': True, 'cards': ['AI Runtime Security', 'AI Gateway', 'AI Red Teaming', 'Model and skill scans', 'Agentic Identity Security', 'Agentic Endpoint Security'], 'runtime_always': True, 'unavailable': True, 'rail_done_mark': True, 'progress': True, 'gateway_chosen': True}; verify {'shown': True, 'banner_not_checked': True, 'rows': 6, 'run_offered': True, 'continue_closed': True, 'progress': True, 'finished': True, 'continue_open': True, 'again_offered': True}; packs {'shown': True, 'rows': ['AI Runtime Security \u00b7 3 cases', 'AI Gateway \u00b7 2 cases'], 'summary': True, 'skip': True, 'progress': True}; academy {'shown': True, 'account_card': True, 'syncs_card': True, 'skip': True, 'progress': True}; done {'shown': True, 'skipped_tag': True, 'summary': True, 'change': True, 'next_up': True, 'progress': True, 'open': True, 'completed': True}; composites ['docs/planning/evidence/C43/parity/academy-dark.png', 'docs/planning/evidence/C43/parity/academy-light.png', 'docs/planning/evidence/C43/parity/cases-dark.png', 'docs/planning/evidence/C43/parity/cases-light.png', 'docs/planning/evidence/C43/parity/done-dark.png', 'docs/planning/evidence/C43/parity/done-light.png', 'docs/planning/evidence/C43/parity/products-dark.png', 'docs/planning/evidence/C43/parity/products-light.png', 'docs/planning/evidence/C43/parity/tenant-dark.png', 'docs/planning/evidence/C43/parity/tenant-light.png', 'docs/planning/evidence/C43/parity/verify-dark.png', 'docs/planning/evidence/C43/parity/verify-light.png', 'docs/planning/evidence/C43/parity/welcome-dark.png', 'docs/planning/evidence/C43/parity/welcome-light.png']",
+      "evidence": [
+        "docs/planning/evidence/C43/native/observations.json",
+        "docs/planning/evidence/C43/native/tree-wizard-welcome.json",
+        "docs/planning/evidence/C43/native/tree-wizard-tenant.json",
+        "docs/planning/evidence/C43/native/tree-wizard-products.json",
+        "docs/planning/evidence/C43/native/tree-wizard-verify.json",
+        "docs/planning/evidence/C43/native/tree-wizard-packs.json",
+        "docs/planning/evidence/C43/native/tree-wizard-academy.json",
+        "docs/planning/evidence/C43/native/tree-wizard-done.json",
+        "docs/planning/evidence/C43/parity/academy-dark.png",
+        "docs/planning/evidence/C43/parity/academy-light.png",
+        "docs/planning/evidence/C43/parity/cases-dark.png",
+        "docs/planning/evidence/C43/parity/cases-light.png",
+        "docs/planning/evidence/C43/parity/done-dark.png",
+        "docs/planning/evidence/C43/parity/done-light.png",
+        "docs/planning/evidence/C43/parity/products-dark.png",
+        "docs/planning/evidence/C43/parity/products-light.png",
+        "docs/planning/evidence/C43/parity/tenant-dark.png",
+        "docs/planning/evidence/C43/parity/tenant-light.png",
+        "docs/planning/evidence/C43/parity/verify-dark.png",
+        "docs/planning/evidence/C43/parity/verify-light.png",
+        "docs/planning/evidence/C43/parity/welcome-dark.png",
+        "docs/planning/evidence/C43/parity/welcome-light.png"
+      ]
+    },
+    {
+      "id": "C43-N02",
+      "description": "The add-tenant sheet: a 1160\u00d7780 dialog without the modal's padding, the 244px rail (Tenant, Products, Verify, Starter cases, Done; no Welcome or Academy), Cancel in the footer on every step and no Back on the first; Cancel before a draft sends nothing; a drafted tenant's scan card is Optional and Continue is open; Cancel after a draft discards it in the core; Finish commits once and the sheet closes with the toast.",
+      "result": "pass",
+      "observation": "sheet {'sheet': True, 'size': [1160, 782], 'fixed_1160': True, 'rail_244': True, 'steps': ['1 Tenant', '2 Products', '3 Verify', '4 Starter cases Optional', '5 Done', 'Light appearance'], 'no_back': True, 'cancel': True, 'cancel_note': True, 'cancel_before_draft_closes': True, 'tenants_after_cancel': 0, 'drafted_optional': True, 'continue_open': True, 'cancel_discards': True, 'rows_before': 1, 'products_shown': True, 'verify_shown': True, 'verify_finished': True, 'packs_shown': True, 'done_shown': True, 'done_checks_line': '1 warning \u00b7 1 not checked \u00b7 2 not available', 'finish_closes': True, 'toast': True, 'rows_after': 2, 'committed_once': True} composites ['docs/planning/evidence/C43/parity/add-tenant-dark.png', 'docs/planning/evidence/C43/parity/add-tenant-light.png']; the add-mode run: products True, verify True finished True, starter cases True, done True (checks line '1 warning \u00b7 1 not checked \u00b7 2 not available'), Finish closed the sheet True, toast True, tenants 1 \u2192 2 (True)",
+      "evidence": [
+        "docs/planning/evidence/C43/native/observations.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-done.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-finished.json",
+        "docs/planning/evidence/C43/parity/add-tenant-dark.png",
+        "docs/planning/evidence/C43/parity/add-tenant-light.png"
+      ]
+    },
+    {
+      "id": "C43-N03",
+      "description": "Keyboard and layout (T09): Tab from the rail reaches the step's first field and the footer's primary in order; the focus ring on the primary; the wizard at 1440\u00d7900 and at 900\u00d7600 with 200% zoom, in light and dark, on the Tenant and Verify steps, no horizontal page overflow, the footer's primary inside the window and at least 32 CSS px; every row records the WebView's measured size and the viewport from its own tree and asserts them.",
+      "result": "pass",
+      "observation": "on the drafted Tenant step, Tab from the rail's 1 Tenant reached ['Light appearance', 'Import from Prisma AIRS Desktop v1', 'Display name How this tenant appears in the switcher.', 'TSG ID The 10-digit tenant service group ID.', 'Production', 'Region', 'Save changes', 'Scan API key', 'Where do I find these?', 'Client ID', 'Client secret', 'Save management client', 'Set up an AI Gateway workspace now', 'Cancel', 'Continue'] (the step's first control 'Display name How this tenant appears in the switcher.' True, footer primary Continue True, in that order True); ring on the footer's Continue 2152 px (focused 'Continue', plain capture focused on the rail mark); wizard-add-tenant-1440x900-light: web [1440, 900] viewport [1440, 900] (asserted True) overflow 0 px, scroll bars 0, primary {'label': 'Continue', 'size': [94, 32], 'inside': True, 'size_ok': True, 'ok': True, 'zoom': 1}, dialog True; wizard-add-tenant-1440x900-dark: web [1440, 900] viewport [1440, 900] (asserted True) overflow 0 px, scroll bars 0, primary {'label': 'Continue', 'size': [94, 32], 'inside': True, 'size_ok': True, 'ok': True, 'zoom': 1}, dialog True; wizard-add-tenant-900x600-200-light: web [900, 607] viewport [900, 600] (asserted True) overflow 0 px, scroll bars 0, primary {'label': 'Continue', 'size': [181, 64], 'inside': True, 'size_ok': True, 'ok': True, 'zoom': 2}, dialog True; wizard-add-tenant-900x600-200-dark: web [900, 607] viewport [900, 600] (asserted True) overflow 0 px, scroll bars 0, primary {'label': 'Continue', 'size': [181, 64], 'inside': True, 'size_ok': True, 'ok': True, 'zoom': 2}, dialog True; wizard-add-verify-1440x900-light: web [1440, 900] viewport [1440, 900] (asserted True) overflow 0 px, scroll bars 0, primary {'label': 'Continue with warnings', 'size': [186, 32], 'inside': True, 'size_ok': True, 'ok': True, 'zoom': 1}, dialog True; wizard-add-verify-1440x900-dark: web [1440, 900] viewport [1440, 900] (asserted True) overflow 0 px, scroll bars 0, primary {'label': 'Continue with warnings', 'size': [186, 32], 'inside': True, 'size_ok': True, 'ok': True, 'zoom': 1}, dialog True; wizard-add-verify-900x600-200-light: web [900, 607] viewport [900, 600] (asserted True) overflow 0 px, scroll bars 0, primary {'label': 'Continue with warnings', 'size': [350, 64], 'inside': True, 'size_ok': True, 'ok': True, 'zoom': 2}, dialog True; wizard-add-verify-900x600-200-dark: web [900, 607] viewport [900, 600] (asserted True) overflow 0 px, scroll bars 0, primary {'label': 'Continue with warnings', 'size': [350, 64], 'inside': True, 'size_ok': True, 'ok': True, 'zoom': 2}, dialog True",
+      "evidence": [
+        "docs/planning/evidence/C43/native/observations.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-tenant-1440x900-light.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-tenant-1440x900-dark.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-tenant-900x600-200-light.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-tenant-900x600-200-dark.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-verify-1440x900-light.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-verify-1440x900-dark.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-verify-900x600-200-light.json",
+        "docs/planning/evidence/C43/native/tree-wizard-add-verify-900x600-200-dark.json",
+        "docs/planning/evidence/C43/native/captures/wizard-add-tenant-1440x900-light.png",
+        "docs/planning/evidence/C43/native/captures/wizard-add-tenant-1440x900-dark.png",
+        "docs/planning/evidence/C43/native/captures/wizard-add-tenant-900x600-200-light.png",
+        "docs/planning/evidence/C43/native/captures/wizard-add-tenant-900x600-200-dark.png",
+        "docs/planning/evidence/C43/native/captures/wizard-add-verify-1440x900-light.png",
+        "docs/planning/evidence/C43/native/captures/wizard-add-verify-1440x900-dark.png",
+        "docs/planning/evidence/C43/native/captures/wizard-add-verify-900x600-200-light.png",
+        "docs/planning/evidence/C43/native/captures/wizard-add-verify-900x600-200-dark.png",
+        "docs/planning/evidence/C43/native/captures/wizard-ring-plain.png",
+        "docs/planning/evidence/C43/native/captures/wizard-ring.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size, filled=true) beside each step.",
+    "Synthetic scan and management endpoints only; the Academy step is skipped (no Academy endpoint is staged).",
+    "The first-run layouts are measured on the add sheet's Tenant step after the first run completed (the first-run window is gone once the tenant exists).",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "layouts-wizard-add-tenant-1440x900-dark.png",
+    "layouts-wizard-add-tenant-1440x900-light.png",
+    "layouts-wizard-add-tenant-900x600-200-dark.png",
+    "layouts-wizard-add-tenant-900x600-200-light.png",
+    "layouts-wizard-add-verify-1440x900-dark.png",
+    "layouts-wizard-add-verify-1440x900-light.png",
+    "layouts-wizard-add-verify-900x600-200-dark.png",
+    "layouts-wizard-add-verify-900x600-200-light.png",
+    "wizard-ring-focused.png",
+    "wizard-ring-plain.png"
+  ]
+}

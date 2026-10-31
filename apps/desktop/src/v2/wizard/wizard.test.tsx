@@ -365,6 +365,46 @@ describe('first-run wizard', () => {
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     })
 
+    it('the Done checks line is derived from the verification states: a warning and a failure are counted, a passed line is counted, and "All passed" needs every line to pass (attempt-01 R1)', async () => {
+        const warned = verifyView([
+            { line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key saved; scans stay unavailable until one is added in Administration.' },
+            { line: 'managementClient', product: 'runtimeSecurity', state: 'fail', reason: 'The client was refused.' },
+            { line: 'gateway', product: 'gateway', state: 'pass', reason: 'Read the workspace.' },
+        ])
+        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001' }), products: ['runtimeSecurity', 'gateway'], verify: warned }) })
+        const user = userEvent.setup()
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
+        const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })
+        for (const step of ['Continue', 'Continue', 'Continue with warnings', 'Skip for now']) await user.click(within(sheet).getByRole('button', { name: step }))
+        expect(within(sheet).getByRole('heading', { level: 1, name: 'Coastal Bank is ready' })).toBeInTheDocument()
+        expect(sheet.querySelector('[data-slot="summary"]')).toHaveTextContent('Checks: 1 passed · 1 warning · 1 failed · 2 not available')
+        expect(sheet.querySelector('[data-slot="summary"]')).not.toHaveTextContent('All passed')
+        void native
+    })
+
+    it('the Environment segmented control is a native radio group: one tab stop, arrow keys move the selection, Tab leaves to Region (attempt-01 R2)', async () => {
+        const user = userEvent.setup()
+        await launch({ ...fxOnboarding(), onboarding: 'inProgress' })
+        const group = screen.getByRole('radiogroup', { name: 'Environment' })
+        const production = within(group).getByRole('radio', { name: 'Production' })
+        const staging = within(group).getByRole('radio', { name: 'Staging' })
+        expect(production).toBeChecked()
+        screen.getByLabelText(/TSG ID/).focus()
+        await user.tab()
+        expect(production).toHaveFocus()
+        await user.keyboard('{ArrowRight}')
+        expect(staging).toBeChecked()
+        expect(staging).toHaveFocus()
+        expect(document.querySelector('[data-slot="rail-context"]') ?? document.body).toBeInTheDocument()
+        await user.tab()
+        expect(screen.getByLabelText('Region')).toHaveFocus()
+        await user.tab({ shift: true })
+        expect(staging).toHaveFocus()
+        await user.keyboard('{ArrowLeft}')
+        expect(production).toBeChecked()
+    })
+
     it('finishes with one completion intent and a toast naming the new tenant', async () => {
         const user = userEvent.setup()
         const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key saved; scans stay unavailable until one is added in Administration.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'skipped', reason: 'No client.' }])

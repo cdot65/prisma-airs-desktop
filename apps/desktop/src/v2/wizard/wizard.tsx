@@ -270,6 +270,18 @@ export function Wizard(props: WizardProps) {
         setBusy(false)
     }
 
+    // The Done summary's checks line, from the verification states themselves: "All passed" only when every line
+    // passed; otherwise each state is counted (a stored or skipped credential, an unavailable product, a warning or a
+    // failure is never described as passed). No run yet: none.
+    const checksSummary = (r: typeof run): [string, 'ok' | 'warn' | 'skip'] => {
+        if (!r || !r.done) return [C.done.summary.none, 'skip']
+        const counts = new Map<VerifyState, number>()
+        for (const st of r.steps) counts.set(st.state, (counts.get(st.state) ?? 0) + 1)
+        if (r.steps.length > 0 && counts.get('pass') === r.steps.length) return [C.done.summary.checksPassed, 'ok']
+        const order: VerifyState[] = ['pass', 'warning', 'fail', 'stored', 'skipped', 'unavailable', 'pending']
+        const text = order.filter((k) => (counts.get(k) ?? 0) > 0).map((k) => C.done.summary.checkCounts[k](counts.get(k) ?? 0)).join(' · ')
+        return [text || C.done.summary.none, (counts.get('fail') ?? 0) + (counts.get('warning') ?? 0) > 0 ? 'warn' : 'skip']
+    }
     const scanReady = setup?.tenant.scan.state === 'ready'
     const clientReady = setup?.tenant.management.state === 'ready'
     const tenantContinue = !setup ? { label: C.tenant.continueNeedsDraft, disabled: true } : profileDirty ? { label: C.tenant.continueDirty, disabled: true } : setup.scanRequired && !scanReady ? { label: C.tenant.continueNeedsKey, disabled: true } : { label: C.tenant.continue, disabled: false }
@@ -608,10 +620,13 @@ export function Wizard(props: WizardProps) {
                                             <div role='radiogroup' aria-label={C.tenant.environment} className='flex w-fit rounded-[8px]' style={{ padding: 2, background: 'var(--v2-inset)' }} data-slot='environment-control'>
                                                 {ENVIRONMENTS.map((env) => {
                                                     const on = form.environment === env
+                                                    // Native radios in the segmented control: one tab stop for the group, arrow keys move
+                                                    // the selection, the label is the visible segment (buttons with a radio role had neither).
                                                     return (
-                                                        <button key={env} type='button' role='radio' aria-checked={on} onClick={() => setForm((f) => ({ ...f, environment: env }))} className='h-8 rounded-[6px] text-[12.5px] font-semibold' style={{ padding: '0 14px', border: 0, background: on ? 'var(--v2-paper)' : 'transparent', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', color: 'var(--v2-ink)' }}>
+                                                        <label key={env} className='relative flex h-8 cursor-pointer items-center rounded-[6px] text-[12.5px] font-semibold' style={{ padding: '0 14px', background: on ? 'var(--v2-paper)' : 'transparent', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', color: 'var(--v2-ink)' }} data-slot='environment-choice'>
+                                                            <input type='radio' className='sr-only' name={`${headingId}-environment`} value={env} checked={on} onChange={() => setForm((f) => ({ ...f, environment: env }))} />
                                                             {ENVIRONMENT_LABELS[env]}
-                                                        </button>
+                                                        </label>
                                                     )
                                                 })}
                                             </div>
@@ -954,7 +969,7 @@ export function Wizard(props: WizardProps) {
                                             [C.done.summary.scan, scanReady ? C.done.summary.saved : C.done.summary.notSaved, scanReady ? 'ok' : 'skip', 'tenant'],
                                             [C.done.summary.client, clientReady ? C.done.summary.saved : C.done.summary.notSaved, clientReady ? 'ok' : 'skip', 'tenant'],
                                             [C.done.summary.products, setup.products.map(productLabel).join(', '), 'ok', 'products'],
-                                            [C.done.summary.checks, run && run.done ? (run.warnings.length ? C.done.summary.checksWarnings(run.warnings.length) : C.done.summary.checksPassed) : C.done.summary.none, run?.warnings.length ? 'warn' : 'ok', 'verify'],
+                                            [C.done.summary.checks, ...checksSummary(run), 'verify'],
                                             [C.done.summary.packs, selectedPacks.length ? selectedPacks.map(productLabel).join(', ') : C.done.summary.none, selectedPacks.length ? 'ok' : 'skip', 'packs'],
                                             ...(isAdd ? [] : [[C.done.summary.academy, snapshot.academy.state === 'signedIn' ? snapshot.academy.displayName : C.done.summary.academySkipped, snapshot.academy.state === 'signedIn' ? 'ok' : 'skip', 'academy']]),
                                         ] as [string, string, 'ok' | 'warn' | 'skip', WizardStep][]
