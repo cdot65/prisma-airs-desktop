@@ -219,7 +219,18 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         obs["captures"][f"all-{key}"] = dict(d["captures"])
     n1["secret_hits"] = secret_hits
     n1["learner_hits"] = learner_hits
-    n1["runtime_processes"] = fx.sh(["pgrep", "-x", "node|bun|deno"]).stdout.split() if False else [l for l in fx.sh(["pgrep", "-l", "-f", r"(^|/)(node|bun|deno)( |$)"]).stdout.splitlines() if "run_on_v2" not in l]
+    # No Node, Bun or Deno process runs beside the app: judged on the app's own descendants (the Mac may run other
+    # tools' node processes; the legacy C15-N09 asserted the app spawned none).
+    ps = [l.split(None, 2) for l in fx.sh(["ps", "-axo", "pid=,ppid=,comm="]).stdout.splitlines() if l.strip()]
+    children = {}
+    for pid_s, ppid_s, comm in ps:
+        children.setdefault(int(ppid_s), []).append((int(pid_s), comm))
+    family, stack = [], [app.pid]
+    while stack:
+        for cpid, comm in children.get(stack.pop(), []):
+            family.append((cpid, comm)); stack.append(cpid)
+    n1["runtime_processes"] = [f"{cpid} {comm}" for cpid, comm in family if os.path.basename(comm) in ("node", "bun", "deno")]
+    n1["app_descendants"] = [os.path.basename(comm) for _, comm in family]
     # Persistence and startup (C02-N03, C08-N10, C01-N13, C24-N03 carried over): quit, relaunch with the configured
     # tenant, sample the app's and its WebKit processes' internet sockets for 15 s, then the tenant is still active
     # with its client (Administration reads again) and no wizard shows.
