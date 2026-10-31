@@ -857,6 +857,117 @@ describe('C41 API Client board', () => {
         expect(requests.filter((r) => r.kind === 'saveSchema').at(-1)).toMatchObject({ kind: 'saveSchema', relative: 'topics.json', text: '{"version":2}3', revision: 'b'.repeat(64) })
     })
 
+    it('returning to an edited request after its editor unmounted reloads it from the core: the protected fields come back, never the old snapshot (attempt-09 R1)', async () => {
+        let opensOfList = 0
+        const { user, requests, native, line } = await open(board(), (request) => {
+            if (request.kind === 'openRequest' && request.relative === 'topics/list.request.toml') {
+                opensOfList += 1
+                // The core returns the protected draft once there is one.
+                return opensOfList >= 2 ? document({ url: 'http://127.0.0.1:8080/edited' }) : null
+            }
+            if (request.kind === 'openRequest' && request.relative === 'health.request.toml') return { kind: 'refused', problem: { kind: 'project', detail: 'missing' } }
+            return null
+        })
+        const held: ((r: WorkbenchResult) => void)[] = []
+        let holdHealth = true
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'openRequest' && req.relative === 'health.request.toml' && holdHealth) return new Promise<{ kind: 'workbench'; result: WorkbenchResult }>((resolve) => held.push((result) => resolve({ kind: 'workbench', result })))
+            return observe(operation)
+        }
+        const base = board()
+        const collection = base.workbench.collection!
+        const healthTab = { id: 'health', relative: 'health.request.toml', method: 'GET', draft: false, new: false, recovered: false, conflict: null, interrupted: false }
+        const snap = (selected: string) => ({ ...base, workbench: { ...base.workbench, collection: { ...collection, tabs: [...collection.tabs, healthTab], selected } } })
+        // A is edited and the edit protected.
+        await user.clear(within(line()).getByRole('textbox', { name: 'URL' }))
+        await user.type(within(line()).getByRole('textbox', { name: 'URL' }), 'http://127.0.0.1:8080/edited')
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'protect').at(-1)).toMatchObject({ fields: { url: 'http://127.0.0.1:8080/edited' } }), { timeout: 2000 })
+        // B's load stays pending; back to A: A is loaded again from the core, with the protected fields.
+        await native.push(snap('health'))
+        await waitFor(() => expect(held).toHaveLength(1))
+        await native.push(snap('list'))
+        await waitFor(() => expect(opensOfList).toBe(2))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/edited'))
+        // B's load refused; back to A again: loaded once more, the fields kept.
+        holdHealth = false
+        await native.push(snap('health'))
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toHaveTextContent('health could not be opened'))
+        await native.push(snap('list'))
+        await waitFor(() => expect(opensOfList).toBe(3))
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/edited'))
+        // Save sends the current fields; nothing was sent by itself.
+        await user.click(within(line()).getByRole('button', { name: 'Save' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'save').at(-1)).toMatchObject({ fields: { url: 'http://127.0.0.1:8080/edited' } }))
+        expect(requests.filter((r) => r.kind === 'send')).toHaveLength(0)
+    })
+
+    it('a superseded environment or schema open cannot replace the current editor or its typing: a newer selection, a new resource or Close retires it (attempt-09 R2)', async () => {
+        const base = board()
+        const collection = base.workbench.collection!
+        const { user, requests, native } = await open({ ...base, workbench: { ...base.workbench, collection: { ...collection, schemas: ['existing.json'] } } }, (request) =>
+            request.kind === 'openEnvironment'
+                ? { kind: 'environment', name: request.name, private: request.private, text: `${request.name} = 1`, revision: '1'.repeat(64) }
+                : request.kind === 'openSchema'
+                  ? { kind: 'schema', schema: { relative: request.relative, text: '{"existing":1}', revision: 'a'.repeat(64) } }
+                  : null
+        )
+        const held: ((r: WorkbenchResult) => void)[] = []
+        const holdFor = new Set<string>()
+        const observe = native.observeWorkbench
+        native.observeWorkbench = async (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            const key = req?.kind === 'openEnvironment' ? `env:${req.name}` : req?.kind === 'openSchema' ? `schema:${req.relative}` : ''
+            if (key && holdFor.has(key)) {
+                const r = await observe(operation)
+                return new Promise((resolve) => held.push(() => resolve(r)))
+            }
+            return observe(operation)
+        }
+        // Schemas: an open held, a new schema started and typed into, the old reply released.
+        holdFor.add('schema:existing.json')
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Schemas…' }))
+        const schemas = await screen.findByRole('dialog', { name: 'Schemas' })
+        await user.click(within(schemas).getByRole('button', { name: 'Edit existing.json' }))
+        await waitFor(() => expect(held).toHaveLength(1))
+        await user.type(within(schemas).getByRole('textbox', { name: 'New schema path (.json, .yaml or .yml)' }), 'draft.json')
+        await user.click(within(schemas).getByRole('button', { name: 'New schema' }))
+        const draft = within(within(schemas).getByRole('form', { name: 'Schema draft.json' })).getByRole('textbox')
+        await user.type(draft, '{{"newWork":true}')
+        await act(async () => held[0]!({ kind: 'done' }))
+        await new Promise((r) => setTimeout(r, 20))
+        expect(within(schemas).getByRole('form', { name: 'Schema draft.json' })).toBeInTheDocument()
+        expect(draft).toHaveValue('{"newWork":true}')
+        expect(within(schemas).queryByRole('form', { name: 'Schema existing.json' })).toBeNull()
+        // Close retires a pending open too.
+        holdFor.add('schema:existing.json')
+        await user.click(within(schemas).getByRole('button', { name: 'Edit existing.json' }))
+        await waitFor(() => expect(held).toHaveLength(2))
+        await user.click(within(within(schemas).getByRole('form', { name: 'Schema draft.json' })).getByRole('button', { name: 'Close' }))
+        await act(async () => held[1]!({ kind: 'done' }))
+        await new Promise((r) => setTimeout(r, 20))
+        expect(within(schemas).queryByRole('form', { name: /^Schema / })).toBeNull()
+        await user.click(within(schemas).getByRole('button', { name: 'Close Schemas' }))
+        // Environments: an open held, a newer environment opened, the old reply released.
+        holdFor.add('env:local')
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Environments…' }))
+        const envs = await screen.findByRole('dialog', { name: 'Environments' })
+        await user.click(within(envs).getByRole('button', { name: 'Edit private local' }))
+        await waitFor(() => expect(held).toHaveLength(3))
+        await user.type(within(envs).getByRole('textbox', { name: 'Environment name' }), 'staging')
+        await user.click(within(envs).getByRole('button', { name: 'New private environment' }))
+        const staging = within(await within(envs).findByRole('form', { name: 'Private environment staging' })).getByRole('textbox')
+        await user.type(staging, ' # typed')
+        await act(async () => held[2]!({ kind: 'done' }))
+        await new Promise((r) => setTimeout(r, 20))
+        expect(within(envs).getByRole('form', { name: 'Private environment staging' })).toBeInTheDocument()
+        expect(staging).toHaveValue('staging = 1 # typed')
+        expect(within(envs).queryByRole('form', { name: 'Private environment local' })).toBeNull()
+    })
+
     it('reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection', async () => {
         const { user, requests } = await open()
         await user.click(screen.getByRole('tab', { name: 'Preview' }))

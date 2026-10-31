@@ -51,6 +51,9 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     const [tool, setTool] = useState<Tool | null>(null)
     const [menu, setMenu] = useState(false)
     const [doc, setDoc] = useState<DocumentView | null>(null)
+    // Counts documents arriving from the core: the editor is keyed by it, so a reloaded document always starts a fresh
+    // editor (the same id and revision under one key kept the old editor's fields).
+    const [docSeq, setDocSeq] = useState(0)
     const [notes, setNotes] = useState<ImportNote[]>([])
     const loading = useRef<string | null>(null)
     // Each load of the selected request has a generation; a result from an earlier load is obsolete (two selections
@@ -137,6 +140,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
         if (loading.current === load.id) loading.current = null
         if (r?.kind === 'document') {
             setDoc(r.document)
+            setDocSeq((n) => n + 1)
             setNotes(keepNotes ? r.notes : lateNotes.current?.id === r.document.id ? lateNotes.current.notes : [])
             if (lateNotes.current && lateNotes.current.id !== r.document.id) lateNotes.current = null
             return true
@@ -175,6 +179,14 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     }
     const openRef = useRef(open)
     openRef.current = open
+    // The document whose editor is up: the editor owns newer fields and revisions, so once it has unmounted (the
+    // selection moved away) the retained DocumentView is obsolete and a return to that request reloads it from the
+    // core (the old snapshot remounted could be saved over a protected draft, or sent).
+    const editorFor = useRef<string | null>(null)
+    // The document whose editor was up and has since unmounted: obsolete, reloaded on return. A document that never
+    // had its editor up (an import's or a draft's reply shown ahead of its snapshot) is fresh and is reused.
+    const staleDoc = useRef<string | null>(null)
+    const editorUp = doc !== null && selectedTab !== null && doc.id === selectedTab.id
     useEffect(() => {
         if (!selectedTab || followed.current === selectedTab.id) return
         followed.current = selectedTab.id
@@ -183,9 +195,22 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
             loadGen.current += 1
             loading.current = null
         }
-        if (doc?.id === selectedTab.id || loading.current === selectedTab.id) return
+        if ((doc?.id === selectedTab.id && staleDoc.current !== selectedTab.id) || loading.current === selectedTab.id) return
+        // A stale document is not shown while its reload is in flight: remounted, its editor would start from the old
+        // fields and keep them when the fresh document arrived under the same key.
+        if (doc?.id === selectedTab.id) setDoc(null)
         openRef.current(selectedTab)
     }, [selectedTab, doc])
+    // Recorded after the selection was followed, so that effect sees which editor was up before this render.
+    useEffect(() => {
+        if (editorUp && doc) {
+            editorFor.current = doc.id
+            staleDoc.current = null
+        } else if (editorFor.current !== null) {
+            staleDoc.current = editorFor.current
+            editorFor.current = null
+        }
+    }, [editorUp, doc])
     const loaded = state.loaded
     useEffect(() => {
         if (!loaded) void call({ kind: 'load' })
@@ -505,7 +530,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                             ) : null}
                             {doc && selectedTab && doc.id === selectedTab.id ? (
                                 <RequestEditor
-                                    key={`${doc.id}:${doc.revision}:${doc.relative}`}
+                                    key={`${doc.id}:${doc.revision}:${doc.relative}:${docSeq}`}
                                     initial={doc}
                                     notes={notes}
                                     call={call}

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { CollectionView, GitView, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
 import { type WorkbenchCall, resultText } from '../../features/workbench/workbench-call'
@@ -91,8 +91,13 @@ function Environments({ collection, run }: { collection: CollectionView; run: Ru
         revision: string | null
     } | null>(null)
     const [name, setName] = useState('')
+    // Each open of an editor is a generation; a reply from an earlier generation (superseded by another open, a new
+    // environment or Close) is dropped, so it cannot replace the editor or its typing.
+    const openGen = useRef(0)
     const load = async (env: string, priv: boolean) => {
+        const gen = ++openGen.current
         const r = await run({ kind: 'openEnvironment', name: env, private: priv })
+        if (gen !== openGen.current) return
         if (r.kind === 'environment')
             setOpen({
                 name: r.name,
@@ -166,7 +171,10 @@ function Environments({ collection, run }: { collection: CollectionView; run: Ru
                                 Delete private environment
                             </Btn>
                         ) : null}
-                        <Btn tier='tertiary' onClick={() => setOpen(null)}>
+                        <Btn tier='tertiary' onClick={() => {
+                                openGen.current += 1
+                                setOpen(null)
+                            }}>
                             Close
                         </Btn>
                     </div>
@@ -233,13 +241,20 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
         revision: string | null
     } | null>(null)
     const [path, setPath] = useState('')
+    const openGen = useRef(0)
+    const load = async (relative: string) => {
+        const gen = ++openGen.current
+        const r = await run({ kind: 'openSchema', relative })
+        if (gen !== openGen.current) return
+        if (r.kind === 'schema') setOpen(r.schema)
+    }
     return (
         <section aria-label='Schemas' className='flex flex-col text-[13px]' style={{ gap: 12 }}>
             <p style={soft}>JSON or YAML schema text, edited without validation or request generation. Associate one from a request's Body tab.</p>
             <ul className='flex flex-col' style={{ gap: 6 }}>
                 {collection.schemas.map((s) => (
                     <li key={s}>
-                        <Btn onClick={() => void run({ kind: 'openSchema', relative: s }).then((r) => r.kind === 'schema' && setOpen(r.schema))}>{`Edit ${s}`}</Btn>
+                        <Btn onClick={() => void load(s)}>{`Edit ${s}`}</Btn>
                     </li>
                 ))}
             </ul>
@@ -248,7 +263,13 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
                     New schema path (.json, .yaml or .yml)
                     <Field id={`${ids}-schema`} value={path} onChange={(e) => setPath(e.target.value)} autoComplete='off' spellCheck={false} />
                 </label>
-                <Btn disabled={!path} onClick={() => setOpen({ relative: path, text: '', revision: null })}>
+                <Btn
+                    disabled={!path}
+                    onClick={() => {
+                        openGen.current += 1
+                        setOpen({ relative: path, text: '', revision: null })
+                    }}
+                >
                     New schema
                 </Btn>
             </div>
@@ -279,7 +300,10 @@ function Schemas({ collection, run }: { collection: CollectionView; run: Run }) 
                         <Btn tier='primary' type='submit'>
                             Save schema
                         </Btn>
-                        <Btn tier='tertiary' onClick={() => setOpen(null)}>
+                        <Btn tier='tertiary' onClick={() => {
+                                openGen.current += 1
+                                setOpen(null)
+                            }}>
                             Close
                         </Btn>
                     </div>
