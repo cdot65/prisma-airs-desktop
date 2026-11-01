@@ -109,10 +109,9 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // Every document-producing call is a load bound to the collection it was asked of and to a generation; a reply
     // from an earlier generation, or from a collection no longer open, is dropped (a late reply replaced the current
     // request's document, or resurrected a closed one).
-    // The open collection's scope is its folder and its id together: a copied or cloned folder keeps the id (the
-    // core scopes private documents by folder plus id too), so documents and loads are never shared across folders
-    // (attempt-04 R1).
-    const collectionKey = collection ? `${collection.folder}\u0000${collection.id}` : null
+    // Rust derives this opaque scope from the full root and collection id. The displayed folder is only a basename:
+    // two clones can have the same id and basename under different parents (attempt-05 R1).
+    const collectionKey = collection?.scope ?? null
     const collectionRef = useRef<string | null>(collectionKey)
     collectionRef.current = collectionKey
     const selectedRef = useRef<string | null>(collection?.selected ?? null)

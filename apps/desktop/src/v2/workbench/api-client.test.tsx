@@ -1079,9 +1079,10 @@ describe('C41 API Client board', () => {
     })
 
     it.each([
-        ['another collection id', { id: 'other', name: 'Other', folder: 'other' }],
-        ['the same collection id in another folder (a copied or cloned folder, attempt-04 R1)', { name: 'Other', folder: 'other-copy/api' }],
-        ['the same collection id and folder basename in another parent folder', { name: 'Other', folder: 'elsewhere/api' }],
+        ['another collection id', { id: 'other', name: 'Other', folder: 'other', scope: '2'.repeat(32) }],
+        ['the same collection id in a differently named folder', { name: 'Other', folder: 'api-copy', scope: '3'.repeat(32) }],
+        // Rust exposes a basename, not a path. Only the core-owned scope distinguishes these roots.
+        ['the same collection id and basename as Rust actually exposes for another parent folder', { name: 'Other', scope: '4'.repeat(32) }],
     ])('replacing one collection directly with %s that selects the same request id loads the new collection\u2019s document, never shows the old fields under it, and ignores the old collection\u2019s late reply (attempt-03 R1)', async (_what, over) => {
         const a = board()
         const b: ShellSnapshot = {

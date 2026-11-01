@@ -6,7 +6,11 @@ import type { RequestEntry } from "./RequestEntry";
 import type { SecretView } from "./SecretView";
 import type { TabView } from "./TabView";
 
-export type CollectionView = { id: string, name: string, folder: string, builtIn: boolean, complete: boolean, requests: Array<RequestEntry>, folders: Array<string>, schemas: Array<string>, issues: Array<Issue>, environments: Array<EnvironmentView>, environment: string | null, tabs: Array<TabView>, selected: string | null, secrets: Array<SecretView>, 
+export type CollectionView = { id: string, name: string, folder: string, 
+/**
+ * Opaque identity of this root and collection id for presentation caches, not authority.
+ */
+scope: string, builtIn: boolean, complete: boolean, requests: Array<RequestEntry>, folders: Array<string>, schemas: Array<string>, issues: Array<Issue>, environments: Array<EnvironmentView>, environment: string | null, tabs: Array<TabView>, selected: string | null, secrets: Array<SecretView>, 
 /**
  * The last private write failed (drafts may not be protected).
  */

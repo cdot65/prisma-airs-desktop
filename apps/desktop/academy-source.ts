@@ -9,8 +9,15 @@
 // A file-system path without Node typings in the app's tsconfig (the
 // repository path has no characters that URL-encode other than these).
 export const ACADEMY_SRC = decodeURIComponent(new URL('../../.work/academy/src', import.meta.url).pathname)
+const CONTRACTS_ROOT = decodeURIComponent(new URL('../../packages/desktop-contracts/', import.meta.url).pathname)
 
-export const academyAlias = [{ find: /^@\//, replacement: `${ACADEMY_SRC}/` }]
+// node_modules may be shared with another worktree. Compile this checkout's IPC parser and bindings,
+// not the workspace package reached through that other checkout's dependency symlink.
+export const desktopAliases = [
+    { find: /^@prisma-airs\/desktop-contracts$/, replacement: `${CONTRACTS_ROOT}src/index.ts` },
+    { find: /^@prisma-airs\/desktop-contracts\/fixtures\//, replacement: `${CONTRACTS_ROOT}fixtures/` },
+    { find: /^@\//, replacement: `${ACADEMY_SRC}/` },
+]
 
 export const academyDedupe = [
     'react',

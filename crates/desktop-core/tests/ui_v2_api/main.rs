@@ -165,6 +165,44 @@ fn names(v: &Value, key: &str) -> Vec<String> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn cloned_collection_roots_have_distinct_view_scopes_even_with_the_same_id_and_basename() {
+    let a = collection("http://127.0.0.1:8081");
+    let b = collection("http://127.0.0.1:8082");
+    let mut desk = start().await;
+    // Persist the same request selection in each copy, then replace A directly with B.
+    desk.open(&b).await;
+    desk.document("topics/list.request.toml").await;
+    desk.open(&a).await;
+    desk.document("topics/list.request.toml").await;
+    let first = desk.collection();
+    desk.open(&b).await;
+    let second = desk.collection();
+    assert_eq!(first["id"], second["id"]);
+    assert_eq!(first["folder"], "api");
+    assert_eq!(first["folder"], second["folder"]);
+    assert_eq!(first["selected"], "list");
+    assert_eq!(first["selected"], second["selected"]);
+    assert_ne!(
+        first["scope"], second["scope"],
+        "the renderer must distinguish these roots"
+    );
+    for view in [&first, &second] {
+        let scope = view["scope"].as_str().expect("opaque collection scope");
+        assert_eq!(scope.len(), 32);
+        assert!(scope.bytes().all(|b| b.is_ascii_hexdigit()));
+    }
+    desk.open(&a).await;
+    assert_eq!(
+        desk.collection()["scope"],
+        first["scope"],
+        "scope is stable for the same root and id"
+    );
+    drop(desk);
+    std::fs::remove_dir_all(a.parent().expect("fixture parent")).expect("cleanup");
+    std::fs::remove_dir_all(b.parent().expect("fixture parent")).expect("cleanup");
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn the_tree_tabs_and_selection_the_board_draws_from() {
     let http = topics_service().await;
     let root = collection(&http.origin());

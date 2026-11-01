@@ -961,6 +961,7 @@ describe('API Client validation', () => {
         id: 'c14',
         name: 'Items API',
         folder: 'api',
+        scope: '1'.repeat(32),
         builtIn: false,
         complete: true,
         requests: [{ relative: 'items/list.request.toml', id: 'list', method: 'GET', url: 'https://a.example/' }],
@@ -996,6 +997,9 @@ describe('API Client validation', () => {
     })
 
     it('rejects paths, identities and revisions outside what Rust issues', () => {
+        for (const scope of [undefined, '', 'api', '/another/parent/api', 'g'.repeat(32)]) {
+            expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, collection: { ...collection, scope } }))).toThrow(ContractViolation)
+        }
         expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, collection: { ...collection, requests: [{ ...collection.requests[0], relative: '../x' }] } }))).toThrow(
             ContractViolation
         )

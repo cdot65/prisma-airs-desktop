@@ -61,6 +61,7 @@ const collection = (overrides: Partial<CollectionView> = {}): CollectionView => 
     id: 'c15',
     name: 'Exec',
     folder: 'api',
+    scope: '1'.repeat(32),
     builtIn: false,
     complete: true,
     requests: [{ relative: 'items/list.request.toml', id: 'list', method: 'GET', url: 'http://127.0.0.1:8080/items' }],

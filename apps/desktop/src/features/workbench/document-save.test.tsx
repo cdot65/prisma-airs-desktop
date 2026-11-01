@@ -71,6 +71,7 @@ const collection = (overrides: Partial<CollectionView> = {}): CollectionView => 
     id: 'c14',
     name: 'Items API',
     folder: 'api',
+    scope: '1'.repeat(32),
     builtIn: false,
     complete: true,
     requests: [
