@@ -78,6 +78,21 @@ def sealed_files():
     return sorted(os.path.join(SEALED, n) for n in os.listdir(SEALED)) if os.path.isdir(SEALED) else []
 
 
+def cache_text(tree):
+    """Read only the cache region, joining WebKit's split inline text nodes."""
+    owner = next((i for i, n in enumerate(tree) if n.get("role") == "AXGroup"
+                  and n.get("label") == "Investigation cache"), None)
+    if owner is None:
+        return ""
+    nodes = []
+    for node in tree[owner + 1:]:
+        if node.get("depth", 0) <= tree[owner].get("depth", 0):
+            break
+        if node.get("role") == "AXStaticText":
+            nodes.append(node.get("label") or "")
+    return "".join(nodes)
+
+
 def exported(prefix):
     if not os.path.isdir(EXPORTS):
         return None
@@ -278,9 +293,11 @@ def run():
     obs["restored_from_seal"] = again and len(contents(mgmt)) == reads_before
     obs["tree_relaunch"] = save_tree("relaunch-revealed", tree)
     app.ax("press", "AXButton", "Clear cache")
-    tree, cleared = c8.text(app, "0 sessions, 0 transactions and 0 revealed scans", 10)
+    tree, cleared = app.wait_for(lambda t: "0 sessions, 0 transactions and 0 revealed scans" in cache_text(t), 10)
     time.sleep(1)
     obs["cleared"] = cleared and not sealed_files()
+    obs["clear_cache_text"] = cache_text(tree)
+    obs["tree_cleared"] = save_tree("cleared", tree)
     app.ax("press", "AXButton", f"Hide content of scan {SCAN}")
     app.wait_for(lambda t: not app.has_text(t, PROMPT), 8)
     app.ax("press", "AXButton", f"Show content of scan {SCAN}")
@@ -288,7 +305,6 @@ def run():
     obs["read_after_clear"] = len(contents(mgmt)) == reads_before + 1
     app.wait_for(lambda t: bool(sealed_files()), 8)
     obs["resealed"] = bool(sealed_files())
-    obs["tree_cleared"] = save_tree("cleared", tree)
 
     # ---- N08: the exception patterns preview ----
     count = len(mgmt.requests())

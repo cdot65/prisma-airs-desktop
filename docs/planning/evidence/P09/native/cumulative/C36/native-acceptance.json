@@ -1,0 +1,64 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C36",
+  "recorded_utc": "2026-11-01T17:04:54Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c36.py",
+  "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "3420d66c8dc74e117646dea8d08a3c03f7d41a7e59ce19493fa56e8a63c1925d",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C36-N01",
+      "description": "Home as the prototype draws it (R2App start=home) with a tenant whose read has landed: the heading, the one-line read summary (products, the core's read status, the needs-action count) and Refresh; the Explain banner while the calls are shown and gone when they are not; six product cards in three columns, each naming its product, its pill (Connected, Partial, Needs a role, Connecting, Failed or Not available), a figure or an em dash with its metric, and a last line; the Runtime card's figure is the read's detection events and the Gateway card's its day's requests; the two gated products carry their gate and the New tag; opening a card opens that product in Administration; Needs attention lists the items needing action with their own action, Acknowledge and Snooze sending the core intents, or its empty state naming the read; Quick actions open the Playground, the Harness, the API Client and Academy (D059 parity: the owner's approval of the composites is recorded in evidence/C36/parity/notes.md).",
+      "result": "pass",
+      "observation": "heading True; Refresh True read landed True; summary '6 products \u00b7 Read finished at 17:03 \u00b7 all sources complete \u00b7 1 needs action' (True); six cards True with pills {'AI Runtime Security': 'Connected', 'AI Gateway': 'Connecting', 'AI Red Teaming': 'Connecting', 'Model and skill scans': 'Connecting', 'Agentic Identity Security': 'Not available', 'Agentic Endpoint Security': 'Not available'}; Runtime figure 3 detection events \u00b7 last read (True); gated {'Agentic Identity Security': True, 'Agentic Endpoint Security': True} with 2 New tags in their names; Explain banner shown at first False (the calls start hidden once a tenant exists) and flipping with the Explain switch True; Needs attention: 1 row(s) with a severity word True; Snooze announced the return time True and removed the row True, Unsnooze in the Inbox brought it back True, Acknowledge removed it True; Open the Inbox True; quick actions ['Test a prompt\\nAI Runtime Security \u00b7 Playground', 'Ask the Harness\\nInvestigate with your tools \u23183', 'Send a request\\nAPI Client \u00b7 built-in catalog \u23186', 'Keep learning\\nAcademy courses and labs \u23184'] opened their destinations {'Test a prompt': True, 'Ask the Harness': True, 'Send a request': True, 'Keep learning': True}; the Gateway card opened Administration True with the product expanded True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C36/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/tree-home.json",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/tree-admin-from-card.json",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/tree-playground-from-quick-action.json",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/captures/home-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/captures/home-dark.png"
+      ]
+    },
+    {
+      "id": "C36-N02",
+      "description": "Keyboard and layout (T09): Tab from the heading reaches Refresh, each card, the attention row's controls and the quick actions in order, with the focus ring on a card; Enter on a card opens its product; Home at 1440 wide by the display's full working height and at 900\u00d7600 with 200% zoom, in light and dark, with no horizontal overflow; every row records the WebView's measured size from the accessibility tree and asserts it.",
+      "result": "pass",
+      "observation": "Tab from the heading, with the attention row populated, reached [('Refresh', 0), ('AI Runtime Security', 1), ('AI Gateway', 2), ('AI Red Teaming', 3), ('Model and skill scans', 4), ('Agentic Identity Security', 5), ('Agentic Endpoint Security', 6), ('Open the Inbox', 7), ('Inspect sessions', 8), ('Acknowledge: ', 9), ('Snooze', 10), ('Test a prompt', 11), ('Ask the Harness', 12), ('Send a request', 13), ('Keep learning', 14)] in order True; ring on the Runtime card 2172 px (True); Enter on the card opened Administration True; each row's geometry from its own saved tree: home-1440x900-light: web [1440, 900] viewport [1440, 900], home-1440x900-dark: web [1440, 900] viewport [1440, 900], home-900x600-200-light: web [900, 607] viewport [900, 600], home-900x600-200-dark: web [900, 607] viewport [900, 600]; attention row populated in every layout tree True, with 32px controls and at least 200px of text at each zoom True (home-1440x900-light: controls [[33, 33], [33, 33]] title width [214, 16], home-1440x900-dark: controls [[33, 33], [33, 33]] title width [214, 16], home-900x600-200-light: controls [[65, 64], [65, 64]] title width [398, 30], home-900x600-200-dark: controls [[65, 64], [65, 64]] title width [398, 30]) (asserted True); overflow px home-1440x900-light: 0, home-1440x900-dark: 0, home-900x600-200-light: 0, home-900x600-200-dark: 0, horizontal scroll bars [0, 0, 0, 0]",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C36/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/captures/card-ring.png",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/captures/card-ring-plain.png",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/captures/home-1440x900-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/captures/home-1440x900-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/captures/home-900x600-200-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/captures/home-900x600-200-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/tree-home-1440x900-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/tree-home-1440x900-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/tree-home-900x600-200-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C36/native/tree-home-900x600-200-dark.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the appearance is selected before each capture.",
+    "Scan and management endpoints are synthetic services on this Mac (scan_server.py, mgmt_server.py): the read's figures are the synthetic plane's.",
+    "Window geometry is measured from the accessibility tree, never assumed; this Mac's display gives a 1440-wide WebView of about 800 CSS px.",
+    "Visual parity with the prototype is the owner's judgement from the composites under evidence/C36/parity, not a check here.",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "home-dark.png",
+    "home-light.png",
+    "layouts-home-1440x900-dark.png",
+    "layouts-home-1440x900-light.png",
+    "layouts-home-900x600-200-dark.png",
+    "layouts-home-900x600-200-light.png"
+  ]
+}

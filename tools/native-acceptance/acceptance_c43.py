@@ -131,10 +131,14 @@ def overflow(app):
     return {"overflow_px": max(0, right - (win["pos"][0] + win["size"][0])) if right is not None else None, "horizontal_scrollbars": len(hbars)}, tree
 
 
-def primary_usable(tree, zoom):
+def primary_usable(tree, zoom, step):
     """The footer's primary inside the window and at least 32 CSS px."""
     win = next((n for n in tree if n.get("role") == "AXWindow"), None)
     labels_ = ("Create the tenant to continue", "Save the scan key to continue", "Continue", "Continue with warnings", "Set up a tenant", "Open Prisma AIRS", "Finish")
+    # Academy's signed-out advancing action is Skip for now. Packs also has
+    # a secondary Skip action; it must still be measured/traversed to Continue.
+    if step == "academy":
+        labels_ = ("Continue", "Skip for now")
     btn = next((n for n in tree if n.get("role") == "AXButton" and (n.get("label") or "") in labels_ and n.get("pos") and n.get("size")), None)
     inside = bool(btn and win and btn["pos"][0] >= win["pos"][0] and btn["pos"][0] + btn["size"][0] <= win["pos"][0] + win["size"][0] + 1 and btn["pos"][1] + btn["size"][1] <= win["pos"][1] + win["size"][1] + 1)
     return {"label": btn.get("label") if btn else None, "size": btn.get("size") if btn else None, "inside": inside,
@@ -264,7 +268,7 @@ def layout_matrix(app, step, mode):
             if not headings:
                 raise RuntimeError(f"no heading to start keyboard traversal: {mode}/{step}")
             app.ax("focus", "AXHeading", headings[0]["label"])
-            primary = primary_usable(tree, zoom)["label"]
+            primary = primary_usable(tree, zoom, step)["label"]
             walk, contained, reached = [], True, False
             for _ in range(60):
                 app.keycode(48)
@@ -281,7 +285,7 @@ def layout_matrix(app, step, mode):
                     break
             o, tree = overflow(app)
             o.update({"mode": mode, "step": step, "theme": theme, "zoom": zoom,
-                      "geometry": geometry(tree), "primary": primary_usable(tree, zoom),
+                      "geometry": geometry(tree), "primary": primary_usable(tree, zoom, step),
                       "dialog": c29.dialog(tree) is not None,
                       "keyboard": {"walk": walk, "primary_reached": reached, "contained": contained}})
             key = f"wizard-{mode}-{step}-{w}x{h}-{zoom}00-{theme.lower()}"
@@ -363,10 +367,10 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     tree, invalid = app.wait_for(lambda t: app.has_text(t, "Enter a display name.") and app.has_text(t, "The TSG ID is exactly 10 digits."), 6)
     n1["tenant"]["validation"] = invalid
     app.type_into("AXTextField", "Display name", "Northwind Health")
-    app.type_into("AXTextField", "TSG ID", "1762204418")
+    app.type_into("AXTextField", "TSG ID", c8.TSG)
     press_any(app, "Staging")
     press(app, "AXButton", "Create tenant")
-    tree, drafted = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Save scan key") is not None and app.has_text(t, "Northwind Health · Staging · TSG 1762204418"), 12)
+    tree, drafted = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Save scan key") is not None and app.has_text(t, f"Northwind Health · Staging · TSG {c8.TSG}"), 12)
     n1["tenant"]["drafted"] = drafted
     n1["tenant"]["scan_required_tag"] = any((n.get("label") or "") == "Required" for n in within(tree, next((n for n in tree if n.get("role") == "AXGroup" and (n.get("label") or "") == ""), None))) or app.has_text(tree, "Required on first run.")
     n1["tenant"]["management_card"] = app.has_text(tree, "Management credentials · OAuth 2.0") and fx.App.node(tree, "AXButton", "Where do I find these?") is not None
