@@ -57,6 +57,7 @@ def main():
                           'executable_sha256':prepared['executable_sha256']}))
         return 0
     started = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    os.environ['AIRS_NATIVE_ORCHESTRATOR'] = 'Codex'
     code = mod.main()
     raw = json.loads(record.read_text())
     errors, carried = assess_record(raw, ROOT, prepared['executable_sha256'], load_requirements(ROOT)[chunk])
@@ -72,7 +73,7 @@ def main():
                  'driver_sha256':hashlib.sha256((TOOLS / f'acceptance_{which}.py').read_bytes()).hexdigest(),
                  'required_check_errors':errors,'superseded_raw_checks':carried,
                  'adaptation':'evidence paths relocated to P09; no assertion or result changes',
-                 'raw_attribution':'driver-generated historical performed_by retained unchanged'}
+                 'raw_attribution':'driver-generated performed_by retained; C43 reads the actual orchestrator from AIRS_NATIVE_ORCHESTRATOR'}
     (out / 'execution.json').write_text(json.dumps(execution,indent=2)+'\n')
     print(json.dumps({'subject':chunk,'required_pass':not errors,'errors':errors,'carried':carried}))
     return 1 if errors else 0

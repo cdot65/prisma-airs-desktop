@@ -30,6 +30,7 @@ import acceptance_c08 as c8  # noqa: E402
 import acceptance_c28 as c28  # noqa: E402
 import acceptance_c29 as c29  # noqa: E402
 import acceptance_c31 as c31  # noqa: E402
+import wizard_coverage as coverage  # noqa: E402
 
 ROOT = os.getcwd()
 EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C43")
@@ -191,6 +192,15 @@ def composites_for(app, step, prepared, mode="firstRun"):
 def main():
     try:
         return run()
+    except Exception:
+        if os.path.isdir(NATIVE):
+            try:
+                c29.save_tree("failure", c29._last_app_tree())
+                with open(os.path.join(NATIVE, "failure-log.json"), "w") as f:
+                    json.dump(LOG, f, indent=2)
+            except Exception as error:
+                print("failure evidence unavailable:", error)
+        raise
     finally:
         fx.sh(["pkill", "-f", fx.PROCESS])
         fx.clean_fixture_root()
@@ -239,15 +249,84 @@ def open_add_sheet(app):
     press(app, "AXButton", "Add a tenant")
 
 
+def layout_matrix(app, step, mode):
+    """Measure each actual step, including keyboard reach, in all four T09 states."""
+    out = {}
+    for w, h, zoom in [(1440, 900, 1), (900, 600, 2)]:
+        size_window(app, app.pid, w, h)
+        if zoom == 2:
+            c29.zoom(app, 10)
+        for theme in ("Light", "Dark"):
+            c29.appearance(app, theme)
+            tree = app.tree()
+            owner = c29.dialog(tree) if mode == "add" else next(n for n in tree if n.get("role") == "AXWindow")
+            headings = [n for n in within(tree, owner) if n.get("role") == "AXHeading" and n.get("label")]
+            if not headings:
+                raise RuntimeError(f"no heading to start keyboard traversal: {mode}/{step}")
+            app.ax("focus", "AXHeading", headings[0]["label"])
+            primary = primary_usable(tree, zoom)["label"]
+            walk, contained, reached = [], True, False
+            for _ in range(60):
+                app.keycode(48)
+                current = app.tree()
+                focused = fx.App.focused(current) or {}
+                scope = c29.dialog(current) if mode == "add" else next((n for n in current if n.get("role") == "AXWindow"), None)
+                # Compare membership as well as geometry: scrolling may move an
+                # earlier control, but focus must never escape the owning modal.
+                in_scope = bool(scope and focused in within(current, scope))
+                contained = contained and in_scope
+                walk.append({"role": focused.get("role"), "label": focused.get("label"), "in_scope": in_scope})
+                if focused.get("role") == "AXButton" and focused.get("label") == primary:
+                    reached = True
+                    break
+            o, tree = overflow(app)
+            o.update({"mode": mode, "step": step, "theme": theme, "zoom": zoom,
+                      "geometry": geometry(tree), "primary": primary_usable(tree, zoom),
+                      "dialog": c29.dialog(tree) is not None,
+                      "keyboard": {"walk": walk, "primary_reached": reached, "contained": contained}})
+            key = f"wizard-{mode}-{step}-{w}x{h}-{zoom}00-{theme.lower()}"
+            o["capture"] = c29.capture(app, key)
+            o["tree"] = c29.save_tree(key, tree)
+            for field in ["capture", "tree"]:
+                o[field + "_sha256"] = c8.sha256(os.path.join(ROOT, o[field])) if o[field] else None
+            out[key] = o
+        if zoom == 2:
+            c29.zoom(app, -10)
+    c29.appearance(app, "Light")
+    size_window(app, app.pid, 1440, 900)
+    return out
+
+
+def verification_finished(app):
+    return app.wait_for(lambda t: any(r in (
+        "Checks finished; nothing failed.", "Checks finished with warnings.",
+        "An optional check failed. You can fix it and verify again, or continue with it recorded as a warning."
+    ) for r in app.texts(t)), 40)
+
+
 def exercise(app, endpoint, mgmt, prepared, FINAL):
     global NATIVE
-    obs = {"captures": {}, "parity": {}}
+    obs = {"captures": {}, "parity": {}, "c29_native_coverage": {"behavior": {}, "layouts": {}}}
+    retained = obs["c29_native_coverage"]["behavior"]
+    layouts = obs["c29_native_coverage"]["layouts"]
+
+    def matrix(step, mode="firstRun"):
+        layouts.update(layout_matrix(app, step, mode))
+        # A failed bootstrap/interaction remains an incomplete observation;
+        # only the final acceptance record can report a pass.
+        with open(os.path.join(NATIVE, "observations.partial.json"), "w") as f:
+            json.dump({"complete": False, "observations": obs, "log": LOG}, f, indent=1)
+
     app.launch()
     pid = app.pid
     # C44: the first run opens the wizard; there is no interface switch.
     tree, shown = app.wait_for(lambda t: heading(t, "Welcome to Prisma AIRS Desktop") is not None, 15)
     size_window(app, pid, 1440, 900)
     n1 = {"welcome": shown}
+    app.launch()
+    pid = app.pid
+    tree, retained["welcome_relaunch"] = app.wait_for(lambda t: heading(t, "Welcome to Prisma AIRS Desktop") is not None, 15)
+    size_window(app, pid, 1440, 900)
 
     def rail(tree):
         nav = group(tree, "Setup steps")
@@ -269,6 +348,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
                            "progress": app.has_text(tree, "Step 1 of 7"), "primary": fx.App.node(tree, "AXButton", "Set up a tenant") is not None}
     obs["tree_welcome"] = c29.save_tree("wizard-welcome", tree)
     obs["parity"]["welcome"] = composites_for(app, "welcome", prepared)
+    matrix("welcome")
     press(app, "AXButton", "Set up a tenant")
     tree, ok = app.wait_for(lambda t: heading(t, "Connect your tenant") is not None, 10)
     f = fx.App.focused(tree) or {}
@@ -305,8 +385,29 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     press(app, "AXButton", "Save management client")
     tree, client_saved = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Replace management client") is not None, 12)
     n1["tenant"]["client_saved"] = client_saved
+    app.type_into("AXTextField", "Display name", "Northwind Health EU")
+    press(app, "AXButton", "Save changes")
+    tree, retained["profile_edit_saved"] = app.wait_for(lambda t: app.has_text(t, "Tenant details saved.") and app.has_text(t, "Northwind Health EU"), 10)
+    retained["profile_edit_key_kept"] = fx.App.node(tree, "AXButton", "Replace scan key") is not None
+    obs["tree_profile_edited"] = c29.save_tree("wizard-profile-edited", tree)
+    # Restore the name for the board parity captures; both edits use the UI.
+    app.type_into("AXTextField", "Display name", "Northwind Health")
+    press(app, "AXButton", "Save changes")
+    app.wait_for(lambda t: app.has_text(t, "Tenant details saved."), 10)
+    press_any(app, "Set up an AI Gateway workspace now")
+    press(app, "AXButton", "Read workspaces")
+    tree, retained["gateway_listed"] = app.wait_for(lambda t: fx.App.node(t, "AXPopUpButton", "Workspace") is not None, 15)
+    press(app, "AXButton", "Use this workspace")
+    tree, retained["workspace_chosen"] = app.wait_for(lambda t: any(x.startswith("Workspace ") and x.endswith(" chosen.") for x in app.texts(t)), 12)
+    app.type_into("AXTextField", "Inference endpoint", mgmt.origin + "/v1")
+    app.type_into("AXTextField", "Workspace inference key", "SYNTHETIC-C29-WORKSPACE-KEY-qrstuv", secure=True)
+    press(app, "AXButton", "Save workspace key")
+    tree, retained["workspace_key_saved"] = app.wait_for(lambda t: app.has_text(t, "Workspace key saved in the Keychain."), 12)
+    obs["tree_workspace_saved"] = c29.save_tree("wizard-workspace-saved", tree)
+    press_any(app, "Set up an AI Gateway workspace now")
     obs["tree_tenant"] = c29.save_tree("wizard-tenant", tree)
     obs["parity"]["tenant"] = composites_for(app, "tenant", prepared)
+    matrix("tenant")
     press(app, "AXButton", "Continue")
     tree, ok = app.wait_for(lambda t: heading(t, "Which products will you manage?") is not None, 10)
     cards = [n for n in tree if n.get("role") == "AXCheckBox" and (n.get("label") or "") in ("AI Runtime Security", "AI Gateway", "AI Red Teaming", "Model and skill scans", "Agentic Identity Security", "Agentic Endpoint Security")]
@@ -317,18 +418,69 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n1["products"]["gateway_chosen"] = chosen
     obs["tree_products"] = c29.save_tree("wizard-products", tree)
     obs["parity"]["products"] = composites_for(app, "products", prepared)
+    matrix("products")
+    # Replace the accepted client with a rejected synthetic secret, then verify
+    # the failure before correcting it through the wizard's edit action.
+    press(app, "AXButton", "Back")
+    app.wait_for(lambda t: heading(t, "Connect your tenant") is not None, 10)
+    app.type_into("AXTextField", "Client ID", c8.CLIENT_ID)
+    app.type_into("AXTextField", "Client secret", "WRONG-SYNTHETIC-SECRET-000000", secure=True)
+    press(app, "AXButton", "Replace management client")
+    app.wait_for(lambda t: app.has_text(t, "Management client saved."), 12)
+    press(app, "AXButton", "Continue")
+    app.wait_for(lambda t: heading(t, "Which products will you manage?") is not None, 10)
     press(app, "AXButton", "Continue")
     tree, ok = app.wait_for(lambda t: heading(t, "Check the connection") is not None, 10)
     n1["verify"] = {"shown": ok, "banner_not_checked": app.has_text(tree, "Not checked yet"), "rows": sum(1 for x in app.texts(tree) if x == "Not run yet"),
                     "run_offered": fx.App.node(tree, "AXButton", "Run the checks") is not None, "continue_closed": (fx.App.node(tree, "AXButton", "Continue") or {}).get("enabled") is False,
                     "progress": app.has_text(tree, "Step 4 of 7")}
     press(app, "AXButton", "Run the checks")
-    tree, finished = app.wait_for(lambda t: any(r in ("Checks finished; nothing failed.", "Checks finished with warnings.", "An optional check failed. You can fix it and verify again, or continue with it recorded as a warning.") for r in app.texts(t)), 40)
+    tree, finished = verification_finished(app)
+    retained["rejected_client_failed"] = finished and app.has_text(tree, "The management client was not accepted.")
+    retained["failed_client_continuable"] = (fx.App.node(tree, "AXButton", "Continue with warnings") or {}).get("enabled") is True
+    retained["failed_scan_stored_not_pass"] = app.has_text(tree, "Stored") and not app.has_text(tree, "Pass")
+    obs["tree_verify_rejected"] = c29.save_tree("wizard-verify-rejected", tree)
+    press(app, "AXButton", "Edit credentials")
+    tree, editable = app.wait_for(lambda t: heading(t, "Connect your tenant") is not None, 10)
+    retained["credential_fix_returns_tenant"] = editable and fx.App.node(tree, "AXButton", "Save changes") is not None
+    app.type_into("AXTextField", "Client ID", c8.CLIENT_ID)
+    app.type_into("AXTextField", "Client secret", c8.SECRET, secure=True)
+    press(app, "AXButton", "Replace management client")
+    tree, retained["correct_client_saved"] = app.wait_for(lambda t: app.has_text(t, "Management client saved."), 12)
+    if str((fx.App.node(tree, "AXCheckBox", "Set up an AI Gateway workspace now") or {}).get("value")) not in ("1", "True", "true"):
+        press_any(app, "Set up an AI Gateway workspace now")
+    press(app, "AXButton", "Read workspaces")
+    tree, rechosen = app.wait_for(lambda t: any(x.startswith("Workspace ") and x.endswith(" chosen.") for x in app.texts(t)) or fx.App.node(t, "AXButton", "Use this workspace") is not None, 15)
+    if not any(x.startswith("Workspace ") and x.endswith(" chosen.") for x in app.texts(tree)):
+        press(app, "AXButton", "Use this workspace")
+        tree, rechosen = app.wait_for(lambda t: any(x.startswith("Workspace ") and x.endswith(" chosen.") for x in app.texts(t)), 12)
+    retained["workspace_rechosen_after_fix"] = rechosen
+    obs["tree_workspace_rechosen"] = c29.save_tree("wizard-workspace-rechosen", tree)
+    press(app, "AXButton", "Continue")
+    app.wait_for(lambda t: heading(t, "Which products will you manage?") is not None, 10)
+    press(app, "AXButton", "Continue")
+    tree, _ = app.wait_for(lambda t: heading(t, "Check the connection") is not None, 10)
+    press(app, "AXButton", "Run the checks" if fx.App.node(tree, "AXButton", "Run the checks") else "Verify again")
+    tree, finished = verification_finished(app)
+    retained["verification_passed"] = finished and app.has_text(tree, "The management client can read this tenant.")
+    retained["gateway_verification_passed"] = any(x.startswith("Workspace ") and "readable" in x and "route(s)" in x for x in app.texts(tree)) and app.has_text(tree, "Pass")
+    obs["tree_verify_corrected"] = c29.save_tree("wizard-verify-corrected", tree)
+    press(app, "AXButton", "Back")
+    app.wait_for(lambda t: heading(t, "Which products will you manage?") is not None, 10)
+    press_any(app, "AI Gateway")
+    press(app, "AXButton", "Continue")
+    tree, retained["product_edit_marked_stale"] = app.wait_for(lambda t: app.has_text(t, "The inputs changed since this run. Verify again before continuing."), 10)
+    retained["stale_continuation_closed"] = (fx.App.node(tree, "AXButton", "Continue") or {}).get("enabled") is False
+    obs["tree_verify_stale"] = c29.save_tree("wizard-verify-stale", tree)
+    press(app, "AXButton", "Verify again")
+    tree, clean = verification_finished(app)
+    retained["stale_rerun_clean"] = clean and app.has_text(tree, "Checks finished; nothing failed.") and (fx.App.node(tree, "AXButton", "Continue") or {}).get("enabled") is True
     n1["verify"]["finished"] = finished
     n1["verify"]["continue_open"] = any((fx.App.node(tree, "AXButton", l) or {}).get("enabled") is not False and fx.App.node(tree, "AXButton", l) is not None for l in ("Continue", "Continue with warnings"))
     n1["verify"]["again_offered"] = fx.App.node(tree, "AXButton", "Verify again") is not None
     obs["tree_verify"] = c29.save_tree("wizard-verify", tree)
     obs["parity"]["verify"] = composites_for(app, "verify", prepared)
+    matrix("verify")
     press(app, "AXButton", "Continue with warnings" if fx.App.node(tree, "AXButton", "Continue with warnings") else "Continue")
     tree, ok = app.wait_for(lambda t: heading(t, "Load starter test cases") is not None, 10)
     packs = [n for n in tree if n.get("role") == "AXCheckBox" and " · " in (n.get("label") or "") and "case" in (n.get("label") or "")]
@@ -336,12 +488,14 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
                    "skip": fx.App.node(tree, "AXButton", "Skip for now") is not None, "progress": app.has_text(tree, "Step 5 of 7")}
     obs["tree_packs"] = c29.save_tree("wizard-packs", tree)
     obs["parity"]["packs"] = composites_for(app, "packs", prepared)
+    matrix("packs")
     press(app, "AXButton", "Continue")
     tree, ok = app.wait_for(lambda t: heading(t, "Join the AI Security Academy") is not None, 10)
     n1["academy"] = {"shown": ok, "account_card": app.has_text(tree, "Your account") and fx.App.node(tree, "AXButton", "Sign in to Academy") is not None,
                      "syncs_card": app.has_text(tree, "What is sent to Academy"), "skip": fx.App.node(tree, "AXButton", "Skip for now") is not None, "progress": app.has_text(tree, "Step 6 of 7")}
     obs["tree_academy"] = c29.save_tree("wizard-academy", tree)
     obs["parity"]["academy"] = composites_for(app, "academy", prepared)
+    matrix("academy")
     press(app, "AXButton", "Skip for now")
     tree, ok = app.wait_for(lambda t: heading(t, "Northwind Health is ready") is not None, 10)
     n1["done"] = {"shown": ok, "skipped_tag": any((n.get("label") or "").endswith(" Skipped") for n in rail(tree)), "summary": all(app.has_text(tree, k) for k in ("Scan key", "Management client", "Products", "Starter cases", "Academy")),
@@ -349,13 +503,27 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
                   "open": fx.App.node(tree, "AXButton", "Open Prisma AIRS") is not None}
     obs["tree_done"] = c29.save_tree("wizard-done", tree)
     obs["parity"]["done"] = composites_for(app, "done", prepared)
+    matrix("done")
     press(app, "AXButton", "Open Prisma AIRS")
     tree, home = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None and c29.nav(t, "Destinations") is not None, 20)
     n1["done"]["completed"] = home and any("Northwind Health" in (n.get("label") or "") for n in tree)
+    app.menu("Go", "Test Cases")
+    tree, library = app.wait_for(lambda t: heading(t, "Test Cases") is not None, 12)
+    tree, imported = app.wait_for(lambda t: any("injection" in x.lower() for x in app.texts(t)), 12)
+    retained["starter_cases_imported"] = library and imported
+    obs["tree_imported_cases"] = c29.save_tree("wizard-imported-cases", tree)
+    app.launch()
+    pid = app.pid
+    tree, home = app.wait_for(lambda t: heading(t, "Home") is not None and c29.nav(t, "Destinations") is not None, 20)
+    retained["home_relaunch"] = home and heading(tree, "Welcome to Prisma AIRS Desktop") is None
     obs["n1"] = n1
 
     # ---- N02: the add-tenant sheet ----
     n2 = {}
+    tree = c29.open_switcher(app)
+    baseline_rows = c29.tenant_rows(tree)
+    baseline_active = str(c29.switcher(tree).get("label") or "")
+    app.keycode(53)
     open_add_sheet(app)
     tree, sheet = app.wait_for(lambda t: c29.dialog(t) is not None, 10)
     d = c29.dialog(tree)
@@ -391,9 +559,29 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     tree, drafted = app.wait_for(lambda t: app.has_text(t, "Optional here; without it scans stay unavailable"), 12)
     n2["drafted_optional"] = drafted
     n2["continue_open"] = (fx.App.node(tree, "AXButton", "Continue") or {}).get("enabled") is not False and fx.App.node(tree, "AXButton", "Continue") is not None
+    items_before = fx.keychain_accounts(c8.SCAN_SERVICE)
+    press_any(app, "Scan API key")
+    app.type_into("AXTextField", "Scan API key", "SYNTHETIC-C29-SECOND-KEY-zyxwvu", secure=True)
+    press(app, "AXButton", "Save scan key")
+    tree, saved = app.wait_for(lambda t: app.has_text(t, "Scan key saved in the Keychain."), 12)
+    items_keyed = fx.keychain_accounts(c8.SCAN_SERVICE)
+    retained["keyed_draft_saved"] = saved and len(items_keyed) == len(items_before) + 1
+    obs["tree_keyed_draft"] = c29.save_tree("wizard-keyed-draft", tree)
     press(app, "AXButton", "Cancel")
     tree, discarded = app.wait_for(lambda t: c29.dialog(t) is None, 10)
     n2["cancel_discards"] = discarded and not app.has_text(tree, "Coastal Bank")
+    tree = c29.open_switcher(app)
+    retained["cancelled_rows_unchanged"] = c29.tenant_rows(tree) == baseline_rows
+    retained["cancelled_active_unchanged"] = str(c29.switcher(tree).get("label") or "") == baseline_active
+    obs["tree_keyed_cancel"] = c29.save_tree("wizard-keyed-cancel", tree)
+    for _ in range(30):
+        items_after = fx.keychain_accounts(c8.SCAN_SERVICE)
+        if items_after == items_before:
+            break
+        time.sleep(0.5)
+    retained["cancelled_key_deleted"] = items_after == items_before and len(items_keyed) == len(items_before) + 1
+    obs["keyed_cancel_accounts"] = {"before": items_before, "keyed": items_keyed, "after": items_after}
+    app.keycode(53)
 
     # ---- N02 (completion) with N03 (keyboard, ring, layouts) on the way: one add-mode run through Finish ----
     # The tenant rows before: the switcher lists them; Add a tenant is its last entry.
@@ -407,36 +595,6 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     press(app, "AXButton", "Create tenant")
     tree, drafted = app.wait_for(lambda t: app.has_text(t, "Optional here; without it scans stay unavailable") and (fx.App.node(t, "AXButton", "Continue") or {}).get("enabled") is not False, 12)
     n3 = {"drafted": drafted}
-
-    def matrix(step):
-        """The add sheet on this step at 1440×900 and at 900×600 with 200% zoom, light and dark: the WebView's size and
-        the viewport from the tree (asserted per row), no horizontal overflow, the footer's primary inside the window
-        and at least 32 CSS px, the dialog present."""
-        out = {}
-        for name_, (w, h, zoom) in {"1440x900": (1440, 900, 1), "900x600-200": (900, 600, 2)}.items():
-            size_window(app, pid, w, h)
-            if zoom == 2:
-                c29.zoom(app, 10)
-            for theme in ("Light", "Dark"):
-                c29.appearance(app, theme)
-                time.sleep(0.5)
-                o, tree_ = overflow(app)
-                g = geometry(tree_)
-                vp = g["viewport"] or g["web"]
-                o["geometry"] = g
-                o["step"] = step
-                o["size_ok"] = bool(g["web"] and g["web"][0] == w and vp and vp[0] == w and (zoom == 1 or vp[1] == h))
-                o["primary"] = primary_usable(tree_, zoom)
-                o["dialog"] = c29.dialog(tree_) is not None
-                key = f"wizard-add-{step}-{name_}-{theme.lower()}"
-                o["capture"] = c29.capture(app, key)
-                o["tree"] = c29.save_tree(key, tree_)
-                out[key] = o
-            if zoom == 2:
-                c29.zoom(app, -10)
-        c29.appearance(app, "Match System")
-        size_window(app, pid, 1440, 900)
-        return out
 
     # Keyboard (T09) on the drafted Tenant step: Tab from the rail's current step mark reaches the step's first control
     # (in add mode the optional scan-key card is closed: its switch comes first) and the footer's primary (Continue,
@@ -463,29 +621,31 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     time.sleep(0.4)
     plain = c29.capture(app, "wizard-ring-plain")
     n3["ring"] = c31.ring_on(app, "Continue", plain, "wizard-ring")
-    layouts = matrix("tenant")
+    matrix("tenant", "add")
     # Products, then Verify: the checks run (no scan key: a warning), the Verify matrix, then on.
     press(app, "AXButton", "Continue")
     tree, ok = app.wait_for(lambda t: heading(t, "Which products will you manage?") is not None, 10)
     n2["products_shown"] = ok
+    matrix("products", "add")
     press(app, "AXButton", "Continue")
     tree, ok = app.wait_for(lambda t: heading(t, "Check the connection") is not None, 10)
     n2["verify_shown"] = ok
     press(app, "AXButton", "Run the checks")
     tree, finished = app.wait_for(lambda t: any(r in ("Checks finished; nothing failed.", "Checks finished with warnings.", "An optional check failed. You can fix it and verify again, or continue with it recorded as a warning.") for r in app.texts(t)), 30)
     n2["verify_finished"] = finished
-    layouts.update(matrix("verify"))
+    matrix("verify", "add")
     n3["layouts"] = layouts
-    obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
     obs["captures"]["wizard-ring"] = {"plain": n3["ring"].get("plain"), "focused": n3["ring"].get("capture")}
     obs["n3"] = n3
     tree = app.tree()
     press(app, "AXButton", "Continue with warnings" if fx.App.node(tree, "AXButton", "Continue with warnings") else "Continue")
     tree, ok = app.wait_for(lambda t: heading(t, "Load starter test cases") is not None, 10)
     n2["packs_shown"] = ok
+    matrix("packs", "add")
     press(app, "AXButton", "Skip for now")
     tree, ok = app.wait_for(lambda t: heading(t, "Coastal Bank is ready") is not None, 10)
     n2["done_shown"] = ok
+    matrix("done", "add")
     n2["done_checks_line"] = next((x for x in app.texts(tree) if "not checked" in x or "passed" in x or "not available" in x), None)
     obs["tree_add_done"] = c29.save_tree("wizard-add-done", tree)
     # Finish: the sheet closes, the toast names the tenant, and the switcher lists exactly one more tenant.
@@ -502,7 +662,18 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     app.keycode(53)
     time.sleep(0.4)
     obs["n2"] = n2
+    # Inspect only disposable fixture data and captured AX trees. Attribute-only
+    # Keychain enumeration above never reads any stored credential value.
+    canaries = (c8.SCAN_KEY, c8.SECRET, "SYNTHETIC-C29-WORKSPACE-KEY-qrstuv", "SYNTHETIC-C29-SECOND-KEY-zyxwvu", "WRONG-SYNTHETIC-SECRET-000000")
+    leaks = {needle: c29.holding(fx.DATA, needle, skip=(".keychain-db",))
+             + c29.holding(NATIVE, needle, skip=(".png",)) for needle in canaries}
+    retained["secret_confinement"] = not any(leaks.values())
+    # Record paths only; do not repeat the synthetic secret canaries in evidence.
+    obs["secret_leak_paths"] = sorted({path for paths in leaks.values() for path in paths})
     app.quit()
+    obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
+    coverage_errors = coverage.problems(obs, ROOT)
+    obs["c29_native_coverage"]["errors"] = coverage_errors
 
     run_path = os.path.join(NATIVE, "observations.json")
     with open(run_path, "w") as f:
@@ -523,35 +694,37 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
              and v_["shown"] and v_["banner_not_checked"] and v_["rows"] >= 3 and v_["run_offered"] and v_["continue_closed"] and v_["finished"] and v_["continue_open"] and v_["again_offered"]
              and k_["shown"] and len(k_["rows"]) >= 1 and k_["summary"] and k_["skip"] and a_["shown"] and a_["account_card"] and a_["syncs_card"] and a_["skip"]
              and all(d_.get(k) for k in ("shown", "skipped_tag", "summary", "change", "next_up", "progress", "open", "completed")) and len(parity_files) == 14)
-    add("C43-N01", n1_ok,
+    retained_first_run = all(retained.get(k) is True for k in coverage.BEHAVIOR[:-4])
+    add("C43-N01", n1_ok and retained_first_run,
         f"welcome {n1['welcome']} rail {r}; welcome board {n1['welcome_board']}; tenant {t_}; products {p_}; verify {v_}; packs {k_}; academy {a_}; done {d_}; composites {parity_files}",
         [run_rel, obs["tree_welcome"], obs["tree_tenant"], obs["tree_products"], obs["tree_verify"], obs["tree_packs"], obs["tree_academy"], obs["tree_done"]] + parity_files)
     n2_ok = n2["sheet"] and n2["fixed_1160"] and n2["rail_244"] and [re.sub(r"^\d+ ", "", x).replace(" Optional", "").replace(" Skipped", "") for x in n2["steps"][:5]] == ["Tenant", "Products", "Verify", "Starter cases", "Done"] and n2["no_back"] and n2["cancel"] and n2["cancel_note"] and n2["cancel_before_draft_closes"] and n2["drafted_optional"] and n2["continue_open"] and n2["cancel_discards"] and len(obs["parity"]["add"]) == 2
     completion_ok = all(n2.get(k) for k in ("products_shown", "verify_shown", "verify_finished", "packs_shown", "done_shown", "finish_closes", "toast", "committed_once"))
-    add("C43-N02", n2_ok and completion_ok,
+    retained_cancel = all(retained.get(k) is True for k in coverage.BEHAVIOR[-4:])
+    add("C43-N02", n2_ok and completion_ok and retained_cancel,
         f"sheet {n2} composites {sorted(obs['parity']['add'].values())}; the add-mode run: products {n2.get('products_shown')}, verify {n2.get('verify_shown')} finished {n2.get('verify_finished')}, starter cases {n2.get('packs_shown')}, done {n2.get('done_shown')} (checks line {n2.get('done_checks_line')!r}), Finish closed the sheet {n2.get('finish_closes')}, toast {n2.get('toast')}, tenants {n2.get('rows_before')} → {n2.get('rows_after')} ({n2.get('committed_once')})",
         [run_rel, obs["tree_add"], obs.get("tree_add_done"), obs.get("tree_add_finished")] + sorted(obs["parity"]["add"].values()))
     lay = n3["layouts"]
     ring_ok = (n3["ring"].get("diff") or 0) > 40 and n3["ring"].get("focused") == "Continue"
-    layouts_ok = len(lay) == 8 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["primary"]["ok"] and v["dialog"] and v["size_ok"] for v in lay.values()) \
-        and sum(1 for v in lay.values() if v["step"] == "tenant") == 4 and sum(1 for v in lay.values() if v["step"] == "verify") == 4
+    layouts_ok = not coverage_errors
     add("C43-N03", n3["drafted"] and n3["reach"]["field"] and n3["reach"]["primary"] and n3["reach"]["in_order"] and ring_ok and layouts_ok,
         f"on the drafted Tenant step, Tab from the rail's 1 Tenant reached {n3['walk']} (the step's first control {n3.get('first_control')!r} {n3['reach']['field']}, footer primary Continue {n3['reach']['primary']}, in that order {n3['reach']['in_order']}); ring on the footer's Continue {n3['ring'].get('diff')} px (focused {n3['ring'].get('focused')!r}, plain capture focused on the rail mark); "
-        + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} (asserted {v['size_ok']}) overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, primary {v['primary']}, dialog {v['dialog']}" for k, v in lay.items()),
+        + f"; retained C29 coverage errors: {coverage_errors}; "
+        + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, primary {v['primary']}, dialog {v['dialog']}, keyboard {v['keyboard']}" for k, v in lay.items()),
         [run_rel] + [v["tree"] for v in lay.values()] + [v for v in obs["captures"]["layouts"].values() if v] + [v for v in obs["captures"]["wizard-ring"].values() if v])
 
     hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
     os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"
     record = {
         "schema": "airs-v2/native-acceptance/1", "subject": "C43", "recorded_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "method": "cua",
-        "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c43.py",
+        "performed_by": os.environ.get("AIRS_NATIVE_ORCHESTRATOR", "Unreported orchestrator") + " driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c43.py",
         "host": f"{hw}; macOS {os_ver}",
         "app": {"bundle": prepared["bundle"], "identifier": prepared["identifier"], "executable_sha256": prepared["executable_sha256"], "fixture": True},
         "checks": checks,
         "limitations": [
             "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size, filled=true) beside each step.",
             "Synthetic scan and management endpoints only; the Academy step is skipped (no Academy endpoint is staged).",
-            "The first-run layouts are measured on the add sheet's Tenant step after the first run completed (the first-run window is gone once the tenant exists).",
+            "The T09 matrix measures all seven first-run steps and all five add-tenant steps, in both themes at 100% (1440×900) and 200% (900×600); each row records actual Tab traversal, geometry, AX tree and a WebView capture.",
             "Spoken VoiceOver output was not recorded.",
         ],
     }

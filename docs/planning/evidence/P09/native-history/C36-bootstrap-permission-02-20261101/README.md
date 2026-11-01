@@ -1,0 +1,1 @@
+Second VM bootstrap probe: the driver stopped at the frontmost guard while guest permission dialogs held focus. No native acceptance record was produced; this is a failed bootstrap attempt, not qualification.

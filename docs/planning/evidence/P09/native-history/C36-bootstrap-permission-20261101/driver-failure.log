@@ -1,0 +1,28 @@
+Traceback (most recent call last):
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/docs/planning/evidence/P09/native-controller/run-p09-native.py", line 82, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/docs/planning/evidence/P09/native-controller/run-p09-native.py", line 60, in main
+    code = mod.main()
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/tools/native-acceptance/acceptance_c36.py", line 113, in main
+    return run()
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/tools/native-acceptance/acceptance_c36.py", line 147, in run
+    return exercise(app, endpoint, mgmt, prepared, FINAL)
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/tools/native-acceptance/acceptance_c36.py", line 159, in exercise
+    v2s.tenant_on_home(app, endpoint.origin)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/tools/native-acceptance/v2_setup.py", line 89, in tenant_on_home
+    tree, home = first_run(app, endpoint_origin, label=PLACEHOLDER, client=False)
+                 ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/tools/native-acceptance/v2_setup.py", line 46, in first_run
+    app.type_into("AXTextField", "Display name", label)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/tools/native-acceptance/fixture_app.py", line 202, in type_into
+    self.keys(text)
+    ~~~~~~~~~^^^^^^
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/tools/native-acceptance/fixture_app.py", line 161, in keys
+    self.front()
+    ~~~~~~~~~~^^
+  File "/Volumes/My Shared Files/redtail/prisma-airs-desktop-v2/tools/native-acceptance/fixture_app.py", line 154, in front
+    raise RuntimeError(f"the fixture app (pid {self.pid}) is not frontmost; refusing to send keystrokes")
+RuntimeError: the fixture app (pid 1089) is not frontmost; refusing to send keystrokes

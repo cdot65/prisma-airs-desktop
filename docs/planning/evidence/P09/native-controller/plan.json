@@ -1,8 +1,8 @@
 {
   "phase": "P09",
-  "status": "prepared; no native execution authorized on host for this gate",
+  "status": "VM bootstrapped; Automation granted; Python Local Network permission pending. No P09 native acceptance has passed yet.",
   "source_head": "d5203df8",
-  "screen_authorization": "wait for the requested VM, or explicit owner approval of this new host-native gate",
+  "screen_authorization": "Use the requested airs VM; a new host-native gate still requires owner approval.",
   "drivers": [
     "C11",
     "C10",
@@ -29,5 +29,10 @@
   "prepare": "docs/planning/evidence/P09/native-prepare.json",
   "preservation": "C44 and every earlier raw native acceptance/evidence record retained unchanged",
   "actual_orchestrator": "Codex; raw driver provenance kept and a separate execution record reports actual invocation",
-  "VM_first_probe": "C36; retain its same-bundle pass when running the full serial chain"
+  "VM_first_probe": "C36; retain its same-bundle pass when running the full serial chain",
+  "current_checks": "docs/planning/evidence/P09/runs/run-attempt-02.json",
+  "VM_bootstrap_history": [
+    "docs/planning/evidence/P09/native-history/C36-bootstrap-permission-20261101",
+    "docs/planning/evidence/P09/native-history/C36-bootstrap-permission-02-20261101"
+  ]
 }

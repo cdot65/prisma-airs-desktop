@@ -318,12 +318,12 @@ ASSERTIONS = {
     "C28-N06": (X, ["C35-N01", "C36-N01"], "the appearance toggle and the light and dark captures on the v2 tokens"),
     "C28-N07": (X, ["C35-N03"], "900×600 and 200% with no horizontal overflow; the rail collapses"),
     # ---- C29 wizard → C43 ----
-    "C29-N01": (X, ["C43-N01"], "Welcome with its cards, no rail and no Back; Set up a tenant"),
-    "C29-N02": (X, ["C43-N01"], "the tenant step's validation and drafting"),
-    "C29-N03": (X, ["C43-N01"], "the product cards (Runtime always on, AIS/AES unavailable) and the checks"),
-    "C29-N04": (X, ["C43-N01"], "Starter cases, Academy, Done and Open Prisma AIRS completing once"),
-    "C29-N05": (X, ["C43-N02"], "the add-tenant sheet as the one topmost modal; Cancel before and after a draft"),
-    "C29-N06": (X, ["C43-N03"], "the T09 matrix of the wizard and the sheet"),
+    "C29-N01": (X, ["C43-N01"], "Welcome with its cards and no Back, retained after relaunch; Set up a tenant (the C43 setup rail replaces the earlier rail-free welcome)"),
+    "C29-N02": (X, ["C43-N01"], "validation, drafting, scan/client custody, editing the draft without losing its key, Gateway workspace listing/choice and inference-key setup"),
+    "C29-N03": (X, ["C43-N01"], "product cards and actual rejected-client verification, editable credential correction, workspace re-choice and passing verification; a product edit marks the run stale and closes Continue until a clean rerun"),
+    "C29-N04": (X, ["C43-N01"], "Starter cases, Academy, Done and Open Prisma AIRS completing once, imported Runtime cases in Test Cases, followed by a relaunch to Home"),
+    "C29-N05": (X, ["C43-N02"], "the topmost add-tenant modal; Cancel before a draft and after storing a draft scan key, unchanged tenant rows/active tenant and actual Keychain record removal; Finish commits exactly once"),
+    "C29-N06": (X, ["C43-N03"], "all seven first-run and five add-tenant steps in Light/Dark at 100%/200% (48 rows), with per-row keyboard reach, geometry, AX tree and capture; the Tenant primary's focus ring"),
     # ---- C30 Inbox and reads → C36, C37 ----
     "C30-N01": (X, ["C38-N03"], "the guard through the switcher, the palette and the Go menu with a decision waiting; Escape and Stay keep the tenant and the decision; Archive and switch ends the conversation and lands the other tenant on Home with no engine (invariant I1)"),
     "C30-N02": (X, ["C36-N01", "C37-N01"], "'First read pending' on Home and in the Inbox; Read now runs the read"),
