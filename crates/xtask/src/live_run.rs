@@ -1277,17 +1277,23 @@ pub async fn run_for(
             failures.join("; ")
         )));
     }
+    let c25_families = live::families();
     let requested: Vec<String> = if families.is_empty() {
         manifest
             .families
             .iter()
-            .filter(|(_, f)| f.status == "designated")
+            .filter(|(id, f)| c25_families.contains(id) && f.status == "designated")
             .map(|(id, _)| id.clone())
             .collect()
     } else {
         families.to_vec()
     };
     for id in &requested {
+        if id == live::WIZARD_VERIFY_FAMILY {
+            return Err(invalid(
+                "L19 requires the native first-run wizard, not C25 live-run",
+            ));
+        }
         match manifest.families.get(id) {
             None => return Err(invalid(format!("{id} is not a live family"))),
             Some(f) if f.status != "designated" => {

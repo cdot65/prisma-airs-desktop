@@ -1,0 +1,29 @@
+   Compiling xtask v0.2.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-c29-live/crates/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.24s
+     Running tests/controlled_live.rs (target/debug/deps/controlled_live-467c515c93f15ad2)
+
+running 2 tests
+test l19_rejects_scope_expansion_and_incomplete_credentials ... FAILED
+test l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults ... FAILED
+
+failures:
+
+---- l19_rejects_scope_expansion_and_incomplete_credentials stdout ----
+
+thread 'l19_rejects_scope_expansion_and_incomplete_credentials' (2219400) panicked at crates/xtask/tests/controlled_live.rs:182:5:
+positive control
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults stdout ----
+
+thread 'l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults' (2219399) panicked at crates/xtask/tests/controlled_live.rs:172:5:
+the designated read-only wizard family is recognized
+
+
+failures:
+    l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults
+    l19_rejects_scope_expansion_and_incomplete_credentials
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p xtask --test controlled_live`

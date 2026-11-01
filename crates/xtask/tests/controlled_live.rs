@@ -136,8 +136,8 @@ fn every_family_is_present_and_a_blocked_one_says_why() {
         "L05 is missing",
     );
     rejected(
-        |v| v["families"]["L19"] = v["families"]["L01"].clone(),
-        "L19 is not a live family",
+        |v| v["families"]["L20"] = v["families"]["L01"].clone(),
+        "L20 is not a live family",
     );
     rejected(
         |v| v["families"]["L06"] = json!({"status": "blocked", "reason": ""}),
@@ -150,6 +150,110 @@ fn every_family_is_present_and_a_blocked_one_says_why() {
     let mut value = baseline();
     value["families"]["L06"] = json!({"status": "blocked", "reason": "no seeded Red Team records"});
     assert_eq!(failures(&value), Vec::<String>::new());
+}
+
+const WIZARD_VERIFY: &str = "one management credential verification through the first-run wizard (C29): one latest security-profile probe with limit=1; discard profile contents; no other inventory browsing or writes";
+
+fn with_l19() -> Value {
+    let mut value = baseline();
+    value["families"]["L19"] = json!({
+        "status": "designated", "environment": "test-b",
+        "credentials": {"client_secret": keychain("fixture-vulture-management")},
+        "nonsecret": {"client_id": "0b4f6a3e-2c1d-4e5f-8a9b-7c6d5e4f3a2b", "tsg_id": "1852583913", "region": "us"},
+        "permitted_operations": [WIZARD_VERIFY], "budget": {"reads": 2},
+        "cleanup": [], "irreversible_exclusions": ["no changes on Vulture"]
+    });
+    value
+}
+
+#[test]
+fn l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults() {
+    assert!(
+        failures(&baseline()).is_empty(),
+        "existing 18-family manifests remain valid"
+    );
+    assert!(
+        failures(&with_l19()).is_empty(),
+        "the designated read-only wizard family is recognized"
+    );
+    let mut one_read = with_l19();
+    one_read["families"]["L19"]["budget"]["reads"] = json!(1);
+    assert!(failures(&one_read).is_empty());
+    assert_eq!(
+        live::families().len(),
+        18,
+        "C25's default live execution set is unchanged"
+    );
+    let old: LiveManifest = serde_json::from_value(baseline()).expect("fixture");
+    let report = live::report(&ledger(), Some((&old, "fixture-sha")));
+    let row = report
+        .families
+        .iter()
+        .find(|f| f.id == "L19")
+        .expect("L19 is visible even without access");
+    assert_eq!(row.status, "blocked");
+}
+
+#[test]
+fn l19_rejects_scope_expansion_and_incomplete_credentials() {
+    assert!(failures(&with_l19()).is_empty(), "positive control");
+    let cases: Vec<(Value, &str, &str)> = vec![
+        (json!("staging-a"), "environment", "L19 requires test-b"),
+        (json!(["write"]), "permitted_operations", "L19 permits only"),
+        (json!({"reads": 0}), "budget", "L19 requires a read budget"),
+        (json!({"reads": 3}), "budget", "L19 requires a read budget"),
+        (
+            json!({"reads": 2, "scans": 1}),
+            "budget",
+            "L19 requires a read budget",
+        ),
+        (
+            json!({}),
+            "credentials",
+            "L19 requires one client_secret Keychain reference",
+        ),
+        (json!(["delete something"]), "cleanup", "L19 is read-only"),
+        (json!("prefix-"), "disposable_prefix", "L19 is read-only"),
+    ];
+    for (replacement, key, needle) in cases {
+        let mut value = with_l19();
+        value["families"]["L19"][key] = replacement;
+        assert!(
+            failures(&value).iter().any(|f| f.contains(needle)),
+            "{key}: {:?}",
+            failures(&value)
+        );
+    }
+    for (key, replacement) in [
+        ("client_id", ""),
+        ("tsg_id", "1234567890"),
+        ("region", "eu"),
+    ] {
+        let mut value = with_l19();
+        value["families"]["L19"]["nonsecret"][key] = json!(replacement);
+        assert!(
+            failures(&value)
+                .iter()
+                .any(|f| f.contains("L19 requires Vulture management metadata")),
+            "{key}"
+        );
+    }
+    let mut file_secret = with_l19();
+    file_secret["families"]["L19"]["credentials"]["client_secret"] =
+        json!({"kind": "file", "path": "/private/fixture-secret"});
+    assert!(
+        failures(&file_secret)
+            .iter()
+            .any(|f| f.contains("L19 requires one client_secret Keychain reference"))
+    );
+    let mut extra_metadata = with_l19();
+    extra_metadata["families"]["L19"]["nonsecret"]["endpoint"] =
+        json!("https://another.example.test");
+    assert!(
+        failures(&extra_metadata)
+            .iter()
+            .any(|f| f.contains("L19 requires Vulture management metadata"))
+    );
 }
 
 #[test]
@@ -340,7 +444,7 @@ fn every_required_row_reports_its_access() {
         .count();
 
     let none = live::report(&ledger, None);
-    assert_eq!(none.summary.families_blocked, 18);
+    assert_eq!(none.summary.families_blocked, 19);
     assert_eq!(none.summary.rows_required, required);
     assert_eq!(none.summary.rows_owned_by_c26, 1);
     assert_eq!(none.summary.rows_blocked, required - 1);

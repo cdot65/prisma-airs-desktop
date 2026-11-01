@@ -364,8 +364,9 @@ pub fn main(raw: Vec<String>) -> Result<()> {
             let record = crate::live::run(&repo, args.value("--scope").map(std::path::Path::new))?;
             let s = &record.summary;
             println!(
-                "live scope: {} of 18 families designated, {} blocked; required rows: {} designated, {} blocked by access, {} owned by C26; wrote {}",
+                "live scope: {} of {} families designated, {} blocked; required rows: {} designated, {} blocked by access, {} owned by C26; wrote {}",
                 s.families_designated,
+                record.families.len(),
                 s.families_blocked,
                 s.rows_designated,
                 s.rows_blocked,

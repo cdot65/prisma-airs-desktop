@@ -26,4 +26,5 @@ mod inference;
 mod mcp;
 mod reads;
 mod scan;
+mod wizard;
 mod workbench;

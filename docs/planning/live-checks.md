@@ -80,6 +80,35 @@ Each supported operation/options row maps to L-ID(s) or the explicit
 not-required categories below. Map exact supported operation classes in G01/C01;
 the prose is a minimum, not permission to omit difficult supported writes.
 
+## Optional C29 wizard family L19
+
+L19 is a separately designated, read-only wizard qualification on Vulture
+(test-b, TSG 1852583913, US). It is not part of C25's default L01–L18 execution
+set. Existing manifests with those eighteen families remain valid; an absent
+L19 is reported as blocked, never inferred from L18's scan permission.
+
+The management credential verification currently performs
+`profiles().list(limit=1, latest=true)` and discards the returned profile contents.
+It is not a token-only check. The explicit L19 operation is:
+
+> one management credential verification through the first-run wizard (C29): one latest security-profile probe with limit=1; discard profile contents; no other inventory browsing or writes
+
+L19 requires one `client_secret` Keychain reference, nonsecret `client_id`,
+`tsg_id` and `region`, and a `reads` budget of one or two with no other budget.
+No disposable resources or remote cleanup are permitted. The operator resolves
+only the exact reference in the approved private manifest and selects only
+Runtime Security in the wizard; its scan-key check is local storage validation,
+not a scan. Gateway, Red Team and Model selection would admit additional reads
+and is outside this designation. Do not complete onboarding into a view that
+automatically refreshes inventories.
+
+Before execution, validate the private manifest with `xtask live-scope`. Retain
+the source/build/manifest hashes, wizard verification status, nonsecret client
+and TSG identifiers, bounded operation metadata and local credential cleanup
+result. Retain no secret, token or profile response. A scope report or synthetic
+verification alone does not close C29's live row. See its
+`evidence/C29/live-scope-request.md` for the current authorization state.
+
 ## Explicit not-required live categories
 
 - **N01 Local-only work:** menus/themes/accessibility, local case/report/document

@@ -1,0 +1,29 @@
+   Compiling xtask v0.2.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-c29-live/crates/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.05s
+     Running tests/live_run/main.rs (target/debug/deps/live_run-78330795c0898208)
+
+running 2 tests
+test wizard::an_optional_wizard_designation_never_enters_default_c25_execution ... FAILED
+test wizard::explicitly_selecting_l19_refuses_before_resolving_its_secret ... FAILED
+
+failures:
+
+---- wizard::an_optional_wizard_designation_never_enters_default_c25_execution stdout ----
+
+thread 'wizard::an_optional_wizard_designation_never_enters_default_c25_execution' (2241071) panicked at crates/xtask/tests/live_run/wizard.rs:29:25:
+L19 must not be dispatched by the default C25 run: Invalid("L19 has no runner")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- wizard::explicitly_selecting_l19_refuses_before_resolving_its_secret stdout ----
+
+thread 'wizard::explicitly_selecting_l19_refuses_before_resolving_its_secret' (2241072) panicked at crates/xtask/tests/live_run/wizard.rs:39:5:
+assertion failed: error.to_string().contains("L19 requires the native first-run wizard")
+
+
+failures:
+    wizard::an_optional_wizard_designation_never_enters_default_c25_execution
+    wizard::explicitly_selecting_l19_refuses_before_resolving_its_secret
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.32s
+
+error: test failed, to rerun pass `-p xtask --test live_run`

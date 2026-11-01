@@ -40,3 +40,26 @@ The run then goes through the real wizard on the fixture build with the
 Keychain reference, and the receipt lands in `live/L19-verify.json` with the
 client id and TSG only (no token, no secret). Until then `live/blocked.json`
 is the row's record.
+
+## Preparation update — 2026-11-01
+
+The owner approved adding read-only L19 with the existing Keychain reference,
+a maximum of two reads and no inventory browsing or changes. The public client
+ID was supplied through the owner's local CLI tenant configuration; its secret
+field was neither copied nor used. Private-manifest activation follows offline
+validation of the new family.
+
+Inspection of the actual management verifier found that its credential probe
+reads one latest security-profile entry (`limit=1`, `latest=true`) and discards
+the response contents. It does not merely obtain a token. The owner explicitly
+approved this single-profile probe, retaining only verification status and call
+metadata, within the two-read maximum and with no other inventory browsing or
+changes. The earlier wording above must not be used to imply that it is token-only.
+The exact bounded operation and input restrictions are now documented under
+L19 in `docs/planning/live-checks.md` and validated by `xtask::live`.
+
+The offline regression first failed because L19 was an unknown family; it now
+accepts an optional complete designation and rejects scope expansion. This is
+tooling preparation, not a live receipt. The historical `live/blocked.json`
+remains unchanged until an approved actual wizard verification has a separate
+source-bound receipt.

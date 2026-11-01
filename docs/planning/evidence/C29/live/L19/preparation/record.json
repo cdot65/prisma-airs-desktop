@@ -1,0 +1,28 @@
+{
+  "schema": "airs-v2/l19-preparation/1",
+  "subject": "C29",
+  "status": "offline preparation passed; live verification not yet run",
+  "implementer": "Codex",
+  "approval": "owner approved exact single latest-profile probe; max two reads; existing Keychain reference only",
+  "results": {
+    "controlled_live": "15 passed",
+    "live_run": "39 passed",
+    "clippy": "pass; xtask tests with test-fixtures, -D warnings"
+  },
+  "logs_sha256": {
+    "scope-red.log": "d921e5d7f0bad0c9f8cb996753bb02888cc38f8aa599400f96c97e8470a3e737",
+    "scope-green.log": "459d9d3c2721b1a0a6f0e4874863043323a40f69459dd9d612fe78c35d82f3b1",
+    "runner-red.log": "66dc44465569fdfdab527b2587b34bc9b89f505d42f5dc7416748595cdbb5971",
+    "live-tests.log": "430d5957b2e3107107e3dbc7cc57db7da9d184532ff4a52f7ad26ac0f16e12e6",
+    "clippy.log": "32895f3e4b7a8ec727f4b0147d93b593d166c4289b2c08bec3535a2ba25999f8"
+  },
+  "uncommitted_build_input_sha256": {
+    "Cargo.lock": "1bef6c8e8ff842ff737abe22cafe41963ebd13ecb1afb3cc69dfb4ed37bc61c1",
+    "crates/xtask/src/signing.rs": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+    "crates/xtask/src/budgets.rs": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71"
+  },
+  "limitations": [
+    "The isolated branch includes only temporary copies of the owner signing.rs and budgets.rs build inputs; they are not staged with this remediation.",
+    "No secret was resolved and no product endpoint was called by these offline checks."
+  ]
+}

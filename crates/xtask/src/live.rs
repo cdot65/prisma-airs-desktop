@@ -2,7 +2,8 @@
 //! manifest and the access report derived from it.
 //!
 //! The manifest names accounts, environments, permitted operations, budgets
-//! and cleanup for every live family L01–L18 (`docs/planning/live-checks.md`,
+//! and cleanup for the default families L01–L18 and optional C29 family L19
+//! (`docs/planning/live-checks.md`,
 //! `release-contract.md`). It lives outside the repository, readable only by
 //! its owner, and names each secret by where it is stored, never by value.
 //! Validation never resolves a secret. A family without designated access is
@@ -26,6 +27,8 @@ pub const V2_SERVICE_PREFIX: &str = "io.cdot.prisma-airs-desktop.v2.";
 /// v1's own Keychain service, which C25 never touches.
 pub const V1_SERVICE: &str = "io.cdot.prisma-airs-desktop";
 pub const NO_MANIFEST: &str = "no owner-approved live manifest";
+pub const WIZARD_VERIFY_FAMILY: &str = "L19";
+pub const WIZARD_VERIFY_OPERATION: &str = "one management credential verification through the first-run wizard (C29): one latest security-profile probe with limit=1; discard profile contents; no other inventory browsing or writes";
 
 /// Families whose operations change remote state: each needs disposable
 /// names and cleanup.
@@ -36,6 +39,54 @@ pub const CONSUMING: [&str; 5] = ["L01", "L09", "L12", "L13", "L16"];
 
 pub fn families() -> Vec<String> {
     (1..=18).map(|n| format!("L{n:02}")).collect()
+}
+
+/// C25's default execution set remains L01–L18. L19 is an optional, separately
+/// designated C29 wizard probe; recognizing it never makes it a C25 live run.
+pub fn known_families() -> Vec<String> {
+    let mut known = families();
+    known.push(WIZARD_VERIFY_FAMILY.to_owned());
+    known
+}
+
+fn check_wizard_family(family: &Family, failures: &mut Vec<String>) {
+    if family.environment != "test-b" {
+        failures.push("L19 requires test-b (Vulture)".to_owned());
+    }
+    if family.permitted_operations != [WIZARD_VERIFY_OPERATION] {
+        failures.push("L19 permits only the bounded wizard management verification".to_owned());
+    }
+    if family.budget.len() != 1 || !matches!(family.budget.get("reads"), Some(1 | 2)) {
+        failures.push(
+            "L19 requires a read budget of one or two and no other service budget".to_owned(),
+        );
+    }
+    if family.credentials.len() != 1
+        || !matches!(
+            family.credentials.get("client_secret"),
+            Some(SecretRef::Keychain { .. })
+        )
+    {
+        failures.push("L19 requires one client_secret Keychain reference".to_owned());
+    }
+    let client = family.nonsecret.get("client_id");
+    if family.nonsecret.len() != 3
+        || client.is_none_or(|v| {
+            v.is_empty() || v.len() > 256 || !v.bytes().all(|b| b.is_ascii_graphic())
+        })
+        || family.nonsecret.get("tsg_id").map(String::as_str) != Some("1852583913")
+        || family.nonsecret.get("region").map(String::as_str) != Some("us")
+    {
+        failures.push(
+            "L19 requires Vulture management metadata: client_id, tsg_id 1852583913, region us"
+                .to_owned(),
+        );
+    }
+    if family.disposable_prefix.is_some() || !family.cleanup.is_empty() {
+        failures.push(
+            "L19 is read-only and has no disposable resources or cleanup operations".to_owned(),
+        );
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,8 +240,9 @@ pub fn check(repo: &Repo, manifest: &LiveManifest) -> Vec<String> {
             ));
         }
     }
+    let known = known_families();
     for (id, family) in &manifest.families {
-        if !ids.contains(id) {
+        if !known.contains(id) {
             failures.push(format!("{id} is not a live family"));
             continue;
         }
@@ -234,6 +286,9 @@ pub fn check(repo: &Repo, manifest: &LiveManifest) -> Vec<String> {
                 }
             }
             "designated" => {
+                if id == WIZARD_VERIFY_FAMILY {
+                    check_wizard_family(family, &mut failures);
+                }
                 if !manifest.environments.contains_key(&family.environment) {
                     failures.push(format!(
                         "{id} names unknown environment {:?}",
@@ -385,7 +440,7 @@ fn row_families(live_column: &str) -> Vec<String> {
 /// Maps every required ledger row to its families' access under `scope`
 /// (none: every family blocked).
 pub fn report(ledger: &Ledger, scope: Option<(&LiveManifest, &str)>) -> Report {
-    let families: Vec<FamilyAccess> = self::families()
+    let families: Vec<FamilyAccess> = self::known_families()
         .into_iter()
         .map(
             |id| match scope.and_then(|(m, _)| m.families.get(&id).map(|f| (m, f))) {
@@ -404,14 +459,21 @@ pub fn report(ledger: &Ledger, scope: Option<(&LiveManifest, &str)>) -> Report {
                         .collect(),
                     id,
                 },
-                None => FamilyAccess {
-                    id,
-                    status: "blocked".to_owned(),
-                    reason: NO_MANIFEST.to_owned(),
-                    environment: String::new(),
-                    environment_kind: None,
-                    credentials: Vec::new(),
-                },
+                None => {
+                    let reason = if scope.is_some() {
+                        format!("{id} has no owner designation in this manifest")
+                    } else {
+                        NO_MANIFEST.to_owned()
+                    };
+                    FamilyAccess {
+                        id,
+                        status: "blocked".to_owned(),
+                        reason,
+                        environment: String::new(),
+                        environment_kind: None,
+                        credentials: Vec::new(),
+                    }
+                }
             },
         )
         .collect();
