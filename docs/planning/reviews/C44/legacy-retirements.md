@@ -6,7 +6,7 @@ Not retired: the tenant-switch guard with a Harness decision pending (C30-N01, i
 
 ## Acceptance
 
-Accepted by the owner on 2026-10-31. Asked whether to accept the 90 retirements listed below (11 under D060, 6 under D059, 73 whose behaviour the named core or renderer suites hold with no native driver on the one presentation) or to port some into native drivers first, the owner answered, in their own words: "accepted". Every retirement below stands on that acceptance; a change to this list is a new decision.
+Accepted by the owner on 2026-10-31. Asked whether to accept the 90 retirements listed below (11 under D060, 6 under D059, 73 whose behaviour the named core or renderer suites hold with no native driver on the one presentation) or to port some into native drivers first, the owner answered, in their own words: "accepted". Every retirement below stands on that acceptance; a change to this list is a new decision. Of the 90 accepted, C30-N01 and C31-N03 were then exercised natively after all (C38-N03 on the Harness board; acceptance_c31.py on the one presentation) and stand as exercised in the map, not retired; 88 remain retired.
 
 ## D060 — no import from the alpha (11)
 
