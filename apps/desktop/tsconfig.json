@@ -8,6 +8,10 @@
     ],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "paths": {
+      "@prisma-airs/desktop-contracts": ["../../packages/desktop-contracts/src/index.ts"],
+      "@prisma-airs/desktop-contracts/*": ["../../packages/desktop-contracts/*"]
+    },
     "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,

@@ -1,0 +1,12 @@
+$ cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_closure
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running tests/ui_v2_closure/main.rs (target/debug/deps/ui_v2_closure-a80a398054df4103)
+
+running 3 tests
+test a_fresh_store_starts_in_the_first_run_wizard_of_the_only_presentation ... ok
+test an_older_store_that_persisted_the_legacy_presentation_still_gets_v2 ... ok
+test every_destination_the_legacy_shell_reached_is_a_v2_destination ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0

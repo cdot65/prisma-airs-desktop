@@ -434,6 +434,8 @@ pub struct CollectionView {
     pub id: String,
     pub name: String,
     pub folder: String,
+    /// Opaque identity of this root and collection id for presentation caches, not authority.
+    pub scope: String,
     pub built_in: bool,
     pub complete: bool,
     pub requests: Vec<RequestEntry>,
@@ -769,6 +771,7 @@ impl State {
                 id: o.catalog.id.clone(),
                 name: o.catalog.name.clone(),
                 folder: folder_name(&o.root),
+                scope: profile::scope(&o.root, &o.catalog.id),
                 built_in: o.built_in,
                 complete: o.catalog.complete,
                 requests: o.catalog.requests.clone(),

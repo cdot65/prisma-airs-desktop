@@ -376,7 +376,10 @@ def exercise(app, mgmt, endpoint, prepared, FINAL):
         rm["persists"] = app.has_text(tree, "Applied and read back: Edit Finance")
         rm["tree"] = c29.save_tree("reduce-motion-toast", tree)
         rm["capture"] = c29.capture(app, "reduce-motion-toast")
-        c29.press(app, "AXButton", "Dismiss")
+        # Dismiss is pressed when the toast is still there; a toast that left on its own is recorded by `persists`
+        # (false) rather than aborting the run (the C44 cumulative run met that once).
+        if fx.App.node(app.tree(), "AXButton", "Dismiss") is not None:
+            c29.press(app, "AXButton", "Dismiss")
         time.sleep(0.6)
         rm["dismissed"] = not app.has_text(app.tree(), "Applied and read back: Edit Finance")
     finally:

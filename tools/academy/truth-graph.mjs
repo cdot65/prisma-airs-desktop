@@ -25,7 +25,7 @@
  * list fails the check. The CLI writes <dir>/truth-graph.json and
  * <dir>/academy-modules.txt; tests call truthGraph().
  */
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,7 +33,16 @@ import { createRequire } from 'node:module'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const app = join(repo, 'apps/desktop')
-const academy = join(repo, '.work/academy')
+function realpathOr(path) {
+    try {
+        return realpathSync(path)
+    } catch {
+        return path
+    }
+}
+// Its real path: Vite reports module ids with symbolic links resolved, so a
+// checkout that links its .work (a worktree) would otherwise match no module.
+const academy = realpathOr(join(repo, '.work/academy'))
 
 /** Academy-relative prefixes that must never ship in the desktop build. */
 const TRUTH = [

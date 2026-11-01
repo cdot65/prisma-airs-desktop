@@ -22,6 +22,8 @@ import {
     type RotationView,
     type ScanRecordView,
     type ShellSnapshot,
+    DeliveryOutcomeUnknown,
+    type ManagementFailure,
 } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
 import { scriptedNative, tenant, type Native } from '../../test/native'
@@ -114,6 +116,9 @@ interface Inventories {
     topics: Record<string, unknown>[]
     /** Detail reads answer absent for these IDs. */
     absent: string[]
+    /** What the Red Team scan list reports beyond its rows (a partial or capped sample), or why it could not be read. */
+    redTeamScans?: { total: number | null; capped: boolean; complete: boolean }
+    redTeamScansFailure?: ManagementFailure
 }
 
 const ID_FIELD: Record<string, string> = {
@@ -173,8 +178,8 @@ function service(native: Native, data: Inventories = { keys: [KEY], topics: [TOP
                     statistics: { scans: 1, targets: 1, status: [{ label: 'COMPLETED', count: 1 }], risk: null, targetTypes: [{ label: 'APPLICATION', count: 1 }], noScans: false },
                     statisticsFailure: null,
                     // The extra field stands for anything a reply carries beyond the contract.
-                    scans: { rows: [RT_SCAN as unknown as RedTeamScan], total: 1, capped: false, complete: true },
-                    scansFailure: null,
+                    scans: data.redTeamScansFailure ? null : { rows: [RT_SCAN as unknown as RedTeamScan], total: 1, capped: false, complete: true, ...data.redTeamScans },
+                    scansFailure: data.redTeamScansFailure ?? null,
                 },
             })
         }
@@ -1001,6 +1006,229 @@ describe('v2 Administration', () => {
         expectIcon(document.querySelector('[data-direction="prompt"] [data-verdict="clear"]'), /Not detected: no custom topic assigned to chatbot-strict matched/)
         expectIcon(document.querySelector('[data-direction="response"] [data-verdict="unreported"]'), /Not reported by the service for this scan/)
     })
+
+    // ---- C39a: the board (R2App start=admin) over the same behaviour ----
+
+    it('draws the product cards: description, headline figure from the read, status pill and alerts; Expand all and Collapse all (C39a)', async () => {
+        const base = fxAdmin()
+        const read = { ...base.inbox.read, products: [{ product: 'runtimeSecurity' as const, state: 'ok' as const, sourcesRead: 2, sourcesTotal: 2, detail: null }, { product: 'gateway' as const, state: 'needsRole' as const, sourcesRead: 0, sourcesTotal: 2, detail: null }] }
+        const overview = { ...base.overview, read: { readAt: 1_761_490_000, chart: { bucketSeconds: 3600, buckets: [{ time: '2026-10-26T10:00:00Z', total: 12, violating: 3, detections: null }, { time: '2026-10-26T11:00:00Z', total: 9, violating: 0, detections: null }] }, chartFailure: null, summary: { sessions: 21, violating: 3, benign: 18, detectionEvents: 38 }, keysComplete: true, keysFailure: null, items: [], gaps: [], gateway: null } }
+        const { user } = await launch({ ...base, inbox: { ...base.inbox, read, items: [{ id: 'e-1', kind: 'runtime', needsAction: true, severity: 'warn', title: '3 violating sessions', detail: '', source: 'Runtime Security', product: 'runtimeSecurity', target: null, actionLabel: null, facts: [], when: 1_761_490_000, hold: null }] }, overview })
+        expect(screen.getByText('Northwind Health · every change is reviewed before it is applied')).toBeInTheDocument()
+        const runtime = product('runtimeSecurity')
+        expect(within(runtime).getByText('LLM and MCP guardrails: prompts, responses and tool calls are checked as they happen.')).toBeInTheDocument()
+        expect(runtime.querySelector('[data-slot="admin-product-stat"]')).toHaveTextContent('38detections · 24h')
+        expect(runtime.querySelector('[data-slot="admin-product-pill"]')).toHaveTextContent('Connected')
+        expect(runtime.querySelector('[data-slot="admin-product-alerts"]')).toHaveTextContent('1 alert')
+        const gateway = product('gateway')
+        expect(gateway.querySelector('[data-slot="admin-product-pill"]')).toHaveTextContent('Needs a role')
+        expect(gateway.querySelector('[data-slot="admin-product-stat"]')).toHaveTextContent('—requests · today')
+        expect(product('agenticIdentity').querySelector('[data-slot="admin-product-pill"]')).toHaveTextContent('Not available')
+        // Only Runtime is open at first; Expand all opens every available product, Collapse all closes them.
+        expect(within(runtime).getByRole('button', { name: /AI Runtime Security/ })).toHaveAttribute('aria-expanded', 'true')
+        expect(within(gateway).getByRole('button', { name: /AI Gateway/ })).toHaveAttribute('aria-expanded', 'false')
+        await user.click(screen.getByRole('button', { name: 'Expand all' }))
+        for (const id of ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill']) expect(within(product(id)).getByRole('tablist')).toBeInTheDocument()
+        expect(within(product('agenticEndpoint')).queryByRole('tablist')).toBeNull()
+        await user.click(screen.getByRole('button', { name: 'Collapse all' }))
+        for (const id of ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill']) expect(within(product(id)).queryByRole('tablist')).toBeNull()
+    })
+
+    it('draws the Runtime Overview from the read: three tiles and the 24-hour bars; the table footer names the count and the read time (C39a)', async () => {
+        const base = fxAdmin()
+        const overview = { ...base.overview, read: { readAt: 1_761_490_000, chart: { bucketSeconds: 3600, buckets: Array.from({ length: 24 }, (_, i) => ({ time: `2026-10-26T${String(i).padStart(2, '0')}:00:00Z`, total: 10, violating: i % 6 === 0 ? 2 : 0, detections: null })) }, chartFailure: null, summary: { sessions: 240, violating: 8, benign: 232, detectionEvents: 8 }, keysComplete: false, keysFailure: null, items: [], gaps: [], gateway: null } }
+        const { user } = await launch({ ...base, overview })
+        const runtime = product('runtimeSecurity')
+        expect(await within(runtime).findByRole('button', { name: 'Details for Finance' })).toBeInTheDocument()
+        expect(runtime.querySelector('[data-slot="administration-foot"]')).toHaveTextContent(/1 item.*Read \d\d:\d\d/)
+        expect(within(runtime).getByRole('textbox', { name: 'Search custom topics' })).toBeInTheDocument()
+        await user.click(within(runtime).getByRole('tab', { name: 'Overview' }))
+        const tiles = Array.from(runtime.querySelectorAll('[data-slot="admin-kpi"]')).map((t) => t.textContent)
+        expect(tiles[0]).toContain('Detection events · 24h')
+        expect(tiles[0]).toContain('8')
+        expect(tiles[1]).toContain('Sessions · 24h')
+        expect(tiles[1]).toContain('240')
+        expect(tiles[2]).toContain('Violating · 24h')
+        expect(tiles[2]).toContain('API keys: Partial')
+        expect(runtime.querySelector('[data-slot="admin-sparkline"]')).toHaveAttribute('data-bars', '24')
+        expect(within(runtime).getByRole('img', { name: 'Activity, last 24 hours' })).toBeInTheDocument()
+    })
+
+    it('says when the chart was not read: the events tile names it and the bars are none (C39a)', async () => {
+        const base = fxAdmin()
+        const overview = { ...base.overview, read: { readAt: 1_761_490_000, chart: null, chartFailure: 'denied' as const, summary: { sessions: null, violating: null, benign: null, detectionEvents: null }, keysComplete: true, keysFailure: null, items: [], gaps: ['sessions chart'], gateway: null } }
+        const { user } = await launch({ ...base, overview })
+        const runtime = product('runtimeSecurity')
+        await user.click(within(runtime).getByRole('tab', { name: 'Overview' }))
+        expect(runtime.querySelectorAll('[data-slot="admin-kpi"]')[0]).toHaveTextContent('—')
+        expect(runtime.querySelectorAll('[data-slot="admin-kpi"]')[0]).toHaveTextContent('Sessions chart not read')
+        expect(within(runtime).getByRole('img', { name: 'Sessions chart not read' })).toBeInTheDocument()
+        expect(runtime.querySelector('[data-slot="admin-sparkline"]')).toHaveAttribute('data-bars', '0')
+    })
+
+    // ---- C39b: the other products on the same pattern; the review sheet as the prototype's sheet ----
+
+    it('draws the Gateway Overview from the tenant read: requests, error rate and cost of the chosen workspace, never invented (C39b)', async () => {
+        const base = fxAdmin({ gateway: GATEWAY })
+        const overview = { ...base.overview, read: { readAt: 1_761_490_000, chart: { bucketSeconds: 3600, buckets: [{ time: '2026-10-26T10:00:00Z', total: 3, violating: 0, detections: null }] }, chartFailure: null, summary: { sessions: 3, violating: 0, benign: 3, detectionEvents: 0 }, keysComplete: true, keysFailure: null, items: [], gaps: [], gateway: { workspace: WS.id, workspaceName: WS.name, requests: 1284, errors: 211, cost: 312, partial: false, usageFailure: null, policies: 5, limitsFailure: null } } }
+        const { user } = await launch({ ...base, overview })
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Overview' }))
+        const panel = panelOf(product('gateway'))
+        const tiles = Array.from(panel.querySelectorAll('[data-slot="admin-kpi"]')).map((t) => t.textContent)
+        expect(tiles[0]).toContain('Requests · today')
+        expect(tiles[0]).toContain('1,284')
+        expect(tiles[1]).toContain('16.4%')
+        expect(tiles[1]).toContain('211 errors')
+        expect(tiles[2]).toContain('$3.12')
+        expect(tiles[2]).toContain('5 limit policies')
+        expect(panel).toHaveTextContent('Workspace Team A')
+    })
+
+    it('saves, replaces and removes the chosen workspace\u2019s inference key from the Gateway card\u2019s Workspaces tab; the key never stays in the page (C44, the legacy Playground form is gone)', async () => {
+        const base = fxAdmin({ gateway: GATEWAY })
+        const { native, user } = await launch(base)
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Workspaces' }))
+        const panel = panelOf(product('gateway'))
+        const form = await waitFor(() => {
+            const found = panel.querySelector('[data-slot="gateway-workspace-key"]')
+            expect(found).not.toBeNull()
+            return found as HTMLElement
+        })
+        expect(form).toHaveTextContent('Not saved')
+        // An endpoint that is not https is refused in the page: nothing is sent.
+        await user.type(within(form).getByLabelText('Inference endpoint'), 'http://gw.example.test')
+        await user.type(within(form).getByLabelText('Workspace inference key'), 'SYNTHETIC-KEY-1')
+        await user.click(within(form).getByRole('button', { name: 'Save workspace key' }))
+        expect(within(form).getByText('Enter the https address of the inference endpoint.')).toBeInTheDocument()
+        expect(native.dispatched.filter((i) => i.kind === 'configureInferenceCredential')).toEqual([])
+        expect((within(form).getByLabelText('Workspace inference key') as HTMLInputElement).value).toBe('')
+        // The https endpoint and a key are sent once, to the Keychain, for the chosen workspace; the field is emptied.
+        await user.clear(within(form).getByLabelText('Inference endpoint'))
+        await user.type(within(form).getByLabelText('Inference endpoint'), 'https://gw.example.test/rt/v1')
+        await user.type(within(form).getByLabelText('Workspace inference key'), 'SYNTHETIC-KEY-2')
+        await user.click(within(form).getByRole('button', { name: 'Save workspace key' }))
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'configureInferenceCredential', context: base.active!.context, mode: 'keychain', workspace: GATEWAY.selected!.reference, endpoint: 'https://gw.example.test/rt/v1', secret: 'SYNTHETIC-KEY-2' })
+        )
+        expect(await within(form).findByText('Workspace key saved in the Keychain.')).toBeInTheDocument()
+        expect((within(form).getByLabelText('Workspace inference key') as HTMLInputElement).value).toBe('')
+        expect(form.textContent).not.toContain('SYNTHETIC-KEY')
+        // The core's state: saved for this workspace → Replace and Remove; removing dispatches the removal.
+        const tenant = native.current.tenants.find((t) => t.id === native.current.active?.tenant)!
+        await native.push({ ...native.current, tenants: native.current.tenants.map((t) => (t.id === tenant.id ? { ...t, inference: { state: 'ready' as const, mode: 'keychain' as const, failure: null, target: { workspace: WS, endpoint: 'https://gw.example.test/rt/v1' } } } : t)) })
+        expect(await within(form).findByText(/Saved in the Keychain/)).toBeInTheDocument()
+        expect(within(form).getByRole('button', { name: 'Replace workspace key' })).toBeInTheDocument()
+        await user.click(within(form).getByRole('button', { name: 'Remove workspace key' }))
+        await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'removeInferenceCredential', context: base.active!.context }))
+        expect(await within(form).findByText('Workspace key removed.')).toBeInTheDocument()
+    })
+
+    it('lists Gateway routes as a table with View per row and the inventory actions in the detail; the Red Team overview draws its tiles and ranked bars (C39b)', async () => {
+        const { user } = await launch(fxAdmin({ gateway: GATEWAY }))
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Routes' }))
+        const panel = panelOf(product('gateway'))
+        expect(await within(panel).findByRole('table', { name: 'Routes' })).toBeInTheDocument()
+        expect(within(panel).getByRole('textbox', { name: 'Search routes' })).toBeInTheDocument()
+        await user.click(within(panel).getByRole('button', { name: 'Details for routes-one' }))
+        const bar = await waitFor(() => panel.querySelector('[data-slot="gateway-item-actions"]') as HTMLElement)
+        expect(within(bar).getAllByRole('button').map((b) => b.textContent)).toEqual(['Edit…', 'Delete…'])
+        expect(panel.querySelector('[data-slot="gateway-foot"]')).toHaveTextContent('1 routes · complete')
+        await user.click(within(product('redTeam')).getByRole('button', { name: /AI Red Teaming/ }))
+        await user.click(within(product('redTeam')).getByRole('tab', { name: 'Overview' }))
+        const rt = panelOf(product('redTeam'))
+        const summary = await within(rt).findByLabelText('Red Teaming summary')
+        expect(summary).toHaveTextContent('Scans1')
+        expect(summary).toHaveTextContent('Targets scanned1')
+        expect(within(rt).getByRole('heading', { name: 'Scans by status' })).toBeInTheDocument()
+    })
+
+    it('opens a change in the prototype’s sheet: the title with the review’s state, a close control, the change’s path (C39b)', async () => {
+        const { native, user } = await launch(fxAdmin())
+        await user.click(await within(product('runtimeSecurity')).findByRole('button', { name: 'Details for Finance' }))
+        await user.click(await screen.findByRole('button', { name: 'Edit…' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Review a change' })
+        expect(within(sheet).getByRole('heading', { level: 2, name: 'Review a change' })).toBeInTheDocument()
+        expect(sheet.querySelector('[data-slot="review-state"]')).toHaveTextContent('Draft')
+        expect(sheet.querySelector('[data-slot="review-path"]')).toHaveTextContent('Custom topic › Edit Finance')
+        await user.click(within(sheet).getByRole('button', { name: 'Review change' }))
+        await native.push({ ...native.current, changes: { review: review(), staged: null, results: [] } })
+        await waitFor(() => expect(sheet.querySelector('[data-slot="review-state"]')).toHaveTextContent('Ready for review'))
+        await user.click(within(sheet).getByRole('button', { name: 'Close review' }))
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Review a change' })).toBeNull())
+        expect(native.dispatched.filter((i) => i.kind === 'discardChange')).toHaveLength(1)
+    })
+    it('keeps a Gateway draft typed within the save pause when the sheet is closed at once: the exact text is saved, nothing is applied (C39b attempt-01 R1)', async () => {
+        const { native, user } = await launch(fxAdmin({ gateway: GATEWAY }))
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Routes' }))
+        const panel = panelOf(product('gateway'))
+        await user.click(await within(panel).findByRole('button', { name: 'Details for routes-one' }))
+        const bar = await waitFor(() => panel.querySelector('[data-slot="gateway-item-actions"]') as HTMLElement)
+        await user.click(within(bar).getByRole('button', { name: 'Edit routes-one' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Review a change' })
+        const editor = within(sheet).getByRole('textbox', { name: /draft \(JSON\)/ })
+        await user.clear(editor)
+        await user.type(editor, '{{"name":"edited at once"}')
+        // Closed before the 800 ms pause: the flush runs before the editor is gone.
+        await user.click(within(sheet).getByRole('button', { name: 'Close review' }))
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Review a change' })).toBeNull())
+        const saves = native.dispatched.filter((i) => i.kind === 'saveGatewayDraft') as Extract<Intent, { kind: 'saveGatewayDraft' }>[]
+        expect(saves).toHaveLength(1)
+        expect(saves[0]!.draft.body).toBe('{"name":"edited at once"}')
+        expect(native.dispatched.some((i) => i.kind === 'reviewChange')).toBe(false)
+    })
+
+    it('the open sheet says what became of the Gateway draft from the current state: kept, rejected (incomplete JSON), not stored, and a save the desktop refused (C39b attempt-01 R2)', async () => {
+        const { native, user } = await launch(fxAdmin({ gateway: GATEWAY }))
+        await user.click(within(product('gateway')).getByRole('button', { name: /AI Gateway/ }))
+        await user.click(within(product('gateway')).getByRole('tab', { name: 'Routes' }))
+        const panel = panelOf(product('gateway'))
+        await user.click(await within(panel).findByRole('button', { name: 'Details for routes-one' }))
+        const bar = await waitFor(() => panel.querySelector('[data-slot="gateway-item-actions"]') as HTMLElement)
+        await user.click(within(bar).getByRole('button', { name: 'Edit routes-one' }))
+        const sheet = await screen.findByRole('dialog', { name: 'Review a change' })
+        const note = () => sheet.querySelector('[data-slot="gateway-draft-note"]') as HTMLElement
+        expect(note()).toHaveTextContent('Your edits are kept on this Mac as a draft')
+        expect(note()).toHaveAttribute('data-state', 'kept')
+        const local = native.current.gateway.local
+        await native.push({ ...native.current, gateway: { ...native.current.gateway, local: { ...local, problem: 'incomplete' } } })
+        await waitFor(() => expect(note()).toHaveTextContent('Only complete JSON is kept on this Mac'))
+        expect(note()).toHaveAttribute('data-state', 'rejected')
+        await native.push({ ...native.current, gateway: { ...native.current.gateway, local: { ...local, problem: null, unsaved: true } } })
+        await waitFor(() => expect(note()).toHaveTextContent('could not be stored on this Mac'))
+        expect(note()).toHaveAttribute('data-state', 'unsaved')
+        await native.push({ ...native.current, gateway: { ...native.current.gateway, local: { ...local, problem: null, unsaved: false } } })
+        await waitFor(() => expect(note()).toHaveAttribute('data-state', 'kept'))
+        // A save the desktop refuses is said, until the next save is admitted.
+        const respond = native.respond
+        native.respond = (intent: Intent) => (intent.kind === 'saveGatewayDraft' ? { outcome: 'refusal', refusal: 'busy' } : respond(intent))
+        const editor = within(sheet).getByRole('textbox', { name: /draft \(JSON\)/ })
+        await user.type(editor, ' ')
+        await waitFor(() => expect(note()).toHaveAttribute('data-state', 'refused'), { timeout: 3000 })
+        expect(note()).toHaveTextContent('did not keep these edits')
+        native.respond = respond
+        await user.type(editor, ' ')
+        await waitFor(() => expect(note()).toHaveAttribute('data-state', 'kept'), { timeout: 3000 })
+    })
+
+    it('every Red Team tab drawn from the scan list says what that list is: a partial sample of the reported total on Scans, Targets, Attack results and Reports, not only Overview; a list that could not be read says so there too (C39b attempt-01 R3)', async () => {
+        const partial = await launch(fxAdmin(), { keys: [KEY], topics: [TOPIC], absent: [], redTeamScans: { total: 250, capped: false, complete: false } })
+        await partial.user.click(within(product('redTeam')).getByRole('button', { name: /AI Red Teaming/ }))
+        for (const tab of ['Overview', 'Scans', 'Targets', 'Attack results', 'Reports']) {
+            await partial.user.click(within(product('redTeam')).getByRole('tab', { name: tab }))
+            expect(await within(panelOf(product('redTeam'))).findByText(/Scans · Partial sample · 1 of 250/)).toBeInTheDocument()
+        }
+        partial.unmount()
+        const denied = await launch(fxAdmin(), { keys: [KEY], topics: [TOPIC], absent: [], redTeamScansFailure: 'unauthorized' })
+        await denied.user.click(within(product('redTeam')).getByRole('button', { name: /AI Red Teaming/ }))
+        for (const tab of ['Scans', 'Targets', 'Reports']) {
+            await denied.user.click(within(product('redTeam')).getByRole('tab', { name: tab }))
+            expect(await within(panelOf(product('redTeam'))).findByText(/Scans · Unavailable:/)).toBeInTheDocument()
+        }
+    })
 })
 
 function settledResult(operation = 'op-11'): ChangeResultView {
@@ -1021,3 +1249,152 @@ function settledResult(operation = 'op-11'): ChangeResultView {
         provisioning: null,
     }
 }
+
+// ---- C39a attempt-01 E2, R2, R3: the v2 Playground's handlers and the table's reads through their v2 imports ----
+
+describe('v2 Playground handlers (C39a E2)', () => {
+    const scanning = (operation: string, progress: ScanRecordView['progress']): ScanRecordView => ({ operation, progress, outcome: null, stop: null, failure: null, discarded: false, result: null })
+
+    it('submits the fields as typed, says a refusal and an unconfirmed delivery without replaying, and cancels a running scan', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await user.click(within(runtime).getByRole('tab', { name: 'Playground' }))
+        const form = within(runtime).getByRole('form', { name: 'Scan a prompt or response' })
+        await user.type(within(form).getByLabelText('Profile name or ID'), 'chatbot-strict')
+        await user.type(within(form).getByLabelText('Prompt'), 'hello there')
+        const respond = native.respond
+        // Refused: said, nothing scanned.
+        native.respond = (intent: Intent) => (intent.kind === 'scan' ? { outcome: 'refusal', refusal: 'invalidInput' } : respond(intent))
+        await user.click(within(form).getByRole('button', { name: 'Scan' }))
+        expect(native.dispatched.filter((i) => i.kind === 'scan')).toHaveLength(1)
+        expect(native.dispatched.at(-1)).toMatchObject({ kind: 'scan', context: CONTEXT, draft: expect.objectContaining({ prompt: 'hello there' }) })
+        expect(await within(runtime).findByRole('alert')).toBeInTheDocument()
+        // Unknown delivery: said as unconfirmed, never resent on its own.
+        native.respond = (intent: Intent) => {
+            if (intent.kind === 'scan') throw new DeliveryOutcomeUnknown('lost')
+            return respond(intent)
+        }
+        await user.click(within(form).getByRole('button', { name: 'Scan' }))
+        // The delivery layer may re-present a lost delivery to learn its outcome; the view never resends on its own.
+        await waitFor(() => expect(within(runtime).getByRole('alert')).toHaveTextContent(/not confirm|unconfirmed|sent/i))
+        const sent = native.dispatched.length
+        await native.push({ ...native.current })
+        await new Promise((r) => setTimeout(r, 50))
+        expect(native.dispatched).toHaveLength(sent)
+        // Admitted: the running scan is shown and Cancel scan sends exactly one cancel for it.
+        native.respond = (intent: Intent) => (intent.kind === 'scan' ? { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-9', operation: 'op-9' } } : respond(intent))
+        await user.click(within(form).getByRole('button', { name: 'Scan' }))
+        await native.push({ ...native.current, scans: [scanning('op-9', 'running')] })
+        await user.click(await within(runtime).findByRole('button', { name: 'Cancel scan' }))
+        expect(native.dispatched.filter((i) => i.kind === 'cancelScan')).toEqual([{ kind: 'cancelScan', operation: 'op-9' }])
+    })
+
+    it('saves a case from the fields as typed and says only what the library established', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await user.click(within(runtime).getByRole('tab', { name: 'Playground' }))
+        const form = within(runtime).getByRole('form', { name: 'Scan a prompt or response' })
+        await user.type(within(form).getByLabelText('Profile name or ID'), 'chatbot-strict')
+        await user.type(within(form).getByLabelText('Prompt'), 'remember me')
+        await user.type(within(runtime).getByLabelText('Case name'), 'Greeting case')
+        await user.click(within(runtime).getByRole('button', { name: 'Save as test case…' }))
+        expect(native.dispatched.at(-1)).toMatchObject({ kind: 'saveCase', context: CONTEXT, draft: expect.objectContaining({ name: 'Greeting case', prompt: 'remember me', product: 'runtime-security' }) })
+        expect(within(runtime).getByText('Saving to this tenant’s case Library…')).toBeInTheDocument()
+        // Only the library's own notice establishes the save.
+        await native.push({ ...native.current, library: { ...native.current.library, notice: { kind: 'saved', name: 'Greeting case' } } })
+        expect(await within(runtime).findByText('Saved to this tenant’s case Library.')).toBeInTheDocument()
+    })
+})
+
+describe('v2 inventory table reads (C39a E2, R2, R3)', () => {
+    /** Two pages of custom topics: Finance on the second page only. */
+    function twoPages(native: Native) {
+        const requests: ManagementRequest[] = []
+        const respond = native.respond
+        const pending = new Map<string, ManagementRequest>()
+        native.respond = (intent: Intent) => {
+            if (intent.kind !== 'management') return respond(intent)
+            requests.push(intent.request)
+            const operation = `op-${requests.length + 500}`
+            pending.set(operation, intent.request)
+            return { outcome: 'receipt', receipt: { kind: 'admitted', request: `rq-${requests.length}`, operation } }
+        }
+        const other = { topic_id: 'topic-2', topic_name: 'Travel', topic_description: 'Trips' }
+        native.observeManagement = (operation) => {
+            const request = pending.get(operation)
+            if (request?.kind === 'page') {
+                const first = request.offset === 0
+                const items = first ? [other] : [TOPIC]
+                return {
+                    kind: 'management',
+                    result: { kind: 'page', page: { resource: request.resource, offset: request.offset, limit: request.limit, items: JSON.stringify(items), count: 1, nextOffset: first ? 1 : null, complete: !first, total: 2 } },
+                }
+            }
+            return { kind: 'management', result: { kind: 'failed', failure: 'unavailable', outcome: 'completed' } }
+        }
+        return requests
+    }
+
+    it('pages with Next page and First page, says the search is page-local, and starts again for a replaced context (E2, R3)', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        const requests = twoPages(native)
+        await user.click(within(runtime).getByRole('button', { name: 'Refresh' }))
+        await within(runtime).findByRole('button', { name: 'Details for Travel' })
+        const topicPages = () => requests.filter((r): r is Extract<ManagementRequest, { kind: 'page' }> => r.kind === 'page' && r.resource === 'topics')
+        expect(topicPages().at(-1)).toMatchObject({ kind: 'page', resource: 'topics', offset: 0 })
+        // The search covers the page that was read, and says so.
+        await user.type(within(runtime).getByRole('textbox', { name: 'Search custom topics' }), 'Finance')
+        expect(runtime.querySelector('[data-slot="administration-no-match"]')).toHaveTextContent('No custom topics on this page match “Finance”. Other pages are not searched: use First page and Next page.')
+        await user.clear(within(runtime).getByRole('textbox', { name: 'Search custom topics' }))
+        await user.click(within(runtime).getByRole('button', { name: 'Next page' }))
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        expect(topicPages().at(-1)).toMatchObject({ kind: 'page', resource: 'topics', offset: 1 })
+        await user.click(within(runtime).getByRole('button', { name: 'First page' }))
+        await within(runtime).findByRole('button', { name: 'Details for Travel' })
+        // A replaced context (a new credential) reads again from the first page under the new context.
+        const before = topicPages().length
+        await native.push({ ...native.current, active: { ...native.current.active!, context: 'cx-cccccccccccccccccccccccc' } })
+        await waitFor(() => expect(topicPages().length).toBeGreaterThan(before))
+        expect(native.dispatched.filter((i) => i.kind === 'management' && i.request.kind === 'page' && i.request.resource === 'topics').at(-1)).toMatchObject({ kind: 'management', context: 'cx-cccccccccccccccccccccccc', request: { kind: 'page', offset: 0 } })
+    })
+
+    it('keeps the rows with their read time when a refresh is denied (E2)', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        const respond = native.respond
+        native.respond = (intent: Intent) => (intent.kind === 'management' ? { outcome: 'refusal', refusal: 'deniedStore' } : respond(intent))
+        await user.click(within(runtime).getByRole('button', { name: 'Refresh' }))
+        expect(await within(runtime).findByRole('alert')).toBeInTheDocument()
+        expect(within(runtime).getByRole('button', { name: 'Details for Finance' })).toBeInTheDocument()
+        expect(runtime.querySelector('[data-slot="administration-foot"]')).toHaveTextContent(/Read \d/)
+    })
+
+    it('a detail closed before its reply arrives stays closed and keeps focus where it was (R2)', async () => {
+        const { native, user } = await launch(fxAdmin())
+        const runtime = product('runtimeSecurity')
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        const observe = native.observeManagement
+        let release: (() => void) | null = null
+        native.observeManagement = (operation) =>
+            new Promise((resolve) => {
+                release = () => resolve(observe(operation))
+            })
+        await user.click(within(runtime).getByRole('button', { name: 'Details for Finance' }))
+        expect(await within(runtime).findByText('Reading details…')).toBeInTheDocument()
+        await user.click(within(runtime).getByRole('button', { name: 'Close details' }))
+        expect(runtime.querySelector('[data-slot="administration-detail"]')).toBeNull()
+        const active = document.activeElement
+        release!()
+        await new Promise((r) => setTimeout(r, 50))
+        expect(runtime.querySelector('[data-slot="administration-detail"]')).toBeNull()
+        expect(document.activeElement).toBe(active)
+        // A later refresh does not reopen what was dismissed.
+        native.observeManagement = observe
+        await user.click(within(runtime).getByRole('button', { name: 'Refresh' }))
+        await within(runtime).findByRole('button', { name: 'Details for Finance' })
+        expect(runtime.querySelector('[data-slot="administration-detail"]')).toBeNull()
+    })
+})

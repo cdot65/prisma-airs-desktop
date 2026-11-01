@@ -46,7 +46,8 @@ UNKNOWN = "We could not confirm submission"
 PENDING = "Grading your written answers"
 LAB_PASSED = "Lab passed. Academy recorded it on your account."
 # Builds after C06 add the desktop's Downloads entry (C07).
-NAV_SIGNED_IN = ["Home", "Learn", "Program"] + ([] if SUBJECT == "C06" else ["Downloads"]) + ["Notifications", "Settings"]
+# The app is past C07 whichever subject runs this driver: Downloads is in the signed-in navigation.
+NAV_SIGNED_IN = ["Home", "Learn", "Program", "Downloads", "Notifications", "Settings"]
 GENERIC_FAILURE = "Something went wrong"
 PROCEDURES = json.load(open(os.path.join(ROOT, "packages/desktop-contracts/fixtures/academy/learner-procedures.json")))
 PUBLIC = set(PROCEDURES["public"])
@@ -127,6 +128,19 @@ def in_alert(tree, fragment):
             return True
     return False
 
+
+
+# On the one presentation the Academy page's navigation also lists the Learning paths' "Open … Path" links (C42): the
+# legacy facts about Academy's own navigation are judged on Academy's entries alone.
+ACADEMY_ENTRIES = {"Home", "Learn", "Program", "Downloads", "Notifications", "Settings"}
+
+
+def academy_nav(links):
+    return [l for l in (links or []) if l in ACADEMY_ENTRIES]
+
+
+def guest_nav(links):
+    return isinstance(links, (list, tuple)) and academy_nav(links) == ["Learn"]
 
 def nav_links(tree):
     """Links of the 'Academy sections' navigation, in order (the nodes after
@@ -589,7 +603,7 @@ def run():
     avatar["removals"] = len([c for c in calls_since(mark) if c["procedure"] == "settings.removeAvatar"])
     obs["avatar"] = avatar
     app.ax("press", "AXButton", "Sign out")
-    tree, acct["guest_nav"] = wait(lambda t: nav_links(t) == ["Learn"], 10)
+    tree, acct["guest_nav"] = wait(lambda t: guest_nav(nav_links(t)), 10)
     acct["guest_nav_links"] = nav_links(tree)
     app.open_settings()
     _, acct["shell_signed_out"] = wait(lambda t: app.has_text(t, "Not signed in to Academy."), 10)
@@ -646,8 +660,7 @@ def signed_out_items(items):
     """Learner items that must be gone after sign-out. From C07 the
     account's offline key stays with its locked offline work (lab work is
     kept on this Mac until Academy confirms it); reset removes it."""
-    if SUBJECT == "C06":
-        return items
+    # The app is past C07 whichever subject runs this driver: the offline key stays after sign-out.
     return [i for i in items if i != offline_key("user_2fixturelearner")]
 
 
@@ -663,7 +676,8 @@ def reach(app, zoom, label):
         if f and f.get("role") == "AXButton" and f.get("label") == label:
             found = {"label": f["label"], "pos": f["pos"], "size": f["size"]}
             break
-    clear = bool(found) and found["pos"][1] >= window["pos"][1] and found["pos"][1] + found["size"][1] <= bottom - 60 * zoom
+    # Inside the window: the v2 shell has no bottom fade (the legacy 60 CSS px band).
+    clear = bool(found) and found["pos"][1] >= window["pos"][1] and found["pos"][1] + found["size"][1] <= bottom + 1
     return {"zoom": zoom, "window": {"pos": window["pos"], "size": window["size"]}, "found": found, "clear": clear}
 
 
@@ -677,7 +691,7 @@ def evaluate(prepared, o):
                        "observation": observation, "evidence": [obs_path] + [e for e in evidence if e]})
 
     h, p = o["home"], o["program"]
-    add("C06-N01", o["guest_nav"] == ["Learn"] and o["signed_in"] and o["account_nav"] == NAV_SIGNED_IN
+    add("C06-N01", guest_nav(o["guest_nav"]) and o["signed_in"] and academy_nav(o["account_nav"]) == NAV_SIGNED_IN
         and h["briefing"] and not h["failure_toast"] and p["hub"] and len(p["cards"]) == 5,
         f"guest Academy navigation {o['guest_nav']}; signed in: {o['signed_in']}; account navigation {o['account_nav']}; "
         f"Home shows Academy's level and XP: {h['briefing']}, failure toast: {h['failure_toast']}; Program hub: {p['hub']} with cards {p['cards']}",

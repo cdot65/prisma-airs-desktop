@@ -550,10 +550,7 @@ async fn read_keys_at(desk: &mut Desk, offset: u32) {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_inventory_offers_only_admitted_actions_and_the_core_refuses_the_denied_ones() {
     let mut desk = desk().await;
-    assert!(
-        desk.snap().administration.is_none(),
-        "the legacy shell carries no inventory"
-    );
+    // C44: one presentation; the inventory is always carried (the switch intent is accepted and ignored).
     desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
         .await
         .expect("v2");

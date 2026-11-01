@@ -20,7 +20,6 @@ export const V2_FEATURES: FeatureEntry[] = [
     { id: 'gateway', label: 'AI Gateway', availability: { state: 'available' }, shortcut: null, sidebar: false },
     { id: 'redTeam', label: 'Red Team & Models', availability: { state: 'available' }, shortcut: null, sidebar: false },
     { id: 'sessions', label: 'Sessions & Reports', availability: { state: 'available' }, shortcut: null, sidebar: false },
-    { id: 'import', label: 'Import from v1', availability: { state: 'available' }, shortcut: null, sidebar: false },
     { id: 'settings', label: 'Settings', availability: { state: 'available' }, shortcut: null, sidebar: false },
 ]
 
@@ -205,6 +204,7 @@ export function fxApi(): ShellSnapshot {
                 id: 'c33',
                 name: 'AIRS',
                 folder: 'api',
+                scope: '1'.repeat(32),
                 builtIn: false,
                 complete: true,
                 requests: [{ relative: 'topics/list.request.toml', id: 'list', method: 'GET', url: 'http://127.0.0.1:8080/topics' }],

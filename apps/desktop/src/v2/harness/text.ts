@@ -22,7 +22,7 @@ import { type DispatchOutcome, outcomeMessage } from '../../features/tenants/dis
 
 export const HARNESS_FAILURE_TEXT: Record<HarnessFailure, string> = {
     engineUnavailable: 'The bundled engine is missing or is not the one this app was built with. Nothing was started.',
-    credentialMissing: 'The inference key is missing. Store it again in the AI Gateway Playground.',
+    credentialMissing: 'The inference key is missing. Store it again under Administration › AI Gateway › Workspaces.',
     credentialLocked: 'The Keychain is locked. Unlock it and start again.',
     credentialDenied: 'macOS did not allow access to the inference key.',
     startFailed: 'The engine could not be started on this Mac.',

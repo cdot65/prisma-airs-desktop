@@ -9,10 +9,11 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DesktopClient, type DesktopTransport, type Intent, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
-import shellResponse from '@prisma-airs/desktop-contracts/fixtures/wire/observe-shell-response.json'
 import { App } from '../../app'
+import { fxSwitcher } from '../../v2/fixtures'
 
-const base = shellResponse.snapshot as ShellSnapshot
+// C44: one presentation; the v2 fixture's finished onboarding puts the shell on screen.
+const base = fxSwitcher()
 const signedIn = (learner: string, revision: string): ShellSnapshot =>
     ({
         ...base,
@@ -138,9 +139,9 @@ describe('Academy state across native generations', () => {
         try {
             const s = scripted()
             render(<App client={new DesktopClient(s.transport)} />)
-            await screen.findByRole('navigation', { name: 'Features' })
-            const nav = () => within(screen.getByRole('navigation', { name: 'Features' }))
-            await user.click(nav().getByRole('button', { name: /^Academy/ }))
+            // C44: one presentation; the core names the destination in the snapshot.
+            await screen.findByRole('navigation', { name: 'Destinations' })
+            s.push({ ...signedIn('lx-gen1', '2'), activeFeature: 'academy' })
             await user.click(await screen.findByRole('button', { name: 'Courses', pressed: false }))
             await user.click(await screen.findByRole('link', { name: /Course A/ }))
             await user.click(await screen.findByRole('link', { name: /Only lesson/ }))
@@ -153,13 +154,12 @@ describe('Academy state across native generations', () => {
             await waitFor(() => expect(overlay()).toHaveTextContent('Module secure: BEFORE RESET MODULE'), { timeout: 5000 })
 
             // Settings: reset local data, then sign in to the same account.
-            await user.click(nav().getByRole('button', { name: /^Settings/ }))
-            s.push({ ...signedIn('lx-gen1', '2'), storage: 'resetting' } as ShellSnapshot)
-            s.push({ ...base, revision: '3', learner: 'lx-gen2', academy: { state: 'signedOut' } } as ShellSnapshot)
-            s.push(signedIn('lx-gen3', '4'))
+            s.push({ ...signedIn('lx-gen1', '3'), activeFeature: 'settings', storage: 'resetting' } as ShellSnapshot)
+            s.push({ ...base, revision: '4', learner: 'lx-gen2', academy: { state: 'signedOut' }, activeFeature: 'settings' } as ShellSnapshot)
+            s.push({ ...signedIn('lx-gen3', '5'), activeFeature: 'settings' })
             const mark = s.dispatched.length
 
-            await user.click(nav().getByRole('button', { name: /^Academy/ }))
+            s.push({ ...signedIn('lx-gen3', '6'), activeFeature: 'academy' })
             await screen.findByRole('heading', { level: 1, name: 'What will you take up next?' })
             await new Promise((r) => setTimeout(r, 150))
             expect(overlay()).toBeNull()

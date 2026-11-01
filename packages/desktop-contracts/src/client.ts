@@ -2408,6 +2408,7 @@ const WORKBENCH_PROBLEMS: Readonly<Record<string, readonly string[] | null>> = {
 /** A request document's identity (v1: letters, digits, `_` and `-`). */
 const DOCUMENT_ID = /^[A-Za-z0-9_-]{1,128}$/
 const REVISION = /^[0-9a-f]{32}$/
+const COLLECTION_SCOPE = /^[0-9a-f]{32}$/
 const DIGEST = /^[0-9a-f]{64}$/
 /** Collection-relative paths: no absolute, parent or empty components. */
 const isRelative = (value: unknown): boolean =>
@@ -2466,6 +2467,7 @@ function isCollectionView(value: unknown): boolean {
         isString(value.id) &&
         isString(value.name) &&
         isString(value.folder) &&
+        typeof value.scope === 'string' && COLLECTION_SCOPE.test(value.scope) &&
         typeof value.builtIn === 'boolean' &&
         typeof value.complete === 'boolean' &&
         Array.isArray(value.requests) &&

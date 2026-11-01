@@ -10,7 +10,7 @@
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import procedures from '@prisma-airs/desktop-contracts/fixtures/academy/learner-procedures.json'
-import { AcademyView } from './academy-view'
+import { Academy as AcademyView } from '../../v2/academy/academy'
 import { academySnapshot, held, refuse, scriptedNative } from './test-support'
 
 const ADMITTED = new Map<string, string>([

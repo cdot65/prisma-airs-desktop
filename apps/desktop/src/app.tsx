@@ -11,46 +11,20 @@ import {
 } from '@prisma-airs/desktop-contracts'
 import { followAppearance } from './shell/appearance'
 import { type DispatchOutcome, outcomeMessage } from './features/tenants/dispatch'
-import { DesktopShell } from './shell/desktop-shell'
 import { V2Shell } from './v2/v2-shell'
 import { Wizard } from './v2/wizard/wizard'
-import { ImportView } from './features/import-v1/import-view'
 import { useShellStore } from './v2/store'
 import { SHELL_COPY } from './v2/copy'
 import { forgetAcademyPresentation } from './features/academy/presentation-storage'
-import { SAVE_DOCUMENT_EVENT } from './features/workbench/document-editor'
+import { SAVE_DOCUMENT_EVENT } from './v2/workbench/request-editor'
 
 export function App({ client }: { client: DesktopClient }) {
     const [snapshot, setSnapshot] = useState<ShellSnapshot | null>(null)
     const snapshotRef = useRef<ShellSnapshot | null>(null)
     snapshotRef.current = snapshot
     const [failure, setFailure] = useState<string | null>(null)
-    const [active, setActive] = useState<FeatureId | null>(null)
-    const [paletteOpen, setPaletteOpen] = useState(false)
     const [pending, setPending] = useState(false)
     const [status, setStatus] = useState('')
-
-    const setAppearance = useCallback(
-        async (theme: Theme) => {
-            setPending(true)
-            setStatus('')
-            try {
-                const response = await client.dispatch({ kind: 'setAppearance', theme })
-                if (response.outcome === 'refusal') {
-                    setStatus(`The desktop refused the appearance change (${response.refusal}).`)
-                }
-            } catch (error) {
-                setStatus(
-                    error instanceof DeliveryOutcomeUnknown
-                        ? 'The desktop did not confirm the appearance change. The current setting is shown.'
-                        : 'The appearance change could not be delivered.'
-                )
-            } finally {
-                setPending(false)
-            }
-        },
-        [client]
-    )
 
     const dispatch = useCallback(
         async (intent: Intent): Promise<DispatchOutcome> => {
@@ -68,7 +42,6 @@ export function App({ client }: { client: DesktopClient }) {
 
     // v2 (C28): navigation is Rust-owned. The native menu, the sidebar and
     // the palette all dispatch `navigate`; refusals reach the status surface.
-    const v2 = snapshot?.uiVariant === 'v2'
     const v2Navigate = useCallback(
         async (feature: FeatureId) => {
             useShellStore.getState().closePalette()
@@ -107,31 +80,15 @@ export function App({ client }: { client: DesktopClient }) {
 
     const onMenu = useRef<(command: MenuCommand) => void>(() => undefined)
     onMenu.current = (command: MenuCommand) => {
-        if (command.kind === 'navigate') {
-            // Native navigation dismisses the modal palette first so focus can
-            // move to the new page heading instead of behind an open dialog.
-            if (v2) void v2Navigate(command.feature)
-            else {
-                setPaletteOpen(false)
-                setActive(command.feature)
-            }
-        }
-        else if (command.kind === 'commandPalette') {
-            if (v2) useShellStore.getState().openPalette()
-            else setPaletteOpen(true)
-        }
+        // Native navigation dismisses the modal palette first so focus can
+        // move to the new page heading instead of behind an open dialog.
+        if (command.kind === 'navigate') void v2Navigate(command.feature)
+        else if (command.kind === 'commandPalette') useShellStore.getState().openPalette()
         // ⌘T: the tenant switcher opens; nothing switches until chosen.
-        else if (command.kind === 'tenantSwitcher') {
-            if (v2) useShellStore.getState().setSwitcher(true)
-            else {
-                setPaletteOpen(false)
-                setActive('settings')
-            }
-        }
+        else if (command.kind === 'tenantSwitcher') useShellStore.getState().setSwitcher(true)
         // The open API Client request saves (its editor listens).
         else if (command.kind === 'saveDocument') window.dispatchEvent(new Event(SAVE_DOCUMENT_EVENT))
-        else if (v2) void v2Preference('The appearance change', { kind: 'setAppearance', theme: command.theme })
-        else void setAppearance(command.theme)
+        else void v2Preference('The appearance change', { kind: 'setAppearance', theme: command.theme })
     }
 
     useEffect(() => {
@@ -192,27 +149,8 @@ export function App({ client }: { client: DesktopClient }) {
             </main>
         )
     }
-    if (snapshot.uiVariant === 'v2' && snapshot.onboarding !== 'done') {
-        // First run: the wizard owns the window. "Import from v1" is the one
-        // way out of it before a tenant exists: the reviewed C23 import renders
-        // on its own, and Home brings the wizard back (R5).
-        if (snapshot.activeFeature === 'import') {
-            return (
-                <div data-v2-shell='' data-slot='first-run-import' className='flex min-h-screen flex-col' style={{ background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
-                    <div className='flex items-center gap-3 border-b px-6 py-3' style={{ borderColor: 'var(--v2-rule)' }}>
-                        <button type='button' onClick={() => void v2Navigate('home')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
-                            {SHELL_COPY.backToSetup}
-                        </button>
-                        <span className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
-                            {SHELL_COPY.importDuringSetup}
-                        </span>
-                    </div>
-                    <main className='flex-grow p-6'>
-                        <ImportView snapshot={snapshot} dispatch={dispatch} />
-                    </main>
-                </div>
-            )
-        }
+    if (snapshot.onboarding !== 'done') {
+        // First run: the wizard owns the window (D060: no alpha import; nothing leaves it before a tenant exists).
         return (
             <div data-v2-shell=''>
                 <Wizard
@@ -226,47 +164,30 @@ export function App({ client }: { client: DesktopClient }) {
             </div>
         )
     }
-    if (snapshot.uiVariant === 'v2') {
-        return (
-            <V2Shell
-                snapshot={snapshot}
-                appearancePending={pending}
-                status={failure ?? status}
-                onNavigate={(feature) => void v2Navigate(feature)}
-                onSetAppearance={(theme) => void v2Preference('The appearance change', { kind: 'setAppearance', theme })}
-                onSetShowCalls={(on) => void v2Preference('The preference change', { kind: 'setShowCalls', on })}
-                onSwitchTenant={(tenant, resolution) => {
-                    // The target is captured now: a late refusal still names it. A
-                    // pending-decision refusal is not a toast: the snapshot carries
-                    // the guard the shell renders (I1).
-                    const label = snapshot.tenants.find((t) => t.id === tenant)?.label ?? tenant
-                    void v2Preference(SHELL_COPY.switchTo(label), { kind: 'selectTenant', tenant, resolution: resolution ?? null }, ['decisionPending'])
-                }}
-                onReadNow={() => {
-                    // The palette's Read now is the same finite read of every chosen product (I4).
-                    const active = snapshot.active
-                    if (!active) return
-                    const label = snapshot.tenants.find((t) => t.id === active.tenant)?.label ?? active.tenant
-                    void v2Preference(SHELL_COPY.readOf(label), { kind: 'readTenant', context: active.context })
-                }}
-                onRetry={(what, intent) => void v2Preference(what, intent)}
-                onAct={v2Act}
-                dispatch={dispatch}
-                client={client}
-            />
-        )
-    }
     return (
-        <DesktopShell
+        <V2Shell
             snapshot={snapshot}
-            active={active ?? snapshot.features[0]?.id ?? 'settings'}
-            paletteOpen={paletteOpen}
             appearancePending={pending}
             status={failure ?? status}
-            onNavigate={setActive}
-            onOpenPalette={() => setPaletteOpen(true)}
-            onClosePalette={() => setPaletteOpen(false)}
-            onSetAppearance={(theme) => void setAppearance(theme)}
+            onNavigate={(feature) => void v2Navigate(feature)}
+            onSetAppearance={(theme) => void v2Preference('The appearance change', { kind: 'setAppearance', theme })}
+            onSetShowCalls={(on) => void v2Preference('The preference change', { kind: 'setShowCalls', on })}
+            onSwitchTenant={(tenant, resolution) => {
+                // The target is captured now: a late refusal still names it. A
+                // pending-decision refusal is not a toast: the snapshot carries
+                // the guard the shell renders (I1).
+                const label = snapshot.tenants.find((t) => t.id === tenant)?.label ?? tenant
+                void v2Preference(SHELL_COPY.switchTo(label), { kind: 'selectTenant', tenant, resolution: resolution ?? null }, ['decisionPending'])
+            }}
+            onReadNow={() => {
+                // The palette's Read now is the same finite read of every chosen product (I4).
+                const active = snapshot.active
+                if (!active) return
+                const label = snapshot.tenants.find((t) => t.id === active.tenant)?.label ?? active.tenant
+                void v2Preference(SHELL_COPY.readOf(label), { kind: 'readTenant', context: active.context })
+            }}
+            onRetry={(what, intent) => void v2Preference(what, intent)}
+            onAct={v2Act}
             dispatch={dispatch}
             client={client}
         />

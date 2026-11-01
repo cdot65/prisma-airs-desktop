@@ -1289,6 +1289,16 @@
         "check": "Keyboard and layout (T09): Tab from the heading reaches Refresh, each card, the attention row's controls and the quick actions in order, with the focus ring on a card; Enter on a card opens its product; Home at 1440 wide by the display's full working height and at 900\u00d7600 with 200% zoom, in light and dark, with no horizontal overflow; every row records the WebView's measured size from the accessibility tree and asserts it."
       }
     ],
+    "C37": [
+      {
+        "id": "C37-N01",
+        "check": "The Inbox as the prototype draws it (R2App start=inbox) with a tenant whose read has landed: the heading and its line naming the tenant; a 430px list card with the filter tabs (All, Needs action, Updates, Snoozed, each with its count) over the rows (severity tile and word, title, product and source, when; an acknowledged row marked) and a footer naming the read's coverage; selecting a row fills the detail card (severity tile and word, product and source, the 22px title, the body, the facts as a three-column grid, the entry's own action, Acknowledge or Mark as needing action, Snooze or Unsnooze); the empty states name the read (first read pending; the failed first read, every source answering 500; with the sessions chart denied, AI Runtime Security needing a role: Open role issue offered, the footer's partial coverage, the empty pane qualifying what was read and naming the unread source rather than a bare all-clear, and the issue opening that product in Administration); snooze, acknowledge and unsnooze stay the C30 core intents with the core's return time stated the same in the row, the detail and the toast (D059 parity: the composites under evidence/C37/parity are captured by this script from the populated state with the first row opened, parity/bundle.json rewritten with the bundle they came from, and the owner's approval of them is recorded in parity/notes.md)."
+      },
+      {
+        "id": "C37-N02",
+        "check": "Keyboard and layout (T09): the Inbox at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the list populated; at each layout no horizontal overflow, the list card at least 160 CSS px tall with its tabs, first row and footer inside its own frame (nothing clipped), Tab from Read now reaching a tab then a row, and Enter on a focused row the detail does not show (scrolled into the viewport by its focus) changing the detail to it; the focus ring on the first row; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
     "C38": [
       {
         "id": "C38-N01",
@@ -1297,6 +1307,78 @@
       {
         "id": "C38-N02",
         "check": "Keyboard and layout (T09) with a decision waiting: Tab from End conversation reaches New investigation, the composer (Message) and its reachable action (Stop answering while the engine's turn waits on the decision, since Send is disabled until nothing is pending), then the aside's Approve once and Decline, in that order; the focus ring on that action; the Harness at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the decision card populated, no horizontal overflow, New investigation, Send and Approve once each at least 32 CSS px, the rail, the composer and the aside side by side at 100% and one below the other at 200%; every row records the WebView's measured size and the viewport from its own tree and asserts them; the decision declined and the conversation ended leaves no engine."
+      },
+      {
+        "id": "C38-N03",
+        "check": "The tenant-switch guard (invariant I1) on the board with a Harness decision waiting: choosing the other tenant from the switcher, from the palette's Switch to entry and from Go \u203a Switch Tenant\u2026 each shows the one guard dialog (Stay, Discard and switch, Archive and switch; naming the target tenant; focus on Stay); Escape and Stay keep the first tenant and the waiting decision; Archive and switch ends the conversation with the decision untaken, lands the other tenant on Home and leaves no engine, with nothing further run (C30-N01 carried onto the C38 board in C44)."
+      }
+    ],
+    "C39": [
+      {
+        "id": "C39-N01",
+        "check": "Administration as the prototype board draws it (R2App start=admin) with a tenant whose read has landed through the synthetic management plane: the heading and its line (tenant \u00b7 every change is reviewed before it is applied) with Expand all and Collapse all; the six product cards in order, each with its description, headline figure, status pill and alerts (AI Runtime Security: its detection events from the read, Connected; the agentic products Not available); AI Runtime Security open on Custom topics: the tab strip (Overview, Playground, Security profiles, Custom topics, Applications, API keys, DLP, Deployment profiles), the search field, New topic\u2026, the table's rows from the plane with View per row and the footer's count and read time; View opens the detail with exactly the admitted actions; the Overview tab's three tiles and 24-hour bars from the same read; the Playground tab's form (profile, prompt, response, application, Scan, Save as test case\u2026) and the verdict card after a synthetic scan; Expand all opens every available product and Collapse all closes them (D059 parity: the composites under evidence/C39/parity are captured by this script from this state, the owner's judgement recorded in parity/notes.md). Other products' tab bodies remain C39b's."
+      },
+      {
+        "id": "C39-N02",
+        "check": "A change through the prototype's review sheet (R2App start=review): Edit\u2026 on a custom topic's detail opens the sheet docked to the window's right edge under the header, 620 CSS px wide, titled 'Review a change' with the review's state pill (Draft, then Ready for review, then Applied) and a Close review control; Review change prepares the review in the core, Apply\u2026 stays disabled while the typed name is empty or wrong and enables on the exact name, the native confirmation names the update, and the applied result is read back live with one write to the plane; Done closes the sheet. The review composites (parity/review-*) are captured with the sheet open on the draft."
+      },
+      {
+        "id": "C39-N03",
+        "check": "The other products on the card pattern (C39b): AI Gateway with the workspace Team A chosen \u2014 the Workspaces tab's chooser and the chosen workspace's settings read with its admitted Edit\u2026 / Archive\u2026, the Routes tab as a table with search, New route\u2026 and a detail whose actions are the inventory's, the Keys tab with the service / user kinds; AI Red Teaming \u2014 the Overview's summary tiles and ranked bars, the Targets table with Results per target (identifiers only), the Scans tab's list without the tiles; Model and skill scans \u2014 the Model scans table (or the plane's 'none read') and Codebase scans not available in this release. Every table is read through the management client and says its coverage."
+      },
+      {
+        "id": "C39-N04",
+        "check": "Keyboard and layout (T09): Tab from the heading reaches Expand all, the Runtime card's header, its tabs and the table's first View in order, the focus ring on the first View; Administration at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with Runtime open on Custom topics and no horizontal overflow, the tab strip scrolling within the card rather than widening it, the table's header, first row and footer inside the card; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C40": [
+      {
+        "id": "C40-N01",
+        "check": "Test Cases as the prototype board draws it (R2App start=cases) with a tenant: the title row (heading; 'n cases in <tenant> \u00b7 sealed on this Mac, per tenant'; Load starter packs\u2026 and New case), the empty card first; the Explain banner shown while the shell's Show the calls switch is on and gone when it is off, captured in both themes; Load starter packs\u2026 opens the 560px dialog with the bundled packs and the public examples as checks (the bundled checked) and Import\u2026 / Export\u2026 for the operator's own cases, Load selected adds the packs; the one table card: search, the product pills with their counts, the rows (name with the pack under it, product, input in mono, the result pill or Not run, Open in Playground for a Runtime Security case or Inspect for the others, and the \u22ef menu), the footer's range and pages; a filter and a search with Clear search and filters; Inspect opens the 520px detail sheet docked right (the rows, which product runs it, the never-run note) and dispatches no scan; Open in Playground fills the Playground without scanning, the scan run there records the verdict on the case; New case opens the dialog, a Runtime case and a specification are saved (the specification without profile or application, inspect-only); the \u22ef menu removes a case and copies one to another tenant; Export\u2026 saves or is cancelled through the native sheet and Import\u2026 of the exported file says its cases are already here; nothing on this screen scans (D059 parity: the composites under evidence/C40/parity are captured by this script from the populated list, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C40-N02",
+        "check": "Keyboard and layout (T09): Tab from Load starter packs\u2026 reaches New case, the search field and the first product pill in order; the focus ring on New case; Test Cases at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the packs loaded, no horizontal overflow, the row action at least 32 CSS px inside the table card and the footer's pages present; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C41": [
+      {
+        "id": "C41-N01",
+        "check": "The API Client as the prototype board draws it (R2App start=api) with a collection opened through the native sheet: the title row (heading; the Collection chip naming the collection and its folder, the Environment chip), the 286px request tree (Find request, +, the folder with its count, the requests with their methods), the open requests' tabs, the request line (Method, URL, Send, Save, the save state), the Params / Headers / Body / Auth / Variables / Preview sub-tabs and the response pane with Body / Headers / Details / History; Send announces '<request> \u00b7 <code> \u00b7 <duration>' in the status region with the body outside it, pretty by default and exact under Raw; after the service changes a new send reflects it while History lists both runs and the older one shows exactly the first response; + creates a request draft (a new tab, 'New \u00b7 not saved yet') and a Params row added in the table is written as a name=value line and shown by Preview; the Collection chip's menu opens Environments in a docked sheet, from the keyboard too (Space on the chip, Tab to Environments\u2026, Space), and Escape or the sheet's close control returns focus to the Collection chip (I8, T09); nothing is sent by itself (D059 parity: the composites under evidence/C41/parity are captured by this script from the sent state, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C41-N02",
+        "check": "Keyboard and layout (T09): from the URL field Tab reaches Send, Space sends and the completion is announced; the focus ring on Send; the API Client at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the request open and sent, no horizontal page overflow, the tree, the request line and the response pane present with Send at least 32 CSS px; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C42": [
+      {
+        "id": "C42-N01",
+        "check": "The Academy as the prototype board draws it (R2App start=academy) around Academy's own learner pages with the Rust-owned theme: the title row (heading, lead, the account pill saying Browsing as a guest then the signed-in learner's name), the 1.4fr/1fr frame (the learner pages on the left with Academy's catalog heading and its trail; Your place on the right with the guest note and Open Settings, then signed in the sections Home \u00b7 Learn \u00b7 Program \u00b7 Downloads \u00b7 Notifications \u00b7 Settings), the Learning paths row listing the synthetic catalog's paths as cards with their units and a card opening its path page; the guest generation reads the public catalog with no credential and the account generation after Sign in to Academy from Settings; the learner chrome stays inside the Academy region; the theme follows the appearance (light and dark captures) (D059 parity: the composites under evidence/C42/parity are captured by this script from the signed-in catalog state, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C42-N02",
+        "check": "Keyboard and layout (T09): Tab from the first section link reaches the next section and a path card in order, the focus ring on a section link; the Academy at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, signed in on the catalog, no horizontal page overflow, the frame's two cards and the Learning paths cards present with a path card at least 32 CSS px tall; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C43": [
+      {
+        "id": "C43-N01",
+        "check": "The first-run wizard as the prototype board draws it (R2Onboard, every step): the 320px rail with the brand tile, the numbered steps turning to checks as they are done, the Optional tags on Starter cases and Academy (Skipped once skipped), the privacy note and the appearance button; the pinned footer with Back, the hint, Step n of m, Skip for now and the primary; Welcome (tile, two paragraphs, three cards, no import box (D060)); Connect your tenant (the Tenant card's 2-column grid with the Environment segmented control and the Region select, Create tenant; then the scan key card tagged Required, the Management credentials card with Where do I find these?, the AI Gateway workspace card with its switch); Which products will you manage? (the 3-column product cards as checkboxes, Runtime always on, AIS and AES unavailable, the no-scan-key banner before a key is saved); Check the connection (the status banner, the Checks card with one row per line, Run the checks, Fix and verify again after a failure, Continue with warnings); Load starter test cases (the pack rows as checkboxes with counts, the summary, Skip for now); Join the AI Security Academy (Your account and What is sent cards, Skip for now); <name> is ready (the summary card with Change links, the three next-up cards, Open Prisma AIRS completing once) \u2014 the C29 behaviour unchanged (D059 parity: the composites under evidence/C43/parity are captured by this script per step, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C43-N02",
+        "check": "The add-tenant sheet: a 1160\u00d7780 dialog without the modal's padding, the 244px rail (Tenant, Products, Verify, Starter cases, Done; no Welcome or Academy), Cancel in the footer on every step and no Back on the first; Cancel before a draft sends nothing; a drafted tenant's scan card is Optional and Continue is open; Cancel after a draft discards it in the core; Finish commits once and the sheet closes with the toast."
+      },
+      {
+        "id": "C43-N03",
+        "check": "Keyboard and layout (T09): Tab from the rail reaches the step's first field and the footer's primary in order; the focus ring on the primary; the wizard at 1440\u00d7900 and at 900\u00d7600 with 200% zoom, in light and dark, on the Tenant and Verify steps, no horizontal page overflow, the footer's primary inside the window and at least 32 CSS px; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C44": [
+      {
+        "id": "C44-N01",
+        "check": "One presentation (P09 closure): the fixture app's first run is the wizard with no Features rail and no 'Use the new interface' switch anywhere; after the tenant is set up, every destination the catalogue lists is opened from the Go menu (Home, Inbox, Harness, Academy, Test Cases, API Client, Administration; Runtime Security, AI Gateway and Red Team & Models opening Administration on their product; Sessions & Reports and Settings framed by the v2 shell (Import from v1 removed, D060)) under the v2 Destinations rail, each captured in light and dark at 1440\u00d7900 as the whole-app screenshot set under evidence/C44/parity/app, with no plaintext secret and no learner chrome (outside Academy) in any destination's tree; \u23182 opens the Inbox and \u2318, Settings through the native menu; the built stylesheet carries the reduced-motion clamp; the bundle is Node-free and no Node, Bun or Deno process runs beside the app; after a quit and relaunch 15 s of startup open no internet socket from the app or its WebKit processes, Home shows with the tenant active and Administration reads with the kept client; every pre-P09 native assertion has its standing in evidence/C44/legacy-script-map.md (exercised by a named v2 check, self-run through legacy_v2 \u2014 C03, C04, C05, C06, C07, C10, C11, C24 \u2014 ported into this check, or retired with its reason) and the mapped drivers' records on this bundle bind the gate: an exercised, self-run or ported assertion without a passing target fails this check."
       }
     ]
   }

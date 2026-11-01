@@ -1,12 +1,14 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import type { ChangeKind, ChangeResultView, ContextRef, GatewayResource, ManagementRequest, ManagementResource, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { MANAGEMENT_FAILURE_TEXT, RESOURCES, itemName, readManagement, type ObserveManagement } from '../../features/administration/management-read'
-import { CHANGE_NOUN, type ChangeTarget, ChangeWorkbench, TEMPLATES, pretty, resultText } from '../../features/administration/runtime-changes'
-import { type Dispatch, outcomeMessage } from '../../features/tenants/dispatch'
+import { CHANGE_NOUN, type ChangeTarget, ChangeWorkbench, TEMPLATES, isGatewayKind, pretty, resultText } from '../../features/administration/runtime-changes'
+import { DRAFT_PROBLEM_TEXT } from './gateway-tabs'
+import { type Dispatch, type DispatchOutcome, outcomeMessage } from '../../features/tenants/dispatch'
 import { clockOf } from '../copy'
 import { Modal } from '../modal'
 import { useShellStore } from '../store'
 import { Verdict } from '../verdict'
+import { Glyph } from '../icons'
 import { ADMIN_COPY as C } from './copy'
 import { RotationPanel } from './rotation-panel'
 
@@ -19,11 +21,22 @@ export interface ReviewSheetProps {
     change: ChangeTarget | null
     /** The application whose rotation this sheet follows (a key version, or "Finish rotation…"). */
     rotation: string | null
-    /** A Gateway change keeps its edited text on this Mac as a draft (C17). */
-    onDraft?: (body: string) => void
+    /** A Gateway change keeps its edited text on this Mac as a draft (C17); the save's outcome is what the sheet reports. */
+    onDraft?: (body: string) => void | Promise<DispatchOutcome>
     note?: ReactNode
     onClose: () => void
 }
+
+/** What the open sheet says about the Gateway draft, from the current state: the last save's reply, then the core's word. */
+function draftNoteText(local: ShellSnapshot['gateway']['local'], saving: DraftSave): string {
+    if (saving === 'pending') return 'Keeping your edits on this Mac…'
+    if (saving === 'refused') return 'The desktop did not keep these edits as a draft; they stay only in this window.'
+    if (saving === 'unknown') return 'The desktop did not confirm that these edits were kept; what it holds is shown once it says.'
+    if (local.problem && DRAFT_PROBLEM_TEXT[local.problem]) return DRAFT_PROBLEM_TEXT[local.problem]!
+    if (local.unsaved) return 'Your edits could not be stored on this Mac (the local store is unavailable); they are kept only in this window until it is.'
+    return 'Your edits are kept on this Mac as a draft (never a review). Nothing is sent until you review and apply it.'
+}
+type DraftSave = 'pending' | 'refused' | 'unknown' | null
 
 const matches = (r: ChangeResultView, c: ChangeTarget) => r.kind === c.kind && r.action === c.action && r.target === c.target
 
@@ -137,10 +150,32 @@ export function ReviewSheet({ snapshot, context, dispatch, observe, change: init
         }
     }, [])
 
+    // The workbench's draft flush, called before the sheet removes it (Close, Escape, the scrim): React's own
+    // cleanup would read a detached editor (C39b attempt-01 R1).
+    const flush = useRef<(() => void) | null>(null)
     function close() {
+        flush.current?.()
         exit.current()
         onClose()
     }
+    // The Gateway draft's save as the sheet last saw it (C39b attempt-01 R2); the core's word (problem, unsaved)
+    // is read from the snapshot on every render.
+    const [draftSave, setDraftSave] = useState<DraftSave>(null)
+    const keepDraft = onDraft
+        ? (body: string) => {
+              const r = onDraft(body)
+              if (r && typeof (r as Promise<DispatchOutcome>).then === 'function') {
+                  setDraftSave('pending')
+                  void (r as Promise<DispatchOutcome>).then((o) => setDraftSave(o.kind === 'admitted' ? null : o.kind === 'refused' || o.kind === 'failed' ? 'refused' : 'unknown'))
+              }
+          }
+        : undefined
+    const gatewayNote =
+        change && isGatewayKind(change.kind) && change.action !== 'delete' ? (
+            <p className='text-[12px]' style={{ color: draftSave || snapshot.gateway.local.problem || snapshot.gateway.local.unsaved ? 'var(--v2-flag)' : 'var(--v2-faint)' }} data-slot='gateway-draft-note' data-state={draftSave ?? (snapshot.gateway.local.problem ? 'rejected' : snapshot.gateway.local.unsaved ? 'unsaved' : 'kept')}>
+                {draftNoteText(snapshot.gateway.local, draftSave)}
+            </p>
+        ) : null
 
     async function updated() {
         if (!rotation) return
@@ -220,9 +255,26 @@ export function ReviewSheet({ snapshot, context, dispatch, observe, change: init
     }
 
     return (
-        <Modal label={application ? C.rotation.title(application) : C.reviewTitle} onClose={close} width={760} data-slot='review-sheet'>
-            <div className='flex flex-col gap-4'>
-                <h2 className='text-[16px] font-semibold'>{application ? C.rotation.title(application) : (change?.title ?? C.reviewTitle)}</h2>
+        <Modal label={application ? C.rotation.title(application) : C.reviewTitle} onClose={close} width={620} padding={30} sheet data-slot='review-sheet'>
+            <div className='flex flex-col' style={{ gap: 18 }}>
+                {/* R2App's review sheet (C39b): the title with the review's state, a close control, and the change's path. */}
+                <div className='flex items-center' style={{ gap: 10 }}>
+                    <h2 className='text-[24px] font-bold' style={{ letterSpacing: '-0.01em' }}>
+                        {application ? C.rotation.title(application) : C.reviewTitle}
+                    </h2>
+                    <span className='rounded-full text-[12px] font-semibold' style={{ padding: '2px 9px', background: settledState === 'live' || settledState === 'removed' ? 'var(--v2-ok-bg)' : settledState === 'failed' ? 'var(--v2-block-bg)' : 'var(--v2-inset)', color: settledState === 'live' || settledState === 'removed' ? 'var(--v2-ok)' : settledState === 'failed' ? 'var(--v2-block)' : 'var(--v2-soft)' }} data-slot='review-state'>
+                        {settledState === 'live' ? 'Applied' : settledState === 'removed' ? 'Removed' : settledState === 'failed' ? 'Not applied' : settledState === 'unconfirmed' ? 'Outcome unknown' : snapshot.changes.review && change ? (snapshot.changes.review.state === 'ready' ? 'Ready for review' : snapshot.changes.review.state === 'confirming' ? 'Confirming' : snapshot.changes.review.state === 'preparing' ? 'Preparing' : 'Review') : 'Draft'}
+                    </span>
+                    <button type='button' aria-label='Close review' onClick={close} className='ml-auto grid shrink-0 place-items-center rounded-[7px] border' style={{ width: 28, height: 28, minHeight: 0, borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
+                        <Glyph name='x' size={12} stroke={2.2} />
+                    </button>
+                </div>
+                {change ? (
+                    <p className='text-[14px]' style={{ color: 'var(--v2-soft)' }} data-slot='review-path'>
+                        {`${CHANGE_NOUN[change.kind].charAt(0).toUpperCase()}${CHANGE_NOUN[change.kind].slice(1)} › `}
+                        <b style={{ color: 'var(--v2-ink)' }}>{change.title}</b>
+                    </p>
+                ) : null}
                 {rotation ? (
                     <RotationPanel
                         rotation={rotation}
@@ -255,8 +307,9 @@ export function ReviewSheet({ snapshot, context, dispatch, observe, change: init
                         context={context}
                         dispatch={dispatch}
                         onClose={close}
-                        onDraft={onDraft}
-                        note={note}
+                        onDraft={keepDraft}
+                        flushRef={flush}
+                        note={gatewayNote ?? note}
                         requireTyped
                     />
                 ) : null}

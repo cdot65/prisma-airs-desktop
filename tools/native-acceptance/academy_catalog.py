@@ -177,9 +177,21 @@ def build(root):
               "iconKey": None, "estMinutes": 150, "status": "published"}
     return {
         "paths.list": [{"id": "path-runtime", "slug": PATH_SLUG, "title": "Runtime Security Path",
-                        "description": "Protect prompts and responses at runtime.", "familyKey": "prisma-airs",
+                        "tagline": "Protect prompts and responses at runtime.", "familyKey": "prisma-airs",
                         "iconKey": None, "tone": "info", "courseCount": 1, "estMinutes": 150, "unitCount": 28,
                         "unitsDone": 0, "locked": False, "lockReason": None}],
+        # The path's own page (`paths.get` by slug, the shape the router returns:
+        # the sections and their course cards); any other slug is NOT_FOUND.
+        "paths.get": {"by": "pathSlug", "values": {PATH_SLUG: {
+            "id": "path-runtime", "slug": PATH_SLUG, "title": "Runtime Security Path",
+            "tagline": "Protect prompts and responses at runtime.",
+            "description": "Scan what reaches the model and what comes back, then act on the verdicts.",
+            "level": "associate", "programId": None, "iconKey": None, "tone": "info",
+            "sections": [{"id": "sec-runtime-1", "title": "Foundations", "description": "The scan loop and its verdicts.", "order": 0,
+                          "courses": [{"id": COURSE, "slug": COURSE, "title": course["title"], "description": course["description"],
+                                       "level": "associate", "coursePurpose": None, "iconKey": None, "tone": "info", "estMinutes": 150,
+                                       "order": 0, "unitCount": 28, "unitsDone": 0, "moduleCount": len(MODULES), "modulesComplete": 0,
+                                       "status": "published", "teaser": None}]}]}}},
         "library.list": [
             {"type": "course", "id": COURSE, "slug": COURSE, "title": course["title"],
              "description": course["description"], "durationMinutes": 150, "level": "Associate",

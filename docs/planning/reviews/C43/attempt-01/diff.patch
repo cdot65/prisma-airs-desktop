@@ -1,0 +1,2639 @@
+diff --git a/apps/desktop/src/styles/tokens.css b/apps/desktop/src/styles/tokens.css
+index e6cbdff4..49220efb 100644
+--- a/apps/desktop/src/styles/tokens.css
++++ b/apps/desktop/src/styles/tokens.css
+@@ -222,3 +222,68 @@
+         border-top: 1px solid var(--v2-rule);
+     }
+ }
++/* The wizard's product cards (C43): the card is a label around a visually hidden native checkbox; the card shows
++   the control's focus ring and its chosen state. */
++[data-slot='product-card']:has(> input:focus-visible) {
++    outline: 2px solid var(--v2-acc);
++    outline-offset: 2px;
++}
++/* The wizard (C43) below 760px (a 900-point window at 200%): the rail is a compact strip above the step (the step
++   marks keep their names for assistive technology but show their numbers), every grid is one column, and the step
++   scrolls between the strip and the pinned footer. */
++@media (max-width: 760px) {
++    [data-v2-shell] [data-slot='wizard'],
++    [data-slot='wizard'] {
++        flex-direction: column;
++    }
++    [data-slot='wizard'] > nav {
++        width: 100% !important;
++        flex: 0 0 auto;
++        padding: 10px 12px 8px !important;
++        border-right: 0 !important;
++        border-bottom: 1px solid var(--v2-rule);
++    }
++    [data-slot='wizard'] > nav > div:first-child {
++        margin-bottom: 8px !important;
++    }
++    [data-slot='wizard'] > nav > ol {
++        flex-direction: row;
++        flex-wrap: wrap;
++        gap: 4px !important;
++    }
++    [data-slot='wizard'] > nav > ol button {
++        width: auto;
++        height: 32px !important;
++        padding: 0 6px !important;
++        gap: 0 !important;
++    }
++    [data-slot='wizard'] > nav > ol button > span:not(:first-child) {
++        position: absolute;
++        width: 1px;
++        height: 1px;
++        overflow: hidden;
++        clip: rect(0 0 0 0);
++        white-space: nowrap;
++    }
++    [data-slot='wizard'] > nav > [data-slot='privacy-note'] {
++        display: none;
++    }
++    [data-slot='wizard'] > nav > [data-slot='theme-button'] {
++        margin-top: 6px !important;
++    }
++    [data-slot='wizard'] main .grid {
++        grid-template-columns: minmax(0, 1fr) !important;
++    }
++    /* The strip drops the brand row (the sheet is already named), and the footer's hint or status keeps to two
++       lines: at 900×600 and 200% the add sheet is 279 CSS px tall, and a long hint made the footer taller than the
++       sheet, pushing its primary below the window. */
++    [data-slot='wizard'] > nav > div:first-child {
++        display: none;
++    }
++    [data-slot='wizard-footer'] [data-slot='wizard-status'] > span {
++        display: -webkit-box;
++        -webkit-line-clamp: 2;
++        -webkit-box-orient: vertical;
++        overflow: hidden;
++    }
++}
+diff --git a/apps/desktop/src/v2/v2-shell.tsx b/apps/desktop/src/v2/v2-shell.tsx
+index d6f9a96f..14244b10 100644
+--- a/apps/desktop/src/v2/v2-shell.tsx
++++ b/apps/desktop/src/v2/v2-shell.tsx
+@@ -552,7 +552,7 @@ export function V2Shell(props: V2ShellProps) {
+                 <SwitchGuard target={guardTarget} completion={false} onStay={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => props.onSwitchTenant(guard.to, resolution)} />
+             )}
+             {adding && (
+-                <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} data-slot='add-tenant-sheet'>
++                <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} padding={0} data-slot='add-tenant-sheet'>
+                     <Wizard
+                         snapshot={snapshot}
+                         dispatch={props.dispatch}
+diff --git a/apps/desktop/src/v2/wizard/copy.ts b/apps/desktop/src/v2/wizard/copy.ts
+index f2e3bb7a..06a3b026 100644
+--- a/apps/desktop/src/v2/wizard/copy.ts
++++ b/apps/desktop/src/v2/wizard/copy.ts
+@@ -2,6 +2,13 @@
+ export const WIZARD_COPY = {
+     railTitle: 'Prisma AIRS',
+     railSub: 'Setup · about 5 minutes',
++    required: 'Required',
++    optional: 'Optional',
++    skipped: 'Skipped',
++    privacy: 'Secrets go straight to the macOS Keychain. Tenant calls go only to your own tenant. Joining the Academy is optional and sends your account details and progress to Academy.',
++    themeLight: 'Light appearance',
++    themeDark: 'Dark appearance',
++    progress: (n: number, of: number) => `Step ${n} of ${of}`,
+     railTitleAdd: 'Add a tenant',
+     railSubAdd: 'About 3 minutes',
+     steps: {
+@@ -14,18 +21,27 @@ export const WIZARD_COPY = {
+         done: 'Done',
+     },
+     welcome: {
+-        title: 'Built on the public APIs',
+-        lead: 'This app is built entirely on Palo Alto Networks’ public APIs. It exists to show application builders what those interfaces make possible: every screen you will see is the product of calls you can make yourself.',
++        title: 'Welcome to Prisma AIRS Desktop',
++        lead: 'This app is built entirely on Palo Alto Networks’ own public APIs: the same programmatic interfaces any application builder can use. Everything you will see here, from reading a tenant’s security posture to scanning a prompt, is an API call you could make yourself. It exists to show how much those interfaces make possible.',
++        lead2: 'We will walk you through it: connect a tenant with the credentials an integration would use, pick the products you manage, check the connection, and optionally load starter test cases. It takes about five minutes, and you can change everything later.',
+         cards: [
+-            { title: 'Built on the public APIs', body: 'Nothing here uses a private interface. What the app reads and changes, your own code can read and change.' },
+-            { title: 'See the calls as you go', body: 'With “Show the calls” on, each request the app sends is shown as it happens, with its response.' },
+-            { title: 'Learn by doing', body: 'Scan a prompt, read a tenant, review a change. The Academy explains the why; this app shows the how.' },
++            { icon: 'key' as const, title: 'Built on the public APIs', body: 'Nothing here uses a private interface. What the app reads and changes, your own code can read and change.' },
++            { icon: 'eye' as const, title: 'See the calls as you go', body: 'With “Show the calls” on, each request the app sends is shown as it happens, with its response.' },
++            { icon: 'cap' as const, title: 'Learn by doing', body: 'Scan a prompt, read a tenant, review a change. The Academy explains the why; this app shows the how.' },
+         ],
++        importTitle: 'Used Prisma AIRS Desktop 1?',
++        importText: 'Bring over your tenants and saved cases instead of typing them again.',
++        importButton: 'Import from v1…',
+         continue: 'Set up a tenant',
+     },
+     tenant: {
+-        title: 'Your tenant',
+-        lead: 'A tenant is one Strata Cloud Manager account. The scan key is all that is needed to start; the management client is optional and unlocks Administration. Nothing becomes a tenant until the last step.',
++        title: 'Connect your tenant',
++        lead: 'This becomes a managed tenant. The credentials are the same ones any integration uses with the Palo Alto Networks APIs: the scan key is all that is needed to start; the management client is optional and unlocks Administration. Nothing becomes a tenant until the last step.',
++        card: 'Tenant',
++        environmentHint: 'Production tenants ask for confirmation before every change.',
++        regionHint: "Where the tenant's data lives. Matches the Strata Cloud Manager region.",
++        whereFind: 'Where do I find these?',
++        whereSteps: ['In Strata Cloud Manager, open Identity & Access › Service accounts.', 'Create a service account with the roles for the products you will manage.', 'Copy the client ID and the secret shown once. The secret is stored in your Keychain here and never shown again.'],
+         name: 'Display name',
+         nameHint: 'How this tenant appears in the switcher.',
+         environment: 'Environment',
+@@ -46,7 +62,7 @@ export const WIZARD_COPY = {
+         removeKey: 'Remove scan key',
+         keySaved: 'Scan key saved in the Keychain.',
+         keyRemoved: 'Scan key removed.',
+-        management: 'Management client (optional)',
++        management: 'Management credentials · OAuth 2.0',
+         managementHint: 'Unlocks Administration: reading and reviewing changes. Without it the app reads nothing but scans.',
+         clientId: 'Client ID',
+         clientSecret: 'Client secret',
+@@ -55,7 +71,7 @@ export const WIZARD_COPY = {
+         removeClient: 'Remove management client',
+         clientSaved: 'Management client saved.',
+         clientRemoved: 'Management client removed.',
+-        gateway: 'AI Gateway workspace (optional)',
++        gateway: 'AI Gateway workspace',
+         gatewayHint: 'Choose a workspace and save its inference key now, or later in Administration › AI Gateway.',
+         gatewayOn: 'Set up an AI Gateway workspace now',
+         gatewayNeedsClient: 'Save the management client first: workspaces are read through it.',
+@@ -94,8 +110,10 @@ export const WIZARD_COPY = {
+         },
+     },
+     products: {
+-        title: 'What to read',
+-        lead: 'Choose the products this tenant uses. Each one adds reads to Home and the Inbox; nothing is read until you ask. Runtime Security is always on: the scan key is what a tenant starts with.',
++        title: 'Which products will you manage?',
++        lead: (name: string) => `Pick the ones ${name} uses. They appear in Home, Inbox and Administration; nothing is read until you ask. Runtime Security is always on: the scan key is what a tenant starts with.`,
++        noScan: 'AI Runtime Security works without a scan API key, but the Playground and test runs need one.',
++        addScanKey: 'Add a scan key',
+         unavailable: 'Not available in this release',
+         readOnly: 'Read-only',
+         always: 'Always on',
+@@ -109,8 +127,16 @@ export const WIZARD_COPY = {
+         continue: 'Continue',
+     },
+     verify: {
+-        title: 'Verify',
+-        lead: 'Each line is decided by the desktop core against your tenant: a stored key is reported as stored, never as checked, and every read is an admitted API call.',
++        title: 'Check the connection',
++        lead: (name: string) => `We save the credentials, get a token and confirm each product you picked, using only read calls. Nothing in ${name} is changed. Each line is decided by the desktop core: a stored key is reported as stored, never as checked, and every read is an admitted API call.`,
++        notRunTitle: 'Not checked yet',
++        notRunText: 'Run the checks when the credentials are saved. Each one is a public API call you could make from your own code.',
++        runningText: 'Reading with the saved credentials; nothing is changed.',
++        staleText: 'The inputs changed since this run.',
++        failedText: 'A required check failed. Edit the credentials and verify again.',
++        failedOptionalText: 'Fix it and verify again, or continue with it recorded as a warning.',
++        doneText: 'Every line was decided by the desktop core against your tenant.',
++        editCredentials: 'Edit credentials',
+         run: 'Run the checks',
+         running: 'Checking…',
+         again: 'Verify again',
+@@ -143,31 +169,49 @@ export const WIZARD_COPY = {
+         continue: 'Continue',
+     },
+     packs: {
+-        title: 'Starter cases',
+-        lead: 'Optional. Imports the bundled example cases for the products you chose into this tenant’s Test Cases library, so there is something to run on the first day.',
++        title: 'Load starter test cases',
++        lead: (name: string) => `Optional. Ready-made cases for the products you picked, imported into ${name}’s Test Cases library so there is something to run on the first day. They are sealed on this Mac, and you can edit or delete them later.`,
+         pack: (product: string, count: number) => `${product} · ${count} ${count === 1 ? 'case' : 'cases'}`,
++        name: (product: string) => `${product} starter pack`,
++        count: (n: number) => `${n} ${n === 1 ? 'case' : 'cases'}`,
++        summary: (packs: number, cases: number) => (packs === 0 ? 'No packs selected. Starter cases can be added later from Test Cases.' : `${cases} ${cases === 1 ? 'case' : 'cases'} in ${packs} ${packs === 1 ? 'pack' : 'packs'} will be imported.`),
+         none: 'No bundled cases for the chosen products.',
+-        skip: 'Skip',
++        skip: 'Skip for now',
+         continue: 'Continue',
+     },
+     academy: {
+-        title: 'Academy account',
+-        lead: 'Optional. Signing in syncs your Academy progress only: lessons, assessments and certificates. Nothing about your tenant or its credentials is sent to the Academy.',
++        title: 'Join the AI Security Academy',
++        lead: 'Optional. Short lessons for each product, practised against your own tenant. Signing in syncs your Academy progress only: lessons, assessments and certificates. Nothing about your tenant or its credentials is sent to the Academy.',
++        account: 'Your account',
++        whatSyncs: 'What is sent to Academy',
++        syncs: ['Your account’s email and display name, when you sign in.', 'Lesson progress, assessments and certificates.', 'Nothing about your tenants or their credentials.'],
+         skip: 'Skip for now',
+         continue: 'Continue',
+     },
+     done: {
+-        title: 'Ready',
+-        lead: (name: string) => `${name} is ready to become a tenant. Home reads it the first time you open it.`,
++        title: (name: string) => `${name} is ready`,
++        lead: 'Here is what was set up. Everything can be changed later in Administration and Settings; Home reads the tenant the first time you open it.',
++        change: 'Change',
+         summary: {
++            tenant: 'Tenant',
+             scan: 'Scan key',
+             client: 'Management client',
+             products: 'Products',
++            checks: 'Checks',
++            checksPassed: 'All passed',
++            checksWarnings: (n: number) => `Passed · ${n} ${n === 1 ? 'warning' : 'warnings'}`,
+             packs: 'Starter cases',
++            academy: 'Academy',
++            academySkipped: 'Skipped · join any time from Academy',
+             saved: 'saved',
+             notSaved: 'not saved',
+             none: 'none',
+         },
++        nextUp: [
++            { icon: 'home' as const, title: 'Home', text: 'The first read of each product arrives when you open it. Open the API Client any time to see the request behind a figure.' },
++            { icon: 'inbox' as const, title: 'Inbox', text: 'Anything that needs you, from every product, in one list.' },
++            { icon: 'bot' as const, title: 'Ask the Harness', text: 'Choose a model the first time you ask. Tools always ask first.' },
++        ],
+         open: 'Open Prisma AIRS',
+         opening: 'Opening…',
+         finish: 'Finish',
+@@ -186,11 +230,11 @@ export const WIZARD_COPY = {
+ } as const
+ 
+ /** The products the wizard offers: admitted ones selectable, the rest shown as not available (DESIGN-V2 §6). */
+-export const PRODUCT_CARDS: { id: 'runtimeSecurity' | 'gateway' | 'redTeam' | 'modelSkill' | null; label: string; body: string; readOnly?: boolean }[] = [
+-    { id: 'runtimeSecurity', label: 'AI Runtime Security', body: 'Prompts, responses and tool calls are scanned as they happen.' },
+-    { id: 'gateway', label: 'AI Gateway', body: 'Workspaces, routes, providers, guardrails and keys.' },
+-    { id: 'redTeam', label: 'AI Red Teaming', body: 'Scan inventory, statistics and reports.', readOnly: true },
+-    { id: 'modelSkill', label: 'Model and skill scans', body: 'Model Security and AgentGuard skill scan summaries.', readOnly: true },
+-    { id: null, label: 'Agentic Identity Security', body: 'Needs an admitted AIS service (D058).' },
+-    { id: null, label: 'Agentic Endpoint Security', body: 'Needs an admitted AES service (D058).' },
++export const PRODUCT_CARDS: { id: 'runtimeSecurity' | 'gateway' | 'redTeam' | 'modelSkill' | null; label: string; body: string; icon: 'shield' | 'route' | 'cross' | 'box' | 'idcard' | 'laptop'; readOnly?: boolean }[] = [
++    { id: 'runtimeSecurity', label: 'AI Runtime Security', body: 'Prompts, responses and tool calls are scanned as they happen.', icon: 'shield' },
++    { id: 'gateway', label: 'AI Gateway', body: 'Workspaces, routes, providers, guardrails and keys.', icon: 'route' },
++    { id: 'redTeam', label: 'AI Red Teaming', body: 'Scan inventory, statistics and reports.', icon: 'cross', readOnly: true },
++    { id: 'modelSkill', label: 'Model and skill scans', body: 'Model Security and AgentGuard skill scan summaries.', icon: 'box', readOnly: true },
++    { id: null, label: 'Agentic Identity Security', body: 'Needs an admitted AIS service (D058).', icon: 'idcard' },
++    { id: null, label: 'Agentic Endpoint Security', body: 'Needs an admitted AES service (D058).', icon: 'laptop' },
+ ]
+diff --git a/apps/desktop/src/v2/wizard/wizard-boards.test.tsx b/apps/desktop/src/v2/wizard/wizard-boards.test.tsx
+index f5d00230..694edb4b 100644
+--- a/apps/desktop/src/v2/wizard/wizard-boards.test.tsx
++++ b/apps/desktop/src/v2/wizard/wizard-boards.test.tsx
+@@ -21,7 +21,7 @@ const current = () => screen.getByRole('navigation', { name: 'Setup steps' }).qu
+ describe('R2Onboard boards', () => {
+     it('R2On01 welcome: three cards and the API-builder framing, no shell, no Back', () => {
+         mount(fxOn.welcome())
+-        expect(screen.getByRole('heading', { level: 1, name: 'Built on the public APIs' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: 'Welcome to Prisma AIRS Desktop' })).toBeInTheDocument()
+         expect(within(screen.getByRole('main')).getAllByRole('listitem')).toHaveLength(3)
+         expect(screen.queryByRole('navigation', { name: 'Destinations' })).toBeNull()
+         expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+@@ -38,18 +38,18 @@ describe('R2Onboard boards', () => {
+         mount(fxOn.tenantFilled())
+         expect(document.querySelector('[data-slot="rail-context"]')).toHaveTextContent('Northwind Health · Staging · TSG 1762204418')
+         expect(screen.getByLabelText(/Display name/)).toHaveValue('Northwind Health')
+-        expect(screen.getByLabelText('Environment')).toHaveValue('staging')
++        expect(within(screen.getByRole('radiogroup', { name: 'Environment' })).getByRole('radio', { name: 'Staging' })).toBeChecked()
+         expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+         expect(screen.getByRole('button', { name: 'Replace scan key' })).toBeInTheDocument()
+         expect(screen.getByRole('button', { name: 'Remove scan key' })).toBeInTheDocument()
+         expect(screen.getByRole('button', { name: 'Save management client' })).toBeInTheDocument()
+-        expect(screen.getByRole('checkbox', { name: 'Set up an AI Gateway workspace now' })).not.toBeChecked()
++        expect(screen.getByRole('switch', { name: 'Set up an AI Gateway workspace now' })).not.toBeChecked()
+         expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+     })
+     it('R2On03 products: Runtime always on, AIS and AES not selectable, reads-with state per card', () => {
+         mount(fxOn.products())
+         const boxes = screen.getAllByRole('checkbox')
+-        expect(boxes.map((b) => (b as HTMLInputElement).disabled)).toEqual([true, false, false, false, true, true])
++        expect(boxes.map((b) => b.getAttribute('aria-disabled') === 'true')).toEqual([true, false, false, false, true, true])
+         expect(screen.getByRole('checkbox', { name: /AI Gateway/ })).toBeChecked()
+         expect(screen.getByText('Always on')).toBeInTheDocument()
+         expect(screen.getByText('Scan key saved')).toBeInTheDocument()
+@@ -79,7 +79,7 @@ describe('R2Onboard boards', () => {
+         expect(within(document.querySelector('[data-slot="verify-ais"]') as HTMLElement).getByText('Not available')).toBeInTheDocument()
+         expect(within(document.querySelector('[data-slot="verify-aes"]') as HTMLElement).getByText('Not available')).toBeInTheDocument()
+         await user.click(screen.getByRole('button', { name: 'Fix and verify again' }))
+-        expect(screen.getByRole('heading', { level: 1, name: 'Your tenant' })).toHaveFocus()
++        expect(screen.getByRole('heading', { level: 1, name: 'Connect your tenant' })).toHaveFocus()
+         expect(screen.getByLabelText(/TSG ID/)).toHaveValue('1762204418')
+         expect(screen.getByRole('button', { name: 'Replace management client' })).toBeInTheDocument()
+         expect(screen.getByRole('button', { name: 'Remove management client' })).toBeInTheDocument()
+@@ -92,7 +92,7 @@ describe('R2Onboard boards', () => {
+         expect(screen.getByRole('button', { name: 'Fix and verify again' })).toBeEnabled()
+         expect(screen.getByRole('button', { name: 'Verify again' })).toBeEnabled()
+         await user.click(screen.getByRole('button', { name: 'Continue with warnings' }))
+-        expect(screen.getByRole('heading', { level: 1, name: 'Starter cases' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: 'Load starter test cases' })).toBeInTheDocument()
+         expect(dispatch).not.toHaveBeenCalled()
+     })
+     it('R2On04d verify stale: the run no longer counts and later steps are unreachable', () => {
+@@ -106,8 +106,8 @@ describe('R2Onboard boards', () => {
+         const user = userEvent.setup()
+         mount(fxOn.packs())
+         expect(screen.getByRole('checkbox', { name: 'AI Runtime Security · 6 cases' })).toBeChecked()
+-        await user.click(screen.getByRole('button', { name: 'Skip' }))
+-        expect(screen.getByRole('heading', { level: 1, name: 'Academy account' })).toBeInTheDocument()
++        await user.click(screen.getByRole('button', { name: 'Skip for now' }))
++        expect(screen.getByRole('heading', { level: 1, name: 'Join the AI Security Academy' })).toBeInTheDocument()
+     })
+     it('R2On06 academy: the reviewed account component with sign-in or skip and the sync disclosure', () => {
+         mount(fxOn.academy())
+@@ -118,7 +118,7 @@ describe('R2Onboard boards', () => {
+     it('R2On07 done: the summary matches the core’s draft and Open Prisma AIRS sends one completion', async () => {
+         const user = userEvent.setup()
+         const { dispatch } = mount(fxOn.done())
+-        expect(screen.getByRole('heading', { level: 1, name: 'Ready' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: /is ready$/ })).toBeInTheDocument()
+         expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Products: AI Runtime Security')
+         await user.click(screen.getByRole('button', { name: 'Open Prisma AIRS' }))
+         expect(dispatch).toHaveBeenCalledWith({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'], resolution: null })
+@@ -127,7 +127,8 @@ describe('R2Onboard boards', () => {
+     it('R2AddTenant: no Welcome or Academy step, a 244px rail, Cancel on every step and no Back on the first', () => {
+         mount(fxAddTenant())
+         const rail = screen.getByRole('navigation', { name: 'Setup steps' })
+-        expect(within(rail).getAllByRole('button').map((b) => b.textContent)).toEqual(['1Tenant', '2Products', '3Verify', '4Starter cases', '5Done', 'Cancel'])
++        expect(within(rail).getAllByRole('button').map((b) => b.textContent)).toEqual(['1Tenant', '2Products', '3Verify', '4Starter casesOptional', '5Done', 'Light appearance'])
++        expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+         expect(rail).toHaveStyle({ width: '244px' })
+         expect(screen.getByText(/Cancel discards this draft and removes any credential it saved/)).toBeInTheDocument()
+         expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+diff --git a/apps/desktop/src/v2/wizard/wizard.test.tsx b/apps/desktop/src/v2/wizard/wizard.test.tsx
+index 8767d944..5b5530cd 100644
+--- a/apps/desktop/src/v2/wizard/wizard.test.tsx
++++ b/apps/desktop/src/v2/wizard/wizard.test.tsx
+@@ -33,23 +33,23 @@ describe('first-run wizard', () => {
+     it('opens on Welcome, marks the wizard in progress only once the core admits it, and keeps a refusal visible', async () => {
+         const user = userEvent.setup()
+         const native = await launch(fxOnboarding())
+-        expect(screen.getByRole('heading', { level: 1, name: 'Built on the public APIs' })).toBeInTheDocument()
+-        expect(screen.getByText(/built entirely on Palo Alto Networks’ public APIs/)).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: 'Welcome to Prisma AIRS Desktop' })).toBeInTheDocument()
++        expect(screen.getByText(/built entirely on Palo Alto Networks’ own public APIs/)).toBeInTheDocument()
+         expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+         native.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
+         await user.click(screen.getByRole('button', { name: 'Set up a tenant' }))
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'setOnboarding', state: 'inProgress' })
+-        expect(screen.getByRole('heading', { level: 1, name: 'Built on the public APIs' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: 'Welcome to Prisma AIRS Desktop' })).toBeInTheDocument()
+         expect(document.querySelector('[data-slot="wizard-status"]')).toHaveTextContent(/Keychain|denied|store/i)
+         native.respond = () => admitted()
+         await user.click(screen.getByRole('button', { name: 'Set up a tenant' }))
+-        expect(screen.getByRole('heading', { level: 1, name: 'Your tenant' })).toHaveFocus()
++        expect(screen.getByRole('heading', { level: 1, name: 'Connect your tenant' })).toHaveFocus()
+     })
+ 
+     it('validates per field, drafts the tenant in the core, and attaches the scan key to the draft context once without echoing it', async () => {
+         const user = userEvent.setup()
+         const native = await launch({ ...fxOnboarding(), onboarding: 'inProgress' })
+-        expect(screen.getByRole('heading', { level: 1, name: 'Your tenant' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: 'Connect your tenant' })).toBeInTheDocument()
+         expect(screen.getByRole('button', { name: 'Create the tenant to continue' })).toBeDisabled()
+         await user.click(screen.getByRole('button', { name: 'Create tenant' }))
+         const name = screen.getByLabelText(/Display name/)
+@@ -57,7 +57,7 @@ describe('first-run wizard', () => {
+         expect(name).toHaveAccessibleDescription('Enter a display name.')
+         expect(native.dispatched.filter((i) => i.kind === 'beginTenantSetup')).toHaveLength(0)
+         await user.type(name, 'Northwind Health')
+-        await user.selectOptions(screen.getByLabelText('Environment'), 'staging')
++        await user.click(within(screen.getByRole('radiogroup', { name: 'Environment' })).getByRole('radio', { name: 'Staging' }))
+         await user.selectOptions(screen.getByLabelText('Region'), 'europe')
+         await user.type(screen.getByLabelText(/TSG ID/), '1762204418')
+         await user.click(screen.getByRole('button', { name: 'Create tenant' }))
+@@ -90,7 +90,7 @@ describe('first-run wizard', () => {
+         const user = userEvent.setup()
+         const clientReady = draft({ scan: { state: 'ready', mode: 'keychain', failure: null }, management: { state: 'ready', mode: 'keychain', failure: null, clientId: 'svc@1762204418.iam.example', tokenOrigin: 'https://auth.apps.paloaltonetworks.com' } })
+         const native = await launch({ ...fxOnboarding(), onboarding: 'inProgress', setup: setupView({ tenant: clientReady }) })
+-        await user.click(screen.getByRole('checkbox', { name: 'Set up an AI Gateway workspace now' }))
++        await user.click(screen.getByRole('switch', { name: 'Set up an AI Gateway workspace now' }))
+         native.respond = () => admitted('op-7')
+         native.observeManagement = () => ({ kind: 'management', result: { kind: 'gateway', gateway: { kind: 'list', list: { resource: 'workspaces', workspace: null, rows: JSON.stringify([{ id: 'ws-1', name: 'Harness' }, { id: 'ws-2', name: 'Lab' }]), count: 2, total: 2, complete: true } } } })
+         await user.click(screen.getByRole('button', { name: 'Read workspaces' }))
+@@ -116,9 +116,9 @@ describe('first-run wizard', () => {
+         const user = userEvent.setup()
+         const native = await launch({ ...fxOnboarding(), onboarding: 'inProgress', setup: setupView() })
+         await user.click(screen.getByRole('button', { name: 'Continue' }))
+-        expect(screen.getByRole('heading', { level: 1, name: 'What to read' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: 'Which products will you manage?' })).toBeInTheDocument()
+         const boxes = screen.getAllByRole('checkbox')
+-        expect(boxes.map((b) => (b as HTMLInputElement).disabled)).toEqual([true, false, false, false, true, true])
++        expect(boxes.map((b) => b.getAttribute('aria-disabled') === 'true')).toEqual([true, false, false, false, true, true])
+         expect(boxes[0]).toBeChecked()
+         expect(screen.getAllByText('Not available in this release')).toHaveLength(2)
+         await user.click(screen.getByRole('checkbox', { name: /AI Gateway/ }))
+@@ -157,11 +157,11 @@ describe('first-run wizard', () => {
+         await native.push({ ...native.current, setup: setupView({ products: ['runtimeSecurity', 'gateway'], packs: [{ product: 'runtimeSecurity', count: 6 }, { product: 'gateway', count: 2 }], verify: verifyView([stored, warning, gatewayWarn]) }) })
+         expect(await screen.findByRole('checkbox', { name: 'AI Gateway · 2 cases' })).not.toBeChecked()
+         await user.click(screen.getByRole('button', { name: 'Continue' }))
+-        expect(screen.getByRole('heading', { level: 1, name: 'Academy account' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: 'Join the AI Security Academy' })).toBeInTheDocument()
+         expect(screen.getByText(/syncs your Academy progress only/)).toBeInTheDocument()
+         expect(screen.getByRole('button', { name: 'Sign in to Academy' })).toBeInTheDocument()
+         await user.click(screen.getByRole('button', { name: 'Skip for now' }))
+-        expect(screen.getByRole('heading', { level: 1, name: 'Ready' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: /is ready$/ })).toBeInTheDocument()
+         expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Products: AI Runtime Security, AI Gateway')
+         expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Starter cases: AI Runtime Security')
+         // Completion is one intent; the shell takes over when the core confirms.
+@@ -178,7 +178,7 @@ describe('first-run wizard', () => {
+         const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'stored', reason: 'Stored.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'skipped', reason: 'No client.' }])
+         const native = await launch({ ...fxOnboarding(), onboarding: 'inProgress', setup: setupView({ verify: verified }) })
+         for (const step of ['Continue', 'Continue', 'Continue', 'Continue', 'Skip for now']) await user.click(screen.getByRole('button', { name: step }))
+-        expect(screen.getByRole('heading', { level: 1, name: 'Ready' })).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 1, name: /is ready$/ })).toBeInTheDocument()
+         native.respond = () => ({ outcome: 'refusal', refusal: 'invalidInput' })
+         await user.click(screen.getByRole('button', { name: 'Open Prisma AIRS' }))
+         expect(await screen.findByText('Check the entered values and try again.')).toBeInTheDocument()
+@@ -203,11 +203,11 @@ describe('first-run wizard', () => {
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'import' })
+         await native.push({ ...native.current, activeFeature: 'import' })
+         expect(await screen.findByRole('heading', { level: 1, name: 'Import from v1' })).toBeInTheDocument()
+-        expect(screen.queryByRole('heading', { level: 1, name: 'Your tenant' })).toBeNull()
++        expect(screen.queryByRole('heading', { level: 1, name: 'Connect your tenant' })).toBeNull()
+         await user.click(screen.getByRole('button', { name: 'Back to setup' }))
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'home' })
+         await native.push({ ...native.current, activeFeature: 'home' })
+-        expect(await screen.findByRole('heading', { level: 1, name: 'Your tenant' })).toBeInTheDocument()
++        expect(await screen.findByRole('heading', { level: 1, name: 'Connect your tenant' })).toBeInTheDocument()
+     })
+ 
+     it('a committed import ends the first run: the shell opens on the imported tenant', async () => {
+@@ -220,7 +220,7 @@ describe('first-run wizard', () => {
+         const imported = tenant({ id: 'tn-00000000c0a57a10', label: 'Imported', tsgId: '2222222222' })
+         await native.push(withTenant({ ...native.current, onboarding: 'done', setup: null, activeFeature: 'home' }, imported))
+         expect(await screen.findByRole('navigation', { name: 'Destinations' })).toBeInTheDocument()
+-        expect(screen.queryByRole('heading', { level: 1, name: 'Your tenant' })).toBeNull()
++        expect(screen.queryByRole('heading', { level: 1, name: 'Connect your tenant' })).toBeNull()
+         expect(screen.getByRole('button', { name: /^Switch tenant: Imported/ })).toBeInTheDocument()
+     })
+ })
+@@ -235,10 +235,11 @@ describe('add-tenant sheet', () => {
+         expect(sheet).toHaveAttribute('aria-modal', 'true')
+         expect(sheet.style.maxHeight).toBe('92vh')
+         const steps = within(sheet).getByRole('navigation', { name: 'Setup steps' })
+-        expect(within(steps).getAllByRole('button').map((b) => b.textContent)).toEqual(['1Tenant', '2Products', '3Verify', '4Starter cases', '5Done', 'Cancel'])
++        expect(within(steps).getAllByRole('button').map((b) => b.textContent)).toEqual(['1Tenant', '2Products', '3Verify', '4Starter casesOptional', '5Done', 'Light appearance'])
++        expect(within(sheet).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+         expect(steps).toHaveStyle({ width: '244px' })
+         expect(within(sheet).queryByRole('button', { name: 'Back' })).toBeNull()
+-        await user.click(within(steps).getByRole('button', { name: 'Cancel' }))
++        await user.click(within(sheet).getByRole('button', { name: 'Cancel' }))
+         expect(screen.queryByRole('dialog')).toBeNull()
+         expect(native.dispatched.filter((i) => i.kind !== 'navigate')).toEqual([])
+     })
+@@ -405,7 +406,7 @@ describe('add-tenant sheet', () => {
+         await user.click(within(sheet).getByRole('button', { name: 'Continue' }))
+         await user.click(within(sheet).getByRole('button', { name: 'Continue' }))
+         await user.click(within(sheet).getByRole('button', { name: 'Continue with warnings' }))
+-        await user.click(within(sheet).getByRole('button', { name: 'Skip' }))
++        await user.click(within(sheet).getByRole('button', { name: 'Skip for now' }))
+         await user.click(within(sheet).getByRole('button', { name: 'Finish' }))
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: [], resolution: null })
+         expect(screen.queryByRole('dialog')).toBeNull()
+@@ -420,7 +421,7 @@ describe('add-tenant sheet', () => {
+         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+         await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
+         const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })
+-        for (const step of ['Continue', 'Continue', 'Continue with warnings', 'Skip']) await user.click(within(sheet).getByRole('button', { name: step }))
++        for (const step of ['Continue', 'Continue', 'Continue with warnings', 'Skip for now']) await user.click(within(sheet).getByRole('button', { name: step }))
+         native.respond = () => ({ outcome: 'refusal', refusal: 'decisionPending' })
+         await user.click(within(sheet).getByRole('button', { name: 'Finish' }))
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: [], resolution: null })
+diff --git a/apps/desktop/src/v2/wizard/wizard.tsx b/apps/desktop/src/v2/wizard/wizard.tsx
+index ad3d01e4..b7e3afe6 100644
+--- a/apps/desktop/src/v2/wizard/wizard.tsx
++++ b/apps/desktop/src/v2/wizard/wizard.tsx
+@@ -5,6 +5,7 @@ import type { Dispatch, DispatchOutcome } from '../../features/tenants/dispatch'
+ import { outcomeMessage } from '../../features/tenants/dispatch'
+ import { readManagement } from '../../features/administration/management-read'
+ import { AcademyAccount } from '../../features/academy/academy-account'
++import { Glyph, type GlyphName } from '../icons'
+ import { Verdict, type VerdictTone } from '../verdict'
+ import { ENVIRONMENT_LABELS } from '../copy'
+ import { SwitchGuard } from '../switch-guard'
+@@ -81,6 +82,10 @@ export function Wizard(props: WizardProps) {
+     const [busy, setBusy] = useState(false)
+     const [finishing, setFinishing] = useState(false)
+     const [packs, setPacks] = useState<ProductId[] | null>(props.initial?.packs ?? null)
++    // Steps the operator skipped (the rail tags them Skipped once passed).
++    const [skipped, setSkipped] = useState<Set<WizardStep>>(() => new Set())
++    const [helpOpen, setHelpOpen] = useState(false)
++    const [scanOpen, setScanOpen] = useState(false)
+     const heading = useRef<HTMLHeadingElement>(null)
+     const headingId = useId()
+ 
+@@ -393,344 +398,691 @@ export function Wizard(props: WizardProps) {
+ 
+     const railCtx = setup ? `${setup.tenant.label} · ${ENVIRONMENT_LABELS[setup.tenant.environment]}${setup.tenant.tsgId ? ` · TSG ${setup.tenant.tsgId}` : ''}` : ''
+     const productLabel = (id: ProductId) => PRODUCT_CARDS.find((c) => c.id === id)?.label ?? id
++    const isAdd = mode === 'add'
++    const dark = snapshot.appearance === 'dark' || (snapshot.appearance === 'system' && typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches)
++    const skip = (s: WizardStep) => {
++        setSkipped((x) => new Set([...x, s]))
++        go(index + 1)
++    }
++    const unskip = (s: WizardStep) =>
++        setSkipped((x) => {
++            const n = new Set(x)
++            n.delete(s)
++            return n
++        })
++
++    // ---- the pinned footer, per step ----
++    type Btn = { label: string; onClick: () => void; disabled?: boolean }
++    let primary: Btn
++    let secondary: Btn | undefined
++    let extra: Btn | undefined
++    let skipBtn: Btn | undefined
++    let hint = ''
++    switch (step) {
++        case 'welcome':
++            primary = { label: C.welcome.continue, onClick: () => void leaveWelcome(), disabled: busy }
++            break
++        case 'tenant':
++            primary = { label: tenantContinue.label, onClick: () => go(index + 1), disabled: tenantContinue.disabled }
++            hint = isAdd && !setup ? C.cancelNote : ''
++            break
++        case 'products':
++            primary = { label: C.products.continue, onClick: () => go(index + 1) }
++            break
++        case 'verify':
++            primary = { label: run && run.done && !run.stale && run.warnings.length > 0 && !run.blocking ? C.verify.continueWarnings : C.verify.continue, onClick: () => go(index + 1), disabled: !setup?.completable }
++            secondary = { label: run ? C.verify.again : C.verify.run, onClick: () => void verify(), disabled: busy || running }
++            extra = run && run.done && run.failed && !run.stale ? { label: C.verify.fix, onClick: () => go(steps.indexOf('tenant')) } : undefined
++            break
++        case 'packs':
++            primary = { label: C.packs.continue, onClick: () => { unskip('packs'); go(index + 1) } }
++            skipBtn = { label: C.packs.skip, onClick: () => { setPacks([]); skip('packs') } }
++            break
++        case 'academy':
++            primary = snapshot.academy.state === 'signedIn' ? { label: C.academy.continue, onClick: () => { unskip('academy'); go(index + 1) } } : { label: C.academy.skip, onClick: () => skip('academy') }
++            break
++        default:
++            primary = { label: finishing ? (isAdd ? C.done.finishing : C.done.opening) : isAdd ? C.done.finish : C.done.open, onClick: () => void finish(), disabled: finishing || !setup?.completable || profileDirty }
++    }
++    const showBack = index > 0
++
++    const card = (children: ReactNode, extraStyle: React.CSSProperties = {}, rest: Record<string, unknown> = {}) => (
++        <section className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', ...extraStyle }} {...rest}>
++            {children}
++        </section>
++    )
++    const pill = (text: string, tone: 'required' | 'optional' = 'optional') => (
++        <span className='rounded-full text-[12px] font-semibold' style={{ padding: '1px 7px', background: 'var(--v2-inset)', color: tone === 'required' ? 'var(--v2-soft)' : 'var(--v2-faint)' }}>
++            {text}
++        </span>
++    )
++    const tile = (name: GlyphName, size = 30) => (
++        <span className='grid shrink-0 place-items-center rounded-[8px]' style={{ width: size, height: size, background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
++            <Glyph name={name} size={Math.round(size / 2)} color='var(--v2-soft)' />
++        </span>
++    )
++    const stateTone = (state: 'missing' | 'storing' | 'ready' | 'failed'): VerdictTone => (state === 'ready' ? 'allowed' : state === 'failed' ? 'blocked' : 'info')
++    const scanCard = setup && (
++        <OptionalCard
++            icon='shield'
++            title={C.tenant.scanKey}
++            text={`${setup.scanRequired ? C.tenant.scanRequired : C.tenant.scanOptional} ${C.tenant.scanHint}`}
++            tag={setup.scanRequired ? C.required : C.optional}
++            open={scanOpen || setup.scanRequired || scanReady}
++            onToggle={setup.scanRequired ? undefined : (on) => setScanOpen(on)}
++            state={
++                <span data-slot='scan-state'>
++                    <Verdict tone={stateTone(setup.tenant.scan.state)} word={C.tenant.state[setup.tenant.scan.state]} />
++                </span>
++            }
++            slot='scan-key-form'
++            onSubmit={(e) => void saveScanKey(e)}
++            busy={busy}
++        >
++            <SecretField label={C.tenant.scanKey} inputRef={scanRef} error={errors.scanKey} />
++            <div className='flex items-end' style={{ gap: 10 }}>
++                <Primary label={scanReady ? C.tenant.replaceKey : C.tenant.saveKey} disabled={busy} />
++                {scanReady && <Secondary label={C.tenant.removeKey} disabled={busy} onClick={() => void remove('removeScanCredential', C.tenant.keyRemoved)} />}
++            </div>
++        </OptionalCard>
++    )
+ 
+     return (
+-        <div data-slot='wizard' data-mode={mode} className='flex' style={{ minHeight: mode === 'add' ? 'min(780px, 84vh)' : '100vh', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
+-            <nav aria-label='Setup steps' className='flex shrink-0 flex-col gap-1 p-6' style={{ width: mode === 'add' ? 244 : 320, background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}>
+-                <p className='text-[15px] font-bold'>{mode === 'add' ? C.railTitleAdd : C.railTitle}</p>
+-                <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+-                    {mode === 'add' ? C.railSubAdd : C.railSub}
+-                </p>
+-                {railCtx && step !== 'welcome' && (
+-                    <p data-slot='rail-context' className='mt-1 text-[12px] font-semibold'>
+-                        {railCtx}
+-                    </p>
+-                )}
+-                <ol className='mt-4 flex flex-col gap-1'>
+-                    {steps.map((s, i) => (
+-                        <li key={s}>
+-                            <button
+-                                type='button'
+-                                aria-current={s === step ? 'step' : undefined}
+-                                disabled={!reachable(i)}
+-                                onClick={() => reachable(i) && go(i)}
+-                                className='flex min-h-9 w-full items-center gap-2 rounded-[7px] px-2.5 text-left text-[13px] disabled:opacity-60'
+-                                style={{ background: s === step ? 'var(--v2-sel)' : 'transparent', color: s === step ? 'var(--v2-sel-ink)' : 'var(--v2-ink)' }}
+-                            >
+-                                <span className='grid size-5 place-items-center rounded-full text-[11px] font-bold' style={{ border: '1px solid currentColor' }}>
+-                                    {i + 1}
++        <div data-slot='wizard' data-mode={mode} className='flex' style={{ height: isAdd ? 'min(780px, 92vh)' : '100vh', minHeight: 0, background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
++            <nav aria-label='Setup steps' className='flex shrink-0 flex-col' style={{ width: isAdd ? 244 : 320, padding: isAdd ? '22px 16px 16px' : '22px 20px 20px', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}>
++                <div className='flex items-center' style={{ gap: 12, marginBottom: 28 }}>
++                    <span className='grid shrink-0 place-items-center rounded-[10px]' style={{ width: 40, height: 40, background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }} data-slot='brand-tile'>
++                        <Glyph name='shield' size={22} color='var(--v2-acc-ink)' />
++                    </span>
++                    <span className='min-w-0'>
++                        <b className='text-[15px]'>{isAdd ? C.railTitleAdd : C.railTitle}</b>
++                        <br />
++                        <span style={{ color: 'var(--v2-faint)' }}>{isAdd ? C.railSubAdd : C.railSub}</span>
++                        {railCtx && step !== 'welcome' && (
++                            <>
++                                <br />
++                                <span data-slot='rail-context' className='inline-block text-[12px] font-semibold leading-[1.35] break-words' style={{ marginTop: 4 }}>
++                                    {railCtx}
+                                 </span>
+-                                {C.steps[s]}
+-                            </button>
+-                        </li>
+-                    ))}
++                            </>
++                        )}
++                    </span>
++                </div>
++                <ol className='flex flex-col' style={{ gap: 2 }}>
++                    {steps.map((s, i) => {
++                        const cur = s === step
++                        const done = i < index && visited.has(s) && !skipped.has(s)
++                        const optional = s === 'packs' || s === 'academy'
++                        return (
++                            <li key={s}>
++                                <button
++                                    type='button'
++                                    aria-current={cur ? 'step' : undefined}
++                                    disabled={!reachable(i)}
++                                    onClick={() => reachable(i) && go(i)}
++                                    className='flex w-full items-center rounded-[8px] text-left text-[13px] disabled:opacity-60'
++                                    style={{ gap: 12, height: 40, padding: '0 10px', background: cur ? 'var(--v2-paper)' : 'transparent', color: 'var(--v2-ink)', fontWeight: cur ? 600 : 400 }}
++                                >
++                                    <span className='grid shrink-0 place-items-center rounded-full text-[11px] font-bold' style={{ width: 24, height: 24, border: `1.5px solid ${cur || done ? 'var(--v2-acc)' : 'var(--v2-ctl)'}`, background: done ? 'var(--v2-acc)' : cur ? 'var(--v2-acc-soft)' : 'transparent', color: done ? 'var(--v2-acc-ink)' : cur ? 'var(--v2-acc)' : 'var(--v2-soft)' }} data-slot='step-mark' data-done={done ? 'true' : undefined}>
++                                        {done ? <Glyph name='check' size={12} color='var(--v2-acc-ink)' /> : i + 1}
++                                    </span>
++                                    <span className='flex-grow'>{C.steps[s]}</span>
++                                    {skipped.has(s) ? (
++                                        <span className='text-[12px] font-normal' style={{ color: 'var(--v2-faint)' }}>
++                                            {C.skipped}
++                                        </span>
++                                    ) : optional ? (
++                                        <span className='text-[12px] font-normal' style={{ color: 'var(--v2-faint)' }}>
++                                            {C.optional}
++                                        </span>
++                                    ) : null}
++                                </button>
++                            </li>
++                        )
++                    })}
+                 </ol>
+-                {mode === 'add' && (
+-                    <div className='mt-auto flex flex-col gap-2 pt-4'>
+-                        <p className='text-[11px]' style={{ color: 'var(--v2-faint)' }}>
+-                            {C.cancelNote}
+-                        </p>
+-                        <button type='button' onClick={() => void cancel()} disabled={cancelling} className='h-8 rounded-[7px] border text-[12px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
+-                            {cancelling ? C.cancelling : C.cancel}
+-                        </button>
+-                    </div>
+-                )}
++                <div className='mt-auto flex rounded-[10px] text-[12px] leading-[1.5]' style={{ gap: 8, padding: 12, background: 'var(--v2-inset)', color: 'var(--v2-soft)' }} data-slot='privacy-note'>
++                    <Glyph name='lock' size={14} color='var(--v2-soft)' className='mt-[2px] shrink-0' />
++                    <span>{C.privacy}</span>
++                </div>
++                <button type='button' onClick={() => void dispatch({ kind: 'setAppearance', theme: dark ? 'light' : 'dark' })} className='h-8 self-start rounded-[7px] border px-3 text-[12px]' style={{ marginTop: 10, borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-soft)' }} data-slot='theme-button'>
++                    {dark ? C.themeDark : C.themeLight}
++                </button>
+             </nav>
+-            <main className='min-w-0 flex-grow' style={{ padding: mode === 'add' ? '34px 44px 24px' : '32px 44px 28px', maxWidth: 'var(--v2-reading)' }}>
+-                <section aria-labelledby={headingId} className='flex flex-col gap-4'>
+-                    {step === 'welcome' && (
+-                        <Step heading={heading} id={headingId} title={C.welcome.title} lead={C.welcome.lead}>
+-                            <ul className='grid gap-3' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+-                                {C.welcome.cards.map((c) => (
+-                                    <li key={c.title} className='rounded-[12px] border p-5' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+-                                        <p className='text-[14px] font-semibold'>{c.title}</p>
+-                                        <p className='mt-2 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+-                                            {c.body}
+-                                        </p>
+-                                    </li>
+-                                ))}
+-                            </ul>
+-                            <Actions primary={{ label: C.welcome.continue, onClick: () => void leaveWelcome(), disabled: busy }} />
+-                        </Step>
+-                    )}
+-                    {step === 'tenant' && (
+-                        <Step heading={heading} id={headingId} title={C.tenant.title} lead={C.tenant.lead}>
+-                            <form onSubmit={(e) => void submitProfile(e)} aria-busy={busy} className='flex flex-col gap-3' data-slot='tenant-form'>
+-                                <Field label={C.tenant.name} name='name' value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} hint={C.tenant.nameHint} error={touched.name ? errors.name : ''} maxLength={64} onBlur={(v) => { setTouched((t) => ({ ...t, name: true })); setErrors((e) => ({ ...e, name: fieldError('name', v) })) }} />
+-                                <div className='flex flex-wrap gap-3'>
+-                                    <label className='flex flex-col gap-1 text-[13px] font-medium'>
+-                                        {C.tenant.environment}
+-                                        <select name='environment' value={form.environment} onChange={(e) => setForm((f) => ({ ...f, environment: e.target.value as TenantEnvironment }))} className='h-8 px-2'>
+-                                            {ENVIRONMENTS.map((env) => (
+-                                                <option key={env} value={env}>
+-                                                    {ENVIRONMENT_LABELS[env]}
+-                                                </option>
+-                                            ))}
+-                                        </select>
+-                                    </label>
+-                                    <label className='flex flex-col gap-1 text-[13px] font-medium'>
+-                                        {C.tenant.region}
+-                                        <select name='region' value={form.region} onChange={(e) => setForm((f) => ({ ...f, region: e.target.value as Region }))} className='h-8 px-2'>
+-                                            {REGIONS.map((r) => (
+-                                                <option key={r.value} value={r.value}>
+-                                                    {r.label}
+-                                                </option>
+-                                            ))}
+-                                        </select>
+-                                    </label>
++            {/* min-h-0: in the column layout below 760px this column must shrink below its content, so the step scrolls
++                and the footer stays pinned inside the sheet (a 900-point window at 200% put the footer 2000 points down). */}
++            <div className='flex min-h-0 min-w-0 flex-grow flex-col'>
++                <main className='min-h-0 flex-grow overflow-auto' style={{ padding: isAdd ? '26px 32px 22px' : '32px 44px 28px' }}>
++                    <section aria-labelledby={headingId} className='flex flex-col' style={{ gap: 18, maxWidth: 860 }}>
++                        {step === 'welcome' && (
++                            <div className='flex flex-col' style={{ gap: 18, paddingTop: 30 }}>
++                                <span className='grid place-items-center rounded-[18px]' style={{ width: 72, height: 72, background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
++                                    <Glyph name='shield' size={38} color='var(--v2-acc-ink)' />
++                                </span>
++                                <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 32, letterSpacing: '-0.02em' }}>
++                                    {C.welcome.title}
++                                </h1>
++                                <p className='text-[15px] leading-[1.55]' style={{ maxWidth: 680, color: 'var(--v2-soft)' }}>
++                                    {C.welcome.lead}
++                                </p>
++                                <p className='text-[14px] leading-[1.55]' style={{ maxWidth: 680, color: 'var(--v2-soft)' }}>
++                                    {C.welcome.lead2}
++                                </p>
++                                <ul className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 6 }}>
++                                    {C.welcome.cards.map((c) => (
++                                        <li key={c.title} className='flex flex-col rounded-[12px] border' style={{ gap: 10, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                                            <span className='grid place-items-center rounded-[8px]' style={{ width: 30, height: 30, background: 'var(--v2-acc-soft)', color: 'var(--v2-acc)' }}>
++                                                <Glyph name={c.icon} size={15} color='var(--v2-acc)' />
++                                            </span>
++                                            <b>{c.title}</b>
++                                            <span className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
++                                                {c.body}
++                                            </span>
++                                        </li>
++                                    ))}
++                                </ul>
++                                <div className='flex items-center rounded-[12px]' style={{ gap: 12, padding: '14px 16px', border: '1px dashed var(--v2-rule)' }} data-slot='import-box'>
++                                    <Glyph name='folder' size={16} color='var(--v2-soft)' />
++                                    <span className='flex-grow'>
++                                        <b>{C.welcome.importTitle}</b> <span style={{ color: 'var(--v2-soft)' }}>{C.welcome.importText}</span>
++                                    </span>
++                                    <Secondary label={C.welcome.importButton} onClick={() => props.onNavigate('import')} />
+                                 </div>
+-                                <Field label={C.tenant.tsg} name='tsg' value={form.tsg} onChange={(v) => setForm((f) => ({ ...f, tsg: v }))} hint={C.tenant.tsgHint} inputMode='numeric' error={touched.tsg ? errors.tsg : ''} onBlur={(v) => { setTouched((t) => ({ ...t, tsg: true })); setErrors((e) => ({ ...e, tsg: fieldError('tsg', v) })) }} />
+-                                {setup && (
+-                                    <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+-                                        {C.tenant.updateHint}
+-                                    </p>
+-                                )}
+-                                <div className='flex items-center gap-3'>
+-                                    <Primary label={setup ? C.tenant.save : C.tenant.create} disabled={busy} />
+-                                    {profileDirty && <Secondary label={C.tenant.revert} onClick={revertProfile} />}
+-                                    <button type='button' onClick={() => props.onNavigate('import')} className='text-[13px] underline' style={{ color: 'var(--v2-acc)' }} title={C.tenant.importHint}>
++                            </div>
++                        )}
++                        {step === 'tenant' && (
++                            <>
++                                <div className='flex flex-wrap items-end' style={{ gap: 12 }}>
++                                    <div>
++                                        <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
++                                            {C.tenant.title}
++                                        </h1>
++                                        <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
++                                            {C.tenant.lead}
++                                        </p>
++                                    </div>
++                                    <button type='button' onClick={() => props.onNavigate('import')} className='ml-auto text-[13px] font-semibold' style={{ color: 'var(--v2-acc)' }} title={C.tenant.importHint}>
+                                         {C.tenant.importV1}
+                                     </button>
+                                 </div>
+-                            </form>
+-                            {setup && (
+-                                <div className='flex flex-col gap-5'>
+-                                    <form onSubmit={(e) => void saveScanKey(e)} aria-busy={busy} className='flex flex-col gap-2' data-slot='scan-key-form'>
+-                                        <p className='text-[14px] font-semibold'>{C.tenant.scanKey}</p>
+-                                        <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+-                                            {setup.scanRequired ? C.tenant.scanRequired : C.tenant.scanOptional} {C.tenant.scanHint}
+-                                        </p>
+-                                        <p data-slot='scan-state'>
+-                                            <Verdict tone={scanReady ? 'allowed' : setup.tenant.scan.state === 'failed' ? 'blocked' : 'info'} word={C.tenant.state[setup.tenant.scan.state]} />
+-                                        </p>
+-                                        <SecretField label={C.tenant.scanKey} inputRef={scanRef} error={errors.scanKey} />
+-                                        <div className='flex items-center gap-3'>
+-                                            <Primary label={scanReady ? C.tenant.replaceKey : C.tenant.saveKey} disabled={busy} />
+-                                            {scanReady && <Secondary label={C.tenant.removeKey} disabled={busy} onClick={() => void remove('removeScanCredential', C.tenant.keyRemoved)} />}
+-                                        </div>
+-                                    </form>
+-                                    <form onSubmit={(e) => void saveClient(e)} aria-busy={busy} className='flex flex-col gap-2' data-slot='management-form'>
+-                                        <p className='text-[14px] font-semibold'>{C.tenant.management}</p>
+-                                        <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+-                                            {C.tenant.managementHint}
+-                                        </p>
+-                                        <p data-slot='management-state'>
+-                                            <Verdict tone={clientReady ? 'allowed' : setup.tenant.management.state === 'failed' ? 'blocked' : 'info'} word={C.tenant.state[setup.tenant.management.state]} reason={clientReady && setup.tenant.management.clientId ? `Client ID: ${setup.tenant.management.clientId}` : undefined} />
+-                                        </p>
+-                                        <Field label={C.tenant.clientId} name='clientId' error={errors.clientId} />
+-                                        <SecretField label={C.tenant.clientSecret} inputRef={secretRef} error={errors.clientSecret} />
+-                                        <div className='flex items-center gap-3'>
+-                                            <Primary label={clientReady ? C.tenant.replaceClient : C.tenant.saveClient} disabled={busy} />
+-                                            {clientReady && <Secondary label={C.tenant.removeClient} disabled={busy} onClick={() => void remove('removeManagementCredential', C.tenant.clientRemoved)} />}
++                                <form onSubmit={(e) => void submitProfile(e)} aria-busy={busy} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='tenant-form'>
++                                    <div className='flex items-center' style={{ gap: 8 }}>
++                                        <b className='text-[14px]'>{C.tenant.card}</b>
++                                        {pill(C.required, 'required')}
++                                    </div>
++                                    <div className='grid' style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }} data-slot='field-grid'>
++                                        <Field label={C.tenant.name} name='name' value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} hint={C.tenant.nameHint} error={touched.name ? errors.name : ''} maxLength={64} onBlur={(v) => { setTouched((t) => ({ ...t, name: true })); setErrors((e) => ({ ...e, name: fieldError('name', v) })) }} />
++                                        <Field label={C.tenant.tsg} name='tsg' value={form.tsg} onChange={(v) => setForm((f) => ({ ...f, tsg: v }))} hint={C.tenant.tsgHint} inputMode='numeric' error={touched.tsg ? errors.tsg : ''} onBlur={(v) => { setTouched((t) => ({ ...t, tsg: true })); setErrors((e) => ({ ...e, tsg: fieldError('tsg', v) })) }} />
++                                        <div className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
++                                            {C.tenant.environment}
++                                            <div role='radiogroup' aria-label={C.tenant.environment} className='flex w-fit rounded-[8px]' style={{ padding: 2, background: 'var(--v2-inset)' }} data-slot='environment-control'>
++                                                {ENVIRONMENTS.map((env) => {
++                                                    const on = form.environment === env
++                                                    return (
++                                                        <button key={env} type='button' role='radio' aria-checked={on} onClick={() => setForm((f) => ({ ...f, environment: env }))} className='h-8 rounded-[6px] text-[12.5px] font-semibold' style={{ padding: '0 14px', border: 0, background: on ? 'var(--v2-paper)' : 'transparent', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', color: 'var(--v2-ink)' }}>
++                                                            {ENVIRONMENT_LABELS[env]}
++                                                        </button>
++                                                    )
++                                                })}
++                                            </div>
++                                            <span className='font-normal' style={{ color: 'var(--v2-faint)' }}>
++                                                {C.tenant.environmentHint}
++                                            </span>
+                                         </div>
+-                                    </form>
+-                                    <section className='flex flex-col gap-2' data-slot='gateway-section' aria-label={C.tenant.gateway}>
+-                                        <p className='text-[14px] font-semibold'>{C.tenant.gateway}</p>
++                                        <label className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
++                                            {C.tenant.region}
++                                            <select name='region' aria-label={C.tenant.region} value={form.region} onChange={(e) => setForm((f) => ({ ...f, region: e.target.value as Region }))} className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px] font-normal' style={{ borderColor: 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
++                                                {REGIONS.map((r) => (
++                                                    <option key={r.value} value={r.value}>
++                                                        {r.label}
++                                                    </option>
++                                                ))}
++                                            </select>
++                                            <span className='font-normal' style={{ color: 'var(--v2-faint)' }}>
++                                                {C.tenant.regionHint}
++                                            </span>
++                                        </label>
++                                    </div>
++                                    {setup && (
+                                         <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+-                                            {C.tenant.gatewayHint}
++                                            {C.tenant.updateHint}
+                                         </p>
+-                                        <label className='flex items-center gap-2 text-[13px]'>
+-                                            <input type='checkbox' checked={gatewayOn} onChange={(e) => setGatewayOn(e.target.checked)} />
+-                                            {C.tenant.gatewayOn}
+-                                        </label>
+-                                        {gatewayOn && !clientReady && (
+-                                            <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+-                                                {C.tenant.gatewayNeedsClient}
++                                    )}
++                                    <div className='flex items-center' style={{ gap: 10 }}>
++                                        <Primary label={setup ? C.tenant.save : C.tenant.create} disabled={busy} />
++                                        {profileDirty && <Secondary label={C.tenant.revert} onClick={revertProfile} />}
++                                    </div>
++                                </form>
++                                {setup && (
++                                    <>
++                                        {scanCard}
++                                        <form onSubmit={(e) => void saveClient(e)} aria-busy={busy} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='management-form'>
++                                            <div className='flex items-center' style={{ gap: 8 }}>
++                                                <b className='text-[14px]'>{C.tenant.management}</b>
++                                                {pill(C.optional)}
++                                                <button type='button' aria-expanded={helpOpen} onClick={() => setHelpOpen((h) => !h)} className='ml-auto text-[12px] font-semibold' style={{ color: 'var(--v2-acc)' }}>
++                                                    {C.tenant.whereFind}
++                                                </button>
++                                            </div>
++                                            {helpOpen && (
++                                                <ol className='flex list-decimal flex-col rounded-[8px] leading-[1.5]' style={{ gap: 4, padding: '12px 14px 12px 32px', background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
++                                                    {C.tenant.whereSteps.map((t) => (
++                                                        <li key={t}>{t}</li>
++                                                    ))}
++                                                </ol>
++                                            )}
++                                            <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
++                                                {C.tenant.managementHint}
+                                             </p>
+-                                        )}
+-                                        {gatewayOn && clientReady && (
+-                                            <div className='flex flex-col gap-2'>
+-                                                <div className='flex items-center gap-3'>
+-                                                    <Secondary label={C.tenant.readWorkspaces} disabled={busy} onClick={() => void listWorkspaces()} />
+-                                                    {workspacesNote && <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>{workspacesNote}</span>}
+-                                                </div>
+-                                                {workspaces && workspaces.length > 0 && (
+-                                                    <div className='flex items-end gap-3'>
+-                                                        <label className='flex flex-col gap-1 text-[13px] font-medium'>
+-                                                            {C.tenant.workspace}
+-                                                            <select value={workspace} onChange={(e) => setWorkspace(e.target.value)} className='h-8 px-2'>
+-                                                                {workspaces.map((w) => (
+-                                                                    <option key={w.id} value={w.id}>
+-                                                                        {w.name}
+-                                                                    </option>
+-                                                                ))}
+-                                                            </select>
+-                                                        </label>
+-                                                        <Secondary label={C.tenant.chooseWorkspace} disabled={busy || !workspace} onClick={() => void chooseWorkspace()} />
++                                            <p data-slot='management-state'>
++                                                <Verdict tone={stateTone(setup.tenant.management.state)} word={C.tenant.state[setup.tenant.management.state]} reason={clientReady && setup.tenant.management.clientId ? `Client ID: ${setup.tenant.management.clientId}` : undefined} />
++                                            </p>
++                                            <div className='grid' style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
++                                                <Field label={C.tenant.clientId} name='clientId' error={errors.clientId} />
++                                                <SecretField label={C.tenant.clientSecret} inputRef={secretRef} error={errors.clientSecret} />
++                                            </div>
++                                            <div className='flex items-center' style={{ gap: 10 }}>
++                                                <Primary label={clientReady ? C.tenant.replaceClient : C.tenant.saveClient} disabled={busy} />
++                                                {clientReady && <Secondary label={C.tenant.removeClient} disabled={busy} onClick={() => void remove('removeManagementCredential', C.tenant.clientRemoved)} />}
++                                            </div>
++                                        </form>
++                                        <OptionalCard icon='route' title={C.tenant.gateway} text={C.tenant.gatewayHint} tag={C.optional} open={gatewayOn} onToggle={(on) => setGatewayOn(on)} switchLabel={C.tenant.gatewayOn} slot='gateway-section'>
++                                            {!clientReady && (
++                                                <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
++                                                    {C.tenant.gatewayNeedsClient}
++                                                </p>
++                                            )}
++                                            {clientReady && (
++                                                <div className='flex flex-col' style={{ gap: 10 }}>
++                                                    <div className='flex items-center' style={{ gap: 10 }}>
++                                                        <Secondary label={C.tenant.readWorkspaces} disabled={busy} onClick={() => void listWorkspaces()} />
++                                                        {workspacesNote && (
++                                                            <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
++                                                                {workspacesNote}
++                                                            </span>
++                                                        )}
+                                                     </div>
+-                                                )}
+-                                                {chosen && (
+-                                                    <form onSubmit={(e) => void saveWorkspaceKey(e)} aria-busy={busy} className='flex flex-col gap-2' data-slot='workspace-key-form'>
+-                                                        <p className='text-[13px]'>{C.tenant.workspaceChosen(chosen.workspace.name)}</p>
+-                                                        <p data-slot='inference-state'>
+-                                                            <Verdict tone={setup.tenant.inference.state === 'ready' ? 'allowed' : 'info'} word={C.tenant.state[setup.tenant.inference.state]} />
+-                                                        </p>
+-                                                        <Field label={C.tenant.endpoint} name='endpoint' value={endpoint} onChange={setEndpoint} hint={C.tenant.endpointHint} error={errors.endpoint} />
+-                                                        <SecretField label={C.tenant.workspaceKey} inputRef={workspaceKeyRef} error={errors.workspaceKey} />
+-                                                        <div>
+-                                                            <Primary label={C.tenant.saveWorkspaceKey} disabled={busy} />
++                                                    {workspaces && workspaces.length > 0 && (
++                                                        <div className='flex items-end' style={{ gap: 10 }}>
++                                                            <label className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
++                                                                {C.tenant.workspace}
++                                                                <select value={workspace} onChange={(e) => setWorkspace(e.target.value)} className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px] font-normal' style={{ borderColor: 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
++                                                                    {workspaces.map((w) => (
++                                                                        <option key={w.id} value={w.id}>
++                                                                            {w.name}
++                                                                        </option>
++                                                                    ))}
++                                                                </select>
++                                                            </label>
++                                                            <Secondary label={C.tenant.chooseWorkspace} disabled={busy || !workspace} onClick={() => void chooseWorkspace()} />
+                                                         </div>
+-                                                    </form>
+-                                                )}
+-                                            </div>
+-                                        )}
+-                                    </section>
++                                                    )}
++                                                    {chosen && (
++                                                        <form onSubmit={(e) => void saveWorkspaceKey(e)} aria-busy={busy} className='flex flex-col' style={{ gap: 10 }} data-slot='workspace-key-form'>
++                                                            <p className='text-[13px]'>{C.tenant.workspaceChosen(chosen.workspace.name)}</p>
++                                                            <p data-slot='inference-state'>
++                                                                <Verdict tone={setup.tenant.inference.state === 'ready' ? 'allowed' : 'info'} word={C.tenant.state[setup.tenant.inference.state]} />
++                                                            </p>
++                                                            <div className='grid' style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
++                                                                <Field label={C.tenant.endpoint} name='endpoint' value={endpoint} onChange={setEndpoint} hint={C.tenant.endpointHint} error={errors.endpoint} />
++                                                                <SecretField label={C.tenant.workspaceKey} inputRef={workspaceKeyRef} error={errors.workspaceKey} />
++                                                            </div>
++                                                            <div>
++                                                                <Primary label={C.tenant.saveWorkspaceKey} disabled={busy} />
++                                                            </div>
++                                                        </form>
++                                                    )}
++                                                </div>
++                                            )}
++                                        </OptionalCard>
++                                    </>
++                                )}
++                            </>
++                        )}
++                        {step === 'products' && setup && (
++                            <>
++                                <div>
++                                    <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
++                                        {C.products.title}
++                                    </h1>
++                                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
++                                        {C.products.lead(setup.tenant.label)}
++                                    </p>
+                                 </div>
+-                            )}
+-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} primary={{ label: tenantContinue.label, onClick: () => go(index + 1), disabled: tenantContinue.disabled }} />
+-                        </Step>
+-                    )}
+-                    {step === 'products' && setup && (
+-                        <Step heading={heading} id={headingId} title={C.products.title} lead={C.products.lead}>
+-                            <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
+-                                {C.products.licence}
+-                            </p>
+-                            <ul className='grid gap-3' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+-                                {PRODUCT_CARDS.map((card) => {
+-                                    const unavailable = card.id === null
+-                                    const always = card.id === 'runtimeSecurity'
+-                                    const on = card.id !== null && setup.products.includes(card.id)
+-                                    const reads = card.id === null ? null : card.id === 'runtimeSecurity' ? (scanReady ? C.products.readsWith.scanReady : C.products.readsWith.scanMissing) : clientReady ? C.products.readsWith.clientReady : C.products.readsWith.clientMissing
+-                                    const lastStep = run && !run.stale && card.id ? run.steps.find((s) => s.product === card.id && s.line !== 'managementClient') : undefined
+-                                    return (
+-                                        <li key={card.label} className='rounded-[12px] border p-4' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', opacity: unavailable ? 0.7 : 1 }}>
+-                                            <label className='flex items-start gap-3'>
+-                                                <input type='checkbox' disabled={unavailable || always} checked={on} onChange={(e) => card.id && void toggleProduct(card.id, e.target.checked)} aria-describedby={`${card.label}-body`} className='mt-1' />
+-                                                <span className='flex flex-col gap-1'>
+-                                                    <span className='text-[14px] font-semibold'>{card.label}</span>
+-                                                    <span id={`${card.label}-body`} className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+-                                                        {card.body}
+-                                                    </span>
+-                                                    <span className='flex flex-wrap gap-1.5'>
+-                                                        {unavailable && <Verdict tone='info' word={C.products.unavailable} />}
+-                                                        {always && <Verdict tone='info' word={C.products.always} />}
+-                                                        {card.readOnly && <Verdict tone='info' word={C.products.readOnly} />}
+-                                                        {reads && !unavailable && <Verdict tone={reads === C.products.readsWith.clientMissing || reads === C.products.readsWith.scanMissing ? 'flagged' : 'allowed'} word={reads} />}
+-                                                        {lastStep && lastStep.state !== 'pending' && <Verdict tone={toneOf(lastStep.state)} word={C.verify.state[lastStep.state]} />}
+-                                                    </span>
++                                <div className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }} data-slot='product-cards'>
++                                    {PRODUCT_CARDS.map((card) => {
++                                        // An id without spaces (a label is not one): the description's targets.
++                                        const cardId = `product-${card.label.replace(/\W+/g, '-').toLowerCase()}`
++                                        const unavailable = card.id === null
++                                        const always = card.id === 'runtimeSecurity'
++                                        const on = card.id !== null && setup.products.includes(card.id)
++                                        const reads = card.id === null ? null : card.id === 'runtimeSecurity' ? (scanReady ? C.products.readsWith.scanReady : C.products.readsWith.scanMissing) : clientReady ? C.products.readsWith.clientReady : C.products.readsWith.clientMissing
++                                        const lastStep = run && !run.stale && card.id ? run.steps.find((s) => s.product === card.id && s.line !== 'managementClient') : undefined
++                                        const missing = reads === C.products.readsWith.clientMissing || reads === C.products.readsWith.scanMissing
++                                        return (
++                                            // A label around a native checkbox, not a checkbox-role button: a checkbox's children are
++                                            // presentational to assistive technology, which hid the body and the tags ("Always on",
++                                            // "Not available in this release"); as the label's text they are read, and the control keeps
++                                            // the card's name, description and state. The card shows the control's focus ring.
++                                            <label
++                                                key={card.label}
++                                                className='relative flex flex-col text-left'
++                                                style={{ gap: 10, minHeight: 176, padding: '18px 20px', border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-rule)'}`, borderRadius: 12, background: on ? 'var(--v2-acc-soft)' : 'var(--v2-paper)', color: 'var(--v2-ink)', opacity: unavailable ? 0.7 : 1, cursor: unavailable || always ? 'default' : 'pointer' }}
++                                                data-slot='product-card'
++                                            >
++                                                <input
++                                                    type='checkbox'
++                                                    className='sr-only'
++                                                    checked={on}
++                                                    aria-disabled={unavailable || always ? true : undefined}
++                                                    aria-label={card.label}
++                                                    aria-describedby={`${cardId}-body ${cardId}-tags`}
++                                                    onChange={() => card.id && !always && void toggleProduct(card.id, !on)}
++                                                    data-slot='product-choice'
++                                                />
++                                                <span className='absolute grid place-items-center rounded-full' style={{ top: 14, right: 14, width: 20, height: 20, border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-ctl)'}`, background: on ? 'var(--v2-acc)' : 'transparent', color: 'var(--v2-acc-ink)' }}>
++                                                    {on && <Glyph name='check' size={11} color='var(--v2-acc-ink)' />}
+                                                 </span>
+-                                            </label>
+-                                        </li>
+-                                    )
+-                                })}
+-                            </ul>
+-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} primary={{ label: C.products.continue, onClick: () => go(index + 1) }} />
+-                        </Step>
+-                    )}
+-                    {step === 'verify' && setup && (
+-                        <Step heading={heading} id={headingId} title={C.verify.title} lead={C.verify.lead}>
+-                            <ul className='flex flex-col gap-2' aria-label='Checks' aria-busy={running}>
+-                                {plannedRows.map((r) => (
+-                                    <li key={r.line} className='flex items-center justify-between gap-3 rounded-[12px] border px-4 py-3' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', opacity: run?.stale ? 0.6 : 1 }} data-slot={`verify-${r.line}`}>
+-                                        <span className='flex flex-col'>
+-                                            <span className='text-[14px] font-medium'>{C.verify.rows[r.line]}</span>
+-                                            {r.reason && (
+-                                                <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+-                                                    {r.reason}
++                                                <span className='grid place-items-center rounded-[10px]' style={{ width: 36, height: 36, background: on ? 'var(--v2-acc)' : 'var(--v2-inset)', color: on ? 'var(--v2-acc-ink)' : 'var(--v2-soft)' }}>
++                                                    <Glyph name={card.icon} size={18} color={on ? 'var(--v2-acc-ink)' : 'var(--v2-soft)'} />
++                                                </span>
++                                                <span className='block leading-[1.35]' style={{ paddingRight: 26 }}>
++                                                    <b className='text-[14px]'>{card.label}</b>
++                                                </span>
++                                                <span id={`${cardId}-body`} className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
++                                                    {card.body}
++                                                </span>
++                                                <span id={`${cardId}-tags`} className='mt-auto flex flex-wrap' style={{ gap: 6 }}>
++                                                    {unavailable && <Verdict tone='info' word={C.products.unavailable} />}
++                                                    {always && <Verdict tone='info' word={C.products.always} />}
++                                                    {card.readOnly && <Verdict tone='info' word={C.products.readOnly} />}
++                                                    {reads && !unavailable && <Verdict tone={missing ? 'flagged' : 'allowed'} word={reads} />}
++                                                    {lastStep && lastStep.state !== 'pending' && <Verdict tone={toneOf(lastStep.state)} word={C.verify.state[lastStep.state]} />}
+                                                 </span>
+-                                            )}
+-                                        </span>
+-                                        <Verdict tone={run || r.state === 'unavailable' ? toneOf(r.state) : 'info'} word={run || r.state === 'unavailable' ? C.verify.state[r.state] : C.verify.notRun} />
+-                                    </li>
+-                                ))}
+-                            </ul>
+-                            <p role='status' aria-live='polite' className='text-[13px]' style={{ color: run?.stale || run?.failed ? 'var(--v2-block)' : 'var(--v2-soft)' }}>
+-                                {verifyStatus}
+-                            </p>
+-                            <Actions
+-                                back={index > 0 ? () => go(index - 1) : undefined}
+-                                // A failed run offers the way back to the inputs; a rerun stays available
+-                                // too, because the failure may have been outside this desktop.
+-                                extra={run && run.done && run.failed && !run.stale ? { label: C.verify.fix, onClick: () => go(steps.indexOf('tenant')) } : undefined}
+-                                secondary={{ label: run ? C.verify.again : C.verify.run, onClick: () => void verify(), disabled: busy || running }}
+-                                primary={{ label: run && run.done && !run.stale && run.warnings.length > 0 && !run.blocking ? C.verify.continueWarnings : C.verify.continue, onClick: () => go(index + 1), disabled: !setup.completable }}
+-                            />
+-                        </Step>
+-                    )}
+-                    {step === 'packs' && setup && (
+-                        <Step heading={heading} id={headingId} title={C.packs.title} lead={C.packs.lead}>
+-                            {setup.packs.some((p) => p.count > 0) ? (
+-                                <ul className='flex flex-col gap-2' aria-label={C.packs.title}>
+-                                    {setup.packs.map((p) => (
+-                                        <li key={p.product}>
+-                                            <label className='flex items-center gap-2 text-[13px]'>
+-                                                <input type='checkbox' disabled={p.count === 0} checked={selectedPacks.includes(p.product)} onChange={(e) => setPacks(e.target.checked ? [...selectedPacks, p.product] : selectedPacks.filter((x) => x !== p.product))} />
+-                                                {C.packs.pack(productLabel(p.product), p.count)}
+                                             </label>
+-                                        </li>
+-                                    ))}
++                                        )
++                                    })}
++                                </div>
++                                {!scanReady && (
++                                    <div className='flex items-center rounded-[8px] leading-[1.45]' style={{ gap: 8, padding: '10px 12px', background: 'var(--v2-flag-bg)' }} data-slot='no-scan-banner'>
++                                        <Glyph name='alert' size={15} color='var(--v2-flag)' className='shrink-0' />
++                                        <span className='flex-grow'>{C.products.noScan}</span>
++                                        <Secondary label={C.products.addScanKey} onClick={() => go(steps.indexOf('tenant'))} />
++                                    </div>
++                                )}
++                                <p className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
++                                    {C.products.licence}
++                                </p>
++                            </>
++                        )}
++                        {step === 'verify' && setup && (
++                            <>
++                                <div>
++                                    <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
++                                        {C.verify.title}
++                                    </h1>
++                                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
++                                        {C.verify.lead(setup.tenant.label)}
++                                    </p>
++                                </div>
++                                <div role='status' aria-live='polite' className='flex items-center rounded-[12px]' style={{ gap: 12, padding: '14px 16px', background: !run ? 'var(--v2-inset)' : run.stale || run.blocking ? 'var(--v2-block-bg)' : running ? 'var(--v2-acc-soft)' : run.failed || run.warnings.length ? 'var(--v2-flag-bg)' : 'var(--v2-ok-bg)' }} data-slot='verify-banner'>
++                                    <Glyph name={!run || running ? 'clock' : run.stale || run.blocking ? 'ban' : run.failed || run.warnings.length ? 'alert' : 'check'} size={22} color={!run ? 'var(--v2-soft)' : run.stale || run.blocking ? 'var(--v2-block)' : running ? 'var(--v2-acc)' : run.failed || run.warnings.length ? 'var(--v2-flag)' : 'var(--v2-ok)'} className='shrink-0' />
++                                    <span className='flex-grow'>
++                                        <b className='text-[14px]'>{!run ? C.verify.notRunTitle : verifyStatus}</b>
++                                        <br />
++                                        <span style={{ color: 'var(--v2-soft)' }}>{!run ? C.verify.notRunText : running ? C.verify.runningText : run.stale ? C.verify.staleText : run.blocking ? C.verify.failedText : run.failed ? C.verify.failedOptionalText : C.verify.doneText}</span>
++                                    </span>
++                                    {run && run.done && run.failed && !run.stale && <Secondary label={C.verify.editCredentials} onClick={() => go(steps.indexOf('tenant'))} />}
++                                </div>
++                                <ul className='flex flex-col overflow-hidden rounded-[12px] border' aria-label='Checks' aria-busy={running} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', opacity: run?.stale ? 0.6 : 1 }}>
++                                    {plannedRows.map((r, i) => {
++                                        const tone = run || r.state === 'unavailable' ? toneOf(r.state) : 'info'
++                                        const colors: [string, string, GlyphName] = tone === 'allowed' ? ['var(--v2-ok-bg)', 'var(--v2-ok)', 'check'] : tone === 'flagged' ? ['var(--v2-flag-bg)', 'var(--v2-flag)', 'alert'] : tone === 'blocked' ? ['var(--v2-block-bg)', 'var(--v2-block)', 'x'] : ['var(--v2-inset)', 'var(--v2-soft)', running && r.state === 'pending' ? 'clock' : 'dot']
++                                        return (
++                                            <li key={r.line} className='flex items-center' style={{ gap: 12, padding: '12px 18px', borderTop: i ? '1px solid var(--v2-rule)' : 0 }} data-slot={`verify-${r.line}`}>
++                                                <span className='grid shrink-0 place-items-center rounded-full' style={{ width: 26, height: 26, background: colors[0], color: colors[1] }}>
++                                                    <Glyph name={colors[2]} size={13} color={colors[1]} />
++                                                </span>
++                                                <span className='min-w-0 flex-grow'>
++                                                    <b className='font-semibold'>{C.verify.rows[r.line]}</b>
++                                                    <br />
++                                                    <span className='leading-[1.45]' style={{ color: tone === 'blocked' ? 'var(--v2-block)' : tone === 'flagged' ? 'var(--v2-flag)' : 'var(--v2-soft)' }}>
++                                                        {r.reason}
++                                                    </span>
++                                                </span>
++                                                <Verdict tone={tone} word={run || r.state === 'unavailable' ? C.verify.state[r.state] : C.verify.notRun} />
++                                            </li>
++                                        )
++                                    })}
+                                 </ul>
+-                            ) : (
+-                                <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+-                                    {C.packs.none}
++                            </>
++                        )}
++                        {step === 'packs' && setup && (
++                            <>
++                                <div>
++                                    <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
++                                        {C.packs.title}
++                                    </h1>
++                                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
++                                        {C.packs.lead(setup.tenant.label)}
++                                    </p>
++                                </div>
++                                {setup.packs.some((p) => p.count > 0) ? (
++                                    <div role='group' aria-label={C.packs.title} className='flex flex-col overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='pack-list'>
++                                        {setup.packs.map((p, i) => {
++                                            const on = selectedPacks.includes(p.product)
++                                            const off = p.count === 0 || !setup.products.includes(p.product)
++                                            const cardInfo = PRODUCT_CARDS.find((c) => c.id === p.product)
++                                            return (
++                                                <button
++                                                    key={p.product}
++                                                    type='button'
++                                                    role='checkbox'
++                                                    aria-checked={on}
++                                                    aria-disabled={off ? true : undefined}
++                                                    aria-label={C.packs.pack(productLabel(p.product), p.count)}
++                                                    onClick={() => !off && setPacks(on ? selectedPacks.filter((x) => x !== p.product) : [...selectedPacks, p.product])}
++                                                    className='flex w-full items-center text-left'
++                                                    style={{ gap: 14, padding: '12px 18px', border: 0, borderTop: i ? '1px solid var(--v2-rule)' : 0, background: 'transparent', color: 'var(--v2-ink)', opacity: off ? 0.55 : 1 }}
++                                                    data-slot='pack-row'
++                                                >
++                                                    <span className='grid shrink-0 place-items-center rounded-[5px]' style={{ width: 18, height: 18, border: `1.5px solid ${on ? 'var(--v2-acc)' : 'var(--v2-ctl)'}`, background: on ? 'var(--v2-acc)' : 'transparent', color: 'var(--v2-acc-ink)' }}>
++                                                        {on && <Glyph name='check' size={11} color='var(--v2-acc-ink)' />}
++                                                    </span>
++                                                    {tile(cardInfo?.icon ?? 'cases')}
++                                                    <span className='min-w-0 flex-grow'>
++                                                        <b className='font-semibold'>{C.packs.name(productLabel(p.product))}</b> <span style={{ color: 'var(--v2-faint)' }}>· {productLabel(p.product)}</span>
++                                                        <br />
++                                                        <span style={{ color: 'var(--v2-soft)' }}>{cardInfo?.body ?? ''}</span>
++                                                    </span>
++                                                    <span className='text-[12px] whitespace-nowrap' style={{ color: 'var(--v2-faint)' }}>
++                                                        {C.packs.count(p.count)}
++                                                    </span>
++                                                </button>
++                                            )
++                                        })}
++                                    </div>
++                                ) : (
++                                    <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
++                                        {C.packs.none}
++                                    </p>
++                                )}
++                                <p style={{ color: 'var(--v2-soft)' }} data-slot='pack-summary'>
++                                    {C.packs.summary(selectedPacks.length, selectedPacks.reduce((a, id) => a + (setup.packs.find((p) => p.product === id)?.count ?? 0), 0))}
+                                 </p>
+-                            )}
+-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} secondary={{ label: C.packs.skip, onClick: () => { setPacks([]); go(index + 1) } }} primary={{ label: C.packs.continue, onClick: () => go(index + 1) }} />
+-                        </Step>
+-                    )}
+-                    {step === 'academy' && (
+-                        <Step heading={heading} id={headingId} title={C.academy.title} lead={C.academy.lead}>
+-                            <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
+-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} primary={{ label: snapshot.academy.state === 'signedIn' ? C.academy.continue : C.academy.skip, onClick: () => go(index + 1) }} />
+-                        </Step>
++                            </>
++                        )}
++                        {step === 'academy' && (
++                            <>
++                                <div>
++                                    <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 26, letterSpacing: '-0.01em' }}>
++                                        {C.academy.title}
++                                    </h1>
++                                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
++                                        {C.academy.lead}
++                                    </p>
++                                </div>
++                                <div className='grid' style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 14 }}>
++                                    {card(
++                                        <>
++                                            <b className='text-[14px]'>{C.academy.account}</b>
++                                            <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
++                                        </>,
++                                        {},
++                                        { 'data-slot': 'academy-card' }
++                                    )}
++                                    {card(
++                                        <>
++                                            <b className='text-[14px]'>{C.academy.whatSyncs}</b>
++                                            <ul className='flex list-disc flex-col pl-5 text-[13px]' style={{ gap: 6, color: 'var(--v2-soft)' }}>
++                                                {C.academy.syncs.map((t) => (
++                                                    <li key={t}>{t}</li>
++                                                ))}
++                                            </ul>
++                                        </>,
++                                        { gap: 10 },
++                                        { 'data-slot': 'academy-syncs' }
++                                    )}
++                                </div>
++                            </>
++                        )}
++                        {step === 'done' && setup && (
++                            <div className='flex flex-col' style={{ gap: 16, paddingTop: 10 }}>
++                                <span className='grid place-items-center rounded-[18px]' style={{ width: 64, height: 64, background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)' }}>
++                                    <Glyph name='check' size={34} color='var(--v2-ok)' />
++                                </span>
++                                <h1 ref={heading} id={headingId} tabIndex={-1} className='font-bold' style={{ fontSize: 30, letterSpacing: '-0.02em' }}>
++                                    {C.done.title(setup.tenant.label)}
++                                </h1>
++                                <p className='text-[15px]' style={{ color: 'var(--v2-soft)' }}>
++                                    {C.done.lead}
++                                </p>
++                                <div className='flex flex-col overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='summary'>
++                                    {(
++                                        [
++                                            [C.done.summary.tenant, railCtx, 'ok', 'tenant'],
++                                            [C.done.summary.scan, scanReady ? C.done.summary.saved : C.done.summary.notSaved, scanReady ? 'ok' : 'skip', 'tenant'],
++                                            [C.done.summary.client, clientReady ? C.done.summary.saved : C.done.summary.notSaved, clientReady ? 'ok' : 'skip', 'tenant'],
++                                            [C.done.summary.products, setup.products.map(productLabel).join(', '), 'ok', 'products'],
++                                            [C.done.summary.checks, run && run.done ? (run.warnings.length ? C.done.summary.checksWarnings(run.warnings.length) : C.done.summary.checksPassed) : C.done.summary.none, run?.warnings.length ? 'warn' : 'ok', 'verify'],
++                                            [C.done.summary.packs, selectedPacks.length ? selectedPacks.map(productLabel).join(', ') : C.done.summary.none, selectedPacks.length ? 'ok' : 'skip', 'packs'],
++                                            ...(isAdd ? [] : [[C.done.summary.academy, snapshot.academy.state === 'signedIn' ? snapshot.academy.displayName : C.done.summary.academySkipped, snapshot.academy.state === 'signedIn' ? 'ok' : 'skip', 'academy']]),
++                                        ] as [string, string, 'ok' | 'warn' | 'skip', WizardStep][]
++                                    ).map(([k, v, tone, target], i) => (
++                                        <div key={k} className='flex items-center' style={{ gap: 12, padding: '12px 18px', borderTop: i ? '1px solid var(--v2-rule)' : 0 }}>
++                                            <span className='grid shrink-0 place-items-center rounded-full' style={{ width: 26, height: 26, background: tone === 'ok' ? 'var(--v2-ok-bg)' : tone === 'warn' ? 'var(--v2-flag-bg)' : 'var(--v2-inset)', color: tone === 'ok' ? 'var(--v2-ok)' : tone === 'warn' ? 'var(--v2-flag)' : 'var(--v2-soft)' }}>
++                                                <Glyph name={tone === 'ok' ? 'check' : tone === 'warn' ? 'alert' : 'dot'} size={13} color={tone === 'ok' ? 'var(--v2-ok)' : tone === 'warn' ? 'var(--v2-flag)' : 'var(--v2-soft)'} />
++                                            </span>
++                                            <span className='font-semibold' style={{ width: 130 }}>
++                                                {k}
++                                            </span>
++                                            <span className='sr-only'>: </span>
++                                            <span className='min-w-0 flex-grow' style={{ color: 'var(--v2-soft)' }}>
++                                                {v}
++                                            </span>
++                                            <button type='button' onClick={() => reachable(steps.indexOf(target)) && go(steps.indexOf(target))} className='text-[12px] font-semibold' style={{ color: 'var(--v2-acc)' }} aria-label={`${C.done.change} ${k}`}>
++                                                {C.done.change}
++                                            </button>
++                                        </div>
++                                    ))}
++                                </div>
++                                <div className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }} data-slot='next-up'>
++                                    {C.done.nextUp.map((n) => (
++                                        <div key={n.title} className='flex flex-col rounded-[12px] border' style={{ gap: 8, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                                            <span className='grid place-items-center rounded-[8px]' style={{ width: 28, height: 28, background: 'var(--v2-acc-soft)', color: 'var(--v2-acc)' }}>
++                                                <Glyph name={n.icon} size={14} color='var(--v2-acc)' />
++                                            </span>
++                                            <b>{n.title}</b>
++                                            <span className='leading-[1.45]' style={{ color: 'var(--v2-soft)' }}>
++                                                {n.text}
++                                            </span>
++                                        </div>
++                                    ))}
++                                </div>
++                            </div>
++                        )}
++                    </section>
++                </main>
++                <footer className='flex shrink-0 flex-wrap items-center' style={{ gap: 10, padding: isAdd ? '14px 32px' : '14px 44px', borderTop: '1px solid var(--v2-rule)', background: 'var(--v2-bg)' }} data-slot='wizard-footer'>
++                    {isAdd && (
++                        <button type='button' onClick={() => void cancel()} disabled={cancelling} className='h-8 rounded-[7px] border px-3.5 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                            {cancelling ? C.cancelling : C.cancel}
++                        </button>
+                     )}
+-                    {step === 'done' && setup && (
+-                        <Step heading={heading} id={headingId} title={C.done.title} lead={C.done.lead(setup.tenant.label)}>
+-                            <ul className='text-[13px]' style={{ color: 'var(--v2-soft)' }} data-slot='summary'>
+-                                <li>
+-                                    {C.done.summary.scan}: {scanReady ? C.done.summary.saved : C.done.summary.notSaved}
+-                                </li>
+-                                <li>
+-                                    {C.done.summary.client}: {clientReady ? C.done.summary.saved : C.done.summary.notSaved}
+-                                </li>
+-                                <li>
+-                                    {C.done.summary.products}: {setup.products.map(productLabel).join(', ')}
+-                                </li>
+-                                <li>
+-                                    {C.done.summary.packs}: {selectedPacks.length ? selectedPacks.map(productLabel).join(', ') : C.done.summary.none}
+-                                </li>
+-                            </ul>
+-                            <Actions back={index > 0 ? () => go(index - 1) : undefined} primary={{ label: finishing ? (mode === 'add' ? C.done.finishing : C.done.opening) : mode === 'add' ? C.done.finish : C.done.open, onClick: () => void finish(), disabled: finishing || !setup.completable || profileDirty }} />
+-                        </Step>
++                    {showBack && (
++                        <button type='button' onClick={() => go(index - 1)} className='h-8 rounded-[7px] border px-3.5 text-[13px]' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                            {C.back}
++                        </button>
+                     )}
+-                    <p role='status' aria-live='polite' data-slot='wizard-status' className='flex items-center gap-3 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+-                        {status?.text}
++                    <p role='status' aria-live='polite' data-slot='wizard-status' className='flex min-w-0 items-center text-[12.5px]' style={{ gap: 10, color: status ? 'var(--v2-ink)' : 'var(--v2-soft)' }}>
++                        <span className='min-w-0'>{status?.text ?? hint}</span>
+                         {status?.retry && <Secondary label={C.outcome.retry} onClick={status.retry} />}
+                     </p>
+-                </section>
+-            </main>
++                    <span className='ml-auto text-[12px]' style={{ color: 'var(--v2-faint)' }} data-slot='wizard-progress'>
++                        {C.progress(index + 1, steps.length)}
++                    </span>
++                    {extra && <Secondary label={extra.label} onClick={extra.onClick} disabled={extra.disabled} />}
++                    {secondary && <Secondary label={secondary.label} onClick={secondary.onClick} disabled={secondary.disabled} />}
++                    {skipBtn && <Secondary label={skipBtn.label} onClick={skipBtn.onClick} disabled={skipBtn.disabled} />}
++                    <button type='button' onClick={primary.onClick} disabled={primary.disabled} className='h-8 rounded-[7px] px-[18px] text-[13px] font-semibold disabled:opacity-60' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }} data-slot='wizard-primary'>
++                        {primary.label}
++                    </button>
++                </footer>
++            </div>
+             {/* The guard is a dialog above the sheet (I8): rendered at the body, outside the sheet's inert subtree. */}
+             {completionGuard && setup && createPortal(<SwitchGuard target={setup.tenant.label} completion onStay={() => void dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => void finish(resolution)} />, document.body)}
+         </div>
+     )
+ }
+ 
+-function Step({ heading, id, title, lead, children }: { heading: React.RefObject<HTMLHeadingElement | null>; id: string; title: string; lead: string; children: ReactNode }) {
++/** A section card with a switch in its header (R2Onboard's optional cards); a required card has no switch and stays open. */
++function OptionalCard({ icon, title, text, tag, open, onToggle, switchLabel, state, slot, onSubmit, busy, children }: { icon: GlyphName; title: string; text: string; tag: string; open: boolean; onToggle?: (on: boolean) => void; switchLabel?: string; state?: ReactNode; slot: string; onSubmit?: (e: FormEvent<HTMLFormElement>) => void; busy?: boolean; children: ReactNode }) {
++    const Tag = onSubmit ? 'form' : 'section'
+     return (
+-        <>
+-            <h1 ref={heading} id={id} tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)' }}>
+-                {title}
+-            </h1>
+-            <p className='text-[14px]' style={{ color: 'var(--v2-soft)', maxWidth: 640 }}>
+-                {lead}
+-            </p>
+-            {children}
+-        </>
++        <Tag onSubmit={onSubmit} aria-busy={onSubmit ? busy : undefined} aria-label={onSubmit ? undefined : title} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot={slot}>
++            <div className='flex items-center' style={{ gap: 12 }}>
++                <span className='grid shrink-0 place-items-center rounded-[8px]' style={{ width: 30, height: 30, background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}>
++                    <Glyph name={icon} size={15} color='var(--v2-soft)' />
++                </span>
++                <span className='min-w-0 flex-grow'>
++                    <span className='flex items-center' style={{ gap: 8 }}>
++                        <b className='text-[14px]'>{title}</b>
++                        <span className='rounded-full text-[12px] font-semibold' style={{ padding: '1px 7px', background: 'var(--v2-inset)', color: 'var(--v2-faint)' }}>
++                            {tag}
++                        </span>
++                        {state}
++                    </span>
++                    <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
++                        {text}
++                    </span>
++                </span>
++                {onToggle && (
++                    <button type='button' role='switch' aria-checked={open} aria-label={switchLabel ?? title} onClick={() => onToggle(!open)} className='relative shrink-0 rounded-full' style={{ width: 38, height: 22, border: 0, background: open ? 'var(--v2-acc)' : 'var(--v2-inset)', boxShadow: `inset 0 0 0 1px ${open ? 'var(--v2-acc)' : 'var(--v2-ctl)'}` }} data-slot='switch'>
++                        <span className='absolute rounded-full' style={{ top: 3, left: open ? 19 : 3, width: 16, height: 16, background: open ? 'var(--v2-acc-ink)' : 'var(--v2-paper)' }} />
++                    </button>
++                )}
++            </div>
++            {open && (
++                <div className='flex flex-col' style={{ gap: 10, paddingLeft: 42 }}>
++                    {children}
++                </div>
++            )}
++        </Tag>
+     )
+ }
+ 
+ function Field({ label, name, hint, error, onBlur, value, onChange, ...rest }: { label: string; name: string; hint?: string; error?: string; onBlur?: (value: string) => void; value?: string; onChange?: (value: string) => void; maxLength?: number; inputMode?: 'numeric' }) {
+     const id = useId()
+     return (
+-        <label className='flex flex-col gap-1 text-[13px] font-medium'>
++        <label className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
+             {label}
+-            <input id={id} name={name} autoComplete='off' value={value} onChange={onChange ? (e) => onChange(e.target.value) : undefined} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined} onBlur={(e) => onBlur?.(e.target.value)} className='h-8 px-2' {...rest} />
++            <input id={id} name={name} autoComplete='off' value={value} onChange={onChange ? (e) => onChange(e.target.value) : undefined} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined} onBlur={(e) => onBlur?.(e.target.value)} className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px] font-normal' style={{ borderColor: error ? 'var(--v2-block)' : 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }} {...rest} />
+             {error ? (
+-                <span id={`${id}-error`} role='alert' className='text-[12px] font-normal' style={{ color: 'var(--v2-block)' }}>
++                <span id={`${id}-error`} role='alert' className='font-normal' style={{ color: 'var(--v2-block)' }}>
+                     {error}
+                 </span>
+             ) : hint ? (
+-                <span id={`${id}-hint`} className='text-[12px] font-normal' style={{ color: 'var(--v2-faint)' }}>
++                <span id={`${id}-hint`} className='font-normal' style={{ color: 'var(--v2-faint)' }}>
+                     {hint}
+                 </span>
+             ) : null}
+@@ -742,11 +1094,11 @@ function Field({ label, name, hint, error, onBlur, value, onChange, ...rest }: {
+ function SecretField({ label, inputRef, error }: { label: string; inputRef: React.RefObject<HTMLInputElement | null>; error?: string }) {
+     const id = useId()
+     return (
+-        <label className='flex flex-col gap-1 text-[13px] font-medium'>
++        <label className='flex flex-col text-[12px] font-semibold' style={{ gap: 5, color: 'var(--v2-soft)' }}>
+             {label}
+-            <input id={id} ref={inputRef} type='password' autoComplete='off' aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} className='h-8 px-2' />
++            <input id={id} ref={inputRef} type='password' autoComplete='off' aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} className='h-8 min-h-0 rounded-[7px] border px-2.5 text-[13px] font-normal' style={{ borderColor: error ? 'var(--v2-block)' : 'var(--v2-ctl)', background: 'var(--v2-bg)', color: 'var(--v2-ink)' }} />
+             {error && (
+-                <span id={`${id}-error`} role='alert' className='text-[12px] font-normal' style={{ color: 'var(--v2-block)' }}>
++                <span id={`${id}-error`} role='alert' className='font-normal' style={{ color: 'var(--v2-block)' }}>
+                     {error}
+                 </span>
+             )}
+@@ -764,27 +1116,8 @@ function Primary({ label, disabled }: { label: string; disabled?: boolean }) {
+ 
+ function Secondary({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+     return (
+-        <button type='button' onClick={onClick} disabled={disabled} className='h-8 rounded-[7px] border px-3 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
++        <button type='button' onClick={onClick} disabled={disabled} className='h-8 rounded-[7px] border px-3 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
+             {label}
+         </button>
+     )
+ }
+-
+-type Action = { label: string; onClick: () => void; disabled?: boolean }
+-function Actions({ back, extra, secondary, primary }: { back?: () => void; extra?: Action; secondary?: Action; primary: Action }) {
+-    return (
+-        <div className='mt-2 flex items-center gap-2'>
+-            {back && (
+-                <button type='button' onClick={back} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+-                    {C.back}
+-                </button>
+-            )}
+-            <span className='flex-grow' />
+-            {extra && <Secondary label={extra.label} onClick={extra.onClick} disabled={extra.disabled} />}
+-            {secondary && <Secondary label={secondary.label} onClick={secondary.onClick} disabled={secondary.disabled} />}
+-            <button type='button' onClick={primary.onClick} disabled={primary.disabled} className='h-8 rounded-[7px] px-4 text-[13px] font-semibold disabled:opacity-60' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
+-                {primary.label}
+-            </button>
+-        </div>
+-    )
+-}
+diff --git a/crates/desktop-core/tests/ui_v2_wizard/main.rs b/crates/desktop-core/tests/ui_v2_wizard/main.rs
+new file mode 100644
+index 00000000..48e56da4
+--- /dev/null
++++ b/crates/desktop-core/tests/ui_v2_wizard/main.rs
+@@ -0,0 +1,182 @@
++//! C43: the wizard as the R2Onboard board draws it, through the production
++//! authority interface (docs/planning/chunks/C43.md). What the re-ported
++//! presentation draws from, unchanged from C29: the setup draft's profile
++//! (the rail's context line and the Tenant card), which credential is
++//! required (the Required/Optional tags), the products chosen (the product
++//! cards), the verify run's lines including the unavailable products (the
++//! Checks card), the packs offered with their counts (the starter-case rows)
++//! and completability (the footer's primary). Nothing here commits a tenant.
++
++use desktop_core::features::{ProductId, VerifyLine, VerifyState};
++use desktop_core::fixtures::{self, Handles, ScriptedStore};
++use desktop_core::store::PersistedState;
++use desktop_core::{
++    AuthorityHandle, Core, CoreConfig, Delivery, Intent, Observation, Receipt, Refusal,
++    ShellSnapshot, ViewScope,
++};
++use serde_json::json;
++
++struct Desk {
++    _core: Core,
++    handle: AuthorityHandle,
++    session: String,
++    sequence: u64,
++    #[allow(dead_code)]
++    adapters: Handles,
++}
++
++impl Desk {
++    fn new() -> Self {
++        let (adapters, handles) =
++            fixtures::adapters_with(ScriptedStore::with_state(PersistedState::default()));
++        let core = Core::new(CoreConfig::default(), adapters);
++        core.start();
++        let handle = core.operator();
++        let session = handle.register_delivery_session().expect("session").nonce;
++        Self {
++            _core: core,
++            handle,
++            session,
++            sequence: 0,
++            adapters: handles,
++        }
++    }
++
++    async fn send(&mut self, intent: serde_json::Value) -> Result<Receipt, Refusal> {
++        let intent: Intent = serde_json::from_value(intent).expect("intent");
++        self.sequence += 1;
++        self.handle
++            .dispatch(
++                Delivery {
++                    session: self.session.clone(),
++                    sequence: self.sequence,
++                },
++                intent,
++            )
++            .await
++    }
++
++    fn snap(&self) -> ShellSnapshot {
++        match self.handle.observe(ViewScope::Shell).expect("observe") {
++            Observation::Shell { snapshot, .. } => snapshot,
++            _ => unreachable!("shell scope"),
++        }
++    }
++
++    fn setup(&self) -> desktop_core::features::SetupView {
++        self.snap().setup.expect("a setup in progress")
++    }
++
++    async fn verified(&self) -> desktop_core::features::VerifyView {
++        for _ in 0..200 {
++            if let Some(v) = self.setup().verify
++                && v.done
++            {
++                return v;
++            }
++            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
++        }
++        panic!("verification did not finish");
++    }
++}
++
++#[tokio::test]
++async fn the_board_draws_the_draft_the_tags_the_cards_and_the_checks_from_the_setup_view() {
++    let mut desk = Desk::new();
++    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
++        .await
++        .expect("v2");
++    desk.send(
++        json!({"kind": "beginTenantSetup", "mode": "firstRun", "profile": {
++        "label": "Northwind Health", "tsgId": "1762204418",
++        "destination": {"kind": "region", "region": "europe"}, "environment": "staging"}}),
++    )
++    .await
++    .expect("begun");
++    let s = serde_json::to_value(desk.setup()).expect("json");
++    // The rail's context line and the Tenant card.
++    assert_eq!(s["tenant"]["label"], "Northwind Health");
++    assert_eq!(s["tenant"]["tsgId"], "1762204418");
++    assert_eq!(s["tenant"]["environment"], "staging");
++    assert_eq!(s["tenant"]["destination"]["region"], "europe");
++    // First run: the scan key card is Required, the management card Optional (the core says which).
++    assert_eq!(s["scanRequired"], true);
++    assert_eq!(s["tenant"]["scan"]["state"], "missing");
++    assert_eq!(s["tenant"]["management"]["state"], "missing");
++    // The product cards: Runtime always on; the packs rows with their counts.
++    assert_eq!(s["products"], json!(["runtimeSecurity"]));
++    let packs = s["packs"].as_array().expect("packs");
++    assert!(
++        packs
++            .iter()
++            .any(|p| p["product"] == "runtimeSecurity" && p["count"].as_u64().unwrap_or(0) > 0),
++        "{packs:?}"
++    );
++    // Before any run the footer's primary on Verify is closed.
++    assert!(s["verify"].is_null());
++    assert_eq!(s["completable"], false);
++    // Choosing a product is recorded in the core as the card toggles.
++    let context = desk.setup().context.as_str().to_owned();
++    desk.send(json!({"kind": "chooseSetupProducts", "context": context, "products": ["runtimeSecurity", "gateway"]}))
++        .await
++        .expect("products");
++    assert_eq!(
++        desk.setup().products,
++        vec![ProductId::RuntimeSecurity, ProductId::Gateway]
++    );
++    // The Checks card: one line per credential and chosen product, and the two unavailable products.
++    let context = desk.setup().context.as_str().to_owned();
++    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
++        .await
++        .expect("verify");
++    let v = desk.verified().await;
++    let lines: Vec<VerifyLine> = v.steps.iter().map(|s| s.line).collect();
++    for line in [
++        VerifyLine::ScanKey,
++        VerifyLine::ManagementClient,
++        VerifyLine::Gateway,
++        VerifyLine::Ais,
++        VerifyLine::Aes,
++    ] {
++        assert!(lines.contains(&line), "{lines:?}");
++    }
++    assert!(
++        v.steps
++            .iter()
++            .filter(|s| matches!(s.line, VerifyLine::Ais | VerifyLine::Aes))
++            .all(|s| s.state == VerifyState::Unavailable)
++    );
++    // Without a scan key on first run the run fails and the footer's primary stays closed.
++    assert!(v.failed && v.blocking);
++    assert!(!desk.setup().completable);
++}
++
++#[tokio::test]
++async fn add_mode_has_no_required_scan_key_and_the_sheet_discards_its_draft_on_cancel() {
++    let mut desk = Desk::new();
++    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
++        .await
++        .expect("v2");
++    desk.send(json!({"kind": "setOnboarding", "state": "done"}))
++        .await
++        .expect("done");
++    desk.send(
++        json!({"kind": "beginTenantSetup", "mode": "add", "profile": {
++        "label": "Coastal Bank", "tsgId": "1001464285",
++        "destination": {"kind": "region", "region": "unitedStates"}, "environment": "production"}}),
++    )
++    .await
++    .expect("begun");
++    let s = serde_json::to_value(desk.setup()).expect("json");
++    assert_eq!(s["mode"], "add");
++    // The add sheet's scan card is Optional.
++    assert_eq!(s["scanRequired"], false);
++    assert!(desk.snap().tenants.is_empty(), "a draft is not a tenant");
++    // Cancel discards the draft in the core; the shell is untouched.
++    let context = desk.setup().context.as_str().to_owned();
++    desk.send(json!({"kind": "discardTenantSetup", "context": context}))
++        .await
++        .expect("discarded");
++    assert!(desk.snap().setup.is_none());
++    assert!(desk.snap().tenants.is_empty());
++}
+diff --git a/crates/xtask/src/budgets.rs b/crates/xtask/src/budgets.rs
+index da917e33..63deb0e7 100644
+--- a/crates/xtask/src/budgets.rs
++++ b/crates/xtask/src/budgets.rs
+@@ -9,7 +9,7 @@
+ //! mismatched input fails.
+ 
+ use std::collections::BTreeMap;
+-use std::path::Path;
++use std::path::{Path, PathBuf};
+ 
+ use serde::{Deserialize, Serialize};
+ 
+@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
+     Ok(total)
+ }
+ 
+-const MIB: f64 = 1024.0 * 1024.0;
+-
+-/// Builds the complete unsigned production app and DMG, the sealed Harness
+-/// engine included (C19, D046; budgets.json version 5), and records their
+-/// sizes.
+-pub fn footprint(
+-    repo: &Repo,
+-    manifest: &Manifest,
+-    env: &Environment,
+-    subject: Subject,
+-) -> Result<Footprint> {
+-    let Some(chunk) = required(repo, manifest, subject)? else {
+-        return Err(invalid(format!(
+-            "{subject} does not contain the chunk that registered the budgets"
+-        )));
+-    };
+-    let (_, record, sha) = registration(repo, &chunk)?;
+-    let started_utc = now_utc();
+-    if started_utc < record.registered_utc {
+-        return Err(invalid("the clock is before the budget registration"));
+-    }
+-    let target = manifest.target.as_str();
++/// Builds the complete unsigned production app and DMG with the sealed
++/// Harness engine as a bundle resource (C19, D046): the frontend, then
++/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
++pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
+     // The sealed engine the production app ships with (C19).
+     crate::harness::unpack(repo)?;
+     let commands: Vec<Vec<String>> = [
+@@ -181,13 +163,58 @@ pub fn footprint(
+     let identifier = plist_value(&app, "CFBundleIdentifier")?;
+     if identifier != crate::native::PRODUCTION_IDENTIFIER {
+         return Err(invalid(format!(
+-            "footprint bundle has identifier {identifier}"
++            "the production bundle has identifier {identifier}"
+         )));
+     }
+     let version = plist_value(&app, "CFBundleShortVersionString")?;
+     let dmg = repo.join(format!(
+         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
+     ));
++    Ok(ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    })
++}
++
++/// A production build: the app, its DMG, the bundle identifier and the
++/// commands that built them.
++pub struct ProductionBuild {
++    pub app: PathBuf,
++    pub dmg: PathBuf,
++    pub identifier: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++const MIB: f64 = 1024.0 * 1024.0;
++
++/// Builds the complete unsigned production app and DMG, the sealed Harness
++/// engine included (C19, D046; budgets.json version 5), and records their
++/// sizes.
++pub fn footprint(
++    repo: &Repo,
++    manifest: &Manifest,
++    env: &Environment,
++    subject: Subject,
++) -> Result<Footprint> {
++    let Some(chunk) = required(repo, manifest, subject)? else {
++        return Err(invalid(format!(
++            "{subject} does not contain the chunk that registered the budgets"
++        )));
++    };
++    let (_, record, sha) = registration(repo, &chunk)?;
++    let started_utc = now_utc();
++    if started_utc < record.registered_utc {
++        return Err(invalid("the clock is before the budget registration"));
++    }
++    let target = manifest.target.as_str();
++    let ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    } = build_production(repo, env, target)?;
+     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
+     let relative = |p: &Path| {
+         p.strip_prefix(repo.root())
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index 4a55ca20..4644fb80 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1346,6 +1346,20 @@
+         "id": "C42-N02",
+         "check": "Keyboard and layout (T09): Tab from the first section link reaches the next section and a path card in order, the focus ring on a section link; the Academy at 1440 wide by the display's working height and at 900×600 with 200% zoom, in light and dark, signed in on the catalog, no horizontal page overflow, the frame's two cards and the Learning paths cards present with a path card at least 32 CSS px tall; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+       }
++    ],
++    "C43": [
++      {
++        "id": "C43-N01",
++        "check": "The first-run wizard as the prototype board draws it (R2Onboard, every step): the 320px rail with the brand tile, the numbered steps turning to checks as they are done, the Optional tags on Starter cases and Academy (Skipped once skipped), the privacy note and the appearance button; the pinned footer with Back, the hint, Step n of m, Skip for now and the primary; Welcome (tile, two paragraphs, three cards, the v1 import box); Connect your tenant (the Tenant card's 2-column grid with the Environment segmented control and the Region select, Create tenant; then the scan key card tagged Required, the Management credentials card with Where do I find these?, the AI Gateway workspace card with its switch); Which products will you manage? (the 3-column product cards as checkboxes, Runtime always on, AIS and AES unavailable, the no-scan-key banner before a key is saved); Check the connection (the status banner, the Checks card with one row per line, Run the checks, Fix and verify again after a failure, Continue with warnings); Load starter test cases (the pack rows as checkboxes with counts, the summary, Skip for now); Join the AI Security Academy (Your account and What is sent cards, Skip for now); <name> is ready (the summary card with Change links, the three next-up cards, Open Prisma AIRS completing once) — the C29 behaviour unchanged (D059 parity: the composites under evidence/C43/parity are captured by this script per step, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
++      },
++      {
++        "id": "C43-N02",
++        "check": "The add-tenant sheet: a 1160×780 dialog without the modal's padding, the 244px rail (Tenant, Products, Verify, Starter cases, Done; no Welcome or Academy), Cancel in the footer on every step and no Back on the first; Cancel before a draft sends nothing; a drafted tenant's scan card is Optional and Continue is open; Cancel after a draft discards it in the core; Finish commits once and the sheet closes with the toast."
++      },
++      {
++        "id": "C43-N03",
++        "check": "Keyboard and layout (T09): Tab from the rail reaches the step's first field and the footer's primary in order; the focus ring on the primary; the wizard at 1440×900 and at 900×600 with 200% zoom, in light and dark, on the Tenant and Verify steps, no horizontal page overflow, the footer's primary inside the window and at least 32 CSS px; every row records the WebView's measured size and the viewport from its own tree and asserts them."
++      }
+     ]
+   }
+ }
+diff --git a/docs/planning/evidence/C43/parity/notes.md b/docs/planning/evidence/C43/parity/notes.md
+new file mode 100644
+index 00000000..0b89c223
+--- /dev/null
++++ b/docs/planning/evidence/C43/parity/notes.md
+@@ -0,0 +1,22 @@
++# C43 parity notes — Wizard (R2Onboard, every step; mode=add)
++
++Composites: prototype board left, fixture app right, both at the window's measured web area (1440 wide on this Mac), light and dark, captured by `tools/native-acceptance/acceptance_c43.py` per first-run step (`filled=true` on the board) and on the add sheet's Tenant step, against the bundle in `native-prepare.json`.
++
++The board is the onboarding wizard: the 320px rail (244px in add mode) with the brand tile, the numbered steps turning to checks, the Optional/Skipped tags, the privacy note and the appearance button; the pinned footer (Cancel in add mode, Back, the hint, Step n of m, Skip for now, the primary); section cards with a 2-column field grid, the Environment segmented control, switches on the optional cards; the product cards, the Checks card, the starter-case rows, the Academy cards, the summary and next-up cards. C43 re-ports that presentation over the C29 state machine and intents, unchanged: everything durable stays in the core's setup draft, and the view only walks the steps and sends intents.
++
++## Deviations from the board, and why
++
++- **Required and Optional follow the core.** The prototype tags the management credentials Required and the scan key Optional; the desktop's first run requires the scan key (`scanRequired`), so its card is tagged Required on first run and Optional on the add sheet, and the management card Optional. The verify step says which products need the client.
++- **Create tenant and the credential buttons** (Create tenant / Save changes / Revert, Save scan key, Save management client, Read workspaces, Use this workspace, Save workspace key) live inside the prototype's cards: the prototype fills its fields live, the desktop drafts the tenant and attaches each credential to the draft through its own intent, read once from its field and never echoed. The footer's primary names what is missing (Create the tenant to continue, Save the scan key to continue).
++- **The import box** on Welcome is live (Import from v1…), and the Tenant step keeps a small link to it for the add sheet, which has no Welcome.
++- **Products** are the core's four admitted products plus the two unavailable ones, with the reads-with state and the last verify result as pills; the prototype's "uses" line is scripted.
++- **Verify** has no per-check timing: the rows carry the core's reason text; the banner states the run's outcome and offers Edit credentials after a failure. The rows before a run say Not run yet.
++- **Starter cases** are the bundled packs for the chosen products (one per product with its count); the prototype scripts seven packs.
++- **Academy** keeps the reviewed account component (Sign in to Academy through the device flow in Settings' terms) in the Your account card; the prototype's email/name fields and "Start with" paths are scripted. The right card states what is sent to Academy.
++- **Done** adds the Academy row and says what was skipped; Change links return to the step when it is reachable (an unsaved profile or a stale run keeps later steps out of reach, R4/R7).
++- **The appearance button** sets the Rust-owned appearance (light/dark) rather than a local theme.
++- **The add sheet** is 1160 wide and 780 tall without the modal's padding (min(780px, 84vh) on short displays).
++
++## Owner's judgement
++
++The owner judged these composites (the Wizard, per step: `parity/*.png`, prototype board left, fixture app right, light and dark) with the deviations above and approved them on 2026-10-30: "C39 C40 C41 C43 composites approved." This is the owner's judgement the gate runs on (D059); an objection from the owner reopens the parity judgement for this screen.
+diff --git a/docs/planning/evidence/C43/runs/hash-inputs.sh b/docs/planning/evidence/C43/runs/hash-inputs.sh
+new file mode 100755
+index 00000000..4fe63957
+--- /dev/null
++++ b/docs/planning/evidence/C43/runs/hash-inputs.sh
+@@ -0,0 +1,22 @@
++#!/bin/bash
++# Deterministic inventory of the inputs C43's checks compile, test or build:
++# the Rust crates and host, the desktop app sources and configuration, the
++# contracts package sources and fixtures, the Academy shared source actually
++# consumed (.work/academy/src and its installed packages, staged from
++# .inputs/academy), the native acceptance tools, the lockfiles, the workspace
++# and toolchain manifests, the harness pin and every docs/architecture/*.json.
++# Every listed path must exist: a missing one fails the inventory (exit 2)
++# instead of producing a partial digest.
++# Usage: hash-inputs.sh <repo-root> <inventory-out>; prints the digest.
++set -euo pipefail
++cd "$1"
++DIRS=(crates apps/desktop/src apps/desktop/src-tauri packages/desktop-contracts/src packages/desktop-contracts/fixtures tools/native-acceptance tools/parity tools/academy .work/academy/src .work/academy/packages .inputs/academy)
++FILES=(Cargo.toml Cargo.lock rust-toolchain.toml pnpm-lock.yaml package.json pnpm-workspace.yaml resources/harness/pin.json apps/desktop/package.json apps/desktop/index.html packages/desktop-contracts/package.json packages/desktop-contracts/tsconfig.json)
++for p in "${DIRS[@]}"; do [ -d "$p" ] || { echo "inventory: missing directory $p" >&2; exit 2; }; done
++for p in "${FILES[@]}"; do [ -f "$p" ] || { echo "inventory: missing file $p" >&2; exit 2; }; done
++{
++  find "${DIRS[@]}" -type f -not -path '*/target/*' -not -path '*/node_modules/*' -not -path '*/gen/schemas/*' -not -path '*/.git/*' -print0 | sort -z | xargs -0 shasum -a 256
++  shasum -a 256 "${FILES[@]}" apps/desktop/*.ts apps/desktop/*.json docs/architecture/*.json
++} | LC_ALL=C sort -k2 > "$2"
++[ -s "$2" ] || { echo "inventory: empty" >&2; exit 2; }
++shasum -a 256 "$2" | cut -d' ' -f1
+diff --git a/docs/planning/evidence/C43/runs/run-checks.sh b/docs/planning/evidence/C43/runs/run-checks.sh
+new file mode 100755
+index 00000000..ea7ad6e3
+--- /dev/null
++++ b/docs/planning/evidence/C43/runs/run-checks.sh
+@@ -0,0 +1,79 @@
++#!/bin/bash
++# C43 check runs with a source-bound record. Usage: run-checks.sh <attempt>
++# Runs on the approved toolchain (rustup 1.99.0, node 24.21.0, repo pnpm).
++set -o pipefail
++ATTEMPT=${1:-attempt-01}
++cd "$(dirname "$0")/../../../../.."
++export PATH="$PWD/.tools/bin:$HOME/.cargo/bin:$HOME/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin"
++unset RUSTFLAGS CARGO_BUILD_RUSTFLAGS CARGO_TARGET_DIR
++# Timing-sensitive suites (4 s "eventually" waits, engine bootstraps) flake when ten test threads
++# per binary share this Mac with the owner's browser and a second session; four threads per
++# binary keep the same tests and assertions, only less contention. Recorded in the run record.
++export RUST_TEST_THREADS=4
++R=docs/planning/evidence/C43/runs
++E=$R/$ATTEMPT
++mkdir -p "$E"
++# Flake logs are same-input retries of this run only: earlier runs' logs are removed first.
++rm -f $E/core-fixtures.flake-*.log $E/host.flake-*.log
++BEFORE=$($R/hash-inputs.sh "$PWD" $E/inputs-before.sha256) || { echo "input inventory failed; run invalid"; exit 2; }
++[ -n "$BEFORE" ] || { echo "input inventory produced no digest; run invalid"; exit 2; }
++# Configuration and build flags the controller fingerprints: itemised and hashed together.
++BUILD_FLAGS=$(shasum -a 256 docs/architecture/checks.json docs/architecture/native-checks.json docs/architecture/toolchain.json docs/architecture/budgets.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/tauri.fixture.conf.json apps/desktop/src-tauri/capabilities/*.json rust-toolchain.toml 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
++export BUILD_FLAGS
++run() { local name=$1; shift; local log=$E/$name.log; echo "\$ $*" > "$log"; "$@" >> "$log" 2>&1; local rc=$?; echo "EXIT $rc" >> "$log"; echo "$name exit=$rc"; echo $rc > $E/$name.exit; }
++run rustfmt cargo fmt --all -- --check
++run clippy cargo clippy --locked -p desktop-core -p desktop-host -p xtask --features test-fixtures --all-targets -- -D warnings
++run clippy-default cargo clippy --locked --workspace --all-targets -- -D warnings
++run notices cargo run --locked -q -p xtask -- notices --check
++run bindings cargo run --locked -q -p xtask -- bindings --check
++run contracts-typecheck pnpm --filter @prisma-airs/desktop-contracts exec tsc --noEmit
++run desktop-typecheck pnpm --filter @prisma-airs/desktop exec tsc --noEmit
++run vitest pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.config.ts
++run vitest-truth pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.truth.config.ts
++run core-lib cargo test --locked -p desktop-core --lib
++run core-fixtures cargo test --locked -p desktop-core --features test-fixtures
++# A timing-sensitive test (Harness-engine turns, or the transport's connection-release
++# check) can flake under the full-suite load: the exact same
++# command is retried on the same frozen inputs, every failed run kept as evidence.
++for try in 1 2; do
++  if [ "$(cat $E/core-fixtures.exit)" != "0" ]; then
++    cp $E/core-fixtures.log $E/core-fixtures.flake-$try.log
++    run core-fixtures cargo test --locked -p desktop-core --features test-fixtures
++  fi
++done
++# The chunk's registered fixture command (docs/architecture/checks.json C43), exactly as the manifest runs it.
++run fixture-command cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_workbench
++run host cargo test --locked -p desktop-host --features test-fixtures
++# The host's Academy device-flow tests (browser_callback.rs, outside this chunk) wait 5 s for a
++# state and flake under load: the same command is retried on the same frozen inputs, every
++# failed run kept as evidence.
++for try in 1 2; do
++  if [ "$(cat $E/host.exit)" != "0" ]; then
++    cp $E/host.log $E/host.flake-$try.log
++    run host cargo test --locked -p desktop-host --features test-fixtures
++  fi
++done
++run xtask-lib cargo test --locked -p xtask --lib
++run shell-controller cargo test --locked -p xtask --features test-fixtures --test shell_controller
++run desktop-build pnpm --filter @prisma-airs/desktop build
++AFTER=$($R/hash-inputs.sh "$PWD" $E/inputs-after.sha256) || { echo "input inventory failed after the runs; run invalid"; exit 2; }
++[ -n "$AFTER" ] || { echo "input inventory produced no digest after the runs; run invalid"; exit 2; }
++python3 -I - "$E" "$BEFORE" "$AFTER" "$ATTEMPT" <<'PY'
++import json,sys,subprocess,os,time,hashlib
++E,b,a,attempt=sys.argv[1:5]
++def ver(c):
++    try: return subprocess.check_output(c,text=True,stderr=subprocess.STDOUT).strip()
++    except Exception as e: return str(e)
++sha=lambda p: hashlib.sha256(open(p,"rb").read()).hexdigest()
++names=["rustfmt","clippy","clippy-default","notices","bindings","contracts-typecheck","desktop-typecheck","vitest","vitest-truth","core-lib","core-fixtures","fixture-command","host","xtask-lib","shell-controller","desktop-build"]
++rec={"subject":"C43","attempt":attempt,"time":time.strftime("%Y-%m-%dT%H:%M:%S%z"),"cwd":os.getcwd(),
++ "toolchain":{"rustc":ver(["rustc","-V"]),"cargo":ver(["cargo","-V"]),"node":ver(["node","-v"]),"pnpm":ver(["pnpm","-v"]),"rustup_active":ver(["rustup","show","active-toolchain"])},
++ "environment":{"PATH":os.environ["PATH"],"RUSTFLAGS":os.environ.get("RUSTFLAGS"),"CARGO_TARGET_DIR":os.environ.get("CARGO_TARGET_DIR"),"RUST_TEST_THREADS":os.environ.get("RUST_TEST_THREADS")},
++ "build_flags":{"digest":os.environ.get("BUILD_FLAGS"),"covers":"checks.json, native-checks.json, toolchain.json, budgets.json, tauri.conf.json, tauri.fixture.conf.json, src-tauri/capabilities/*.json, rust-toolchain.toml"},"inputs":{"procedure":f"{E}/../hash-inputs.sh","procedure_sha256":sha(f"{E}/../hash-inputs.sh"),"before_inventory_sha256":sha(f"{E}/inputs-before.sha256"),"before_digest":b,"after_inventory_sha256":sha(f"{E}/inputs-after.sha256"),"after_digest":a,"unchanged":a==b,"members":sum(1 for _ in open(f"{E}/inputs-before.sha256"))},
++ "runs":{}}
++for n in names:
++    log=f"{E}/{n}.log"
++    rec["runs"][n]={"exit":int(open(f"{E}/{n}.exit").read().strip()),"log":log,"log_sha256":sha(log),"summary":[l.strip() for l in open(log,errors="replace") if l.startswith("test result") or "Test Files" in l or "Tests  " in l or l.startswith("EXIT")][-4:]}
++json.dump(rec,open(f"{E}/../run-{attempt}.json","w"),indent=2)
++print(json.dumps({k:v["exit"] for k,v in rec["runs"].items()}),"inputs unchanged:",a==b,"members:",rec["inputs"]["members"])
++PY
+diff --git a/docs/planning/status.md b/docs/planning/status.md
+index 9423a119..97881708 100644
+--- a/docs/planning/status.md
++++ b/docs/planning/status.md
+@@ -64,7 +64,7 @@ blockers; each phase review still needs 9/10, after every chunk accepted below
+ | C40 | **In progress** (P09, D059): Test Cases — the R2App title row, Explain banner, one table card with search, product pills, result pills, the action and ⋯ menu, the packs and new-case dialogs and the detail sheet over the C33 behaviour | `docs/planning/chunks/C40.md`; `tools/native-acceptance/acceptance_c40.py` |
+ | C41 | **In progress** (P09, D059): API Client — the R2App title row with the Collection and Environment chips, the 286px request tree, open-request tabs, the request line, the six request sub-tabs with the Params/Headers tables and the response pane with Body/Headers/Details/History over the C14/C15 behaviour | `docs/planning/chunks/C41.md`; `tools/native-acceptance/acceptance_c41.py`; `crates/desktop-core/tests/ui_v2_api/` |
+ | C42 | **In progress** (P09, D059): Academy — the R2App title row with the learner's pills, the 1.4fr/1fr frame (Academy's learner pages beside Your place) and the Learning paths row around the hosted learner pages with the Rust-owned theme | `docs/planning/chunks/C42.md`; `tools/native-acceptance/acceptance_c42.py`; `crates/desktop-core/tests/ui_v2_academy/` |
+-| C43 | Planned (P09, D059): Wizard re-port | `docs/planning/chunks/C43.md` |
++| C43 | **In progress** (P09, D059): Wizard — the R2Onboard presentation (320/244px rail with brand tile, numbered steps, tags, privacy note and appearance; pinned footer; section cards, 2-column grid, segmented control, switches; the add sheet at 1160×780) over the C29 state machine and intents | `docs/planning/chunks/C43.md`; `tools/native-acceptance/acceptance_c43.py`; `crates/desktop-core/tests/ui_v2_wizard/` |
+ | C44 | Planned (P09, D059): legacy shell removal, P09 closure | `docs/planning/chunks/C44.md` |
+ 
+ ## C01 evidence (docs/planning/evidence/C01)
+diff --git a/tools/native-acceptance/acceptance_c43.py b/tools/native-acceptance/acceptance_c43.py
+new file mode 100644
+index 00000000..7a63c77d
+--- /dev/null
++++ b/tools/native-acceptance/acceptance_c43.py
+@@ -0,0 +1,520 @@
++#!/usr/bin/env python3
++"""C43 native acceptance (D059): the first-run wizard and the add-tenant
++sheet as the prototype board draws them (R2Onboard, every step, mode=add),
++driven through the real fixture window against the synthetic scan and
++management endpoints.
++
++Run from the repository root after `xtask native-prepare --chunk C43`.
++Requires the macOS Accessibility grant. Synthetic services only; the fixture
++data root is removed at the end.
++
++Checks (docs/architecture/native-checks.json, C43): every first-run step as
++the board draws it, the rail, the pinned footer and the C29 behaviour
++through to completion (N01); the add-tenant sheet (N02); keyboard reach,
++the focus ring and the measured layouts in both themes (N03). The parity
++composites are captured per step.
++"""
++
++import json
++import os
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++import time
++
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
++import fixture_app as fx  # noqa: E402
++import acceptance_c08 as c8  # noqa: E402
++import acceptance_c28 as c28  # noqa: E402
++import acceptance_c29 as c29  # noqa: E402
++import acceptance_c31 as c31  # noqa: E402
++
++ROOT = os.getcwd()
++EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C43")
++NATIVE = os.path.join(EVIDENCE, "native")
++RECORD = os.path.join(EVIDENCE, "native-acceptance.json")
++PARITY = os.path.join(EVIDENCE, "parity")
++DC = os.path.join(ROOT, "tools/parity")
++LOG = []
++TITLE_BAR = 28
++TAGS = ("AXRadioButton", "AXCheckBox", "AXButton", "AXPopUpButton", "AXDisclosureTriangle")
++STEP_BOARDS = {"welcome": "welcome", "tenant": "tenant", "products": "products", "verify": "verify", "packs": "cases", "academy": "academy", "done": "done"}
++
++
++def rel(path):
++    return os.path.relpath(path, ROOT)
++
++
++def heading(tree, label):
++    return next((n for n in tree if n.get("role") == "AXHeading" and (n.get("label") or "") == label), None)
++
++
++def heading_like(tree, prefix):
++    return next((n for n in tree if n.get("role") == "AXHeading" and (n.get("label") or "").startswith(prefix)), None)
++
++
++def group(tree, label):
++    return next((n for n in tree if n.get("role") == "AXGroup" and (n.get("label") or "") == label), None)
++
++
++def within(tree, node):
++    if not node:
++        return []
++    i = tree.index(node)
++    out = []
++    for m in tree[i + 1:]:
++        if m.get("depth", 0) <= node.get("depth", 0):
++            break
++        out.append(m)
++    return out
++
++
++def labels(nodes, roles, prefix=""):
++    roles = (roles,) if isinstance(roles, str) else roles
++    out = []
++    for n in nodes:
++        label = n.get("label") or ""
++        if n.get("role") in roles and label.startswith(prefix) and label not in out:
++            out.append(label)
++    return out
++
++
++def press(app, role, label, timeout=8):
++    app.wait_for(lambda t: fx.App.node(t, role, label) is not None, timeout)
++    app.ax("press", role, label)
++    time.sleep(0.5)
++
++
++def press_any(app, label, timeout=8):
++    """Presses the control with this label whatever role AX gives it (a switch is a checkbox, a radio a radio button)."""
++    tree, _ = app.wait_for(lambda t: any((n.get("label") or "") == label and n.get("role") in TAGS for n in t), timeout)
++    node = next((n for n in tree if (n.get("label") or "") == label and n.get("role") in TAGS), None)
++    if node:
++        app.ax("press", node["role"], label)
++        time.sleep(0.5)
++    return node is not None
++
++
++def geometry(tree):
++    web = next((n for n in tree if n.get("role") == "AXWebArea" and n.get("size")), None)
++    scroll = next((n for n in tree if n.get("role") == "AXScrollArea" and n.get("size")), None)
++    win = next((n for n in tree if n.get("role") == "AXWindow"), None)
++    return {"web": [int(web["size"][0]), int(web["size"][1])] if web else None,
++            "viewport": [int(scroll["size"][0]), int(scroll["size"][1])] if scroll else None,
++            "window": win.get("size") if win else None}
++
++
++def size_window(app, pid, w, h):
++    fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {pid}) to set position of window 1 to {{0, 0}}'])
++    requested = [w, h + TITLE_BAR]
++    for _ in range(3):
++        c28.set_window_size(pid, requested[0], requested[1])
++        time.sleep(0.8)
++        g = geometry(app.tree())
++        vp = g["viewport"] or g["web"]
++        if not vp or vp[1] == h:
++            break
++        requested = [requested[0], requested[1] + (h - vp[1])]
++    return c29.window_frame(pid)
++
++
++def overflow(app):
++    tree = app.tree()
++    win = next((n for n in tree if n.get("role") == "AXWindow"), None)
++    nodes = [n for n in tree if n.get("pos") and n.get("size") and n["size"][0] > 0
++             and n.get("role") in ("AXButton", "AXStaticText", "AXTextField", "AXTextArea", "AXLink", "AXHeading", "AXCheckBox", "AXRadioButton", "AXPopUpButton")]
++    right = max(n["pos"][0] + n["size"][0] for n in nodes) if nodes and win else None
++    hbars = [n for n in tree if n.get("role") == "AXScrollBar" and (n.get("orientation") == "horizontal" or (n.get("size") and n["size"][0] > n["size"][1]))]
++    return {"overflow_px": max(0, right - (win["pos"][0] + win["size"][0])) if right is not None else None, "horizontal_scrollbars": len(hbars)}, tree
++
++
++def primary_usable(tree, zoom):
++    """The footer's primary inside the window and at least 32 CSS px."""
++    win = next((n for n in tree if n.get("role") == "AXWindow"), None)
++    labels_ = ("Create the tenant to continue", "Save the scan key to continue", "Continue", "Continue with warnings", "Set up a tenant", "Open Prisma AIRS", "Finish")
++    btn = next((n for n in tree if n.get("role") == "AXButton" and (n.get("label") or "") in labels_ and n.get("pos") and n.get("size")), None)
++    inside = bool(btn and win and btn["pos"][0] >= win["pos"][0] and btn["pos"][0] + btn["size"][0] <= win["pos"][0] + win["size"][0] + 1 and btn["pos"][1] + btn["size"][1] <= win["pos"][1] + win["size"][1] + 1)
++    return {"label": btn.get("label") if btn else None, "size": btn.get("size") if btn else None, "inside": inside,
++            "size_ok": bool(btn and btn["size"][1] >= 32 * zoom - 1), "ok": inside and bool(btn and btn["size"][1] >= 32 * zoom - 1), "zoom": zoom}
++
++
++def composite(app, step, theme, web_size, prepared, mode="firstRun"):
++    board = STEP_BOARDS[step]
++    name = f"{'add-' if mode == 'add' else ''}{board}-{theme.lower()}"
++    cap = c29.capture(app, f"parity-{name}")
++    if not cap:
++        raise SystemExit(f"no capture for {name}")
++    os.makedirs(os.path.join(PARITY, "app"), exist_ok=True)
++    os.makedirs(os.path.join(PARITY, "proto"), exist_ok=True)
++    with open(os.path.join(PARITY, "bundle.json"), "w") as f:
++        json.dump({"bundle": prepared["bundle"], "executable_sha256": prepared["executable_sha256"], "from": "native-prepare.json",
++                   "captured_by": "tools/native-acceptance/acceptance_c43.py", "captured_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, f, indent=2)
++        f.write("\n")
++    app_png = os.path.join(PARITY, "app", f"{name}.png")
++    shutil.copy(os.path.join(ROOT, cap), app_png)
++    web_w, web_h = web_size
++    proto_png = os.path.join(PARITY, "proto", f"{name}.png")
++    props = ["--prop", f"step={board}", "--prop", f"theme={theme.lower()}", "--prop", "filled=true"]
++    if mode == "add":
++        props += ["--prop", "mode=add"]
++    subprocess.run([sys.executable, "-I", os.path.join(DC, "dc_render.py"), "--board", "R2Onboard", *props, "--width", str(web_w), "--height", str(web_h), "--out", proto_png], check=True, capture_output=True)
++    out = os.path.join(PARITY, f"{name}.png")
++    subprocess.run([sys.executable, "-I", os.path.join(DC, "compose.py"), "--left", proto_png, "--right", app_png,
++                    "--out", out, "--title", f"Wizard · {board}{' · add' if mode == 'add' else ''} · {theme.lower()} · {web_w}×{web_h}"], check=True, capture_output=True)
++    return rel(out)
++
++
++def web_size_of(app, tries=12):
++    """The WebView's size from the tree, read again while the tree has no web area yet (right after an appearance
++    change the tree is re-published and a read in between returned none, which crashed the add sheet's composite)."""
++    for _ in range(tries):
++        web = geometry(app.tree())["web"]
++        if web:
++            return web
++        time.sleep(0.3)
++    raise RuntimeError("the WebView's size did not appear in the accessibility tree")
++
++
++def composites_for(app, step, prepared, mode="firstRun"):
++    out = {}
++    for theme in ("Light", "Dark"):
++        c29.appearance(app, theme)
++        time.sleep(0.8)
++        out[theme.lower()] = composite(app, step, theme, web_size_of(app), prepared, mode)
++    c29.appearance(app, "Light")
++    time.sleep(0.5)
++    return out
++
++
++def main():
++    try:
++        return run()
++    finally:
++        fx.sh(["pkill", "-f", fx.PROCESS])
++        fx.clean_fixture_root()
++
++
++def run():
++    global NATIVE
++    prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
++    bundle = os.path.join(ROOT, prepared["bundle"])
++    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
++    if c8.sha256(exe) != prepared["executable_sha256"]:
++        raise SystemExit("prepared executable changed since native-prepare")
++    work = tempfile.mkdtemp(prefix="airs-v2-c43-acceptance-")
++    FINAL = NATIVE
++    NATIVE = NATIVE + ".staging"
++    if os.path.isdir(NATIVE):
++        shutil.rmtree(NATIVE)
++    os.makedirs(NATIVE)
++    c29.NATIVE = NATIVE
++    if os.path.isdir(c29.CAPTURES):
++        shutil.rmtree(c29.CAPTURES)
++    app = fx.App(bundle, work, LOG)
++    c29._APP = app
++    app.quit()
++    fx.clean_fixture_root()
++    time.sleep(1.5)
++    endpoint = fx.ScanEndpoint(os.path.join(work, "endpoint"), c8.SCAN_KEY)
++    endpoint.install_roots()
++    endpoint.start()
++    mgmt = c8.MgmtEndpoint(os.path.join(work, "endpoint"), os.path.join(work, "mgmt"))
++    mgmt.install()
++    mgmt.start()
++    mgmt.mode()
++    os.makedirs(fx.DATA, exist_ok=True)
++    try:
++        return exercise(app, endpoint, mgmt, prepared, FINAL)
++    finally:
++        endpoint.stop()
++        mgmt.stop()
++        shutil.rmtree(work, ignore_errors=True)
++
++
++def open_add_sheet(app):
++    """The tenant menu (Go › Switch Tenant…) then its last entry, Add a tenant."""
++    c29.open_switcher(app) if hasattr(c29, "open_switcher") else press(app, "AXButton", "Switch tenant")
++    press(app, "AXButton", "Add a tenant")
++
++
++def exercise(app, endpoint, mgmt, prepared, FINAL):
++    global NATIVE
++    obs = {"captures": {}, "parity": {}}
++    app.launch()
++    pid = app.pid
++    app.open_settings()
++    press(app, "AXCheckBox", "Use the new interface")
++    tree, shown = app.wait_for(lambda t: heading(t, "Welcome to Prisma AIRS Desktop") is not None, 15)
++    size_window(app, pid, 1440, 900)
++    n1 = {"welcome": shown}
++
++    def rail(tree):
++        nav = group(tree, "Setup steps")
++        return within(tree, nav) if nav else []
++
++    def step_labels(tree):
++        return [n.get("label") for n in rail(tree) if n.get("role") == "AXButton"]
++
++    def status_texts(tree):
++        return c31.status_texts(tree)
++
++    # ---- N01: every first-run step ----
++    tree = app.tree()
++    n1["rail"] = {"brand": any("Prisma AIRS" in (n.get("label") or "") for n in rail(tree)), "steps": step_labels(tree),
++                  "optional_tags": sum(1 for n in rail(tree) if (n.get("label") or "").endswith(" Optional")), "privacy": any("Secrets go straight to the macOS Keychain" in (n.get("label") or "") for n in rail(tree)),
++                  "theme_button": any((n.get("label") or "").endswith(" appearance") for n in rail(tree))}
++    n1["welcome_board"] = {"cards": all(app.has_text(tree, c) for c in ("Built on the public APIs", "See the calls as you go", "Learn by doing")),
++                           "import_box": fx.App.node(tree, "AXButton", "Import from v1…") is not None, "no_back": fx.App.node(tree, "AXButton", "Back") is None,
++                           "progress": app.has_text(tree, "Step 1 of 7"), "primary": fx.App.node(tree, "AXButton", "Set up a tenant") is not None}
++    obs["tree_welcome"] = c29.save_tree("wizard-welcome", tree)
++    obs["parity"]["welcome"] = composites_for(app, "welcome", prepared)
++    press(app, "AXButton", "Set up a tenant")
++    tree, ok = app.wait_for(lambda t: heading(t, "Connect your tenant") is not None, 10)
++    f = fx.App.focused(tree) or {}
++    n1["tenant"] = {"shown": ok, "heading_focused": f.get("role") == "AXHeading" and f.get("label") == "Connect your tenant",
++                    "card": app.has_text(tree, "Tenant") and app.has_text(tree, "Required"),
++                    "environment_control": any(n.get("role") == "AXRadioButton" and (n.get("label") or "") == "Staging" for n in tree),
++                    "region": any(n.get("role") in ("AXPopUpButton", "AXComboBox") and (n.get("label") or "") == "Region" for n in tree),
++                    "continue_names_missing": (fx.App.node(tree, "AXButton", "Create the tenant to continue") or {}).get("enabled") is False,
++                    "progress": app.has_text(tree, "Step 2 of 7"), "back": fx.App.node(tree, "AXButton", "Back") is not None}
++    # Validation, then the draft.
++    press(app, "AXButton", "Create tenant")
++    tree, invalid = app.wait_for(lambda t: app.has_text(t, "Enter a display name.") and app.has_text(t, "The TSG ID is exactly 10 digits."), 6)
++    n1["tenant"]["validation"] = invalid
++    app.type_into("AXTextField", "Display name", "Northwind Health")
++    app.type_into("AXTextField", "TSG ID", "1762204418")
++    press_any(app, "Staging")
++    press(app, "AXButton", "Create tenant")
++    tree, drafted = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Save scan key") is not None and app.has_text(t, "Northwind Health · Staging · TSG 1762204418"), 12)
++    n1["tenant"]["drafted"] = drafted
++    n1["tenant"]["scan_required_tag"] = any((n.get("label") or "") == "Required" for n in within(tree, next((n for n in tree if n.get("role") == "AXGroup" and (n.get("label") or "") == ""), None))) or app.has_text(tree, "Required on first run.")
++    n1["tenant"]["management_card"] = app.has_text(tree, "Management credentials · OAuth 2.0") and fx.App.node(tree, "AXButton", "Where do I find these?") is not None
++    n1["tenant"]["gateway_switch"] = any(n.get("role") == "AXCheckBox" and (n.get("label") or "") == "Set up an AI Gateway workspace now" for n in tree)
++    n1["tenant"]["continue_needs_key"] = (fx.App.node(tree, "AXButton", "Save the scan key to continue") or {}).get("enabled") is False
++    press_any(app, "Where do I find these?")
++    tree, help_open = app.wait_for(lambda t: app.has_text(t, "Service accounts"), 6)
++    n1["tenant"]["help"] = help_open
++    app.type_into("AXTextField", "Scan API key", c8.SCAN_KEY, secure=True)
++    press(app, "AXButton", "Save scan key")
++    tree, saved = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Replace scan key") is not None and any("Scan key saved in the Keychain." in r for r in status_texts(t)), 12)
++    n1["tenant"]["key_saved"] = saved
++    n1["tenant"]["hint_in_footer"] = any("Scan key saved in the Keychain." in r for r in status_texts(tree))
++    app.type_into("AXTextField", "Client ID", c8.CLIENT_ID)
++    app.type_into("AXTextField", "Client secret", c8.SECRET, secure=True)
++    press(app, "AXButton", "Save management client")
++    tree, client_saved = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Replace management client") is not None, 12)
++    n1["tenant"]["client_saved"] = client_saved
++    obs["tree_tenant"] = c29.save_tree("wizard-tenant", tree)
++    obs["parity"]["tenant"] = composites_for(app, "tenant", prepared)
++    press(app, "AXButton", "Continue")
++    tree, ok = app.wait_for(lambda t: heading(t, "Which products will you manage?") is not None, 10)
++    cards = [n for n in tree if n.get("role") == "AXCheckBox" and (n.get("label") or "") in ("AI Runtime Security", "AI Gateway", "AI Red Teaming", "Model and skill scans", "Agentic Identity Security", "Agentic Endpoint Security")]
++    n1["products"] = {"shown": ok, "cards": [c.get("label") for c in cards], "runtime_always": app.has_text(tree, "Always on"), "unavailable": app.has_text(tree, "Not available in this release"),
++                      "rail_done_mark": any(n.get("role") == "AXButton" and (n.get("label") or "") == "Tenant" for n in rail(tree)), "progress": app.has_text(tree, "Step 3 of 7")}
++    press_any(app, "AI Gateway")
++    tree, chosen = app.wait_for(lambda t: any(n.get("role") == "AXCheckBox" and (n.get("label") or "") == "AI Gateway" and n.get("value") in (1, "1", True) for n in t), 8)
++    n1["products"]["gateway_chosen"] = chosen
++    obs["tree_products"] = c29.save_tree("wizard-products", tree)
++    obs["parity"]["products"] = composites_for(app, "products", prepared)
++    press(app, "AXButton", "Continue")
++    tree, ok = app.wait_for(lambda t: heading(t, "Check the connection") is not None, 10)
++    n1["verify"] = {"shown": ok, "banner_not_checked": app.has_text(tree, "Not checked yet"), "rows": sum(1 for x in app.texts(tree) if x == "Not run yet"),
++                    "run_offered": fx.App.node(tree, "AXButton", "Run the checks") is not None, "continue_closed": (fx.App.node(tree, "AXButton", "Continue") or {}).get("enabled") is False,
++                    "progress": app.has_text(tree, "Step 4 of 7")}
++    press(app, "AXButton", "Run the checks")
++    tree, finished = app.wait_for(lambda t: any(r in ("Checks finished; nothing failed.", "Checks finished with warnings.", "An optional check failed. You can fix it and verify again, or continue with it recorded as a warning.") for r in app.texts(t)), 40)
++    n1["verify"]["finished"] = finished
++    n1["verify"]["continue_open"] = any((fx.App.node(tree, "AXButton", l) or {}).get("enabled") is not False and fx.App.node(tree, "AXButton", l) is not None for l in ("Continue", "Continue with warnings"))
++    n1["verify"]["again_offered"] = fx.App.node(tree, "AXButton", "Verify again") is not None
++    obs["tree_verify"] = c29.save_tree("wizard-verify", tree)
++    obs["parity"]["verify"] = composites_for(app, "verify", prepared)
++    press(app, "AXButton", "Continue with warnings" if fx.App.node(tree, "AXButton", "Continue with warnings") else "Continue")
++    tree, ok = app.wait_for(lambda t: heading(t, "Load starter test cases") is not None, 10)
++    packs = [n for n in tree if n.get("role") == "AXCheckBox" and " · " in (n.get("label") or "") and "case" in (n.get("label") or "")]
++    n1["packs"] = {"shown": ok, "rows": [p.get("label") for p in packs], "summary": any("will be imported" in x for x in app.texts(tree)),
++                   "skip": fx.App.node(tree, "AXButton", "Skip for now") is not None, "progress": app.has_text(tree, "Step 5 of 7")}
++    obs["tree_packs"] = c29.save_tree("wizard-packs", tree)
++    obs["parity"]["packs"] = composites_for(app, "packs", prepared)
++    press(app, "AXButton", "Continue")
++    tree, ok = app.wait_for(lambda t: heading(t, "Join the AI Security Academy") is not None, 10)
++    n1["academy"] = {"shown": ok, "account_card": app.has_text(tree, "Your account") and fx.App.node(tree, "AXButton", "Sign in to Academy") is not None,
++                     "syncs_card": app.has_text(tree, "What is sent to Academy"), "skip": fx.App.node(tree, "AXButton", "Skip for now") is not None, "progress": app.has_text(tree, "Step 6 of 7")}
++    obs["tree_academy"] = c29.save_tree("wizard-academy", tree)
++    obs["parity"]["academy"] = composites_for(app, "academy", prepared)
++    press(app, "AXButton", "Skip for now")
++    tree, ok = app.wait_for(lambda t: heading(t, "Northwind Health is ready") is not None, 10)
++    n1["done"] = {"shown": ok, "skipped_tag": any((n.get("label") or "").endswith(" Skipped") for n in rail(tree)), "summary": all(app.has_text(tree, k) for k in ("Scan key", "Management client", "Products", "Starter cases", "Academy")),
++                  "change": len(labels(tree, "AXButton", "Change ")) >= 5, "next_up": all(app.has_text(tree, k) for k in ("Home", "Inbox", "Ask the Harness")), "progress": app.has_text(tree, "Step 7 of 7"),
++                  "open": fx.App.node(tree, "AXButton", "Open Prisma AIRS") is not None}
++    obs["tree_done"] = c29.save_tree("wizard-done", tree)
++    obs["parity"]["done"] = composites_for(app, "done", prepared)
++    press(app, "AXButton", "Open Prisma AIRS")
++    tree, home = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None and c29.nav(t, "Destinations") is not None, 20)
++    n1["done"]["completed"] = home and any("Northwind Health" in (n.get("label") or "") for n in tree)
++    obs["n1"] = n1
++
++    # ---- N02: the add-tenant sheet ----
++    n2 = {}
++    open_add_sheet(app)
++    tree, sheet = app.wait_for(lambda t: c29.dialog(t) is not None, 10)
++    d = c29.dialog(tree)
++    web = next((n for n in tree if n.get("role") == "AXWebArea" and n.get("size")), None)
++    n2["sheet"] = sheet
++    n2["size"] = d.get("size") if d else None
++    n2["fixed_1160"] = bool(d and abs(d["size"][0] - 1160) <= 2)
++    nav = group(tree, "Setup steps")
++    n2["rail_244"] = bool(nav and abs(nav["size"][0] - 244) <= 2)
++    n2["steps"] = step_labels(tree)
++    n2["no_back"] = fx.App.node(tree, "AXButton", "Back") is None
++    n2["cancel"] = fx.App.node(tree, "AXButton", "Cancel") is not None
++    n2["cancel_note"] = any("Cancel discards this draft" in r for r in status_texts(tree))
++    obs["tree_add"] = c29.save_tree("wizard-add", tree)
++    obs["parity"]["add"] = {}
++    for theme in ("Light", "Dark"):
++        c29.appearance(app, theme)
++        time.sleep(0.8)
++        obs["parity"]["add"][theme.lower()] = composite(app, "tenant", theme, web_size_of(app), prepared, mode="add")
++    c29.appearance(app, "Light")
++    time.sleep(0.5)
++    press(app, "AXButton", "Cancel")
++    tree, closed = app.wait_for(lambda t: c29.dialog(t) is None, 8)
++    n2["cancel_before_draft_closes"] = closed
++    n2["tenants_after_cancel"] = len(c29.tenant_rows(tree)) if hasattr(c29, "tenant_rows") else None
++    # Drafted: the scan card is Optional and Continue is open; Cancel discards the draft.
++    # (Closing the sheet closes the tenant menu: it is reopened before each entry.)
++    open_add_sheet(app)
++    app.wait_for(lambda t: c29.dialog(t) is not None, 10)
++    app.type_into("AXTextField", "Display name", "Coastal Bank")
++    app.type_into("AXTextField", "TSG ID", "1001464285")
++    press(app, "AXButton", "Create tenant")
++    tree, drafted = app.wait_for(lambda t: app.has_text(t, "Optional here; without it scans stay unavailable"), 12)
++    n2["drafted_optional"] = drafted
++    n2["continue_open"] = (fx.App.node(tree, "AXButton", "Continue") or {}).get("enabled") is not False and fx.App.node(tree, "AXButton", "Continue") is not None
++    press(app, "AXButton", "Cancel")
++    tree, discarded = app.wait_for(lambda t: c29.dialog(t) is None, 10)
++    n2["cancel_discards"] = discarded and not app.has_text(tree, "Coastal Bank")
++    obs["n2"] = n2
++
++    # ---- N03: keyboard, ring, layouts (first-run steps are gone: use the add sheet's Tenant and Verify) ----
++    n3 = {}
++    open_add_sheet(app)
++    tree, _ = app.wait_for(lambda t: c29.dialog(t) is not None, 10)
++    # The rail's step marks carry their number ("1 Tenant"); the current step is the only reachable one here.
++    app.ax("focus", "AXButton", "1 Tenant")
++    time.sleep(0.3)
++    walk = []
++    for _ in range(12):
++        app.keycode(48)
++        time.sleep(0.12)
++        f = fx.App.focused(app.tree()) or {}
++        walk.append(f.get("label") or "")
++    n3["walk"] = walk
++    n3["reach"] = {"field": any(w.startswith("Display name") for w in walk), "primary": any(w in ("Create the tenant to continue", "Create tenant") for w in walk)}
++    app.ax("focus", "AXTextField", "Display name")
++    time.sleep(0.4)
++    plain = c29.capture(app, "wizard-ring-plain")
++    n3["ring"] = c31.ring_on(app, "Create tenant", plain, "wizard-ring")
++    layouts = {}
++    for name_, (w, h, zoom) in {"1440x900": (1440, 900, 1), "900x600-200": (900, 600, 2)}.items():
++        size_window(app, pid, w, h)
++        if zoom == 2:
++            c29.zoom(app, 10)
++        for theme in ("Light", "Dark"):
++            c29.appearance(app, theme)
++            time.sleep(0.5)
++            o, tree = overflow(app)
++            g = geometry(tree)
++            o["geometry"] = g
++            o["primary"] = primary_usable(tree, zoom)
++            o["dialog"] = c29.dialog(tree) is not None
++            key = f"wizard-add-{name_}-{theme.lower()}"
++            o["capture"] = c29.capture(app, key)
++            o["tree"] = c29.save_tree(key, tree)
++            layouts[key] = o
++        if zoom == 2:
++            c29.zoom(app, -10)
++    c29.appearance(app, "Match System")
++    size_window(app, pid, 1440, 900)
++    n3["layouts"] = layouts
++    obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
++    obs["captures"]["wizard-ring"] = {"plain": n3["ring"].get("plain"), "focused": n3["ring"].get("capture")}
++    obs["n3"] = n3
++    press(app, "AXButton", "Cancel")
++    app.wait_for(lambda t: c29.dialog(t) is None, 8)
++    app.quit()
++
++    run_path = os.path.join(NATIVE, "observations.json")
++    with open(run_path, "w") as f:
++        json.dump(json.loads(json.dumps({"observations": obs, "log": LOG}).replace(rel(NATIVE), rel(FINAL))), f, indent=1)
++    run_rel = rel(run_path)
++    inventory = {c["id"]: c["check"] for c in json.load(open(os.path.join(ROOT, "docs/architecture/native-checks.json")))["chunks"]["C43"]}
++    checks = []
++
++    def add(cid, passed, observation, evidence):
++        checks.append({"id": cid, "description": inventory[cid], "result": "pass" if passed else "fail", "observation": observation, "evidence": [e for e in evidence if e]})
++
++    # The first-run steps' composites (seven steps, both themes); the add sheet's pair is N02's.
++    parity_files = sorted(p for step, files in obs["parity"].items() if step != "add" for p in files.values())
++    r, t_, p_, v_, k_, a_, d_ = n1["rail"], n1["tenant"], n1["products"], n1["verify"], n1["packs"], n1["academy"], n1["done"]
++    n1_ok = (n1["welcome"] and r["brand"] and r["optional_tags"] >= 2 and r["privacy"] and r["theme_button"] and len(r["steps"]) >= 7
++             and all(n1["welcome_board"].values()) and all(t_.get(k) for k in ("shown", "heading_focused", "card", "environment_control", "region", "continue_names_missing", "progress", "validation", "drafted", "management_card", "gateway_switch", "continue_needs_key", "help", "key_saved", "hint_in_footer", "client_saved"))
++             and p_["shown"] and len(p_["cards"]) == 6 and p_["runtime_always"] and p_["unavailable"] and p_["gateway_chosen"] and p_["progress"]
++             and v_["shown"] and v_["banner_not_checked"] and v_["rows"] >= 3 and v_["run_offered"] and v_["continue_closed"] and v_["finished"] and v_["continue_open"] and v_["again_offered"]
++             and k_["shown"] and len(k_["rows"]) >= 1 and k_["summary"] and k_["skip"] and a_["shown"] and a_["account_card"] and a_["syncs_card"] and a_["skip"]
++             and all(d_.get(k) for k in ("shown", "skipped_tag", "summary", "change", "next_up", "progress", "open", "completed")) and len(parity_files) == 14)
++    add("C43-N01", n1_ok,
++        f"welcome {n1['welcome']} rail {r}; welcome board {n1['welcome_board']}; tenant {t_}; products {p_}; verify {v_}; packs {k_}; academy {a_}; done {d_}; composites {parity_files}",
++        [run_rel, obs["tree_welcome"], obs["tree_tenant"], obs["tree_products"], obs["tree_verify"], obs["tree_packs"], obs["tree_academy"], obs["tree_done"]] + parity_files)
++    n2_ok = n2["sheet"] and n2["fixed_1160"] and n2["rail_244"] and [re.sub(r"^\d+ ", "", x).replace(" Optional", "").replace(" Skipped", "") for x in n2["steps"][:5]] == ["Tenant", "Products", "Verify", "Starter cases", "Done"] and n2["no_back"] and n2["cancel"] and n2["cancel_note"] and n2["cancel_before_draft_closes"] and n2["drafted_optional"] and n2["continue_open"] and n2["cancel_discards"] and len(obs["parity"]["add"]) == 2
++    add("C43-N02", n2_ok, f"sheet {n2} composites {sorted(obs['parity']['add'].values())}", [run_rel, obs["tree_add"]] + sorted(obs["parity"]["add"].values()))
++    lay = n3["layouts"]
++    ring_ok = (n3["ring"].get("diff") or 0) > 40 and n3["ring"].get("focused") == "Create tenant"
++    layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["primary"]["ok"] and v["dialog"] for v in lay.values())
++    add("C43-N03", n3["reach"]["field"] and n3["reach"]["primary"] and ring_ok and layouts_ok,
++        f"Tab from the rail reached {n3['walk']} (field {n3['reach']['field']}, primary {n3['reach']['primary']}); ring on Create tenant {n3['ring'].get('diff')} px; "
++        + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, primary {v['primary']}" for k, v in lay.items()),
++        [run_rel] + [v["tree"] for v in lay.values()] + [v for v in obs["captures"]["layouts"].values() if v] + [v for v in obs["captures"]["wizard-ring"].values() if v])
++
++    hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
++    os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"
++    record = {
++        "schema": "airs-v2/native-acceptance/1", "subject": "C43", "recorded_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "method": "cua",
++        "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c43.py",
++        "host": f"{hw}; macOS {os_ver}",
++        "app": {"bundle": prepared["bundle"], "identifier": prepared["identifier"], "executable_sha256": prepared["executable_sha256"], "fixture": True},
++        "checks": checks,
++        "limitations": [
++            "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size, filled=true) beside each step.",
++            "Synthetic scan and management endpoints only; the Academy step is skipped (no Academy endpoint is staged).",
++            "The first-run layouts are measured on the add sheet's Tenant step after the first run completed (the first-run window is gone once the tenant exists).",
++            "Spoken VoiceOver output was not recorded.",
++        ],
++    }
++    screens = os.path.join(EVIDENCE, "screens")
++    if os.path.isdir(screens):
++        shutil.rmtree(screens)
++    os.makedirs(screens, exist_ok=True)
++    for name, variants in obs["captures"].items():
++        for variant, src in variants.items():
++            if src:
++                shutil.copy(os.path.join(ROOT, src), os.path.join(screens, f"{name}-{variant}.png"))
++    record["screens"] = sorted(os.listdir(screens))
++    if os.path.isdir(FINAL):
++        shutil.rmtree(FINAL)
++    os.rename(NATIVE, FINAL)
++    staged_rel, final_rel = rel(NATIVE), rel(FINAL)
++    for c in checks:
++        c["evidence"] = [e.replace(staged_rel, final_rel) for e in c["evidence"]]
++    NATIVE = FINAL
++    with open(RECORD, "w") as f:
++        json.dump(record, f, indent=2)
++        f.write("\n")
++    for c in checks:
++        print(c["result"].upper(), c["id"], c["observation"][:220])
++    return 0 if all(c["result"] == "pass" for c in checks) else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+
+# Untracked files in scope:
+# + docs/planning/evidence/C43/native-acceptance.json
+# + docs/planning/evidence/C43/native-prepare.json
+# + docs/planning/evidence/C43/native/captures/parity-academy-dark.png
+# + docs/planning/evidence/C43/native/captures/parity-academy-light.png
+# + docs/planning/evidence/C43/native/captures/parity-add-tenant-dark.png
+# + docs/planning/evidence/C43/native/captures/parity-add-tenant-light.png
+# + docs/planning/evidence/C43/native/captures/parity-cases-dark.png
+# + docs/planning/evidence/C43/native/captures/parity-cases-light.png
+# + docs/planning/evidence/C43/native/captures/parity-done-dark.png
+# + docs/planning/evidence/C43/native/captures/parity-done-light.png
+# + docs/planning/evidence/C43/native/captures/parity-products-dark.png
+# + docs/planning/evidence/C43/native/captures/parity-products-light.png
+# + docs/planning/evidence/C43/native/captures/parity-tenant-dark.png
+# + docs/planning/evidence/C43/native/captures/parity-tenant-light.png
+# + docs/planning/evidence/C43/native/captures/parity-verify-dark.png
+# + docs/planning/evidence/C43/native/captures/parity-verify-light.png
+# + docs/planning/evidence/C43/native/captures/parity-welcome-dark.png
+# + docs/planning/evidence/C43/native/captures/parity-welcome-light.png
+# + docs/planning/evidence/C43/native/captures/wizard-add-1440x900-dark.png
+# + docs/planning/evidence/C43/native/captures/wizard-add-1440x900-light.png
+# + docs/planning/evidence/C43/native/captures/wizard-add-900x600-200-dark.png
+# + docs/planning/evidence/C43/native/captures/wizard-add-900x600-200-light.png
+# + docs/planning/evidence/C43/native/captures/wizard-ring-plain.png
+# + docs/planning/evidence/C43/native/captures/wizard-ring.png
+# + docs/planning/evidence/C43/native/observations.json
+# + docs/planning/evidence/C43/native/tree-wizard-academy.json
+# + docs/planning/evidence/C43/native/tree-wizard-add-1440x900-dark.json
+# + docs/planning/evidence/C43/native/tree-wizard-add-1440x900-light.json
+# + docs/planning/evidence/C43/native/tree-wizard-add-900x600-200-dark.json
+# + docs/planning/evidence/C43/native/tree-wizard-add-900x600-200-light.json
+# + docs/planning/evidence/C43/native/tree-wizard-add.json
+# + docs/planning/evidence/C43/native/tree-wizard-done.json
+# + docs/planning/evidence/C43/native/tree-wizard-packs.json
+# + docs/planning/evidence/C43/native/tree-wizard-products.json
+# + docs/planning/evidence/C43/native/tree-wizard-tenant.json
+# + docs/planning/evidence/C43/native/tree-wizard-verify.json
+# + docs/planning/evidence/C43/native/tree-wizard-welcome.json
+# + docs/planning/evidence/C43/parity/academy-dark.png
+# + docs/planning/evidence/C43/parity/academy-light.png
+# + docs/planning/evidence/C43/parity/add-tenant-dark.png
+# + docs/planning/evidence/C43/parity/add-tenant-light.png
+# + docs/planning/evidence/C43/parity/bundle.json
+# + docs/planning/evidence/C43/parity/cases-dark.png
+# + docs/planning/evidence/C43/parity/cases-light.png
+# + docs/planning/evidence/C43/parity/done-dark.png
+# + docs/planning/evidence/C43/parity/done-light.png
+# + docs/planning/evidence/C43/parity/products-dark.png
+# + docs/planning/evidence/C43/parity/products-light.png
+# + docs/planning/evidence/C43/parity/tenant-dark.png
+# + docs/planning/evidence/C43/parity/tenant-light.png
+# + docs/planning/evidence/C43/parity/verify-dark.png
+# + docs/planning/evidence/C43/parity/verify-light.png
+# + docs/planning/evidence/C43/parity/welcome-dark.png
+# + docs/planning/evidence/C43/parity/welcome-light.png
+# + docs/planning/evidence/C43/runs/attempt-01/bindings.exit
+# + docs/planning/evidence/C43/runs/attempt-01/bindings.log
+# + docs/planning/evidence/C43/runs/attempt-01/clippy-default.exit
+# + docs/planning/evidence/C43/runs/attempt-01/clippy-default.log
+# + docs/planning/evidence/C43/runs/attempt-01/clippy.exit
+# + docs/planning/evidence/C43/runs/attempt-01/clippy.log
+# + docs/planning/evidence/C43/runs/attempt-01/contracts-typecheck.exit
+# + docs/planning/evidence/C43/runs/attempt-01/contracts-typecheck.log
+# + docs/planning/evidence/C43/runs/attempt-01/core-fixtures.exit
+# + docs/planning/evidence/C43/runs/attempt-01/core-fixtures.log
+# + docs/planning/evidence/C43/runs/attempt-01/core-lib.exit
+# + docs/planning/evidence/C43/runs/attempt-01/core-lib.log
+# + docs/planning/evidence/C43/runs/attempt-01/desktop-build.exit
+# + docs/planning/evidence/C43/runs/attempt-01/desktop-build.log
+# + docs/planning/evidence/C43/runs/attempt-01/desktop-typecheck.exit
+# + docs/planning/evidence/C43/runs/attempt-01/desktop-typecheck.log
+# + docs/planning/evidence/C43/runs/attempt-01/fixture-command.exit
+# + docs/planning/evidence/C43/runs/attempt-01/fixture-command.log
+# + docs/planning/evidence/C43/runs/attempt-01/host.exit
+# + docs/planning/evidence/C43/runs/attempt-01/host.log
+# + docs/planning/evidence/C43/runs/attempt-01/inputs-after.sha256
+# + docs/planning/evidence/C43/runs/attempt-01/inputs-before.sha256
+# + docs/planning/evidence/C43/runs/attempt-01/notices.exit
+# + docs/planning/evidence/C43/runs/attempt-01/notices.log
+# + docs/planning/evidence/C43/runs/attempt-01/rustfmt.exit
+# + docs/planning/evidence/C43/runs/attempt-01/rustfmt.log
+# + docs/planning/evidence/C43/runs/attempt-01/shell-controller.exit
+# + docs/planning/evidence/C43/runs/attempt-01/shell-controller.log
+# + docs/planning/evidence/C43/runs/attempt-01/vitest-truth.exit
+# + docs/planning/evidence/C43/runs/attempt-01/vitest-truth.log
+# + docs/planning/evidence/C43/runs/attempt-01/vitest.exit
+# + docs/planning/evidence/C43/runs/attempt-01/vitest.log
+# + docs/planning/evidence/C43/runs/attempt-01/xtask-lib.exit
+# + docs/planning/evidence/C43/runs/attempt-01/xtask-lib.log
+# + docs/planning/evidence/C43/runs/run-attempt-01.json
+# + docs/planning/evidence/C43/screens/layouts-wizard-add-1440x900-dark.png
+# + docs/planning/evidence/C43/screens/layouts-wizard-add-1440x900-light.png
+# + docs/planning/evidence/C43/screens/layouts-wizard-add-900x600-200-dark.png
+# + docs/planning/evidence/C43/screens/layouts-wizard-add-900x600-200-light.png
+# + docs/planning/evidence/C43/screens/wizard-ring-focused.png
+# + docs/planning/evidence/C43/screens/wizard-ring-plain.png

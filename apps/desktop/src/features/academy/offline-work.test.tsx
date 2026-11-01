@@ -8,7 +8,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DownloadView } from '@prisma-airs/desktop-contracts'
-import { AcademyView } from './academy-view'
+import { Academy as AcademyView } from '../../v2/academy/academy'
 import { ACCOUNT, academySnapshot, result, scriptedNative } from './test-support'
 
 const COURSES = [

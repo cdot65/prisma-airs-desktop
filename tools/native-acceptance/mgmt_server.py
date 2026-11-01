@@ -293,6 +293,10 @@ class Handler(BaseHTTPRequestHandler):
             with srv.lock:
                 return 200, {"customer_apps": [dict(a) for a in srv.apps[offset:offset + limit]]}
         if path == f"/aisec/v1/mgmt/apikeys/tsg/{tsg}":
+            # Mode "apiKeysStatus" (HTTP status, default 200): with the chart's status it fails
+            # the whole AI Runtime Security read (C37: the failed first read's empty state).
+            if int(mode.get("apiKeysStatus", 200)) != 200:
+                return int(mode["apiKeysStatus"]), {"message": "SERVER-TEXT-NEVER-SHOWN"}
             with srv.lock:
                 keys = [dict(k) for k in srv.keys[offset:offset + limit]]
             if mode.get("keyExpiresInDays") is not None and keys:

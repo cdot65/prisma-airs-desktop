@@ -25,6 +25,13 @@ fn go_items(variant: UiVariant) -> Vec<(String, FeatureId, String, Option<String
         .collect()
 }
 
+/// A catalogue label as a menu title: the menu library reads a lone `&` as a
+/// mnemonic marker and drops it from the title (macOS shows "Sessions  Reports"
+/// for "Sessions & Reports"), so an ampersand is doubled to stay visible.
+fn menu_title(label: &str) -> String {
+    label.replace('&', "&&")
+}
+
 /// The wire name of a feature (`runtime`, `apiClient`, ...): the same spelling
 /// the renderer and the catalogue use.
 fn feature_name(id: FeatureId) -> String {
@@ -162,7 +169,7 @@ fn build_for<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Resul
     );
     go = go.separator();
     for (id, _, label, accelerator) in go_items(variant) {
-        let mut item = MenuItemBuilder::with_id(id, label);
+        let mut item = MenuItemBuilder::with_id(id, menu_title(&label));
         if let Some(accelerator) = accelerator {
             item = item.accelerator(accelerator);
         }
@@ -249,6 +256,18 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_ampersand_in_a_catalogue_label_stays_visible_in_the_menu_title() {
+        assert_eq!(menu_title("Sessions & Reports"), "Sessions && Reports");
+        assert_eq!(menu_title("Import from v1"), "Import from v1");
+        assert!(
+            go_items(UiVariant::V2)
+                .iter()
+                .any(|(_, _, label, _)| label == "Sessions & Reports"),
+            "the catalogue label itself is untouched"
+        );
+    }
 
     #[test]
     fn go_items_follow_the_presentation_catalogue() {

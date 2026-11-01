@@ -93,12 +93,25 @@ class App:
         return self.pid
 
     # ---- accessibility ----
+    def dump_tree(self, tag):
+        """Keeps the current tree beside the probe for diagnosis; returns its path and a one-line summary."""
+        dump = os.path.join(os.path.dirname(self.ax_bin), f"ax-{tag}-{time.strftime('%H%M%S')}.json")
+        try:
+            tree = self.tree()
+            with open(dump, "w") as f:
+                json.dump(tree, f)
+            heads = [n.get("label") for n in tree if n.get("role") == "AXHeading"][:6]
+            return f"{dump} ({len(tree)} nodes; headings {heads}; window {bool(self.node(tree, 'AXWindow', ''))}; pid {self.pid} running {self.running_pid()})"
+        except Exception as e:  # noqa: BLE001 - the diagnosis must not mask the failure
+            return f"(tree unavailable: {e})"
+
     def ax(self, command, *args):
         out = sh([self.ax_bin, command, str(self.pid), *[str(a) for a in args]])
         if command == "tree":
             return json.loads(out.stdout or "[]")
         if out.returncode != 0:
-            raise RuntimeError(f"ax {command} {args}: {out.stderr.strip()}")
+            # The tree at the failure, kept beside the probe for diagnosis (a control the driver expected was not there).
+            raise RuntimeError(f"ax {command} {args}: {out.stderr.strip()} [tree: {self.dump_tree('failure')}]")
         return out.stdout
 
     def tree(self):
@@ -222,9 +235,16 @@ class App:
 
     # ---- flows ----
     def open_settings(self):
-        self.keys(",", "command down")
-        tree, _ = self.wait_for(lambda t: self.node(t, "AXHeading", "Settings") is not None)
-        return tree
+        """Opens Settings and waits until its form is in the tree (the heading
+        lands before the fields under load; a second ⌘, is sent if the sheet
+        did not open)."""
+        ready = lambda t: self.node(t, "AXHeading", "Settings") is not None and self.node(t, "AXTextField", "TSG ID (optional)") is not None
+        for _ in range(2):
+            self.keys(",", "command down")
+            tree, ok = self.wait_for(ready, 20)
+            if ok:
+                return tree
+        raise RuntimeError(f"Settings did not open with its tenant form [tree: {self.dump_tree('settings')}]")
 
     def open_runtime(self):
         self.ax("press", "AXButton", "Runtime Security")
@@ -240,15 +260,25 @@ class App:
         return self.wait_for(lambda t: self.node(t, "AXButton", f"Delete {label}") is not None)
 
     def save_key(self, key):
+        # The credential form re-renders when the tenant becomes active; wait for its field (the first launch after
+        # a reboot, caches cold, had the field appear after the driver looked for it).
+        self.wait_for(lambda t: self.node(t, "AXTextField", "AIRS API key") is not None, 12)
         self.type_into("AXTextField", "AIRS API key", key, secure=True)
         self.keycode(36)
         return self.wait_for(lambda t: self.has_text(t, "Scan key saved in the Keychain."))
 
     def make_active(self, label):
-        if self.has_text(self.tree(), f"Active tenant: {label}"):
+        """Makes `label` the active tenant from Settings' list; confirmed by Settings' active-tenant text or, since the
+        v2 shell leaves Settings for Home on a switch, by the shell's tenant switcher naming it."""
+        def active(t):
+            # The switcher names the active tenant first ("Switch tenant: Prod · Production · TSG …"): the label is
+            # matched as that first part, not as a substring (Prod is one of Production).
+            return self.has_text(t, f"Active tenant: {label}") or self.has_text(t, f"{label} (active)") \
+                or any((n.get("label") or "") == f"Switch tenant: {label}" or (n.get("label") or "").startswith(f"Switch tenant: {label} ·") for n in t)
+        if active(self.tree()):
             return self.tree(), True
         self.ax("press", "AXButton", f"Make {label} active")
-        return self.wait_for(lambda t: self.has_text(t, f"Active tenant: {label}") or self.has_text(t, f"{label} (active)"))
+        return self.wait_for(active)
 
 
 def clean_fixture_root():

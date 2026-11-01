@@ -26,6 +26,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import academy_catalog  # noqa: E402
 import fixture_app as fx  # noqa: E402
+import v2_setup as v2s  # noqa: E402
 
 ROOT = os.getcwd()
 SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C05")
@@ -306,12 +307,10 @@ def run():
     wait(lambda t: heading(t, COURSE, 1) is not None, 6)
     mark = len(endpoint.requests())
     tree, _ = open_unit("Lab: Scanning", "Lab: Scanning at runtime")
-    if SUBJECT == "C05":
-        tree, ok = wait(lambda t: shows(t, "no lab sandbox was started"), 6)
-    else:
-        # From C06 the lab runs through Academy's desktop attempt contract:
-        # its intro offers 'Start lab' and nothing starts until pressed.
-        tree, ok = wait(lambda t: app.node(t, "AXButton", "Start lab") is not None, 6)
+    # From C06 the lab runs through Academy's desktop attempt contract: its intro offers 'Start lab' and nothing
+    # starts until pressed (the C05-era 'no lab sandbox was started' preview is gone from the app; run as C05 on the
+    # one presentation the same fact is asserted: the lab unit opens and no lab call is made).
+    tree, ok = wait(lambda t: app.node(t, "AXButton", "Start lab") is not None, 6)
     obs["lab_preview"] = ok and heading(tree, "Block an injected prompt", 2) is not None
     obs["lab_requests"] = endpoint.requests()[mark:]
     obs["tree_lab"] = save_tree("lab-preview", tree)
@@ -429,7 +428,9 @@ def run():
     app.wait_for(lambda t: app.node(t, "AXButton", "Confirm reset") is not None)
     app.ax("press", "AXButton", "Confirm reset")
     app.wait_for(lambda t: app.has_text(t, "No tenants yet"))
+    # On the one presentation Reset local data returns to the first-run wizard: the wizard showing is the signed-out state.
     _, reset_out = wait(lambda t: app.has_text(t, "Not signed in to Academy."), 10)
+    reset_out = reset_out or v2s.wizard_showing(app, timeout=5)
     tree, ok = go_academy()
     obs["reset"] = {"signed_out": reset_out, "guest_catalog": ok and shows(app.tree(), GUEST_NOTE),
                     "academy_items": fx.keychain_accounts(ACADEMY_SERVICE)}

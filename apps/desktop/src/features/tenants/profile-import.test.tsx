@@ -9,7 +9,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { DesktopClient, type ImportView, type ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, type Native, scriptedNative, tenant, withTenant } from '../../test/native'
+import { baseSnapshot, type Native, scriptedNative, tenant, withTenant, framed } from '../../test/native'
 
 const REVIEW = 'rv-0011223344556677'
 
@@ -55,8 +55,8 @@ const start = (): ShellSnapshot => withTenant(baseSnapshot, tenant())
 async function openSettings(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
-    const nav = await screen.findByRole('navigation', { name: 'Features' })
-    await user.click(within(nav).getByRole('button', { name: /Settings/ }))
+    // C44: one presentation; the core names the destination in the snapshot.
+    await native.push({ ...native.current, onboarding: 'done', activeFeature: 'settings' })
     return user
 }
 
@@ -64,7 +64,7 @@ const importSection = () => screen.getByRole('region', { name: 'Import tenant pr
 
 describe('profile import', () => {
     it('asks the desktop for its native sheet and never reads files in the page', async () => {
-        const native = scriptedNative(start())
+        const native = framed(scriptedNative(start()), 'settings')
         const user = await openSettings(native)
         expect(document.querySelector('input[type="file"]')).toBeNull()
         await user.click(within(importSection()).getByRole('button', { name: 'Choose profile file…' }))
@@ -74,7 +74,7 @@ describe('profile import', () => {
     })
 
     it('shows the native preview faithfully and sends only the explicit selection', async () => {
-        const native = scriptedNative(start())
+        const native = framed(scriptedNative(start()), 'settings')
         const user = await openSettings(native)
         await native.push({ ...start(), import: preview })
         const section = importSection()
@@ -98,7 +98,7 @@ describe('profile import', () => {
     })
 
     it('discards a preview without importing', async () => {
-        const native = scriptedNative(start())
+        const native = framed(scriptedNative(start()), 'settings')
         const user = await openSettings(native)
         await native.push({ ...start(), import: preview })
         await user.click(within(importSection()).getByRole('button', { name: 'Discard' }))
@@ -106,7 +106,7 @@ describe('profile import', () => {
     })
 
     it('cannot submit an empty selection', async () => {
-        const native = scriptedNative(start())
+        const native = framed(scriptedNative(start()), 'settings')
         const user = await openSettings(native)
         await native.push({ ...start(), import: preview })
         const section = importSection()
@@ -118,7 +118,7 @@ describe('profile import', () => {
     })
 
     it('reports an unreadable file with nothing imported', async () => {
-        const native = scriptedNative(start())
+        const native = framed(scriptedNative(start()), 'settings')
         await openSettings(native)
         await native.push({ ...start(), import: { state: 'failed', error: 'unsupported' } })
         expect(within(importSection()).getByRole('alert')).toHaveTextContent(
@@ -127,7 +127,7 @@ describe('profile import', () => {
     })
 
     it('shows imported tenants without keys and reports a consumed review', async () => {
-        const native = scriptedNative(start())
+        const native = framed(scriptedNative(start()), 'settings')
         native.respond = () => ({ outcome: 'refusal', refusal: 'reviewConsumed' })
         const user = await openSettings(native)
         await native.push({ ...start(), import: preview })
@@ -135,7 +135,8 @@ describe('profile import', () => {
         expect(await within(importSection()).findByRole('alert')).toHaveTextContent('This review was already used.')
         const imported = tenant({ id: 'tn-00000000000000ff', label: 'prod <b>eu</b>' })
         await native.push({ ...start(), tenants: [tenant(), imported], import: { state: 'idle' } })
-        const list = screen.getByRole('list')
+        // The v2 shell has lists of its own: the tenants list is the one naming the imported tenant.
+        const list = screen.getAllByRole('list').find((l) => within(l).queryByText(/prod <b>eu<\/b>/)) as HTMLElement
         expect(within(list).getAllByRole('listitem')).toHaveLength(2)
         expect(within(list).getByText(/prod <b>eu<\/b>/)).toBeInTheDocument()
         expect(within(list).getAllByText(/scan key missing/)).toHaveLength(2)

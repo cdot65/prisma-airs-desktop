@@ -30,6 +30,7 @@ import acceptance_c16 as c16  # noqa: E402
 import acceptance_c19 as c19  # noqa: E402
 import acceptance_c28 as c28  # noqa: E402
 import acceptance_c29 as c29  # noqa: E402
+import v2_setup as v2s  # noqa: E402
 import acceptance_c31 as c31  # noqa: E402
 import native_sheets as sheets  # noqa: E402
 
@@ -61,6 +62,14 @@ def ask(mgmt, name, arguments, namespace="airs_desktop"):
 
 def plain(mgmt):
     mgmt.mode(harnessTool=None, toolMarkers=MARKERS)
+
+
+GUARD = "A Harness decision is waiting"
+OTHER_TENANT = "Meridian Retail"
+
+
+def guard_dialog(tree):
+    return next((n for n in tree if n.get("role") in ("AXDialog", "AXSheet", "AXGroup", "AXWindow") and GUARD in (n.get("label") or n.get("title") or "")), None)
 
 
 def send(app, text):
@@ -235,23 +244,28 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     app.launch()
     pid = app.pid
     # One tenant with the Gateway workspace Team A chosen and its inference key stored, then v2.
-    app.open_settings()
-    app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
-    app.create_custom_tenant("Northwind Health", endpoint.origin)
-    app.save_key(c8.SCAN_KEY)
-    c8.save_client(app)
-    c29.press(app, "AXCheckBox", "Use the new interface")
+    # A second tenant for the tenant-switch guard (C38-N03); Northwind Health stays the active one.
+    v2s.tenant_on_home(app, endpoint.origin, extra=(OTHER_TENANT,))
     app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None and c29.nav(t, "Destinations") is not None, 15)
     app.menu("Go", "AI Gateway")
     app.wait_for(lambda t: fx.App.node(t, "AXHeading", c16.HEADING) is not None, 12)
     c8.text(app, "2 workspaces", 15)
     app.ax("press", "AXRadioButton", "Team A")
     c8.text(app, "Team A", 10)
-    c16.tab(app, "Playground")
-    app.type_into("AXTextField", "Runtime endpoint", runtime)
-    app.type_into("AXTextField", "Workspace API key with completions access", INFERENCE_KEY, secure=True)
-    app.ax("press", "AXButton", "Store key for Team A")
-    c8.text(app, "stored", 12)
+    # On the one presentation (C44) the workspace's inference key is saved in the Gateway card's Workspaces tab
+    # (the legacy Playground form is gone): the Workspaces tab (the card opens on its Overview), the endpoint, the
+    # key and Save workspace key, then the Keychain state.
+    ws_tab = next((n for n in app.tree() if n.get("role") in ("AXRadioButton", "AXTab") and (n.get("label") or "").strip() == "Workspaces"), None)
+    if ws_tab is None:
+        raise RuntimeError(f"no Workspaces tab in the Gateway card [tree: {app.dump_tree('gateway-no-workspaces-tab')}]")
+    app.ax("press", ws_tab["role"], "Workspaces")
+    tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXTextField", "Inference endpoint") is not None, 12)
+    if not shown:
+        raise RuntimeError(f"the workspace key form did not show for Team A [tree: {app.dump_tree('gateway-workspace-key')}]")
+    app.type_into("AXTextField", "Inference endpoint", runtime)
+    app.type_into("AXTextField", "Workspace inference key", INFERENCE_KEY, secure=True)
+    app.ax("press", "AXButton", "Save workspace key")
+    c8.text(app, "Workspace key saved in the Keychain.", 12)
 
     # ---- N01: the board over a running conversation; the decision held and decided in the aside ----
     n1 = {}
@@ -389,13 +403,54 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     n2["layouts"] = layouts
     obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
     obs["captures"]["harness-ring"] = {"plain": n2["ring"].get("plain"), "focused": n2["ring"].get("capture")}
-    # Declined and ended: nothing more runs; the engine goes.
+    # Declined: nothing more runs.
     c29.press(app, "AXButton", "Decline")
     app.wait_for(lambda t: fx.App.node(t, "AXButton", "Approve once") is None, 40)
-    c29.press(app, "AXButton", "End conversation")
-    _, n2["ended"] = app.wait_for(lambda t: app.has_text(t, "You ended this conversation"), 30)
-    n2["engine_gone"] = c19.wait(lambda: not c19.engines(), 20)
+
+    # ---- N03: the tenant-switch guard (I1) with a decision waiting, through the switcher, the palette and the Go
+    # menu (C30-N01 on the board); Archive and switch ends the conversation with the decision untaken ----
+    n3 = {}
+    ask(mgmt, "mcpServers", {})
+    send(app, "And the catalog once more?")
+    tree, n3["decision_waiting"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Decline") is not None, 60)
+    plain(mgmt)
+    c29.open_switcher(app)
+    c29.press(app, "AXCheckBox", OTHER_TENANT)
+    tree, n3["switcher_guard"] = app.wait_for(lambda t: guard_dialog(t) is not None, 10)
+    n3["guard_buttons"] = [l for l in ("Stay", "Discard and switch", "Archive and switch") if fx.App.node(tree, "AXButton", l)]
+    n3["guard_names_target"] = app.has_text(tree, f"Switching to {OTHER_TENANT} ends it")
+    n3["initial_focus_stay"] = ((fx.App.focused(tree) or {}).get("label") or "") == "Stay"
+    obs["tree_guard"] = c29.save_tree("harness-guard", tree)
+    obs["captures"]["harness-guard"] = {"light": c29.capture(app, "harness-guard-light")}
+    app.keycode(53)
+    tree, n3["switcher_stay"] = app.wait_for(lambda t: guard_dialog(t) is None, 8)
+    time.sleep(0.4)
+    n3["still_first_tenant"] = "Northwind Health" in str(c29.switcher(app.tree()).get("label") or "")
+    n3["decision_kept_after_stay"] = fx.App.node(app.tree(), "AXButton", "Decline") is not None
+    app.keys("k", "command down")
+    app.wait_for(lambda t: any(n.get("role") == "AXComboBox" for n in t), 8)
+    app.keys(f"Switch to {OTHER_TENANT}")
+    time.sleep(0.5)
+    app.keycode(36)
+    tree, n3["palette_guard"] = app.wait_for(lambda t: guard_dialog(t) is not None, 10)
+    c29.press(app, "AXButton", "Stay")
+    _, n3["palette_stay"] = app.wait_for(lambda t: guard_dialog(t) is None, 8)
+    app.menu("Go", "Switch Tenant…")
+    app.wait_for(lambda t: any(n.get("role") == "AXGroup" and (n.get("label") or "") == "Switch tenant" for n in t), 8)
+    time.sleep(0.3)
+    c29.press(app, "AXCheckBox", OTHER_TENANT)
+    tree, n3["menu_guard"] = app.wait_for(lambda t: guard_dialog(t) is not None, 10)
+    runs_before = len(c19.harness_runs(mgmt))
+    c29.press(app, "AXButton", "Archive and switch")
+    tree, n3["switched"] = app.wait_for(lambda t: OTHER_TENANT in str(c29.switcher(t).get("label") or "") and fx.App.node(t, "AXHeading", "Home") is not None, 20)
+    n3["engine_gone"] = c19.wait(lambda: not c19.engines(), 20)
+    n3["runs_after"] = len(c19.harness_runs(mgmt)) - runs_before
+    obs["tree_switched"] = c29.save_tree("harness-archived-switched", tree)
+    # The conversation ended through the guard's archive; nothing else runs.
+    n2["ended"] = n3["switched"]
+    n2["engine_gone"] = n3["engine_gone"]
     obs["n2"] = n2
+    obs["n3"] = n3
     app.quit()
 
     run_path = os.path.join(NATIVE, "observations.json")
@@ -423,6 +478,12 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["decision_populated"] and v["columns"]["ok"] for v in lay.values()) \
         and sum(1 for v in lay.values() if v.get("width_1440")) == 2 and sum(1 for v in lay.values() if v.get("window_900x600")) == 2
     ring_ok = n2["ring"].get("diff", 0) > 150 and n2["ring"].get("focused") == n2["composer_action"]
+    n3_ok = (n3["decision_waiting"] and n3["switcher_guard"] and len(n3["guard_buttons"]) == 3 and n3["guard_names_target"] and n3["switcher_stay"]
+             and n3["still_first_tenant"] and n3["decision_kept_after_stay"] and n3["palette_guard"] and n3["palette_stay"] and n3["menu_guard"]
+             and n3["switched"] and n3["engine_gone"] and n3["runs_after"] == 0)
+    add("C38-N03", n3_ok,
+        f"with a decision waiting {n3['decision_waiting']}: the switcher's other tenant shows the guard {n3['switcher_guard']} with {n3['guard_buttons']}, naming {OTHER_TENANT} {n3['guard_names_target']}, focus on Stay {n3['initial_focus_stay']}; Escape stays {n3['switcher_stay']} with the first tenant {n3['still_first_tenant']} and the decision kept {n3['decision_kept_after_stay']}; the palette's Switch to entry shows it {n3['palette_guard']} and Stay closes it {n3['palette_stay']}; Go › Switch Tenant… shows it {n3['menu_guard']}; Archive and switch lands {OTHER_TENANT} on Home {n3['switched']}, the engine gone {n3['engine_gone']}, further runs {n3['runs_after']}",
+        [run_rel, obs["tree_guard"], obs["tree_switched"], obs["captures"]["harness-guard"]["light"]])
     add("C38-N02", n2["walk_in_order"] and ring_ok and layouts_ok and n2["ended"] and n2["engine_gone"],
         f"Tab from End conversation reached {[l for _, l in n2['walk']]} in order {n2['walk_in_order']} (the composer's action {n2['composer_action']}; Send is disabled while the turn waits on the decision); ring on {n2['composer_action']} {n2['ring'].get('diff')} px; "
         + "; ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']} overflow {v['overflow_px']} px, scroll bars {v['horizontal_scrollbars']}, columns {v['columns'].get('arranged')} controls {v['columns'].get('sizes')}" for k, v in lay.items())

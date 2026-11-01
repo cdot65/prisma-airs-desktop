@@ -1,0 +1,55 @@
+{
+  "review_id": "C44-attempt-05-1793536650",
+  "subject": "C44",
+  "attempt": "attempt-05",
+  "request_id": "C44-attempt-05-1793536650",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed), run by hand; see limitations",
+  "time": "2026-11-01T12:47:11.531203+00:00",
+  "harness": "OpenAI Codex v0.166.0",
+  "model": "gpt-6.1-sol (xhigh)",
+  "reviewer_session": "01a1971d-6c89-7d91-abe2-d093e4ff7c89",
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "recommendation": "pass",
+  "required_fixes": 0,
+  "blockers": 0,
+  "evidence_gaps": 0,
+  "fingerprints": {
+    "source": "c9cf2a89991b9527dd0ccf8688bfa532759391bc49b04c5a9867b4fd80a4bcf7",
+    "dependencies": "363d0faa8e1aab75c9915490b40f8d73a026072758594adc418db77f6e5368a2",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "181a7895eade71187024d2554f9aced2ff978ccd900dd8ca736c98b5c9ae1664"
+  },
+  "native_acceptance": {
+    "record": "docs/planning/evidence/C44/native-acceptance.json",
+    "sha256": "9c5dcc5bce699917a7bc684eaee5df195fb741f78d97c2db513e812d86dcdfd8",
+    "prepare": "docs/planning/evidence/C44/native-prepare.json",
+    "prepare_sha256": "9b39cbaa16bbd4b1c7efb2af368612f92ad52ae956cf6283420fe0eb84621a76"
+  },
+  "verdict_sha256": "784cfbf8f4be134156e4d6e1a8d69ba2335032d631e5057300d1a529281cb430",
+  "request_sha256": "7f913e6c636a9592703b855609624fee38e4380169b0105853160d5901256eb2",
+  "prompt_sha256": "9e8e0e494d7e63a98b77c0fbdf724f04ba116ac213296a7ae788a2fd5da8a880",
+  "thread_reply_sha256": "cb643c28eff77ce367c7f1279415e9889b7259bbfbd4832a31220d85acd2a17c",
+  "post_review_audit_sha256": "5f8209cd7ec49f969fc5ea9964ecbbf3fda7c3bbc68cb0e60b1995f0d8d022e4",
+  "source_frozen": true,
+  "outcome": "full 9/10 gate passed; C44 push-to-9 complete; manual fresh-exec receipt, controller receipt regeneration remains after C26",
+  "optional_suggestions": [
+    "Refresh stale Import from v1 descriptions in apps/desktop/src/shell/feature-body.tsx, tools/native-acceptance/acceptance_c44.py and docs/planning/evidence/C44/parity/notes.md to reflect D060.",
+    "For future native runs, record the actual orchestrator instead of the drivers' hard-coded historical performed_by attribution. This packet explicitly discloses that discrepancy."
+  ],
+  "limitations": [
+    "This verdict covers the scoped C44 implementation at 31169c2b9fae7a226b5d18c6665f02b883f83370, including the collection-scope and render-time retirement corrections. Unrelated owner work and predecessor-only merged implementation are outside this verdict. C43 attempt-02 has a matching passing verdict and its reviewed commit is an ancestor of this tree.",
+    "All four supplied fingerprints reproduced. All 1,141 scoped file hashes, 18,389 listed build/test input hashes, unchanged before/after inventories, 16 run-log hashes, native-record hashes, executable hash and 1,621-entry prepared bundle hash matched. Scoped and compiled inputs still matched after the independent probes; the current attempt's review outputs are excluded from its source inventory.",
+    "Independently ran the retained ui_v2_closure binary: 3 passed. Independent in-memory probes of the production ApiClient and RequestEditor passed all three collection-replacement cases, including identical collection IDs and basenames, every committed DOM and a delayed old reply. The current-checkout parser accepted a valid scope and rejected five missing, malformed or path-shaped scopes. These probes used synthetic dispatch/observation, no network and no file writes.",
+    "Broader validation relies on hash-verified retained logs: 535 desktop tests, the separate truth test, 745 fixture-enabled desktop-core tests with one ignored test, 46 host tests and the recorded formatting, lint, binding, typecheck, controller and build checks passed. No flake-retry logs are present for attempt-05. Full suites and builds were not independently rerun.",
+    "Native validation relies on retained observations, AX trees and captures, including 13 closure trees, the Harness switch guard, rotation workflow and four whole-app screenshots. All 300 legacy assertion IDs match the manifest; every exercised, self-run or ported target passes on the prepared executable. The owner's record accepts the 88 remaining retirements. C24-N06 and C31-N01/N04 retain superseded failures; missing C24 aggregate references belong to that superseded check. Retired assertions are not represented as native passes.",
+    "Native automation, spoken VoiceOver and live-product qualification were not independently performed. Parity approval and retirement acceptance are repository-recorded owner evidence, not independently authenticated. The packet discloses the lost original attempt-03 verdict and recovery of the overwritten attempt-04 artifacts; this review does not reconstruct the lost verdict.",
+    "This implementation pass does not complete P09 or certify release readiness. Controller receipts, remaining phase-wide remediation to 9, C29 live Vulture qualification, related re-reviews and the P09 phase review remain separate obligations. D060's deferred import-contract removal and product rename remain outside this chunk.",
+    "The reviewer is a separate read-only Codex session within the current implementer's model family. No application source was changed, product endpoint called or real credential accessed. The atomic verdict write failed with PermissionError in the read-only sandbox; the controller must persist this returned JSON."
+  ]
+}

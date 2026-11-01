@@ -8,15 +8,15 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DesktopClient } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, type Native, scriptedNative, tenant, withTenant } from '../../test/native'
+import { baseSnapshot, type Native, scriptedNative, tenant, withTenant, framed } from '../../test/native'
 
 const KEY = 'synthetic-scan-key-0042'
 
 async function openSettings(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
-    const nav = await screen.findByRole('navigation', { name: 'Features' })
-    await user.click(within(nav).getByRole('button', { name: /Settings/ }))
+    // C44: one presentation; the core names the destination in the snapshot.
+    await native.push({ ...native.current, onboarding: 'done', activeFeature: 'settings' })
     return user
 }
 
@@ -30,7 +30,7 @@ afterEach(() => setItem.mockRestore())
 
 describe('scan-key entry', () => {
     it('captures the key typed at submission time and clears the field before awaiting', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         let admit: (value: unknown) => void = () => undefined
         native.respond = () => new Promise((resolve) => (admit = resolve))
         const user = await openSettings(native)
@@ -52,7 +52,7 @@ describe('scan-key entry', () => {
     })
 
     it('keeps the key out of snapshots, observations, the page and browser storage', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         const user = await openSettings(native)
         await user.type(keyField(), KEY)
         await user.click(screen.getByRole('button', { name: 'Save key' }))
@@ -69,7 +69,7 @@ describe('scan-key entry', () => {
     })
 
     it('sends the session-only choice when selected', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         const user = await openSettings(native)
         const scanKey = document.querySelector<HTMLElement>('[data-slot="scan-key"]') as HTMLElement
         await user.click(within(scanKey).getByRole('radio', { name: /For this session only/ }))
@@ -79,7 +79,7 @@ describe('scan-key entry', () => {
     })
 
     it('reports a refusal without claiming the key was saved', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         native.respond = () => ({ outcome: 'refusal', refusal: 'staleContext' })
         const user = await openSettings(native)
         await user.type(keyField(), KEY)
@@ -90,7 +90,7 @@ describe('scan-key entry', () => {
     })
 
     it('reports an unconfirmed delivery as unknown', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         native.respond = () => Promise.reject(new Error('lost'))
         const user = await openSettings(native)
         await user.type(keyField(), KEY)
@@ -102,7 +102,7 @@ describe('scan-key entry', () => {
     })
 
     it('refuses an empty key locally and focuses the field', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         const user = await openSettings(native)
         await user.click(screen.getByRole('button', { name: 'Save key' }))
         expect(await screen.findByRole('alert')).toHaveTextContent('Enter the scan key.')
@@ -111,9 +111,9 @@ describe('scan-key entry', () => {
     })
 
     it('shows locked and denied failures with explicit recovery, never a fallback', async () => {
-        const native = scriptedNative(
+        const native = framed(scriptedNative(
             withTenant(baseSnapshot, tenant({ scan: { state: 'failed', mode: 'keychain', failure: 'locked' } }))
-        )
+        ), 'settings')
         await openSettings(native)
         expect(screen.getByText(/Keychain is locked/)).toBeInTheDocument()
         await native.push(withTenant(baseSnapshot, tenant({ scan: { state: 'failed', mode: 'keychain', failure: 'denied' } })))
@@ -122,9 +122,9 @@ describe('scan-key entry', () => {
     })
 
     it('removes the scan key under the current context', async () => {
-        const native = scriptedNative(
+        const native = framed(scriptedNative(
             withTenant(baseSnapshot, tenant({ scan: { state: 'ready', mode: 'session', failure: null } }))
-        )
+        ), 'settings')
         const user = await openSettings(native)
         expect(screen.getByText('Scan key held for this session only.')).toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: 'Remove scan key' }))
@@ -132,7 +132,7 @@ describe('scan-key entry', () => {
     })
 
     it('discards a partially typed key when the context changes', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         const user = await openSettings(native)
         await user.type(keyField(), 'partial')
         await native.push(withTenant(baseSnapshot, tenant(), 'cx-cccccccccccccccccccccccc'))

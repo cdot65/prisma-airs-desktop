@@ -17,7 +17,7 @@ import {
     type ShellSnapshot,
 } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, type Native, scriptedNative, tenant, withTenant } from '../../test/native'
+import { baseSnapshot, type Native, scriptedNative, tenant, withTenant, framed } from '../../test/native'
 
 const CONTEXT = 'cx-aaaaaaaaaaaaaaaaaaaaaaaa'
 const PROMPT = 'SYNTHETIC-PROMPT-TEXT'
@@ -98,7 +98,7 @@ function service(native: Native, answer: Answer = DEFAULT) {
 async function openSessions(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
-    await user.click(within(await screen.findByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Sessions/ }))
+    await native.push({ ...native.current, onboarding: 'done', activeFeature: 'sessions' })
     await screen.findByRole('heading', { level: 1, name: 'Investigate sessions' })
     return user
 }
@@ -107,7 +107,7 @@ const sent = (native: Native, kind: Intent['kind']) => native.dispatched.filter(
 
 describe('Sessions & Reports', () => {
     it('lists the last 24 hours with page-only filters and counts', async () => {
-        const native = scriptedNative(ready())
+        const native = framed(scriptedNative(ready()), 'sessions')
         const requests = service(native)
         const user = await openSessions(native)
         expect(await screen.findByText(/Sessions 1–3 of 3/)).toBeInTheDocument()
@@ -125,7 +125,7 @@ describe('Sessions & Reports', () => {
     })
 
     it('shows content only after an explicit reveal and forgets it on Hide and on leaving', async () => {
-        const native = scriptedNative(ready())
+        const native = framed(scriptedNative(ready()), 'sessions')
         const requests = service(native)
         const user = await openSessions(native)
         await user.click(await screen.findByRole('button', { name: 'Open session ses-1' }))
@@ -142,8 +142,8 @@ describe('Sessions & Reports', () => {
         await user.click(screen.getByRole('button', { name: 'Show content of scan scn-1-0' }))
         expect(await screen.findByText(PROMPT)).toBeInTheDocument()
         // Leaving Sessions drops revealed content; coming back shows none.
-        await user.click(within(screen.getByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Administration/ }))
-        await user.click(within(screen.getByRole('navigation', { name: 'Features' })).getByRole('button', { name: /^Sessions/ }))
+        await native.push({ ...native.current, onboarding: 'done', activeFeature: 'administration' })
+        await native.push({ ...native.current, onboarding: 'done', activeFeature: 'sessions' })
         await screen.findByRole('heading', { level: 1, name: 'Investigate sessions' })
         expect(screen.queryByText(PROMPT)).toBeNull()
     })
@@ -154,7 +154,7 @@ describe('Sessions & Reports', () => {
             prompt_injection: { kind: 'search', search: { kind: 'detector', query: 'prompt_injection', sessions: JSON.stringify(Array.from({ length: 100 }, (_, n) => row(n, 'prompt_injection', 'block'))), scanned: 700, complete: false, matchLimit: true, scan: null, cached: false } },
             'scn-1': { kind: 'search', search: { kind: 'scanId', query: 'scn-1', sessions: '[]', scanned: 0, complete: true, matchLimit: false, scan: JSON.stringify({ scan_id: 'scn-1', report_id: 'R-1' }), cached: false } },
         }
-        const native = scriptedNative(ready())
+        const native = framed(scriptedNative(ready()), 'sessions')
         service(native, (request) => (request.kind === 'search' ? (searches[request.query] as ManagementResult) : DEFAULT(request)))
         const user = await openSessions(native)
         const box = screen.getByRole('textbox', { name: 'Search by session ID, scan ID or detector' })
@@ -170,7 +170,7 @@ describe('Sessions & Reports', () => {
     })
 
     it('sends a report as a scan reference and the operator’s words only', async () => {
-        const native = scriptedNative(ready())
+        const native = framed(scriptedNative(ready()), 'sessions')
         service(native)
         const user = await openSessions(native)
         await user.click(await screen.findByRole('button', { name: 'Open session ses-1' }))
@@ -199,7 +199,7 @@ describe('Sessions & Reports', () => {
     })
 
     it('opens, removes, undoes and exports reports through the desktop', async () => {
-        const native = scriptedNative(ready(sessionsView({ reports: { state: 'ready', failure: null, items: [REPORT], undo: null, problem: null, unsaved: false } })))
+        const native = framed(scriptedNative(ready(sessionsView({ reports: { state: 'ready', failure: null, items: [REPORT], undo: null, problem: null, unsaved: false } }))), 'sessions')
         service(native)
         const user = await openSessions(native)
         // The tenant's reports open with Sessions.
@@ -232,7 +232,7 @@ describe('Sessions & Reports', () => {
     })
 
     it('reports an unreadable report file without offering to overwrite it', async () => {
-        const native = scriptedNative(ready(sessionsView({ reports: { state: 'failed', failure: 'unreadable', items: [], undo: null, problem: null, unsaved: false } })))
+        const native = framed(scriptedNative(ready(sessionsView({ reports: { state: 'failed', failure: 'unreadable', items: [], undo: null, problem: null, unsaved: false } }))), 'sessions')
         service(native)
         const user = await openSessions(native)
         await user.click(screen.getByRole('tab', { name: 'FP/FN reports' }))
@@ -241,7 +241,7 @@ describe('Sessions & Reports', () => {
     })
 
     it('clears and exports the investigation cache and says how it is kept', async () => {
-        const native = scriptedNative(ready(sessionsView({ investigation: { storage: 'protected', sessions: 2, transactions: 1, contents: 1 } })))
+        const native = framed(scriptedNative(ready(sessionsView({ investigation: { storage: 'protected', sessions: 2, transactions: 1, contents: 1 } }))), 'sessions')
         service(native)
         const user = await openSessions(native)
         expect(screen.getByText(/2 sessions, 1 transactions and 1 revealed scans\. Sealed on this Mac under a key in your Keychain/)).toBeInTheDocument()
@@ -255,7 +255,7 @@ describe('Sessions & Reports', () => {
     })
 
     it('labels the exception patterns preview as synthetic and inert', async () => {
-        const native = scriptedNative(ready())
+        const native = framed(scriptedNative(ready()), 'sessions')
         const requests = service(native)
         const user = await openSessions(native)
         const before = requests.size
@@ -265,7 +265,7 @@ describe('Sessions & Reports', () => {
     })
 
     it('asks for a management client before reading sessions', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant(), CONTEXT))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant(), CONTEXT)), 'sessions')
         service(native)
         await openSessions(native)
         expect(screen.getByText(/has no ready management client/)).toBeInTheDocument()
@@ -273,10 +273,10 @@ describe('Sessions & Reports', () => {
     })
 
     it('keeps existing reports usable without a management client', async () => {
-        const native = scriptedNative({
+        const native = framed(scriptedNative({
             ...withTenant(baseSnapshot, tenant(), CONTEXT),
             sessions: sessionsView({ reports: { state: 'ready', failure: null, items: [REPORT], undo: null, problem: null, unsaved: false } }),
-        })
+        }), 'sessions')
         service(native)
         const user = await openSessions(native)
         expect(sent(native, 'openReports')).toEqual([{ kind: 'openReports', context: CONTEXT }])

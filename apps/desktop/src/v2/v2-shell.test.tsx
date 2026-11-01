@@ -163,10 +163,11 @@ describe('v2 shell', () => {
         expect(explain).toHaveAttribute('aria-checked', 'true')
         await user.click(explain)
         expect(native.dispatched.at(-1)).toEqual({ kind: 'setShowCalls', on: false })
-        // The classic interface is left from Settings only (C35); the legacy shell renders only when the core says so.
+        // C44: there is one presentation. A snapshot still saying `legacy` (an older core) renders the v2 shell.
         expect(screen.queryByRole('button', { name: 'Return to the classic interface' })).toBeNull()
-        await native.push({ ...native.current, uiVariant: 'legacy', features: (await import('../test/native')).baseSnapshot.features, activeFeature: 'runtime' })
-        expect(screen.getByRole('navigation', { name: 'Features' })).toBeInTheDocument()
+        await native.push({ ...native.current, uiVariant: 'legacy' })
+        expect(screen.queryByRole('navigation', { name: 'Features' })).toBeNull()
+        expect(screen.getByRole('navigation', { name: 'Destinations' })).toBeInTheDocument()
     })
 
     it('applies the dark theme attribute the tokens key on', async () => {
@@ -368,7 +369,7 @@ describe('v2 shell', () => {
         }
     })
 
-    it('renders the tenant popup outside the rail with a usable width and reports Settings interface-toggle outcomes', async () => {
+    it('renders the tenant popup outside the rail with a usable width; Settings has no interface switch (C44)', async () => {
         const user = userEvent.setup()
         const native = await launch(fxSwitcher())
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
@@ -377,27 +378,10 @@ describe('v2 shell', () => {
         const menu = list.closest('[data-slot="tenant-menu"]') as HTMLElement
         expect(menu.style.width).toContain('var(--v2-menu)')
         await user.keyboard('{Escape}')
-        // Settings (inside the v2 shell) reports a refused interface change and keeps an unknown one retryable.
+        // C44: Settings has no interface switch any more.
         await native.push({ ...native.current, activeFeature: 'settings' })
-        const toggle = await screen.findByRole('checkbox', { name: 'Use the new interface' })
-        native.respond = () => ({ outcome: 'refusal', refusal: 'deniedStore' })
-        await user.click(toggle)
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'setUiVariant', variant: 'legacy' })
-        const status = document.querySelector('[data-slot="interface-status"]') as HTMLElement
-        await waitFor(() => expect(status.textContent).toMatch(/refused|Keychain|store|denied/i))
-        expect(toggle).toBeChecked()
-        native.respond = () => {
-            throw new DeliveryOutcomeUnknown('lost')
-        }
-        await user.click(toggle)
-        await waitFor(() => expect(status).toHaveTextContent('did not confirm it'))
-        const sent = native.dispatched.length
-        await native.push({ ...native.current })
-        expect(native.dispatched).toHaveLength(sent)
-        native.respond = () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-4', operation: null } })
-        await user.click(within(status).getByRole('button', { name: 'Retry' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'setUiVariant', variant: 'legacy' })
-        await waitFor(() => expect(status.textContent).toBe(''))
+        await screen.findByRole('heading', { level: 1, name: 'Settings' })
+        expect(screen.queryByRole('checkbox', { name: 'Use the new interface' })).toBeNull()
     })
 
     it('makes toast controls inert and hidden while a modal is topmost, usable again after', async () => {

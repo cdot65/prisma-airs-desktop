@@ -134,11 +134,19 @@ def exercise(app, endpoint, mgmt, prepared, project, FINAL):
     c8.text(app, "2 workspaces", 15)
     app.ax("press", "AXRadioButton", "Team A")
     c8.text(app, "Team A", 10)
-    c16.tab(app, "Playground")
-    app.type_into("AXTextField", "Runtime endpoint", runtime)
-    app.type_into("AXTextField", "Workspace API key with completions access", INFERENCE_KEY, secure=True)
-    app.ax("press", "AXButton", "Store key for Team A")
-    c8.text(app, "stored", 12)
+    # On the one presentation (C44) the workspace's inference key is saved in the Gateway card's Workspaces tab (the
+    # legacy Playground form is gone): the Workspaces tab, the endpoint, the key and Save workspace key.
+    ws_tab = next((n for n in app.tree() if n.get("role") in ("AXRadioButton", "AXTab") and (n.get("label") or "").strip() == "Workspaces"), None)
+    if ws_tab is None:
+        raise RuntimeError(f"no Workspaces tab in the Gateway card [tree: {app.dump_tree('gateway-no-workspaces-tab')}]")
+    app.ax("press", ws_tab["role"], "Workspaces")
+    tree, shown = app.wait_for(lambda t: fx.App.node(t, "AXTextField", "Inference endpoint") is not None, 12)
+    if not shown:
+        raise RuntimeError(f"the workspace key form did not show for Team A [tree: {app.dump_tree('gateway-workspace-key')}]")
+    app.type_into("AXTextField", "Inference endpoint", runtime)
+    app.type_into("AXTextField", "Workspace inference key", INFERENCE_KEY, secure=True)
+    app.ax("press", "AXButton", "Save workspace key")
+    c8.text(app, "Workspace key saved in the Keychain.", 12)
     # The Harness with a project folder: a command needs the operator's approval.
     app.menu("Go", "Harness")
     app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Harness") is not None, 10)

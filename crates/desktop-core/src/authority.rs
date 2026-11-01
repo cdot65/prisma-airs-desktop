@@ -1641,7 +1641,6 @@ impl Tenant {
 #[derive(Clone, Debug, Default)]
 struct Data {
     appearance: Option<Theme>,
-    ui_variant: Option<features::UiVariant>,
     onboarding: Option<features::OnboardingState>,
     show_calls: Option<bool>,
     tenants: Vec<Tenant>,
@@ -1856,8 +1855,12 @@ impl State {
         self.data.appearance.unwrap_or(Theme::System)
     }
 
+    /// C44: the v2 presentation is the only one. The persisted flag is read
+    /// no more (an older store's `legacy` is ignored) and `SetUiVariant` is
+    /// accepted without effect, so an older presentation or script that
+    /// still sends it is not refused.
     fn ui_variant(&self) -> features::UiVariant {
-        self.data.ui_variant.unwrap_or_default()
+        features::UiVariant::V2
     }
 
     fn onboarding(&self) -> features::OnboardingState {
@@ -3391,7 +3394,6 @@ fn data_from(doc: PersistedState) -> Data {
         .collect();
     Data {
         appearance: Some(doc.appearance),
-        ui_variant: Some(doc.ui_variant),
         onboarding: Some(doc.onboarding),
         show_calls: doc.show_calls_chosen.then_some(doc.show_calls),
         tenants,
@@ -3636,19 +3638,8 @@ fn admit(
                 state.changed();
             }
         }
-        Intent::SetUiVariant { variant } => {
-            if state.ui_variant() != variant {
-                let before = state.data.clone();
-                state.data.ui_variant = Some(variant);
-                if state.storage == StorageHealth::Ready
-                    && let Err(e) = state.save_with(&before)
-                {
-                    return Err(e);
-                }
-                // The other presentation's destination may not exist here.
-                state.active_feature = None;
-                state.changed();
-            }
+        Intent::SetUiVariant { variant: _ } => {
+            // C44: one presentation. Accepted and ignored (see `ui_variant`).
         }
         Intent::Navigate { feature } => {
             let entry = features::catalogue_for(state.ui_variant())

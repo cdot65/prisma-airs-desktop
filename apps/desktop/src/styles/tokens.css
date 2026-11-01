@@ -182,9 +182,12 @@
 [data-v2-shell] [data-slot='harness-composer'] textarea:focus-visible {
     outline: none;
 }
-/* The selected destination is accent-filled, so its ring is the ink-on-accent
- * colour; every other control keeps the accent ring. */
-[data-v2-shell] [aria-current='page']:focus-visible {
+/* The selected sidebar destination is accent-filled, so its ring is the
+ * ink-on-accent colour; every other control keeps the accent ring, including
+ * a current link on an accent-soft surface (the Academy's section links: the
+ * accent is 5.05:1 on the light soft surface and 4.86:1 on the dark one, where
+ * the ink-on-accent colour was 1.06:1 and 1.11:1). */
+[data-v2-shell] [data-inset-focus][aria-current='page']:focus-visible {
     outline-color: var(--v2-sel-ink);
 }
 [data-v2-shell] [data-v2-scrim] {
@@ -195,4 +198,226 @@
         transition: none !important;
         animation: none !important;
     }
+}
+
+/* C41 API Client: the pretty JSON view numbers its lines from a counter (the numbers are not part of the body's text). */
+[data-v2-shell] [data-slot='json-lines'] {
+    counter-reset: line;
+    white-space: pre;
+}
+[data-v2-shell] [data-slot='json-lines'] > [data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 34px;
+    padding-right: 12px;
+    text-align: right;
+    color: var(--v2-faint);
+}
+/* The request's columns and the response pane stack below the width that fits them (the prototype is fixed-width). */
+@media (max-width: 1180px) {
+    [data-v2-shell] [data-slot='workbench-columns'] {
+        flex-wrap: wrap;
+    }
+    [data-v2-shell] [data-slot='workbench-response-pane'] {
+        flex: 1 1 100% !important;
+        max-width: none !important;
+        border-top: 1px solid var(--v2-rule);
+    }
+}
+/* The wizard's product cards (C43): the card is a label around a visually hidden native checkbox; the card shows
+   the control's focus ring and its chosen state. */
+[data-slot='product-card']:has(> input:focus-visible) {
+    outline: 2px solid var(--v2-acc);
+    outline-offset: 2px;
+}
+/* The wizard (C43) below 760px (a 900-point window at 200%): the rail is a compact strip above the step (the step
+   marks keep their names for assistive technology but show their numbers), every grid is one column, and the step
+   scrolls between the strip and the pinned footer. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='wizard'],
+    [data-slot='wizard'] {
+        flex-direction: column;
+    }
+    [data-slot='wizard'] > nav {
+        width: 100% !important;
+        flex: 0 0 auto;
+        padding: 10px 12px 8px !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--v2-rule);
+    }
+    [data-slot='wizard'] > nav > div:first-child {
+        margin-bottom: 8px !important;
+    }
+    [data-slot='wizard'] > nav > ol {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px !important;
+    }
+    [data-slot='wizard'] > nav > ol button {
+        width: auto;
+        height: 32px !important;
+        padding: 0 6px !important;
+        gap: 0 !important;
+    }
+    [data-slot='wizard'] > nav > ol button > span:not(:first-child) {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+    [data-slot='wizard'] > nav > [data-slot='privacy-note'] {
+        display: none;
+    }
+    [data-slot='wizard'] > nav > [data-slot='theme-button'] {
+        margin-top: 6px !important;
+    }
+    [data-slot='wizard'] main .grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    /* The strip drops the brand row (the sheet is already named), and the footer's hint or status keeps to two
+       lines: at 900×600 and 200% the add sheet is 279 CSS px tall, and a long hint made the footer taller than the
+       sheet, pushing its primary below the window. */
+    [data-slot='wizard'] > nav > div:first-child {
+        display: none;
+    }
+    [data-slot='wizard-footer'] [data-slot='wizard-status'] > span {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+}
+@media (max-width: 1279px) {
+    [data-v2-rail] {
+        width: 64px !important;
+    }
+    /* Collapsed: one 32px control per row; icons stay, labels leave the
+     * layout but stay in the accessible name. */
+    [data-v2-rail] [data-v2-stack] {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    [data-v2-rail] [data-v2-stack] > * {
+        width: 100%;
+    }
+    /* Collapsed: labels leave the layout but stay in the accessible name (rail and header). */
+    [data-v2-rail] [data-v2-label],
+    [data-v2-header] [data-v2-label] {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+    /* Collapsed: the product children and the status rows leave the rail (C35). */
+    [data-v2-rail] [data-v2-collapse] {
+        display: none !important;
+    }
+    [data-v2-rail] [data-v2-stack] > * {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    [data-v2-header] [data-v2-search] {
+        width: auto !important;
+        flex: 1 1 120px !important;
+        min-width: 0;
+    }
+    /* The Harness's rail and Decisions aside stack above and below the transcript when the page is narrow (C38).
+       Wide, the columns are one flex line bounded by the page, so each column scrolls on its own. */
+    [data-v2-shell] [data-slot='harness-columns'] {
+        flex-wrap: wrap;
+    }
+    [data-v2-shell] [data-slot='harness-rail'],
+    [data-v2-shell] [data-slot='harness-decisions'] {
+        flex: 1 1 100% !important;
+        border-left: 0 !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--v2-rule);
+    }
+    /* Home's attention and quick-action sections stack when the page is narrow (C36). */
+    [data-v2-shell] [data-slot='home-lower'] {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    /* The Inbox's list and detail cards stack when the page is narrow (C37): each card takes its
+       own height (the list up to half the viewport, scrolling inside) and the page scrolls. */
+    [data-v2-shell] [data-slot='inbox-columns'] {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-rows: auto auto;
+        min-height: auto !important;
+        flex-grow: 0 !important;
+    }
+    [data-v2-shell] [data-slot='inbox-list'] {
+        min-height: 240px;
+        max-height: 50vh;
+    }
+}
+/* C39a attempt-01 R1: below the width that fits the inventory's columns (900×600 at 200% is 450 CSS px) the rows stack their cells. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='administration-row'] {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 4px !important;
+    }
+    /* The header row leaves the picture but not the accessibility tree; each stacked cell shows its column's
+       name (C39b attempt-01 R4). */
+    [data-v2-shell] [data-slot='administration-table'] > [role='row']:first-child {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+    [data-v2-shell] [data-slot='administration-row'] > [role='cell'][data-label]::before {
+        content: attr(data-label) ': ';
+        font-weight: 600;
+        color: var(--v2-faint);
+    }
+    [data-v2-shell] [data-slot='administration-row'] > [role='cell']:last-child {
+        justify-content: flex-start;
+    }
+}
+/* C39b attempt-01: below the width that fits a table's columns (900×600 at 200% is 450 CSS px) the v2 admin tables stack their cells and hide the header row. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='admin-tab'] [role='table'] > [role='row'] {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 4px !important;
+    }
+    [data-v2-shell] [data-slot='admin-tab'] [role='table'] > [role='row']:first-child {
+        display: none;
+    }
+    [data-v2-shell] [data-slot='admin-tab'] [role='table'] [role='cell'] {
+        white-space: normal;
+    }
+}
+/* Narrower still (a 900-point window at 200%): the request tree sits above the editor instead of beside it. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='api-body'] {
+        flex-wrap: wrap;
+    }
+    [data-v2-shell] [data-slot='request-tree'] {
+        width: 100% !important;
+        max-height: 40vh;
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--v2-rule);
+    }
+}
+/* Test Cases (C40): below 760px (a 900-point window at 200%) each row is two lines: the case and its product, the
+   input, then the result and the action; the five-column grid cannot hold readable cells there. */
+@media (max-width: 760px) {
+    [data-v2-shell] [data-slot='cases-table'] [role='row'] {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        row-gap: 8px !important;
+    }
+    [data-v2-shell] [data-slot='cases-table'] [role='row'] > :nth-child(3) {
+        grid-column: 1 / -1;
+    }
+}
+/* The wizard's Environment segmented control (C43): native radios inside labels; the segment shows the ring. */
+[data-slot='environment-choice']:has(> input:focus-visible) {
+    outline: 2px solid var(--v2-acc);
+    outline-offset: 1px;
 }

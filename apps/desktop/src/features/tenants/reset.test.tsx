@@ -8,13 +8,13 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { DesktopClient } from '@prisma-airs/desktop-contracts'
 import { App } from '../../app'
-import { baseSnapshot, type Native, scriptedNative, tenant, withTenant } from '../../test/native'
+import { baseSnapshot, type Native, scriptedNative, tenant, withTenant, framed } from '../../test/native'
 
 async function openSettings(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
-    const nav = await screen.findByRole('navigation', { name: 'Features' })
-    await user.click(within(nav).getByRole('button', { name: /Settings/ }))
+    // C44: one presentation; the core names the destination in the snapshot.
+    await native.push({ ...native.current, onboarding: 'done', activeFeature: 'settings' })
     return user
 }
 
@@ -22,7 +22,7 @@ const resetSection = () => screen.getByRole('region', { name: 'Reset local data'
 
 describe('reset local data', () => {
     it('asks for confirmation before dispatching a reset', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         const user = await openSettings(native)
         await user.click(within(resetSection()).getByRole('button', { name: 'Reset local data…' }))
         expect(native.dispatched).toEqual([])
@@ -31,7 +31,7 @@ describe('reset local data', () => {
     })
 
     it('explains a stop while deleting keys without claiming the keys were kept', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         await openSettings(native)
         await native.push({
             ...withTenant(baseSnapshot, tenant()),
@@ -45,7 +45,7 @@ describe('reset local data', () => {
     })
 
     it('explains a stop while removing the document after the keys were deleted', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         await openSettings(native)
         await native.push({
             ...withTenant(baseSnapshot, tenant()),
@@ -57,7 +57,7 @@ describe('reset local data', () => {
     })
 
     it('says while resetting that keys are out of use', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         await openSettings(native)
         await native.push({ ...baseSnapshot, storage: 'resetting', tenants: [tenant()], active: null })
         expect(screen.getByText(/Scan keys are out of use until it finishes/)).toBeInTheDocument()
@@ -65,7 +65,7 @@ describe('reset local data', () => {
     })
 
     it('reports a change whose durability was not confirmed', async () => {
-        const native = scriptedNative(withTenant(baseSnapshot, tenant()))
+        const native = framed(scriptedNative(withTenant(baseSnapshot, tenant())), 'settings')
         await openSettings(native)
         expect(document.querySelector('[data-slot="durability-notice"]')).toBeNull()
         await native.push({ ...withTenant(baseSnapshot, tenant()), durabilityUnconfirmed: true })

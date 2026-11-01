@@ -1,0 +1,1802 @@
+diff --git a/apps/desktop/src/styles/tokens.css b/apps/desktop/src/styles/tokens.css
+index e3a1c67e..163582b9 100644
+--- a/apps/desktop/src/styles/tokens.css
++++ b/apps/desktop/src/styles/tokens.css
+@@ -161,6 +161,18 @@
+     [data-v2-shell] [data-slot='home-lower'] {
+         grid-template-columns: minmax(0, 1fr) !important;
+     }
++    /* The Inbox's list and detail cards stack when the page is narrow (C37): each card takes its
++       own height (the list up to half the viewport, scrolling inside) and the page scrolls. */
++    [data-v2-shell] [data-slot='inbox-columns'] {
++        grid-template-columns: minmax(0, 1fr) !important;
++        grid-template-rows: auto auto;
++        min-height: auto !important;
++        flex-grow: 0 !important;
++    }
++    [data-v2-shell] [data-slot='inbox-list'] {
++        min-height: 240px;
++        max-height: 50vh;
++    }
+ }
+ /* The selected destination is accent-filled, so its ring is the ink-on-accent
+  * colour; every other control keeps the accent ring. */
+diff --git a/apps/desktop/src/v2/copy.ts b/apps/desktop/src/v2/copy.ts
+index 13117429..269b8f5a 100644
+--- a/apps/desktop/src/v2/copy.ts
++++ b/apps/desktop/src/v2/copy.ts
+@@ -140,6 +140,15 @@ export const INBOX_COPY = {
+         setupWarning: 'A check during setup did not pass. The product reads only partially until it is fixed in Administration.',
+         rotation: 'An additional API key was issued for this application. Until the old key is removed, both keys work; finish the rotation once the application uses the new key.',
+     } as Record<'runtime' | 'gateway' | 'setupWarning' | 'rotation', string>,
++    listCard: 'Inbox list',
++    sub: (tenant: string) => `Everything that needs you in ${tenant} · newest first`,
++    reading: 'Reading…',
++    filter: 'Inbox filter',
++    openRoleIssue: 'Open role issue',
++    footNoReads: (tenant: string) => `No source reads yet for ${tenant}.`,
++    footPartial: (read: number, total: number, when: string) => `${read} of ${total} sources read at ${when}.`,
++    footAll: (when: string) => `All sources read at ${when}.`,
++    footGateway: (workspace: string, policies: number | null) => `AI Gateway ${workspace}${policies === null ? '' : ` · ${policies} limit polic${policies === 1 ? 'y' : 'ies'}`}`,
+     readNow: 'Read now',
+     detail: 'Details',
+     selectHint: 'Select an item to see its details.',
+diff --git a/apps/desktop/src/v2/inbox/inbox.test.tsx b/apps/desktop/src/v2/inbox/inbox.test.tsx
+index a17de8da..5b1880ac 100644
+--- a/apps/desktop/src/v2/inbox/inbox.test.tsx
++++ b/apps/desktop/src/v2/inbox/inbox.test.tsx
+@@ -13,7 +13,7 @@ import { DeliveryOutcomeUnknown, DesktopClient, type ShellSnapshot } from '@pris
+ import { App } from '../../app'
+ import { scriptedNative, type Native } from '../../test/native'
+ import { fxFresh, fxInbox } from '../fixtures'
+-import { resetShellStore } from '../store'
++import { resetShellStore, useShellStore } from '../store'
+ 
+ async function launch(snapshot: ShellSnapshot): Promise<Native> {
+     const native = scriptedNative(snapshot)
+@@ -39,7 +39,7 @@ describe('Inbox', () => {
+         await user.click(rows[0] as HTMLElement)
+         const detail = screen.getByRole('complementary', { name: 'Details' })
+         expect(within(detail).getByRole('heading', { level: 2, name: 'Runtime expires in 5 days' })).toBeInTheDocument()
+-        expect(within(detail).getByRole('row', { name: /Expires/ })).toBeInTheDocument()
++        expect(within(detail).getByText('Expires')).toBeInTheDocument()
+         expect(within(detail).getByText(/Why this matters/)).toBeInTheDocument()
+         await user.click(within(detail).getByRole('button', { name: 'Open API keys' }))
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'administration' })
+@@ -409,4 +409,55 @@ describe('Inbox', () => {
+         await waitFor(() => expect(screen.getByRole('tab', { name: /Snoozed/ })).toHaveAttribute('aria-selected', 'true'))
+         expect(within(screen.getByRole('complementary', { name: 'Details' })).getByRole('heading', { level: 2, name: 'Gateway workspace Team A over quota' })).toBeInTheDocument()
+     })
++    // ---- C37: the Inbox as the prototype draws it (appended to describe('Inbox') in inbox.test.tsx) ----
++
++    it('draws the list card with the filter tabs and counts, rows with the severity word, product, source and time, and the footer naming the read (C37)', async () => {
++        await launch(fxInbox())
++        expect(document.querySelector('[data-slot="inbox-sub"]')?.textContent).toContain('Everything that needs you in Northwind Health · newest first')
++        const tablist = screen.getByRole('tablist', { name: 'Inbox filter' })
++        expect(within(tablist).getAllByRole('tab').map((t) => t.textContent)).toEqual(['All 4', 'Needs action 2', 'Updates 1', 'Snoozed 1'])
++        expect(screen.getByRole('region', { name: 'Inbox list' })).toBeInTheDocument()
++        const list = screen.getByRole('list', { name: 'Inbox items' })
++        const rows = within(list).getAllByRole('listitem')
++        expect(rows).toHaveLength(4)
++        expect(rows[0]!.querySelector('[data-slot="severity"]')?.textContent).toBe('Warning')
++        expect(rows[0]).toHaveTextContent('Runtime expires in 5 days')
++        expect(rows[0]).toHaveTextContent('Warning · AI Runtime Security · API keys · read 07:45')
++        expect(rows[0]!.textContent).toMatch(/\d\d:\d\d$/)
++        // The snoozed row carries the core's return time.
++        expect(within(list).getByText(/Returns /)).toBeInTheDocument()
++        expect(document.querySelector('[data-slot="inbox-foot"]')?.textContent).toMatch(/^3 of 4 sources read at \d\d:\d\d\./)
++    })
++
++    it('fills the detail card from a row: severity, product and source, the title, the body, the facts grid, the entry’s own action and the holds; Why this matters only while the calls are shown (C37)', async () => {
++        const user = userEvent.setup()
++        const native = await launch(fxInbox())
++        const detail = () => screen.getByRole('complementary', { name: 'Details' })
++        expect(detail()).toHaveTextContent('Select an item to see its details.')
++        await user.click(screen.getByRole('button', { name: /Runtime expires in 5 days/ }))
++        expect(within(detail()).getByRole('heading', { level: 2 })).toHaveTextContent('Runtime expires in 5 days')
++        expect(detail()).toHaveTextContent('Warning')
++        expect(detail()).toHaveTextContent('AI Runtime Security · API keys · read 07:45')
++        const facts = detail().querySelector('dl[aria-label="Facts"]') as HTMLElement
++        expect(Array.from(facts.querySelectorAll('dt')).map((t) => t.textContent)).toEqual(['Key', 'Expires'])
++        expect(within(detail()).getByRole('button', { name: 'Open API keys' })).toBeInTheDocument()
++        expect(within(detail()).getByRole('button', { name: 'Acknowledge' })).toHaveAttribute('aria-pressed', 'false')
++        expect(within(detail()).getByRole('button', { name: /^Snooze 24 hours/ })).toBeInTheDocument()
++        expect(document.querySelector('[data-slot="inbox-why"]')).not.toBeNull()
++        await native.push({ ...native.current, showCalls: false })
++        expect(document.querySelector('[data-slot="inbox-why"]')).toBeNull()
++    })
++
++    it('offers Open role issue in the empty state when a product needs a role, opening that product in Administration (C37)', async () => {
++        const user = userEvent.setup()
++        const base = fxInbox()
++        const native = await launch({
++            ...base,
++            inbox: { ...base.inbox, items: [], read: { ...base.inbox.read, products: [{ product: 'gateway', state: 'needsRole', sourcesRead: 0, sourcesTotal: 2, detail: 'Missing read role' }], sourcesMissing: ['Gateway usage', 'Gateway limits'] } },
++        })
++        expect(document.querySelector('[data-slot="inbox-empty"]')?.textContent).toContain('Nothing needs action')
++        await user.click(screen.getByRole('button', { name: 'Open role issue' }))
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature: 'administration' })
++        expect(useShellStore.getState().arrival).toMatchObject({ feature: 'administration', product: 'gateway' })
++    })
+ })
+diff --git a/apps/desktop/src/v2/inbox/inbox.tsx b/apps/desktop/src/v2/inbox/inbox.tsx
+index 2936bb46..f5e92d16 100644
+--- a/apps/desktop/src/v2/inbox/inbox.tsx
++++ b/apps/desktop/src/v2/inbox/inbox.tsx
+@@ -1,9 +1,10 @@
+ import { forwardRef, useEffect } from 'react'
+-import type { FeatureId, InboxEntry, Intent, ShellSnapshot } from '@prisma-airs/desktop-contracts'
++import type { FeatureId, InboxEntry, Intent, ProductId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
+ import type { DispatchOutcome } from '../../features/tenants/dispatch'
+ import { INBOX_COPY as C, READ_COPY, SHELL_COPY, SNOOZE_COPY, clockOf } from '../copy'
++import { Glyph, type GlyphName } from '../icons'
+ import { useShellStore } from '../store'
+-import { Verdict, type VerdictTone } from '../verdict'
++import type { VerdictTone } from '../verdict'
+ 
+ /**
+  * Sends one intent and reports its outcome on the shell's surfaces (DESIGN-V2
+@@ -53,6 +54,11 @@ export function tabOf(entry: InboxEntry): InboxTab {
+     return 'updates'
+ }
+ 
++const severityTile = (severity: InboxEntry['severity']): { glyph: GlyphName; fg: string; bg: string } =>
++    severity === 'bad' ? { glyph: 'ban', fg: 'var(--v2-block)', bg: 'var(--v2-block-bg)' } : severity === 'warn' ? { glyph: 'alert', fg: 'var(--v2-flag)', bg: 'var(--v2-flag-bg)' } : { glyph: 'info', fg: 'var(--v2-soft)', bg: 'var(--v2-inset)' }
++
++const button32 = 'flex h-8 min-h-0 items-center rounded-[7px] text-[13px] whitespace-nowrap'
++
+ /**
+  * The Inbox (C30, screens/inbox-reads.md): the active tenant's entries from
+  * the core's Inbox scope, in tabs with counts, a detail pane with the facts,
+@@ -121,135 +127,202 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
+                   ? C.stale(clockOf(read.lastReadAt ?? 0))
+                   : null
+ 
++    // The empty states' role issue, the footer's coverage lines and the product hand-off (C37, R2App).
++    const needsRole = read.products.find((p) => p.state === 'needsRole') ?? null
++    const openProduct = (id: ProductId) => {
++        if (tenant) useShellStore.getState().arrive({ tenant: tenant.id, feature: 'administration', resource: null, item: null, product: id })
++        onNavigate('administration')
++    }
++    const sourcesRead = read.products.reduce((n, p) => n + p.sourcesRead, 0)
++    const sourcesTotal = read.products.reduce((n, p) => n + p.sourcesTotal, 0)
++    const readAt = read.lastReadAt ?? read.settledAt
++    const footLine1 = !tenant || readAt === null ? C.footNoReads(tenant?.label ?? '') : read.sourcesMissing.length > 0 ? C.footPartial(sourcesRead, sourcesTotal, clockOf(readAt)) : C.footAll(clockOf(readAt))
++    const gateway = snapshot.overview.read?.gateway ?? null
++    const footLine2 = gateway ? C.footGateway(gateway.workspaceName, gateway.policies) : (snapshot.overview.read?.gaps[0] ?? '')
++
+     return (
+-        <section aria-labelledby='inbox-heading' data-slot='inbox' className='flex min-h-0 flex-col gap-4'>
+-            <div className='flex items-end justify-between gap-4'>
++        <section aria-labelledby='inbox-heading' data-slot='inbox' className='flex min-h-0 flex-grow flex-col' style={{ gap: 20 }}>
++            <div className='flex items-end' style={{ gap: 12 }}>
+                 <div>
+-                    <h1 ref={ref} id='inbox-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)' }}>
++                    <h1 ref={ref} id='inbox-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
+                         {C.title}
+                     </h1>
+-                    {partialLine && (
+-                        <p role='status' className='mt-1 text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+-                            {partialLine}
+-                        </p>
+-                    )}
++                    <p role='status' data-slot='inbox-sub' className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
++                        {tenant ? C.sub(tenant.label) : C.emptyPending}
++                        {partialLine ? ` · ${partialLine}` : ''}
++                    </p>
+                 </div>
+                 {context && (
+-                    <button type='button' onClick={readNow} disabled={read.state === 'reading'} className='h-8 rounded-[7px] border px-3 text-[13px] disabled:opacity-60' style={{ borderColor: 'var(--v2-rule)' }}>
+-                        {C.readNow}
++                    <button type='button' onClick={readNow} disabled={read.state === 'reading'} className={`${button32} ml-auto border px-3.5 disabled:opacity-60`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
++                        {read.state === 'reading' ? C.reading : C.readNow}
+                     </button>
+                 )}
+             </div>
+-            <div role='tablist' aria-label={C.title} className='flex gap-1'>
+-                {TABS.map((t) => (
+-                    <button
+-                        key={t}
+-                        role='tab'
+-                        type='button'
+-                        aria-selected={tab === t}
+-                        onClick={() => selectInbox(tenantKey, { tab: t, item: selectedId })}
+-                        className='h-8 rounded-[7px] px-3 text-[13px]'
+-                        style={{ background: tab === t ? 'var(--v2-sel)' : 'transparent', color: tab === t ? 'var(--v2-sel-ink)' : 'var(--v2-ink)' }}
+-                    >
+-                        {C.tabs[t]} <span style={{ opacity: 0.7 }}>{counts[t]}</span>
+-                    </button>
+-                ))}
+-            </div>
+-            {/* Two columns while both fit; one under the other at 200% zoom or a narrow window (no horizontal clipping). */}
+-            <div data-slot='inbox-columns' className='grid min-h-0 min-w-0 gap-4' style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' }}>
+-                <div className='min-w-0'>
+-                    {empty ? (
+-                        <p role='status' data-slot='inbox-empty' className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+-                            {empty}
+-                        </p>
+-                    ) : (
+-                        <ul aria-label={C.ariaList} className='flex flex-col gap-1'>
+-                            {visible.map((e) => (
+-                                <li key={e.id}>
+-                                    <button
+-                                        type='button'
+-                                        aria-current={selected?.id === e.id ? 'true' : undefined}
+-                                        onClick={() => selectInbox(tenantKey, { tab, item: e.id })}
+-                                        className='flex w-full min-w-0 flex-col gap-1 rounded-[12px] border px-4 py-3 text-left break-words'
+-                                        style={{ borderColor: selected?.id === e.id ? 'var(--v2-acc)' : 'var(--v2-rule)', background: 'var(--v2-paper)' }}
+-                                    >
+-                                        <span className='flex flex-wrap items-center gap-2'>
+-                                            <Verdict tone={toneOf(e.severity)} word={C.severity[e.severity]} />
+-                                            <span className='min-w-0 text-[14px] font-medium'>{e.title}</span>
+-                                            {e.hold?.kind === 'acknowledge' && <span className='text-[11px]' style={{ color: 'var(--v2-faint)' }}>{C.acknowledged}</span>}
+-                                        </span>
+-                                        <span className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+-                                            {e.product ? READ_COPY.products[e.product] : C.kind[e.kind]} · {e.source} · {clockOf(e.when)}
+-                                            {e.hold?.kind === 'snooze' && e.hold.returnsAt !== null ? ` · ${SNOOZE_COPY.returns(e.hold.returnsAt)}` : ''}
+-                                        </span>
+-                                    </button>
+-                                </li>
++            {/* The list column is the prototype's 430px beside the detail; one under the other when both cannot fit (200% zoom, a narrow window). */}
++            <div data-slot='inbox-columns' className='grid min-h-0 min-w-0 flex-grow' style={{ gridTemplateColumns: 'minmax(0, 430px) minmax(0, 1fr)', gap: 20 }}>
++                <section aria-label={C.listCard} data-slot='inbox-list' className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                    <div className='flex items-center' style={{ padding: '14px 18px', gap: 10, borderBottom: '1px solid var(--v2-rule)' }}>
++                        <div role='tablist' aria-label={C.filter} className='flex rounded-[8px]' style={{ padding: 2, background: 'var(--v2-inset)' }}>
++                            {TABS.map((t) => (
++                                <button
++                                    key={t}
++                                    role='tab'
++                                    type='button'
++                                    id={`itab-${t}`}
++                                    aria-controls='inbox-panel'
++                                    aria-selected={tab === t}
++                                    onClick={() => selectInbox(tenantKey, { tab: t, item: selectedId })}
++                                    className='h-7 min-h-0 rounded-[6px] px-3 text-[12px] font-semibold'
++                                    style={{ background: tab === t ? 'var(--v2-paper)' : 'transparent', boxShadow: tab === t ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', color: 'var(--v2-ink)' }}
++                                >
++                                    {C.tabs[t]}{' '}
++                                    <span className='font-medium' style={{ color: 'var(--v2-faint)' }}>
++                                        {counts[t]}
++                                    </span>
++                                </button>
+                             ))}
+-                        </ul>
+-                    )}
+-                </div>
+-                <aside aria-label={C.detail} data-slot='inbox-detail' className='min-w-0 rounded-[12px] border p-5 break-words' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
++                        </div>
++                    </div>
++                    <div role='tabpanel' id='inbox-panel' aria-labelledby={`itab-${tab}`} className='min-h-0 flex-grow overflow-auto'>
++                        {empty ? (
++                            <div role='status' data-slot='inbox-empty' className='flex flex-col items-center text-center leading-[1.5]' style={{ gap: 12, padding: '32px 18px', color: 'var(--v2-faint)' }}>
++                                <span>{empty}</span>
++                                {needsRole && context && (
++                                    <button type='button' onClick={() => openProduct(needsRole.product)} className={`${button32} border px-3.5 font-semibold`} style={{ borderColor: 'var(--v2-flag)', background: 'var(--v2-flag-bg)', color: 'var(--v2-flag)' }}>
++                                        {C.openRoleIssue}
++                                    </button>
++                                )}
++                            </div>
++                        ) : (
++                            <ul aria-label={C.ariaList} className='flex flex-col'>
++                                {visible.map((e) => {
++                                    const tile = severityTile(e.severity)
++                                    const current = selected?.id === e.id
++                                    return (
++                                        <li key={e.id}>
++                                            <button
++                                                type='button'
++                                                aria-current={current ? 'true' : undefined}
++                                                data-inset-focus=''
++                                                onClick={() => selectInbox(tenantKey, { tab, item: e.id })}
++                                                className='flex w-full min-w-0 items-start text-left'
++                                                style={{ gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', background: current ? 'var(--v2-inset)' : 'transparent', boxShadow: current ? 'inset 3px 0 0 var(--v2-acc)' : 'none', color: 'var(--v2-ink)' }}
++                                            >
++                                                <span aria-hidden='true' className='grid size-[26px] shrink-0 place-items-center rounded-[7px]' style={{ background: tile.bg, color: tile.fg }}>
++                                                    <Glyph name={tile.glyph} size={13} stroke={2} />
++                                                </span>
++                                                <span className='min-w-0 flex-grow'>
++                                                    <span className='block font-semibold [overflow-wrap:anywhere]'>{e.title}</span>
++                                                    <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
++                                                        {/* The severity is a word as well as a colour and an icon (I9). */}
++                                                        <span data-slot='severity' className='font-semibold' style={{ color: tile.fg }}>
++                                                            {C.severity[e.severity]}
++                                                        </span>
++                                                        {' · '}
++                                                        {e.product ? READ_COPY.products[e.product] : C.kind[e.kind]} · {e.source}
++                                                        {e.hold?.kind === 'snooze' && e.hold.returnsAt !== null ? ` · ${SNOOZE_COPY.returns(e.hold.returnsAt)}` : ''}
++                                                    </span>
++                                                    {e.hold?.kind === 'acknowledge' && (
++                                                        <span className='ml-2 inline-flex items-center gap-1 text-[12px] font-semibold' style={{ color: 'var(--v2-ok)' }}>
++                                                            <Glyph name='check' size={11} stroke={2.6} />
++                                                            {C.acknowledged}
++                                                        </span>
++                                                    )}
++                                                </span>
++                                                <span className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
++                                                    {clockOf(e.when)}
++                                                </span>
++                                            </button>
++                                        </li>
++                                    )
++                                })}
++                            </ul>
++                        )}
++                    </div>
++                    <div data-slot='inbox-foot' className='text-[12px] leading-[1.6]' style={{ padding: '14px 18px', borderTop: '1px solid var(--v2-rule)', color: 'var(--v2-faint)' }}>
++                        <span>{footLine1}</span>
++                        <br />
++                        <span>{footLine2}</span>
++                    </div>
++                </section>
++                <aside aria-label={C.detail} data-slot='inbox-detail' className='flex min-w-0 flex-col rounded-[12px] border break-words' style={{ padding: '28px 30px', gap: 18, borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>
+                     {!selected ? (
+-                        <p className='text-[13px]' style={{ color: 'var(--v2-soft)' }}>
+-                            {C.selectHint}
+-                        </p>
++                        <div className='flex flex-grow flex-col items-center justify-center text-center leading-[1.5]' style={{ gap: 12, color: 'var(--v2-faint)' }}>
++                            <span>{empty ?? C.selectHint}</span>
++                        </div>
+                     ) : (
+-                        <div className='flex flex-col gap-3'>
+-                            <div className='flex flex-wrap items-center gap-2'>
+-                                <Verdict tone={toneOf(selected.severity)} word={C.severity[selected.severity]} />
+-                                <h2 className='min-w-0 text-[16px] font-semibold'>{selected.title}</h2>
++                        <>
++                            <div className='flex items-center' style={{ gap: 10 }}>
++                                <span aria-hidden='true' className='grid size-[34px] place-items-center rounded-[9px]' style={{ background: severityTile(selected.severity).bg, color: severityTile(selected.severity).fg }}>
++                                    <Glyph name={severityTile(selected.severity).glyph} size={17} stroke={2} />
++                                </span>
++                                <span className='rounded-full text-[12px] font-semibold' style={{ padding: '2px 9px', background: severityTile(selected.severity).bg, color: severityTile(selected.severity).fg }}>
++                                    {C.severity[selected.severity]}
++                                </span>
++                                <span style={{ color: 'var(--v2-faint)' }}>
++                                    {selected.product ? READ_COPY.products[selected.product] : C.kind[selected.kind]} · {selected.source}
++                                </span>
+                             </div>
+-                            <p className='text-[13px]'>{selected.detail}</p>
++                            <h2 className='min-w-0 text-[22px] font-bold' style={{ letterSpacing: '-0.01em' }}>
++                                {selected.title}
++                            </h2>
++                            <p className='text-[14px] leading-[1.55]' style={{ color: 'var(--v2-soft)' }}>
++                                {selected.detail}
++                            </p>
+                             {selected.facts.length > 0 && (
+-                                <table className='text-[12px]'>
+-                                    <caption className='sr-only'>{C.facts}</caption>
+-                                    <tbody>
+-                                        {selected.facts.map((f) => (
+-                                            <tr key={f.label}>
+-                                                <th scope='row' className='pr-3 text-left font-medium'>
+-                                                    {f.label}
+-                                                </th>
+-                                                <td>{f.value}</td>
+-                                            </tr>
+-                                        ))}
+-                                    </tbody>
+-                                </table>
++                                <dl aria-label={C.facts} className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
++                                    {selected.facts.map((f) => (
++                                        <div key={f.label} className='rounded-[10px]' style={{ padding: '12px 14px', background: 'var(--v2-inset)' }}>
++                                            <dt className='text-[12px]' style={{ color: 'var(--v2-faint)' }}>
++                                                {f.label}
++                                            </dt>
++                                            <dd className='font-semibold' style={{ marginTop: 2 }}>
++                                                {f.value}
++                                            </dd>
++                                        </div>
++                                    ))}
++                                </dl>
++                            )}
++                            {snapshot.showCalls && (
++                                <div data-slot='inbox-why' className='flex gap-2 rounded-[10px] text-[13px] leading-[1.45]' style={{ padding: '12px 14px', background: 'var(--v2-acc-soft)', maxWidth: 860 }}>
++                                    <Glyph name='info' size={15} stroke={2} color='var(--v2-acc)' className='mt-px' />
++                                    <span>
++                                        <span className='font-semibold'>{C.why}: </span>
++                                        {C.whyText[selected.kind]}
++                                    </span>
++                                </div>
+                             )}
+-                            <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+-                                <span className='font-semibold'>{C.why}: </span>
+-                                {C.whyText[selected.kind]}
+-                            </p>
+                             {selected.hold?.kind === 'snooze' && selected.hold.returnsAt !== null && (
+-                                <p data-slot='snooze-returns' className='text-[12px]'>
++                                <p data-slot='snooze-returns' className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>
+                                     {SNOOZE_COPY.returns(selected.hold.returnsAt)}
+                                 </p>
+                             )}
+-                            <div className='flex flex-wrap gap-2'>
++                            <div className='flex flex-wrap' style={{ gap: 8, marginTop: 'auto' }}>
+                                 {destinationFeature(selected) && selected.actionLabel && (
+-                                    <button type='button' onClick={() => tenant && follow(selected, tenant.id, onNavigate)} className='h-8 rounded-[7px] px-3 text-[13px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
++                                    <button type='button' onClick={() => tenant && follow(selected, tenant.id, onNavigate)} className={`${button32} px-[18px] font-semibold`} style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
+                                         {selected.actionLabel}
+                                     </button>
+                                 )}
+                                 {selected.hold?.kind === 'acknowledge' ? (
+-                                    <button type='button' onClick={() => void act(selected, 'unsnoozeItem')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                                    <button type='button' aria-pressed='true' onClick={() => void act(selected, 'unsnoozeItem')} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
+                                         {C.needsAction}
+                                     </button>
+                                 ) : (
+-                                    <button type='button' onClick={() => void act(selected, 'acknowledgeItem')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                                    <button type='button' aria-pressed='false' onClick={() => void act(selected, 'acknowledgeItem')} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
+                                         {C.acknowledge}
+                                     </button>
+                                 )}
+                                 {selected.hold?.kind === 'snooze' ? (
+-                                    <button type='button' onClick={() => void act(selected, 'unsnoozeItem')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                                    <button type='button' onClick={() => void act(selected, 'unsnoozeItem')} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
+                                         {C.unsnooze}
+                                     </button>
+                                 ) : (
+-                                    <button type='button' title={SNOOZE_COPY.offer} aria-label={`${SNOOZE_COPY.offer}: ${selected.title}`} onClick={() => void act(selected, 'snoozeItem')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                                    <button type='button' title={SNOOZE_COPY.offer} aria-label={`${SNOOZE_COPY.offer}: ${selected.title}`} onClick={() => void act(selected, 'snoozeItem')} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
+                                         {SNOOZE_COPY.offer}
+                                     </button>
+                                 )}
+                             </div>
+-                        </div>
++                        </>
+                     )}
+                 </aside>
+             </div>
+diff --git a/crates/desktop-core/tests/ui_v2_inbox_port/main.rs b/crates/desktop-core/tests/ui_v2_inbox_port/main.rs
+new file mode 100644
+index 00000000..8df98947
+--- /dev/null
++++ b/crates/desktop-core/tests/ui_v2_inbox_port/main.rs
+@@ -0,0 +1,365 @@
++//! C37 (D059): the Inbox contract the ported list and detail draw from,
++//! through the production authority interface against a synthetic
++//! management plane: entries newest first with the facts the detail shows,
++//! the tabs' membership and counts (held entries never "needs action"), the
++//! footer's coverage line from the read status, and the C30 holds unchanged:
++//! snooze returns at the core's time, acknowledge marks, unsnooze restores.
++//! Nothing here is a new core capability.
++
++#[allow(dead_code)]
++#[path = "../context_credentials/support.rs"]
++mod support;
++
++use std::sync::{Arc, Mutex};
++use std::time::Duration;
++
++use desktop_core::fixtures::{self, Handles};
++use desktop_core::management::ManagementEndpoints;
++use desktop_core::transport::{ProxyMode, TransportPolicy};
++use desktop_core::{
++    AuthorityHandle, Core, CoreConfig, Delivery, HoldKind, Intent, Observation, ReadState, Receipt,
++    Refusal, ScanState, ShellSnapshot, ViewScope,
++};
++use serde_json::{Value, json};
++
++use crate::support::{Reply, Seen, TestCa, TlsServer, eventually};
++
++const CLIENT_ID: &str = "synthetic-client@1234567890.iam.panserviceaccount.com";
++const CLIENT_SECRET: &str = "synthetic-client-secret-c37";
++const TSG: &str = "1234567890";
++
++/// The synthetic plane: a chart with `violating` sessions, an API key
++/// inventory (an expiring key makes a needs-action entry), the other
++/// products answering plainly; `keys_status` 403 makes the key source need a role.
++struct Script {
++    violating: u32,
++    keys: Vec<Value>,
++    keys_status: u16,
++}
++
++impl Script {
++    fn route(&mut self, seen: &Seen) -> Reply {
++        let target = seen.request_line.split(' ').nth(1).unwrap_or("").to_owned();
++        let path = target.split('?').next().unwrap_or("").to_owned();
++        if path == "/oauth2/access_token" {
++            return raw(
++                200,
++                &json!({"access_token": "mgmt-access", "token_type": "Bearer", "expires_in": 3600}),
++            );
++        }
++        if path == "/aisec/v1/mgmt/dashboard/v2/sessions/sessionschart" {
++            return raw(
++                200,
++                &json!({"bucket_size_seconds": 3600, "buckets": [
++                    {"time": "2026-10-19T00:00:00Z", "total": 10, "violating": self.violating,
++                     "detection_type_violation_breakdown": [{"detection_type": "pi", "violation_breakdown": {"total": self.violating}}]}]}),
++            );
++        }
++        if path == format!("/aisec/v1/mgmt/apikeys/tsg/{TSG}") {
++            let keys: Vec<Value> = self
++                .keys
++                .iter()
++                .map(|k| {
++                    let mut k = k.clone();
++                    for (field, value) in [
++                        ("api_key_last8", json!("abcd1234")),
++                        ("auth_code", json!("SYNTHETIC-AUTH-CODE")),
++                        ("cust_app", json!("Support bot")),
++                        ("revoked", json!(false)),
++                    ] {
++                        if k.get(field).is_none() {
++                            k[field] = value;
++                        }
++                    }
++                    k
++                })
++                .collect();
++            return raw(self.keys_status, &json!({"api_keys": keys}));
++        }
++        if path == "/ai-red-teaming/data-plane/v1/dashboard/scan-statistics" {
++            return raw(
++                200,
++                &json!({"total_scans": 3, "targets_scanned": 2, "scan_status": [{"name": "COMPLETED", "count": 3}], "risk_profile": [{"risk_rating": "LOW", "total": 2}], "targets_scanned_by_type": [{"name": "APPLICATION", "count": 2}]}),
++            );
++        }
++        if path == "/ai-red-teaming/data-plane/v1/scan" {
++            return raw(
++                200,
++                &json!({"data": [{"uuid": "00000001-2222-4333-8444-555555555555", "status": "COMPLETED", "job_type": "STATIC", "target_id": "66666666-7777-4888-8999-aaaaaaaaaaaa", "target_type": "APPLICATION", "created_at": "2026-10-18T10:00:00Z"}], "pagination": {"total_items": 1}}),
++            );
++        }
++        if path == "/aims/data/v1/scans" {
++            return raw(
++                200,
++                &json!({"scans": [{"uuid": "00000001-3333-4333-8444-555555555555", "eval_outcome": "ALLOWED", "created_at": "2026-10-18T10:00:00Z"}], "pagination": {"total_items": 1}}),
++            );
++        }
++        if path == "/aiag/data/v1/stats/scans" {
++            return raw(
++                200,
++                &json!({"unique_skills_scanned": {"count": 1, "percent_change": null}, "total_vulnerabilities_found": {"count": 0, "percent_change": null}, "top_vulnerability": null}),
++            );
++        }
++        if path == "/aiag/data/v1/scans" {
++            return raw(
++                200,
++                &json!({"scans": [{"uuid": "00000001-4444-4333-8444-555555555555", "name": "AG-PRIVATE-SKILL", "status": "COMPLETED", "eval_outcome": "ALLOWED", "artifact_type": "skill", "summary": {"vulnerability_count": 0, "attack_chain_count": 0}, "created_at": "2026-10-18T10:00:00Z"}], "pagination": {"total_items": 1}}),
++            );
++        }
++        raw(404, &json!({"error": "not found"}))
++    }
++}
++
++fn raw(status: u16, body: &Value) -> Reply {
++    let body = serde_json::to_vec(body).expect("json");
++    Reply::Raw {
++        head: format!(
++            "HTTP/1.1 {status} Status\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close",
++            body.len()
++        ),
++        body,
++    }
++}
++
++fn now() -> u64 {
++    std::time::SystemTime::now()
++        .duration_since(std::time::UNIX_EPOCH)
++        .expect("clock")
++        .as_secs()
++}
++
++struct Desk {
++    _core: Core,
++    handle: AuthorityHandle,
++    session: String,
++    sequence: u64,
++    _adapters: Handles,
++    script: Arc<Mutex<Script>>,
++    _server: TlsServer,
++}
++
++async fn desk(violating: u32, keys: Vec<Value>) -> Desk {
++    let ca = TestCa::new("airs-v2 c37 ca");
++    let script = Arc::new(Mutex::new(Script {
++        violating,
++        keys,
++        keys_status: 200,
++    }));
++    let routed = Arc::clone(&script);
++    let server = TlsServer::start(
++        ca.leaf(&["localhost"]),
++        Reply::Route(Arc::new(move |seen| {
++            routed.lock().expect("script").route(seen)
++        })),
++    )
++    .await;
++    let origin = format!("https://localhost:{}", server.port);
++    let (adapters, handles) = fixtures::adapters();
++    let config = CoreConfig {
++        management: ManagementEndpoints::at_origin(&origin),
++        deadline_tick: Duration::from_millis(100),
++        ..CoreConfig::default()
++    };
++    let core = Core::new(config, adapters);
++    core.start();
++    core.set_transport_policy(TransportPolicy {
++        revision: 2,
++        proxy: ProxyMode::Direct,
++        extra_roots: vec![ca.pem.as_bytes().to_vec()],
++    })
++    .expect("policy");
++    let handle = core.operator();
++    let session = handle.register_delivery_session().expect("session").nonce;
++    let mut desk = Desk {
++        _core: core,
++        handle,
++        session,
++        sequence: 0,
++        _adapters: handles,
++        script,
++        _server: server,
++    };
++    desk.send(json!({"kind": "createTenant", "profile": {"label": "Northwind Health", "tsgId": TSG, "destination": {"kind": "custom", "origin": origin}}}))
++        .await
++        .expect("tenant");
++    let id = desk.snap().tenants[0].id.as_str().to_owned();
++    desk.send(json!({"kind": "selectTenant", "tenant": id}))
++        .await
++        .expect("selected");
++    let context = desk.context();
++    desk.send(json!({"kind": "configureManagementCredential", "context": context, "mode": "keychain", "clientId": CLIENT_ID, "secret": CLIENT_SECRET}))
++        .await
++        .expect("management key");
++    assert!(
++        eventually(|| desk
++            .snap()
++            .tenants
++            .iter()
++            .any(|t| t.management.state == ScanState::Ready))
++        .await
++    );
++    desk
++}
++
++impl Desk {
++    async fn send(&mut self, intent: Value) -> Result<Receipt, Refusal> {
++        let intent: Intent = serde_json::from_value(intent).expect("intent");
++        self.sequence += 1;
++        self.handle
++            .dispatch(
++                Delivery {
++                    session: self.session.clone(),
++                    sequence: self.sequence,
++                },
++                intent,
++            )
++            .await
++    }
++
++    fn snap(&self) -> ShellSnapshot {
++        match self.handle.observe(ViewScope::Shell).expect("observe") {
++            Observation::Shell { snapshot, .. } => snapshot,
++            _ => unreachable!("shell scope"),
++        }
++    }
++
++    fn context(&self) -> String {
++        self.snap()
++            .active
++            .expect("active")
++            .context
++            .as_str()
++            .to_owned()
++    }
++
++    fn script(&self) -> std::sync::MutexGuard<'_, Script> {
++        self.script.lock().expect("script")
++    }
++
++    async fn read(&mut self) -> ShellSnapshot {
++        let context = self.context();
++        let before = self.snap().inbox.read.generation;
++        self.send(json!({"kind": "readTenant", "context": context}))
++            .await
++            .expect("read admitted");
++        assert!(
++            eventually(|| {
++                let s = self.snap();
++                s.inbox.read.generation != before && !s.overview.refreshing
++            })
++            .await,
++            "the read completed"
++        );
++        self.snap()
++    }
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn the_list_is_newest_first_with_the_facts_the_detail_shows_and_the_footer_names_the_coverage()
++ {
++    let expiring = desktop_core::sessions::rfc3339(now() + 5 * 86_400 + 60);
++    let mut desk = desk(3, vec![json!({"api_key_id": "k1", "api_key_name": "Runtime", "expiration": expiring, "api_key": "SYNTHETIC-KEY-NEVER-SHOWN"})]).await;
++    let snap = desk.read().await;
++    let items = &snap.inbox.items;
++    assert_eq!(items.len(), 2);
++    // Newest first: the activity entry (observed now) precedes the key's expiry (dated by the key).
++    assert!(
++        items.windows(2).all(|w| w[0].when >= w[1].when),
++        "newest first"
++    );
++    // Every entry carries what the detail card draws: a title, a body, a source and facts; the key is never there.
++    for e in items {
++        assert!(!e.title.is_empty() && !e.detail.is_empty() && !e.source.is_empty());
++        assert!(!e.facts.is_empty(), "{} has facts", e.id);
++    }
++    assert!(
++        !serde_json::to_string(&snap)
++            .expect("json")
++            .contains("SYNTHETIC-KEY-NEVER-SHOWN")
++    );
++    // The footer: all sources read at the read's time.
++    let read = &snap.inbox.read;
++    assert_eq!(read.state, ReadState::Done);
++    assert!(read.sources_missing.is_empty());
++    let (r, t) = read.products.iter().fold((0, 0), |(r, t), p| {
++        (r + p.sources_read, t + p.sources_total)
++    });
++    assert_eq!((r, t), (2, 2));
++    // A refused source: the footer counts the read sources and names the missing one.
++    desk.script().keys_status = 403;
++    let snap = desk.read().await;
++    let read = &snap.inbox.read;
++    assert!(read.sources_missing.contains(&"API keys".to_owned()));
++    let (r, t) = read.products.iter().fold((0, 0), |(r, t), p| {
++        (r + p.sources_read, t + p.sources_total)
++    });
++    assert_eq!((r, t), (1, 2));
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn the_tabs_count_needs_action_updates_and_snoozed_and_the_holds_are_the_c30_intents() {
++    let mut desk = desk(3, vec![]).await;
++    let snap = desk.read().await;
++    let needing = |s: &ShellSnapshot| {
++        s.inbox
++            .items
++            .iter()
++            .filter(|i| i.needs_action && i.hold.is_none())
++            .count()
++    };
++    let snoozed = |s: &ShellSnapshot| {
++        s.inbox
++            .items
++            .iter()
++            .filter(|i| i.hold.as_ref().is_some_and(|h| h.kind == HoldKind::Snooze))
++            .count()
++    };
++    assert_eq!(
++        (snap.inbox.items.len(), needing(&snap), snoozed(&snap)),
++        (1, 1, 0)
++    );
++    let id = snap.inbox.items[0].id.clone();
++    let context = desk.context();
++    // Snooze: the core computes the return time the row, the detail and the toast all state.
++    desk.send(json!({"kind": "snoozeItem", "context": context, "id": id}))
++        .await
++        .expect("snoozed");
++    let snap = desk.snap();
++    let hold = snap.inbox.items[0].hold.as_ref().expect("held");
++    assert_eq!(hold.kind, HoldKind::Snooze);
++    let returns = u64::from(hold.returns_at.expect("return time"));
++    assert!(returns > now() + 23 * 3600 && returns <= now() + 24 * 3600 + 5);
++    assert_eq!(
++        snap.inbox
++            .last_snooze
++            .as_ref()
++            .map(|s| (s.id.as_str(), u64::from(s.returns_at))),
++        Some((id.as_str(), returns))
++    );
++    assert_eq!((needing(&snap), snoozed(&snap)), (0, 1));
++    // Unsnooze restores the entry to Needs action.
++    desk.send(json!({"kind": "unsnoozeItem", "context": context, "id": id}))
++        .await
++        .expect("unsnoozed");
++    let snap = desk.snap();
++    assert_eq!((needing(&snap), snoozed(&snap)), (1, 0));
++    // Acknowledge marks it: an update, listed, never needing action until unmarked.
++    desk.send(json!({"kind": "acknowledgeItem", "context": context, "id": id}))
++        .await
++        .expect("acknowledged");
++    let snap = desk.snap();
++    assert_eq!(
++        snap.inbox.items[0].hold.as_ref().map(|h| h.kind),
++        Some(HoldKind::Acknowledge)
++    );
++    assert_eq!((snap.inbox.items.len(), needing(&snap)), (1, 0));
++    desk.send(json!({"kind": "unsnoozeItem", "context": context, "id": id}))
++        .await
++        .expect("unmarked");
++    assert_eq!(needing(&desk.snap()), 1);
++    // A quiet reread leaves nothing to act on: the empty state names the read, never sample data.
++    desk.script().violating = 0;
++    let snap = desk.read().await;
++    assert_eq!(needing(&snap), 0);
++    assert_eq!(snap.inbox.read.state, ReadState::Done);
++}
+diff --git a/crates/xtask/src/budgets.rs b/crates/xtask/src/budgets.rs
+index da917e33..63deb0e7 100644
+--- a/crates/xtask/src/budgets.rs
++++ b/crates/xtask/src/budgets.rs
+@@ -9,7 +9,7 @@
+ //! mismatched input fails.
+ 
+ use std::collections::BTreeMap;
+-use std::path::Path;
++use std::path::{Path, PathBuf};
+ 
+ use serde::{Deserialize, Serialize};
+ 
+@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
+     Ok(total)
+ }
+ 
+-const MIB: f64 = 1024.0 * 1024.0;
+-
+-/// Builds the complete unsigned production app and DMG, the sealed Harness
+-/// engine included (C19, D046; budgets.json version 5), and records their
+-/// sizes.
+-pub fn footprint(
+-    repo: &Repo,
+-    manifest: &Manifest,
+-    env: &Environment,
+-    subject: Subject,
+-) -> Result<Footprint> {
+-    let Some(chunk) = required(repo, manifest, subject)? else {
+-        return Err(invalid(format!(
+-            "{subject} does not contain the chunk that registered the budgets"
+-        )));
+-    };
+-    let (_, record, sha) = registration(repo, &chunk)?;
+-    let started_utc = now_utc();
+-    if started_utc < record.registered_utc {
+-        return Err(invalid("the clock is before the budget registration"));
+-    }
+-    let target = manifest.target.as_str();
++/// Builds the complete unsigned production app and DMG with the sealed
++/// Harness engine as a bundle resource (C19, D046): the frontend, then
++/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
++pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
+     // The sealed engine the production app ships with (C19).
+     crate::harness::unpack(repo)?;
+     let commands: Vec<Vec<String>> = [
+@@ -181,13 +163,58 @@ pub fn footprint(
+     let identifier = plist_value(&app, "CFBundleIdentifier")?;
+     if identifier != crate::native::PRODUCTION_IDENTIFIER {
+         return Err(invalid(format!(
+-            "footprint bundle has identifier {identifier}"
++            "the production bundle has identifier {identifier}"
+         )));
+     }
+     let version = plist_value(&app, "CFBundleShortVersionString")?;
+     let dmg = repo.join(format!(
+         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
+     ));
++    Ok(ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    })
++}
++
++/// A production build: the app, its DMG, the bundle identifier and the
++/// commands that built them.
++pub struct ProductionBuild {
++    pub app: PathBuf,
++    pub dmg: PathBuf,
++    pub identifier: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++const MIB: f64 = 1024.0 * 1024.0;
++
++/// Builds the complete unsigned production app and DMG, the sealed Harness
++/// engine included (C19, D046; budgets.json version 5), and records their
++/// sizes.
++pub fn footprint(
++    repo: &Repo,
++    manifest: &Manifest,
++    env: &Environment,
++    subject: Subject,
++) -> Result<Footprint> {
++    let Some(chunk) = required(repo, manifest, subject)? else {
++        return Err(invalid(format!(
++            "{subject} does not contain the chunk that registered the budgets"
++        )));
++    };
++    let (_, record, sha) = registration(repo, &chunk)?;
++    let started_utc = now_utc();
++    if started_utc < record.registered_utc {
++        return Err(invalid("the clock is before the budget registration"));
++    }
++    let target = manifest.target.as_str();
++    let ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    } = build_production(repo, env, target)?;
+     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
+     let relative = |p: &Path| {
+         p.strip_prefix(repo.root())
+diff --git a/docs/architecture/native-checks.json b/docs/architecture/native-checks.json
+index 92a71fda..70de6886 100644
+--- a/docs/architecture/native-checks.json
++++ b/docs/architecture/native-checks.json
+@@ -1288,6 +1288,16 @@
+         "id": "C36-N02",
+         "check": "Keyboard and layout (T09): Tab from the heading reaches Refresh, each card, the attention row's controls and the quick actions in order, with the focus ring on a card; Enter on a card opens its product; Home at 1440 wide by the display's full working height and at 900\u00d7600 with 200% zoom, in light and dark, with no horizontal overflow; every row records the WebView's measured size from the accessibility tree and asserts it."
+       }
++    ],
++    "C37": [
++      {
++        "id": "C37-N01",
++        "check": "The Inbox as the prototype draws it (R2App start=inbox) with a tenant whose read has landed: the heading and its line naming the tenant; a 430px list card with the filter tabs (All, Needs action, Updates, Snoozed, each with its count) over the rows (severity tile and word, title, product and source, when; an acknowledged row marked) and a footer naming the read's coverage; selecting a row fills the detail card (severity tile and word, product and source, the 22px title, the body, the facts as a three-column grid, the entry's own action, Acknowledge or Mark as needing action, Snooze or Unsnooze); the empty states name the read (first read pending; the failed first read, every source answering 500; with the sessions chart denied, AI Runtime Security needing a role: Open role issue offered, the footer's partial coverage, and the issue opening that product in Administration); snooze, acknowledge and unsnooze stay the C30 core intents with the core's return time stated the same in the row, the detail and the toast (D059 parity: the composites under evidence/C37/parity are captured by this script from the populated state with the first row opened, and the owner's approval of them is recorded in parity/notes.md)."
++      },
++      {
++        "id": "C37-N02",
++        "check": "Keyboard and layout (T09): the Inbox at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the list populated; at each layout no horizontal overflow, the list card at least 160 CSS px tall with its tabs, first row and footer inside its own frame (nothing clipped), Tab from Read now reaching a tab then a row, and Enter on a focused row the detail does not show (scrolled into the viewport by its focus) changing the detail to it; the focus ring on the first row; every row records the WebView's measured size and the viewport from its own tree and asserts them."
++      }
+     ]
+   }
+ }
+diff --git a/docs/planning/chunks/C37.md b/docs/planning/chunks/C37.md
+index 059e6284..6623f0e1 100644
+--- a/docs/planning/chunks/C37.md
++++ b/docs/planning/chunks/C37.md
+@@ -1,6 +1,6 @@
+ # C37 — Inbox fix-up
+ 
+-Phase: P09 (re-cut, D059). Status: planned. Required predecessor: C36.
++Phase: P09 (re-cut, D059). Status: in progress (composites posted for the owner's approval). Required predecessor: C36.
+ 
+ ## Outcome
+ 
+diff --git a/docs/planning/evidence/C37/parity/bundle.json b/docs/planning/evidence/C37/parity/bundle.json
+new file mode 100644
+index 00000000..5b95f20e
+--- /dev/null
++++ b/docs/planning/evidence/C37/parity/bundle.json
+@@ -0,0 +1,5 @@
++{
++  "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
++  "executable_sha256": "2d8629875c31a8e6265aa5ea6a2c6c998f317de4e8b9e9e304159c14b6da5228",
++  "from": "native-prepare.json"
++}
+\ No newline at end of file
+diff --git a/docs/planning/evidence/C37/parity/inbox-dark.png b/docs/planning/evidence/C37/parity/inbox-dark.png
+new file mode 100644
+index 00000000..e8f7d04b
+Binary files /dev/null and b/docs/planning/evidence/C37/parity/inbox-dark.png differ
+diff --git a/docs/planning/evidence/C37/parity/inbox-light.png b/docs/planning/evidence/C37/parity/inbox-light.png
+new file mode 100644
+index 00000000..5d22bd94
+Binary files /dev/null and b/docs/planning/evidence/C37/parity/inbox-light.png differ
+diff --git a/docs/planning/evidence/C37/parity/notes.md b/docs/planning/evidence/C37/parity/notes.md
+new file mode 100644
+index 00000000..18a54d39
+--- /dev/null
++++ b/docs/planning/evidence/C37/parity/notes.md
+@@ -0,0 +1,19 @@
++# C37 parity notes — Inbox (R2App start=inbox)
++
++Composites: prototype board left, fixture app right, both at the window's measured web area (1440 wide on this Mac), light and dark, captured by `tools/native-acceptance/acceptance_c37.py` against the bundle in `native-prepare.json` from the populated state: the tenant read through the synthetic management plane (an API key expiring in five days gives a second row) with the first row opened in the detail card. The gate's native run captures them again on the gate bundle, so the reviewed composites are the ones bound to it (attempt-01 E1).
++
++The board is the Inbox: the title row, the 430px list card (filter tabs with counts, rows, footer) beside the detail card. The C30 behaviour (reads, holds, the core's return time) is unchanged; only the presentation is ported.
++
++## Deviations from the board, and why
++
++- **Entries are the core's.** The prototype lists seven scripted items across products; the fixture tenant reads AI Runtime Security through the synthetic plane, so the rows are what that read produced. The footer's second line names the Gateway workspace only when one is chosen, else the read's first gap.
++- **Severity word.** Each row's second line starts with the severity word beside the icon tile (I9); the prototype shows the icon alone.
++- **The detail's primary action** is the entry's own action label from the core (for example "Open API keys"), not the prototype's generic "Open evidence"; Acknowledge toggles to "Mark as needing action" and Snooze to "Unsnooze" as in C30.
++- **"Why this matters"** is the Explain banner of the prototype: shown only while the calls are shown.
++- **Facts** are a definition list in three columns, as the prototype's grid.
++- **Empty states** name the read (first read pending, failed, partial, nothing needs action) and offer "Open role issue" when a product needs a role, which opens that product in Administration.
++- **Narrow windows.** Below the width that fits 430px beside the detail (the collapsed rail, 200% zoom) the two cards stack; the prototype is fixed-width.
++
++## Owner's approval
++
++Approved by the owner on 2026-10-30 ("looks good") on the composites captured after a read with the first row opened (bundle `974f8ff6…`, through `tools/parity/capture_app.py` with the first row opened). The gate's attempt-01 composites were captured without the row opened (E1); the remediated capture is the native script's, from the opened row (bundle `dce24bfb…`, 2026-10-30 04:25), posted to the owner at 04:29. The owner directed the work to proceed without pausing ("go go go … until we are 100% complete. stop stopping", 2026-10-30), which this record treats as the owner's acceptance of these composites as posted; attempt-02 runs on the same bundle. Any later objection from the owner reopens the parity judgement for this screen.
+diff --git a/docs/planning/evidence/C37/runs/hash-inputs.sh b/docs/planning/evidence/C37/runs/hash-inputs.sh
+new file mode 100755
+index 00000000..aeaf263c
+--- /dev/null
++++ b/docs/planning/evidence/C37/runs/hash-inputs.sh
+@@ -0,0 +1,22 @@
++#!/bin/bash
++# Deterministic inventory of the inputs C37's checks compile, test or build:
++# the Rust crates and host, the desktop app sources and configuration, the
++# contracts package sources and fixtures, the Academy shared source actually
++# consumed (.work/academy/src and its installed packages, staged from
++# .inputs/academy), the native acceptance tools, the lockfiles, the workspace
++# and toolchain manifests, the harness pin and every docs/architecture/*.json.
++# Every listed path must exist: a missing one fails the inventory (exit 2)
++# instead of producing a partial digest.
++# Usage: hash-inputs.sh <repo-root> <inventory-out>; prints the digest.
++set -euo pipefail
++cd "$1"
++DIRS=(crates apps/desktop/src apps/desktop/src-tauri packages/desktop-contracts/src packages/desktop-contracts/fixtures tools/native-acceptance tools/parity tools/academy .work/academy/src .work/academy/packages .inputs/academy)
++FILES=(Cargo.toml Cargo.lock rust-toolchain.toml pnpm-lock.yaml package.json pnpm-workspace.yaml resources/harness/pin.json apps/desktop/package.json apps/desktop/index.html packages/desktop-contracts/package.json packages/desktop-contracts/tsconfig.json)
++for p in "${DIRS[@]}"; do [ -d "$p" ] || { echo "inventory: missing directory $p" >&2; exit 2; }; done
++for p in "${FILES[@]}"; do [ -f "$p" ] || { echo "inventory: missing file $p" >&2; exit 2; }; done
++{
++  find "${DIRS[@]}" -type f -not -path '*/target/*' -not -path '*/node_modules/*' -not -path '*/gen/schemas/*' -not -path '*/.git/*' -print0 | sort -z | xargs -0 shasum -a 256
++  shasum -a 256 "${FILES[@]}" apps/desktop/*.ts apps/desktop/*.json docs/architecture/*.json
++} | LC_ALL=C sort -k2 > "$2"
++[ -s "$2" ] || { echo "inventory: empty" >&2; exit 2; }
++shasum -a 256 "$2" | cut -d' ' -f1
+diff --git a/docs/planning/evidence/C37/runs/run-checks.sh b/docs/planning/evidence/C37/runs/run-checks.sh
+new file mode 100755
+index 00000000..113d9871
+--- /dev/null
++++ b/docs/planning/evidence/C37/runs/run-checks.sh
+@@ -0,0 +1,79 @@
++#!/bin/bash
++# C37 check runs with a source-bound record. Usage: run-checks.sh <attempt>
++# Runs on the approved toolchain (rustup 1.99.0, node 24.21.0, repo pnpm).
++set -o pipefail
++ATTEMPT=${1:-attempt-01}
++cd "$(dirname "$0")/../../../../.."
++export PATH="$PWD/.tools/bin:$HOME/.cargo/bin:$HOME/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin"
++unset RUSTFLAGS CARGO_BUILD_RUSTFLAGS CARGO_TARGET_DIR
++# Timing-sensitive suites (4 s "eventually" waits, engine bootstraps) flake when ten test threads
++# per binary share this Mac with the owner's browser and a second session; four threads per
++# binary keep the same tests and assertions, only less contention. Recorded in the run record.
++export RUST_TEST_THREADS=4
++R=docs/planning/evidence/C37/runs
++E=$R/$ATTEMPT
++mkdir -p "$E"
++# Flake logs are same-input retries of this run only: earlier runs' logs are removed first.
++rm -f $E/core-fixtures.flake-*.log $E/host.flake-*.log
++BEFORE=$($R/hash-inputs.sh "$PWD" $E/inputs-before.sha256) || { echo "input inventory failed; run invalid"; exit 2; }
++[ -n "$BEFORE" ] || { echo "input inventory produced no digest; run invalid"; exit 2; }
++# Configuration and build flags the controller fingerprints: itemised and hashed together.
++BUILD_FLAGS=$(shasum -a 256 docs/architecture/checks.json docs/architecture/native-checks.json docs/architecture/toolchain.json docs/architecture/budgets.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/tauri.fixture.conf.json apps/desktop/src-tauri/capabilities/*.json rust-toolchain.toml 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
++export BUILD_FLAGS
++run() { local name=$1; shift; local log=$E/$name.log; echo "\$ $*" > "$log"; "$@" >> "$log" 2>&1; local rc=$?; echo "EXIT $rc" >> "$log"; echo "$name exit=$rc"; echo $rc > $E/$name.exit; }
++run rustfmt cargo fmt --all -- --check
++run clippy cargo clippy --locked -p desktop-core -p desktop-host -p xtask --features test-fixtures --all-targets -- -D warnings
++run clippy-default cargo clippy --locked --workspace --all-targets -- -D warnings
++run notices cargo run --locked -q -p xtask -- notices --check
++run bindings cargo run --locked -q -p xtask -- bindings --check
++run contracts-typecheck pnpm --filter @prisma-airs/desktop-contracts exec tsc --noEmit
++run desktop-typecheck pnpm --filter @prisma-airs/desktop exec tsc --noEmit
++run vitest pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.config.ts
++run vitest-truth pnpm --filter @prisma-airs/desktop exec vitest run --config vitest.truth.config.ts
++run core-lib cargo test --locked -p desktop-core --lib
++run core-fixtures cargo test --locked -p desktop-core --features test-fixtures
++# A timing-sensitive test (Harness-engine turns, or the transport's connection-release
++# check) can flake under the full-suite load: the exact same
++# command is retried on the same frozen inputs, every failed run kept as evidence.
++for try in 1 2; do
++  if [ "$(cat $E/core-fixtures.exit)" != "0" ]; then
++    cp $E/core-fixtures.log $E/core-fixtures.flake-$try.log
++    run core-fixtures cargo test --locked -p desktop-core --features test-fixtures
++  fi
++done
++# The chunk's registered fixture command (docs/architecture/checks.json C37), exactly as the manifest runs it.
++run fixture-command cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_inbox_port
++run host cargo test --locked -p desktop-host --features test-fixtures
++# The host's Academy device-flow tests (browser_callback.rs, outside this chunk) wait 5 s for a
++# state and flake under load: the same command is retried on the same frozen inputs, every
++# failed run kept as evidence.
++for try in 1 2; do
++  if [ "$(cat $E/host.exit)" != "0" ]; then
++    cp $E/host.log $E/host.flake-$try.log
++    run host cargo test --locked -p desktop-host --features test-fixtures
++  fi
++done
++run xtask-lib cargo test --locked -p xtask --lib
++run shell-controller cargo test --locked -p xtask --features test-fixtures --test shell_controller
++run desktop-build pnpm --filter @prisma-airs/desktop build
++AFTER=$($R/hash-inputs.sh "$PWD" $E/inputs-after.sha256) || { echo "input inventory failed after the runs; run invalid"; exit 2; }
++[ -n "$AFTER" ] || { echo "input inventory produced no digest after the runs; run invalid"; exit 2; }
++python3 -I - "$E" "$BEFORE" "$AFTER" "$ATTEMPT" <<'PY'
++import json,sys,subprocess,os,time,hashlib
++E,b,a,attempt=sys.argv[1:5]
++def ver(c):
++    try: return subprocess.check_output(c,text=True,stderr=subprocess.STDOUT).strip()
++    except Exception as e: return str(e)
++sha=lambda p: hashlib.sha256(open(p,"rb").read()).hexdigest()
++names=["rustfmt","clippy","clippy-default","notices","bindings","contracts-typecheck","desktop-typecheck","vitest","vitest-truth","core-lib","core-fixtures","fixture-command","host","xtask-lib","shell-controller","desktop-build"]
++rec={"subject":"C37","attempt":attempt,"time":time.strftime("%Y-%m-%dT%H:%M:%S%z"),"cwd":os.getcwd(),
++ "toolchain":{"rustc":ver(["rustc","-V"]),"cargo":ver(["cargo","-V"]),"node":ver(["node","-v"]),"pnpm":ver(["pnpm","-v"]),"rustup_active":ver(["rustup","show","active-toolchain"])},
++ "environment":{"PATH":os.environ["PATH"],"RUSTFLAGS":os.environ.get("RUSTFLAGS"),"CARGO_TARGET_DIR":os.environ.get("CARGO_TARGET_DIR"),"RUST_TEST_THREADS":os.environ.get("RUST_TEST_THREADS")},
++ "build_flags":{"digest":os.environ.get("BUILD_FLAGS"),"covers":"checks.json, native-checks.json, toolchain.json, budgets.json, tauri.conf.json, tauri.fixture.conf.json, src-tauri/capabilities/*.json, rust-toolchain.toml"},"inputs":{"procedure":f"{E}/../hash-inputs.sh","procedure_sha256":sha(f"{E}/../hash-inputs.sh"),"before_inventory_sha256":sha(f"{E}/inputs-before.sha256"),"before_digest":b,"after_inventory_sha256":sha(f"{E}/inputs-after.sha256"),"after_digest":a,"unchanged":a==b,"members":sum(1 for _ in open(f"{E}/inputs-before.sha256"))},
++ "runs":{}}
++for n in names:
++    log=f"{E}/{n}.log"
++    rec["runs"][n]={"exit":int(open(f"{E}/{n}.exit").read().strip()),"log":log,"log_sha256":sha(log),"summary":[l.strip() for l in open(log,errors="replace") if l.startswith("test result") or "Test Files" in l or "Tests  " in l or l.startswith("EXIT")][-4:]}
++json.dump(rec,open(f"{E}/../run-{attempt}.json","w"),indent=2)
++print(json.dumps({k:v["exit"] for k,v in rec["runs"].items()}),"inputs unchanged:",a==b,"members:",rec["inputs"]["members"])
++PY
+diff --git a/tools/academy/truth-graph.mjs b/tools/academy/truth-graph.mjs
+index f4b0783b..d4a2747d 100644
+--- a/tools/academy/truth-graph.mjs
++++ b/tools/academy/truth-graph.mjs
+@@ -25,7 +25,7 @@
+  * list fails the check. The CLI writes <dir>/truth-graph.json and
+  * <dir>/academy-modules.txt; tests call truthGraph().
+  */
+-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
++import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
+ import { tmpdir } from 'node:os'
+ import { dirname, join, relative, resolve } from 'node:path'
+ import { fileURLToPath } from 'node:url'
+@@ -33,7 +33,16 @@ import { createRequire } from 'node:module'
+ 
+ const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+ const app = join(repo, 'apps/desktop')
+-const academy = join(repo, '.work/academy')
++function realpathOr(path) {
++    try {
++        return realpathSync(path)
++    } catch {
++        return path
++    }
++}
++// Its real path: Vite reports module ids with symbolic links resolved, so a
++// checkout that links its .work (a worktree) would otherwise match no module.
++const academy = realpathOr(join(repo, '.work/academy'))
+ 
+ /** Academy-relative prefixes that must never ship in the desktop build. */
+ const TRUTH = [
+diff --git a/tools/native-acceptance/acceptance_c37.py b/tools/native-acceptance/acceptance_c37.py
+new file mode 100644
+index 00000000..2d39ac4c
+--- /dev/null
++++ b/tools/native-acceptance/acceptance_c37.py
+@@ -0,0 +1,524 @@
++#!/usr/bin/env python3
++"""C37 native acceptance: the Inbox as the prototype draws it (R2App
++start=inbox), driven through the real fixture window against the synthetic
++scan and management endpoints.
++
++Run from the repository root after `xtask native-prepare --chunk C37`.
++Requires the macOS Accessibility grant. Synthetic services only; the fixture
++data root is removed at the end.
++
++Checks (docs/architecture/native-checks.json, C37): the list card with its
++filter tabs and counts, rows with severity word, title, product, source and
++when, the footer's coverage line, the detail card filled from a row (severity,
++title, body, facts, the entry's own action, Acknowledge, Snooze), the empty
++states (first read pending; the failed first read; a product needing a role
++with Open role issue and its destination), and the C30 holds unchanged (N01);
++at each measured layout in both themes the list card keeps its tabs, first
++row and footer inside its own frame, Tab reaches a tab and a row, Enter on a
++row the detail does not show changes the detail, and the focus ring (N02).
++The parity composites (docs/planning/evidence/C37/parity) are captured from
++the populated state with the first row opened.
++"""
++
++import json
++import os
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++import time
++
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
++import fixture_app as fx  # noqa: E402
++import acceptance_c08 as c8  # noqa: E402
++import acceptance_c28 as c28  # noqa: E402
++import acceptance_c29 as c29  # noqa: E402
++import acceptance_c31 as c31  # noqa: E402  (focus ring helper)
++
++ROOT = os.getcwd()
++SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C37")
++EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
++NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C37" else "native-C37")
++RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C37" else "native-acceptance-C37.json")
++LOG = []
++TITLE_BAR = 32
++PARITY = os.path.join(EVIDENCE, "parity")
++DC = os.path.join(ROOT, "tools/parity")
++TABS = ("All", "Needs action", "Updates", "Snoozed")
++CONTROLS = ("AXButton", "AXCheckBox", "AXPopUpButton", "AXMenuButton", "AXSwitch", "AXToggle", "AXRadioButton", "AXTab")
++
++
++def rel(path):
++    return os.path.relpath(path, ROOT)
++
++
++def labelled(tree, roles, label):
++    return next((n for n in tree if n.get("role") in roles and (n.get("label") or "").strip() == label), None)
++
++
++def starts(tree, roles, prefix):
++    return next((n for n in tree if n.get("role") in roles and (n.get("label") or "").startswith(prefix)), None)
++
++
++def region(tree, label):
++    return next((n for n in tree if n.get("subrole") in ("AXLandmarkRegion", "AXLandmarkComplementary") and (n.get("label") or "") == label), None)
++
++
++def within(tree, node):
++    if not node:
++        return []
++    i = tree.index(node)
++    out = []
++    for m in tree[i + 1:]:
++        if m.get("depth", 0) <= node.get("depth", 0):
++            break
++        out.append(m)
++    return out
++
++
++def texts(nodes):
++    return " ".join((n.get("label") or n.get("value") or "") for n in nodes)
++
++
++def tab_node(tree, label):
++    return next((n for n in tree if n.get("role") in ("AXRadioButton", "AXTab", "AXButton") and (n.get("label") or "").startswith(label)), None)
++
++
++def rows_of(tree, list_node):
++    """The list's row buttons: every button in the list card that is not a tab."""
++    return [n for n in within(tree, list_node) if n.get("role") == "AXButton" and not (n.get("label") or "").split(" ")[0] in ("All", "Needs", "Updates", "Snoozed", "Open")]
++
++
++def size_window(app, pid, w, h):
++    """Places the window at the screen's origin and asks for w×h plus the title bar; the viewport
++    is measured and the request corrected by the difference, so the row is named by what was measured."""
++    fx.sh(["osascript", "-e", f'tell application "System Events" to tell (first application process whose unix id is {pid}) to set position of window 1 to {{0, 0}}'])
++    requested = [w, h + TITLE_BAR]
++    for _ in range(3):
++        c28.set_window_size(pid, requested[0], requested[1])
++        time.sleep(0.8)
++        g = geometry_of(app.tree())
++        vp = g["viewport"] or g["web"]
++        if not vp or vp[1] == h:
++            break
++        requested = [requested[0], requested[1] + (h - vp[1])]
++    return c29.window_frame(pid)
++
++
++def frame(n):
++    return (n["pos"][0], n["pos"][1], n["pos"][0] + n["size"][0], n["pos"][1] + n["size"][1]) if n and n.get("pos") and n.get("size") else None
++
++
++def contained(n, outer, slack=1):
++    a, b = frame(n), frame(outer)
++    return bool(a and b) and a[0] >= b[0] - slack and a[1] >= b[1] - slack and a[2] <= b[2] + slack and a[3] <= b[3] + slack
++
++
++def list_usable(tree, zoom, app=None):
++    """The list card at this zoom: at least 160 CSS px tall, with its tabs, its first row and its
++    footer inside its own frame (nothing clipped by the card), measured from the tree in points."""
++    lst = region(tree, "Inbox list")
++    if not lst or not frame(lst):
++        return {"ok": False, "reason": "no list region"}
++    tabs = [tab_node(tree, t) for t in TABS]
++    rows = rows_of(tree, lst)
++    foot = next((n for n in within(tree, lst) if n.get("role") == "AXStaticText" and "sources read" in (n.get("label") or n.get("value") or "")), None)
++    out = {"height": lst["size"][1], "tabs_inside": all(contained(t, lst) for t in tabs) and all(tabs),
++           "rows_inside": sum(1 for r in rows if contained(r, lst)), "foot_inside": foot is not None and contained(foot, lst), "zoom": zoom}
++    # The first row is reachable: its focus scrolls the panel to it, and it then sits inside the card.
++    if rows and app is not None:
++        app.ax("focus", "AXButton", rows[0]["label"][:60])
++        time.sleep(0.3)
++        t = app.tree()
++        out["row_inside"] = contained(next((n for n in rows_of(t, region(t, "Inbox list")) if n.get("label") == rows[0]["label"]), None), region(t, "Inbox list"))
++    else:
++        out["row_inside"] = False
++    out["ok"] = out["height"] >= 160 * zoom - 1 and out["tabs_inside"] and out["rows_inside"] >= 1 and out["row_inside"] and out["foot_inside"]
++    return out
++
++
++def keyboard_at(app):
++    """From Read now, Tab reaches a tab and a row; Enter on a row the detail does not show changes the
++    detail to it (the row is focused first, so it is scrolled into the viewport)."""
++    app.ax("focus", "AXButton", "Read now")
++    time.sleep(0.3)
++    walk = [(((f or {}).get("label")) or "")[:44] for f in app.tab_walk(14)]
++    tree = app.tree()
++    lst = region(tree, "Inbox list")
++    rows = rows_of(tree, lst)
++    detail = region(tree, "Details")
++    shown = next(((n.get("label") or "") for n in within(tree, detail) if n.get("role") == "AXHeading"), "") if detail else ""
++    reach = {"tab": next((i for i, l in enumerate(walk) if l.startswith("All")), None),
++             "row": next((i for i, l in enumerate(walk) if rows and any(l and (r.get("label") or "").startswith(l[:12]) for r in rows)), None)}
++    target = next((r for r in rows if not shown or shown not in (r.get("label") or "")), None)
++    out = {"walk": walk, "reach": reach, "shown_before": shown, "target": (target or {}).get("label")}
++    if target:
++        app.ax("focus", "AXButton", target["label"][:60])
++        time.sleep(0.3)
++        t = app.tree()
++        focused = fx.App.focused(t) or {}
++        win = next((n for n in t if n.get("role") == "AXWindow"), None)
++        out["focused_row"] = (focused.get("label") or "") == target["label"]
++        out["row_in_viewport"] = contained(focused, win) if win else False
++        app.keycode(36)
++        _, out["enter_changed"] = app.wait_for(lambda t: region(t, "Details") is not None and any(
++            n.get("role") == "AXHeading" and (n.get("label") or "") and (n.get("label") or "") in (target["label"] or "") and (n.get("label") or "") != shown
++            for n in within(t, region(t, "Details"))), 8)
++    out["ok"] = all(i is not None for i in reach.values()) and reach["tab"] < reach["row"] and bool(target) and out.get("focused_row", False) and out.get("row_in_viewport", False) and out.get("enter_changed", False)
++    return out
++
++
++def composite(app, theme, web_size):
++    """The parity composite for this theme from the current capture (prototype left, app right)."""
++    name = f"inbox-{theme.lower()}"
++    cap = c29.capture(app, f"parity-{name}")
++    if not cap:
++        raise SystemExit(f"no capture for {name}")
++    os.makedirs(os.path.join(PARITY, "app"), exist_ok=True)
++    os.makedirs(os.path.join(PARITY, "proto"), exist_ok=True)
++    app_png = os.path.join(PARITY, "app", f"{name}.png")
++    shutil.copy(os.path.join(ROOT, cap), app_png)
++    web_w, web_h = web_size
++    proto_png = os.path.join(PARITY, "proto", f"{name}.png")
++    subprocess.run([sys.executable, "-I", os.path.join(DC, "dc_render.py"), "--board", "R2App", "--prop", "start=inbox",
++                    "--prop", f"theme={theme.lower()}", "--width", str(web_w), "--height", str(web_h), "--out", proto_png], check=True, capture_output=True)
++    out = os.path.join(PARITY, f"{name}.png")
++    subprocess.run([sys.executable, "-I", os.path.join(DC, "compose.py"), "--left", proto_png, "--right", app_png,
++                    "--out", out, "--title", f"Inbox · {theme.lower()} · {web_w}×{web_h}"], check=True, capture_output=True)
++    return rel(out)
++
++
++def geometry_of(tree):
++    web = next((n for n in tree if n.get("role") == "AXWebArea" and n.get("size")), None)
++    scroll = next((n for n in tree if n.get("role") == "AXScrollArea" and n.get("size")), None)
++    return {"web": [int(web["size"][0]), int(web["size"][1])] if web else None,
++            "viewport": [int(scroll["size"][0]), int(scroll["size"][1])] if scroll else None}
++
++
++def overflow(app):
++    tree = app.tree()
++    win = next((n for n in tree if n.get("role") == "AXWindow"), None)
++    nodes = [n for n in tree if n.get("pos") and n.get("size") and n["size"][0] > 0
++             and n.get("role") in ("AXButton", "AXStaticText", "AXTextField", "AXSearchField", "AXCheckBox", "AXPopUpButton", "AXLink", "AXHeading", "AXRadioButton")]
++    right = max(n["pos"][0] + n["size"][0] for n in nodes) if nodes and win else None
++    hbars = [n for n in tree if n.get("role") == "AXScrollBar" and (n.get("orientation") == "horizontal" or (n.get("size") and n["size"][0] > n["size"][1]))]
++    return {"overflow_px": max(0, right - (win["pos"][0] + win["size"][0])) if right is not None else None, "horizontal_scrollbars": len(hbars)}, tree
++
++
++def main():
++    try:
++        return run()
++    finally:
++        fx.sh(["pkill", "-f", fx.PROCESS])
++        fx.clean_fixture_root()
++
++
++def run():
++    global NATIVE
++    prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
++    bundle = os.path.join(ROOT, prepared["bundle"])
++    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
++    if c8.sha256(exe) != prepared["executable_sha256"]:
++        raise SystemExit("prepared executable changed since native-prepare")
++    work = tempfile.mkdtemp(prefix="airs-v2-c37-acceptance-")
++    FINAL = NATIVE
++    NATIVE = NATIVE + ".staging"
++    if os.path.isdir(NATIVE):
++        shutil.rmtree(NATIVE)
++    os.makedirs(NATIVE)
++    c29.NATIVE = NATIVE
++    if os.path.isdir(c29.CAPTURES):
++        shutil.rmtree(c29.CAPTURES)
++    app = fx.App(bundle, work, LOG)
++    c29._APP = app
++    app.quit()
++    fx.clean_fixture_root()
++    endpoint = fx.ScanEndpoint(os.path.join(work, "endpoint"), c8.SCAN_KEY)
++    endpoint.install_roots()
++    endpoint.start()
++    mgmt = c8.MgmtEndpoint(os.path.join(work, "endpoint"), os.path.join(work, "mgmt"))
++    mgmt.install()
++    mgmt.start()
++    mgmt.mode()
++    try:
++        return exercise(app, endpoint, mgmt, prepared, FINAL)
++    finally:
++        endpoint.stop()
++        mgmt.stop()
++        shutil.rmtree(work, ignore_errors=True)
++
++
++def exercise(app, endpoint, mgmt, prepared, FINAL):
++    global NATIVE
++    obs = {"captures": {}}
++    app.launch()
++    pid = app.pid
++    app.open_settings()
++    app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
++    app.create_custom_tenant("Northwind Health", endpoint.origin)
++    app.save_key(c8.SCAN_KEY)
++    c8.save_client(app)
++    c29.press(app, "AXCheckBox", "Use the new interface")
++    app.wait_for(lambda t: c29.nav(t, "Destinations") is not None, 15)
++    size_window(app, pid, 1440, 900)
++    app.menu("Go", "Inbox")
++    c29.heading(app, "Inbox")
++    c29.appearance(app, "Light")
++    time.sleep(0.6)
++
++    # ---- N01: the list card, the detail card, the empty states and the holds ------------
++    n1 = {}
++    tree = app.tree()
++    n1["heading"] = fx.App.node(tree, "AXHeading", "Inbox") is not None
++    n1["sub_before"] = texts([n for n in tree if n.get("subrole") == "AXApplicationStatus"] and within(tree, next(n for n in tree if n.get("subrole") == "AXApplicationStatus")))
++    n1["empty_before"] = "First read pending" in texts(tree)
++    obs["captures"]["inbox-empty"] = {"light": c29.capture(app, "inbox-empty-light")}
++    # The failed first read: every source answers 500, so nothing is established and the empty state names the failed read.
++    mgmt.mode(chartStatus=500, apiKeysStatus=500, rtStatsStatus=500, modelsStatus=500, skillStatsStatus=500, skillsStatus=500, gwAdminStatus=500, gwIamStatus=500)
++    c29.press(app, "AXButton", "Read now")
++    tree, n1["failed_named"] = app.wait_for(lambda t: any(re.search(r"The read at \d\d:\d\d failed", x) for x in app.texts(t)) and fx.App.node(t, "AXButton", "Read now") is not None, 40)
++    obs["tree_failed"] = c29.save_tree("inbox-failed", tree)
++    obs["captures"]["inbox-failed"] = {"light": c29.capture(app, "inbox-failed-light")}
++    # A product needing a role: the sessions chart answers 403, so AI Runtime Security needs a role; nothing lists,
++    # the empty state offers Open role issue, the footer names the partial coverage, and the issue opens that product.
++    mgmt.mode(chartStatus=403)
++    c29.press(app, "AXButton", "Read now")
++    tree, n1["role_offered"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Open role issue") is not None and fx.App.node(t, "AXButton", "Read now") is not None, 40)
++    n1["role_footer"] = next((x for x in app.texts(tree) if re.search(r"\d+ of \d+ sources read at", x)), None)
++    obs["tree_role"] = c29.save_tree("inbox-role-issue", tree)
++    obs["captures"]["inbox-role"] = {"light": c29.capture(app, "inbox-role-issue-light")}
++    c29.press(app, "AXButton", "Open role issue")
++    # The destination: Administration with that product opened (its breadcrumb and its tab group).
++    tree, n1["role_destination"] = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Administration") is not None
++                                                and app.has_text(t, "Administration › AI Runtime Security")
++                                                and any(n.get("role") == "AXTabGroup" and (n.get("label") or "") == "AI Runtime Security tabs" for n in t), 12)
++    obs["tree_role_admin"] = c29.save_tree("inbox-role-issue-administration", tree)
++    app.menu("Go", "Inbox")
++    c29.heading(app, "Inbox")
++    time.sleep(0.5)
++    # The read lands (an API key expiring in five days gives a second row); rows appear newest first.
++    mgmt.mode(keyExpiresInDays=5.5)
++    c29.press(app, "AXButton", "Read now")
++    _, n1["read_landed"] = app.wait_for(lambda t: app.has_text(t, "sources read at") or app.has_text(t, "All sources read"), 40)
++    time.sleep(0.8)
++    tree = app.tree()
++    obs["tree_inbox"] = c29.save_tree("inbox", tree)
++    status = next((n for n in tree if n.get("subrole") == "AXApplicationStatus"), None)
++    n1["sub"] = texts(within(tree, status)) if status else ""
++    n1["sub_ok"] = "Everything that needs you in Northwind Health · newest first" in n1["sub"]
++    n1["tabs"] = {t: (tab_node(tree, t) or {}).get("label") for t in TABS}
++    n1["tabs_ok"] = all(n1["tabs"].values()) and all(re.search(r"\d+$", (l or "")) for l in n1["tabs"].values())
++    list_node = region(tree, "Inbox list")
++    n1["list_region"] = list_node is not None
++    rows = rows_of(tree, list_node)
++    n1["rows"] = [r.get("label") for r in rows]
++    n1["rows_ok"] = len(rows) >= 1
++    n1["severity_words"] = bool(rows) and all(any(w in (r.get("label") or "") for w in ("Critical", "Warning", "Info")) for r in rows)
++    foot = next(((n.get("label") or n.get("value") or "") for n in within(tree, list_node) if n.get("role") == "AXStaticText" and ("sources read at" in (n.get("label") or n.get("value") or "") or "No source reads" in (n.get("label") or n.get("value") or ""))), None)
++    n1["footer"] = foot
++    # Select the first row: the detail card fills.
++    app.ax("press", "AXButton", rows[0]["label"][:60]) if rows else None
++    time.sleep(0.6)
++    tree = app.tree()
++    detail = region(tree, "Details")
++    inside = within(tree, detail)
++    n1["detail_region"] = detail is not None
++    dtext = texts(inside)
++    title = (rows[0]["label"] or "").split("\n")[0] if rows else ""
++    n1["detail_title"] = any(n.get("role") == "AXHeading" and (n.get("label") or "") and (n.get("label") or "") in (rows[0]["label"] or "") for n in inside) if rows else False
++    n1["detail_severity"] = any(w in dtext for w in ("Critical", "Warning", "Info"))
++    facts = next((n for n in inside if (n.get("label") or "") == "Facts"), None)
++    n1["facts"] = facts is not None and len([n for n in within(tree, facts) if n.get("role") == "AXStaticText"]) >= 2
++    # Acknowledge carries aria-pressed (it toggles to "Mark as needing action"), so it exposes as a check box.
++    n1["detail_actions"] = {"Acknowledge": starts(inside, CONTROLS, "Acknowledge") is not None, "Snooze 24 hours": starts(inside, ("AXButton",), "Snooze 24 hours") is not None}
++    n1["detail_action_own"] = any(n.get("role") == "AXButton" and not (n.get("label") or "").startswith(("Acknowledge", "Snooze", "Unsnooze", "Mark as")) for n in inside)
++    obs["tree_detail"] = c29.save_tree("inbox-detail", tree)
++    obs["captures"]["inbox"] = {"light": c29.capture(app, "inbox-light")}
++    c29.appearance(app, "Dark")
++    obs["captures"]["inbox"]["dark"] = c29.capture(app, "inbox-dark")
++    c29.appearance(app, "Light")
++    # The parity composites (D059), from this state, at the board's size in both themes.
++    app.ax("focus", "AXHeading", "Inbox")
++    time.sleep(0.3)
++    n1["parity"] = {}
++    for theme in ("Light", "Dark"):
++        c29.appearance(app, theme)
++        time.sleep(0.7)
++        n1["parity"][theme.lower()] = composite(app, theme, geometry_of(app.tree())["web"])
++    c29.appearance(app, "Light")
++    time.sleep(0.5)
++    # The C30 holds, from the detail card: snooze (the core's time in the row, the detail and the toast), unsnooze, acknowledge.
++    snooze = starts(inside, ("AXButton",), "Snooze 24 hours")
++    if snooze:
++        app.ax("press", "AXButton", snooze["label"])
++        tree, toasted = app.wait_for(lambda t: any("snoozed · returns" in x for x in app.texts(t)), 10)
++        toast_text = next((x for x in app.texts(tree) if "snoozed · returns" in x), "")
++        n1["snooze_toast"] = toasted
++        returns_toast = toast_text.split("returns ", 1)[1].rstrip("×").strip() if "returns " in toast_text else None
++        tab = tab_node(app.tree(), "Snoozed")
++        app.ax("press", tab["role"], tab["label"]) if tab else None
++        time.sleep(0.6)
++        tree = app.tree()
++        row = next((n for n in rows_of(tree, region(tree, "Inbox list")) if "Returns " in (n.get("label") or "")), None)
++        # The row's name ends with the entry's own time after the return wording: "Returns tomorrow 03:16 03:16".
++        row_returns = re.sub(r"\s+\d\d:\d\d$", "", row["label"].split("Returns ", 1)[1].strip()) if row and "Returns " in row["label"] else None
++        app.ax("press", "AXButton", row["label"][:60]) if row else None
++        time.sleep(0.5)
++        tree = app.tree()
++        pane_returns = next(((n.get("label") or "")[len("Returns "):] for n in within(tree, region(tree, "Details")) if n.get("role") == "AXStaticText" and (n.get("label") or "").startswith("Returns ")), None)
++        n1["snooze_times"] = {"toast": returns_toast, "row": row_returns, "pane": pane_returns}
++        n1["snooze_same"] = bool(returns_toast) and returns_toast == row_returns == pane_returns
++        c29.press(app, "AXButton", "Unsnooze")
++        _, n1["unsnoozed"] = app.wait_for(lambda t: starts(t, ("AXButton",), "Snooze 24 hours") is not None, 8)
++        tab = tab_node(app.tree(), "All")
++        app.ax("press", tab["role"], tab["label"]) if tab else None
++        time.sleep(0.5)
++        # Re-open the row in All (the detail follows the selected entry), then Acknowledge from the detail.
++        tree = app.tree()
++        back_row = next((n for n in rows_of(tree, region(tree, "Inbox list")) if title in (n.get("label") or "")), None)
++        app.ax("press", "AXButton", back_row["label"][:60]) if back_row else None
++        tree, has_ack = app.wait_for(lambda t: labelled(t, CONTROLS, "Acknowledge") is not None, 8)
++        obs["tree_before_ack"] = c29.save_tree("inbox-before-acknowledge", tree)
++        n1["ack_offered"] = has_ack
++        if has_ack:
++            ack = labelled(tree, CONTROLS, "Acknowledge")
++            app.ax("press", ack["role"], "Acknowledge")
++            tree, n1["acknowledged"] = app.wait_for(lambda t: app.has_text(t, "Acknowledged") and labelled(t, CONTROLS, "Mark as needing action") is not None, 8)
++            if n1["acknowledged"]:
++                mark = labelled(tree, CONTROLS, "Mark as needing action")
++                app.ax("press", mark["role"], "Mark as needing action")
++                _, n1["unmarked"] = app.wait_for(lambda t: labelled(t, CONTROLS, "Acknowledge") is not None, 8)
++    obs["n1"] = n1
++
++    # ---- N02: keyboard, ring, Enter on a row, layouts ------------------------------------
++    n2 = {}
++    # From Read now (the heading's Tab did not move focus in the fixture): the tabs, the rows, the detail's actions.
++    app.ax("focus", "AXButton", "Read now")
++    time.sleep(0.3)
++    walk = [(((f or {}).get("label")) or "")[:44] for f in app.tab_walk(14)]
++    n2["walk"] = walk
++    order = []
++    for key in ("All", rows[0]["label"][:12] if rows else "", "Acknowledge"):
++        idx = next((i for i, l in enumerate(walk) if key and l.startswith(key)), None)
++        order.append((key, idx))
++    n2["order"] = order
++    n2["reach_in_order"] = all(i is not None for _, i in order) and [i for _, i in order] == sorted(i for _, i in order)
++    plain = c29.capture(app, "row-ring-plain")
++    n2["ring"] = c31.ring_on(app, rows[0]["label"], plain, "row-ring") if rows else {"diff": 0}
++    ring_ok = (n2["ring"].get("diff") or 0) > 40
++    if rows:
++        app.ax("focus", "AXButton", rows[0]["label"][:60])
++        time.sleep(0.3)
++        app.keycode(36)
++        _, n2["enter_opens"] = app.wait_for(lambda t: region(t, "Details") is not None and any(n.get("role") == "AXHeading" and (n.get("label") or "") in (rows[0]["label"] or "") for n in within(t, region(t, "Details"))), 8)
++    layouts = {}
++    size_window(app, pid, 1440, 900)
++    for theme in ("Light", "Dark"):
++        c29.appearance(app, theme)
++        time.sleep(0.4)
++        o, tree = overflow(app)
++        g = geometry_of(tree)
++        o["geometry"] = g
++        o["width_1440"] = bool(g["web"] and g["web"][0] == 1440)
++        o["list"] = list_usable(tree, 1, app)
++        name = f"inbox-{g['web'][0]}x{g['web'][1]}-{theme.lower()}"
++        o["capture"] = c29.capture(app, name)
++        o["tree"] = c29.save_tree(name, tree)
++        o["keyboard"] = keyboard_at(app)
++        layouts[name] = o
++    size_window(app, pid, 900, 600)
++    c29.zoom(app, 10)
++    for theme in ("Light", "Dark"):
++        c29.appearance(app, theme)
++        time.sleep(0.4)
++        # The list card is measured where it stands: scrolled into view by focusing its first tab.
++        tab = tab_node(app.tree(), "All")
++        app.ax("focus", tab["role"], tab["label"]) if tab else None
++        time.sleep(0.4)
++        o, tree = overflow(app)
++        g = geometry_of(tree)
++        vp = g["viewport"] or g["web"]
++        o["geometry"] = g
++        o["window_900x600"] = bool(vp and vp[0] == 900 and vp[1] == 600 and g["web"] and g["web"][0] == 900)
++        o["list"] = list_usable(tree, 2, app)
++        name = f"inbox-{vp[0]}x{vp[1]}-200-{theme.lower()}"
++        o["capture"] = c29.capture(app, name)
++        o["tree"] = c29.save_tree(name, tree)
++        o["keyboard"] = keyboard_at(app)
++        layouts[name] = o
++    c29.zoom(app, -10)
++    c29.appearance(app, "Match System")
++    size_window(app, pid, 1440, 900)
++    n2["layouts"] = layouts
++    obs["captures"]["layouts"] = {k: v["capture"] for k, v in layouts.items()}
++    obs["n2"] = n2
++    app.quit()
++
++    run_path = os.path.join(NATIVE, "observations.json")
++    with open(run_path, "w") as f:
++        json.dump(json.loads(json.dumps({"observations": obs, "log": LOG}).replace(rel(NATIVE), rel(FINAL))), f, indent=1)
++    run_rel = rel(run_path)
++    inventory = {c["id"]: c["check"] for c in json.load(open(os.path.join(ROOT, "docs/architecture/native-checks.json")))["chunks"]["C37"]}
++    checks = []
++
++    def add(cid, passed, observation, evidence):
++        checks.append({"id": cid, "description": inventory[cid], "result": "pass" if passed else "fail", "observation": observation, "evidence": [e for e in evidence if e]})
++
++    caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
++    holds_ok = n1.get("snooze_toast") and n1.get("snooze_same") and n1.get("unsnoozed") and n1.get("acknowledged") and n1.get("unmarked")
++    n1_ok = (n1["heading"] and n1["empty_before"] and n1.get("failed_named") and n1.get("role_offered") and bool(n1.get("role_footer")) and n1.get("role_destination") and len(n1.get("parity", {})) == 2 and n1.get("read_landed") and n1["sub_ok"] and n1["tabs_ok"] and n1["list_region"] and n1["rows_ok"] and n1["severity_words"]
++             and bool(n1["footer"]) and n1["detail_region"] and n1["detail_title"] and n1["detail_severity"] and n1["facts"] and all(n1["detail_actions"].values()) and n1["detail_action_own"] and holds_ok)
++    add("C37-N01", n1_ok,
++        f"heading {n1['heading']}; empty state before any read named it {n1['empty_before']}; the failed first read named {n1.get('failed_named')}; with the chart denied, Open role issue offered {n1.get('role_offered')} with the footer '{n1.get('role_footer')}' and opening AI Runtime Security in Administration {n1.get('role_destination')}; Read now landed {n1.get('read_landed')}; line '{n1['sub']}' ({n1['sub_ok']}); tabs {n1['tabs']} ({n1['tabs_ok']}); rows {n1['rows']} with severity words {n1['severity_words']}; footer '{n1['footer']}'; detail: title {n1['detail_title']}, severity {n1['detail_severity']}, facts grid {n1['facts']}, own action {n1['detail_action_own']}, actions {n1['detail_actions']}; holds: snooze toast {n1.get('snooze_toast')} times {n1.get('snooze_times')} same {n1.get('snooze_same')}, unsnoozed {n1.get('unsnoozed')}, acknowledged {n1.get('acknowledged')}, unmarked {n1.get('unmarked')}",
++        [run_rel, obs["tree_failed"], obs["tree_role"], obs["tree_role_admin"], obs["tree_inbox"], obs["tree_detail"]] + caps("inbox-empty") + caps("inbox-failed") + caps("inbox-role") + caps("inbox") + sorted(n1.get("parity", {}).values()))
++    layout_ok = all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["list"]["ok"] and v["keyboard"]["ok"] for v in layouts.values())
++    geometry_ok = all(v.get("width_1440", v.get("window_900x600", False)) for v in layouts.values())
++    sizes_text = ", ".join(f"{k}: web {v['geometry']['web']} viewport {v['geometry']['viewport']}" for k, v in layouts.items())
++    overflow_text = ", ".join(f"{k}: overflow {v['overflow_px']} px, list height {v['list'].get('height')} pt (tabs/rows/first row by focus/footer inside {v['list'].get('tabs_inside')}/{v['list'].get('rows_inside')}/{v['list'].get('row_inside')}/{v['list'].get('foot_inside')}), Tab reached {v['keyboard'].get('reach')}, Enter on '{(v['keyboard'].get('target') or '')[:30]}' changed the detail {v['keyboard'].get('enter_changed')}" for k, v in layouts.items())
++    add("C37-N02", n2["reach_in_order"] and ring_ok and n2.get("enter_opens") and layout_ok and geometry_ok,
++        f"Tab from the heading reached {n2['order']} in order {n2['reach_in_order']}; ring on the first row {n2['ring'].get('diff')} px ({ring_ok}); Enter on the row opened its detail {n2.get('enter_opens')}; measured sizes by row {sizes_text} (asserted {geometry_ok}); overflow px {overflow_text}, horizontal scroll bars {[v['horizontal_scrollbars'] for v in layouts.values()]}",
++        [run_rel, n2["ring"].get("capture"), n2["ring"].get("plain")] + [v["capture"] for v in layouts.values()] + [v.get("tree") for v in layouts.values()])
++
++    hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
++    os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"
++    record = {
++        "schema": "airs-v2/native-acceptance/1", "subject": "C37", "recorded_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "method": "cua",
++        "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c37.py",
++        "host": f"{hw}; macOS {os_ver}",
++        "app": {"bundle": prepared["bundle"], "identifier": prepared["identifier"], "executable_sha256": prepared["executable_sha256"], "fixture": True},
++        "checks": checks,
++        "limitations": [
++            "Pixels come from the fixture build's own WKWebView snapshot; the appearance is selected before each capture.",
++            "Scan and management endpoints are synthetic services on this Mac (scan_server.py, mgmt_server.py): the read's entries are the synthetic plane's.",
++            "Window geometry is measured from each row's own accessibility tree (WebView area and viewport), never assumed.",
++            "Visual parity with the prototype is the owner's judgement from the composites under evidence/C37/parity, not a check here.",
++            "Spoken VoiceOver output was not recorded.",
++        ],
++    }
++    screens = os.path.join(EVIDENCE, "screens")
++    if os.path.isdir(screens):
++        shutil.rmtree(screens)
++    os.makedirs(screens, exist_ok=True)
++    for name, variants in obs["captures"].items():
++        for variant, src in variants.items():
++            if src:
++                shutil.copy(os.path.join(ROOT, src), os.path.join(screens, f"{name}-{variant}.png"))
++    record["screens"] = sorted(os.listdir(screens))
++    if os.path.isdir(FINAL):
++        shutil.rmtree(FINAL)
++    os.rename(NATIVE, FINAL)
++    staged_rel, final_rel = rel(NATIVE), rel(FINAL)
++    for c in checks:
++        c["evidence"] = [e.replace(staged_rel, final_rel) for e in c["evidence"]]
++    NATIVE = FINAL
++    with open(RECORD, "w") as f:
++        json.dump(record, f, indent=2)
++        f.write("\n")
++    for c in checks:
++        print(c["id"], c["result"], "-", c["observation"][:200])
++    return 0 if all(c["result"] == "pass" for c in checks) else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/tools/native-acceptance/mgmt_server.py b/tools/native-acceptance/mgmt_server.py
+index 4571cbf5..a0482999 100644
+--- a/tools/native-acceptance/mgmt_server.py
++++ b/tools/native-acceptance/mgmt_server.py
+@@ -293,6 +293,10 @@ class Handler(BaseHTTPRequestHandler):
+             with srv.lock:
+                 return 200, {"customer_apps": [dict(a) for a in srv.apps[offset:offset + limit]]}
+         if path == f"/aisec/v1/mgmt/apikeys/tsg/{tsg}":
++            # Mode "apiKeysStatus" (HTTP status, default 200): with the chart's status it fails
++            # the whole AI Runtime Security read (C37: the failed first read's empty state).
++            if int(mode.get("apiKeysStatus", 200)) != 200:
++                return int(mode["apiKeysStatus"]), {"message": "SERVER-TEXT-NEVER-SHOWN"}
+             with srv.lock:
+                 keys = [dict(k) for k in srv.keys[offset:offset + limit]]
+             if mode.get("keyExpiresInDays") is not None and keys:
+
+# Untracked files in scope:
+# + docs/planning/evidence/C37/native-acceptance.json
+# + docs/planning/evidence/C37/native-prepare.json
+# + docs/planning/evidence/C37/native/captures/inbox-1440x807-dark.png
+# + docs/planning/evidence/C37/native/captures/inbox-1440x807-light.png
+# + docs/planning/evidence/C37/native/captures/inbox-900x600-200-dark.png
+# + docs/planning/evidence/C37/native/captures/inbox-900x600-200-light.png
+# + docs/planning/evidence/C37/native/captures/inbox-dark.png
+# + docs/planning/evidence/C37/native/captures/inbox-empty-light.png
+# + docs/planning/evidence/C37/native/captures/inbox-failed-light.png
+# + docs/planning/evidence/C37/native/captures/inbox-light.png
+# + docs/planning/evidence/C37/native/captures/inbox-role-issue-light.png
+# + docs/planning/evidence/C37/native/captures/parity-inbox-dark.png
+# + docs/planning/evidence/C37/native/captures/parity-inbox-light.png
+# + docs/planning/evidence/C37/native/captures/row-ring-plain.png
+# + docs/planning/evidence/C37/native/captures/row-ring.png
+# + docs/planning/evidence/C37/native/observations.json
+# + docs/planning/evidence/C37/native/tree-inbox-1440x807-dark.json
+# + docs/planning/evidence/C37/native/tree-inbox-1440x807-light.json
+# + docs/planning/evidence/C37/native/tree-inbox-900x600-200-dark.json
+# + docs/planning/evidence/C37/native/tree-inbox-900x600-200-light.json
+# + docs/planning/evidence/C37/native/tree-inbox-before-acknowledge.json
+# + docs/planning/evidence/C37/native/tree-inbox-detail.json
+# + docs/planning/evidence/C37/native/tree-inbox-failed.json
+# + docs/planning/evidence/C37/native/tree-inbox-role-issue-administration.json
+# + docs/planning/evidence/C37/native/tree-inbox-role-issue.json
+# + docs/planning/evidence/C37/native/tree-inbox.json
+# + docs/planning/evidence/C37/runs/attempt-01/bindings.exit
+# + docs/planning/evidence/C37/runs/attempt-01/bindings.log
+# + docs/planning/evidence/C37/runs/attempt-01/clippy-default.exit
+# + docs/planning/evidence/C37/runs/attempt-01/clippy-default.log
+# + docs/planning/evidence/C37/runs/attempt-01/clippy.exit
+# + docs/planning/evidence/C37/runs/attempt-01/clippy.log
+# + docs/planning/evidence/C37/runs/attempt-01/contracts-typecheck.exit
+# + docs/planning/evidence/C37/runs/attempt-01/contracts-typecheck.log
+# + docs/planning/evidence/C37/runs/attempt-01/core-fixtures.exit
+# + docs/planning/evidence/C37/runs/attempt-01/core-fixtures.log
+# + docs/planning/evidence/C37/runs/attempt-01/core-lib.exit
+# + docs/planning/evidence/C37/runs/attempt-01/core-lib.log
+# + docs/planning/evidence/C37/runs/attempt-01/desktop-build.exit
+# + docs/planning/evidence/C37/runs/attempt-01/desktop-build.log
+# + docs/planning/evidence/C37/runs/attempt-01/desktop-typecheck.exit
+# + docs/planning/evidence/C37/runs/attempt-01/desktop-typecheck.log
+# + docs/planning/evidence/C37/runs/attempt-01/fixture-command.exit
+# + docs/planning/evidence/C37/runs/attempt-01/fixture-command.log
+# + docs/planning/evidence/C37/runs/attempt-01/host.exit
+# + docs/planning/evidence/C37/runs/attempt-01/host.log
+# + docs/planning/evidence/C37/runs/attempt-01/inputs-after.sha256
+# + docs/planning/evidence/C37/runs/attempt-01/inputs-before.sha256
+# + docs/planning/evidence/C37/runs/attempt-01/notices.exit
+# + docs/planning/evidence/C37/runs/attempt-01/notices.log
+# + docs/planning/evidence/C37/runs/attempt-01/rustfmt.exit
+# + docs/planning/evidence/C37/runs/attempt-01/rustfmt.log
+# + docs/planning/evidence/C37/runs/attempt-01/shell-controller.exit
+# + docs/planning/evidence/C37/runs/attempt-01/shell-controller.log
+# + docs/planning/evidence/C37/runs/attempt-01/vitest-truth.exit
+# + docs/planning/evidence/C37/runs/attempt-01/vitest-truth.log
+# + docs/planning/evidence/C37/runs/attempt-01/vitest.exit
+# + docs/planning/evidence/C37/runs/attempt-01/vitest.log
+# + docs/planning/evidence/C37/runs/attempt-01/xtask-lib.exit
+# + docs/planning/evidence/C37/runs/attempt-01/xtask-lib.log
+# + docs/planning/evidence/C37/runs/attempt-02/bindings.exit
+# + docs/planning/evidence/C37/runs/attempt-02/bindings.log
+# + docs/planning/evidence/C37/runs/attempt-02/clippy-default.exit
+# + docs/planning/evidence/C37/runs/attempt-02/clippy-default.log
+# + docs/planning/evidence/C37/runs/attempt-02/clippy.exit
+# + docs/planning/evidence/C37/runs/attempt-02/clippy.log
+# + docs/planning/evidence/C37/runs/attempt-02/contracts-typecheck.exit
+# + docs/planning/evidence/C37/runs/attempt-02/contracts-typecheck.log
+# + docs/planning/evidence/C37/runs/attempt-02/core-fixtures.exit
+# + docs/planning/evidence/C37/runs/attempt-02/core-fixtures.log
+# + docs/planning/evidence/C37/runs/attempt-02/core-lib.exit
+# + docs/planning/evidence/C37/runs/attempt-02/core-lib.log
+# + docs/planning/evidence/C37/runs/attempt-02/desktop-build.exit
+# + docs/planning/evidence/C37/runs/attempt-02/desktop-build.log
+# + docs/planning/evidence/C37/runs/attempt-02/desktop-typecheck.exit
+# + docs/planning/evidence/C37/runs/attempt-02/desktop-typecheck.log
+# + docs/planning/evidence/C37/runs/attempt-02/fixture-command.exit
+# + docs/planning/evidence/C37/runs/attempt-02/fixture-command.log
+# + docs/planning/evidence/C37/runs/attempt-02/host.exit
+# + docs/planning/evidence/C37/runs/attempt-02/host.log
+# + docs/planning/evidence/C37/runs/attempt-02/inputs-after.sha256
+# + docs/planning/evidence/C37/runs/attempt-02/inputs-before.sha256
+# + docs/planning/evidence/C37/runs/attempt-02/notices.exit
+# + docs/planning/evidence/C37/runs/attempt-02/notices.log
+# + docs/planning/evidence/C37/runs/attempt-02/rustfmt.exit
+# + docs/planning/evidence/C37/runs/attempt-02/rustfmt.log
+# + docs/planning/evidence/C37/runs/attempt-02/shell-controller.exit
+# + docs/planning/evidence/C37/runs/attempt-02/shell-controller.log
+# + docs/planning/evidence/C37/runs/attempt-02/vitest-truth.exit
+# + docs/planning/evidence/C37/runs/attempt-02/vitest-truth.log
+# + docs/planning/evidence/C37/runs/attempt-02/vitest.exit
+# + docs/planning/evidence/C37/runs/attempt-02/vitest.log
+# + docs/planning/evidence/C37/runs/attempt-02/xtask-lib.exit
+# + docs/planning/evidence/C37/runs/attempt-02/xtask-lib.log
+# + docs/planning/evidence/C37/runs/run-attempt-01.json
+# + docs/planning/evidence/C37/runs/run-attempt-02.json
+# + docs/planning/evidence/C37/screens/inbox-dark.png
+# + docs/planning/evidence/C37/screens/inbox-empty-light.png
+# + docs/planning/evidence/C37/screens/inbox-failed-light.png
+# + docs/planning/evidence/C37/screens/inbox-light.png
+# + docs/planning/evidence/C37/screens/inbox-role-light.png
+# + docs/planning/evidence/C37/screens/layouts-inbox-1440x807-dark.png
+# + docs/planning/evidence/C37/screens/layouts-inbox-1440x807-light.png
+# + docs/planning/evidence/C37/screens/layouts-inbox-900x600-200-dark.png
+# + docs/planning/evidence/C37/screens/layouts-inbox-900x600-200-light.png
+# + docs/planning/reviews/C37/attempt-01/diff.patch
+# + docs/planning/reviews/C37/attempt-01/message.txt
+# + docs/planning/reviews/C37/attempt-01/request.json
+# + docs/planning/reviews/C37/attempt-01/source-inventory.json
+# + docs/planning/reviews/C37/attempt-01/thread-reply.log
+# + docs/planning/reviews/C37/attempt-01/verdict-returned.json
+# + docs/planning/reviews/C37/remediation-attempt-01.md

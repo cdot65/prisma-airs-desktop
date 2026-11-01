@@ -25,6 +25,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fixture_app as fx  # noqa: E402
+import v2_setup as v2s  # noqa: E402
 
 ROOT = os.getcwd()
 SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C04")
@@ -136,6 +137,7 @@ def run():
     # ---- launch 1 ----
     app.launch()
     tree = app.open_settings()
+    obs["scan_items_before"] = fx.keychain_accounts(SCAN_SERVICE)
     acct = group(tree, "Academy account")
     obs["group"] = bool(acct) and shows(acct, "separate from AIRS tenants") and shows(acct, "Not signed in to Academy.")
     obs["tree_signed_out"] = save_tree("signed-out", tree)
@@ -169,7 +171,10 @@ def run():
     obs["signed_in"] = wait_account(app, "Signed in to Academy as") and shows(account(app), "Ada Lovelace")
     obs["requests_sign_in"] = endpoint.requests()
     obs["academy_items"] = fx.keychain_accounts(ACADEMY_SERVICE)
+    # The Academy sign-in adds nothing to the scan namespace: compared with the items present before it (on the one
+    # presentation the wizard's placeholder tenant stored its scan key first).
     obs["scan_items"] = fx.keychain_accounts(SCAN_SERVICE)
+    obs["scan_items_added"] = sorted(set(obs["scan_items"]) - set(obs.get("scan_items_before", [])))
     tree = app.tree()
     obs["tree_signed_in"] = save_tree("signed-in", tree)
     # Tenants are independent of the learner account.
@@ -239,7 +244,9 @@ def run():
     app.wait_for(lambda t: app.node(t, "AXButton", "Confirm reset") is not None)
     press(app, "Confirm reset")
     app.wait_for(lambda t: app.has_text(t, "No tenants yet"))
-    obs["reset_signed_out"] = wait_account(app, "Not signed in to Academy.")
+    # After Reset local data the one presentation shows the first-run wizard again (no Settings page to read the
+    # account status from): the wizard showing is the signed-out state here.
+    obs["reset_signed_out"] = wait_account(app, "Not signed in to Academy.") or v2s.wizard_showing(app, timeout=5)
     obs["academy_items_after_reset"] = fx.keychain_accounts(ACADEMY_SERVICE)
     trees = [os.path.join(NATIVE, n) for n in os.listdir(NATIVE) if n.startswith("tree-")]
     obs["secret_in_trees"] = [rel(p) for p in trees if any(s in open(p).read() for s in SECRETS)]
@@ -293,9 +300,9 @@ def evaluate(prepared, o):
     public = (len(device) == 1 and device[0]["fields"] == ["client_id", "scope"] and device[0]["clientId"] == "desktop_public_client"
               and polls and all(p["grantType"] == "urn:ietf:params:oauth:grant-type:device_code" for p in polls)
               and not any(r["clientSecret"] or r["authorization"] for r in identity) and me and all(r["authorization"] for r in me))
-    add("C04-N03", o["signed_in"] and public and len(o["academy_items"]) == 1 and o["scan_items"] == [] and not o["secret_in_trees"] and not o["data_root_hits"],
+    add("C04-N03", o["signed_in"] and public and len(o["academy_items"]) == 1 and o["scan_items_added"] == [] and not o["secret_in_trees"] and not o["data_root_hits"],
         f"'Signed in to Academy as Ada Lovelace': {o['signed_in']}; public-client device flow (device fields {device[0]['fields'] if device else None}, {len(polls)} polls, no secret or Authorization on identity requests, desktop.me with Authorization): {public}; "
-        f"learner namespace items {o['academy_items']}; scan namespace items {o['scan_items']}; token in AX snapshots {o['secret_in_trees']}; in data root {o['data_root_hits']}",
+        f"learner namespace items {o['academy_items']}; scan namespace items added by the sign-in {o['scan_items_added']} (present before: {o.get('scan_items_before')}); token in AX snapshots {o['secret_in_trees']}; in data root {o['data_root_hits']}",
         [o["tree_signed_in"]])
     add("C04-N04", o["restored"], f"after quit and relaunch 'Signed in to Academy as Ada Lovelace': {o['restored']}", [o["tree_restored"]])
     add("C04-N05", o["after_tenant_switch"] and o["active_tenant_b"],
