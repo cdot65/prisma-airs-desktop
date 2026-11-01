@@ -9,6 +9,7 @@
  * unprotected edits. Nothing here sends by itself: every request the view
  * makes is listed and asserted.
  */
+import { Profiler } from 'react'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -1112,7 +1113,20 @@ describe('C41 API Client board', () => {
             return observe(operation)
         }
         const user = userEvent.setup()
-        render(<App client={new DesktopClient(native.transport)} />)
+        // Read every committed DOM, including the commit before passive effects clear an old document.
+        const committedUrlsUnderOther: (string | null)[] = []
+        render(
+            <Profiler
+                id='collection-boundary'
+                onRender={() => {
+                    if (screen.queryByRole('button', { name: 'Collection Other' })) {
+                        committedUrlsUnderOther.push((screen.queryByRole('textbox', { name: 'URL' }) as HTMLInputElement | null)?.value ?? null)
+                    }
+                }}
+            >
+                <App client={new DesktopClient(native.transport)} />
+            </Profiler>
+        )
         await screen.findByRole('heading', { level: 1, name: 'API Client' })
         await waitFor(() => expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics'))
         const opens = () => requests.filter((r) => r.kind === 'openRequest').length
@@ -1131,6 +1145,8 @@ describe('C41 API Client board', () => {
         await new Promise((r) => setTimeout(r, 50))
         expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/other')
         expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toBeNull()
+        expect(committedUrlsUnderOther).toContain('http://127.0.0.1:8080/other')
+        expect(committedUrlsUnderOther).not.toContain('http://127.0.0.1:8080/topics')
     })
 
     it('draws nested folders as a hierarchy: a collapsed folder hides its whole subtree, a folder counts every request under it, and search still finds them', async () => {

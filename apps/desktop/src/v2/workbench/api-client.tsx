@@ -540,7 +540,8 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                     <Btn onClick={() => open({ id: loadFailure.id, relative: loadFailure.relative })}>{C.tryAgain}</Btn>
                                 </div>
                             ) : null}
-                            {doc && selectedTab && doc.id === selectedTab.id ? (
+                            {/* Scope ownership is checked in this commit, before passive effects clear the old document. */}
+                            {doc && docCollection.current === collectionId && selectedTab && doc.id === selectedTab.id ? (
                                 <RequestEditor
                                     key={`${doc.id}:${doc.revision}:${doc.relative}:${docSeq}`}
                                     initial={doc}

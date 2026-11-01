@@ -44,3 +44,25 @@ byte for byte after removing the three added scope lines. Claude Code implemente
 the earlier application changes through `b756e798`; Codex implements this
 preflight correction and orchestrates the gate. The fresh read-only Codex reviewer
 provides session separation within the current implementer's model family.
+
+## Commit-phase document retirement
+
+A React Profiler probe then checked every committed DOM, rather than only the
+settled state observed after `act`. All three replacement cases failed: the old
+URL was committed under the new collection before the passive clearing effect
+ran. The editor's render condition now checks the shown document's core scope
+against the current collection scope. The same probe confirms a new-collection
+editor is committed and no old-collection fields are committed under it; held
+old replies remain ignored.
+
+The second native job (`c44chain12`, started at 04:13) was stopped before checks
+or review to include this correction in the executable being tested. Its bundle
+`b2221eec8a583194af61f10df1be0ffc6073bc9f485d75d352aa0c4f7d5155d0`
+and current native evidence are archived under
+`/Users/cdot/development/redtail/p09-queue/codex-c44-preflight/aborted-native-20261101-0413/`.
+C05 had no passing record after an empty Accessibility tree following reset;
+its failure artifacts are also retained under `c05-failure-20261101-0435/`.
+C24's required privacy checks passed; its obsolete C24-N06 aggregate is carried
+by C44-N01 under the existing assertion map, rather than required from C24.
+The next job rebuilds and runs the full native set; these archived records are
+not rebound to a different executable.
