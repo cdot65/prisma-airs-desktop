@@ -12,6 +12,10 @@ unset RUSTFLAGS CARGO_BUILD_RUSTFLAGS CARGO_TARGET_DIR
 export RUST_TEST_THREADS=4
 R=docs/planning/evidence/P09/runs
 E=$R/$ATTEMPT
+if [ -e "$E" ] || [ -e "$R/run-$ATTEMPT.json" ]; then
+  echo "Refusing to overwrite retained P09 check evidence: $ATTEMPT; choose a fresh attempt." >&2
+  exit 2
+fi
 mkdir -p "$E"
 # Flake logs are same-input retries of this run only: earlier runs' logs are removed first.
 rm -f $E/core-fixtures.flake-*.log $E/host.flake-*.log

@@ -2,15 +2,19 @@
 
 ## Current stage
 
-Planning (G00) and architecture (G01) gates passed. Implementation of the ordered
-chunks C01–C26 is authorized and proceeds in numeric order; see
-`docs/planning/status.md` for the active chunk and receipts. Product decisions
-D001–D023, source terms D024, architecture selection D025 and the Codex review
-policy D026 are accepted; do not re-ask settled questions.
-A chunk may scaffold, install pinned build dependencies, and add tests only
-within its own instructions. Product endpoints are called only under C25's
-controlled live scope; real user data is never migrated outside C23's reviewed
-import flow.
+P01–P07 completed. The owner-authorized P09 integration proceeds under D058/D059
+while P08/C26 remains open. C44 attempt-05 passed at 9 in all dimensions and is
+merged; actual L19 wizard verification passed. C29 attempt-07 was accepted at 8,
+and its restored native coverage must run in the Worf VM before the C29–C32 and
+P09 re-reviews. Read [WORF-START-HERE](docs/planning/WORF-START-HERE.md),
+[status](docs/planning/status.md) and the exact retained verdicts for current state.
+The approved [C45/P10 brief](docs/planning/C45-draft.md) starts after P09 passes at
+9. Do not re-ask its settled naming, fresh-setup or sequencing decisions.
+
+Product endpoints are called only within explicit controlled live scope. L19’s
+original two plus separately approved third reads are all charged; no additional
+L19 live call is authorized. The next fixture gates need no real credentials.
+Do not copy host Keychains, private manifests, CLI tenant TOMLs or auth profiles.
 
 ## Accepted direction
 
@@ -29,8 +33,9 @@ import flow.
   protected-storage, and local-data identities.
 - Rust owns credential access, tenant context, request authority, and reviewed
   configuration changes. Harness proposals do not authorize Apply.
-- Imports preserve selected user-authored work/settings with fresh credential
-  setup and sign-in. Do not copy old approvals/authentication sessions.
+- D060 removes alpha import from the one presentation. C45/P10 removes the
+  remaining alpha readers/contracts and starts the new namespace with fresh
+  setup; no alpha/v2 data, credentials or approvals are migrated.
 - Offline local work is supported; no silent replay of remote operations.
 - Remote Gateway usage/cost/budget/limit administration is product functionality,
   not desktop application monetization.
@@ -53,7 +58,8 @@ qualification. Never read or log credentials for planning.
 
 ## Reviews and completion
 
-Claude Code implements. Under D026, every implementation chunk and every phase
+Most original implementation was Claude Code; the owner authorized Codex for
+the current integration and remediation. Under D026, every implementation chunk and every phase
 (cumulatively) requires a real independent Codex review scoring at least 9/10 in
 architecture, behavior, authority_security, validation and overall, with empty
 required_fixes, blockers and evidence_gaps. Historical G00/G01 Claude reviews

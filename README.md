@@ -6,6 +6,8 @@ First target: macOS Apple Silicon, distributed as a signed and notarized DMG.
 Implementation proceeds through ordered, independently reviewed chunks; see
 [status](docs/planning/status.md) for what exists and what is verified.
 
+For the current Worf VM transition, start with [WORF-START-HERE](docs/planning/WORF-START-HERE.md). It includes the exact source/worktree checkpoint verifier.
+
 ## Layout
 
 ```text

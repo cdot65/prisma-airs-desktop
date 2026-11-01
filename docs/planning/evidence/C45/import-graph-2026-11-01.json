@@ -1,0 +1,225 @@
+{
+  "kind": "C45 repository facts; research only, not an approved plan",
+  "entrypoint": "apps/desktop/src/main.tsx",
+  "reachable_internal_modules": 71,
+  "method": "TypeScript AST relative imports/exports, including type imports and literal dynamic imports; external Academy packages excluded",
+  "live_features": [
+    {
+      "file": "features/academy/academy-account.tsx",
+      "imported_by": [
+        "shell/feature-view.tsx",
+        "v2/wizard/wizard.tsx"
+      ]
+    },
+    {
+      "file": "features/academy/desktop-link.ts",
+      "imported_by": [
+        "features/academy/learner-provider.tsx"
+      ]
+    },
+    {
+      "file": "features/academy/host-actions.ts",
+      "imported_by": [
+        "features/academy/learner-provider.tsx",
+        "features/academy/offline-work.tsx"
+      ]
+    },
+    {
+      "file": "features/academy/learner-call-probe.tsx",
+      "imported_by": [
+        "v2/academy/academy.tsx"
+      ]
+    },
+    {
+      "file": "features/academy/learner-provider.tsx",
+      "imported_by": [
+        "v2/academy/academy.tsx",
+        "features/academy/offline-work.tsx",
+        "features/academy/learner-call-probe.tsx"
+      ]
+    },
+    {
+      "file": "features/academy/offline-work.tsx",
+      "imported_by": [
+        "v2/academy/academy.tsx"
+      ]
+    },
+    {
+      "file": "features/academy/presentation-storage.ts",
+      "imported_by": [
+        "app.tsx"
+      ]
+    },
+    {
+      "file": "features/administration/management-read.ts",
+      "imported_by": [
+        "features/sessions/sessions-view.tsx",
+        "shell/feature-view.tsx",
+        "features/tenants/tenants-settings.tsx",
+        "features/tenants/management-credential.tsx",
+        "features/administration/runtime-changes.tsx",
+        "v2/admin/review-sheet.tsx",
+        "v2/admin/gateway-tabs.tsx",
+        "v2/admin/inventory-table.tsx",
+        "v2/admin/observation-tabs.tsx",
+        "v2/harness/panels/mcp.tsx",
+        "v2/wizard/wizard.tsx"
+      ]
+    },
+    {
+      "file": "features/administration/runtime-changes.tsx",
+      "imported_by": [
+        "v2/admin/administration.tsx",
+        "v2/admin/review-sheet.tsx",
+        "v2/admin/gateway-tabs.tsx",
+        "v2/admin/inventory-table.tsx"
+      ]
+    },
+    {
+      "file": "features/diagnostics/diagnostics-panel.tsx",
+      "imported_by": [
+        "shell/feature-view.tsx"
+      ]
+    },
+    {
+      "file": "features/runtime/scan-text.ts",
+      "imported_by": [
+        "v2/admin/playground.tsx"
+      ]
+    },
+    {
+      "file": "features/sessions/sessions-model.ts",
+      "imported_by": [
+        "features/sessions/sessions-view.tsx"
+      ]
+    },
+    {
+      "file": "features/sessions/sessions-view.tsx",
+      "imported_by": [
+        "shell/feature-body.tsx"
+      ]
+    },
+    {
+      "file": "features/tenants/credential-entry.tsx",
+      "imported_by": [
+        "features/tenants/tenants-settings.tsx"
+      ]
+    },
+    {
+      "file": "features/tenants/dispatch.ts",
+      "imported_by": [
+        "app.tsx",
+        "v2/v2-shell.tsx",
+        "shell/feature-body.tsx",
+        "features/sessions/sessions-view.tsx",
+        "shell/feature-view.tsx",
+        "features/diagnostics/diagnostics-panel.tsx",
+        "features/academy/academy-account.tsx",
+        "features/tenants/tenants-settings.tsx",
+        "features/tenants/credential-entry.tsx",
+        "features/tenants/management-credential.tsx",
+        "features/administration/management-read.ts",
+        "features/tenants/profile-import.tsx",
+        "v2/inbox/inbox.tsx",
+        "v2/admin/administration.tsx",
+        "features/administration/runtime-changes.tsx",
+        "v2/admin/review-sheet.tsx",
+        "v2/admin/gateway-tabs.tsx",
+        "v2/admin/inventory-table.tsx",
+        "v2/admin/playground.tsx",
+        "v2/admin/observation-tabs.tsx",
+        "v2/harness/harness.tsx",
+        "v2/harness/panels/history.tsx",
+        "v2/harness/text.ts",
+        "v2/harness/panels/mcp.tsx",
+        "v2/harness/panels/project.tsx",
+        "v2/harness/panels/sign-in.tsx",
+        "v2/wizard/wizard.tsx",
+        "v2/workbench/api-client.tsx",
+        "features/workbench/workbench-call.ts",
+        "v2/workbench/calls-panel.tsx",
+        "v2/workbench/test-cases.tsx"
+      ]
+    },
+    {
+      "file": "features/tenants/management-credential.tsx",
+      "imported_by": [
+        "features/tenants/tenants-settings.tsx"
+      ]
+    },
+    {
+      "file": "features/tenants/profile-import.tsx",
+      "imported_by": [
+        "features/tenants/tenants-settings.tsx"
+      ]
+    },
+    {
+      "file": "features/tenants/tenants-settings.tsx",
+      "imported_by": [
+        "shell/feature-view.tsx"
+      ]
+    },
+    {
+      "file": "features/workbench/workbench-call.ts",
+      "imported_by": [
+        "v2/workbench/api-client.tsx",
+        "v2/workbench/request-editor.tsx",
+        "v2/workbench/response-pane.tsx",
+        "v2/workbench/tools-sheet.tsx"
+      ]
+    }
+  ],
+  "draft_deletions_still_reachable": [
+    "features/academy/desktop-link.ts",
+    "features/academy/host-actions.ts",
+    "features/diagnostics/diagnostics-panel.tsx",
+    "features/sessions/sessions-model.ts",
+    "features/sessions/sessions-view.tsx",
+    "features/tenants/credential-entry.tsx",
+    "features/tenants/profile-import.tsx",
+    "features/tenants/tenants-settings.tsx"
+  ],
+  "identity_collisions": [
+    {
+      "proposed": "io.cdot.prisma-airs-desktop",
+      "alpha_source": "/Users/cdot/development/cdot65/prisma-airs-desktop/src/main.rs:95",
+      "role": "application id"
+    },
+    {
+      "proposed": "io.cdot.prisma-airs-desktop.academy",
+      "alpha_source": "/Users/cdot/development/cdot65/prisma-airs-desktop/src/academy/protected.rs:27",
+      "role": "Academy Keychain service if .v2 is stripped"
+    }
+  ],
+  "alpha_data_root": {
+    "path": "~/Library/Application Support/Prisma AIRS Desktop",
+    "source": "/Users/cdot/development/cdot65/prisma-airs-desktop/src/settings.rs:354"
+  },
+  "decisions_pending": [
+    "C45 production/fixture identifiers that remain separate from the alpha",
+    "Preserve existing v2 development-install data and protected credentials or require a fresh setup",
+    "Release version for this v1 (owner working tree currently 2.0.0)",
+    "Move or replace active Sessions and Settings views while retaining their behavior",
+    "C45 review threshold and full cumulative driver list (draft list is stale)"
+  ],
+  "owner_answers": {
+    "display_name": "Prisma AIRS Desktop",
+    "release_version": "1.0.0",
+    "setup": "Fresh setup; no alpha or current v2 data/credential migration; leave old data intact",
+    "internal_identity": "io.cdot.airs-desktop; fixture io.cdot.airs-desktop.fixture",
+    "phase_and_gate": "P10: C45 follows D034 at 8 then raised to 9; P10 phase review at 9 before signed release",
+    "confirmation": "Owner answered all C45 product-choice questions explicitly; planning frontier settled",
+    "recorded_at": "2026-11-01T11:25:59.621477+00:00"
+  },
+  "installed_airs_bundle_paths": [
+    "/Applications/Prisma AIRS Desktop.app"
+  ],
+  "installed_airs_bundles": [
+    {
+      "path": "/Applications/Prisma AIRS Desktop.app",
+      "identifier": "io.cdot.prisma-airs-desktop",
+      "version": "0.11.11",
+      "name": "Prisma AIRS Desktop"
+    }
+  ]
+}
