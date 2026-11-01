@@ -1,0 +1,92 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C38",
+  "recorded_utc": "2026-11-01T22:40:33Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c38.py",
+  "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "023bd5732793f1339766baf21176373ad2e23add6e8ad9f20cedb8c4d434ef61",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C38-N01",
+      "description": "The Harness as the prototype board draws it (R2App start=harness) with a tenant, the Gateway workspace Team A chosen and its inference key stored, on the real pinned engine against the synthetic Gateway: the title band (heading; the tenant \u00b7 engine \u00b7 workspace line; End conversation beside the heading only while a conversation runs) over three columns; the rail labelled 'Saved conversations \u00b7 encrypted' with New investigation and the live conversation's row; the transcript with the operator's message and the Harness's answer, and the composer whose Send is a button; the Decisions aside saying 'Nothing to decide yet' and listing the workspace's MCP catalog (both synthetic servers, each 'Not signed in') until a read-only desktop read waits, then holding that decision (airs_desktop.mcpServers, Read-only, Approve once / Decline) with the transcript's pending line; allowed in the aside the read is made once and the answer follows, the aside empty again. The parity composites (evidence/C38/parity, prototype left, app right at the WebView's measured size, light and dark) are captured from the state with the decision waiting; the owner's judgement is recorded in parity/notes.md before the gate (D059).",
+      "result": "pass",
+      "observation": "board True with the tenant \u00b7 engine \u00b7 workspace line True; rail labelled and with New investigation True; aside 'Nothing to decide yet' True listing the catalog ['Tools tools', 'Docs tools'] each not signed in True; the first send answered True (1 model turn(s)) with the operator's message in the rail and the transcript True, End conversation in the band True, the live row in the rail True; the read-only desktop read held in the aside True marked Read-only True with the transcript's pending line True; allowed there it was read 1 time(s) and answered True, the aside empty again True; parity composites ['docs/planning/evidence/P09/native/cumulative/C38/parity/harness-dark.png', 'docs/planning/evidence/P09/native/cumulative/C38/parity/harness-light.png']",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C38/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-empty.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-first-send.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-decision.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-approved.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-empty-light-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-empty-dark-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-empty-dark-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-empty-light-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-decision-light-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-decision-dark-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-decision-dark-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-decision-light-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/parity/harness-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/parity/harness-light.png"
+      ]
+    },
+    {
+      "id": "C38-N03",
+      "description": "The tenant-switch guard (invariant I1) on the board with a Harness decision waiting: choosing the other tenant from the switcher, from the palette's Switch to entry and from Go \u203a Switch Tenant\u2026 each shows the one guard dialog (Stay, Discard and switch, Archive and switch; naming the target tenant; focus on Stay); Escape and Stay keep the first tenant and the waiting decision; Archive and switch ends the conversation with the decision untaken, lands the other tenant on Home and leaves no engine, with nothing further run (C30-N01 carried onto the C38 board in C44).",
+      "result": "pass",
+      "observation": "with a decision waiting True: the switcher's other tenant shows the guard True with ['Stay', 'Discard and switch', 'Archive and switch'], naming Meridian Retail True, focus on Stay True; Escape stays True with the first tenant True and the decision kept True; the palette's Switch to entry shows it True and Stay closes it True; Go \u203a Switch Tenant\u2026 shows it True; Archive and switch lands Meridian Retail on Home True, the engine gone True, further runs 0",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C38/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-guard.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-archived-switched.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-guard-light.png"
+      ]
+    },
+    {
+      "id": "C38-N02",
+      "description": "Keyboard and layout (T09) with a decision waiting: Tab from End conversation reaches New investigation, the composer (Message) and its reachable action (Stop answering while the engine's turn waits on the decision, since Send is disabled until nothing is pending), then the aside's Approve once and Decline, in that order; the focus ring on that action; the Harness at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the decision card populated, no horizontal overflow, New investigation, Send and Approve once each at least 32 CSS px, the rail, the composer and the aside side by side at 100% and one below the other at 200%; every row records the WebView's measured size and the viewport from its own tree and asserts them; the decision declined and the conversation ended leaves no engine.",
+      "result": "pass",
+      "observation": "Tab from End conversation reached ['New investigation', 'Message', 'Stop answering', 'Approve once', 'Decline', 'Project, sign-in and workspace tools', 'Open Why were 14 prompts blocked on claims-assistant overnight? Is it one actor?', ''] in order True (the composer's action Stop answering; Send is disabled while the turn waits on the decision); ring on Stop answering 764 px; harness-1440x900-light: web [1440, 900] viewport [1440, 900] overflow 0 px, scroll bars 0, columns True controls {'send': [32, 32], 'approve': [150, 32], 'new': [219, 32]}; harness-1440x900-dark: web [1440, 900] viewport [1440, 900] overflow 0 px, scroll bars 0, columns True controls {'send': [32, 32], 'approve': [150, 32], 'new': [219, 32]}; harness-900x600-200-light: web [900, 2089] viewport [900, 600] overflow 0 px, scroll bars 0, columns True controls {'send': [64, 64], 'approve': [334, 64], 'new': [724, 64]}; harness-900x600-200-dark: web [900, 2089] viewport [900, 600] overflow 0 px, scroll bars 0, columns True controls {'send': [64, 64], 'approve': [334, 64], 'new': [724, 64]}; declined and ended True, engine gone True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C38/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-1440x900-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-1440x900-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-900x600-200-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/tree-harness-900x600-200-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-1440x900-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-1440x900-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-900x600-200-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-900x600-200-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-ring-plain.png",
+        "docs/planning/evidence/P09/native/cumulative/C38/native/captures/harness-ring-action.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size) beside it.",
+    "The model is the synthetic Gateway service (tools/native-acceptance/mgmt_server.py); the real pinned engine runs against it. The lifecycle fixtures and the setup panels are exercised in the component suite.",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "harness-decision-dark-100.png",
+    "harness-decision-dark-200.png",
+    "harness-decision-light-100.png",
+    "harness-decision-light-200.png",
+    "harness-empty-dark-100.png",
+    "harness-empty-dark-200.png",
+    "harness-empty-light-100.png",
+    "harness-empty-light-200.png",
+    "harness-guard-light.png",
+    "harness-ring-focused.png",
+    "harness-ring-plain.png",
+    "layouts-harness-1440x900-dark.png",
+    "layouts-harness-1440x900-light.png",
+    "layouts-harness-900x600-200-dark.png",
+    "layouts-harness-900x600-200-light.png"
+  ]
+}

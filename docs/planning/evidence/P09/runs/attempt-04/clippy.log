@@ -1,0 +1,21 @@
+$ cargo clippy --locked -p desktop-core -p desktop-host -p xtask --features test-fixtures --all-targets -- -D warnings
+    Checking desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/desktop-core)
+error: items after a test module
+    --> crates/desktop-core/src/authority.rs:6171:1
+     |
+6171 | mod tests {
+     | ^^^^^^^^^
+...
+6230 | impl Core {
+     | ^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#items_after_test_module
+     = note: `-D clippy::items-after-test-module` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
+     = help: move the items to before the test module was defined
+
+    Checking desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop/src-tauri)
+    Checking xtask v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/xtask)
+error: could not compile `desktop-core` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+EXIT 101

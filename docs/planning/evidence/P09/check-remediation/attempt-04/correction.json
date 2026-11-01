@@ -1,0 +1,25 @@
+{
+  "change": "Move unchanged test-fixtures-only impl Core observer before cfg(test) module; no method-body/assertion/lint changes.",
+  "clippy_command": [
+    "cargo",
+    "clippy",
+    "--locked",
+    "-p",
+    "desktop-core",
+    "-p",
+    "desktop-host",
+    "-p",
+    "xtask",
+    "--features",
+    "test-fixtures",
+    "--all-targets",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit": 0,
+  "log": "docs/planning/evidence/P09/check-remediation/attempt-04/clippy-corrected.log",
+  "log_sha256": "8edbf75755e9080b677fea2303746a5c9466a541616a2b00381b538d5a365251",
+  "diff_sha256": "7e0c29f06ad7f3c4467576337e9e5fb8934a1f0858c7afdd8efad4df59b7cbeb",
+  "requalification": "fresh preparation and all19 native drivers, then fresh18-check attempt05 required"
+}

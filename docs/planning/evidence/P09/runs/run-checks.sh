@@ -61,6 +61,9 @@ run xtask-lib cargo test --locked -p xtask --lib
 run shell-controller cargo test --locked -p xtask --features test-fixtures --test shell_controller
 run desktop-build pnpm --filter @prisma-airs/desktop build
 run l19-offline cargo test --locked -p xtask --features test-fixtures --test controlled_live --test live_run
+# Offline unittest only: retained/synthetic AX settlement and tempfile budget
+# ledgers. Imports pure helpers; never calls the live driver's guarded main(),
+# resolves credentials, launches the qualification app, or sends a product call.
 run l19-native-driver python3 -I tools/native-acceptance/test_live_c29_l19.py
 AFTER=$($R/hash-inputs.sh "$PWD" $E/inputs-after.sha256) || { echo "input inventory failed after the runs; run invalid"; exit 2; }
 [ -n "$AFTER" ] || { echo "input inventory produced no digest after the runs; run invalid"; exit 2; }

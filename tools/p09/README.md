@@ -20,6 +20,11 @@ Prerequisites:
   hashes. Historical C44/C43 smoke evidence cannot substitute.
 - Use a fresh P09 check attempt on unchanged inputs. Kirk `attempt-02` is
   historical; Worf `attempt-03` failed 17/18 with retained fixture failures.
+  Worf `attempt-04` also finished 17/18: the full fixture suite passed, but
+  fixture Clippy rejected the observer's placement after a test module. The
+  unchanged fixture-only observer was moved before that module; the exact
+  Clippy command and formatting check passed. Generation 04 requalifies this
+  source ordering, followed by fresh check `attempt-05`.
   The current audit requires every compiled input to match the fresh native
   build's captured before/after seal (`P09/native-build-inputs.json` and its
   generation under `P09/preparations/`). There is no source-exemption list.
@@ -33,9 +38,9 @@ Example after the fresh fixture/native prerequisites are satisfied (choose
 unused attempt IDs if these already exist):
 
 ```sh
-bash docs/planning/evidence/P09/runs/run-checks.sh attempt-04
-python3 tools/p09/audit-p09-checks.py attempt-04
-python3 tools/p09/make-remedial-packet.py C29 attempt-08 attempt-07 attempt-04
+bash docs/planning/evidence/P09/runs/run-checks.sh attempt-05
+python3 tools/p09/audit-p09-checks.py attempt-05
+python3 tools/p09/make-remedial-packet.py C29 attempt-08 attempt-07 attempt-05
 python3 tools/p09/launch-remedial-review.py C29 attempt-08
 python3 tools/p09/audit-remedial-review.py C29 attempt-08
 ```
@@ -74,7 +79,7 @@ inferred from input verification. After those prerequisites:
 
 ```sh
 python3 -I tools/p09/test_phase_inputs.py
-python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-04.json
+python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-05.json
 python3 tools/p09/launch-remedial-review.py P09 attempt-01
 python3 -I tools/p09/audit-phase-review.py attempt-01
 ```
