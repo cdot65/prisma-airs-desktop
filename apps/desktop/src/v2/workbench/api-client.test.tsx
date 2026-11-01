@@ -1078,7 +1078,11 @@ describe('C41 API Client board', () => {
         expect(opens()).toBe(2)
     })
 
-    it('replacing one collection directly with another that selects the same request id loads the new collection\u2019s document, never shows the old fields under it, and ignores the old collection\u2019s late reply (attempt-03 R1)', async () => {
+    it.each([
+        ['another collection id', { id: 'other', name: 'Other', folder: 'other' }],
+        ['the same collection id in another folder (a copied or cloned folder, attempt-04 R1)', { name: 'Other', folder: 'other-copy/api' }],
+        ['the same collection id and folder basename in another parent folder', { name: 'Other', folder: 'elsewhere/api' }],
+    ])('replacing one collection directly with %s that selects the same request id loads the new collection\u2019s document, never shows the old fields under it, and ignores the old collection\u2019s late reply (attempt-03 R1)', async (_what, over) => {
         const a = board()
         const b: ShellSnapshot = {
             ...a,
@@ -1086,9 +1090,7 @@ describe('C41 API Client board', () => {
                 ...a.workbench,
                 collection: {
                     ...a.workbench.collection!,
-                    id: 'other',
-                    name: 'Other',
-                    folder: 'other',
+                    ...over,
                     requests: [{ relative: 'topics/list.request.toml', id: 'list', method: 'GET', url: 'http://127.0.0.1:8080/other' }],
                     tabs: [{ id: 'list', relative: 'topics/list.request.toml', method: 'GET', draft: false, new: false, recovered: false, conflict: null, interrupted: false }],
                     selected: 'list',

@@ -109,8 +109,12 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // Every document-producing call is a load bound to the collection it was asked of and to a generation; a reply
     // from an earlier generation, or from a collection no longer open, is dropped (a late reply replaced the current
     // request's document, or resurrected a closed one).
-    const collectionRef = useRef<string | null>(collection?.id ?? null)
-    collectionRef.current = collection?.id ?? null
+    // The open collection's scope is its folder and its id together: a copied or cloned folder keeps the id (the
+    // core scopes private documents by folder plus id too), so documents and loads are never shared across folders
+    // (attempt-04 R1).
+    const collectionKey = collection ? `${collection.folder}\u0000${collection.id}` : null
+    const collectionRef = useRef<string | null>(collectionKey)
+    collectionRef.current = collectionKey
     const selectedRef = useRef<string | null>(collection?.selected ?? null)
     selectedRef.current = collection?.selected ?? null
     // A cURL import's conversion report that arrived after the core had already selected its draft (the selection's
@@ -163,7 +167,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     const followed = useRef<string | null>(null)
     // Following is scoped to one open collection: closing it forgets the followed selection, so the same
     // collection re-opened with its persisted selection opens that request again (the editor was left blank).
-    const collectionId = collection?.id ?? null
+    const collectionId = collectionKey
     useEffect(() => {
         // A collection boundary (closed, re-opened, or replaced by another collection) retires every load in flight
         // (its reply is ignored), the loading marker and the document shown: the editor never shows one collection's
