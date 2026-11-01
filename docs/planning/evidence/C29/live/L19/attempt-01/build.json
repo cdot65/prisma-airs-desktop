@@ -1,0 +1,69 @@
+{
+  "schema": "airs-v2/l19-build/1",
+  "built_utc": "2026-11-01T12:41:40.347725+00:00",
+  "source_root": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c29-live",
+  "source_head": "e13aeddbe0fe1c953dad5170d9e70b789566dbdc",
+  "source_inventory": "docs/planning/evidence/C29/live/L19/build/inputs-before.sha256",
+  "source_inputs_sha256": "1cc64de35fa0a2006c30900cf618ba4ea42c1df680301449ef6c8a40cf677245",
+  "bundle": "/Users/cdot/development/redtail/p09-queue/codex-c44-preflight/l19-target/aarch64-apple-darwin/debug/bundle/macos/Prisma AIRS Desktop L19 Qualification.app",
+  "identifier": "io.cdot.prisma-airs-desktop.v2.l19qual",
+  "features": [],
+  "profile": "debug",
+  "target": "aarch64-apple-darwin",
+  "executable_sha256": "b11b9ae25dd72919751a2d2798615b08a5aef0d914547734a26c371cd93d61e9",
+  "config": {
+    "productName": "Prisma AIRS Desktop L19 Qualification",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.l19qual",
+    "bundle": {
+      "targets": [
+        "app"
+      ]
+    }
+  },
+  "config_sha256": "86ce56b8517e91e48c1bd9feaaf8e061539a7282c14524daf9e1ac0a7ee1ce8e",
+  "runs": {
+    "frontend": {
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "build"
+      ],
+      "exit": 0,
+      "log": "docs/planning/evidence/C29/live/L19/build/frontend.log",
+      "log_sha256": "7795c97c1da2a22b27fe861f0532fbab7496e6d13f70e2e0018e5d1f543b9dcc"
+    },
+    "native": {
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "tauri",
+        "build",
+        "--debug",
+        "--ci",
+        "--no-sign",
+        "--target",
+        "aarch64-apple-darwin",
+        "--bundles",
+        "app",
+        "--config",
+        "/Users/cdot/development/redtail/p09-queue/codex-c44-preflight/tauri.l19qual.conf.json",
+        "--config",
+        "src-tauri/tauri.harness.conf.json",
+        "--",
+        "--locked"
+      ],
+      "exit": 0,
+      "log": "docs/planning/evidence/C29/live/L19/build/native.log",
+      "log_sha256": "f0a2449403f46ddccd774687ec83433f5f02b1f6cbc08fd9691974ec4f8b03e3"
+    }
+  },
+  "hash_procedure_sha256": "033a2bcffb4bf401a03448879902a1eda11b93c020a1c84730b7e4396667e634",
+  "implementer": "Codex",
+  "limitations": [
+    "Unsigned local qualification bundle; production adapters, separate qualification identity, no test-fixtures feature.",
+    "Owner uncommitted build inputs were copied unchanged into this isolated worktree and remain unstaged. This is not a release artifact."
+  ]
+}

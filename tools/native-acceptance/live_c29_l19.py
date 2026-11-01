@@ -9,6 +9,7 @@ are entered. Only Runtime Security is selected, and onboarding is not completed.
 """
 import argparse
 import datetime
+import fcntl
 import hashlib
 import json
 import os
@@ -99,6 +100,40 @@ def press(app, label):
     time.sleep(.5)
 
 
+def verify_finished(tree):
+    terminal = {
+        'Checks finished; nothing failed.',
+        'Checks finished with warnings.',
+        'A required check failed.',
+        'An optional check failed. You can fix it and verify again, or continue with it recorded as a warning.',
+    }
+    labels = {n.get('label') for n in tree if n.get('role') in ('AXStaticText', 'AXHeading')}
+    return bool(labels & terminal) and 'Checking…' not in labels
+
+
+def reserve_read(path, manifest_sha, attempt, limit):
+    """Append a conservative reservation before admission; never refund one."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+    with os.fdopen(fd, 'a+', encoding='utf-8') as ledger:
+        fcntl.flock(ledger, fcntl.LOCK_EX)
+        assert os.fstat(ledger.fileno()).st_mode & 0o077 == 0, 'budget ledger must be private'
+        ledger.seek(0)
+        raw = ledger.read()
+        entries = [json.loads(line) for line in raw.splitlines() if line.strip()]
+        assert all(e['manifest_sha256'] == manifest_sha for e in entries), 'budget manifest changed'
+        assert not any(e['attempt'] == attempt for e in entries), 'attempt already reserved'
+        used = sum(e['reads_reserved'] for e in entries)
+        assert all(e['reads_reserved'] == 1 for e in entries) and used < limit <= 2, 'read budget exhausted'
+        ledger.seek(0, os.SEEK_END)
+        if raw and not raw.endswith('\n'):
+            ledger.write('\n')
+        ledger.write(json.dumps({'manifest_sha256': manifest_sha, 'attempt': attempt, 'reads_reserved': 1}) + '\n')
+        ledger.flush()
+        os.fsync(ledger.fileno())
+    return used + 1
+
+
 def credential_ids():
     path = DATA / 'state.json'
     if not path.exists():
@@ -153,6 +188,7 @@ def main():
     assert compiled.returncode == 0, 'private input helper failed to compile'
     app = PrivateApp(str(bundle), str(work), [])
     receipt = {'schema': 'airs-v2/live-row/1', 'subject': 'C29', 'family': 'L19',
+               'performed_by': 'Codex through the granted Kitty native queue',
                'attempt': args.attempt, 'status': 'failed', 'recorded_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                'manifest_sha256': scope_sha, 'build_receipt_sha256': sha(args.build),
                'executable_sha256': build['executable_sha256'], 'source_inputs_sha256': build['source_inputs_sha256'],
@@ -205,17 +241,14 @@ def main():
         assert not any(n.get('role') == 'AXCheckBox' and n.get('value') in (1, '1', True) and n.get('label') != 'AI Runtime Security' for n in tree)
         press(app, 'Continue')
         require(app, lambda t: app.node(t, 'AXHeading', 'Check the connection') is not None, 'verify unavailable')
-        # One reservation, created exclusively BEFORE the only network-triggering
-        # action. A re-run cannot silently spend a second approved read.
-        args.budget_ledger.parent.mkdir(parents=True, exist_ok=True)
-        fd = os.open(args.budget_ledger, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(fd, 'w') as f:
-            json.dump({'manifest_sha256': scope_sha, 'attempt': args.attempt, 'reads_reserved': 1}, f)
+        # Charge before the only network-triggering action, including interrupted
+        # or uncertain earlier calls. A third reservation is refused locally.
+        receipt['cumulative_read_budget_reserved'] = reserve_read(args.budget_ledger, scope_sha, args.attempt, family['budget']['reads'])
         receipt['read_budget_reserved'] = 1
         receipt['wizard_verify_intents'] = 1
         stage = 'verify'
         press(app, 'Run the checks')
-        tree = require(app, lambda t: app.node(t, 'AXButton', 'Verify again') is not None, 'verify did not settle', 90)
+        tree = require(app, verify_finished, 'verify did not settle', 90)
         passed = app.has_text(tree, 'The management client can read this tenant.') and app.has_text(tree, 'Pass')
         assert all(secret not in str(n) for n in tree), 'sensitive tree refused'
         write(out / 'wizard-verify.json', tree)
