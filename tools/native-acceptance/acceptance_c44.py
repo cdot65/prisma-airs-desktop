@@ -299,6 +299,11 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     retire_accepted = bool(retire_text) and "ACCEPTANCE PENDING" not in retire_text and "## Acceptance" in retire_text
     retire_listed = set(re.findall(r"^\| (C\d\d-N\d\d) \|", retire_text, re.M))
     uncovered = []
+    # The map must cover exactly the legacy manifest (attempt-04 O1): an unmapped check fails, never skipped.
+    manifest = json.load(open(os.path.join(ROOT, "docs/architecture/native-checks.json")))["chunks"]
+    legacy_ids = {c["id"] for k, v in manifest.items() if re.fullmatch(r"C(0[1-9]|1\d|2\d|3[0-3])", k) for c in v}
+    uncovered += [f"{lid} (in the legacy manifest, not in the map)" for lid in sorted(legacy_ids - set(la.ASSERTIONS))]
+    uncovered += [f"{lid} (in the map, not in the legacy manifest)" for lid in sorted(set(la.ASSERTIONS) - legacy_ids)]
     for lid, (kind, targets, note) in la.ASSERTIONS.items():
         if kind == la.R:
             if not note:
