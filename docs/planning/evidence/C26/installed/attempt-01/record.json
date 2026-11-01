@@ -1,0 +1,285 @@
+{
+ "schema": "airs-v2/installed-acceptance/1",
+ "account": "airstest",
+ "started_utc": "20261025T235257Z",
+ "host": {
+  "model": "Mac17,3",
+  "sw_vers": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434"
+ },
+ "steps": [
+  {
+   "id": "P0",
+   "title": "fresh non-admin account, no developer checkout",
+   "started_utc": "2026-10-25T23:52:57Z",
+   "automated": {
+    "not_admin": {
+     "ok": true,
+     "groups": "staff everyone localaccounts com.apple.sharepoint.group.1 com.apple.sharepoint.group.2 _lpoperator"
+    },
+    "no_checkout": {
+     "ok": true
+    },
+    "kit_release_json": {
+     "ok": true
+    }
+   },
+   "operator": null,
+   "result": "pass",
+   "finished_utc": "2026-10-25T23:52:57Z"
+  },
+  {
+   "id": "I-0.2.0",
+   "title": "install 0.2.0 from a quarantined DMG",
+   "started_utc": "2026-10-25T23:53:43Z",
+   "automated": {
+    "dmg_sha256": {
+     "ok": true,
+     "expected": "5efb23e99210a9780167bc7fb1fee201172a0079a8f2c6f17dcde8a5807acbe6"
+    },
+    "dmg_gatekeeper": {
+     "ok": true,
+     "spctl": "/var/folders/bl/pr_dkq6d7j9bmswlw817phw80000gp/T/airs-v2-c26-zn78jowr/Prisma AIRS Desktop v2_0.2.0_aarch64.dmg: accepted\nsource=Notarized Developer ID\norigin=Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)"
+    },
+    "dmg_staple": {
+     "ok": true,
+     "stapler": "Processing: /var/folders/bl/pr_dkq6d7j9bmswlw817phw80000gp/T/airs-v2-c26-zn78jowr/Prisma AIRS Desktop v2_0.2.0_aarch64.dmg\nThe validate action worked!"
+    },
+    "app_gatekeeper": {
+     "ok": true,
+     "spctl": "/Users/airstest/Applications/Prisma AIRS Desktop v2.app: accepted\nsource=Notarized Developer ID\norigin=Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)"
+    },
+    "app_signature": {
+     "ok": true,
+     "codesign": "/Users/airstest/Applications/Prisma AIRS Desktop v2.app: valid on disk\n/Users/airstest/Applications/Prisma AIRS Desktop v2.app: satisfies its Designated Requirement"
+    },
+    "app_staple": {
+     "ok": true,
+     "stapler": "Processing: /Users/airstest/Applications/Prisma AIRS Desktop v2.app\nThe validate action worked!"
+    },
+    "engine_pin": {
+     "ok": true,
+     "expected": "383bcfb5f8d36d2367793a594ceeaf89a5c0fd618d6436397e9c2e22a682c1c5"
+    },
+    "app_tree": {
+     "ok": true,
+     "expected": "a41c48a593e0e89d0b856b0d7a7336f243cd44aacef22d2dc21fefc53d670fd9"
+    },
+    "no_js_runtime": {
+     "ok": true,
+     "found": []
+    }
+   },
+   "operator": null,
+   "result": "pass",
+   "finished_utc": "2026-10-25T23:53:43Z"
+  },
+  {
+   "id": "U1",
+   "title": "previous version installed and used",
+   "started_utc": "2026-10-26T00:06:15Z",
+   "automated": {
+    "launched": {
+     "ok": true,
+     "pids": [
+      55842
+     ]
+    },
+    "idle_startup_sockets": {
+     "ok": true,
+     "remote": []
+    },
+    "no_js_runtime_process": {
+     "ok": true,
+     "found": []
+    },
+    "processes": {
+     "names": [
+      "/private/var/folders/bl/pr_dkq6d7j9bmswlw817phw80000gp/T/AppTranslocation/272A890C-ADEA-4055-A169-9CA664DB08CF/d/Prisma AIRS Desktop v2.app/Contents/MacOS/prisma-airs-desktop-v2"
+     ]
+    },
+    "quit_cleanly": {
+     "ok": true,
+     "app_left": [],
+     "engine_left": ""
+    }
+   },
+   "operator": {
+    "result": "pass",
+    "note": "everything was fine",
+    "answered_utc": "2026-10-26T00:06:15Z"
+   },
+   "result": "pass",
+   "finished_utc": "2026-10-26T00:06:15Z"
+  },
+  {
+   "id": "I-2.0.0",
+   "title": "install 2.0.0 from a quarantined DMG",
+   "started_utc": "2026-10-26T00:06:38Z",
+   "automated": {
+    "dmg_sha256": {
+     "ok": true,
+     "expected": "309d7d6e555bda07a511d55fac6467752f7d0811836a76e28555045854618708"
+    },
+    "dmg_gatekeeper": {
+     "ok": true,
+     "spctl": "/var/folders/bl/pr_dkq6d7j9bmswlw817phw80000gp/T/airs-v2-c26-omql1nqr/Prisma AIRS Desktop v2_2.0.0_aarch64.dmg: accepted\nsource=Notarized Developer ID\norigin=Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)"
+    },
+    "dmg_staple": {
+     "ok": true,
+     "stapler": "Processing: /var/folders/bl/pr_dkq6d7j9bmswlw817phw80000gp/T/airs-v2-c26-omql1nqr/Prisma AIRS Desktop v2_2.0.0_aarch64.dmg\nThe validate action worked!"
+    },
+    "app_gatekeeper": {
+     "ok": true,
+     "spctl": "/Users/airstest/Applications/Prisma AIRS Desktop v2.app: accepted\nsource=Notarized Developer ID\norigin=Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)"
+    },
+    "app_signature": {
+     "ok": true,
+     "codesign": "/Users/airstest/Applications/Prisma AIRS Desktop v2.app: valid on disk\n/Users/airstest/Applications/Prisma AIRS Desktop v2.app: satisfies its Designated Requirement"
+    },
+    "app_staple": {
+     "ok": true,
+     "stapler": "Processing: /Users/airstest/Applications/Prisma AIRS Desktop v2.app\nThe validate action worked!"
+    },
+    "engine_pin": {
+     "ok": true,
+     "expected": "383bcfb5f8d36d2367793a594ceeaf89a5c0fd618d6436397e9c2e22a682c1c5"
+    },
+    "app_tree": {
+     "ok": true,
+     "expected": "652527daf4bbd61ccf9933517a7a6f9827bdca5f4847247fa6ee7fb0756b554e"
+    },
+    "no_js_runtime": {
+     "ok": true,
+     "found": []
+    }
+   },
+   "operator": null,
+   "result": "pass",
+   "finished_utc": "2026-10-26T00:06:38Z"
+  },
+  {
+   "id": "U2",
+   "title": "manual signed update preserves work",
+   "started_utc": "2026-10-26T00:08:22Z",
+   "automated": {
+    "launched": {
+     "ok": true,
+     "pids": [
+      56975
+     ]
+    },
+    "idle_startup_sockets": {
+     "ok": true,
+     "remote": []
+    },
+    "no_js_runtime_process": {
+     "ok": true,
+     "found": []
+    },
+    "processes": {
+     "names": [
+      "/private/var/folders/bl/pr_dkq6d7j9bmswlw817phw80000gp/T/AppTranslocation/B6356D17-11C2-427D-96E0-B22A3CCDFEC4/d/Prisma AIRS Desktop v2.app/Contents/MacOS/prisma-airs-desktop-v2"
+     ]
+    }
+   },
+   "operator": {
+    "result": "pass",
+    "note": "i couldn't find where to see existing cases, but i assume it worked",
+    "answered_utc": "2026-10-26T00:08:22Z"
+   },
+   "result": "pass",
+   "finished_utc": "2026-10-26T00:08:22Z"
+  },
+  {
+   "id": "F01",
+   "title": "Runtime scan",
+   "started_utc": "2026-10-26T00:20:21Z",
+   "automated": {},
+   "operator": {
+    "result": "pass",
+    "note": "good run",
+    "answered_utc": "2026-10-26T00:20:21Z"
+   },
+   "result": "pass",
+   "finished_utc": "2026-10-26T00:20:21Z"
+  },
+  {
+   "id": "F02",
+   "title": "Academy",
+   "started_utc": "2026-10-26T00:23:27Z",
+   "automated": {},
+   "operator": {
+    "result": "pass",
+    "note": "yeah, all good.",
+    "answered_utc": "2026-10-26T00:23:27Z"
+   },
+   "result": "pass",
+   "finished_utc": "2026-10-26T00:23:27Z"
+  },
+  {
+   "id": "F03",
+   "title": "Management",
+   "started_utc": "2026-10-26T00:31:15Z",
+   "automated": {},
+   "operator": {
+    "result": "pass",
+    "note": "all good functionality, workflow is needing a lot of love",
+    "answered_utc": "2026-10-26T00:31:15Z"
+   },
+   "result": "pass",
+   "finished_utc": "2026-10-26T00:31:15Z"
+  },
+  {
+   "id": "F04",
+   "title": "Gateway",
+   "started_utc": "2026-10-26T00:35:43Z",
+   "automated": {},
+   "operator": {
+    "result": "fail",
+    "note": "i am never able to press the button to send the prompt, ui is a mess]",
+    "answered_utc": "2026-10-26T00:35:43Z"
+   },
+   "result": "fail",
+   "finished_utc": "2026-10-26T00:35:43Z"
+  },
+  {
+   "id": "F05",
+   "title": "Harness and MCP",
+   "started_utc": "2026-10-26T00:38:24Z",
+   "automated": {
+    "after_quit": {
+     "ok": true,
+     "app_left": [],
+     "engine_left": ""
+    },
+    "app_was_running": {
+     "ok": true,
+     "pids": [
+      59614
+     ]
+    }
+   },
+   "operator": {
+    "result": "fail",
+    "note": "cannot find the way to access the SSO setup page",
+    "answered_utc": "2026-10-26T00:38:23Z"
+   },
+   "result": "fail",
+   "finished_utc": "2026-10-26T00:38:24Z"
+  },
+  {
+   "id": "F06",
+   "title": "API Client",
+   "started_utc": "2026-10-26T00:40:27Z",
+   "automated": {},
+   "operator": {
+    "result": "fail",
+    "note": "selecting an empty folder does nothing, the ui still provides the path forward for only OPen collection, Start New Collection, and Open Strata Cloud Manager. starting a new colleciton in a folder does nothing",
+    "answered_utc": "2026-10-26T00:40:27Z"
+   },
+   "result": "fail",
+   "finished_utc": "2026-10-26T00:40:27Z"
+  }
+ ],
+ "finished_utc": "2026-10-26T00:40:27Z"
+}

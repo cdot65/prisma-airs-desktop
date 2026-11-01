@@ -1,0 +1,167 @@
+{
+  "schema": "airs-v2/release-signing/1",
+  "started_utc": "2026-10-25T22:00:08Z",
+  "finished_utc": "2026-10-25T22:07:10Z",
+  "identity": "Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)",
+  "team_identifier": "G5QLZ5A8TA",
+  "profile": "prisma-airs-desktop",
+  "steps": [
+    {
+      "label": "sign main executable",
+      "argv": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)",
+        "--options",
+        "runtime",
+        "--timestamp",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2.app/Contents/MacOS/prisma-airs-desktop-v2"
+      ]
+    },
+    {
+      "label": "sign app",
+      "argv": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)",
+        "--options",
+        "runtime",
+        "--timestamp",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2.app"
+      ]
+    },
+    {
+      "label": "zip app for notarization",
+      "argv": [
+        "/usr/bin/ditto",
+        "-c",
+        "-k",
+        "--keepParent",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2.app",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2_2.0.0_aarch64.app.zip"
+      ]
+    },
+    {
+      "label": "notarize app",
+      "argv": [
+        "/usr/bin/xcrun",
+        "notarytool",
+        "submit",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2_2.0.0_aarch64.app.zip",
+        "--keychain-profile",
+        "prisma-airs-desktop",
+        "--wait"
+      ]
+    },
+    {
+      "label": "staple app",
+      "argv": [
+        "/usr/bin/xcrun",
+        "stapler",
+        "staple",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2.app"
+      ]
+    },
+    {
+      "label": "build dmg",
+      "argv": [
+        "/usr/bin/hdiutil",
+        "create",
+        "-volname",
+        "Prisma AIRS Desktop v2",
+        "-srcfolder",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2.app",
+        "-ov",
+        "-format",
+        "UDZO",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2_2.0.0_aarch64.dmg"
+      ]
+    },
+    {
+      "label": "sign dmg",
+      "argv": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)",
+        "--timestamp",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2_2.0.0_aarch64.dmg"
+      ]
+    },
+    {
+      "label": "notarize dmg",
+      "argv": [
+        "/usr/bin/xcrun",
+        "notarytool",
+        "submit",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2_2.0.0_aarch64.dmg",
+        "--keychain-profile",
+        "prisma-airs-desktop",
+        "--wait"
+      ]
+    },
+    {
+      "label": "staple dmg",
+      "argv": [
+        "/usr/bin/xcrun",
+        "stapler",
+        "staple",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2_2.0.0_aarch64.dmg"
+      ]
+    },
+    {
+      "label": "assess app",
+      "argv": [
+        "/usr/sbin/spctl",
+        "-a",
+        "-vv",
+        "-t",
+        "exec",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2.app"
+      ]
+    },
+    {
+      "label": "assess dmg",
+      "argv": [
+        "/usr/sbin/spctl",
+        "-a",
+        "-vv",
+        "-t",
+        "open",
+        "--context",
+        "context:primary-signature",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2_2.0.0_aarch64.dmg"
+      ]
+    },
+    {
+      "label": "validate dmg staple",
+      "argv": [
+        "/usr/bin/xcrun",
+        "stapler",
+        "validate",
+        "/private/tmp/claude-501/-Users-cdot-Documents-strength-and-honor-Efforts-ampersand-services/b16da328-fc15-4791-9532-d12990dfa1de/scratchpad/c26-v200/Prisma AIRS Desktop v2_2.0.0_aarch64.dmg"
+      ]
+    }
+  ],
+  "notarized": true,
+  "before_signing": {
+    "app_tree_sha256": "6dc8c07a63001d65ea5aaa0e3853c86a5232304182b7dd8ecdc1f050392abbda",
+    "executable_sha256": "2908cce81a92be4b9116c69f9ac56c772a32de3e56d92a52ca689166c76c5502",
+    "engine_sha256": "383bcfb5f8d36d2367793a594ceeaf89a5c0fd618d6436397e9c2e22a682c1c5",
+    "dmg_sha256": null
+  },
+  "after_signing": {
+    "app_tree_sha256": "092424b089baacdbd3fb57ff789a80c899b0c46407d50dabef9ceff3edc1b876",
+    "executable_sha256": "d23421fa10cce3e4bb7b7a0989a3a13f8b261874f5b2389cdd574ed9a113dd47",
+    "engine_sha256": "383bcfb5f8d36d2367793a594ceeaf89a5c0fd618d6436397e9c2e22a682c1c5",
+    "dmg_sha256": null
+  },
+  "stapled": {
+    "app_tree_sha256": "652527daf4bbd61ccf9933517a7a6f9827bdca5f4847247fa6ee7fb0756b554e",
+    "executable_sha256": "d23421fa10cce3e4bb7b7a0989a3a13f8b261874f5b2389cdd574ed9a113dd47",
+    "engine_sha256": "383bcfb5f8d36d2367793a594ceeaf89a5c0fd618d6436397e9c2e22a682c1c5",
+    "dmg_sha256": "309d7d6e555bda07a511d55fac6467752f7d0811836a76e28555045854618708"
+  }
+}

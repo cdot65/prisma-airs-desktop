@@ -36,7 +36,8 @@ pub enum ProjectProblem {
     BadPath,
     /// Something already exists at the destination.
     Exists,
-    /// A new collection must be created inside a Git repository (v1).
+    /// v1 required new collections inside a Git repository. No longer
+    /// produced (D057: Git is optional); kept so the contract is unchanged.
     NotInRepository,
     /// The inventory is incomplete; fix its issues before changing files.
     Incomplete,
@@ -533,34 +534,57 @@ fn request(catalog: &mut Catalog, walk: &mut Walk, relative: &Path, text: String
     });
 }
 
-/// Creates a new collection folder `path` (v1: inside an existing Git
-/// repository) with a fresh identity and its folder name.
+/// Whether `path` is an existing folder holding nothing but Finder's
+/// `.DS_Store`: a folder that may become a collection in place.
+pub fn empty_folder(path: &Path) -> bool {
+    std::fs::read_dir(path)
+        .is_ok_and(|mut entries| entries.all(|e| e.is_ok_and(|e| e.file_name() == ".DS_Store")))
+}
+
+/// Creates a new collection at `path` with a fresh identity and its folder
+/// name: a new folder, or an existing empty one (see [`empty_folder`])
+/// initialised in place. Git is optional (D057). Anything else already at
+/// `path` is refused (`Exists`).
 pub fn create_collection(path: &Path) -> Result<String, ProjectProblem> {
     if path.exists() {
-        return Err(ProjectProblem::Exists);
+        if !empty_folder(path) {
+            return Err(ProjectProblem::Exists);
+        }
+        let root = path.canonicalize().map_err(|_| ProjectProblem::Io)?;
+        let name = folder_name(&root)?;
+        return init_collection(&root, &name);
     }
-    let parent = path
-        .parent()
+    path.parent()
         .and_then(|p| p.canonicalize().ok())
         .ok_or(ProjectProblem::BadPath)?;
-    if !parent.ancestors().any(|p| p.join(".git").exists()) {
-        return Err(ProjectProblem::NotInRepository);
-    }
-    let name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .filter(|n| !n.starts_with('.') && !n.is_empty())
-        .ok_or(ProjectProblem::BadPath)?
-        .to_owned();
-    let id = new_id().ok_or(ProjectProblem::Io)?;
+    let name = folder_name(path)?;
     std::fs::create_dir(path).map_err(|_| ProjectProblem::Io)?;
     let root = path.canonicalize().map_err(|_| ProjectProblem::Io)?;
+    init_collection(&root, &name).inspect_err(|_| {
+        // Only the folder made just now is removed (and only while empty).
+        let _ = std::fs::remove_dir(&root);
+    })
+}
+
+/// A collection's name from its folder (visible, non-empty, UTF-8).
+fn folder_name(path: &Path) -> Result<String, ProjectProblem> {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .filter(|n| !n.starts_with('.') && !n.is_empty())
+        .map(str::to_owned)
+        .ok_or(ProjectProblem::BadPath)
+}
+
+/// Writes a new `collection.toml` (format 1, fresh identity, `name`) into
+/// the existing folder `root`.
+fn init_collection(root: &Path, name: &str) -> Result<String, ProjectProblem> {
+    let id = new_id().ok_or(ProjectProblem::Io)?;
     let mut doc = DocumentMut::new();
     doc["format_version"] = toml_edit::value(1);
     doc["id"] = toml_edit::value(id.as_str());
-    doc["name"] = toml_edit::value(name.as_str());
+    doc["name"] = toml_edit::value(name);
     replace(
-        &root,
+        root,
         Path::new("collection.toml"),
         doc.to_string().as_bytes(),
     )?;
@@ -711,21 +735,70 @@ mod tests {
     }
 
     #[test]
-    fn collections_are_created_inside_repositories_only() {
+    fn collections_are_created_outside_repositories_too() {
         let d = Dir::new();
-        assert_eq!(
-            create_collection(&d.path().join("c")),
-            Err(ProjectProblem::NotInRepository)
-        );
-        std::fs::create_dir(d.path().join(".git")).expect("fixture");
+        assert!(!d.path().ancestors().any(|p| p.join(".git").exists()));
         let id = create_collection(&d.path().join("c")).expect("fixture");
         assert_eq!(
             manifest(&d.path().join("c")).expect("fixture"),
             (id, "c".to_owned())
         );
+        // Inside a repository works as before.
+        std::fs::create_dir(d.path().join("repo")).expect("fixture");
+        std::fs::create_dir(d.path().join("repo/.git")).expect("fixture");
+        let id = create_collection(&d.path().join("repo/api")).expect("fixture");
         assert_eq!(
-            create_collection(&d.path().join("c")),
-            Err(ProjectProblem::Exists)
+            manifest(&d.path().join("repo/api")).expect("fixture"),
+            (id, "api".to_owned())
+        );
+    }
+
+    #[test]
+    fn an_existing_empty_folder_becomes_a_collection_in_place() {
+        let d = Dir::new();
+        let empty = d.path().join("Empty API");
+        std::fs::create_dir(&empty).expect("fixture");
+        std::fs::write(empty.join(".DS_Store"), b"finder").expect("fixture");
+        assert!(empty_folder(&empty));
+        let id = create_collection(&empty).expect("fixture");
+        assert_eq!(
+            manifest(&empty).expect("fixture"),
+            (id, "Empty API".to_owned())
+        );
+        assert_eq!(
+            std::fs::read(empty.join(".DS_Store")).expect("fixture"),
+            b"finder"
+        );
+        assert!(discover(&empty).expect("fixture").complete);
+    }
+
+    #[test]
+    fn anything_else_already_there_is_refused_and_left_alone() {
+        let (d, root) = collection();
+        let before = std::fs::read(root.join("collection.toml")).expect("fixture");
+        assert!(!empty_folder(&root));
+        assert_eq!(create_collection(&root), Err(ProjectProblem::Exists));
+        assert_eq!(
+            std::fs::read(root.join("collection.toml")).expect("fixture"),
+            before
+        );
+        let full = d.path().join("notes");
+        std::fs::create_dir(&full).expect("fixture");
+        std::fs::write(full.join("readme.txt"), "x").expect("fixture");
+        assert!(!empty_folder(&full));
+        assert_eq!(create_collection(&full), Err(ProjectProblem::Exists));
+        assert!(!full.join("collection.toml").exists());
+        let hidden = d.path().join("hidden");
+        std::fs::create_dir(&hidden).expect("fixture");
+        std::fs::create_dir(hidden.join(".git")).expect("fixture");
+        assert_eq!(create_collection(&hidden), Err(ProjectProblem::Exists));
+        let file = d.path().join("file.txt");
+        std::fs::write(&file, "x").expect("fixture");
+        assert!(!empty_folder(&file));
+        assert_eq!(create_collection(&file), Err(ProjectProblem::Exists));
+        assert_eq!(
+            create_collection(&d.path().join("missing/c")),
+            Err(ProjectProblem::BadPath)
         );
     }
 }

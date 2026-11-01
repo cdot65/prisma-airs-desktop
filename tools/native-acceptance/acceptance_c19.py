@@ -194,7 +194,7 @@ def run():
     tree, heading = open_harness(app)
     tree, shown = c8.text(app, f"Engine {PIN['runtimeVersion']} · {PIN['engineCommit'][:12]} · airs-desktop/1", 10)
     obs["offer"] = {"heading": heading, "engine_line": shown,
-                    "needs_tenant": app.has_text(tree, "Choose a tenant to use the Harness."),
+                    "needs_tenant": app.has_text(tree, "A tenant chosen") and fx.App.node(tree, "AXButton", "Go to Settings") is not None,
                     "start_disabled": not enabled(tree, "Start conversation")}
     obs["tree_offer"] = save_tree("offer", tree)
     # A tenant, its management client, a chosen workspace and its key.

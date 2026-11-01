@@ -1,0 +1,103 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L12",
+  "check": "L12-call-01-unit",
+  "workflows": [
+    "W50"
+  ],
+  "environment": "academy-test",
+  "manifest_sha256": "b4c34524f425c91a5cba3f26d185e3bd25cac785599c2895c20b0a733a529826",
+  "started_utc": "2026-10-26T19:02:55Z",
+  "finished_utc": "2026-10-26T19:02:55Z",
+  "inputs": {
+    "input": "{\"json\":{\"unitId\":\"asf-assess-artifacts-u1\"}}",
+    "procedure": "units.get"
+  },
+  "outcome": "passed",
+  "detail": "the hosted procedure answered and its result held",
+  "observed": {
+    "assertions": [
+      {
+        "actual": {
+          "array_len": null,
+          "bytes": 9,
+          "present": true
+        },
+        "expected": {
+          "array_len": null,
+          "bytes": 9,
+          "present": true
+        },
+        "passed": true,
+        "pointer": "/kind"
+      },
+      {
+        "actual": {
+          "array_len": null,
+          "bytes": 25,
+          "present": true
+        },
+        "expected": {
+          "kind": "nonempty-string"
+        },
+        "passed": true,
+        "pointer": "/sourceLessonId"
+      },
+      {
+        "actual": {
+          "array_len": null,
+          "bytes": 29,
+          "present": true
+        },
+        "expected": {
+          "kind": "nonempty-string"
+        },
+        "passed": true,
+        "pointer": "/inlineChecks/0/id"
+      },
+      {
+        "actual": {
+          "array_len": null,
+          "bytes": 10,
+          "present": true
+        },
+        "expected": {
+          "one_of": [
+            "mcq",
+            "scenario",
+            "config-diagnosis"
+          ]
+        },
+        "passed": true,
+        "pointer": "/inlineChecks/0/type"
+      },
+      {
+        "actual": {
+          "array_len": 4,
+          "bytes": 276,
+          "present": true
+        },
+        "expected": {
+          "kind": "nonempty-array"
+        },
+        "passed": true,
+        "pointer": "/inlineChecks/0/options"
+      }
+    ]
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {
+    "calls": {
+      "limit": 24,
+      "used": 23
+    }
+  },
+  "implementation": {
+    "cargo_lock_sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+    "runner_sha256": "79134985ff1d3ade3cacea4c53f54551c0f992b69fb28ffad06e3bfbc74c1368",
+    "source_fingerprint": "2b5bf36a1e4752e4f82b415d7b54ef38aae1e0a264c5bd470c1a36271c0035f7"
+  }
+}

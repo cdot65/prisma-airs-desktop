@@ -103,9 +103,11 @@ mod tests {
         assert_eq!(p.protocol, super::super::protocol::PROTOCOL);
         assert_eq!(p.engine_commit, "9331a5839bc6a763d94dee7584746f58bbbe1181");
         assert_eq!(p.executable, "airs-harness");
+        // The Developer ID signed engine (C26), resealed from the unsigned
+        // f8e49cee… build.
         assert_eq!(
             p.binary_sha256,
-            "f8e49cee8b0905818c9271e91b2ca8f39b67075e602e5db7db683f9d37aee50c"
+            "383bcfb5f8d36d2367793a594ceeaf89a5c0fd618d6436397e9c2e22a682c1c5"
         );
     }
 

@@ -241,7 +241,28 @@ describe('AI Gateway', () => {
         expect(sources).toHaveTextContent('Unavailable: This management client is not allowed to read this.')
         expect(screen.getByText('Admin plane', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Not allowed for this management client')
         expect(screen.getByText(/1 of the service keys read may call inference/)).toBeInTheDocument()
-        expect(screen.getByText(/the management client is never\s+used in its place/)).toBeInTheDocument()
+        // No key yet: the Playground is where one is stored.
+        const credential = () => document.querySelector('[data-slot="gateway-inference-credential"]')
+        expect(credential()).toHaveTextContent(
+            "No inference key is stored for Team A. To run inference from here, store the workspace's runtime endpoint and an API key with completions access in the Playground tab. The management client is never used in its place."
+        )
+        expect(credential()).not.toHaveTextContent(/is stored \(/)
+        // A key stored for this workspace is said so, from the same state the Playground uses.
+        const tenants = (inference: ShellSnapshot['tenants'][number]['inference']) =>
+            withTenant(baseSnapshot, tenant({ management: native.current.tenants[0]!.management, inference }), CONTEXT).tenants
+        const endpoint = 'https://gateway.example/v1'
+        await native.push({ ...native.current, tenants: tenants({ state: 'ready', mode: 'keychain', failure: null, target: { workspace: A, endpoint } }) })
+        await waitFor(() =>
+            expect(credential()).toHaveTextContent(
+                `An inference key for Team A is stored (Keychain) and is sent only to ${endpoint}. Run prompts from the Playground tab. The management client is never used in its place.`
+            )
+        )
+        expect(credential()).not.toHaveTextContent(/No inference key/)
+        // A key for another workspace does not serve this one.
+        await native.push({ ...native.current, tenants: tenants({ state: 'ready', mode: 'keychain', failure: null, target: { workspace: B, endpoint } }) })
+        await waitFor(() => expect(credential()).toHaveTextContent(/^The stored inference key is for workspace Team B\. To run inference from Team A, store a key for it/))
+        await user.click(within(credential() as HTMLElement).getByRole('button', { name: 'Open Playground' }))
+        expect(screen.getByRole('tab', { name: 'Playground' })).toHaveAttribute('aria-selected', 'true')
     })
 
     it('says when the remembered workspace is gone, restored, or unconfirmed', async () => {

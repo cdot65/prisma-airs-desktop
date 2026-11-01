@@ -230,6 +230,9 @@ export const LibraryView = forwardRef<HTMLHeadingElement, Props>(function Librar
 
             {ready && library.cases.length === 0 ? (
                 <section aria-labelledby={`${ids}-starters`} className='flex flex-col gap-3' data-slot='library-starters'>
+                    <p className='text-academy-ink-soft text-[13px]' data-slot='library-none'>
+                        {tenant.label} has no saved cases yet.
+                    </p>
                     <h2 id={`${ids}-starters`} className='text-[15px] font-semibold'>
                         Start from an example
                     </h2>
@@ -259,8 +262,12 @@ export const LibraryView = forwardRef<HTMLHeadingElement, Props>(function Librar
             ) : null}
 
             {ready && library.cases.length > 0 ? (
-                <table className='w-full border-collapse text-left text-[13px]' data-slot='library-table'>
-                    <caption className='sr-only'>Cases of {tenant.label}</caption>
+                <h2 id={`${ids}-cases`} className='text-[15px] font-semibold' data-slot='library-count'>
+                    Your cases in {tenant.label} ({library.cases.length})
+                </h2>
+            ) : null}
+            {ready && library.cases.length > 0 ? (
+                <table aria-labelledby={`${ids}-cases`} className='w-full border-collapse text-left text-[13px]' data-slot='library-table'>
                     <thead>
                         <tr className='border-academy-rule border-b'>
                             <th scope='col' className='py-2 pr-3 font-medium'>

@@ -206,6 +206,50 @@ describe('AI Gateway Playground and observation (C18)', () => {
         expect(screen.getByRole('button', { name: 'Run prompt' })).toBeDisabled()
     })
 
+    it('says why Run prompt is unavailable, one missing condition at a time, and nothing once it can run', async () => {
+        const native = scriptedNative(ready())
+        scripted(native, answer)
+        const user = await open(native)
+        await user.click(screen.getByRole('tab', { name: 'Playground' }))
+        const runButton = screen.getByRole('button', { name: 'Run prompt' })
+        const why = () => document.querySelector('[data-slot="gateway-playground-blocked"]')
+        // Every control has a visible name; the endpoint says what it is.
+        expect(screen.getByRole('radiogroup', { name: 'Where the key is kept' })).toBeInTheDocument()
+        expect(screen.getByText('Where the key is kept')).toBeVisible()
+        expect(screen.getByText('Inference API')).toBeVisible()
+        expect(screen.getByLabelText('Runtime endpoint')).toHaveValue('')
+        expect(screen.getByLabelText('Runtime endpoint')).toHaveAccessibleDescription(/runtime or inference endpoint/)
+        expect(screen.getByLabelText('Prompt')).toHaveAttribute('placeholder', 'What to send to the model')
+        // No key.
+        expect(runButton).toBeDisabled()
+        expect(why()).toHaveTextContent('Store an inference key for this workspace above.')
+        expect(runButton).toHaveAccessibleDescription('Store an inference key for this workspace above.')
+        // A key for another workspace is still no key here.
+        await native.push({ ...native.current, tenants: ready(view(), keyFor(B)).tenants })
+        await screen.findByText(/The stored key is for workspace Team B\./)
+        expect(why()).toHaveTextContent('Store an inference key for this workspace above.')
+        // Key here, no model.
+        await native.push({ ...native.current, tenants: ready(view(), keyFor(A)).tenants })
+        await waitFor(() => expect(why()).toHaveTextContent('Enter a model.'))
+        expect(runButton).toBeDisabled()
+        expect(runButton).toHaveAccessibleDescription('Enter a model.')
+        // Model, no prompt (blank does not count).
+        await user.type(screen.getByLabelText('Model'), '@openai-prod/gpt-4o')
+        await user.type(screen.getByLabelText('Prompt'), '   ')
+        expect(why()).toHaveTextContent('Enter a prompt.')
+        expect(runButton).toBeDisabled()
+        // Everything there: no reason, and the button works.
+        await user.type(screen.getByLabelText('Prompt'), 'Say hello')
+        expect(why()).toBeNull()
+        expect(runButton).toBeEnabled()
+        expect(runButton).not.toHaveAttribute('aria-describedby')
+        // While a run is under way the button is disabled with no reason shown.
+        await native.push({ ...native.current, gateway: view({ playground: run() }) })
+        expect(await screen.findByText('Receiving…')).toBeInTheDocument()
+        expect(runButton).toBeDisabled()
+        expect(why()).toBeNull()
+    })
+
     it('runs once when asked, streams the output, and stopping never claims nothing was charged', async () => {
         const native = scriptedNative(ready(view(), keyFor(A)))
         const reads = scripted(native, answer)

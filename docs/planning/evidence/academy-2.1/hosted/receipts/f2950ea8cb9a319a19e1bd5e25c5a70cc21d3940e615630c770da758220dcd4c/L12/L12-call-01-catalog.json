@@ -1,0 +1,49 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L12",
+  "check": "L12-call-01-catalog",
+  "workflows": [
+    "W50"
+  ],
+  "environment": "academy-test",
+  "manifest_sha256": "f2950ea8cb9a319a19e1bd5e25c5a70cc21d3940e615630c770da758220dcd4c",
+  "started_utc": "2026-10-26T18:54:06Z",
+  "finished_utc": "2026-10-26T18:54:06Z",
+  "inputs": {
+    "input": null,
+    "procedure": "courses.list"
+  },
+  "outcome": "passed",
+  "detail": "the hosted procedure answered and its result held",
+  "observed": {
+    "assertions": [
+      {
+        "actual": {
+          "array_len": 50,
+          "bytes": 41972,
+          "present": true
+        },
+        "expected": {
+          "kind": "nonempty-array"
+        },
+        "passed": true,
+        "pointer": ""
+      }
+    ]
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {
+    "calls": {
+      "limit": 17,
+      "used": 17
+    }
+  },
+  "implementation": {
+    "cargo_lock_sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+    "runner_sha256": "76c0193f11a56de6ec387945101f824323ae0ed2a4a50f95d3fb3a03a5741090",
+    "source_fingerprint": "fce66e51ae2c7773dcc019960a8dd7a895e0f1539f0bcabdab1d31329b1334f4"
+  }
+}

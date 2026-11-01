@@ -116,6 +116,20 @@ describe('Case Library', () => {
         expect(sent(native, 'saveCase')[1]).toMatchObject({ draft: { product: 'skill-scanning', profile: '', appName: '', payload: '{}' } })
     })
 
+    it('names the tenant and counts its saved cases, or says it has none', async () => {
+        const full = scriptedNative(snap(library({ cases: [RUNTIME, SPEC] })))
+        await openLibrary(full)
+        const heading = screen.getByRole('heading', { level: 2, name: `Your cases in ${tenant().label} (2)` })
+        expect(screen.getByRole('table', { name: heading.textContent ?? '' })).toBeInTheDocument()
+        expect(screen.queryByText(/has no saved cases yet/)).toBeNull()
+    })
+
+    it('says an empty tenant has no saved cases above the starters', async () => {
+        await openLibrary(scriptedNative(snap()))
+        expect(screen.getByText(`${tenant().label} has no saved cases yet.`)).toBeInTheDocument()
+        expect(screen.getByRole('heading', { level: 2, name: 'Start from an example' })).toBeInTheDocument()
+    })
+
     it('loads a Runtime case into the scan form without scanning and only inspects specifications', async () => {
         const native = scriptedNative(snap(library({ cases: [RUNTIME, SPEC] })))
         const user = await openLibrary(native)

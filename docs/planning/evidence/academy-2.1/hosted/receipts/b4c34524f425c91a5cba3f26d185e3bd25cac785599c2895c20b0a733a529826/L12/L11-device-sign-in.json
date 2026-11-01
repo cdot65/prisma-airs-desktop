@@ -1,0 +1,53 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L12",
+  "check": "L11-device-sign-in",
+  "workflows": [
+    "W49"
+  ],
+  "environment": "academy-test",
+  "manifest_sha256": "b4c34524f425c91a5cba3f26d185e3bd25cac785599c2895c20b0a733a529826",
+  "started_utc": "2026-10-26T19:02:34Z",
+  "finished_utc": "2026-10-26T19:02:55Z",
+  "inputs": {
+    "academy_origin": "https://academy.cdot.io",
+    "call.01-unit": "W50 units.get {\"json\":{\"unitId\":\"asf-assess-artifacts-u1\"}} ?? /kind=\"content\" && /sourceLessonId:nonempty-string && /inlineChecks/0/id:nonempty-string && /inlineChecks/0/type in [\"mcq\",\"scenario\",\"config-diagnosis\"] && /inlineChecks/0/options:nonempty-array",
+    "call.02-inline": "W51 progress.checkInline {\"json\":{\"lessonId\":{\"$call\":\"01-unit\",\"pointer\":\"/sourceLessonId\"},\"questionId\":{\"$call\":\"01-unit\",\"pointer\":\"/inlineChecks/0/id\"},\"answer\":999999}} ?? /correct=false",
+    "expected_account_sha256": "ac717998b6b2c9a64270c8f70222b4422a16d9c886c8034a0b677ac69ad07db8",
+    "operator_timeout_secs": "900",
+    "storage": "session"
+  },
+  "outcome": "passed",
+  "detail": "the operator approved the device sign-in and the core shows the learner signed in",
+  "observed": {
+    "account_sha256": "ac717998b6b2c9a64270c8f70222b4422a16d9c886c8034a0b677ac69ad07db8",
+    "account_sha256_prefix": "ac717998b6b2c9a6",
+    "failure": null,
+    "state": "signedIn",
+    "vault": null
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {
+    "calls": {
+      "limit": 24,
+      "used": 22
+    }
+  },
+  "operator_step": {
+    "bound_secs": 900,
+    "completed": true,
+    "finished_utc": "2026-10-26T19:02:55Z",
+    "instruction": "approve the Academy device sign-in with the designated test learner",
+    "judged_by": "the core's own state; the runner never supplies the result",
+    "kind": "academy-device-sign-in",
+    "prompted_utc": "2026-10-26T19:02:34Z"
+  },
+  "implementation": {
+    "cargo_lock_sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+    "runner_sha256": "79134985ff1d3ade3cacea4c53f54551c0f992b69fb28ffad06e3bfbc74c1368",
+    "source_fingerprint": "2b5bf36a1e4752e4f82b415d7b54ef38aae1e0a264c5bd470c1a36271c0035f7"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L12",
+  "check": "L12-call-04-shift",
+  "workflows": [],
+  "environment": "academy-test",
+  "manifest_sha256": "23dc97fb15a2e764ed21562baa4b27442c6b96aa871004c460686cf70b0e1664",
+  "started_utc": "2026-10-26T19:00:47Z",
+  "finished_utc": "2026-10-26T19:00:47Z",
+  "inputs": {
+    "input": null,
+    "procedure": "shift.eligibility"
+  },
+  "outcome": "passed",
+  "detail": "the hosted procedure answered and its result held",
+  "observed": {
+    "assertions": [
+      {
+        "actual": {
+          "present": true,
+          "value": false
+        },
+        "expected": {
+          "kind": "bool"
+        },
+        "passed": true,
+        "pointer": "/unlocked"
+      },
+      {
+        "actual": {
+          "present": true,
+          "value": 0
+        },
+        "expected": {
+          "kind": "number"
+        },
+        "passed": true,
+        "pointer": "/poolCount"
+      },
+      {
+        "actual": {
+          "present": true,
+          "value": 50
+        },
+        "expected": {
+          "kind": "number"
+        },
+        "passed": true,
+        "pointer": "/minQuestions"
+      }
+    ]
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {
+    "calls": {
+      "limit": 22,
+      "used": 21
+    }
+  },
+  "implementation": {
+    "cargo_lock_sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+    "runner_sha256": "79134985ff1d3ade3cacea4c53f54551c0f992b69fb28ffad06e3bfbc74c1368",
+    "source_fingerprint": "2b5bf36a1e4752e4f82b415d7b54ef38aae1e0a264c5bd470c1a36271c0035f7"
+  }
+}

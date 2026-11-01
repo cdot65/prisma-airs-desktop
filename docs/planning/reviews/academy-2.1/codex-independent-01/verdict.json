@@ -1,0 +1,53 @@
+{
+  "request_id": "rq-academy-m1-20261026T195116Z-86811fbe",
+  "attempt_id": "attempt-01",
+  "subject": "ACADEMY-2.1-M1",
+  "fingerprints": {
+    "source": "af9315ef111f3225c935b8971366859c9432625e61369584f99cac028147d0cc",
+    "dependencies": "5f3de23aa240cbc34a87fdb69423e1422b4cff25bfa8e63077e286c99adbb345",
+    "build_flags": "f4f69fb27ee4128d09e42c4a967d1e53cbbf4902cb398262480becab8c438814",
+    "evidence": "5f08f54187233719f7cc8e584f2e5347198a4fb490e1ac85b1d5409736ab1896"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 8
+  },
+  "required_fixes": [
+    "R1 — Preserve reconciliation status when a started Daily run cannot reach hand-off. crates/xtask/src/live_academy.rs:590-594 always stops budget exhaustion with reconcile=false; the missing-dependency branch at :573-586 likewise bypasses the reconciliation handling at :630-640. A valid daily_program with calls budget 1 starts and spends the Daily attempt, then stops before shift.serve with no hand-off and no reconciliation requirement. Track an unsettled Daily run and mark every exit before confirmed hand-off needs-reconciliation, without exceeding the budget or sending calls with failed prerequisites. Add fixture cases for budget exhaustion after start and an unavailable cleanup dependency; assert no prohibited dispatch and an explicit reconciliation record."
+  ],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [],
+  "limitations": [
+    "Read-only review; no builds, tests, applications, endpoints, credentials, delegation or file modifications. R1 follows directly from source control flow; its proposed regression cases were not executed.",
+    "Independently recomputed all four scoped inventory fingerprints and verified every inventoried file hash. All three independent-final validation records match their logs and 178 current build inputs; both recorded test-executable hashes match current binaries. Logs record 51/51 fixture tests, 21/21 unit tests and clean clippy with -D warnings. These checks corroborate recorded provenance without independently rebuilding.",
+    "Confirmed explicit assertions, exact inline grading booleans, graded Shift membership excluding ungraded/breached, mandatory interactive contracts, reset baseline/readback/certificate comparison, account binding, backward typed references, receipt redaction and safe bounded call labels. Attempted but unconfirmed hand-off correctly requires reconciliation; R1 concerns exits before that handling.",
+    "The prior independent Claude review remains an unchanged 8/10 assessment and was treated as evidence, not inherited authority.",
+    "Hosted evidence establishes earlier test-account sign-in, catalog access and incorrect inline grading only. Exam eligibility, nonempty certificate baseline and Shift readiness remain unavailable; no W53/W65/W66 completion is established. The final hosted repeat expired at sign-in without sending a learner program.",
+    "Historical hosted receipts retain earlier producer bindings and pre-redaction call entries. Current redaction is supported by fixtures, not a successful current-runner hosted repeat.",
+    "This verdict covers bounded tooling and fixtures only. It completes no C25/P08 or other formal gate and grants no release or hosted assessment approval. React UI, signing and concurrent C26 work remain outside scope."
+  ],
+  "inspected_files": [
+    "docs/planning/reviews/academy-2.1/codex-independent-01/request.json",
+    "docs/architecture/review-verdict.schema.json",
+    "crates/xtask/src/live_academy.rs",
+    "crates/xtask/src/live_academy/assertions.rs",
+    "crates/xtask/src/live_academy/contracts.rs",
+    "crates/xtask/src/live_run.rs",
+    "crates/xtask/tests/live_run/academy.rs",
+    "crates/desktop-core/src/authority/learner_domain.rs",
+    "crates/desktop-core/src/learner.rs",
+    "docs/planning/academy-2.1-follow-up.md",
+    "docs/architecture/live-manifest.template.json",
+    "docs/planning/evidence/academy-2.1/validation/run.json",
+    "docs/planning/evidence/academy-2.1/validation/independent-final-live-run.log",
+    "docs/planning/evidence/academy-2.1/validation/independent-final-unit.log",
+    "docs/planning/evidence/academy-2.1/validation/independent-final-clippy.log",
+    "docs/planning/evidence/academy-2.1/hosted/summary.json",
+    "docs/planning/reviews/academy-2.1/attempt-04/review.json"
+  ],
+  "recommendation": "fail"
+}

@@ -146,7 +146,7 @@ describe('the native Harness (C19)', () => {
         expect(screen.getByText(/Engine 0\.1\.7-desktop\.2 · 9331a5839bc6 · airs-desktop\/1/)).toBeInTheDocument()
 
         await native.push(snapshot({ selected: null }))
-        expect(await screen.findByText('Choose a workspace in AI Gateway first; the Harness answers with its inference key.')).toBeInTheDocument()
+        expect(await screen.findByRole('heading', { name: 'What you need first' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Start conversation' })).toBeDisabled()
 
         await native.push(snapshot({ key: keyFor(B) }))
@@ -296,6 +296,68 @@ describe('the native Harness (C19)', () => {
     })
 })
 
+describe('what the Harness needs first (C26 F05)', () => {
+    const step = (id: string) => document.querySelector<HTMLElement>(`[data-slot="harness-prerequisite-${id}"]`) as HTMLElement
+    const ready: ShellSnapshot['tenants'][number]['management'] = {
+        state: 'ready',
+        mode: 'keychain',
+        failure: null,
+        clientId: 'svc@1234567890.iam.panserviceaccount.com',
+        tokenOrigin: 'https://auth.apps.paloaltonetworks.com',
+    }
+
+    it('lists each prerequisite with its state and where to set it up', async () => {
+        const native = scriptedNative({ ...snapshot({ selected: null }), tenants: [], active: null })
+        const user = await open(native)
+        const list = screen.getByRole('list', { name: 'What you need first' })
+        expect(within(list).getAllByRole('listitem').map((i) => i.querySelector('p')?.textContent)).toEqual([
+            'Not yet: A tenant chosen',
+            'Not yet: A management client for the tenant',
+            'Not yet: A Gateway workspace chosen',
+            'Not yet: An inference key for that workspace, or company sign-in (SSO)',
+        ])
+        expect(step('credential')).toHaveTextContent('issuer URL, a client ID, the Gateway audience and the Gateway endpoint')
+        expect(step('credential')).toHaveTextContent('loopback redirects to http://127.0.0.1')
+        // Without a tenant, only choosing one is offered, and no sign-in section.
+        expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['Go to Settings'])
+        expect(screen.queryByRole('heading', { name: 'Company sign-in (SSO)' })).toBeNull()
+
+        await native.push(snapshot({ selected: null }))
+        await waitFor(() => expect(step('tenant')).toHaveAttribute('data-done', 'true'))
+        expect(step('tenant')).toHaveTextContent('Done: A tenant chosen')
+        expect(step('management')).toHaveTextContent('Not yet: A management client for the tenant')
+        expect(within(step('management')).getByRole('button', { name: 'Go to Settings' })).toBeInTheDocument()
+        expect(within(step('workspace')).getByRole('button', { name: 'Go to AI Gateway' })).toBeInTheDocument()
+
+        await native.push({ ...snapshot({ selected: null }), tenants: [tenant({ management: ready })] })
+        await waitFor(() => expect(step('management')).toHaveAttribute('data-done', 'true'))
+        expect(within(step('management')).queryByRole('button')).toBeNull()
+        expect(step('workspace')).toHaveAttribute('data-done', 'false')
+
+        await native.push(snapshot({ selected: null }))
+        await user.click(await within(step('management')).findByRole('button', { name: 'Go to Settings' }))
+        expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument()
+    })
+
+    it('shows company sign-in without a workspace, with setup disabled and the reason', async () => {
+        const native = scriptedNative(snapshot({ selected: null }))
+        await open(native)
+        const heading = screen.getByRole('heading', { name: 'Company sign-in (SSO)' })
+        const section = heading.closest('section') as HTMLElement
+        const setup = within(section).getByRole('button', { name: 'Set up company sign-in' })
+        expect(setup).toBeDisabled()
+        expect(setup).toHaveAccessibleDescription('Choose a Gateway workspace first')
+        expect(within(section).getByText('Choose a Gateway workspace first')).toBeVisible()
+        expect(section).toHaveTextContent('loopback redirects to http://127.0.0.1')
+
+        // With a workspace, the same section offers setup.
+        await native.push(snapshot({ key: keyFor(B) }))
+        const enabled = await screen.findByRole('button', { name: 'Set up company sign-in' })
+        expect(enabled).toBeEnabled()
+        expect(screen.getByRole('heading', { name: 'Company sign-in (SSO)' })).toBeInTheDocument()
+    })
+})
+
 describe('company sign-in and protected history (C20)', () => {
     it('sets up company sign-in, signs in through the browser, chooses it and signs out', async () => {
         const native = scriptedNative(snapshot())
@@ -319,9 +381,18 @@ describe('company sign-in and protected history (C20)', () => {
             })
         )
 
-        await native.push(snapshot({ signIn: signIn({ selected: false }) }))
+        // Newly set up, company sign-in becomes the choice; signing in is not started.
+        await waitFor(() =>
+            expect(native.dispatched).toContainEqual({ kind: 'chooseHarnessCredential', context: CONTEXT, source: 'companySignIn' })
+        )
+        expect(native.dispatched.some((i) => i.kind === 'signInHarness')).toBe(false)
+        await native.push(snapshot({ signIn: signIn() }))
         const choice = await screen.findByRole('group', { name: 'Answer with' })
-        expect(within(choice).getByRole('radio', { name: /The workspace inference key/ })).toBeChecked()
+        expect(within(choice).getByRole('radio', { name: /Company sign-in/ })).toBeChecked()
+        expect(screen.getByRole('button', { name: 'Start conversation' })).toBeDisabled()
+        // Choosing the key again is the operator's; it is not chosen back on a later save.
+        await native.push(snapshot({ signIn: signIn({ selected: false }) }))
+        expect(await within(choice).findByRole('radio', { name: /The workspace inference key/ })).toBeChecked()
         expect(screen.getByRole('button', { name: 'Start conversation' })).toBeEnabled()
         await user.click(screen.getByRole('button', { name: 'Sign in with your browser' }))
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signInHarness', context: CONTEXT }))
@@ -345,6 +416,37 @@ describe('company sign-in and protected history (C20)', () => {
         await user.click(screen.getByRole('button', { name: 'Sign out' }))
         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signOutHarness', context: CONTEXT }))
         expect(document.body.textContent).not.toContain('eyJ')
+    })
+
+    it('names why saving company sign-in was refused', async () => {
+        const native = scriptedNative(snapshot())
+        let refusal = 'invalidInput'
+        native.respond = (intent) =>
+            intent.kind === 'configureHarnessSignIn'
+                ? { outcome: 'refusal', refusal }
+                : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-x', operation: null } }
+        const user = await open(native)
+        const setup = screen.getByRole('button', { name: 'Set up company sign-in' })
+        expect(setup).toHaveAttribute('data-tier', 'secondary')
+        await user.click(setup)
+        const form = screen.getByRole('button', { name: 'Save company sign-in' }).closest('form') as HTMLFormElement
+        expect(form).toHaveTextContent('loopback redirects to http://127.0.0.1')
+        await user.type(within(form).getByLabelText('Gateway endpoint'), ENDPOINT)
+        await user.type(within(form).getByLabelText('Identity provider (issuer URL)'), 'http://id.example/?x=1')
+        await user.type(within(form).getByLabelText('Client ID'), 'desktop-client')
+        await user.type(within(form).getByLabelText('Gateway audience'), 'https://gateway.example')
+        for (const [kind, text] of [
+            ['invalidInput', 'Issuer and Gateway endpoint must be https URLs without a query string.'],
+            ['busy', 'Sign out of the current company sign-in first.'],
+            ['staleContext', 'The workspace changed; choose it again in AI Gateway.'],
+            ['lockedStore', 'The Keychain is locked. Unlock it and try again.'],
+        ] as const) {
+            refusal = kind
+            await user.click(screen.getByRole('button', { name: 'Save company sign-in' }))
+            expect(await screen.findByRole('alert')).toHaveTextContent(text)
+        }
+        // A refused save chooses nothing.
+        expect(native.dispatched.some((i) => i.kind === 'chooseHarnessCredential')).toBe(false)
     })
 
     it('gives a message back when its renewal fails and shows the conversation as saved or not', async () => {

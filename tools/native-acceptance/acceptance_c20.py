@@ -214,7 +214,7 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before):
                          ("Client ID", CLIENT), ("Gateway audience", AUDIENCE)):
         app.type_into("AXTextField", label, value)
     app.ax("press", "AXButton", "Save company sign-in")
-    tree, refused = c8.text(app, "That was not done. Check the values and try again.", 10)
+    tree, refused = c8.text(app, "Issuer and Gateway endpoint must be https URLs without a query string.", 10)
     app.type_into("AXTextField", "Identity provider", issuer)
     app.ax("press", "AXButton", "Save company sign-in")
     tree, saved = c8.text(app, "Sign in with your browser", 10)
@@ -331,7 +331,7 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before):
     c19.open_harness(app)
     tree, local = app.wait_for(lambda t: app.has_text(t, "AI Gateway’s workspaces are not available")
                                and fx.App.node(t, "AXButton", f"Open {title}") is not None, 20)
-    offline = {"listed": local, "chooser_shown": app.has_text(tree, "Choose a workspace in AI Gateway first")}
+    offline = {"listed": local, "chooser_shown": app.has_text(tree, "A Gateway workspace chosen")}
     app.ax("press", "AXButton", f"Open {title}")
     tree, offline["opened"] = app.wait_for(lambda t: any(n.get("role") == "AXList" and n.get("label") == "Saved messages" for n in t), 10)
     offline["not_continuable"] = app.has_text(tree, "it can be read and exported here but not continued")

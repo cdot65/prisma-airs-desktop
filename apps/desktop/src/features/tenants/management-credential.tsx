@@ -134,6 +134,9 @@ export function ManagementCredentialForm({ tenant, context, dispatch, observe }:
                     This tenant has no TSG ID. Add one to its profile before configuring a management client.
                 </Callout>
             ) : null}
+            <p className='text-academy-ink-faint text-[12px]' data-slot='management-sso-pointer'>
+                Company sign-in (SSO) for the Harness is set up per Gateway workspace, in Harness.
+            </p>
             <form onSubmit={(e) => void submit(e)} className='flex flex-col gap-3' aria-busy={busy}>
                 <label htmlFor={`${ids}-client`} className='text-academy-ink text-[13px] font-medium'>
                     Client ID

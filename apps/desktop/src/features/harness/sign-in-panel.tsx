@@ -4,11 +4,12 @@ import type {
     ContextRef,
     CredentialSource,
     HarnessSignInView,
+    Refusal,
     SelectedWorkspace,
     SignInFailure,
     SignInStep,
 } from '@prisma-airs/desktop-contracts'
-import type { Dispatch } from '../tenants/dispatch'
+import { type Dispatch, type DispatchOutcome, outcomeMessage } from '../tenants/dispatch'
 
 /** Why company sign-in or its renewal failed, as the operator reads it. */
 export const SIGN_IN_FAILURE_TEXT: Record<SignInFailure, string> = {
@@ -35,9 +36,29 @@ const STEP_TEXT: Record<SignInStep, string> = {
     completing: 'Verifying the sign-in…',
 }
 
+const GENERIC_FAILURE = 'That was not done. Check the values and try again.'
+
+/** Why saving company sign-in settings was refused, where it says more than the general text. */
+export const SAVE_REFUSAL_TEXT: Partial<Record<Refusal, string>> = {
+    invalidInput: 'Issuer and Gateway endpoint must be https URLs without a query string.',
+    busy: 'Sign out of the current company sign-in first.',
+    staleContext: 'The workspace changed; choose it again in AI Gateway.',
+}
+
+/** What the operator reads when saving company sign-in settings did not apply. */
+export function saveFailureText(outcome: DispatchOutcome): string {
+    if (outcome.kind === 'refused') return SAVE_REFUSAL_TEXT[outcome.refusal] ?? outcomeMessage(outcome) ?? GENERIC_FAILURE
+    return outcomeMessage(outcome) ?? GENERIC_FAILURE
+}
+
+/** What company sign-in needs from the identity provider. */
+export const SIGN_IN_NEEDS =
+    'Company sign-in needs the identity provider’s issuer URL, a client ID, the Gateway audience and the Gateway endpoint. The provider must allow loopback redirects to http://127.0.0.1 on any port (path /callback).'
+
 interface Props {
     context: ContextRef
-    selected: SelectedWorkspace
+    /** The chosen Gateway workspace; company sign-in is set up for one. */
+    selected: SelectedWorkspace | null
     signIn: HarnessSignInView | null
     /** The workspace key is stored for the chosen workspace. */
     keyHere: boolean
@@ -52,19 +73,42 @@ interface Props {
  * key, or a company sign-in through the browser whose Gateway token is
  * renewed before it is sent.
  */
-export function SignInPanel({ context, selected, signIn, keyHere, running, dispatch, onMessage }: Props) {
+export function SignInPanel({ selected, ...rest }: Props) {
+    return selected ? <WorkspaceSignIn selected={selected} {...rest} /> : <SignInUnavailable />
+}
+
+/** With no workspace chosen, company sign-in is shown but cannot be set up yet. */
+function SignInUnavailable() {
+    const ids = useId()
+    return (
+        <section aria-labelledby={`${ids}-heading`} className='flex flex-col gap-3' data-slot='harness-sign-in-setup'>
+            <h2 id={`${ids}-heading`} className='text-[15px] font-semibold'>
+                Company sign-in (SSO)
+            </h2>
+            <p className='text-academy-ink-faint text-[12px]'>{`Answer with your company’s identity provider instead of a workspace inference key. ${SIGN_IN_NEEDS}`}</p>
+            <Button type='button' tier='secondary' size='sm' className='self-start' disabled aria-describedby={`${ids}-reason`}>
+                Set up company sign-in
+            </Button>
+            <p id={`${ids}-reason`} className='text-academy-ink-faint text-[12px]' data-slot='harness-sign-in-reason'>
+                Choose a Gateway workspace first
+            </p>
+        </section>
+    )
+}
+
+function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch, onMessage }: Props & { selected: SelectedWorkspace }) {
     const ids = useId()
     const here = signIn !== null && signIn.workspace.id === selected.workspace.id
     const [editing, setEditing] = useState(false)
     const [busy, setBusy] = useState(false)
     const source: CredentialSource = here && signIn.selected ? 'companySignIn' : 'workspaceKey'
 
-    async function send(intent: Parameters<Dispatch>[0]): Promise<boolean> {
+    async function send(intent: Parameters<Dispatch>[0], failureText: (outcome: DispatchOutcome) => string = () => GENERIC_FAILURE): Promise<boolean> {
         onMessage(null)
         setBusy(true)
         try {
             const outcome = await dispatch(intent)
-            if (outcome.kind !== 'admitted') onMessage('That was not done. Check the values and try again.')
+            if (outcome.kind !== 'admitted') onMessage(failureText(outcome))
             return outcome.kind === 'admitted'
         } finally {
             setBusy(false)
@@ -73,18 +117,27 @@ export function SignInPanel({ context, selected, signIn, keyHere, running, dispa
 
     async function configure(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
+        const first = !here
         const form = new FormData(event.currentTarget)
         const value = (name: string) => String(form.get(name) ?? '').trim()
-        const saved = await send({
-            kind: 'configureHarnessSignIn',
-            context,
-            workspace: selected.reference,
-            endpoint: value('endpoint'),
-            issuer: value('issuer'),
-            clientId: value('client'),
-            audience: value('audience'),
-        })
-        if (saved) setEditing(false)
+        const saved = await send(
+            {
+                kind: 'configureHarnessSignIn',
+                context,
+                workspace: selected.reference,
+                endpoint: value('endpoint'),
+                issuer: value('issuer'),
+                clientId: value('client'),
+                audience: value('audience'),
+            },
+            saveFailureText
+        )
+        if (!saved) return
+        setEditing(false)
+        // Newly set up, company sign-in becomes the choice for new
+        // conversations; signing in is still the operator's step. A running
+        // conversation is left alone (changing the credential ends it).
+        if (first && !running) await send({ kind: 'chooseHarnessCredential', context, source: 'companySignIn' })
     }
 
     const signedIn = here && signIn.account !== null
@@ -121,10 +174,14 @@ export function SignInPanel({ context, selected, signIn, keyHere, running, dispa
                     {running ? <p className='text-academy-ink-faint text-[12px]'>Changing the credential ends the running conversation.</p> : null}
                 </fieldset>
             ) : null}
+            <h3 className='text-[14px] font-semibold'>Company sign-in (SSO)</h3>
             {!here && !editing ? (
-                <Button type='button' tier='tertiary' size='sm' className='self-start' onClick={() => setEditing(true)}>
-                    Set up company sign-in
-                </Button>
+                <>
+                    <p className='text-academy-ink-faint text-[12px]'>{SIGN_IN_NEEDS}</p>
+                    <Button type='button' tier='secondary' size='sm' className='self-start' onClick={() => setEditing(true)}>
+                        Set up company sign-in
+                    </Button>
+                </>
             ) : here && !editing ? (
                 <div className='flex flex-col gap-2' data-slot='harness-sign-in'>
                     <dl className='grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]'>
@@ -181,6 +238,9 @@ export function SignInPanel({ context, selected, signIn, keyHere, running, dispa
                 <form className='flex flex-col gap-2' onSubmit={(event) => void configure(event)} data-slot='harness-sign-in-form'>
                     <p className='text-academy-ink-faint text-[12px]'>
                         {`Use your company’s identity provider for ${selected.workspace.name} instead of the workspace key. The Gateway token is a signed JWT verified against the provider’s keys, kept in memory, and renewed before it expires; only the refresh token is kept, in the Keychain.`}
+                    </p>
+                    <p className='text-academy-ink-faint text-[12px]'>
+                        The identity provider must allow loopback redirects to http://127.0.0.1 on any port (path /callback).
                     </p>
                     {(
                         [

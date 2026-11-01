@@ -9,7 +9,7 @@
 //! mismatched input fails.
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
     Ok(total)
 }
 
-const MIB: f64 = 1024.0 * 1024.0;
-
-/// Builds the complete unsigned production app and DMG, the sealed Harness
-/// engine included (C19, D046; budgets.json version 5), and records their
-/// sizes.
-pub fn footprint(
-    repo: &Repo,
-    manifest: &Manifest,
-    env: &Environment,
-    subject: Subject,
-) -> Result<Footprint> {
-    let Some(chunk) = required(repo, manifest, subject)? else {
-        return Err(invalid(format!(
-            "{subject} does not contain the chunk that registered the budgets"
-        )));
-    };
-    let (_, record, sha) = registration(repo, &chunk)?;
-    let started_utc = now_utc();
-    if started_utc < record.registered_utc {
-        return Err(invalid("the clock is before the budget registration"));
-    }
-    let target = manifest.target.as_str();
+/// Builds the complete unsigned production app and DMG with the sealed
+/// Harness engine as a bundle resource (C19, D046): the frontend, then
+/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
+pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
     // The sealed engine the production app ships with (C19).
     crate::harness::unpack(repo)?;
     let commands: Vec<Vec<String>> = [
@@ -181,13 +163,58 @@ pub fn footprint(
     let identifier = plist_value(&app, "CFBundleIdentifier")?;
     if identifier != crate::native::PRODUCTION_IDENTIFIER {
         return Err(invalid(format!(
-            "footprint bundle has identifier {identifier}"
+            "the production bundle has identifier {identifier}"
         )));
     }
     let version = plist_value(&app, "CFBundleShortVersionString")?;
     let dmg = repo.join(format!(
         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
     ));
+    Ok(ProductionBuild {
+        app,
+        dmg,
+        identifier,
+        commands,
+    })
+}
+
+/// A production build: the app, its DMG, the bundle identifier and the
+/// commands that built them.
+pub struct ProductionBuild {
+    pub app: PathBuf,
+    pub dmg: PathBuf,
+    pub identifier: String,
+    pub commands: Vec<Vec<String>>,
+}
+
+const MIB: f64 = 1024.0 * 1024.0;
+
+/// Builds the complete unsigned production app and DMG, the sealed Harness
+/// engine included (C19, D046; budgets.json version 5), and records their
+/// sizes.
+pub fn footprint(
+    repo: &Repo,
+    manifest: &Manifest,
+    env: &Environment,
+    subject: Subject,
+) -> Result<Footprint> {
+    let Some(chunk) = required(repo, manifest, subject)? else {
+        return Err(invalid(format!(
+            "{subject} does not contain the chunk that registered the budgets"
+        )));
+    };
+    let (_, record, sha) = registration(repo, &chunk)?;
+    let started_utc = now_utc();
+    if started_utc < record.registered_utc {
+        return Err(invalid("the clock is before the budget registration"));
+    }
+    let target = manifest.target.as_str();
+    let ProductionBuild {
+        app,
+        dmg,
+        identifier,
+        commands,
+    } = build_production(repo, env, target)?;
     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
     let relative = |p: &Path| {
         p.strip_prefix(repo.root())

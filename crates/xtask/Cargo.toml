@@ -1,6 +1,6 @@
 [package]
 name = "xtask"
-version = "0.2.0"
+version = "2.0.0"
 description = "Build-time check, review and artifact controller for Prisma AIRS Desktop v2"
 edition.workspace = true
 rust-version.workspace = true
@@ -44,6 +44,10 @@ required-features = ["test-fixtures"]
 
 [[test]]
 name = "controlled_live"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "signed_artifact"
 required-features = ["test-fixtures"]
 
 [[test]]

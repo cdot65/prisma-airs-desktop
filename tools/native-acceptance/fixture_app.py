@@ -244,7 +244,7 @@ class App:
             tree, ok = self.wait_for(ready, 20)
             if ok:
                 return tree
-        raise RuntimeError(f"Settings did not open with its tenant form [tree: {self.dump_tree('settings')}]")
+        raise RuntimeError("Settings did not open with its tenant form")
 
     def open_runtime(self):
         self.ax("press", "AXButton", "Runtime Security")

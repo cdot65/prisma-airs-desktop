@@ -1,0 +1,52 @@
+{
+  "schema": "airs-v2/live-receipt/1",
+  "evidence": "live",
+  "family": "L12",
+  "check": "L11-device-sign-in",
+  "workflows": [
+    "W49"
+  ],
+  "environment": "academy-test",
+  "manifest_sha256": "f2950ea8cb9a319a19e1bd5e25c5a70cc21d3940e615630c770da758220dcd4c",
+  "started_utc": "2026-10-26T18:54:00Z",
+  "finished_utc": "2026-10-26T18:54:06Z",
+  "inputs": {
+    "academy_origin": "https://academy.cdot.io",
+    "call.01-catalog": "W50 courses.list ?? :nonempty-array",
+    "operator_timeout_secs": "900",
+    "storage": "session",
+    "test_learner": "airs-desktop@cdot.io"
+  },
+  "outcome": "passed",
+  "detail": "the operator approved the device sign-in and the core shows the learner signed in",
+  "observed": {
+    "account_sha256": "ac717998b6b2c9a64270c8f70222b4422a16d9c886c8034a0b677ac69ad07db8",
+    "account_sha256_prefix": "ac717998b6b2c9a6",
+    "failure": null,
+    "state": "signedIn",
+    "vault": null
+  },
+  "ids": {},
+  "readback": "not applicable: the check creates no remote resource",
+  "cleanup": "nothing created",
+  "consumption": {
+    "calls": {
+      "limit": 17,
+      "used": 16
+    }
+  },
+  "operator_step": {
+    "bound_secs": 900,
+    "completed": true,
+    "finished_utc": "2026-10-26T18:54:06Z",
+    "instruction": "approve the Academy device sign-in with the designated test learner",
+    "judged_by": "the core's own state; the runner never supplies the result",
+    "kind": "academy-device-sign-in",
+    "prompted_utc": "2026-10-26T18:54:01Z"
+  },
+  "implementation": {
+    "cargo_lock_sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+    "runner_sha256": "76c0193f11a56de6ec387945101f824323ae0ed2a4a50f95d3fb3a03a5741090",
+    "source_fingerprint": "fce66e51ae2c7773dcc019960a8dd7a895e0f1539f0bcabdab1d31329b1334f4"
+  }
+}

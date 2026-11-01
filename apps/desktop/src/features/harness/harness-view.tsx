@@ -17,6 +17,7 @@ import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
 import { DecisionsPanel } from './decisions-panel'
 import { HISTORY_FAILURE_TEXT, HistoryPanel, savedAt } from './history-panel'
 import { McpPanel } from './mcp-panel'
+import { Prerequisites } from './prerequisites'
 import { ProjectPanel } from './project-panel'
 import { SIGN_IN_FAILURE_TEXT, SignInPanel } from './sign-in-panel'
 
@@ -225,17 +226,27 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
                 <Callout tone='default' icon={AlertTriangle}>
                     The Harness engine is not bundled with this build.
                 </Callout>
-            ) : !context ? (
-                <Callout tone='default' icon={AlertTriangle}>
-                    Choose a tenant to use the Harness.
-                </Callout>
-            ) : !selected ? (
-                <Callout tone='default' icon={AlertTriangle}>
-                    <p>Choose a workspace in AI Gateway first; the Harness answers with its inference key.</p>
-                    <Button type='button' tier='secondary' size='sm' className='mt-2' onClick={() => onNavigate('gateway')}>
-                        Go to AI Gateway
-                    </Button>
-                </Callout>
+            ) : !context || !selected ? (
+                <>
+                    <Prerequisites
+                        tenant={context !== null}
+                        management={tenant?.management.state === 'ready'}
+                        workspace={selected?.workspace.name ?? null}
+                        credential={keyHere || signInHere}
+                        onNavigate={onNavigate}
+                    />
+                    {context ? (
+                        <SignInPanel
+                            context={context}
+                            selected={null}
+                            signIn={signIn}
+                            keyHere={false}
+                            running={live}
+                            dispatch={dispatch}
+                            onMessage={setMessage}
+                        />
+                    ) : null}
+                </>
             ) : (
                 <>
                     {!keyHere && !signInHere ? (

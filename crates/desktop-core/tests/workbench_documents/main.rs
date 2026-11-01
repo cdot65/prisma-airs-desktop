@@ -778,6 +778,61 @@ async fn the_git_view_is_read_only_and_bounded() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn empty_folders_become_collections_and_git_is_optional() {
+    let mut desk = desk().await;
+    let not_collection =
+        json!({"kind": "refused", "problem": {"kind": "project", "detail": "notCollection"}});
+    // Open collection… on an empty folder (Finder's .DS_Store aside)
+    // outside any repository initialises it in place (D057).
+    let empty = temp("empty");
+    std::fs::write(empty.join(".DS_Store"), b"finder").expect("fixture");
+    let name = empty
+        .file_name()
+        .and_then(|n| n.to_str())
+        .expect("fixture")
+        .to_owned();
+    assert_eq!(
+        desk.open(&empty).await,
+        json!({"kind": "opened", "name": name})
+    );
+    assert!(empty.join("collection.toml").exists());
+    assert_eq!(desk.workbench()["collection"]["name"], name.as_str());
+    // A folder with other files and no collection.toml stays refused and
+    // untouched.
+    let full = temp("full");
+    std::fs::write(full.join("notes.txt"), "kept").expect("fixture");
+    assert_eq!(desk.open(&full).await, not_collection);
+    assert!(!full.join("collection.toml").exists());
+    // New collection… outside a repository creates the folder.
+    let parent = temp("plain");
+    desk.adapters.folders.reply_new(Some(parent.join("Fresh")));
+    assert_eq!(
+        desk.wb(json!({"kind": "createCollection"})).await,
+        json!({"kind": "opened", "name": "Fresh"})
+    );
+    // …on an existing empty folder initialises it in place…
+    std::fs::create_dir(parent.join("Waiting")).expect("fixture");
+    desk.adapters
+        .folders
+        .reply_new(Some(parent.join("Waiting")));
+    assert_eq!(
+        desk.wb(json!({"kind": "createCollection"})).await,
+        json!({"kind": "opened", "name": "Waiting"})
+    );
+    // …and anything else already there is refused.
+    desk.adapters.folders.reply_new(Some(full.clone()));
+    assert_eq!(
+        desk.wb(json!({"kind": "createCollection"})).await,
+        json!({"kind": "refused", "problem": {"kind": "project", "detail": "exists"}})
+    );
+    assert_eq!(
+        std::fs::read_dir(&full).expect("fixture").count(),
+        1,
+        "nothing was written"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn reset_removes_the_private_folder_and_keeps_the_operators_collections() {
     let root = collection();
     let mut desk = desk().await;

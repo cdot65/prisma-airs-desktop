@@ -879,7 +879,23 @@ async fn execute(inner: &Arc<Inner>, request: WorkbenchRequest) -> WorkbenchResu
     match request {
         WorkbenchRequest::Load => WorkbenchResult::Done,
         WorkbenchRequest::OpenFolder => match inner.adapters.folders.choose_folder().await {
-            Some(folder) => open_at(inner, &root, folder, false).await,
+            Some(folder) => {
+                // D057: an empty folder becomes a new collection in place;
+                // any other folder without collection.toml stays refused.
+                let target = folder.clone();
+                let ready = blocking(Err(ProjectProblem::Io), move || {
+                    if project::empty_folder(&target) {
+                        project::create_collection(&target).map(|_| ())
+                    } else {
+                        Ok(())
+                    }
+                })
+                .await;
+                match ready {
+                    Ok(()) => open_at(inner, &root, folder, false).await,
+                    Err(p) => refused(WorkbenchProblem::Project(p)),
+                }
+            }
             None => WorkbenchResult::Cancelled,
         },
         WorkbenchRequest::CreateCollection => match inner.adapters.folders.choose_new().await {

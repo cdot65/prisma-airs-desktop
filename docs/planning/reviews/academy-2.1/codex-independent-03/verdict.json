@@ -1,0 +1,55 @@
+{
+  "request_id": "rq-academy-m1-20261026T204821Z-5de414d7",
+  "attempt_id": "attempt-03",
+  "subject": "ACADEMY-2.1-M1",
+  "fingerprints": {
+    "source": "f737f92264dc24babc6e821a7bbb158c364aaf6781a7e178512efd41ffcc823c",
+    "dependencies": "5f3de23aa240cbc34a87fdb69423e1422b4cff25bfa8e63077e286c99adbb345",
+    "build_flags": "f4f69fb27ee4128d09e42c4a967d1e53cbbf4902cb398262480becab8c438814",
+    "evidence": "3b99144d1bda7208f5258f607b788c303af9f0422bb071fbd3d1a9105bfa0eae"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [],
+  "limitations": [
+    "Independent read-only review; prior verdicts were evidence only. No builds, tests, applications, endpoints, network requests, credentials, delegation or file edits were performed.",
+    "Recomputed all four scoped fingerprints and verified every supplied inventory file hash. Each final validation record binds 178 inputs matching current files and records unchanged inputs during execution. Both test-executable hashes match. Recorded logs report 53/53 fixture tests, 21/21 unit tests and clean clippy with -D warnings; these were not independently rerun.",
+    "Prior R1 and the Core Err regression gap are closed. Any unknown-effect mutation result stops with reconciliation, including failed/unknown. Core-call errors produce explicit receipts and stop execution. Fixtures cover dropped exam/reset/avatar replies and actual Desk::academy settle timeouts for exam.start and shift.serve, with assertions preventing later changes.",
+    "Avatar handling avoids removal after rejected or uncertain upload and requires reconciliation for unconfirmed removal after confirmed upload. Case-insensitive duplicate labels are rejected before program dispatch.",
+    "Reviewed parser/result semantics, typed backward dependencies, mandatory workflow contracts, all-planned-call coverage, reset and certificate preservation, budgets, prerequisite admission, Daily lifecycle, account pinning and receipt redaction. No unresolved scoped defect was identified.",
+    "Hosted evidence supports earlier sign-in, catalog access and intentionally incorrect inline grading only. Absent certificates, exam ineligibility and Shift pool 0/50 remain documented prerequisites. W53/W65/W66 hosted qualification has not passed. The later repeat expired before sign-in and sent no learner program.",
+    "Historical hosted evidence retains older producer bindings. Current safety changes are qualified by fixtures and static inspection.",
+    "This verdict covers the tooling/fixtures milestone only. It completes no formal ledger gate and grants no C25/P08, release or hosted assessment approval. UI, C26 signing and unrelated dirty files are outside scope. Changed inputs require fresh binding and review."
+  ],
+  "inspected_files": [
+    "docs/planning/reviews/academy-2.1/codex-independent-03/request.json",
+    "docs/architecture/review-verdict.schema.json",
+    "docs/planning/reviews/academy-2.1/attempt-05/review.json",
+    "docs/planning/reviews/academy-2.1/codex-independent-02/verdict.json",
+    "crates/xtask/src/live_academy.rs",
+    "crates/xtask/src/live_academy/assertions.rs",
+    "crates/xtask/src/live_academy/contracts.rs",
+    "crates/xtask/tests/live_run/academy.rs",
+    "crates/xtask/src/live_run.rs",
+    "crates/desktop-core/src/authority/learner_domain.rs",
+    "docs/planning/academy-2.1-follow-up.md",
+    "docs/architecture/live-manifest.template.json",
+    "docs/planning/evidence/academy-2.1/validation/run.json",
+    "docs/planning/evidence/academy-2.1/validation/all-mutations-final-live-run.log",
+    "docs/planning/evidence/academy-2.1/validation/all-mutations-final-unit.log",
+    "docs/planning/evidence/academy-2.1/validation/all-mutations-final-clippy.log",
+    "docs/planning/evidence/academy-2.1/hosted/summary.json",
+    "docs/planning/evidence/academy-2.1/hosted/final-repeat-run.json",
+    "target/debug/deps/live_run-1402db5536ee998d",
+    "target/debug/deps/xtask-29bc98444a45e1db"
+  ],
+  "recommendation": "pass"
+}

@@ -102,14 +102,35 @@ function draftOf(f: Fields, id: string | undefined): PlaygroundDraftInput {
 
 function ApiChoice({ name, value, onChange, label }: { name: string; value: InferenceApi; onChange: (api: InferenceApi) => void; label: string }) {
     return (
-        <div role='radiogroup' aria-label={label} className='flex gap-4 text-[13px]'>
-            {(['chat', 'responses'] as const).map((api) => (
-                <label key={api} className='flex items-center gap-1'>
-                    <input type='radio' name={name} checked={value === api} onChange={() => onChange(api)} /> {API_TEXT[api]}
-                </label>
-            ))}
+        <div className='flex flex-col gap-1 text-[13px]'>
+            <span id={`${name}-label`}>{label}</span>
+            <div role='radiogroup' aria-labelledby={`${name}-label`} className='flex gap-4'>
+                {(['chat', 'responses'] as const).map((api) => (
+                    <label key={api} className='flex items-center gap-1'>
+                        <input type='radio' name={name} checked={value === api} onChange={() => onChange(api)} /> {API_TEXT[api]}
+                    </label>
+                ))}
+            </div>
         </div>
     )
+}
+
+/**
+ * The active tenant's inference key and whether it serves this workspace:
+ * one key is held per tenant, for the one workspace it was stored for.
+ */
+export function inferenceKey(snapshot: ShellSnapshot, workspace: ListedWorkspace) {
+    const key = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)?.inference
+    const target = key?.target ?? null
+    return { key, target, here: key?.state === 'ready' && target?.workspace.id === workspace.id }
+}
+
+/** Why a run cannot start yet, first missing condition only; null when it can. */
+export function runBlockedText(keyHere: boolean, model: string, prompt: string): string | null {
+    if (!keyHere) return 'Store an inference key for this workspace above.'
+    if (model.trim().length === 0) return 'Enter a model.'
+    if (prompt.trim().length === 0) return 'Enter a prompt.'
+    return null
 }
 
 /** Why the Gateway ended an answer early, from its sanitized finish reason. */
@@ -160,10 +181,7 @@ const routeRows = (list: GatewayList | null) =>
  */
 export function PlaygroundPanel({ snapshot, dispatch, context, reference, workspace, routes, onLogs }: Props) {
     const ids = useId()
-    const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
-    const key = tenant?.inference
-    const target = key?.target ?? null
-    const keyHere = key?.state === 'ready' && target?.workspace.id === workspace.id
+    const { key, target, here: keyHere } = inferenceKey(snapshot, workspace)
     const run = snapshot.gateway.playground
     const kept = snapshot.gateway.local.playground.find((d) => d.workspace.id === workspace.id)
     const [api, setApi] = useState<InferenceApi>(kept?.api ?? 'chat')
@@ -236,6 +254,8 @@ export function PlaygroundPanel({ snapshot, dispatch, context, reference, worksp
     }
 
     const running = run?.state === 'running'
+    // A disabled Run says why; nothing is said while a run is under way.
+    const blocked = running ? null : runBlockedText(keyHere, model, prompt)
     const rows = routeRows(routes)
     const read = snapshot.gateway.files?.workspace.id === workspace.id ? snapshot.gateway.files.files : null
     return (
@@ -263,29 +283,40 @@ export function PlaygroundPanel({ snapshot, dispatch, context, reference, worksp
                         void storeKey()
                     }}
                 >
-                    <label className='flex flex-col text-[13px]'>
-                        Runtime endpoint
-                        <input
-                            type='url'
-                            value={endpoint}
-                            onChange={(e) => setEndpoint(e.target.value)}
-                            placeholder='https://'
-                            spellCheck={false}
-                            autoComplete='off'
-                            className='font-mono'
-                        />
-                    </label>
+                    <div className='flex flex-col gap-1'>
+                        <label className='flex flex-col text-[13px]'>
+                            Runtime endpoint
+                            <input
+                                type='url'
+                                value={endpoint}
+                                onChange={(e) => setEndpoint(e.target.value)}
+                                placeholder='https://'
+                                spellCheck={false}
+                                autoComplete='off'
+                                aria-describedby={`${ids}-endpoint-hint`}
+                                className='font-mono'
+                            />
+                        </label>
+                        {/* Kept outside the label so the field's name stays "Runtime endpoint". */}
+                        <span id={`${ids}-endpoint-hint`} className='text-academy-ink-faint text-[12px]' data-slot='gateway-endpoint-hint'>
+                            The https address this workspace's Gateway answers inference requests on (its runtime or inference endpoint), as shown
+                            for the workspace in the AI Gateway. The key is sent only there.
+                        </span>
+                    </div>
                     <label className='flex flex-col text-[13px]'>
                         Workspace API key with completions access
                         <input type='password' value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete='off' spellCheck={false} />
                     </label>
-                    <div role='radiogroup' aria-label='Where the key is kept' className='flex gap-4 text-[13px]'>
-                        <label className='flex items-center gap-1'>
-                            <input type='radio' name={`${ids}-mode`} checked={mode === 'keychain'} onChange={() => setMode('keychain')} /> Keychain
-                        </label>
-                        <label className='flex items-center gap-1'>
-                            <input type='radio' name={`${ids}-mode`} checked={mode === 'session'} onChange={() => setMode('session')} /> This session only
-                        </label>
+                    <div className='flex flex-col gap-1 text-[13px]'>
+                        <span id={`${ids}-mode-label`}>Where the key is kept</span>
+                        <div role='radiogroup' aria-labelledby={`${ids}-mode-label`} className='flex gap-4'>
+                            <label className='flex items-center gap-1'>
+                                <input type='radio' name={`${ids}-mode`} checked={mode === 'keychain'} onChange={() => setMode('keychain')} /> Keychain
+                            </label>
+                            <label className='flex items-center gap-1'>
+                                <input type='radio' name={`${ids}-mode`} checked={mode === 'session'} onChange={() => setMode('session')} /> This session only
+                            </label>
+                        </div>
                     </div>
                     <div className='flex gap-2'>
                         <Button type='submit' tier='secondary' size='sm' disabled={secret.length === 0 || endpoint.trim().length === 0}>
@@ -372,6 +403,7 @@ export function PlaygroundPanel({ snapshot, dispatch, context, reference, worksp
                     <textarea
                         value={prompt}
                         rows={4}
+                        placeholder='What to send to the model'
                         onChange={(e) => {
                             setPrompt(e.target.value)
                             keep({ prompt: e.target.value })
@@ -405,8 +437,13 @@ export function PlaygroundPanel({ snapshot, dispatch, context, reference, worksp
                     The form is kept on this Mac as a draft for {workspace.name}. At most 256 output tokens are asked for. A Responses run asks the
                     Gateway not to store the response.
                 </p>
+                {blocked ? (
+                    <p id={`${ids}-why`} className='text-academy-ink-soft text-[13px]' data-slot='gateway-playground-blocked'>
+                        {blocked}
+                    </p>
+                ) : null}
                 <div className='flex gap-2'>
-                    <Button type='submit' tier='primary' size='sm' disabled={!keyHere || running || model.trim().length === 0 || prompt.trim().length === 0}>
+                    <Button type='submit' tier='primary' size='sm' disabled={running || blocked !== null} aria-describedby={blocked ? `${ids}-why` : undefined}>
                         Run prompt
                     </Button>
                     {running && run ? (

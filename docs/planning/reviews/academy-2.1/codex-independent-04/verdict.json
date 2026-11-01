@@ -1,0 +1,57 @@
+{
+  "request_id": "rq-academy-m1-20261026T205559Z-7d11422f",
+  "attempt_id": "attempt-04",
+  "subject": "ACADEMY-2.1-M1",
+  "fingerprints": {
+    "source": "de5b4c5329929e8fb79df21db4bb9eea34dabc87d4891d21a397fdf373a67d2f",
+    "dependencies": "5f3de23aa240cbc34a87fdb69423e1422b4cff25bfa8e63077e286c99adbb345",
+    "build_flags": "f4f69fb27ee4128d09e42c4a967d1e53cbbf4902cb398262480becab8c438814",
+    "evidence": "1347dda485d2395319c39a212c8891a5a56204def06580c6fb447916c2291773"
+  },
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [],
+  "limitations": [
+    "Independent read-only inspection. No edits, builds, tests, applications, network requests, credentials, delegation or contact with other sessions. Prior verdicts were evidence only; scores were assessed independently.",
+    "Recomputed all four canonical scoped fingerprints and verified every supplied inventory file hash. All recorded validation log hashes match. The latest three records each bind 178 current inputs and report unchanged inputs during execution; both recorded test binaries match their hashes.",
+    "Recorded qualification reports 55/55 fixture tests, 21/21 unit tests and clean clippy with -D warnings. These commands were not rerun. The retained earlier 54/55 failure accurately records the not-sent versus notSent assertion error.",
+    "The new query regression exercises an actual three-second Desk settle timeout without an active Daily, asserts a failed receipt and reconcile=false, and verifies one query with no subsequent avatar action. Avatar regressions exercise real FORBIDDEN/rejected and locally refused unsigned-URL/notSent outcomes, assert failed receipts without reconciliation, and prohibit PUT, confirmation and removal.",
+    "Reviewed exact assertions, typed backward references, mandatory workflow contracts and duplicate limits, all-planned-call coverage, reset and certificate preservation, account pinning, receipt redaction and labels, budget and dependency admission, Daily lifecycle, generic mutation uncertainty and timeout reconciliation, and avatar handling. No unresolved scoped correctness or authority defect was identified.",
+    "Production runner hashes are unchanged from independent-03. Inventory differences are confined to the fixture source and two documentation files. Template wording now accurately names the six enforced critical procedures; other permitted mutations still require explicit expectations.",
+    "Hosted evidence supports earlier fresh sign-in, catalog access and intentionally incorrect inline grading only. No certificates, exam ineligibility and Shift pool 0/50 remain documented prerequisites. The final repeat expired before sign-in and sent no learner program. No W53/W65/W66 hosted pass is established.",
+    "Historical hosted receipts retain older producer bindings. Current changes are qualified by fixtures and static inspection. This verdict covers the qualification-tooling/fixtures milestone only, completes no formal gate, and grants no C25/P08, release or hosted assessment approval. UI, C26 signing and unrelated dirty work are outside scope."
+  ],
+  "inspected_files": [
+    "docs/planning/reviews/academy-2.1/codex-independent-04/request.json",
+    "docs/architecture/review-verdict.schema.json",
+    "crates/xtask/src/live_academy.rs",
+    "crates/xtask/src/live_academy/assertions.rs",
+    "crates/xtask/src/live_academy/contracts.rs",
+    "crates/xtask/tests/live_run/academy.rs",
+    "crates/xtask/tests/live_run/common.rs",
+    "crates/xtask/src/live_run.rs",
+    "crates/desktop-core/src/authority/learner_domain.rs",
+    "docs/planning/academy-2.1-follow-up.md",
+    "docs/architecture/live-manifest.template.json",
+    "docs/planning/evidence/academy-2.1/validation/run.json",
+    "docs/planning/evidence/academy-2.1/validation/policy-branches-final-live-run.log",
+    "docs/planning/evidence/academy-2.1/validation/policy-branches-qualified-live-run.log",
+    "docs/planning/evidence/academy-2.1/validation/policy-branches-qualified-unit.log",
+    "docs/planning/evidence/academy-2.1/validation/policy-branches-qualified-clippy.log",
+    "docs/planning/evidence/academy-2.1/hosted/summary.json",
+    "docs/planning/reviews/academy-2.1/attempt-06/review.json",
+    "docs/planning/reviews/academy-2.1/codex-independent-03/request.json",
+    "docs/planning/reviews/academy-2.1/codex-independent-03/verdict.json",
+    "target/debug/deps/live_run-1402db5536ee998d",
+    "target/debug/deps/xtask-29bc98444a45e1db"
+  ],
+  "recommendation": "pass"
+}

@@ -61,7 +61,7 @@ export function saveRefusalText(refusal: SaveRefusal): string {
 }
 
 const DETAIL_TEXT: Record<string, string> = {
-    notCollection: 'That folder holds no API Client collection (collection.toml, format 1).',
+    notCollection: "That folder isn't empty and has no API Client collection (collection.toml). Choose an empty folder or a collection folder.",
     badPath: 'Use a path inside the collection: folder/name, no leading dot, slash or "..".',
     exists: 'Something already exists there; nothing was replaced.',
     notInRepository: 'Create a collection inside an existing Git repository.',

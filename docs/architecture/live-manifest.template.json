@@ -224,12 +224,13 @@
     },
     "L12": {
       "status": "blocked",
-      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent). call.<NN>-<label> = '<workflows> <procedure> [<SuperJSON input>]', the workflows (comma-separated, among W50,W51,W52,W65) the call is evidence for (e.g. W50 units.get {\"json\":{...}}); a mutation must also be in permitted_operations",
+      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent). call.<NN>-<label> = '<workflows> <procedure> [<SuperJSON input>]', the workflows (comma-separated, among W50,W51,W52,W65) the call is evidence for (e.g. W50 units.get {\"json\":{...}}); a mutation must also be in permitted_operations. Every call requires ?? <expectation>; grading requires /correct=true or false. Earlier validated result references and interactive checkpoint requirements: docs/planning/academy-2.1-follow-up.md. Query-only observe entries earn no workflow credit; exam.start, progress.resetCourse and shift.start/serve/answer/decide must claim their corresponding W53/W66/W65 interactive workflow; other permitted mutations still require explicit result expectations. See the linked follow-up for the full <workflow> <procedure> [<input>] ?? <expectation> grammar.",
       "environment": "",
       "credentials": {},
       "nonsecret": {
         "academy_origin": "",
-        "call.01-label": ""
+        "call.01-label": "",
+        "expected_account_sha256": ""
       },
       "permitted_operations": [],
       "disposable_prefix": null,
@@ -239,12 +240,13 @@
     },
     "L13": {
       "status": "blocked",
-      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent; the avatar upload and removal count two). call.<NN>-<label> as L12, workflows among W52,W53,W54,W65,W66; list settings.removeAvatar in permitted_operations to exercise the avatar upload and its removal",
+      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent; the avatar upload and removal count two). call.<NN>-<label> as L12, workflows among W52,W53,W54,W65,W66; list settings.removeAvatar in permitted_operations to exercise the avatar upload and its removal. Every call requires ?? <expectation>; grading requires /correct=true or false. Earlier validated result references and interactive checkpoint requirements: docs/planning/academy-2.1-follow-up.md. Query-only observe entries earn no workflow credit; exam.start, progress.resetCourse and shift.start/serve/answer/decide must claim their corresponding W53/W66/W65 interactive workflow; other permitted mutations still require explicit result expectations. See the linked follow-up for the full <workflow> <procedure> [<input>] ?? <expectation> grammar.",
       "environment": "",
       "credentials": {},
       "nonsecret": {
         "academy_origin": "",
-        "call.01-label": ""
+        "call.01-label": "",
+        "expected_account_sha256": ""
       },
       "permitted_operations": [],
       "disposable_prefix": null,
@@ -254,7 +256,7 @@
     },
     "L14": {
       "status": "blocked",
-      "reason": "not yet designated by the owner. budget keys: calls (for call.* entries, workflows among W55,W56). access_change = designated when the operator can withdraw the test learner's course access during the run",
+      "reason": "not yet designated by the owner. budget keys: calls (for call.* entries, workflows among W55,W56). access_change = designated when the operator can withdraw the test learner's course access during the run. Every call requires ?? <expectation>; grading requires /correct=true or false. Earlier validated result references and interactive checkpoint requirements: docs/planning/academy-2.1-follow-up.md. Query-only observe entries earn no workflow credit; exam.start, progress.resetCourse and shift.start/serve/answer/decide must claim their corresponding W53/W66/W65 interactive workflow; other permitted mutations still require explicit result expectations. See the linked follow-up for the full <workflow> <procedure> [<input>] ?? <expectation> grammar.",
       "environment": "",
       "credentials": {},
       "nonsecret": {
@@ -264,7 +266,8 @@
         "base_version": "",
         "access_change": "",
         "operator_timeout_secs": "",
-        "call.01-label": ""
+        "call.01-label": "",
+        "expected_account_sha256": ""
       },
       "permitted_operations": [],
       "disposable_prefix": null,

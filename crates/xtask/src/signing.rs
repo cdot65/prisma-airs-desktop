@@ -602,3 +602,84 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+pub const BUILD_SCHEMA: &str = "airs-v2/release-build/1";
+
+/// The unsigned release build C26 signs: what was built, from which source.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BuildRecord {
+    pub schema: String,
+    pub built_utc: String,
+    /// The repository's source fingerprint the build was made from.
+    pub source_fingerprint: String,
+    pub cargo_lock_sha256: String,
+    pub identifier: String,
+    pub app: String,
+    pub app_tree_sha256: String,
+    pub executable_sha256: String,
+    /// The bundled engine: it must be the compiled pin (signed at sealing).
+    pub engine_sha256: String,
+    pub dmg: String,
+    pub dmg_sha256: String,
+    pub commands: Vec<Vec<String>>,
+}
+
+/// Builds the production app and DMG with the sealed (signed) engine and
+/// records them as `evidence/C26/release-build.json`. Refuses a build whose
+/// bundled engine is not the compiled pin or whose signature does not verify.
+pub fn release_build(
+    repo: &crate::Repo,
+    manifest: &crate::manifest::Manifest,
+    env: &crate::env::Environment,
+) -> Result<BuildRecord> {
+    let built = crate::budgets::build_production(repo, env, manifest.target.as_str())?;
+    let pin = desktop_core::harness::engine::pin();
+    let engine = built
+        .app
+        .join("Contents/Resources/harness")
+        .join(&pin.executable);
+    let engine_bytes = std::fs::read(&engine).map_err(io_err(&engine))?;
+    let engine_sha256 = sha256_hex(&engine_bytes);
+    if engine_sha256 != pin.binary_sha256 {
+        return Err(invalid(format!(
+            "the bundled engine {engine_sha256} is not the compiled pin {}",
+            pin.binary_sha256
+        )));
+    }
+    verify(&engine)?;
+    let executable = built
+        .app
+        .join("Contents/MacOS")
+        .join(crate::native::plist_value(
+            &built.app,
+            "CFBundleExecutable",
+        )?);
+    let lock = repo.join("Cargo.lock");
+    let relative = |p: &Path| {
+        p.strip_prefix(repo.root())
+            .unwrap_or(p)
+            .display()
+            .to_string()
+    };
+    let record = BuildRecord {
+        schema: BUILD_SCHEMA.to_owned(),
+        built_utc: now_utc(),
+        source_fingerprint: crate::fingerprint::source(repo)?,
+        cargo_lock_sha256: sha256_hex(&std::fs::read(&lock).map_err(io_err(&lock))?),
+        identifier: built.identifier,
+        app: relative(&built.app),
+        app_tree_sha256: crate::fingerprint::tree_hash(&built.app)?,
+        executable_sha256: sha256_hex(&std::fs::read(&executable).map_err(io_err(&executable))?),
+        engine_sha256,
+        dmg: relative(&built.dmg),
+        dmg_sha256: sha256_hex(&std::fs::read(&built.dmg).map_err(io_err(&built.dmg))?),
+        commands: built.commands,
+    };
+    write_json(
+        &repo
+            .evidence_dir(crate::Subject::Chunk(26))
+            .join("release-build.json"),
+        &record,
+    )?;
+    Ok(record)
+}

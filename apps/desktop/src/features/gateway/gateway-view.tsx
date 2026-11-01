@@ -40,7 +40,7 @@ import {
 } from '../administration/runtime-changes'
 import { LimitsPanel, LogsPanel, UsagePanel } from './gateway-observe'
 import { fileFailureText, FilesPanel, sizeText } from './gateway-files'
-import { INFERENCE_FAILURE_TEXT, KeptDraftEditor, PlaygroundPanel } from './playground'
+import { INFERENCE_FAILURE_TEXT, inferenceKey, KeptDraftEditor, PlaygroundPanel } from './playground'
 
 interface Props {
     snapshot: ShellSnapshot
@@ -583,7 +583,13 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
                                 ) : tab === 'limits' ? (
                                     <LimitsPanel key={reference} workspace={selected.workspace.name} read={read} />
                                 ) : tab === 'prerequisites' ? (
-                                    <PrerequisitesPanel held={prerequisites} onRefresh={() => void readPrerequisites()} />
+                                    <PrerequisitesPanel
+                                        held={prerequisites}
+                                        onRefresh={() => void readPrerequisites()}
+                                        snapshot={snapshot}
+                                        workspace={selected.workspace}
+                                        onPlayground={() => setTab('playground')}
+                                    />
                                 ) : tab === 'workspace' ? (
                                     <WorkspacePanel
                                         name={selected.workspace.name}
@@ -1233,7 +1239,26 @@ function sourceText(list: GatewayList | null, failure: string | null, what: stri
     return list ? coverage(list, what) : 'Not read'
 }
 
-function PrerequisitesPanel({ held, onRefresh }: { held: Held<GatewayPrerequisites>; onRefresh: () => void }) {
+/** Where this workspace stands for inference from the desktop, from the same key state the Playground uses. */
+function inferenceText(snapshot: ShellSnapshot, workspace: ListedWorkspace): string {
+    const { key, target, here } = inferenceKey(snapshot, workspace)
+    if (here && target)
+        return `An inference key for ${workspace.name} is stored (${key?.mode === 'session' ? 'this session only' : 'Keychain'}) and is sent only to ${target.endpoint}. Run prompts from the Playground tab.`
+    if (key?.state === 'ready' && target)
+        return `The stored inference key is for workspace ${target.workspace.name}. To run inference from ${workspace.name}, store a key for it in the Playground tab (it replaces that one).`
+    if (key?.state === 'storing') return 'An inference key is being stored.'
+    return `No inference key is stored for ${workspace.name}. To run inference from here, store the workspace's runtime endpoint and an API key with completions access in the Playground tab.`
+}
+
+interface PrerequisitesProps {
+    held: Held<GatewayPrerequisites>
+    onRefresh: () => void
+    snapshot: ShellSnapshot
+    workspace: ListedWorkspace
+    onPlayground: () => void
+}
+
+function PrerequisitesPanel({ held, onRefresh, snapshot, workspace, onPlayground }: PrerequisitesProps) {
     const p = held.read
     const failure = (f: GatewayPrerequisites['routesFailure']) => (f ? MANAGEMENT_FAILURE_TEXT[f] : null)
     return (
@@ -1276,8 +1301,12 @@ function PrerequisitesPanel({ held, onRefresh }: { held: Held<GatewayPrerequisit
                         <dd>{PLANE_TEXT[p.iamPlane]}</dd>
                     </dl>
                     <Callout tone='default' icon={Info} data-slot='gateway-inference-credential'>
-                        No Gateway inference credential is configured in the desktop yet, and the management client is never
-                        used in its place. Inference from this workspace is not available here.
+                        <div className='flex flex-col items-start gap-2'>
+                            <p>{`${inferenceText(snapshot, workspace)} The management client is never used in its place.`}</p>
+                            <Button type='button' tier='secondary' size='sm' onClick={onPlayground}>
+                                Open Playground
+                            </Button>
+                        </div>
                     </Callout>
                 </>
             ) : null}

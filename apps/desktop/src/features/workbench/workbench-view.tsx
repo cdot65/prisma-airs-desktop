@@ -59,6 +59,8 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
     const state = snapshot.workbench
     const collection = state.collection
     const [message, setMessage] = useState('')
+    // A folder that is not a collection also offers New collection….
+    const [offerNew, setOfferNew] = useState(false)
     const [tool, setTool] = useState<Tool>('requests')
     const [doc, setDoc] = useState<DocumentView | null>(null)
     const [notes, setNotes] = useState<ImportNote[]>([])
@@ -67,11 +69,18 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
     const editors = useRef(new Map<string, EditorHandle>())
     const [closing, setClosing] = useState<Closing | null>(null)
 
+    // A refusal stays shown until the next action that succeeds (a
+    // cancelled sheet keeps it), so it is not lost on the next click.
     const run = async (request: Parameters<WorkbenchCall>[0]) => {
-        setMessage('')
         const r = await call(request)
         const text = resultText(r)
-        if (text) setMessage(text)
+        if (text) {
+            setMessage(text)
+            setOfferNew(r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
+        } else if (r.kind !== 'cancelled') {
+            setMessage('')
+            setOfferNew(false)
+        }
         return r
     }
 
@@ -157,7 +166,7 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
                     Private API Client data is unavailable ({state.failure}). Drafts cannot be protected until it opens.
                 </Callout>
             ) : null}
-            {message ? (
+            {message && collection ? (
                 <p role='alert' className='text-[13px]' data-slot='workbench-message'>
                     {message}
                 </p>
@@ -185,7 +194,7 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
             ) : null}
             {!collection ? (
                 state.loaded ? (
-                    <NoCollection state={state} run={run} />
+                    <NoCollection state={state} run={run} message={message} offerNew={offerNew} />
                 ) : (
                     <p role='status' className='text-academy-ink-soft text-[13px]'>
                         Opening the API Client…
@@ -275,11 +284,23 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
 type Run = (request: Parameters<WorkbenchCall>[0]) => ReturnType<WorkbenchCall>
 type Closing = { kind: 'tab'; id: string; name: string } | { kind: 'collection' }
 
-function NoCollection({ state, run }: { state: WorkbenchState; run: Run }) {
+function NoCollection({ state, run, message, offerNew }: { state: WorkbenchState; run: Run; message: string; offerNew: boolean }) {
     const [chosen, setChosen] = useState<number[]>([])
     return (
         <div className='flex flex-col gap-4' data-slot='workbench-start'>
             <p className='text-[14px]'>No collection is open.</p>
+            {message ? (
+                <Callout tone='warning' icon={AlertTriangle} role='alert' data-slot='workbench-message'>
+                    <p>{message}</p>
+                    {offerNew ? (
+                        <div className='mt-3 flex flex-wrap gap-2'>
+                            <Button type='button' tier='secondary' onClick={() => void run({ kind: 'createCollection' })}>
+                                New collection…
+                            </Button>
+                        </div>
+                    ) : null}
+                </Callout>
+            ) : null}
             <div className='flex flex-wrap gap-2'>
                 <Button type='button' tier='primary' onClick={() => void run({ kind: 'openFolder' })}>
                     <FolderOpen aria-hidden className='size-4' />

@@ -1,0 +1,86 @@
+{
+  "recorded_utc": "2026-10-26T21:00:18.771662+00:00",
+  "subject": "ACADEMY-2.1-M1",
+  "status": "tooling-fixture milestone independently qualified; hosted prerequisites documented",
+  "request_id": "rq-academy-m1-20261026T205559Z-7d11422f",
+  "fingerprints": {
+    "source": "de5b4c5329929e8fb79df21db4bb9eea34dabc87d4891d21a397fdf373a67d2f",
+    "dependencies": "5f3de23aa240cbc34a87fdb69423e1422b4cff25bfa8e63077e286c99adbb345",
+    "build_flags": "f4f69fb27ee4128d09e42c4a967d1e53cbbf4902cb398262480becab8c438814",
+    "evidence": "1347dda485d2395319c39a212c8891a5a56204def06580c6fb447916c2291773"
+  },
+  "inventory_counts": {
+    "source": 180,
+    "dependencies": 5,
+    "evidence": 24
+  },
+  "validation_counts": {
+    "fixture_tests": 55,
+    "unit_tests": 21,
+    "clippy_warnings": 0
+  },
+  "validation_records": [
+    {
+      "log": "docs/planning/evidence/academy-2.1/validation/policy-branches-qualified-live-run.log",
+      "sha256": "07812f69c2ede1b7ffd664a41f6a36367c2b3905874480a31b0289d1a70a571c",
+      "exit_code": 0
+    },
+    {
+      "log": "docs/planning/evidence/academy-2.1/validation/policy-branches-qualified-unit.log",
+      "sha256": "51fe6fe4c48834451ee4197b1b0f7fc24134d81793c27c6da8a54e7f8f858e67",
+      "exit_code": 0
+    },
+    {
+      "log": "docs/planning/evidence/academy-2.1/validation/policy-branches-qualified-clippy.log",
+      "sha256": "fb7c8ca908b60b6f8c60cc7f107df04fc4bcef75e71ad04cabc07c1915653789",
+      "exit_code": 0
+    }
+  ],
+  "reviews": {
+    "codex": {
+      "path": "docs/planning/reviews/academy-2.1/codex-independent-04/verdict.json",
+      "sha256": "3d09648175d1bd3eaa8ae7dbfdfd7ab5053e4c1b6c52d16e949378a7d6472ff3",
+      "scores": {
+        "architecture": 9,
+        "behavior": 9,
+        "authority_security": 9,
+        "validation": 9,
+        "overall": 9
+      },
+      "recommendation": "pass"
+    },
+    "claude": {
+      "path": "docs/planning/reviews/academy-2.1/attempt-07/review.json",
+      "sha256": "8cb447690c3864b81932aca1e2c41c1d36a262c36edafef5b02eb6a47a967d78",
+      "raw_response_sha256": "11525951d8ccfcee58c0ee56ea60d03088500f97fe0daa5ca098038af2e74b89",
+      "scores": {
+        "architecture": 8,
+        "behavior": 9,
+        "authority_security": 9,
+        "validation": 9,
+        "overall": 9
+      },
+      "recommendation": "pass",
+      "model_usage": [
+        "claude-opus-5-5"
+      ]
+    }
+  },
+  "checks": {
+    "all_inventory_fingerprints_recomputed": true,
+    "all_inventory_files_match": true,
+    "latest_build_inputs_match": true,
+    "both_test_binaries_match": true,
+    "claude_json_equals_raw_result": true,
+    "source_frozen_during_reviews": true
+  },
+  "limits": [
+    "This is not a controller-generated C25/P08 gate or release approval.",
+    "Hosted archive proves earlier sign-in, catalog access and intentionally incorrect inline grading only.",
+    "No W53/W65/W66 hosted pass: exam ineligible, Shift pool 0/50, no certificate or positive reset baseline.",
+    "Owner chose documenting test-data prerequisites; no test data was seeded.",
+    "Current safety changes are fixture/static qualified; hosted receipts retain earlier producer bindings.",
+    "Claude architecture score remains 8; optional suggestions are retained in its original verdict.",
+    "Changes remain local alongside preexisting UI/C26 work."
+  ]
+}

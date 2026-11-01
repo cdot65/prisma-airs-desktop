@@ -80,6 +80,12 @@ describe('management client onboarding', () => {
         expect(within(section()).getByRole('button', { name: 'Save client' })).toBeDisabled()
     })
 
+    it('points to the Harness for company sign-in (SSO)', async () => {
+        const native = scriptedNative(withTenant(baseSnapshot, tenant(), CONTEXT))
+        await openSettings(native)
+        expect(within(section()).getByText('Company sign-in (SSO) for the Harness is set up per Gateway workspace, in Harness.')).toBeInTheDocument()
+    })
+
     it('verifies with one management read and reports failures faithfully', async () => {
         const native = scriptedNative(withTenant(baseSnapshot, tenant({ management: readyManagement }), CONTEXT))
         let answer: unknown = { kind: 'management', result: { kind: 'verified' } }
