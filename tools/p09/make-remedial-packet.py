@@ -95,6 +95,8 @@ extras=['AGENTS.md','GLOSSARY.md','docs/planning/decisions.md','docs/planning/re
         'tools/native-acceptance/legacy_assertions.py','tools/native-acceptance/wizard_coverage.py','docs/architecture/native-checks.json',
         predecessor['record'],str(prep_path.relative_to(root)),str(run_path.relative_to(root))]
 scope.update(p for p in extras if (root/p).is_file())
+scope.update(str(p.relative_to(root)) for p in (root/'tools/p09').glob('*.py'))
+scope.add('tools/p09/README.md')
 prefixes=['apps/desktop/src/v2/wizard','docs/planning/evidence/C29/live/L19','docs/planning/evidence/C29/remediation-attempt-07','docs/planning/evidence/P09/runs']
 if any(n['origin']=='P09 integrated native' for n in natives):
     prefixes.append('docs/planning/evidence/P09/native-controller')
@@ -105,6 +107,10 @@ for n in natives:
     d=(root/n['record']).parent
     scope.update(str(p.relative_to(root)) for p in d.rglob('*') if p.is_file())
     chunk=n['subject'].lower();scope.add(f'tools/native-acceptance/acceptance_{chunk}.py')
+    # Bind the actual failed generations and original driver sources used to
+    # diagnose this mapped driver's correction, not just its eventual pass.
+    for history in (root/'docs/planning/evidence/P09/native-history').glob(n['subject']+'-Worf-failed*'):
+        scope.update(str(p.relative_to(root)) for p in history.rglob('*') if p.is_file() and '__pycache__' not in p.parts)
 scope={p for p in scope if not p.startswith(str(out.relative_to(root))+'/')}
 inventory={p:sha(root/p) for p in sorted(scope)}
 source=hashlib.sha256(''.join(f'{p} {h}\n' for p,h in inventory.items()).encode()).hexdigest()

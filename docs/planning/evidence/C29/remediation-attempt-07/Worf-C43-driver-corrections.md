@@ -125,3 +125,17 @@ it is not converted to a pass. Full retry pending.
 C24 full retry passed all six required mapped checks. The controller reports
 required_pass=true with no errors and carries C24-N06 as its unchanged superseded
 raw failure; no aggregate pass is invented.
+
+C37's first run failed only N01's obsolete breadcrumb destination check; N02
+and every other N01 observation passed. The complete 43-file generation/source
+is archived under `P09/native-history/C37-Worf-failed-20261101-resume-04/`.
+Its actual destination tree has the Administration heading, current=true on
+AI Runtime Security product navigation, and the exact AI Runtime Security tab
+group. The later Administration presentation omits the former breadcrumb.
+The predicate now requires all three current destination signals. Actual-tree
+positive, unselected-product, missing-tabs and Inbox negatives pass. No route,
+role-issue, holds, keyboard, geometry or assertion-map requirements changed.
+Full retry pending; the input audit explicitly names this driver-only change.
+
+C37 full retry passed N01/N02, including current role destination, holds, keyboard
+and all layouts. Controller reports no errors; failed generation remains retained.

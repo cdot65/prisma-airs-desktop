@@ -22,7 +22,8 @@ else:
     if not isinstance(model,str) or not model.strip():
         raise SystemExit(f'No top-level model is configured in {config_path}; pass the model as argument 3.')
     model=model.strip()
-argv=['codex','exec','-s','read-only','--skip-git-repo-check','--ephemeral','--ignore-user-config','--ignore-rules','-m',model,
+argv=['codex','--no-daemon','-a','never','exec','-s','read-only','--skip-git-repo-check','--ephemeral','--ignore-user-config','--ignore-rules','-m',model,
+      '--json','--color','never','-c','web_search="disabled"',
       '-c','model_reasoning_effort="xhigh"','--output-schema','docs/architecture/review-verdict.schema.json',
       '-o',str(out/'verdict-returned.json'),(out/'message.txt').read_text()]
 with (out/'thread-reply.log').open('w') as log:

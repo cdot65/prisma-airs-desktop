@@ -8,11 +8,14 @@ cumulative review completed on 2026-10-21; C19–C22 and the P06 cumulative
 review completed on 2026-10-23; C23–C24 and the P07 cumulative review
 completed on 2026-10-24. P08/C26 remains open; the owner-authorized P09
 integration is now at fresh Worf cumulative native qualification after C44 full-9 closure.
-C36 passed; the corrected C43 run passed all 24 retained behaviors and all 48
-wizard matrix rows, with the independent coverage audit passing. C11 also passed
-after a scoped AX text-observation correction. Failed generations are retained
-under P09/native-history; remaining native drivers, fresh checks and C29–C32/P09
-reviews are pending. No new independent review score is implied by native passes.
+All 19 Worf mapped native drivers now pass their required checks on the prepared
+P09 executable, with C44 cumulative last. C43 passed all 24 retained behaviors
+and 48 wizard matrix rows; its independent coverage audit passed. C24-N06 and
+C31-N01/N04 remain unchanged superseded raw failures, carried separately by the
+existing assertion map. Failed generations and scoped driver corrections are
+retained under P09/native-history. The current native binding audit is
+`evidence/P09/native-controller/worf-native-audit.json`. Fresh checks are running;
+C29–C32 and P09 reviews remain pending. No new review score is implied by native passes.
 Use [WORF-START-HERE](WORF-START-HERE.md) for the 2026-11-01 checkpoint and next commands. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no

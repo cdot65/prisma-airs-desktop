@@ -23,7 +23,7 @@ Prerequisites:
   check audit retains the existing comparison against the `attempt-01` build
   input inventory, allowing only the named native-tool changes: C43's restored
   coverage, its assertion map/oracle, C11/C05/C06/C07/C24's scoped split-text observations
-  and C04's existing current-shell active-tenant verification. Application build
+  and C04/C37's current-shell tenant/product destination verification. Application build
   inputs are not exempted. Failed Worf generations and correction provenance
   remain under P09/native-history and C29/remediation-attempt-07.
 - The packet needs the passing L19 receipt and the preceding chunk's full gate.
@@ -47,7 +47,8 @@ argument naming the review model; otherwise it reads the top-level `model` in
 `~/.codex/config.toml` and fails clearly if none is available. It never invents
 a model. Reading that TOML requires Python 3.11 or newer; an explicit model
 argument also works with the older Python versions supported by these scripts.
-The fresh Codex session is read-only and uses the retained strict
+The fresh Codex session runs in process with `--no-daemon`, read-only sandbox,
+approval policy `never`, web search disabled and captured JSONL output. It uses the retained strict
 verdict schema. Preserve every verdict and use a new attempt for another run.
 
 Temporary comparison inventories go under the ignored
@@ -56,4 +57,27 @@ review records remain under their existing repository evidence paths. Keep
 scoped inputs unchanged until the post-review audit is complete, report the
 actual verdict scores, and apply the standing D034 acceptance/remediation rules.
 
-Start with [the Worf continuation guide](../../docs/planning/WORF-START-HERE.md). `verify-migration.py` checks the captured source/worktree checkpoint after cloning. `make-phase-packet.py` is an explicitly disabled historical draft; enable it only after implementing its current-P09 checks.
+Start with [the Worf continuation guide](../../docs/planning/WORF-START-HERE.md).
+`verify-migration.py` checks the captured clone checkpoint; intentional later
+evidence/source changes are not reset to satisfy that historical inventory.
+
+The former disabled phase draft is preserved under P09/phase-tooling-history.
+`make-phase-packet.py` now uses `phase_inputs.py` before creating any attempt:
+all 19 current native drivers on the exact executable, complete C43 coverage,
+all 18 current check logs/frozen inputs, actual full-9 member and prior-phase
+verdict bindings, and C29-C32 post-review audits. C41's explicit override and
+C33's supersession remain distinct. No passing phase or controller receipt is
+inferred from input verification. After those prerequisites:
+
+```sh
+python3 -I tools/p09/test_phase_inputs.py
+python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-03.json
+python3 tools/p09/launch-remedial-review.py P09 attempt-01
+python3 -I tools/p09/audit-phase-review.py attempt-01
+```
+
+Use fresh IDs. The phase packet binds file modes and symlink targets, source,
+current native evidence, failed Worf generations, check logs and predecessor
+records in separate self-excluding inventories. The post-review audit rechecks
+both inventories and the complete current gates. Phase completion still needs
+an actual independent verdict at 9 in every dimension with no fixes/gaps/blockers.

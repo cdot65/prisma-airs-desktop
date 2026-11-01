@@ -1,0 +1,193 @@
+"""Fail-closed current-P09 inputs for the manual phase-review fallback.
+
+Historical member verdicts remain historical. Current native/check evidence and
+the remedial C29-C32 audits must independently qualify the integrated inputs.
+This module never launches a review or changes a completion ledger.
+"""
+from pathlib import Path
+import hashlib
+import json
+import re
+import subprocess
+import sys
+import tempfile
+
+MEMBERS = ['C27', 'C28', 'C29', 'C30', 'C31', 'C32', 'C33', *[f'C{i}' for i in range(35, 45)]]
+DECISIONS = {
+    'C33': 'docs/planning/p09-recut.md',
+    'C41': 'docs/planning/reviews/C41/owner-override-2026-10-31.md',
+}
+DIMENSIONS = {'architecture', 'behavior', 'authority_security', 'validation', 'overall'}
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def read(path):
+    return json.loads(Path(path).read_text())
+
+
+def sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def full_gate(verdict):
+    scores = verdict.get('scores', {})
+    require(set(scores) == DIMENSIONS and all(type(v) is int and v >= 9 and v <= 10 for v in scores.values()),
+            'member does not have all five scores at least 9')
+    require(verdict.get('recommendation') == 'pass', 'member recommendation is not pass')
+    for field in ['required_fixes', 'blockers', 'evidence_gaps']:
+        require(verdict.get(field) == [], 'member has missing/nonempty ' + field)
+
+
+def latest_verdict(root, subject):
+    directory = root / 'docs/planning/reviews' / subject
+    key = lambda p: [int(x) if x.isdigit() else x for x in re.findall(r'\d+|[a-z]+', p.name)]
+    for attempt in sorted(directory.glob('attempt-*'), key=key, reverse=True):
+        for name in ['verdict-returned.json', 'verdict.json']:
+            path = attempt / name
+            if path.is_file():
+                return path, read(path)
+    raise ValueError('no actual verdict for ' + subject)
+
+
+def verify_members(root):
+    members = []
+    for subject in MEMBERS + [f'P{i:02}' for i in range(1, 8)]:
+        if subject == 'C33':
+            decision = root / DECISIONS[subject]
+            require(decision.is_file(), 'missing C33 supersession decision')
+            members.append({'subject': subject, 'standing': 'superseded under D059; no numeric verdict invented',
+                            'owner_decision': DECISIONS[subject], 'owner_decision_sha256': sha(decision)})
+            continue
+        path, verdict = latest_verdict(root, subject)
+        request = read(path.parent / 'request.json')
+        require(verdict['subject'] == subject and verdict['request_id'] == request['request_id']
+                and verdict['attempt_id'] == request['attempt_id'] and verdict['fingerprints'] == request['fingerprints'],
+                subject + ': verdict/request binding mismatch')
+        item = {'subject': subject, 'record': str(path.relative_to(root)), 'sha256': sha(path),
+                'request': str((path.parent / 'request.json').relative_to(root)),
+                'request_sha256': sha(path.parent / 'request.json'), 'scores': verdict['scores'],
+                'recommendation': verdict['recommendation']}
+        if subject == 'C41':
+            decision = root / DECISIONS[subject]
+            require(decision.is_file(), 'missing C41 explicit owner override')
+            require(verdict['attempt_id'] == 'attempt-09' and verdict['scores'] == dict(
+                architecture=9, behavior=8, authority_security=9, validation=8, overall=8),
+                'C41 override applies only to its unchanged recorded numeric verdict')
+            item.update(owner_decision=DECISIONS[subject], owner_decision_sha256=sha(decision),
+                        standing='explicit owner override; actual numeric verdict unchanged')
+        else:
+            full_gate(verdict)
+        receipt = path.parent / 'receipt.json'
+        if receipt.is_file():
+            value = read(receipt)
+            require(value.get('verdict_sha256', value.get('raw_verdict_sha256')) == sha(path), subject + ': receipt verdict hash mismatch')
+            require(value.get('scores', value.get('verdict', {}).get('scores')) == verdict['scores'], subject + ': receipt scores mismatch')
+            require(value['request_id'] == verdict['request_id'] and value['fingerprints'] == verdict['fingerprints'],
+                    subject + ': receipt request/fingerprint mismatch')
+            item.update(receipt=str(receipt.relative_to(root)), receipt_sha256=sha(receipt))
+        if subject in ['C29', 'C30', 'C31', 'C32']:
+            audit = path.parent / 'post-review-audit.json'
+            value = read(audit)
+            require(value['full_gate_pass'] and value['compiled_inputs_unchanged']
+                    and value['raw_verdict_sha256'] == sha(path) and value['request_sha256'] == sha(path.parent / 'request.json'),
+                    subject + ': missing/stale full-gate audit')
+            # These remedial generations must still cover the current scoped bytes.
+            inventory = read(path.parent / 'source-inventory.json')
+            for name, digest in inventory['files'].items():
+                require(sha(root / name) == digest, subject + ': reviewed source/evidence drift: ' + name)
+            item.update(audit=str(audit.relative_to(root)), audit_sha256=sha(audit))
+        members.append(item)
+    return members
+
+
+def verify_native(root):
+    controller = root / 'docs/planning/evidence/P09/native-controller'
+    sys.path.insert(0, str(controller))
+    from native_requirements import load_requirements, assess_record
+    sys.path.insert(0, str(root / 'tools/native-acceptance'))
+    import wizard_coverage
+    phase = root / 'docs/planning/evidence/P09'
+    prepared = read(phase / 'native-prepare.json')
+    require(prepared['subject'] == 'P09' and prepared['features'] == ['test-fixtures']
+            and prepared['target'] == 'aarch64-apple-darwin', 'wrong prepared subject/features/target')
+    executable = root / prepared['bundle'] / 'Contents/MacOS/prisma-airs-desktop-v2'
+    require(sha(executable) == prepared['executable_sha256'], 'prepared executable drift')
+    records = []
+    for subject, required in sorted(load_requirements(root).items()):
+        directory = phase if subject == 'C44' else phase / 'native/cumulative' / subject
+        path = directory / 'native-acceptance.json'
+        record, execution = read(path), read(directory / 'execution.json')
+        require(record['subject'] == subject, subject + ': wrong record subject')
+        ids = [check['id'] for check in record['checks']]
+        require(len(ids) == len(set(ids)), subject + ': duplicate native check IDs')
+        require(sha(directory / 'native-prepare.json') == sha(phase / 'native-prepare.json'), subject + ': preparation mismatch')
+        errors, carried = assess_record(record, root, prepared['executable_sha256'], required)
+        require(not errors, subject + ': required native checks fail: ' + str(errors))
+        require(execution['driver_subject'] == subject and execution['phase'] == 'P09'
+                and execution['executable_sha256'] == prepared['executable_sha256']
+                and execution['raw_record_sha256'] == sha(path)
+                and execution['required_check_errors'] == errors and execution['superseded_raw_checks'] == carried,
+                subject + ': execution binding mismatch')
+        for field, source in [('controller_sha256', controller / 'run-p09-native.py'),
+                              ('requirements_sha256', controller / 'native_requirements.py'),
+                              ('driver_sha256', root / 'tools/native-acceptance' / ('acceptance_' + subject.lower() + '.py'))]:
+            require(execution[field] == sha(source), subject + ': execution source drift: ' + field)
+        require(subprocess.run(['git', 'merge-base', '--is-ancestor', execution['source_head'], 'HEAD'],
+                               cwd=root, capture_output=True).returncode == 0, subject + ': native source is not an integrated ancestor')
+        if subject == 'C43':
+            errors = wizard_coverage.problems(read(directory / 'native/observations.json')['observations'], root)
+            require(not errors, 'C43 retained coverage: ' + str(errors))
+        records.append({'subject': subject, 'record': str(path.relative_to(root)), 'sha256': sha(path),
+                        'execution': str((directory / 'execution.json').relative_to(root)),
+                        'execution_sha256': sha(directory / 'execution.json'),
+                        'required_targets': sorted(required), 'superseded_raw_checks': carried,
+                        'executable_sha256': prepared['executable_sha256']})
+    return {'prepare': str((phase / 'native-prepare.json').relative_to(root)),
+            'prepare_sha256': sha(phase / 'native-prepare.json'), 'records': records}
+
+
+def verify_checks(root, record_path):
+    run = read(record_path)
+    baseline = read(root / 'docs/planning/evidence/P09/runs/run-attempt-02.json')
+    require(run['subject'] == 'P09' and set(run['runs']) == set(baseline['runs']) and len(run['runs']) == 18,
+            'phase requires the exact 18 P09 checks')
+    require(Path(run['cwd']).resolve() == root, 'check run is not from this active clone')
+    for name, prefix in [('rustc', 'rustc 1.99.0 '), ('cargo', 'cargo 1.99.0 '), ('node', 'v24.21.0'), ('pnpm', '10.6.5')]:
+        require(run['toolchain'][name] == prefix if name in ['node', 'pnpm'] else run['toolchain'][name].startswith(prefix),
+                'check toolchain mismatch: ' + name)
+    for name, result in run['runs'].items():
+        require(result['exit'] == 0 and sha(root / result['log']) == result['log_sha256'], 'failed/stale check: ' + name)
+    inputs = run['inputs']
+    require(inputs['unchanged'] and inputs['before_digest'] == inputs['after_digest'], 'check input drift')
+    procedure = root / 'docs/planning/evidence/P09/runs/hash-inputs.sh'
+    require(sha(procedure) == inputs['procedure_sha256'], 'inventory procedure drift')
+    flags = ['docs/architecture/' + p for p in ['checks.json', 'native-checks.json', 'toolchain.json', 'budgets.json']]
+    flags += ['apps/desktop/src-tauri/tauri.conf.json', 'apps/desktop/src-tauri/tauri.fixture.conf.json']
+    flags += sorted(str(p.relative_to(root)) for p in (root / 'apps/desktop/src-tauri/capabilities').glob('*.json'))
+    flags += ['rust-toolchain.toml']
+    flag_inventory = subprocess.check_output(['/usr/bin/shasum', '-a', '256', *flags], cwd=root)
+    require(hashlib.sha256(flag_inventory).hexdigest() == run['build_flags']['digest'], 'current build flags differ from checks')
+    directory = record_path.parent / run['attempt']
+    for label in ['before', 'after']:
+        digest = sha(directory / ('inputs-' + label + '.sha256'))
+        require(digest == inputs[label + '_digest'] == inputs[label + '_inventory_sha256'], 'inventory record mismatch')
+    audit = read(directory / 'post-check-audit.json')
+    require(audit['record_sha256'] == sha(record_path) and audit['check_runs_verified'] == 18
+            and audit['application_build_inputs_unchanged'], 'missing/stale check audit')
+    with tempfile.TemporaryDirectory(prefix='p09-phase-inputs-') as scratch:
+        current = subprocess.check_output(['/bin/bash', str(procedure), str(root), str(Path(scratch) / 'inputs.sha256')], text=True).strip()
+    require(current == inputs['before_digest'], 'current compiled inputs differ from checks')
+    return run
+
+
+def verify(root, record_path):
+    root = Path(root).resolve()
+    run = verify_checks(root, Path(record_path).resolve())
+    return {'subject': 'P09', 'check_record_sha256': sha(record_path),
+            'input_digest': run['inputs']['before_digest'],
+            'native_acceptance': verify_native(root), 'predecessors': verify_members(root),
+            'phase_complete': False, 'meaning': 'Inputs qualified for independent review; no phase verdict or completion inferred.'}

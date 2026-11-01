@@ -214,6 +214,14 @@ def overflow(app):
     return {"overflow_px": max(0, right - (win["pos"][0] + win["size"][0])) if right is not None else None, "horizontal_scrollbars": len(hbars)}, tree
 
 
+def runtime_role_destination(tree):
+    """Current Administration destination: selected product navigation and tabs."""
+    return (fx.App.node(tree, "AXHeading", "Administration") is not None
+            and any(n.get("role") == "AXButton" and n.get("label") == "AI Runtime Security"
+                    and n.get("current") == "true" for n in tree)
+            and any(n.get("role") == "AXTabGroup" and n.get("label") == "AI Runtime Security tabs" for n in tree))
+
+
 def main():
     try:
         return run()
@@ -297,10 +305,9 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     obs["tree_role"] = c29.save_tree("inbox-role-issue", tree)
     obs["captures"]["inbox-role"] = {"light": c29.capture(app, "inbox-role-issue-light")}
     c29.press(app, "AXButton", "Open role issue")
-    # The destination: Administration with that product opened (its breadcrumb and its tab group).
-    tree, n1["role_destination"] = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Administration") is not None
-                                                and app.has_text(t, "Administration › AI Runtime Security")
-                                                and any(n.get("role") == "AXTabGroup" and (n.get("label") or "") == "AI Runtime Security tabs" for n in t), 12)
+    # The later Administration presentation names the opened product in its
+    # selected navigation entry and tab group, rather than the old breadcrumb.
+    tree, n1["role_destination"] = app.wait_for(runtime_role_destination, 12)
     obs["tree_role_admin"] = c29.save_tree("inbox-role-issue-administration", tree)
     app.menu("Go", "Inbox")
     c29.heading(app, "Inbox")

@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-I",
+        "tools/p09/test_phase_inputs.py"
+      ],
+      "exit": 0,
+      "tests": 8,
+      "log": "docs/planning/evidence/P09/phase-tooling-validation/attempt-01/guard-tests.log",
+      "log_sha256": "5b8a3ccb28c32f172271a641e8142fdb66c37cd396f681ca016266abfdb51bb3"
+    },
+    {
+      "argv": [
+        "python3",
+        "-I",
+        "tools/p09/verify-phase-inputs.py",
+        "--native-only"
+      ],
+      "exit": 0,
+      "drivers": 19,
+      "record": "docs/planning/evidence/P09/native-controller/worf-native-audit.json",
+      "record_sha256": "9150f6baa93b1d1a1d6f318602a068a34cf157ee3b35d14ff42b4c734c07dff6"
+    }
+  ],
+  "source_sha256": {
+    "tools/p09/phase_inputs.py": "e85d583228cd865afbe6c31caebebd7a614666d55177d2f2c25c29ce35f0d073",
+    "tools/p09/phase_packet.py": "dcc4d5288664327ea7bc81e3cbf8ba393900923d929bd3418c2c341866a189e1",
+    "tools/p09/test_phase_inputs.py": "1b508f4849ca32c6dd369678e6140c99415c98e0e09597ad62b859ca61890556",
+    "tools/p09/make-phase-packet.py": "b3070598ea53f531ed60c6f86e64d2bc66cd2a2e58b324366ab7c9837b0fb795",
+    "tools/p09/audit-phase-review.py": "63ca4249203fddc2eaf703d0523c48ac1441f975474016d14879714b24ae831c"
+  },
+  "meaning": "Verifier guard/native-input checks only; no independent phase verdict or completion."
+}
