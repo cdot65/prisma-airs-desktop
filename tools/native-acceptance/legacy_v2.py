@@ -99,6 +99,10 @@ def open_runtime(self):
 
 
 def ax(self, command, *args):
+    # The first v2 shell's drivers (C28–C33) switched the window to v2 through Settings' interface switch; on the one
+    # presentation there is no switch and the window is already v2.
+    if command == "press" and len(args) >= 2 and args[0] == "AXCheckBox" and args[1] == "Use the new interface" and self.node(self.tree(), "AXCheckBox", args[1]) is None:
+        return ""
     if command in ("press", "focus") and len(args) >= 2 and args[0] == "AXButton" and args[1] in GO and self.node(self.tree(), "AXButton", args[1]) is None:
         # A pre-P09 driver may open a destination before any tenant exists (the legacy shell allowed it); on the one
         # presentation the first run is the wizard, walked once with the placeholder tenant first.

@@ -319,7 +319,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
         "checks": checks,
         "limitations": [
             "Pixels come from the fixture build's own WKWebView snapshot; the whole-app set under evidence/C44/parity/app is the app alone (C44 has no prototype board of its own).",
-            "Synthetic scan and management endpoints only; the Academy destination is opened as a guest (no Academy endpoint is staged); Sessions & Reports and Import from v1 are opened, not exercised (their drivers are C11 and C23).",
+            "Synthetic scan and management endpoints only; the Academy destination is opened as a guest here (no Academy endpoint is staged for this driver; the Academy drivers C04–C07 stage their own and run in the cumulative set); Sessions & Reports is opened, not exercised here (acceptance_c11.py exercises it in the cumulative set); the alpha import is gone (D060).",
             "Spoken VoiceOver output was not recorded.",
         ],
     }

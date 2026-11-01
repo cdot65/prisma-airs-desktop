@@ -1078,6 +1078,58 @@ describe('C41 API Client board', () => {
         expect(opens()).toBe(2)
     })
 
+    it('replacing one collection directly with another that selects the same request id loads the new collection\u2019s document, never shows the old fields under it, and ignores the old collection\u2019s late reply (attempt-03 R1)', async () => {
+        const a = board()
+        const b: ShellSnapshot = {
+            ...a,
+            workbench: {
+                ...a.workbench,
+                collection: {
+                    ...a.workbench.collection!,
+                    id: 'other',
+                    name: 'Other',
+                    folder: 'other',
+                    requests: [{ relative: 'topics/list.request.toml', id: 'list', method: 'GET', url: 'http://127.0.0.1:8080/other' }],
+                    tabs: [{ id: 'list', relative: 'topics/list.request.toml', method: 'GET', draft: false, new: false, recovered: false, conflict: null, interrupted: false }],
+                    selected: 'list',
+                },
+            },
+        }
+        let current: 'a' | 'b' = 'a'
+        const native = scriptedNative(a)
+        const requests = workbench(native, answers((request) => (request.kind === 'openRequest' && current === 'b' ? document({ url: 'http://127.0.0.1:8080/other' }) : null)))
+        // The old collection's load of another request is held in flight across the replacement.
+        const pending: ((r: WorkbenchResult) => void)[] = []
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const req = requests.find((r, i) => `op-${i + 1}` === operation)
+            if (req?.kind === 'openRequest' && req.relative === 'health.request.toml' && pending.length === 0) {
+                return new Promise<{ kind: 'workbench'; result: WorkbenchResult }>((resolve) => pending.push((result) => resolve({ kind: 'workbench', result })))
+            }
+            return observe(operation)
+        }
+        const user = userEvent.setup()
+        render(<App client={new DesktopClient(native.transport)} />)
+        await screen.findByRole('heading', { level: 1, name: 'API Client' })
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics'))
+        const opens = () => requests.filter((r) => r.kind === 'openRequest').length
+        expect(opens()).toBe(1)
+        await user.click(screen.getByRole('button', { name: 'Open GET health.request.toml' }))
+        await waitFor(() => expect(pending).toHaveLength(1))
+        // The other collection replaces it directly, selecting a request with the same id: its document is loaded and shown.
+        current = 'b'
+        await native.push(b)
+        await waitFor(() => expect(opens()).toBe(3))
+        expect(await screen.findByRole('button', { name: 'Collection Other' })).toBeInTheDocument()
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/other'))
+        expect(within(screen.getByRole('tablist', { name: 'Open requests' })).getByRole('tab', { name: 'GET list' })).toHaveAttribute('aria-selected', 'true')
+        // The old collection's held reply lands late: nothing changes and no failure is shown.
+        pending[0]!(document({ url: 'http://127.0.0.1:8080/health-stale' }))
+        await new Promise((r) => setTimeout(r, 50))
+        expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/other')
+        expect(document_().querySelector('[data-slot="workbench-load-failed"]')).toBeNull()
+    })
+
     it('draws nested folders as a hierarchy: a collapsed folder hides its whole subtree, a folder counts every request under it, and search still finds them', async () => {
         const snapshot = board()
         const collection = snapshot.workbench.collection!

@@ -116,6 +116,9 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // A cURL import's conversion report that arrived after the core had already selected its draft (the selection's
     // own load superseded the import): kept for that draft, shown when its document shows.
     const lateNotes = useRef<{ id: string; notes: ImportNote[] } | null>(null)
+    // The collection the shown document was loaded from: another collection's document is never reused for a request
+    // with the same id (attempt-03 R1).
+    const docCollection = useRef<string | null>(null)
     type Load = { gen: number; asked: string | null; id: string | null; relative: string | null }
     const beginLoad = (id: string | null, relative: string | null = null): Load => {
         const gen = ++loadGen.current
@@ -140,6 +143,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
         if (loading.current === load.id) loading.current = null
         if (r?.kind === 'document') {
             setDoc(r.document)
+            docCollection.current = load.asked
             setDocSeq((n) => n + 1)
             setNotes(keepNotes ? r.notes : lateNotes.current?.id === r.document.id ? lateNotes.current.notes : [])
             if (lateNotes.current && lateNotes.current.id !== r.document.id) lateNotes.current = null
@@ -161,13 +165,17 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // collection re-opened with its persisted selection opens that request again (the editor was left blank).
     const collectionId = collection?.id ?? null
     useEffect(() => {
-        // A collection boundary retires every load in flight (its reply is ignored) and the loading marker with it, so
-        // the re-opened collection's selected request is loaded afresh.
+        // A collection boundary (closed, re-opened, or replaced by another collection) retires every load in flight
+        // (its reply is ignored), the loading marker and the document shown: the editor never shows one collection's
+        // fields under another, even when both select a request with the same id (attempt-03 R1), and the new
+        // collection's selected request is loaded afresh.
         followed.current = null
         loadGen.current += 1
         loading.current = null
         setLoadFailure(null)
-        if (collectionId === null) setDoc(null)
+        setDoc(null)
+        setNotes([])
+        lateNotes.current = null
     }, [collectionId])
     // Opens a request (the selected tab, or a tree entry); only the latest load's reply counts.
     const open = (tab: { id: string; relative: string }) => {
@@ -195,12 +203,13 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
             loadGen.current += 1
             loading.current = null
         }
-        if ((doc?.id === selectedTab.id && staleDoc.current !== selectedTab.id) || loading.current === selectedTab.id) return
+        const reusable = doc?.id === selectedTab.id && docCollection.current === collectionId && staleDoc.current !== selectedTab.id
+        if (reusable || loading.current === selectedTab.id) return
         // A stale document is not shown while its reload is in flight: remounted, its editor would start from the old
         // fields and keep them when the fresh document arrived under the same key.
         if (doc?.id === selectedTab.id) setDoc(null)
         openRef.current(selectedTab)
-    }, [selectedTab, doc])
+    }, [selectedTab, doc, collectionId])
     // Recorded after the selection was followed, so that effect sees which editor was up before this render.
     useEffect(() => {
         if (editorUp && doc) {
