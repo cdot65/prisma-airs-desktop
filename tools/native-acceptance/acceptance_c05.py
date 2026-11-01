@@ -76,6 +76,28 @@ def shows(tree, fragment):
     return any(fragment in t for t in texts(tree))
 
 
+def correct_result_line(tree):
+    """Read the result paragraph's inline AX text within this knowledge check."""
+    owner = next((i for i, n in enumerate(tree) if n.get("role") == "AXGroup"
+                  and n.get("label") == "Knowledge check: Scanning at runtime"), None)
+    if owner is None:
+        return False
+    end = next((i for i in range(owner + 1, len(tree))
+                if tree[i].get("depth", 0) <= tree[owner].get("depth", 0)), len(tree))
+    for i in range(owner + 1, end):
+        if tree[i].get("role") != "AXGroup":
+            continue
+        parts = []
+        for node in tree[i + 1:end]:
+            if node.get("depth", 0) <= tree[i].get("depth", 0):
+                break
+            if node.get("role") == "AXStaticText":
+                parts.append(node.get("label") or "")
+        if "".join(parts).upper().startswith("1 OF 1 CORRECT"):
+            return True
+    return False
+
+
 def heading(tree, label, level=None):
     return next((n for n in tree if n.get("role") == "AXHeading" and (n.get("label") or "") == label
                  and (level is None or n.get("value") == level)), None)
@@ -298,7 +320,7 @@ def run():
     time.sleep(0.5)
     app.ax("press", "AXButton", "Submit")
     tree, ok = wait(lambda t: shows(t, "You scored 100%"), 8)
-    obs["kc"] = {"graded": ok, "correct_line": shows(tree, "1 OF 1 CORRECT") or shows(tree, "1 of 1 correct")}
+    obs["kc"] = {"graded": ok, "correct_line": correct_result_line(tree)}
     obs["kc_requests"] = endpoint.requests()[mark:]
     obs["tree_kc"] = save_tree("knowledge-check-graded", tree)
 

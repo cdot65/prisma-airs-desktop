@@ -87,6 +87,27 @@ def shows(tree, fragment):
     return any(fragment in t for t in texts(tree))
 
 
+def region_texts(tree, label):
+    """Static text in one named AX group, without unrelated window chrome."""
+    owner = next((i for i, n in enumerate(tree) if n.get("role") == "AXGroup"
+                  and n.get("label") == label), None)
+    if owner is None:
+        return []
+    out = []
+    for node in tree[owner + 1:]:
+        if node.get("depth", 0) <= tree[owner].get("depth", 0):
+            break
+        if node.get("role") == "AXStaticText":
+            out.append((node.get("label") or "").strip())
+    return out
+
+
+def home_briefing(tree):
+    labels = region_texts(tree, "Academy pages")
+    return any(labels[i:i + 2] == ["LVL", "4"] for i in range(len(labels))) and any(
+        labels[i:i + 4] == ["431", "/", "640", "XP"] for i in range(len(labels)))
+
+
 def heading(tree, label, level=None):
     return next((n for n in tree if n.get("role") == "AXHeading" and (n.get("label") or "") == label
                  and (level is None or n.get("value") == level)), None)
@@ -262,7 +283,7 @@ def run():
     tree = app.tree()
     obs["account_nav"] = nav_links(tree)
     mark = len(endpoint.requests())
-    tree, home = nav("Home", lambda t: shows(t, "LVL 4") and shows(t, "431/640 XP"))
+    tree, home = nav("Home", home_briefing)
     time.sleep(2)
     tree = app.tree()
     obs["home"] = {"briefing": home, "failure_toast": shows(tree, GENERIC_FAILURE),
@@ -464,7 +485,7 @@ def run():
     tree, dialog = wait(lambda t: heading(t, "Remove this course?", 2) is not None, 5)
     obs["tree_removal_dialog"] = save_tree("removal-dialog", tree)
     removal = {"dialog": dialog,
-               "names_certification": shows(tree, "enrollment in the AI Application Security certification"),
+               "names_certification": "enrollment in the AI Application Security certification" in " ".join(region_texts(tree, "Remove this course?")),
                "names_courses": shows(tree, "Runtime Security Foundations, Model Security"),
                "certificates_stay": shows(tree, "Certificates you’ve already earned stay valid.")}
     app.ax("press", "AXButton", "Cancel")

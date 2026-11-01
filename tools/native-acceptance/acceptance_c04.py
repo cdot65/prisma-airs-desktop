@@ -180,10 +180,11 @@ def run():
     # Tenants are independent of the learner account.
     app.create_custom_tenant("Tenant A", "https://airs-a.example.com")
     app.create_custom_tenant("Tenant B", "https://airs-b.example.com")
-    app.make_active("Tenant B")
+    tree, tenant_b_active = app.make_active("Tenant B")
     time.sleep(0.5)
     obs["after_tenant_switch"] = shows(account(app), "Signed in to Academy as") and shows(account(app), "Ada Lovelace")
-    obs["active_tenant_b"] = app.has_text(app.tree(), "Active tenant: Tenant B")
+    obs["active_tenant_b"] = tenant_b_active
+    obs["tree_tenant_switch"] = save_tree("tenant-switched", tree)
     app.quit()
 
     # ---- launch 2 ----
@@ -306,7 +307,7 @@ def evaluate(prepared, o):
         [o["tree_signed_in"]])
     add("C04-N04", o["restored"], f"after quit and relaunch 'Signed in to Academy as Ada Lovelace': {o['restored']}", [o["tree_restored"]])
     add("C04-N05", o["after_tenant_switch"] and o["active_tenant_b"],
-        f"Tenant B active: {o['active_tenant_b']}; Academy still signed in as Ada Lovelace: {o['after_tenant_switch']}", [])
+        f"Tenant B active: {o['active_tenant_b']}; Academy still signed in as Ada Lovelace: {o['after_tenant_switch']}", [o["tree_tenant_switch"]])
     revoked = [r for r in o["revocations"] if r["tokenHint"] == "refresh_token" and r["revokedToken"] == "fixture-refresh-1"]
     add("C04-N06", o["signed_out"] and o["academy_items_after_sign_out"] == [] and len(revoked) >= 1,
         f"'Not signed in to Academy.': {o['signed_out']}; learner namespace items {o['academy_items_after_sign_out']}; refresh-token revocations {len(revoked)}", [])

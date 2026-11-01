@@ -21,7 +21,11 @@ Prerequisites:
 - Use a fresh P09 check attempt on unchanged inputs. The retained Kirk run is
   `attempt-02` (18 checks passed); its logs are history, not a Worf run. The
   check audit retains the existing comparison against the `attempt-01` build
-  input inventory, allowing only the three recorded native-tool changes.
+  input inventory, allowing only the named native-tool changes: C43's restored
+  coverage, its assertion map/oracle, C11/C05/C06's scoped split-text observations
+  and C04's existing current-shell active-tenant verification. Application build
+  inputs are not exempted. Failed Worf generations and correction provenance
+  remain under P09/native-history and C29/remediation-attempt-07.
 - The packet needs the passing L19 receipt and the preceding chunk's full gate.
   The original two live reads plus the separately approved third remain charged;
   these helpers authorize no additional live calls.
