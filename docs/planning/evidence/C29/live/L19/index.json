@@ -1,8 +1,8 @@
 {
   "schema": "airs-v2/l19-standing/1",
   "subject": "C29",
-  "status": "blocked",
-  "reason": "actual management client rejected by service; approved two-read allowance exhausted",
+  "status": "pass",
+  "reason": "corrected management client passed the actual wizard verification",
   "owner_designation": "approved, including one latest-profile probe, limit=1",
   "attempts": [
     {
@@ -18,11 +18,19 @@
       "read_reservations": 1,
       "receipt": "attempt-02/receipt.json",
       "reason": "The management client was not accepted. Check the client ID and secret."
+    },
+    {
+      "attempt": "attempt-03",
+      "status": "pass",
+      "read_reservations": 1,
+      "grant": "additional explicit one-read authorization after verified local correction",
+      "receipt": "attempt-03/receipt.json"
     }
   ],
-  "total_read_reservations": 2,
+  "total_read_reservations": 3,
   "remote_writes": 0,
   "temporary_local_credentials_removed": true,
-  "next": "owner clarification pending: compare with CLI secret, refresh named local reference only if different, and one additional bounded verification if corrected",
-  "historical_blocked_record": "../blocked.json (retained unchanged; superseded designation status only)"
+  "next": "C29\u2013C32 fresh reviews, then P09 phase review after integrated native qualification",
+  "historical_blocked_record": "../blocked.json (retained unchanged; superseded designation status only)",
+  "additional_grant": "additional-grant-01.json"
 }
