@@ -1,0 +1,561 @@
+{
+ "observations": {
+  "captures": {
+   "layouts": {
+    "wizard-add-tenant-1440x900-light": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-tenant-1440x900-light.png",
+    "wizard-add-tenant-1440x900-dark": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-tenant-1440x900-dark.png",
+    "wizard-add-tenant-900x600-200-light": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-tenant-900x600-200-light.png",
+    "wizard-add-tenant-900x600-200-dark": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-tenant-900x600-200-dark.png",
+    "wizard-add-verify-1440x900-light": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-verify-1440x900-light.png",
+    "wizard-add-verify-1440x900-dark": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-verify-1440x900-dark.png",
+    "wizard-add-verify-900x600-200-light": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-verify-900x600-200-light.png",
+    "wizard-add-verify-900x600-200-dark": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-verify-900x600-200-dark.png"
+   },
+   "wizard-ring": {
+    "plain": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-ring-plain.png",
+    "focused": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-ring.png"
+   }
+  },
+  "parity": {
+   "welcome": {
+    "light": "docs/planning/evidence/C44/native/cumulative/C43/parity/welcome-light.png",
+    "dark": "docs/planning/evidence/C44/native/cumulative/C43/parity/welcome-dark.png"
+   },
+   "tenant": {
+    "light": "docs/planning/evidence/C44/native/cumulative/C43/parity/tenant-light.png",
+    "dark": "docs/planning/evidence/C44/native/cumulative/C43/parity/tenant-dark.png"
+   },
+   "products": {
+    "light": "docs/planning/evidence/C44/native/cumulative/C43/parity/products-light.png",
+    "dark": "docs/planning/evidence/C44/native/cumulative/C43/parity/products-dark.png"
+   },
+   "verify": {
+    "light": "docs/planning/evidence/C44/native/cumulative/C43/parity/verify-light.png",
+    "dark": "docs/planning/evidence/C44/native/cumulative/C43/parity/verify-dark.png"
+   },
+   "packs": {
+    "light": "docs/planning/evidence/C44/native/cumulative/C43/parity/cases-light.png",
+    "dark": "docs/planning/evidence/C44/native/cumulative/C43/parity/cases-dark.png"
+   },
+   "academy": {
+    "light": "docs/planning/evidence/C44/native/cumulative/C43/parity/academy-light.png",
+    "dark": "docs/planning/evidence/C44/native/cumulative/C43/parity/academy-dark.png"
+   },
+   "done": {
+    "light": "docs/planning/evidence/C44/native/cumulative/C43/parity/done-light.png",
+    "dark": "docs/planning/evidence/C44/native/cumulative/C43/parity/done-dark.png"
+   },
+   "add": {
+    "light": "docs/planning/evidence/C44/native/cumulative/C43/parity/add-tenant-light.png",
+    "dark": "docs/planning/evidence/C44/native/cumulative/C43/parity/add-tenant-dark.png"
+   }
+  },
+  "tree_welcome": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-welcome.json",
+  "tree_tenant": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-tenant.json",
+  "tree_products": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-products.json",
+  "tree_verify": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-verify.json",
+  "tree_packs": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-packs.json",
+  "tree_academy": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-academy.json",
+  "tree_done": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-done.json",
+  "n1": {
+   "welcome": true,
+   "rail": {
+    "brand": true,
+    "steps": [
+     "1 Welcome",
+     "2 Tenant",
+     "3 Products",
+     "4 Verify",
+     "5 Starter cases Optional",
+     "6 Academy Optional",
+     "7 Done",
+     "Dark appearance"
+    ],
+    "optional_tags": 4,
+    "privacy": true,
+    "theme_button": true
+   },
+   "welcome_board": {
+    "cards": true,
+    "no_import_box": true,
+    "no_back": true,
+    "progress": true,
+    "primary": true
+   },
+   "tenant": {
+    "shown": true,
+    "heading_focused": true,
+    "card": true,
+    "environment_control": true,
+    "region": true,
+    "continue_names_missing": true,
+    "progress": true,
+    "back": true,
+    "validation": true,
+    "drafted": true,
+    "scan_required_tag": true,
+    "management_card": true,
+    "gateway_switch": true,
+    "continue_needs_key": true,
+    "help": true,
+    "key_saved": true,
+    "hint_in_footer": true,
+    "client_saved": true
+   },
+   "products": {
+    "shown": true,
+    "cards": [
+     "AI Runtime Security",
+     "AI Gateway",
+     "AI Red Teaming",
+     "Model and skill scans",
+     "Agentic Identity Security",
+     "Agentic Endpoint Security"
+    ],
+    "runtime_always": true,
+    "unavailable": true,
+    "rail_done_mark": true,
+    "progress": true,
+    "gateway_chosen": true
+   },
+   "verify": {
+    "shown": true,
+    "banner_not_checked": true,
+    "rows": 6,
+    "run_offered": true,
+    "continue_closed": true,
+    "progress": true,
+    "finished": true,
+    "continue_open": true,
+    "again_offered": true
+   },
+   "packs": {
+    "shown": true,
+    "rows": [
+     "AI Runtime Security \u00b7 3 cases",
+     "AI Gateway \u00b7 2 cases"
+    ],
+    "summary": true,
+    "skip": true,
+    "progress": true
+   },
+   "academy": {
+    "shown": true,
+    "account_card": true,
+    "syncs_card": true,
+    "skip": true,
+    "progress": true
+   },
+   "done": {
+    "shown": true,
+    "skipped_tag": true,
+    "summary": true,
+    "change": true,
+    "next_up": true,
+    "progress": true,
+    "open": true,
+    "completed": true
+   }
+  },
+  "tree_add": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add.json",
+  "n3": {
+   "drafted": true,
+   "first_control": "Display name How this tenant appears in the switcher.",
+   "walk": [
+    "Light appearance",
+    "Display name How this tenant appears in the switcher.",
+    "TSG ID The 10-digit tenant service group ID.",
+    "Production",
+    "Region",
+    "Save changes",
+    "Scan API key",
+    "Where do I find these?",
+    "Client ID",
+    "Client secret",
+    "Save management client",
+    "Set up an AI Gateway workspace now",
+    "Cancel",
+    "Continue"
+   ],
+   "reach": {
+    "field": true,
+    "primary": true,
+    "in_order": true
+   },
+   "ring": {
+    "diff": 2152,
+    "focused": "Continue",
+    "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-ring.png",
+    "plain": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-ring-plain.png"
+   },
+   "layouts": {
+    "wizard-add-tenant-1440x900-light": {
+     "overflow_px": 0,
+     "horizontal_scrollbars": 0,
+     "geometry": {
+      "web": [
+       1440,
+       900
+      ],
+      "viewport": [
+       1440,
+       900
+      ],
+      "window": [
+       1440,
+       932
+      ]
+     },
+     "step": "tenant",
+     "size_ok": true,
+     "primary": {
+      "label": "Continue",
+      "size": [
+       94,
+       32
+      ],
+      "inside": true,
+      "size_ok": true,
+      "ok": true,
+      "zoom": 1
+     },
+     "dialog": true,
+     "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-tenant-1440x900-light.png",
+     "tree": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-tenant-1440x900-light.json"
+    },
+    "wizard-add-tenant-1440x900-dark": {
+     "overflow_px": 0,
+     "horizontal_scrollbars": 0,
+     "geometry": {
+      "web": [
+       1440,
+       900
+      ],
+      "viewport": [
+       1440,
+       900
+      ],
+      "window": [
+       1440,
+       932
+      ]
+     },
+     "step": "tenant",
+     "size_ok": true,
+     "primary": {
+      "label": "Continue",
+      "size": [
+       94,
+       32
+      ],
+      "inside": true,
+      "size_ok": true,
+      "ok": true,
+      "zoom": 1
+     },
+     "dialog": true,
+     "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-tenant-1440x900-dark.png",
+     "tree": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-tenant-1440x900-dark.json"
+    },
+    "wizard-add-tenant-900x600-200-light": {
+     "overflow_px": 0,
+     "horizontal_scrollbars": 0,
+     "geometry": {
+      "web": [
+       900,
+       607
+      ],
+      "viewport": [
+       900,
+       600
+      ],
+      "window": [
+       900,
+       632
+      ]
+     },
+     "step": "tenant",
+     "size_ok": true,
+     "primary": {
+      "label": "Continue",
+      "size": [
+       181,
+       64
+      ],
+      "inside": true,
+      "size_ok": true,
+      "ok": true,
+      "zoom": 2
+     },
+     "dialog": true,
+     "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-tenant-900x600-200-light.png",
+     "tree": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-tenant-900x600-200-light.json"
+    },
+    "wizard-add-tenant-900x600-200-dark": {
+     "overflow_px": 0,
+     "horizontal_scrollbars": 0,
+     "geometry": {
+      "web": [
+       900,
+       607
+      ],
+      "viewport": [
+       900,
+       600
+      ],
+      "window": [
+       900,
+       632
+      ]
+     },
+     "step": "tenant",
+     "size_ok": true,
+     "primary": {
+      "label": "Continue",
+      "size": [
+       181,
+       64
+      ],
+      "inside": true,
+      "size_ok": true,
+      "ok": true,
+      "zoom": 2
+     },
+     "dialog": true,
+     "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-tenant-900x600-200-dark.png",
+     "tree": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-tenant-900x600-200-dark.json"
+    },
+    "wizard-add-verify-1440x900-light": {
+     "overflow_px": 0,
+     "horizontal_scrollbars": 0,
+     "geometry": {
+      "web": [
+       1440,
+       900
+      ],
+      "viewport": [
+       1440,
+       900
+      ],
+      "window": [
+       1440,
+       932
+      ]
+     },
+     "step": "verify",
+     "size_ok": true,
+     "primary": {
+      "label": "Continue with warnings",
+      "size": [
+       186,
+       32
+      ],
+      "inside": true,
+      "size_ok": true,
+      "ok": true,
+      "zoom": 1
+     },
+     "dialog": true,
+     "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-verify-1440x900-light.png",
+     "tree": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-verify-1440x900-light.json"
+    },
+    "wizard-add-verify-1440x900-dark": {
+     "overflow_px": 0,
+     "horizontal_scrollbars": 0,
+     "geometry": {
+      "web": [
+       1440,
+       900
+      ],
+      "viewport": [
+       1440,
+       900
+      ],
+      "window": [
+       1440,
+       932
+      ]
+     },
+     "step": "verify",
+     "size_ok": true,
+     "primary": {
+      "label": "Continue with warnings",
+      "size": [
+       186,
+       32
+      ],
+      "inside": true,
+      "size_ok": true,
+      "ok": true,
+      "zoom": 1
+     },
+     "dialog": true,
+     "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-verify-1440x900-dark.png",
+     "tree": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-verify-1440x900-dark.json"
+    },
+    "wizard-add-verify-900x600-200-light": {
+     "overflow_px": 0,
+     "horizontal_scrollbars": 0,
+     "geometry": {
+      "web": [
+       900,
+       607
+      ],
+      "viewport": [
+       900,
+       600
+      ],
+      "window": [
+       900,
+       632
+      ]
+     },
+     "step": "verify",
+     "size_ok": true,
+     "primary": {
+      "label": "Continue with warnings",
+      "size": [
+       350,
+       64
+      ],
+      "inside": true,
+      "size_ok": true,
+      "ok": true,
+      "zoom": 2
+     },
+     "dialog": true,
+     "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-verify-900x600-200-light.png",
+     "tree": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-verify-900x600-200-light.json"
+    },
+    "wizard-add-verify-900x600-200-dark": {
+     "overflow_px": 0,
+     "horizontal_scrollbars": 0,
+     "geometry": {
+      "web": [
+       900,
+       607
+      ],
+      "viewport": [
+       900,
+       600
+      ],
+      "window": [
+       900,
+       632
+      ]
+     },
+     "step": "verify",
+     "size_ok": true,
+     "primary": {
+      "label": "Continue with warnings",
+      "size": [
+       350,
+       64
+      ],
+      "inside": true,
+      "size_ok": true,
+      "ok": true,
+      "zoom": 2
+     },
+     "dialog": true,
+     "capture": "docs/planning/evidence/C44/native/cumulative/C43/native/captures/wizard-add-verify-900x600-200-dark.png",
+     "tree": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-verify-900x600-200-dark.json"
+    }
+   }
+  },
+  "tree_add_done": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-done.json",
+  "tree_add_finished": "docs/planning/evidence/C44/native/cumulative/C43/native/tree-wizard-add-finished.json",
+  "n2": {
+   "sheet": true,
+   "size": [
+    1160,
+    782
+   ],
+   "fixed_1160": true,
+   "rail_244": true,
+   "steps": [
+    "1 Tenant",
+    "2 Products",
+    "3 Verify",
+    "4 Starter cases Optional",
+    "5 Done",
+    "Light appearance"
+   ],
+   "no_back": true,
+   "cancel": true,
+   "cancel_note": true,
+   "cancel_before_draft_closes": true,
+   "tenants_after_cancel": 0,
+   "drafted_optional": true,
+   "continue_open": true,
+   "cancel_discards": true,
+   "rows_before": 1,
+   "products_shown": true,
+   "verify_shown": true,
+   "verify_finished": true,
+   "packs_shown": true,
+   "done_shown": true,
+   "done_checks_line": "1 warning \u00b7 1 not checked \u00b7 2 not available",
+   "finish_closes": true,
+   "toast": true,
+   "rows_after": 2,
+   "committed_once": true
+  }
+ },
+ "log": [
+  {
+   "t": "06:18:14",
+   "step": "typed",
+   "field": "Display name",
+   "attempts": 1
+  },
+  {
+   "t": "06:18:16",
+   "step": "typed",
+   "field": "TSG ID",
+   "attempts": 1
+  },
+  {
+   "t": "06:18:20",
+   "step": "typed",
+   "field": "Scan API key",
+   "attempts": 1
+  },
+  {
+   "t": "06:18:23",
+   "step": "typed",
+   "field": "Client ID",
+   "attempts": 1
+  },
+  {
+   "t": "06:18:25",
+   "step": "typed",
+   "field": "Client secret",
+   "attempts": 1
+  },
+  {
+   "t": "06:20:19",
+   "step": "typed",
+   "field": "Display name",
+   "attempts": 1
+  },
+  {
+   "t": "06:20:21",
+   "step": "typed",
+   "field": "TSG ID",
+   "attempts": 1
+  },
+  {
+   "t": "06:20:28",
+   "step": "typed",
+   "field": "Display name",
+   "attempts": 1
+  },
+  {
+   "t": "06:20:30",
+   "step": "typed",
+   "field": "TSG ID",
+   "attempts": 1
+  }
+ ]
+}
