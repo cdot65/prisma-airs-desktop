@@ -325,7 +325,7 @@ ASSERTIONS = {
     "C29-N05": (X, ["C43-N02"], "the add-tenant sheet as the one topmost modal; Cancel before and after a draft"),
     "C29-N06": (X, ["C43-N03"], "the T09 matrix of the wizard and the sheet"),
     # ---- C30 Inbox and reads → C36, C37 ----
-    "C30-N01": (R, [], "the tenant-switch guard with a Harness decision waiting: crates/desktop-core/tests/ui_v2_inbox and the shell's switch-guard tests (apps/desktop/src/v2)"),
+    "C30-N01": (X, ["C38-N03"], "the guard through the switcher, the palette and the Go menu with a decision waiting; Escape and Stay keep the tenant and the decision; Archive and switch ends the conversation and lands the other tenant on Home with no engine (invariant I1)"),
     "C30-N02": (X, ["C36-N01", "C37-N01"], "'First read pending' on Home and in the Inbox; Read now runs the read"),
     "C30-N03": (X, ["C37-N01"], "snooze, acknowledge and unsnooze with the core's return time stated the same everywhere"),
     "C30-N04": (X, ["C37-N02"], "Tab from Read now reaches the tabs and rows; Enter opens a row's detail"),
@@ -336,7 +336,7 @@ ASSERTIONS = {
     "C31-N04": (X, ["C39-N02"], "the review sheet docked with Close review and Done"),
     # ---- C32 Harness in v2 → C38 ----
     "C32-N01": (X, ["C38-N01"], "the title band names tenant, engine and workspace; a fresh tenant's first send starts a conversation"),
-    "C32-N02": (X, ["C38-N01", "C38-N02"], "a decision held in the aside; Approve once / Decline"),
+    "C32-N02": (X, ["C38-N01", "C38-N02", "C38-N03"], "a decision held in the aside; Approve once / Decline; a tenant switch while it waits meets the guard"),
     "C32-N03": (X, ["C38-N01"], "the mcpServers read waits, is approved in the page and made once"),
     "C32-N04": (X, ["C38-N02"], "Tab from the message box; 900×600 at 200% without horizontal scroll"),
     # ---- C33 Test Cases, API Client, Show the calls → C40, C41, C35 ----

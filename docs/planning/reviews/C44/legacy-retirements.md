@@ -2,7 +2,7 @@
 
 Every pre-P09 native assertion the one presentation does not exercise natively is listed here with its reason (`tools/native-acceptance/legacy_assertions.py`, kind `r`). The gate (`acceptance_c44.py`, C44-N01) accepts a retirement only when its id is listed in this file and the acceptance line below is present; an assertion removed from this file must gain a native target or the gate fails.
 
-Not retired: the tenant-switch guard with a Harness decision pending (C30-N01, invariant I1) and the staged Runtime key rotation with the host's reveal (C31-N03, invariants I6/I7) are exercised natively (see the map).
+Not retired: the tenant-switch guard with a Harness decision pending (C30-N01, invariant I1) is exercised natively on the Harness board (C38-N03: the switcher, the palette and the Go menu; Stay; Archive and switch), and the staged Runtime key rotation with the host's reveal (C31-N03, invariants I6/I7) by acceptance_c31.py running on the one presentation.
 
 ## Acceptance
 
