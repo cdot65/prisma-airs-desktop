@@ -161,3 +161,10 @@ traversal remains unchanged. No acceptance assertion, oracle, menu/key event,
 frontmost guard or capture path changed. All generation 02 passes are retained
 as history; generation 03 rebuild and all 19 native drivers are required anew.
 No live call or permission/configuration change was used. Full retry pending.
+
+Generation 03 C10 full rerun passed every required check at 22:01:57Z.
+N10 confirmed the actual production panel shown/selected/focus returned/applied,
+exact multipart bytes, unchanged source, cancel staging nothing and oversized
+file rejection. N09 retained keyboard/200%/minimum-size geometry. Controller
+required_pass=true, errors=[], carried=[]. C36/C43/C11 also passed on the
+new helper; full remaining native/check/review queue is still pending.
