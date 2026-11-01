@@ -5,6 +5,8 @@ from pathlib import Path
 import hashlib,json,re,runpy,subprocess,sys,time
 
 root=Path.cwd().resolve()
+sys.path.insert(0,str(root/'tools/p09'))
+import phase_inputs
 subject,attempt,prior=sys.argv[1:4]
 assert subject in ['C29','C30','C31','C32']
 out=root/f'docs/planning/reviews/{subject}/{attempt}'
@@ -31,6 +33,8 @@ chunks=sorted({t.split('-')[0] for t in targets})
 prep_path=root/'docs/planning/evidence/P09/native-prepare.json'
 prep=json.loads(prep_path.read_text());exe=root/prep['bundle']/'Contents/MacOS/prisma-airs-desktop-v2'
 assert sha(exe)==prep['executable_sha256']
+qualification=phase_inputs.verify_native(root)
+assert qualification['build_inputs']['input_digest']==current_digest,'native build/check inputs differ'
 natives=[]
 for chunk in chunks:
     p=root/f'docs/planning/evidence/P09/native/cumulative/{chunk}/native-acceptance.json'
@@ -98,6 +102,11 @@ scope.update(p for p in extras if (root/p).is_file())
 scope.update(str(p.relative_to(root)) for p in (root/'tools/p09').glob('*.py'))
 scope.add('tools/p09/README.md')
 prefixes=['apps/desktop/src/v2/wizard','docs/planning/evidence/C29/live/L19','docs/planning/evidence/C29/remediation-attempt-07','docs/planning/evidence/P09/runs']
+prefixes.extend(['docs/planning/evidence/P09/preparations','docs/planning/evidence/P09/check-remediation'])
+scope.add('docs/planning/evidence/P09/native-build-inputs.json')
+scope.update(['crates/desktop-core/tests/imports_rollback/main.rs','crates/desktop-core/tests/imports_rollback/held.rs',
+              'crates/desktop-core/tests/imports_rollback/recovery.rs','crates/desktop-core/src/fixtures.rs',
+              'crates/desktop-core/src/offline.rs','crates/desktop-core/src/authority/import_v1_domain.rs'])
 if any(n['origin']=='P09 integrated native' for n in natives):
     prefixes.append('docs/planning/evidence/P09/native-controller')
 for prefix in prefixes:
@@ -120,12 +129,13 @@ instructions=old['review_instructions']
 notes=[
  'This generation reviews the integrated current implementation, actual L19 pass, and C29 attempt-07 native-coverage remediation. Inspect it independently; no score increase is requested without substantiation.',
  'L19 attempt-01 was interrupted by an early-settlement driver bug (the captured Pending tree became an offline regression). Attempt-02 settled with authentication rejected. The owner explicitly authorized comparing against the CLI TOML, correcting only the named local Keychain item if different, and exactly one further probe after correction. The secrets differed; correction was verified; attempt-03 passed. The original two reservations remain charged plus one separately authorized additional reservation. No secret/token/profile response or secret hash is retained.',
- 'The L19 qualification app was an unsigned debug bundle with production Keychain/transport adapters, separate qualification data identity, and no test-fixtures. Core/host/contracts/wizard inputs match the integrated tree byte for byte (current-source-match.json); different Harness presentation inputs are explicitly listed. One actual first-run wizard verification passed, selected only Runtime Security, did not finish into Home, and both temporary credentials were removed.',
+ 'The L19 qualification app was an unsigned debug bundle with production Keychain/transport adapters, separate qualification data identity, and no test-fixtures. The retained current-source-match.json is the historical byte comparison before Worf fixture remediation. Current authority.rs additionally appends a read-only observer under test-fixtures only, excluded from that production qualification build; no existing production definitions, host/contracts/wizard source or live authority behavior changed. The exact diff and failed/successful test evidence are retained under P09/check-remediation. Different Harness presentation inputs remain explicitly listed. One actual first-run wizard verification passed, selected only Runtime Security, did not finish into Home, and both temporary credentials were removed. No further live read is authorized or performed.',
  'D059/D060 apply: C43 is the current wizard presentation; the assertion-level map carries the original chunk native ids to the current P09 driver targets listed in this packet. Alpha import presentation requirements were removed under the owner decision. Core alpha-import contract removal and naming remain the later C45/P10 work and are not silently included here.',
  'All 18 integrated checks passed on unchanged current compiled inputs, including 541 desktop tests, 15 scope tests, 57 synthetic live-run tests and 4 driver settlement/budget tests. Mapped native targets pass on the current P09 prepared executable. C29 attempt-07 scored 9/9/9/8/8 with no blockers and was accepted under D034; its R1/R2/E1/E2 require the restored native behavior and full matrix. The new C43 record must pass the independent 24-behavior/48-row completeness and capture-hash check. No old C44/C43 record substitutes for this new coverage. Superseded raw legacy aggregates and earlier verdicts are preserved unchanged.',
  'The implementation includes the owner build inputs that were previously uncommitted on Kirk and were preserved byte-for-byte in the Worf migration commits. They remain fully bound in the compiled-input inventory. Unrelated owner work is outside substantive chunk review; publishing it did not close its outstanding release/native/review gates.',
  'Fresh read-only Codex exec is the owner-approved fallback while C26 prevents controller completion. Most original application implementation was Claude Code; Codex implemented the L19 tooling and current integration. The reviewer is a separate session in the implementer model family, not a different-model review. Raw native driver historical performed_by strings are retained; execution.json reports actual Codex orchestration in the VM.',
- 'P09 native integration continues in other evidence subdirectories while this review is running. Only this packet\'s listed mapped native records are frozen inputs. No app source or scoped evidence may change. The P09 phase review remains a separate full gate after C29–C32 pass.'
+ 'The first Worf check attempt failed three import test lifecycle/timing assertions. Failed logs and original sources remain preserved. The harness now calls the production shutdown hook, waits for a confirmed durable receipt and observes the armed fixture cut instead of fixed delays. A read-only getter is appended under test-fixtures only; the production build excludes it. No production operation or authority behavior is changed. The fixture is freshly rebuilt and every mapped native driver rerun; exact current build/check input seals are mandatory, without source exemptions.',
+ 'All current native integration is complete before this review. Current source, compiled inputs, scoped native evidence and failed-history provenance remain frozen. The P09 phase review remains a separate full gate after C29–C32 pass.'
 ]
 request={'request_id':request_id,'attempt_id':attempt,'subject':subject,'base_commit':git('rev-parse','HEAD'),
          'transport':'fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)',

@@ -102,6 +102,10 @@ fn launch(
     // Rollbacks are confirmed unless a test says otherwise.
     handles.confirmer.auto(Some(true));
     if let Some(old) = previous {
+        // Match the host's exit boundary: release the learner's offline
+        // generation before the next core opens the same store. Dropping
+        // the facade alone can leave a job's instance lock alive.
+        old.core.shutdown();
         drop(old.core);
         let o = old.adapters;
         adapters.keychain = o.vault.clone();
@@ -167,6 +171,22 @@ impl Desk {
 
     fn import(&self) -> Value {
         self.json()["v1Import"].clone()
+    }
+
+    /// Wait for the armed cut itself, rather than guessing from elapsed
+    /// time while receipt copies and owner writes are still being synced.
+    async fn interrupted(&self) {
+        for _ in 0..400 {
+            if !self.core.v1_import_interruption_pending() {
+                tokio::task::yield_now().await;
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+        panic!(
+            "the armed import interruption was not reached: {}",
+            self.import()
+        );
     }
 
     /// Waits until no import step is under way.
@@ -708,7 +728,7 @@ async fn an_interrupted_rollback_finishes_after_relaunch() {
         desk.send(json!({"kind": "rollBackV1Import", "receipt": id}))
             .await
             .expect("roll back");
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        desk.interrupted().await;
         // Hidden while it was being removed.
         assert!(desk.tenants().is_empty(), "{point:?}");
         // The next launch finishes it before anything else writes.

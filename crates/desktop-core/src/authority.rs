@@ -6225,3 +6225,14 @@ mod tests {
         assert_eq!(handle.observer_count(), 0);
     }
 }
+
+#[cfg(feature = "test-fixtures")]
+impl Core {
+    /// Whether an armed fixture interruption is still waiting for its exact
+    /// commit point. Read-only; tests must not simulate exit before it fires.
+    pub fn v1_import_interruption_pending(&self) -> bool {
+        lock(&self.inner)
+            .map(|state| state.v1_import.interrupt_at.is_some())
+            .unwrap_or(true)
+    }
+}

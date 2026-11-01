@@ -57,6 +57,7 @@ async fn confirm(desk: &mut Desk) {
     desk.send(json!({"kind": "confirmV1Import", "review": plan["review"], "items": items}))
         .await
         .expect("confirm");
+    desk.interrupted().await;
 }
 
 /// The one receipt's ID, from its folder.
@@ -133,17 +134,16 @@ async fn a_rollback_that_cannot_finish_keeps_what_the_import_writes_waiting() {
     desk.core.interrupt_v1_import(CommitPoint::Writing);
     confirm(&mut desk).await;
     until(&desk, |d| {
-        std::fs::read_dir(&d.adapters.import_root)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .filter_map(|e| std::fs::read_to_string(e.path()).ok())
-            .filter_map(|t| serde_json::from_str::<Value>(&t).ok())
-            .any(|r| {
-                r["items"]
-                    .as_array()
-                    .is_some_and(|i| i.iter().any(|x| x["state"] == "writing"))
+        // Temporary receipt files can expose Writing before either copy
+        // and the document binding have been confirmed. Wait for the
+        // last durable document, as a real interruption would require.
+        d.adapters.store.durable().is_some_and(|state| {
+            state.open_imports.iter().any(|r| {
+                r.items.iter().any(|item| {
+                    item.state == receipt::ItemState::Writing && !item.intended.is_empty()
+                })
             })
+        })
     })
     .await;
     desk.adapters.vault.fail_with(Some(VaultError::Locked));

@@ -182,7 +182,7 @@ async fn an_import_interrupted_anywhere_shows_nothing_and_is_undone_at_the_next_
         desk.plan(EVERYTHING, new_targets(&view)).await;
         desk.core.interrupt_v1_import_at(point, skip);
         confirm_ready(&mut desk).await;
-        tokio::time::sleep(Duration::from_millis(400)).await;
+        desk.interrupted().await;
         // Nothing of an import that has not committed is shown.
         nothing_shown(&desk, &why);
         // What it writes waits meanwhile.
@@ -276,7 +276,7 @@ async fn an_identical_case_added_after_an_interruption_is_never_claimed() {
     // Stops after the receipt names both cases, before the library write.
     desk.core.interrupt_v1_import(CommitPoint::Writing);
     confirm_ready(&mut desk).await;
-    tokio::time::sleep(Duration::from_millis(400)).await;
+    desk.interrupted().await;
     assert!(desk.cases(&ours).is_empty(), "not written");
     let mut desk = start(Some(desk));
     desk.settled().await;
@@ -348,7 +348,7 @@ async fn an_open_library_shows_the_previous_generation_until_the_import_commits(
     // The cases item is applied; the reports item never starts.
     desk.core.interrupt_v1_import(CommitPoint::Applied);
     confirm_ready(&mut desk).await;
-    tokio::time::sleep(Duration::from_millis(400)).await;
+    desk.interrupted().await;
     assert_eq!(desk.cases(&ours).len(), 3, "written to the library");
     assert_eq!(
         names(&desk),

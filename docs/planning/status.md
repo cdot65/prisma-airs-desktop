@@ -8,14 +8,18 @@ cumulative review completed on 2026-10-21; C19–C22 and the P06 cumulative
 review completed on 2026-10-23; C23–C24 and the P07 cumulative review
 completed on 2026-10-24. P08/C26 remains open; the owner-authorized P09
 integration is now at fresh Worf cumulative native qualification after C44 full-9 closure.
-All 19 Worf mapped native drivers now pass their required checks on the prepared
-P09 executable, with C44 cumulative last. C43 passed all 24 retained behaviors
-and 48 wizard matrix rows; its independent coverage audit passed. C24-N06 and
-C31-N01/N04 remain unchanged superseded raw failures, carried separately by the
-existing assertion map. Failed generations and scoped driver corrections are
-retained under P09/native-history. The current native binding audit is
-`evidence/P09/native-controller/worf-native-audit.json`. Fresh checks are running;
-C29–C32 and P09 reviews remain pending. No new review score is implied by native passes.
+Worf native generation 01 passed all 19 mapped drivers with C44 last, including
+C43's 24 behaviors and 48 rows. It is preserved complete with the exact executable
+under `evidence/P09/native-history/Worf-generation-01-complete-20261101`.
+Fresh check attempt-03 passed 17/18 checks but failed import test relaunch/timing
+assertions on all three fixture runs. The corrected harness uses the production
+shutdown hook, a durable receipt boundary and a read-only fixture observer of the
+armed cut; the full import suite now passes 23/23 with every assertion retained.
+Native generation 02 is rebuilt with an exact before/after input seal; C36 passed,
+and all remaining mapped drivers will repeat before
+fresh checks and C29–C32/P09 reviews. C24-N06 and C31-N01/N04 remain superseded raw
+failures under the unchanged map. No current native or review pass is transferred
+to changed inputs.
 Use [WORF-START-HERE](WORF-START-HERE.md) for the 2026-11-01 checkpoint and next commands. D026 (2026-10-17) makes Codex the independent reviewer of every chunk
 and of a cumulative review after every phase, each requiring at least 9 in all
 five dimensions with empty required fixes, blockers and evidence gaps. D034 (2026-10-18, owner rule) lets a chunk complete at 8/10 with no

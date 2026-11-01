@@ -1,6 +1,8 @@
 from pathlib import Path
 import datetime,hashlib,json,subprocess,sys
 root=Path.cwd().resolve();attempt=sys.argv[1]
+sys.path.insert(0,str(root/'tools/p09'))
+import phase_inputs
 record=root/f'docs/planning/evidence/P09/runs/run-{attempt}.json'
 r=json.loads(record.read_text());out=record.parent/attempt/'post-check-audit.json'
 assert not out.exists(),'preserve prior post-check audits'
@@ -20,24 +22,19 @@ def inv(p):
     return {name.strip():digest for digest,name in pairs}
 built=inv(root/'docs/planning/evidence/P09/runs/attempt-01/inputs-after.sha256');current=inv(post)
 changes=[p for p in sorted(built.keys()|current.keys()) if built.get(p)!=current.get(p)]
-# Driver-only corrections are separate from the application build inputs:
-# C43 restores coverage; C11 reads WebKit's split cache counter text within its
-# AX region, preserving the zero-count, seal-removal and fresh-read assertions.
-# C04 uses the shared current-shell active-tenant verification and saves its AX
-# tree instead of requiring the superseded legacy shell's active-tenant text.
-# C05 joins the hosted knowledge-check result paragraph's split inline AX text.
-# C06 observes exact Home level/XP tokens and certification text in named regions.
-# C07 reads the exact signed-in sentence within Academy account and retains AX.
-# C24 reads retention and numeric count paragraphs within Diagnostics only.
-# C37 verifies the current selected product navigation plus exact tabs/heading.
-allowed={'tools/native-acceptance/acceptance_c43.py','tools/native-acceptance/acceptance_c11.py','tools/native-acceptance/acceptance_c04.py','tools/native-acceptance/acceptance_c05.py','tools/native-acceptance/acceptance_c06.py','tools/native-acceptance/acceptance_c07.py','tools/native-acceptance/acceptance_c24.py','tools/native-acceptance/acceptance_c37.py','tools/native-acceptance/legacy_assertions.py','tools/native-acceptance/wizard_coverage.py'}
-assert set(changes)<=allowed,changes
+# The old preparation comparison is retained as provenance, never an exemption
+# list. Every current compiled input must match the fresh native build's actual
+# before/after seal, and all mapped native records must bind that executable.
+qualification=phase_inputs.verify_native(root)
+assert qualification['build_inputs']['input_digest']==digest,'checks differ from native build inputs'
 prep=json.loads((root/'docs/planning/evidence/P09/native-prepare.json').read_text())
 assert sha(root/prep['bundle']/'Contents/MacOS/prisma-airs-desktop-v2')==prep['executable_sha256']
 result={'phase':'P09','check_attempt':attempt,'time':datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'check_runs_verified':18,'record_sha256':sha(record),'input_digest':digest,'members':r['inputs']['members'],'distinct_paths':len(current),
         'compiled_inputs_unchanged':True,'fixture_executable_sha256':prep['executable_sha256'],
-        'changes_since_fixture_build_inputs':changes,'application_build_inputs_unchanged':True,
-        'native_complete':False,'phase_complete':False,
-        'limits':'Offline check audit only. Fresh native evidence and independent chunk/phase reviews remain required.'}
+        'changes_since_historical_preparation_inputs':changes,
+        'current_native_build_inputs_match':True,'native_build_inputs':qualification['build_inputs'],
+        'native_drivers_verified':len(qualification['records']),
+        'native_complete':True,'phase_complete':False,
+        'limits':'Current check/native input audit only. Actual independent chunk and phase reviews remain required.'}
 out.write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))

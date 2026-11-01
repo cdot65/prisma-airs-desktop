@@ -1,0 +1,136 @@
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index f0f09005..d2da6612 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -6225,3 +6225,14 @@ mod tests {
+         assert_eq!(handle.observer_count(), 0);
+     }
+ }
++
++#[cfg(feature = "test-fixtures")]
++impl Core {
++    /// Whether an armed fixture interruption is still waiting for its exact
++    /// commit point. Read-only; tests must not simulate exit before it fires.
++    pub fn v1_import_interruption_pending(&self) -> bool {
++        lock(&self.inner)
++            .map(|state| state.v1_import.interrupt_at.is_some())
++            .unwrap_or(true)
++    }
++}
+diff --git a/crates/desktop-core/tests/imports_rollback/held.rs b/crates/desktop-core/tests/imports_rollback/held.rs
+index 8f34123c..80fdcec5 100644
+--- a/crates/desktop-core/tests/imports_rollback/held.rs
++++ b/crates/desktop-core/tests/imports_rollback/held.rs
+@@ -57,6 +57,7 @@ async fn confirm(desk: &mut Desk) {
+     desk.send(json!({"kind": "confirmV1Import", "review": plan["review"], "items": items}))
+         .await
+         .expect("confirm");
++    desk.interrupted().await;
+ }
+ 
+ /// The one receipt's ID, from its folder.
+@@ -133,17 +134,16 @@ async fn a_rollback_that_cannot_finish_keeps_what_the_import_writes_waiting() {
+     desk.core.interrupt_v1_import(CommitPoint::Writing);
+     confirm(&mut desk).await;
+     until(&desk, |d| {
+-        std::fs::read_dir(&d.adapters.import_root)
+-            .into_iter()
+-            .flatten()
+-            .flatten()
+-            .filter_map(|e| std::fs::read_to_string(e.path()).ok())
+-            .filter_map(|t| serde_json::from_str::<Value>(&t).ok())
+-            .any(|r| {
+-                r["items"]
+-                    .as_array()
+-                    .is_some_and(|i| i.iter().any(|x| x["state"] == "writing"))
++        // Temporary receipt files can expose Writing before either copy
++        // and the document binding have been confirmed. Wait for the
++        // last durable document, as a real interruption would require.
++        d.adapters.store.durable().is_some_and(|state| {
++            state.open_imports.iter().any(|r| {
++                r.items.iter().any(|item| {
++                    item.state == receipt::ItemState::Writing && !item.intended.is_empty()
++                })
+             })
++        })
+     })
+     .await;
+     desk.adapters.vault.fail_with(Some(VaultError::Locked));
+diff --git a/crates/desktop-core/tests/imports_rollback/main.rs b/crates/desktop-core/tests/imports_rollback/main.rs
+index 981bb63a..4e4a8cc4 100644
+--- a/crates/desktop-core/tests/imports_rollback/main.rs
++++ b/crates/desktop-core/tests/imports_rollback/main.rs
+@@ -102,6 +102,10 @@ fn launch(
+     // Rollbacks are confirmed unless a test says otherwise.
+     handles.confirmer.auto(Some(true));
+     if let Some(old) = previous {
++        // Match the host's exit boundary: release the learner's offline
++        // generation before the next core opens the same store. Dropping
++        // the facade alone can leave a job's instance lock alive.
++        old.core.shutdown();
+         drop(old.core);
+         let o = old.adapters;
+         adapters.keychain = o.vault.clone();
+@@ -169,6 +173,22 @@ impl Desk {
+         self.json()["v1Import"].clone()
+     }
+ 
++    /// Wait for the armed cut itself, rather than guessing from elapsed
++    /// time while receipt copies and owner writes are still being synced.
++    async fn interrupted(&self) {
++        for _ in 0..400 {
++            if !self.core.v1_import_interruption_pending() {
++                tokio::task::yield_now().await;
++                return;
++            }
++            tokio::time::sleep(Duration::from_millis(25)).await;
++        }
++        panic!(
++            "the armed import interruption was not reached: {}",
++            self.import()
++        );
++    }
++
+     /// Waits until no import step is under way.
+     async fn settled(&self) -> Value {
+         for _ in 0..400 {
+@@ -708,7 +728,7 @@ async fn an_interrupted_rollback_finishes_after_relaunch() {
+         desk.send(json!({"kind": "rollBackV1Import", "receipt": id}))
+             .await
+             .expect("roll back");
+-        tokio::time::sleep(Duration::from_millis(500)).await;
++        desk.interrupted().await;
+         // Hidden while it was being removed.
+         assert!(desk.tenants().is_empty(), "{point:?}");
+         // The next launch finishes it before anything else writes.
+diff --git a/crates/desktop-core/tests/imports_rollback/recovery.rs b/crates/desktop-core/tests/imports_rollback/recovery.rs
+index d1d4e582..e5158552 100644
+--- a/crates/desktop-core/tests/imports_rollback/recovery.rs
++++ b/crates/desktop-core/tests/imports_rollback/recovery.rs
+@@ -182,7 +182,7 @@ async fn an_import_interrupted_anywhere_shows_nothing_and_is_undone_at_the_next_
+         desk.plan(EVERYTHING, new_targets(&view)).await;
+         desk.core.interrupt_v1_import_at(point, skip);
+         confirm_ready(&mut desk).await;
+-        tokio::time::sleep(Duration::from_millis(400)).await;
++        desk.interrupted().await;
+         // Nothing of an import that has not committed is shown.
+         nothing_shown(&desk, &why);
+         // What it writes waits meanwhile.
+@@ -276,7 +276,7 @@ async fn an_identical_case_added_after_an_interruption_is_never_claimed() {
+     // Stops after the receipt names both cases, before the library write.
+     desk.core.interrupt_v1_import(CommitPoint::Writing);
+     confirm_ready(&mut desk).await;
+-    tokio::time::sleep(Duration::from_millis(400)).await;
++    desk.interrupted().await;
+     assert!(desk.cases(&ours).is_empty(), "not written");
+     let mut desk = start(Some(desk));
+     desk.settled().await;
+@@ -348,7 +348,7 @@ async fn an_open_library_shows_the_previous_generation_until_the_import_commits(
+     // The cases item is applied; the reports item never starts.
+     desk.core.interrupt_v1_import(CommitPoint::Applied);
+     confirm_ready(&mut desk).await;
+-    tokio::time::sleep(Duration::from_millis(400)).await;
++    desk.interrupted().await;
+     assert_eq!(desk.cases(&ours).len(), 3, "written to the library");
+     assert_eq!(
+         names(&desk),

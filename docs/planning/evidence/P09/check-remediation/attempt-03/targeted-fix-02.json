@@ -1,0 +1,26 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "-p",
+    "desktop-core",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "imports_rollback"
+  ],
+  "environment": {
+    "RUST_TEST_THREADS": "4"
+  },
+  "exit": 0,
+  "result": "23 passed; 0 failed; every original test/assertion retained",
+  "log_sha256": "c137e85d103bfc9d022178438ddbd430fa1a4ad2ea3deb00095e98ec1e29f654",
+  "sources": {
+    "crates/desktop-core/src/authority.rs": "b9ffc8ff16456fb7716ee54400c25f6371ac230e0ba74b2058e8ab6ef8dd710b",
+    "crates/desktop-core/tests/imports_rollback/main.rs": "5036ed3500288f6847541ebfc63b3aa3be12e1acefd87907cd81b87490e48390",
+    "crates/desktop-core/tests/imports_rollback/held.rs": "6099cc6697fa221d03cfb8cbeb083c0d43c6d359bf218196e8a5d60d34c9043d",
+    "crates/desktop-core/tests/imports_rollback/recovery.rs": "14158c282432be2f5a75d37853709336f182386606c53c3f881c6256a197fcc3"
+  },
+  "scope": "Production exit hook in test relaunch; confirmed durable receipt observation; read-only test-fixtures getter and bounded exact-cut waits replace guessed elapsed time. Rebuild and repeat native qualification before new checks/reviews."
+}

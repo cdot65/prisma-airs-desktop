@@ -31,8 +31,11 @@ def file_identity(path):
 def source_inventory(root):
     names = subprocess.check_output(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], cwd=root).decode().split('\0')
     excluded = ('docs/planning/evidence/', 'docs/planning/reviews/')
+    def active_tool(name):
+        return ((name.startswith('docs/planning/evidence/P09/native-controller/') and name.endswith('.py'))
+                or name in ['docs/planning/evidence/P09/runs/hash-inputs.sh', 'docs/planning/evidence/P09/runs/run-checks.sh'])
     return {name: file_identity(root / name) for name in sorted(set(names))
-            if name and name != 'docs/planning/status.md' and not name.startswith(excluded)
+            if name and name != 'docs/planning/status.md' and (not name.startswith(excluded) or active_tool(name))
             and ((root / name).exists() or (root / name).is_symlink())}
 
 
@@ -56,12 +59,13 @@ def live_evidence(root):
 def evidence_inventory(root, run_path, verified):
     files = set()
     phase = root / 'docs/planning/evidence/P09'
-    prefixes = [phase / 'native', phase / 'parity', phase / 'screens', phase / 'phase-tooling-history', phase / 'phase-tooling-validation', run_path.parent / inputs.read(run_path)['attempt'],
+    prefixes = [phase / 'native', phase / 'parity', phase / 'screens', phase / 'preparations', phase / 'check-remediation', phase / 'phase-tooling-history', phase / 'phase-tooling-validation', run_path.parent / inputs.read(run_path)['attempt'],
                 root / 'docs/planning/evidence/C29/live/L19']
     prefixes += list((phase / 'native-history').glob('*-Worf-failed*'))
     for prefix in prefixes:
         files.update(p for p in prefix.rglob('*') if p.is_file() and '__pycache__' not in p.parts)
     files.update(phase / name for name in ['native-prepare.json', 'native-acceptance.json', 'execution.json'])
+    files.add(phase / 'native-build-inputs.json')
     files.add(run_path)
     files.add(root / 'docs/planning/evidence/C29/live/L19-verify.json')
     files.add(root / 'docs/planning/reviews/C44/legacy-retirements.md')
@@ -98,7 +102,7 @@ def make(root, attempt, run_path, limitations):
                'scope': {'phase': 'P09 current integrated presentation, D058/D059; C34 superseded by C44',
                          'files': sorted(source), 'measured_from': PREVIOUS_PHASE,
                          'source_exclusions': ['docs/planning/evidence/**', 'docs/planning/reviews/**', 'docs/planning/status.md'],
-                         'exclusion_reason': 'Evidence and predecessor records bound separately; current attempt outputs excluded from both inventories.'},
+                         'exclusion_reason': 'Evidence and predecessor records bound separately; active native-controller Python and check-run shell sources are included despite their evidence directory. Current attempt outputs excluded from both inventories.'},
                'fingerprints': fingerprints, 'predecessors': verified['predecessors'],
                'commands': [{'record': str(run_path.relative_to(root)), **run}],
                'native_acceptance': verified['native_acceptance'], 'live_evidence': live,

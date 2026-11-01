@@ -18,14 +18,13 @@ Prerequisites:
   native checks must pass on that exact prepared executable. C43 must include
   all 24 retained behaviors and 48 layout/keyboard rows with matching capture
   hashes. Historical C44/C43 smoke evidence cannot substitute.
-- Use a fresh P09 check attempt on unchanged inputs. The retained Kirk run is
-  `attempt-02` (18 checks passed); its logs are history, not a Worf run. The
-  check audit retains the existing comparison against the `attempt-01` build
-  input inventory, allowing only the named native-tool changes: C43's restored
-  coverage, its assertion map/oracle, C11/C05/C06/C07/C24's scoped split-text observations
-  and C04/C37's current-shell tenant/product destination verification. Application build
-  inputs are not exempted. Failed Worf generations and correction provenance
-  remain under P09/native-history and C29/remediation-attempt-07.
+- Use a fresh P09 check attempt on unchanged inputs. Kirk `attempt-02` is
+  historical; Worf `attempt-03` failed 17/18 with retained fixture failures.
+  The current audit requires every compiled input to match the fresh native
+  build's captured before/after seal (`P09/native-build-inputs.json` and its
+  generation under `P09/preparations/`). There is no source-exemption list.
+  The old attempt-01 comparison remains provenance only. Failed Worf generations,
+  scoped AX corrections and fixture-lifecycle remediation remain preserved.
 - The packet needs the passing L19 receipt and the preceding chunk's full gate.
   The original two live reads plus the separately approved third remain charged;
   these helpers authorize no additional live calls.
@@ -34,9 +33,9 @@ Example after the fresh fixture/native prerequisites are satisfied (choose
 unused attempt IDs if these already exist):
 
 ```sh
-bash docs/planning/evidence/P09/runs/run-checks.sh attempt-03
-python3 tools/p09/audit-p09-checks.py attempt-03
-python3 tools/p09/make-remedial-packet.py C29 attempt-08 attempt-07 attempt-03
+bash docs/planning/evidence/P09/runs/run-checks.sh attempt-04
+python3 tools/p09/audit-p09-checks.py attempt-04
+python3 tools/p09/make-remedial-packet.py C29 attempt-08 attempt-07 attempt-04
 python3 tools/p09/launch-remedial-review.py C29 attempt-08
 python3 tools/p09/audit-remedial-review.py C29 attempt-08
 ```
@@ -71,7 +70,7 @@ inferred from input verification. After those prerequisites:
 
 ```sh
 python3 -I tools/p09/test_phase_inputs.py
-python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-03.json
+python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-04.json
 python3 tools/p09/launch-remedial-review.py P09 attempt-01
 python3 -I tools/p09/audit-phase-review.py attempt-01
 ```

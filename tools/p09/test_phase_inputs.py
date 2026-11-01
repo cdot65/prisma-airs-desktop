@@ -97,6 +97,12 @@ class PhaseInputGuards(unittest.TestCase):
             link.symlink_to('different-source')
             self.assertNotEqual(before, packet.file_identity(link))
 
+    def test_active_controller_and_check_sources_are_not_hidden_as_evidence(self):
+        inventory = packet.source_inventory(ROOT)
+        self.assertIn('docs/planning/evidence/P09/native-controller/run-p09-native.py', inventory)
+        self.assertIn('docs/planning/evidence/P09/runs/hash-inputs.sh', inventory)
+        self.assertNotIn('docs/planning/evidence/P09/native-prepare.json', inventory)
+
 
 if __name__ == '__main__':
     unittest.main()

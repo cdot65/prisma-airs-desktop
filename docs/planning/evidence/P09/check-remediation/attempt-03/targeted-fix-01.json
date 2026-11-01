@@ -1,0 +1,26 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "-p",
+    "desktop-core",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "imports_rollback"
+  ],
+  "environment": {
+    "RUST_TEST_THREADS": "4"
+  },
+  "exit": 101,
+  "result": "22 passed; 1 failed: exhaustive interruption rollback at Applied #7",
+  "log_sha256": "cf7404d5c11a33f6e55f3f47452c898c2899f4d59cc25cb6bdfe7a9371479ca4",
+  "sources_at_this_attempt": {
+    "crates/desktop-core/tests/imports_rollback/main.rs": "fcf820bc793559f5cbd55e2320ca4ae66ce05ce3bd48fbad436beb87fe691001",
+    "crates/desktop-core/tests/imports_rollback/held.rs": "9cfbe467336e7e93784a04049d0d2a29f9493ea6c4ba66dd5a86d238ba085eed",
+    "crates/desktop-core/tests/imports_rollback/recovery.rs": "aa2dfb59c8fa51210d9e7359fe2e26b82494bf0110e24ef3cbe7b003fd6d203f",
+    "crates/desktop-core/src/authority.rs": "7f5647d58f877c80ef335545e0a062a18f7a17c1f12e74468f6fcb6f7c1dd300"
+  },
+  "next": "Replace fixed cut-point sleeps with a bounded fixture-observer wait; rebuild/requalify native generation if core fixture source changes."
+}

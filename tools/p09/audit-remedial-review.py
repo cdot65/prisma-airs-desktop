@@ -2,6 +2,8 @@ from pathlib import Path
 import datetime,hashlib,json,subprocess,sys
 
 root=Path.cwd().resolve();subject,attempt=sys.argv[1:3];out=root/f'docs/planning/reviews/{subject}/{attempt}'
+sys.path.insert(0,str(root/'tools/p09'))
+import phase_inputs
 def read(p):return json.loads(Path(p).read_text())
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def validate(value,schema,where='$'):
@@ -57,6 +59,8 @@ scratch.mkdir(parents=True,exist_ok=True)
 post=scratch/f'post-{subject}-{attempt}-inputs.sha256'
 digest=subprocess.check_output(['/bin/bash',str(root/'docs/planning/evidence/P09/runs/hash-inputs.sh'),str(root),str(post)],text=True).strip()
 assert digest==r['fingerprints']['dependencies']
+qualification=phase_inputs.verify_native(root)
+assert qualification['build_inputs']['input_digest']==digest
 result={'subject':subject,'attempt':attempt,'time':datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'raw_verdict_sha256':sha(out/'verdict-returned.json'),'request_sha256':sha(out/'request.json'),
         'source_files_verified':len(i['files']),'check_runs_verified':18,'compiled_inputs_unchanged':True,

@@ -1,0 +1,39 @@
+{
+  "source_checkpoint": "77797198d5dcf8463c5d80fdbbfe8b2f96cdbdb6",
+  "failed_gate": "P09 attempt-03 core-fixtures",
+  "actual_check_results": "17/18 passing; core-fixtures failed exit 101 on all three runs; inputs unchanged",
+  "original_test_sources": {
+    "crates/desktop-core/tests/imports_rollback/main.rs": {
+      "before": "docs/planning/evidence/P09/check-remediation/attempt-03/before-main.rs",
+      "sha256": "fd4264c75d37aaa1e8f73d20299005f26cd12467c55fb4db4098e06e61abd7d1"
+    },
+    "crates/desktop-core/tests/imports_rollback/held.rs": {
+      "before": "docs/planning/evidence/P09/check-remediation/attempt-03/before-held.rs",
+      "sha256": "751379e974d4bb1a4d0e750343905146904c08c4f2b57f5d27974291903c6589"
+    }
+  },
+  "records": {
+    "docs/planning/evidence/P09/runs/attempt-03/bindings.log": "a53dcdfa62c9ad6f5a9fee4bf029363e5ec253d9a77ba6485562a49a6794699a",
+    "docs/planning/evidence/P09/runs/attempt-03/clippy-default.log": "eb63b2f16123b1894aa33dd16c2f8613411f02a437528fb7d8b83c251cc5e5a9",
+    "docs/planning/evidence/P09/runs/attempt-03/clippy.log": "c7f6a4384535dbddefca87768a45491d27adae2752711ad0f034dcc311fcedbf",
+    "docs/planning/evidence/P09/runs/attempt-03/contracts-typecheck.log": "48323564a9a718ceee4400dec176d99f52dbca2e44f896088afc838b2377c7e4",
+    "docs/planning/evidence/P09/runs/attempt-03/core-fixtures.flake-1.log": "c1e76d64eac5edfd5b83f552c041e157b58ab9b108810947c0e13abd80aed0e4",
+    "docs/planning/evidence/P09/runs/attempt-03/core-fixtures.flake-2.log": "5b3aaec45a88092d900aa21df47524832dce4c80039c23979eff1f0f4130a8cd",
+    "docs/planning/evidence/P09/runs/attempt-03/core-fixtures.log": "5e185d43a8b3634abe66baf0753a1746e0b054918a862ec9da3e35d1213a0074",
+    "docs/planning/evidence/P09/runs/attempt-03/core-lib.log": "3440da7084afb6508b638bc702548c2600df4b2b14b42f77a6bacb2027e1a2a6",
+    "docs/planning/evidence/P09/runs/attempt-03/desktop-build.log": "74d693581cddf92da28344545e67c422eef1a34490ac90a4534450d7adb97b49",
+    "docs/planning/evidence/P09/runs/attempt-03/desktop-typecheck.log": "c8f63d9cdafe3e78d683b697b769c9acb04c95e076bde2e4d64f7a4c6ae4d8dd",
+    "docs/planning/evidence/P09/runs/attempt-03/fixture-command.log": "1a2578a7f4bd145e7af51e4b92b995675eeed741a28075b3555f5e4c2dd36cfc",
+    "docs/planning/evidence/P09/runs/attempt-03/host.log": "2b7b710801bdbfc4601f7e4db8dfd23da086129b5a78f3ff95dd4b06c0cc9c59",
+    "docs/planning/evidence/P09/runs/attempt-03/l19-native-driver.log": "db627b3f4da28a2df98ac36cd5fba5b549ab3e71e9c7a8c65cb500bff1e43cdb",
+    "docs/planning/evidence/P09/runs/attempt-03/l19-offline.log": "106e6b0b288349f786df5fd8a950cdf7d93f8127bac47b6d95f2eb9143fe07fb",
+    "docs/planning/evidence/P09/runs/attempt-03/notices.log": "efb6d000aeb3121eb3f7a710e226957a8889ff1e530cc9f17dbc5bdeb597d59a",
+    "docs/planning/evidence/P09/runs/attempt-03/rustfmt.log": "6103ed9860b3d5528f2d4d935b0e62ce86231023272ae88325ab480914e8e518",
+    "docs/planning/evidence/P09/runs/attempt-03/shell-controller.log": "698460065050dc57d84887433c65d17b15a48bb81ecc0a1fa1c82d16e4e2abe5",
+    "docs/planning/evidence/P09/runs/attempt-03/vitest-truth.log": "079e378f2837886a62d34f6b1cde0c45f99325c5073825e2929417d7600b4a36",
+    "docs/planning/evidence/P09/runs/attempt-03/vitest.log": "52ebb581ad1066a0d5cc4b919860f8668c4f7b2890fc52658c1039a2ff4307da",
+    "docs/planning/evidence/P09/runs/attempt-03/xtask-lib.log": "3ad7f540e35c4da5df8d49db9a1550ec04bcdc8286a7eeca5bd57ec9d9b5dae1",
+    "docs/planning/evidence/P09/runs/run-attempt-03.json": "40d80f8de7e8de8960ab9be12e1364e755e05414b2681da87659178ec00919cd"
+  },
+  "proposed_test_only_correction": "Match production Core.shutdown on simulated exit; observe confirmed-durable Writing binding rather than transient receipt files. Preserve every test and assertion. Targeted rerun pending."
+}

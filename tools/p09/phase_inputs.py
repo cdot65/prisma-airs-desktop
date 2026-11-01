@@ -104,6 +104,40 @@ def verify_members(root):
     return members
 
 
+def native_build(root, prepared):
+    """The current fixture build's actual before/after compiled-input seal."""
+    path = root / 'docs/planning/evidence/P09/native-build-inputs.json'
+    build = read(path)
+    require(build['schema'] == 'airs-v2/p09-native-build-inputs/1', 'native build-input schema mismatch')
+    require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', build['generation']) is not None,
+            'invalid native generation')
+    prefix = 'docs/planning/evidence/P09/preparations/' + build['generation'] + '/'
+    require(build['prepare'] == 'docs/planning/evidence/P09/native-prepare.json'
+            and build['command']['log'] == prefix + 'native-prepare.log'
+            and build['command']['cwd'] == str(root)
+            and build['command']['argv'] == ['cargo', 'run', '--locked', '-p', 'xtask', '--', 'native-prepare',
+                                            '--phase', 'P09', '--target', 'aarch64-apple-darwin', '--features', 'test-fixtures'],
+            'native build command/path mismatch')
+    require(build['prepare_sha256'] == sha(root / build['prepare'])
+            and build['executable_sha256'] == prepared['executable_sha256']
+            and build['bundle_sha256'] == prepared['bundle_sha256'], 'native build/preparation binding mismatch')
+    require(build['command']['exit'] == 0 and sha(root / build['command']['log']) == build['command']['log_sha256'],
+            'native build command failed or log changed')
+    value = build['inputs']
+    require(value['procedure'] == 'docs/planning/evidence/P09/runs/hash-inputs.sh'
+            and value['before_inventory'] == prefix + 'inputs-before.sha256'
+            and value['after_inventory'] == prefix + 'inputs-after.sha256', 'native inventory paths mismatch')
+    procedure = root / value['procedure']
+    require(sha(procedure) == value['procedure_sha256'], 'native build inventory procedure drift')
+    require(value['before_digest'] == value['after_digest'] == sha(root / value['before_inventory'])
+            == sha(root / value['after_inventory']), 'native build inputs changed')
+    with tempfile.TemporaryDirectory(prefix='p09-native-inputs-') as scratch:
+        current = subprocess.check_output(['/bin/bash', str(procedure), str(root), str(Path(scratch) / 'inputs.sha256')], text=True).strip()
+    require(current == value['before_digest'], 'current compiled inputs differ from prepared native build')
+    return {'record': str(path.relative_to(root)), 'sha256': sha(path),
+            'generation': build['generation'], 'input_digest': current}
+
+
 def verify_native(root):
     controller = root / 'docs/planning/evidence/P09/native-controller'
     sys.path.insert(0, str(controller))
@@ -116,6 +150,7 @@ def verify_native(root):
             and prepared['target'] == 'aarch64-apple-darwin', 'wrong prepared subject/features/target')
     executable = root / prepared['bundle'] / 'Contents/MacOS/prisma-airs-desktop-v2'
     require(sha(executable) == prepared['executable_sha256'], 'prepared executable drift')
+    build = native_build(root, prepared)
     records = []
     for subject, required in sorted(load_requirements(root).items()):
         directory = phase if subject == 'C44' else phase / 'native/cumulative' / subject
@@ -147,7 +182,7 @@ def verify_native(root):
                         'required_targets': sorted(required), 'superseded_raw_checks': carried,
                         'executable_sha256': prepared['executable_sha256']})
     return {'prepare': str((phase / 'native-prepare.json').relative_to(root)),
-            'prepare_sha256': sha(phase / 'native-prepare.json'), 'records': records}
+            'prepare_sha256': sha(phase / 'native-prepare.json'), 'build_inputs': build, 'records': records}
 
 
 def verify_checks(root, record_path):
@@ -177,7 +212,8 @@ def verify_checks(root, record_path):
         require(digest == inputs[label + '_digest'] == inputs[label + '_inventory_sha256'], 'inventory record mismatch')
     audit = read(directory / 'post-check-audit.json')
     require(audit['record_sha256'] == sha(record_path) and audit['check_runs_verified'] == 18
-            and audit['application_build_inputs_unchanged'], 'missing/stale check audit')
+            and audit['current_native_build_inputs_match'] and audit['native_drivers_verified'] == 19,
+            'missing/stale check audit')
     with tempfile.TemporaryDirectory(prefix='p09-phase-inputs-') as scratch:
         current = subprocess.check_output(['/bin/bash', str(procedure), str(root), str(Path(scratch) / 'inputs.sha256')], text=True).strip()
     require(current == inputs['before_digest'], 'current compiled inputs differ from checks')
