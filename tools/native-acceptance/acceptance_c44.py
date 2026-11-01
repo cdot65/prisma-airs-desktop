@@ -17,6 +17,7 @@ acceptance of every destination.
 
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -290,16 +291,27 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     results_by_id = {i: r for v in cumulative.values() for i, r in v["checks"].items()}
     own_ok = n1["first_run_is_wizard"] and n1["no_features_rail_at_start"] and all_ok and not secret_hits and len(dest) == len(DESTINATIONS) and cumulative_ok and carried
     results_by_id["C44-N01"] = "pass" if own_ok else "fail"
+    # A retirement is accepted only through the owner's record: the id listed in reviews/C44/legacy-retirements.md and
+    # that record carrying the owner's acceptance line (not its pending placeholder).
+    retire_path = os.path.join(ROOT, "docs/planning/reviews/C44/legacy-retirements.md")
+    retire_text = open(retire_path).read() if os.path.exists(retire_path) else ""
+    retire_accepted = bool(retire_text) and "ACCEPTANCE PENDING" not in retire_text and "## Acceptance" in retire_text
+    retire_listed = set(re.findall(r"^\| (C\d\d-N\d\d) \|", retire_text, re.M))
     uncovered = []
     for lid, (kind, targets, note) in la.ASSERTIONS.items():
         if kind == la.R:
             if not note:
                 uncovered.append(f"{lid} (retired without a reason)")
+            elif lid not in retire_listed:
+                uncovered.append(f"{lid} (retired but not in the owner's retirement record)")
+            elif not retire_accepted:
+                uncovered.append(f"{lid} (the retirement record is not accepted by the owner)")
         elif not targets or any(results_by_id.get(t) != "pass" for t in targets):
             uncovered.append(lid + " → " + ", ".join(t + " " + str(results_by_id.get(t, "not run")) for t in targets))
     from collections import Counter
     kinds = Counter(k for k, _, _ in la.ASSERTIONS.values())
-    coverage_text = f"legacy assertions mapped: {len(la.ASSERTIONS)} ({kinds.get(la.X, 0)} exercised, {kinds.get(la.S, 0)} self-run, {kinds.get(la.P, 0)} ported, {kinds.get(la.R, 0)} retired with reasons); without a passing target on this bundle: {uncovered or 'none'}"
+    retire_summary = f"retirements accepted by the owner's record {retire_accepted} ({len(retire_listed)} listed in reviews/C44/legacy-retirements.md)"
+    coverage_text = f"{retire_summary}; legacy assertions mapped: {len(la.ASSERTIONS)} ({kinds.get(la.X, 0)} exercised, {kinds.get(la.S, 0)} self-run, {kinds.get(la.P, 0)} ported, {kinds.get(la.R, 0)} retired with reasons); without a passing target on this bundle: {uncovered or 'none'}"
     obs["coverage"] = {"uncovered": uncovered, "kinds": dict(kinds)}
     cumulative_text = "; ".join(f"{k}: " + ("not run" if not v["checks"] else ("stale bundle; " if not v["bound"] else "") + ", ".join(f"{i} {r}" + ("" if i in mapped_targets or k >= "C28" else " (not required: retired or superseded in the map)") for i, r in v["checks"].items())) for k, v in cumulative.items())
     passed = own_ok and not uncovered
