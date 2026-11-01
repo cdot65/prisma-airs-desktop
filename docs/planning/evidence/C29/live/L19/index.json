@@ -1,0 +1,28 @@
+{
+  "schema": "airs-v2/l19-standing/1",
+  "subject": "C29",
+  "status": "blocked",
+  "reason": "actual management client rejected by service; approved two-read allowance exhausted",
+  "owner_designation": "approved, including one latest-profile probe, limit=1",
+  "attempts": [
+    {
+      "attempt": "attempt-01",
+      "status": "interrupted",
+      "read_reservations": 1,
+      "receipt": "attempt-01/receipt.json",
+      "diagnosis": "attempt-01/diagnosis.md"
+    },
+    {
+      "attempt": "attempt-02",
+      "status": "failed",
+      "read_reservations": 1,
+      "receipt": "attempt-02/receipt.json",
+      "reason": "The management client was not accepted. Check the client ID and secret."
+    }
+  ],
+  "total_read_reservations": 2,
+  "remote_writes": 0,
+  "temporary_local_credentials_removed": true,
+  "next": "owner clarification pending: compare with CLI secret, refresh named local reference only if different, and one additional bounded verification if corrected",
+  "historical_blocked_record": "../blocked.json (retained unchanged; superseded designation status only)"
+}

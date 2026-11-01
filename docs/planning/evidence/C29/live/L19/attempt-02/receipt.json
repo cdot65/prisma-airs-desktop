@@ -1,0 +1,53 @@
+{
+  "schema": "airs-v2/live-row/1",
+  "subject": "C29",
+  "family": "L19",
+  "performed_by": "Codex through the granted Kitty native queue",
+  "attempt": "attempt-02",
+  "status": "failed",
+  "recorded_utc": "2026-11-01T12:52:25.554887+00:00",
+  "manifest_sha256": "999f95abf2f6fb75f3597c95d7903a385eb7a1e876b99f6d63185378ba24499e",
+  "build_receipt_sha256": "88f2519940200403c0af167c1b7e9cb4eaf0ebf6a7691a1d30e7a7403ca8168a",
+  "executable_sha256": "8fb5a476b2a25adf2842286faa69e5393f5812ac3d7b65f87564eb0f05b54dca",
+  "source_inputs_sha256": "217a81f9ed49219bae0fa7946b9684ca6d2469b3c7f607d91b0c48816f09284c",
+  "client_id": "prisma-airs-cli@1852583913.iam.panserviceaccount.com",
+  "tsg_id": "1852583913",
+  "operation": "one management credential verification through the first-run wizard (C29): one latest security-profile probe with limit=1; discard profile contents; no other inventory browsing or writes",
+  "wizard_verify_intents": 1,
+  "read_budget_reserved": 1,
+  "http_requests_observed": false,
+  "automatic_retries": 0,
+  "products": [
+    "runtimeSecurity"
+  ],
+  "evidence": [
+    "docs/planning/evidence/C29/live/L19/attempt-02/wizard-verify.json"
+  ],
+  "local_credentials_removed": true,
+  "limitations": [
+    "Request bound comes from the inspected production verifier (limit=1, latest=true, SDK retries=0) and exactly one wizard intent; no TLS interception or response body capture."
+  ],
+  "cumulative_read_budget_reserved": 2,
+  "verification": "management verification failed",
+  "local_record_count": 2,
+  "events": [
+    {
+      "t": "06:52:32",
+      "step": "typed",
+      "field": "Display name",
+      "attempts": 1
+    },
+    {
+      "t": "06:52:34",
+      "step": "typed",
+      "field": "TSG ID",
+      "attempts": 1
+    },
+    {
+      "t": "06:52:39",
+      "step": "typed",
+      "field": "Client ID",
+      "attempts": 1
+    }
+  ]
+}
