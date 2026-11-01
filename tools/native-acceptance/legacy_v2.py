@@ -126,6 +126,13 @@ def ax(self, command, *args):
         # The v2 review sheet's close control is "Close review".
         if self.node(self.tree(), "AXButton", "Close review") is not None:
             return _ax(self, "press", "AXButton", "Close review")
+    if command in ("press", "focus") and len(args) >= 2 and args[0] in ("AXButton", "AXCheckBox") and isinstance(args[1], str) and self.node(self.tree(), args[0], args[1]) is None:
+        # The v2 Harness keeps its project, sign-in and workspace panels behind one disclosure (C38); a pre-P09 driver
+        # presses their controls directly, so the disclosure is opened first when the control is not in the tree.
+        toggle = self.node(self.tree(), "AXButton", "Project, sign-in and workspace tools")
+        if toggle is not None:
+            _ax(self, "press", "AXButton", "Project, sign-in and workspace tools")
+            self.wait_for(lambda t: self.node(t, args[0], args[1]) is not None, 6)
     if command in ("press", "focus") and len(args) == 2 and isinstance(args[1], str):
         # The probe matches a label by prefix, in tree order. The v2 shell's rail puts "Search or go to… Command K"
         # ahead of a page's own "Search" button, so a legacy driver's exact label is preferred when one exists

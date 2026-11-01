@@ -331,8 +331,8 @@ ASSERTIONS = {
     "C30-N04": (X, ["C37-N02"], "Tab from Read now reaches the tabs and rows; Enter opens a row's detail"),
     # ---- C31 Administration → C39 ----
     "C31-N01": (X, ["C39-N01"], "the inventory per tab with exactly its admitted actions; the gated products show their gate"),
-    "C31-N02": (X, ["C39-N02"], "the review sheet; Apply disabled until the exact name; the native confirmation; applied once"),
-    "C31-N03": (R, [], "the staged Runtime key rotation and the host secret sheet: crates/desktop-core/tests/runtime_changes and the host's secret-sheet tests (not on C39's board)"),
+    "C31-N02": (S, ["C31-N02", "C39-N02"], "acceptance_c31.py through legacy_v2: the custom topic edit through the review sheet, Apply on the exact name, the native confirmation, applied once; C39-N02 asserts the same on the board"),
+    "C31-N03": (S, ["C31-N03"], "acceptance_c31.py through legacy_v2: Issue additional key… reviewed and confirmed natively, the issued key revealed through the host's secret sheet, the review exit, the Inbox reminder and its resumption, the old key's removal (invariants I6/I7)"),
     "C31-N04": (X, ["C39-N02"], "the review sheet docked with Close review and Done"),
     # ---- C32 Harness in v2 → C38 ----
     "C32-N01": (X, ["C38-N01"], "the title band names tenant, engine and workspace; a fresh tenant's first send starts a conversation"),

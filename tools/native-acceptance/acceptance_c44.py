@@ -277,10 +277,11 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     # driver the checks the map keeps (its targets) must pass — a legacy check the map retires or supersedes (C24-N06,
     # the legacy cumulative matrix, is this check) is reported but not required.
     mapped_targets = {t for k, ts, _ in la.ASSERTIONS.values() if k in (la.X, la.S, la.P) for t in ts}
+    self_run = {lid.split("-")[0] for lid, (k, _, _) in la.ASSERTIONS.items() if k == la.S}  # the legacy drivers that run themselves
     def record_ok(chunk, v):
         if not (v["bound"] and v["checks"]):
             return False
-        required = [i for i in v["checks"] if i in mapped_targets] if chunk < "C28" else list(v["checks"])
+        required = [i for i in v["checks"] if i in mapped_targets] if chunk in self_run else list(v["checks"])
         return bool(required) and all(v["checks"][i] == "pass" for i in required)
     cumulative_ok = all(record_ok(k, v) for k, v in cumulative.items())
     carried = (n1["shortcut_inbox"] and n1["shortcut_settings"] and n1["reduced_motion_clamp"] and not n1["node_free"] and not n1["runtime_processes"]
@@ -313,7 +314,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     retire_summary = f"retirements accepted by the owner's record {retire_accepted} ({len(retire_listed)} listed in reviews/C44/legacy-retirements.md)"
     coverage_text = f"{retire_summary}; legacy assertions mapped: {len(la.ASSERTIONS)} ({kinds.get(la.X, 0)} exercised, {kinds.get(la.S, 0)} self-run, {kinds.get(la.P, 0)} ported, {kinds.get(la.R, 0)} retired with reasons); without a passing target on this bundle: {uncovered or 'none'}"
     obs["coverage"] = {"uncovered": uncovered, "kinds": dict(kinds)}
-    cumulative_text = "; ".join(f"{k}: " + ("not run" if not v["checks"] else ("stale bundle; " if not v["bound"] else "") + ", ".join(f"{i} {r}" + ("" if i in mapped_targets or k >= "C28" else " (not required: retired or superseded in the map)") for i, r in v["checks"].items())) for k, v in cumulative.items())
+    cumulative_text = "; ".join(f"{k}: " + ("not run" if not v["checks"] else ("stale bundle; " if not v["bound"] else "") + ", ".join(f"{i} {r}" + ("" if i in mapped_targets or k not in self_run else " (not required: the map carries it elsewhere)") for i, r in v["checks"].items())) for k, v in cumulative.items())
     passed = own_ok and not uncovered
     checks.append({"id": "C44-N01", "description": inventory["C44-N01"], "result": "pass" if passed else "fail",
                    "observation": f"window requested 1440×900, got window {obs['geometry']['window']} viewport {obs['geometry']['viewport']} (the display's menu bar and the title bar take the rest); first run is the wizard {n1['first_run_is_wizard']} (no Features rail {n1['no_features_rail_at_start']}); "
