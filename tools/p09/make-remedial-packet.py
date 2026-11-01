@@ -96,6 +96,7 @@ extras=['AGENTS.md','GLOSSARY.md','docs/planning/decisions.md','docs/planning/re
         'crates/xtask/tests/controlled_live.rs','crates/xtask/tests/live_run/main.rs','crates/xtask/tests/live_run/wizard.rs',
         'tools/native-acceptance/live_c29_l19.py','tools/native-acceptance/test_live_c29_l19.py',
         'tools/native-acceptance/type_private_stdin.swift','tools/native-acceptance/fixture_app.py',
+        'tools/native-acceptance/ax.swift','tools/native-acceptance/native_sheets.py',
         'tools/native-acceptance/legacy_assertions.py','tools/native-acceptance/wizard_coverage.py','docs/architecture/native-checks.json',
         predecessor['record'],str(prep_path.relative_to(root)),str(run_path.relative_to(root))]
 scope.update(p for p in extras if (root/p).is_file())
@@ -103,6 +104,8 @@ scope.update(str(p.relative_to(root)) for p in (root/'tools/p09').glob('*.py'))
 scope.add('tools/p09/README.md')
 prefixes=['apps/desktop/src/v2/wizard','docs/planning/evidence/C29/live/L19','docs/planning/evidence/C29/remediation-attempt-07','docs/planning/evidence/P09/runs']
 prefixes.extend(['docs/planning/evidence/P09/preparations','docs/planning/evidence/P09/check-remediation'])
+prefixes.extend(['docs/planning/evidence/P09/native-history/C10-Worf-generation-02-stalled-20261101',
+                 'docs/planning/evidence/P09/native-history/Worf-generation-02-before-panel-observation-fix-20261101'])
 scope.add('docs/planning/evidence/P09/native-build-inputs.json')
 scope.update(['crates/desktop-core/tests/imports_rollback/main.rs','crates/desktop-core/tests/imports_rollback/held.rs',
               'crates/desktop-core/tests/imports_rollback/recovery.rs','crates/desktop-core/src/fixtures.rs',
@@ -137,6 +140,7 @@ notes=[
  'The first Worf check attempt failed three import test lifecycle/timing assertions. Failed logs and original sources remain preserved. The harness now calls the production shutdown hook, waits for a confirmed durable receipt and observes the armed fixture cut instead of fixed delays. A read-only getter is appended under test-fixtures only; the production build excludes it. No production operation or authority behavior is changed. The fixture is freshly rebuilt and every mapped native driver rerun; exact current build/check input seals are mandatory, without source exemptions.',
  'All current native integration is complete before this review. Current source, compiled inputs, scoped native evidence and failed-history provenance remain frozen. The P09 phase review remains a separate full gate after C29–C32 pass.'
 ]
+notes.append('Generation 02 C10 stalled twice while describing the production native file panel browser contents; both interrupted attempts have no acceptance verdict. The shared AX helper now scopes native modal sheets to real panel controls, excludes folder scroll contents and modal background, and retains roles/depth/geometry/focus and real actions. Ordinary WebView traversal and every acceptance assertion remain unchanged. Generation 03 repeats the preparation/input seal and all 19 native drivers; identical executable bytes do not substitute for requalification of the changed helper. Original helper sources, complete generation 02 evidence and failed logs are included for independent review.')
 request={'request_id':request_id,'attempt_id':attempt,'subject':subject,'base_commit':git('rev-parse','HEAD'),
          'transport':'fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)',
          'scope':{**old['scope'],'files':sorted(scope),'removed_since_prior_request':removed,'standing_generation':'current integrated tree after C44 and L19 correction; no fabricated predecessor completion'},
