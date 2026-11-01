@@ -1,0 +1,33 @@
+{
+  "phase": "P09",
+  "status": "prepared; no native execution authorized on host for this gate",
+  "source_head": "d5203df8",
+  "screen_authorization": "wait for the requested VM, or explicit owner approval of this new host-native gate",
+  "drivers": [
+    "C11",
+    "C10",
+    "C03",
+    "C04",
+    "C05",
+    "C06",
+    "C07",
+    "C24",
+    "C31",
+    "C35",
+    "C36",
+    "C37",
+    "C38",
+    "C39",
+    "C40",
+    "C41",
+    "C42",
+    "C43",
+    "C44"
+  ],
+  "requirements": "existing assertion-level C44 map and current manifest; no new retirements or waived checks",
+  "evidence_root": "docs/planning/evidence/P09",
+  "prepare": "docs/planning/evidence/P09/native-prepare.json",
+  "preservation": "C44 and every earlier raw native acceptance/evidence record retained unchanged",
+  "actual_orchestrator": "Codex; raw driver provenance kept and a separate execution record reports actual invocation",
+  "VM_first_probe": "C36; retain its same-bundle pass when running the full serial chain"
+}
