@@ -23,6 +23,11 @@ legacy = len(sys.argv) > 2 and sys.argv[2] == "legacy"
 chunk = which.upper()
 out = os.path.join(ROOT, "docs/planning/evidence/C44/native/cumulative", chunk)
 os.makedirs(out, exist_ok=True)
+# An earlier run's record never stands for this one: removed before the driver starts, so a crashed run leaves no
+# record (the gate reads a missing record as not run, never as the earlier bundle's result).
+for stale in ("native-acceptance.json",):
+    if os.path.exists(os.path.join(out, stale)):
+        os.remove(os.path.join(out, stale))
 shutil.copy(os.path.join(ROOT, "docs/planning/evidence/C44/native-prepare.json"), os.path.join(out, "native-prepare.json"))
 if legacy:
     importlib.import_module("legacy_v2")
