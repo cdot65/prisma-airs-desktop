@@ -6,7 +6,7 @@ Not retired: the tenant-switch guard with a Harness decision pending (C30-N01, i
 
 ## Acceptance
 
-ACCEPTANCE PENDING — the owner accepts the retirements below in their own words (date, wording) and this line is replaced.
+Accepted by the owner on 2026-10-31. Asked whether to accept the 90 retirements listed below (11 under D060, 6 under D059, 73 whose behaviour the named core or renderer suites hold with no native driver on the one presentation) or to port some into native drivers first, the owner answered, in their own words: "accepted". Every retirement below stands on that acceptance; a change to this list is a new decision.
 
 ## D060 — no import from the alpha (11)
 
