@@ -72,6 +72,40 @@ def sha256(path):
         return hashlib.sha256(f.read()).hexdigest()
 
 
+def account_signed_in(tree, name):
+    """The exact signed-in sentence, including WebKit's split bold name."""
+    owner = next((i for i, n in enumerate(tree) if n.get("role") == "AXGroup"
+                  and n.get("label") == "Academy account"), None)
+    if owner is None:
+        return False
+    parts = []
+    for node in tree[owner + 1:]:
+        if node.get("depth", 0) <= tree[owner].get("depth", 0):
+            break
+        if node.get("role") == "AXStaticText":
+            parts.append(node.get("label") or "")
+    return f"Signed in to Academy as {name}." in "".join(parts)
+
+
+def downloaded_course_ready(tree):
+    """The expected ready state and unit count inside this course's card."""
+    link = next((i for i, n in enumerate(tree) if n.get("role") == "AXLink"
+                 and n.get("label") == f"Open {COURSE}"), None)
+    if link is None:
+        return False
+    owner = next((i for i in range(link - 1, -1, -1) if tree[i].get("role") == "AXGroup"
+                  and tree[i].get("depth") == tree[link].get("depth", 0) - 1), None)
+    if owner is None:
+        return False
+    parts = []
+    for node in tree[owner + 1:]:
+        if node.get("depth", 0) <= tree[owner].get("depth", 0):
+            break
+        if node.get("role") == "AXStaticText":
+            parts.append(node.get("label") or "")
+    return "Ready offline · 28 units" in "".join(parts)
+
+
 def rel(path):
     return os.path.relpath(path, ROOT)
 
@@ -226,7 +260,10 @@ def run():
         endpoint.mode(approval="granted", displayName=name, accountId=account)
         app.open_settings()
         press("AXButton", "Sign in to Academy")
-        return wait(lambda t: app.has_text(t, f"Signed in to Academy as {name}"), 20)[1]
+        tree, signed_in = wait(lambda t: account_signed_in(t, name), 20)
+        records = obs.setdefault("sign_in_trees", [])
+        records.append(save_tree(f"sign-in-{len(records) + 1}", tree))
+        return signed_in
 
     app.launch()
 
@@ -252,7 +289,7 @@ def run():
     calls = calls_since(mark)
     obs["download"] = {
         "page": page, "listed": listed, "disclosure": shows(tree, disclosure), "keyboard": kb,
-        "ready": shows(tree, "Ready offline · 28 units"),
+        "ready": downloaded_course_ready(tree),
         "calls": [[c["procedure"], c["status"], c["authorization"]] for c in calls],
         "items_before": items_before, "items_after": items_after,
     }

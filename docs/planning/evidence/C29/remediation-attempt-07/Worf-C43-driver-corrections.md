@@ -87,3 +87,26 @@ mutation assertions remain. Full retry pending; audit exception names C06 only.
 
 C06 full retry passed all 15 checks, including exact Home facts and enrollment
 confirmation/Cancel/mutation assertions. Controller reports no errors.
+
+C07's first run failed N01/N06 because the Settings signed-in sentence splits
+around its bold name; eight other checks passed. Same-bundle C04 AX demonstrates
+the split, while C07's later trees show the correct Ada/Grace identities. The
+complete 17-file generation and original source are preserved under
+`P09/native-history/C07-Worf-failed-20261101-resume-04/`. The reader now requires
+the exact account sentence within Academy account and saves every sign-in AX
+tree. Actual-tree, wrong-account and outside-region checks pass. Offline account
+isolation, encrypted bytes, explicit sync, lease/revocation and reset assertions
+remain. Full retry pending; C07 is explicitly named as a driver-only exception.
+
+C07 retry-02 fixed sign-in/N06, but N01 still failed its ready-offline unit count:
+`Ready offline` and ` · 28 units · until…` are separate AX nodes. This second N01
+false predicate was overlooked in the first diagnosis. The complete 20-file
+retry/source is preserved as `C07-Worf-failed-02-20261101-resume-04`. The reader
+now locates the specific course's Open link and reads only its containing card,
+requiring the same ready state and 28-unit count. Actual downloaded/empty trees
+and a wrong-count mutation pass focused checks. Exact request count, credential
+binding and offline key assertions remain. Full retry-03 pending.
+
+C07 full retry-03 passed all 10 checks; controller required_pass=true, no errors.
+Both earlier failed generations remain immutable; all same-bundle native evidence
+is retained. Independent review and remaining cumulative gates are still pending.

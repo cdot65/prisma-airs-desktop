@@ -22,7 +22,7 @@ Prerequisites:
   `attempt-02` (18 checks passed); its logs are history, not a Worf run. The
   check audit retains the existing comparison against the `attempt-01` build
   input inventory, allowing only the named native-tool changes: C43's restored
-  coverage, its assertion map/oracle, C11/C05/C06's scoped split-text observations
+  coverage, its assertion map/oracle, C11/C05/C06/C07's scoped split-text observations
   and C04's existing current-shell active-tenant verification. Application build
   inputs are not exempted. Failed Worf generations and correction provenance
   remain under P09/native-history and C29/remediation-attempt-07.

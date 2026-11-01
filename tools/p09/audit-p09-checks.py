@@ -27,7 +27,8 @@ changes=[p for p in sorted(built.keys()|current.keys()) if built.get(p)!=current
 # tree instead of requiring the superseded legacy shell's active-tenant text.
 # C05 joins the hosted knowledge-check result paragraph's split inline AX text.
 # C06 observes exact Home level/XP tokens and certification text in named regions.
-allowed={'tools/native-acceptance/acceptance_c43.py','tools/native-acceptance/acceptance_c11.py','tools/native-acceptance/acceptance_c04.py','tools/native-acceptance/acceptance_c05.py','tools/native-acceptance/acceptance_c06.py','tools/native-acceptance/legacy_assertions.py','tools/native-acceptance/wizard_coverage.py'}
+# C07 reads the exact signed-in sentence within Academy account and retains AX.
+allowed={'tools/native-acceptance/acceptance_c43.py','tools/native-acceptance/acceptance_c11.py','tools/native-acceptance/acceptance_c04.py','tools/native-acceptance/acceptance_c05.py','tools/native-acceptance/acceptance_c06.py','tools/native-acceptance/acceptance_c07.py','tools/native-acceptance/legacy_assertions.py','tools/native-acceptance/wizard_coverage.py'}
 assert set(changes)<=allowed,changes
 prep=json.loads((root/'docs/planning/evidence/P09/native-prepare.json').read_text())
 assert sha(root/prep['bundle']/'Contents/MacOS/prisma-airs-desktop-v2')==prep['executable_sha256']
