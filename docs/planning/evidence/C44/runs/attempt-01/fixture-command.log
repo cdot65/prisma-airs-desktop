@@ -1,0 +1,16 @@
+$ cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_workbench
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running tests/ui_v2_workbench/main.rs (target/debug/deps/ui_v2_workbench-cb5a37898af9e269)
+
+running 7 tests
+test before_onboarding_the_calls_are_shown_by_default ... ok
+test an_api_response_in_history_never_changes_while_a_new_send_reflects_the_change ... ok
+test the_calls_are_shown_only_while_chosen_and_never_carry_a_secret_query_or_body ... ok
+test a_scan_without_an_identifier_is_recorded_without_one_and_stays_readable ... ok
+test unsaved_packs_and_results_stay_shown_and_a_retry_keeps_them_across_a_restart ... ok
+test starter_packs_are_named_and_a_playground_scan_records_a_case_result_only_while_it_holds ... ok
+test a_result_with_no_room_in_a_full_library_is_said_and_every_case_survives ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.88s
+
+EXIT 0

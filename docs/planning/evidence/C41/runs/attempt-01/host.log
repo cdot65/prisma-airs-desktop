@@ -1,0 +1,254 @@
+$ cargo test --locked -p desktop-host --features test-fixtures
+   Compiling serde_core v1.0.229
+   Compiling siphasher v1.0.4
+   Compiling dunce v1.0.5
+   Compiling zerofrom v0.1.8
+   Compiling objc2-encode v4.1.0
+   Compiling objc2-exception-helper v0.1.1
+   Compiling thiserror v2.0.21
+   Compiling serde_json v1.0.154
+   Compiling typeid v1.0.3
+   Compiling web-time v1.1.0
+   Compiling yoke v0.8.3
+   Compiling zeroize v1.9.1
+   Compiling parking_lot_core v0.9.12
+   Compiling alloc-no-stdlib v3.0.0
+   Compiling phf_shared v0.13.1
+   Compiling zerovec v0.11.8
+   Compiling zerotrie v0.2.5
+   Compiling phf_generator v0.13.1
+   Compiling aws-lc-sys v0.46.0
+   Compiling parking_lot v0.12.5
+   Compiling phf_macros v0.13.1
+   Compiling phf_codegen v0.13.1
+   Compiling string_cache_codegen v0.6.1
+   Compiling alloc-stdlib v0.3.0
+   Compiling tinystr v0.8.4
+   Compiling potential_utf v0.1.6
+   Compiling quick-xml v0.42.0
+   Compiling icu_locale_core v2.3.0
+   Compiling icu_collections v2.3.0
+   Compiling objc2 v0.6.5
+   Compiling web_atoms v0.2.6
+   Compiling phf v0.13.1
+   Compiling tokio v1.53.3
+   Compiling brotli-decompressor v6.0.1
+   Compiling string_cache v0.9.0
+   Compiling icu_provider v2.3.1
+   Compiling bitflags v2.13.2
+   Compiling serde v1.0.229
+   Compiling icu_properties v2.3.0
+   Compiling icu_normalizer v2.3.0
+   Compiling block2 v0.6.2
+   Compiling serde_spanned v1.1.2
+   Compiling same-file v1.0.6
+   Compiling toml v1.1.8+spec-1.1.0
+   Compiling form_urlencoded v1.2.2
+   Compiling walkdir v2.5.0
+   Compiling brotli v9.0.0
+   Compiling objc2-core-foundation v0.3.2
+   Compiling anyhow v1.0.104
+   Compiling selectors v0.38.0
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling uuid v1.28.0
+   Compiling glob v0.3.4
+   Compiling ctor v1.0.13
+   Compiling url v2.5.8
+   Compiling objc2-foundation v0.3.2
+   Compiling cssparser v0.37.0
+   Compiling markup5ever v0.39.0
+   Compiling swift-rs v1.0.9
+   Compiling futures-util v0.3.34
+   Compiling html5ever v0.39.0
+   Compiling cfb v0.14.0
+   Compiling jsonptr v0.7.1
+   Compiling erased-serde v0.4.10
+   Compiling time v0.3.55
+   Compiling option-ext v0.2.0
+   Compiling dom_query v0.28.0
+   Compiling dirs-sys v0.5.0
+   Compiling schemars v0.8.22
+   Compiling serde-untagged v0.1.9
+   Compiling cargo_metadata v0.19.2
+   Compiling infer v0.22.0
+   Compiling json-patch v4.2.0
+   Compiling urlpattern v0.6.0
+   Compiling serde_with v3.24.0
+   Compiling tokio-util v0.7.20
+   Compiling dirs v7.0.0
+   Compiling rustls-pki-types v1.15.1
+   Compiling embed-resource v3.0.12
+   Compiling plist v1.10.1
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling raw-window-handle v0.6.2
+   Compiling heck v0.5.0
+   Compiling tauri-winres v0.3.6
+   Compiling cargo_toml v1.0.1
+   Compiling dpi v0.1.2
+   Compiling h2 v0.4.20
+   Compiling crossbeam-utils v0.8.23
+   Compiling tauri-utils v2.10.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling foreign-types-shared v0.3.1
+   Compiling png v0.17.16
+   Compiling foreign-types v0.5.0
+   Compiling system-configuration v0.7.0
+   Compiling wry v0.57.0
+   Compiling objc2-app-kit v0.3.2
+   Compiling crossbeam-channel v0.5.17
+   Compiling core-graphics-types v0.2.0
+   Compiling digest v0.10.7
+   Compiling png v0.18.1
+   Compiling dispatch2 v0.3.1
+   Compiling hyper v1.12.0
+   Compiling semver v1.0.28
+   Compiling tower v0.5.3
+   Compiling ico v0.5.0
+   Compiling cipher v0.4.4
+   Compiling security-framework v3.7.0
+   Compiling sha2 v0.10.9
+   Compiling core-graphics v0.25.0
+   Compiling hyper-util v0.1.21
+   Compiling async-compression v0.4.51
+   Compiling tower-http v0.6.11
+   Compiling chacha20 v0.9.1
+   Compiling keyboard-types v0.8.3
+   Compiling scm-sdk v0.2.4
+   Compiling serde_yaml_ng v0.10.0
+   Compiling image v0.25.10
+   Compiling serialize-to-javascript v0.1.2
+   Compiling chacha20poly1305 v0.10.1
+   Compiling getrandom v0.3.4
+   Compiling ts-rs v12.0.1
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling embed_plist v1.2.2
+   Compiling objc2-web-kit v0.3.2
+   Compiling tao v0.37.1
+   Compiling muda v0.20.0
+   Compiling tauri-build v2.7.3
+   Compiling tauri-codegen v2.7.3
+   Compiling window-vibrancy v0.8.1
+   Compiling rfd v0.17.2
+   Compiling tauri-runtime v2.12.2
+   Compiling tauri-runtime-wry v2.12.2
+   Compiling tauri v2.12.4
+   Compiling tauri-macros v2.7.3
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-c41/apps/desktop/src-tauri)
+   Compiling aws-lc-rs v1.18.2
+   Compiling rustls v0.23.46
+   Compiling rustls-webpki v0.103.15
+   Compiling jsonwebtoken v11.1.0
+   Compiling rcgen v0.14.10
+   Compiling tokio-rustls v0.26.6
+   Compiling rustls-platform-verifier v0.7.1
+   Compiling hyper-rustls v0.27.10
+   Compiling reqwest v0.13.5
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-c41/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 24s
+     Running unittests src/lib.rs (target/debug/deps/desktop_host-f820a462ca56a6f2)
+
+running 3 tests
+test keychain::tests::status_codes_map_to_sanitized_failures ... ok
+test menu::tests::go_items_follow_the_presentation_catalogue ... ok
+test adapters::tests::reads_are_bounded_and_limited_to_regular_files ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/prisma_airs_desktop_v2-15e7e6a365c2a334)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/browser_callback.rs (target/debug/deps/browser_callback-c05b35e14d9407a1)
+
+running 4 tests
+test the_renderer_opens_only_the_page_the_issuer_returned_for_the_current_flow ... ok
+test a_non_https_verification_page_fails_the_sign_in_and_is_never_opened ... ok
+test harness_sign_in_opens_only_the_issuers_page_and_completes_only_on_its_loopback ... ok
+test learner_results_cross_ipc_once_with_no_credential ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.11s
+
+     Running tests/clipboard_secret.rs (target/debug/deps/clipboard_secret-8ecb8cf9a40b0161)
+
+running 2 tests
+test only_an_unchanged_own_copy_is_cleared ... ok
+test a_real_pasteboard_keeps_foreign_contents_and_marks_the_secret_concealed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/ipc_admission.rs (target/debug/deps/ipc_admission-34efbb4681e194e4)
+
+running 14 tests
+test literal_dispatch_round_trip_matches_fixtures ... ok
+test delivery_sequence_rules_hold_through_ipc ... ok
+test ambient_environment_credentials_are_never_adopted ... ok
+test navigation_policy_accepts_only_packaged_assets ... ok
+test malformed_requests_are_refused_before_authority ... ok
+test other_windows_and_remote_origins_cannot_reach_commands ... ok
+test observations_per_webview_are_bounded_without_silent_eviction ... ok
+test shell_observation_matches_the_literal_snapshot ... ok
+test setup_draft_intents_cross_ipc_without_echoing_secrets_or_creating_tenants ... ok
+test tenant_and_scan_key_intents_cross_ipc_without_echoing_the_key ... ok
+test unregistered_and_plugin_commands_are_denied ... ok
+test the_go_menu_is_reconciled_on_every_shell_subscription ... ok
+test observations_are_native_owned_closable_and_retired_with_the_webview ... ok
+test json_bodies_and_oversized_payloads_are_refused ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/keychain_access.rs (target/debug/deps/keychain_access-7a7b667d143d7318)
+
+running 6 tests
+test an_unusable_keychain_location_is_unavailable ... ok
+test an_item_this_process_is_not_trusted_for_is_denied_not_locked ... ok
+test records_round_trip_in_the_v2_namespace_without_touching_the_search_list ... ok
+test the_classic_login_keychain_api_is_available_read_only ... ok
+test a_locked_keychain_reports_locked_and_recovers_after_unlock ... ok
+test purge_removes_only_the_v2_namespace ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests/native_confirmation.rs (target/debug/deps/native_confirmation-0c48de9d93a714cb)
+
+running 5 tests
+test first_reveal_and_clipboard_timers_are_separate ... ok
+test an_older_reveal_never_ends_or_unregisters_a_newer_sheet ... ok
+test a_dismissed_or_abandoned_confirmation_is_a_denial ... ok
+test a_confirmation_resolves_once_and_only_for_its_nonce ... ok
+test no_wire_intent_can_carry_an_approval ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/permission_manifest.rs (target/debug/deps/permission_manifest-26f4c3384d694a29)
+
+running 6 tests
+test capability_directory_holds_only_the_reviewed_grant ... ok
+test production_csp_permits_packaged_assets_and_ipc_only ... ok
+test identities_are_independent_and_fixture_config_relaxes_nothing ... ok
+test the_harness_overlay_only_bundles_the_sealed_engine ... ok
+test only_the_two_application_commands_are_registered_and_granted ... ok
+test shipping_builds_exclude_fixture_features_and_commands ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/sidecar_supervision.rs (target/debug/deps/sidecar_supervision-5bc0e61441b4204d)
+
+running 5 tests
+test dropping_an_unreaped_sidecar_kills_and_reaps_its_group ... ok
+test only_absolute_paths_are_launched ... ok
+test closing_input_ends_a_reader_and_exit_is_seen_before_reaping ... ok
+test nothing_is_inherited_and_stderr_is_discarded ... ok
+test killing_the_group_takes_descendants_with_it ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests desktop_host
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0

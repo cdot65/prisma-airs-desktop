@@ -1,0 +1,209 @@
+$ pnpm --filter @prisma-airs/desktop build
+
+> @prisma-airs/desktop@2.0.0 build /Users/cdot/development/redtail/prisma-airs-desktop-v2-c41/apps/desktop
+> vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+../../../prisma-airs-desktop-v2/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../../prisma-airs-desktop-v2/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../prisma-airs-desktop-v2/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../../prisma-airs-desktop-v2/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 4697 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                         0.43 kB │ gzip:   0.29 kB
+dist/assets/jetbrains-mono-cyrillic-ext-wght-normal-EocZY2iu.woff2      2.03 kB
+dist/assets/jetbrains-mono-cyrillic-ext-wght-italic-BsXxL8dx.woff2      2.18 kB
+dist/assets/jetbrains-mono-vietnamese-wght-normal-Bt-aOZkq.woff2        7.50 kB
+dist/assets/jetbrains-mono-vietnamese-wght-italic-Dcombn6O.woff2        8.06 kB
+dist/assets/jetbrains-mono-greek-wght-normal-Bw9x6K1M.woff2             9.00 kB
+dist/assets/jetbrains-mono-greek-wght-italic-Dmq-fBVQ.woff2             9.55 kB
+dist/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2                10.25 kB
+dist/assets/inter-vietnamese-wght-italic-K3WlGtc8.woff2                10.60 kB
+dist/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2                 11.23 kB
+dist/assets/inter-greek-ext-wght-italic-DcOpz6Lw.woff2                 12.10 kB
+dist/assets/jetbrains-mono-cyrillic-wght-normal-D73BlboJ.woff2         12.11 kB
+dist/assets/jetbrains-mono-cyrillic-wght-italic-CfQkWpeR.woff2         13.35 kB
+dist/assets/jetbrains-mono-latin-ext-wght-normal-DBQx-q_a.woff2        15.20 kB
+dist/assets/jetbrains-mono-latin-ext-wght-italic-BrDczivE.woff2        16.52 kB
+dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2                  18.75 kB
+dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2                     19.00 kB
+dist/assets/inter-cyrillic-wght-italic-DzZdc28x.woff2                  19.98 kB
+dist/assets/Assistant-SemiBold-SCI4bEL9.woff2                          20.21 kB
+dist/assets/Assistant-Regular-DVxZuzxb.woff2                           20.23 kB
+dist/assets/Assistant-Medium-DrcxCXg3.woff2                            20.32 kB
+dist/assets/Assistant-Bold-gm-uSS1B.woff2                              20.38 kB
+dist/assets/inter-greek-wght-italic-CILZdfAp.woff2                     20.48 kB
+dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2              25.96 kB
+dist/assets/inter-cyrillic-ext-wght-italic-B5xAaiFk.woff2              27.38 kB
+dist/assets/caveat-latin-ext-wght-normal-Byk3UhVp.woff2                29.47 kB
+dist/assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2            40.40 kB
+dist/assets/caveat-cyrillic-ext-wght-normal-DiMfzA-V.woff2             42.86 kB
+dist/assets/jetbrains-mono-latin-wght-italic-B2M6KQje.woff2            42.96 kB
+dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                     48.26 kB
+dist/assets/inter-latin-wght-italic-DpCbqKDY.woff2                     51.83 kB
+dist/assets/caveat-latin-wght-normal-C1hSzPvX.woff2                    74.93 kB
+dist/assets/caveat-cyrillic-wght-normal-D5lnP6kL.woff2                 77.22 kB
+dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2                 85.07 kB
+dist/assets/inter-latin-ext-wght-italic-0pjOp8NU.woff2                 91.90 kB
+dist/assets/index-NlQkXiCH.css                                        110.34 kB │ gzip:  19.43 kB
+dist/assets/percentages-BXMCSKIN-CtgP6T5D.css                         145.04 kB │ gzip:  22.94 kB
+dist/assets/channel-BcnaI1J5.js                                         0.12 kB │ gzip:   0.13 kB
+dist/assets/init-Gi6I4Gst.js                                            0.15 kB │ gzip:   0.13 kB
+dist/assets/chunk-2Q5K7J3B-8UPp6WOz.js                                  0.19 kB │ gzip:   0.16 kB
+dist/assets/chunk-JWPE2WC7-YoeijUfU.js                                  0.23 kB │ gzip:   0.17 kB
+dist/assets/chunk-XXDRQBXY-ukj48OGF.js                                  0.24 kB │ gzip:   0.21 kB
+dist/assets/lightbulb-MMLP4-kN.js                                       0.28 kB │ gzip:   0.22 kB
+dist/assets/chunk-5VM5RSS4-BKE_UfVm.js                                  0.37 kB │ gzip:   0.27 kB
+dist/assets/subset-worker.chunk-C7_ELEVa.js                             0.41 kB │ gzip:   0.31 kB
+dist/assets/file-open-7c801643-684qeFg4.js                              0.45 kB │ gzip:   0.32 kB
+dist/assets/stateDiagram-v2-6OUMAXLB-CfB_7JrF.js                        0.46 kB │ gzip:   0.32 kB
+dist/assets/classDiagram-OUVF2IWQ-D-Yumrj4.js                           0.50 kB │ gzip:   0.33 kB
+dist/assets/classDiagram-v2-EOCWNBFH-D-Yumrj4.js                        0.50 kB │ gzip:   0.33 kB
+dist/assets/chunk-VR4S4FIN-Bm9ofLtb.js                                  0.51 kB │ gzip:   0.36 kB
+dist/assets/file-open-002ab408-DIuFHtCF.js                              0.54 kB │ gzip:   0.33 kB
+dist/assets/swimlanesDiagram-G3AALYLV-CBsJA1W4.js                       0.58 kB │ gzip:   0.39 kB
+dist/assets/directory-open-01563666-DWU9wJ6I.js                         0.59 kB │ gzip:   0.36 kB
+dist/assets/infoDiagram-FWYZ7A6U-nDF2PoJf.js                            0.61 kB │ gzip:   0.42 kB
+dist/assets/learner-call-probe-F-HZOFTu.js                              0.69 kB │ gzip:   0.45 kB
+dist/assets/file-save-3189631c-C1wFhQhH.js                              0.71 kB │ gzip:   0.46 kB
+dist/assets/file-save-745eba88-Bb9F9Kg7.js                              0.87 kB │ gzip:   0.50 kB
+dist/assets/sizeCapture-X5ZJPWSS-BtdI0VBJ.js                            0.97 kB │ gzip:   0.54 kB
+dist/assets/ordinal-Cboi1Yqb.js                                         1.19 kB │ gzip:   0.57 kB
+dist/assets/directory-open-4ed118d0-CunoC1EB.js                         1.55 kB │ gzip:   0.79 kB
+dist/assets/TerminalStep-D5u4EC03.js                                    1.62 kB │ gzip:   0.88 kB
+dist/assets/railroadDiagram-RFXS5EU6-1qJpwFgU.js                        1.64 kB │ gzip:   0.77 kB
+dist/assets/abnfDiagram-VRR7QNED-BEC6YiUB.js                            1.84 kB │ gzip:   0.91 kB
+dist/assets/chunk-32BRIVSS-CcoYgd_y.js                                  1.88 kB │ gzip:   0.83 kB
+dist/assets/pegDiagram-2B236MQR-CzT_AoaP.js                             1.99 kB │ gzip:   0.94 kB
+dist/assets/ebnfDiagram-CCIWWBDH-To8k8FYu.js                            2.04 kB │ gzip:   0.89 kB
+dist/assets/ExplainStep-DpAIBvAT.js                                     2.17 kB │ gzip:   0.97 kB
+dist/assets/lab-brief-DKd47fT8.js                                       2.56 kB │ gzip:   1.09 kB
+dist/assets/course-ceremony-CcELLP6C.js                                 2.66 kB │ gzip:   1.19 kB
+dist/assets/roundRect-mAH3dD0p.js                                       2.90 kB │ gzip:   1.04 kB
+dist/assets/arc-Ce4rxiWA.js                                             3.44 kB │ gzip:   1.49 kB
+dist/assets/DrawStep-BEkd9Oll.js                                        3.73 kB │ gzip:   1.71 kB
+dist/assets/diagram-NH7WQ7WH-BUN6Z0wB.js                                4.24 kB │ gzip:   1.85 kB
+dist/assets/defaultLocale-DX6XiGOO.js                                   4.69 kB │ gzip:   2.18 kB
+dist/assets/map-DxJ2ADlA.js                                             5.07 kB │ gzip:   2.07 kB
+dist/assets/lab-runner-D8Gp3jes.js                                      5.15 kB │ gzip:   2.03 kB
+dist/assets/triage-lab-runner-BTaUmKsI.js                               5.46 kB │ gzip:   1.97 kB
+dist/assets/linear-vJwNG8Jy.js                                          5.66 kB │ gzip:   2.31 kB
+dist/assets/diagram-WEI45ONY-Dgk_UXQL.js                                5.96 kB │ gzip:   2.56 kB
+dist/assets/pieDiagram-ENE6RG2P-M6Pv9b7T.js                             6.33 kB │ gzip:   2.64 kB
+dist/assets/chunk-RYQCIY6F-B4duLpFp.js                                  7.08 kB │ gzip:   2.72 kB
+dist/assets/diagram-OA4YK3LP-DPqvO3wH.js                                8.36 kB │ gzip:   3.73 kB
+dist/assets/dagre-VKFMJZFB-BwwD15te.js                                  8.60 kB │ gzip:   3.33 kB
+dist/assets/si-LK-N5RQ5JYF-C2wvGoTt.js                                  8.62 kB │ gzip:   3.37 kB
+dist/assets/az-AZ-76LH7QW2-grrdKtYv.js                                  8.65 kB │ gzip:   3.59 kB
+dist/assets/zh-HK-E62DVLB3-BwlcbauI.js                                  9.12 kB │ gzip:   4.09 kB
+dist/assets/terminal-lab-runner-CDn6lj2F.js                             9.71 kB │ gzip:   3.45 kB
+dist/assets/cynefinDiagram-TSTJHNR4-DuNb5qcQ.js                        10.13 kB │ gzip:   3.65 kB
+dist/assets/kk-KZ-P5N5QNE5-DWtncKdr.js                                 10.16 kB │ gzip:   4.20 kB
+dist/assets/kaa-6HZHGXH3-BFhGIzxM.js                                   10.21 kB │ gzip:   4.18 kB
+dist/assets/stateDiagram-2N3HPSRC-CPy0Lyfg.js                          10.45 kB │ gzip:   3.67 kB
+dist/assets/diagram-FQU43EPY-ynjbHOSz.js                               10.75 kB │ gzip:   4.15 kB
+dist/assets/lt-LT-XHIRWOB4-ChODFdAC.js                                 12.54 kB │ gzip:   5.36 kB
+dist/assets/vi-VN-M7AON7JQ-DSNKDA_K.js                                 13.90 kB │ gzip:   5.79 kB
+dist/assets/da-DK-5WZEPLOC-CYKC_vnH.js                                 14.45 kB │ gzip:   6.06 kB
+dist/assets/th-TH-HPSO5L25-CHN9S7Eg.js                                 15.56 kB │ gzip:   5.20 kB
+dist/assets/chunk-MOJQB5TN-Cy4xeOzP.js                                 15.74 kB │ gzip:   4.41 kB
+dist/assets/diagram-G47NLZAW-D8jJYNig.js                               15.99 kB │ gzip:   5.71 kB
+dist/assets/nn-NO-6E72VCQL-Bn56GwLD.js                                 15.99 kB │ gzip:   6.71 kB
+dist/assets/nl-NL-IS3SIHDZ-DbcW1wdv.js                                 16.77 kB │ gzip:   6.92 kB
+dist/assets/ishikawaDiagram-FXEZZL3T-D4iwwYB_.js                       17.50 kB │ gzip:   6.66 kB
+dist/assets/my-MM-5M5IBNSE-CM0sRdgg.js                                 17.61 kB │ gzip:   5.33 kB
+dist/assets/hu-HU-A5ZG7DT2-C1_JgjR8.js                                 18.12 kB │ gzip:   7.59 kB
+dist/assets/fi-FI-Z5N7JZ37-DjT54v3j.js                                 18.44 kB │ gzip:   7.52 kB
+dist/assets/kab-KAB-ZGHBKWFO-BZazOsjy.js                               18.82 kB │ gzip:   7.53 kB
+dist/assets/zh-TW-RAJ6MFWO-Dq1JX5N7.js                                 19.03 kB │ gzip:   8.87 kB
+dist/assets/zh-CN-LNUGB5OW-BFi9zZxF.js                                 19.09 kB │ gzip:   8.89 kB
+dist/assets/lv-LV-5QDEKY6T-BnwaHIwn.js                                 19.18 kB │ gzip:   7.78 kB
+dist/assets/gl-ES-HMX3MZ6V-DcMsSOkY.js                                 19.43 kB │ gzip:   7.74 kB
+dist/assets/tr-TR-DEFEU3FU-BuXnR3IQ.js                                 19.55 kB │ gzip:   7.97 kB
+dist/assets/cs-CZ-2BRQDIVT-De_CPSAf.js                                 19.56 kB │ gzip:   8.39 kB
+dist/assets/pt-PT-UZXXM6DQ-C--8-aSW.js                                 19.69 kB │ gzip:   7.79 kB
+dist/assets/id-ID-SAP4L64H-CsCingRK.js                                 19.72 kB │ gzip:   7.69 kB
+dist/assets/ca-ES-6MX7JW3Y-PgVMXu5-.js                                 19.83 kB │ gzip:   7.90 kB
+dist/assets/oc-FR-POXYY2M6-BbRPUrnF.js                                 19.88 kB │ gzip:   7.82 kB
+dist/assets/nb-NO-T6EIAALU-Dxig-HRr.js                                 20.14 kB │ gzip:   8.21 kB
+dist/assets/kanban-definition-HUTT4EX6-StrrFn5r.js                     20.32 kB │ gzip:   7.23 kB
+dist/assets/he-IL-6SHJWFNN-OGgkfytP.js                                 20.36 kB │ gzip:   7.57 kB
+dist/assets/bg-BG-XCXSNQG7-Cxvjv0Y4.js                                 20.80 kB │ gzip:   7.39 kB
+dist/assets/pt-BR-5N22H2LF-DHaOgSmG.js                                 21.08 kB │ gzip:   8.20 kB
+dist/assets/eu-ES-A7QVB2H4-bcNsLGgg.js                                 21.24 kB │ gzip:   8.22 kB
+dist/assets/es-ES-U4NZUMDT-YDIc__HD.js                                 21.39 kB │ gzip:   8.47 kB
+dist/assets/sl-SI-NN7IZMDC-SEInky0t.js                                 21.40 kB │ gzip:   8.56 kB
+dist/assets/sv-SE-XGPEYMSR-DXxa24kz.js                                 21.55 kB │ gzip:   8.55 kB
+dist/assets/it-IT-JPQ66NNP-BJQo1Kwr.js                                 22.10 kB │ gzip:   8.58 kB
+dist/assets/sk-SK-C5VTKIMK-D6djjNSk.js                                 22.35 kB │ gzip:   9.09 kB
+dist/assets/pl-PL-T2D74RX3-C2zAqOkw.js                                 22.52 kB │ gzip:   9.22 kB
+dist/assets/ro-RO-JPDTUUEW-ByfCO725.js                                 23.19 kB │ gzip:   8.94 kB
+dist/assets/mindmap-definition-LN4V7U3C-CswdweOU.js                    23.21 kB │ gzip:   7.84 kB
+dist/assets/sankeyDiagram-HTMAVEWB-i6Z37arW.js                         23.23 kB │ gzip:   8.58 kB
+dist/assets/de-DE-XR44H4JA-7JBrltN7.js                                 23.38 kB │ gzip:   8.98 kB
+dist/assets/ja-JP-DBVTYXUO-PmtaOeJL.js                                 23.44 kB │ gzip:   8.83 kB
+dist/assets/fr-FR-RHASNOE6-CZiR6nBX.js                                 23.48 kB │ gzip:   8.88 kB
+dist/assets/journeyDiagram-5HDEW3XC-ycQ3xrmq.js                        23.60 kB │ gzip:   8.36 kB
+dist/assets/bn-BD-2XOGV67Q-BOIKBlcb.js                                 23.64 kB │ gzip:   6.71 kB
+dist/assets/ko-KR-MTYHY66A-B6q1h8ll.js                                 23.92 kB │ gzip:   9.18 kB
+dist/assets/graph-DOmOIIwC.js                                          23.92 kB │ gzip:   8.32 kB
+dist/assets/fa-IR-HGAKTJCU-CnLJCOpw.js                                 24.28 kB │ gzip:   8.47 kB
+dist/assets/wardleyDiagram-EHGQE667-ywN4qBM9.js                        25.53 kB │ gzip:   6.81 kB
+dist/assets/ar-SA-G6X2FPQ2-BpHiBTiw.js                                 25.71 kB │ gzip:   9.14 kB
+dist/assets/erDiagram-Q63AITRT-BGszTzPq.js                             27.13 kB │ gzip:   9.43 kB
+dist/assets/pa-IN-N4M65BXN-DvfDTSC7.js                                 28.02 kB │ gzip:   7.99 kB
+dist/assets/ku-TR-6OUDTVRD-D3TgejK4.js                                 29.36 kB │ gzip:   9.28 kB
+dist/assets/gitGraphDiagram-IHSO6WYX-BXaMcp96.js                       29.45 kB │ gzip:   8.72 kB
+dist/assets/el-GR-BZB4AONW-ipE6JM1Z.js                                 29.71 kB │ gzip:   9.62 kB
+dist/assets/purify.es-BGCr_sdL.js                                      30.11 kB │ gzip:  11.51 kB
+dist/assets/ru-RU-B4JR7IUQ-BLRh55do.js                                 30.78 kB │ gzip:   9.91 kB
+dist/assets/timeline-definition-FHXFAJF6-DXTakB4A.js                   30.86 kB │ gzip:  10.17 kB
+dist/assets/layout-D-LzfAck.js                                         31.00 kB │ gzip:  11.19 kB
+dist/assets/requirementDiagram-TGXJPOKE-BzvFE4eU.js                    31.03 kB │ gzip:   9.76 kB
+dist/assets/uk-UA-QMV73CPH-BQSkQnjp.js                                 31.68 kB │ gzip:  10.14 kB
+dist/assets/hi-IN-IWLTKZ5I-Ceji7NCs.js                                 32.39 kB │ gzip:   9.17 kB
+dist/assets/pica-B1fHainN.js                                           32.59 kB │ gzip:  12.96 kB
+dist/assets/quadrantDiagram-ABIIQ3AL-BI7ST0dX.js                       34.04 kB │ gzip:  10.00 kB
+dist/assets/ta-IN-2NMHFXQM-C9HZY5Gp.js                                 35.31 kB │ gzip:   8.58 kB
+dist/assets/km-KH-HSX4SM5Z-CYRuVQje.js                                 36.69 kB │ gzip:   9.31 kB
+dist/assets/chunk-EX3LRPZG-BHVqwe4L.js                                 38.16 kB │ gzip:  12.56 kB
+dist/assets/ScenarioLabRunner-D_8jHeot.js                              38.24 kB │ gzip:  11.67 kB
+dist/assets/xychartDiagram-FW5EYKEG-CLA3wlBD.js                        41.97 kB │ gzip:  12.07 kB
+dist/assets/vennDiagram-L72KCM5P-Bd0LRtVi.js                           41.99 kB │ gzip:  15.72 kB
+dist/assets/mr-IN-CRQNXWMA-CVzDi5vr.js                                 42.29 kB │ gzip:  10.71 kB
+dist/assets/image-blob-reduce.esm-BZtWH-rr.js                          45.80 kB │ gzip:  16.70 kB
+dist/assets/chunk-V7JOEXUC-DDISIx7O.js                                 49.22 kB │ gzip:  15.76 kB
+dist/assets/index-B2PqrkMr.js                                          53.57 kB │ gzip:  17.59 kB
+dist/assets/flowDiagram-23GEKE2U-kWsryv9j.js                           60.75 kB │ gzip:  19.53 kB
+dist/assets/ganttDiagram-NO4QXBWP-BuQz2IR0.js                          69.73 kB │ gzip:  23.57 kB
+dist/assets/c4Diagram-LMCZKHZV-DKmsMQPt.js                             69.98 kB │ gzip:  19.65 kB
+dist/assets/blockDiagram-677ZJIJ3-BbCoZUhg.js                          73.77 kB │ gzip:  21.28 kB
+dist/assets/cose-bilkent-JH36ORCC-Cy8XKPmW.js                          81.73 kB │ gzip:  22.49 kB
+dist/assets/sequenceDiagram-DBY2YBRQ-C3Gv8C9Y.js                      116.99 kB │ gzip:  31.15 kB
+dist/assets/swimlanes-5IMT3BWC-CNd7FKO4.js                            118.87 kB │ gzip:  43.67 kB
+dist/assets/architectureDiagram-ZJ3FMSHR-CALU37Jl.js                  151.40 kB │ gzip:  43.01 kB
+dist/assets/katex-HP8lGamR.js                                         261.31 kB │ gzip:  77.57 kB
+dist/assets/cytoscape.esm-BDkkwuE4.js                                 443.17 kB │ gzip: 141.98 kB
+dist/assets/UnitLabSection-B-ftYuuU.js                                476.66 kB │ gzip: 159.42 kB
+dist/assets/mermaid.core-CqfjTgFj.js                                  593.27 kB │ gzip: 138.34 kB
+dist/assets/cynefin-OW5HDTMX-zvAgQSS-.js                              688.15 kB │ gzip: 154.16 kB
+dist/assets/percentages-BXMCSKIN-DRxw7pk7.js                        1,107.78 kB │ gzip: 362.15 kB
+dist/assets/index-DtQdQfpR.js                                       1,733.19 kB │ gzip: 494.02 kB
+dist/assets/subset-shared.chunk-BRh2hf_p.js                         1,820.54 kB │ gzip: 735.73 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.15s
+EXIT 0

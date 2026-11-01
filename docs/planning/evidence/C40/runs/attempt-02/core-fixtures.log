@@ -1,0 +1,958 @@
+$ cargo test --locked -p desktop-core --features test-fixtures
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running unittests src/lib.rs (target/debug/deps/desktop_core-586aa6b814782dba)
+
+running 238 tests
+test admin_inventory::tests::dump_wire_json ... ignored
+test academy::tests::origins_are_bare_https ... ok
+test academy::tests::private_fields_are_screened_except_the_orientation_drill ... ok
+test academy::tests::token_replies_require_bearer_scope_and_refresh ... ok
+test authority::offline_domain::tests::expired_or_rolled_back_leases_are_not_readable ... ok
+test admin_inventory::tests::the_inventory_never_outruns_the_change_matrices ... ok
+test authority::offline_domain::tests::iso_times_round_trip ... ok
+test authority::learner_domain::tests::identity_requires_an_academy_account_and_a_display_name ... ok
+test admin_inventory::tests::the_presentation_fixture_is_the_table ... ok
+test authority::workbench_domain::send::tests::previews_are_text_unless_binary ... ok
+test authority::workbench_domain::send::tests::display_urls_mask_secrets ... ok
+test authority::tests::observers_beyond_the_cap_are_refused_not_evicted ... ok
+test avatar::tests::base64_matches_rfc_4648_vectors ... ok
+test authority::tests::observer_queue_overflow_ends_with_resync ... ok
+test avatar::tests::a_photo_larger_than_academys_upload_cap_is_still_accepted_as_a_source ... ok
+test avatar::tests::chosen_photos_become_512_pixel_jpegs_within_academys_cap ... ok
+test avatar::tests::exif_orientation_is_applied_to_the_prepared_square ... ok
+test avatar::tests::extreme_landscape_and_portrait_photos_are_prepared_from_their_centre ... ok
+test avatar::tests::malformed_unsupported_oversize_and_huge_photos_are_refused ... ok
+test avatar::tests::only_avatars_on_academys_origin_are_read ... ok
+test avatar::tests::served_avatars_are_re_encoded_only_when_type_and_image_agree ... ok
+test avatar::tests::uploads_go_only_to_reviewed_destinations ... ok
+test changes::tests::a_filtering_profile_edited_as_read_drops_what_the_service_adds ... ok
+test changes::tests::an_application_update_takes_its_auth_code_from_the_record_never_the_draft ... ok
+test changes::tests::data_profiles_follow_v1s_structure_rules ... ok
+test changes::tests::deletes_carry_only_the_desktops_author ... ok
+test changes::tests::digests_are_canonical_and_previews_label_server_fields ... ok
+test changes::tests::key_creation_needs_its_fields_and_one_deployment_profiles_code ... ok
+test changes::tests::key_rotation_is_reduced_and_bounded ... ok
+test changes::tests::only_v1_actions_are_supported ... ok
+test changes::tests::saving_a_profile_inactive_says_the_service_will_not_list_it ... ok
+test changes::tests::topics_are_authored_stripped_and_bounded ... ok
+test changes::tests::write_responses_give_up_their_one_time_secret ... ok
+test context::tests::entered_secrets_never_format_their_value ... ok
+test context::tests::references_are_unique_per_epoch_and_bounded_on_input ... ok
+test diagnostics::tests::only_names_and_codes_are_written ... ok
+test diagnostics::tests::the_log_is_bounded_kept_fourteen_days_and_purged ... ok
+test gateway::tests::guardrails_with_credentials_show_only_that_they_have_them ... ok
+test gateway::tests::inventories_claim_completeness_only_from_the_service ... ok
+test gateway::tests::listed_workspaces_and_reads_are_bounded ... ok
+test gateway::tests::models_scope_bindings_and_inference_keys ... ok
+test gateway::tests::projections_never_carry_key_material ... ok
+test gateway::tests::routes_show_their_public_document_and_where_credentials_are ... ok
+test gateway::tests::secret_field_names_follow_v1 ... ok
+test gateway_changes::tests::a_models_readback_needs_every_requested_model_and_the_all_models_setting ... ok
+test gateway_changes::tests::a_one_time_key_is_taken_before_anything_is_shown ... ok
+test gateway_changes::tests::catalog_parameters_are_checked_and_fail_closed ... ok
+test gateway_changes::tests::counters_never_make_a_review_conflict ... ok
+test gateway_changes::tests::deletes_carry_nothing_and_targets_are_identifiers ... ok
+test gateway_changes::tests::drafts_never_carry_credentials ... ok
+test gateway_changes::tests::only_the_v1_gateway_matrix_is_accepted ... ok
+test gateway_changes::tests::provisioning_names_its_exact_scope ... ok
+test gateway_changes::tests::references_match_ids_and_at_paths_only ... ok
+test gateway_changes::tests::scoped_creates_are_placed_in_the_chosen_workspace_only ... ok
+test gateway_files::tests::files_are_read_within_their_bounds ... ok
+test gateway_files::tests::upload_names_are_ones_a_multipart_part_may_carry ... ok
+test gateway_inference::tests::outcomes_follow_what_was_sent_and_answered ... ok
+test gateway_inference::tests::output_is_bounded_on_a_character_boundary ... ok
+test gateway_inference::tests::responses_events_carry_text_identity_usage_and_end ... ok
+test gateway_inference::tests::runs_and_endpoints_are_bounded ... ok
+test gateway_local::tests::a_sent_change_drops_its_draft_and_an_unsent_one_keeps_it ... ok
+test gateway_local::tests::credential_text_is_never_kept_whole_truncated_nested_or_escaped ... ok
+test gateway_local::tests::drafts_are_checked_replaced_per_change_and_bounded ... ok
+test gateway_local::tests::files_round_trip_owner_only_and_a_bad_file_is_kept ... ok
+test gateway_observe::tests::charts_report_only_what_the_service_did ... ok
+test gateway_observe::tests::logs_belong_to_the_chosen_workspace_and_carry_no_metadata ... ok
+test gateway_observe::tests::model_groups_rank_by_requests_and_never_invent_totals ... ok
+test gateway_observe::tests::policies_name_the_chosen_workspace_and_hide_their_conditions ... ok
+test gateway_observe::tests::reads_are_bounded ... ok
+test harness::callback::tests::only_this_attempts_callback_is_taken ... ok
+test harness::engine::tests::only_the_pinned_bytes_at_a_real_path_verify ... ok
+test harness::engine::tests::the_compiled_pin_names_the_reviewed_engine ... ok
+test harness::history::tests::a_full_scope_refuses_new_records_and_ids_are_uuids ... ok
+test harness::history::tests::a_record_is_sealed_and_opens_only_in_its_own_scope_and_name ... ok
+test harness::history::tests::exports_carry_the_transcript_only ... ok
+test harness::history::tests::the_opening_is_whole_and_never_guessed_from_a_later_message ... ok
+test harness::identity::tests::a_token_is_renewed_inside_its_margin ... ok
+test harness::identity::tests::an_attempt_carries_pkce_state_nonce_and_the_loopback ... ok
+test harness::identity::tests::configurations_are_https_and_printable ... ok
+test harness::mcp::tests::a_scope_is_bootstrapped_with_tokens_or_the_signed_out_placeholder ... ok
+test harness::mcp::tests::namespaces_are_engine_names_and_independent_of_order ... ok
+test harness::mcp::tests::the_catalog_keeps_only_the_workspaces_usable_servers ... ok
+test harness::mcp::tests::urls_are_https_canonical_and_never_carry_credentials ... ok
+test harness::mcp_auth::tests::an_attempt_carries_pkce_state_resource_and_only_the_tool_scopes ... ok
+test harness::mcp_auth::tests::the_challenge_names_its_metadata ... ok
+test harness::mcp_auth::tests::the_metadata_path_is_inserted_before_the_issuers ... ok
+test harness::mcp_auth::tests::tokens_must_be_bearer_and_fit_the_engine ... ok
+test harness::protocol::tests::bootstrap_and_receipt_name_the_same_binding ... ok
+test harness::protocol::tests::credentials_and_frames_are_bounded ... ok
+test harness::protocol::tests::incoming_frames_have_one_shape_each ... ok
+test harness::protocol::tests::mcp_servers_are_bootstrapped_in_scope_order_and_echoed_exactly ... ok
+test harness::session::tests::a_full_queue_or_too_many_pending_requests_is_a_bound_never_a_wait ... ok
+test harness::session::tests::a_process_that_cannot_be_reaped_is_a_cleanup_failure_never_success ... ok
+test harness::session::tests::a_replaced_entry_keeps_the_transcript_within_its_bound ... ok
+test harness::session::tests::a_stopped_turns_tool_calls_are_cancelled_refused_and_never_answered_late ... ok
+test harness::session::tests::a_tool_call_runs_once_and_only_for_the_turn_being_answered ... ok
+test harness::session::tests::approvals_are_asked_only_with_a_folder_and_file_changes_only_with_changes_allowed ... ok
+test harness::session::tests::only_an_mcp_approval_naming_this_turns_running_call_is_asked ... ok
+test harness::session::tests::runtime_homes_are_private_ephemeral_and_only_ours_are_removed ... ok
+test harness::session::tests::the_engine_environment_names_no_credential_and_follows_the_transport_policy ... ok
+test harness::session::tests::the_opening_message_outlives_the_entries_the_bounds_drop ... ok
+test harness::tests::a_restored_transcript_continues_past_every_message_it_shows ... ok
+test harness::tools::tests::calls_are_typed_bounded_and_never_credential_bearing ... ok
+test harness::tools::tests::proposals_admit_the_rotation_hand_off_and_workspace_guardrails_only ... ok
+test avatar::tests::decoded_pixels_and_their_resampling_together_stay_within_the_budget ... ok
+test harness::tools::tests::the_catalog_fits_the_engine_and_forbids_unknown_fields ... ok
+test import::tests::airs_cli_registry_imports_names_and_tsg_ids_only ... ok
+test import::tests::profile_documents_keep_whitelisted_fields_and_flag_invalid_entries ... ok
+test import::tests::unsupported_oversized_and_empty_sources_are_refused ... ok
+test import_v1::parse::tests::academy_records_open_only_with_their_key_owner_and_name ... ok
+test import_v1::parse::tests::appearance_maps_only_light_dark_or_system ... ok
+test import_v1::parse::tests::only_the_scan_endpoint_is_taken_from_credentials ... ok
+test import_v1::parse::tests::tenants_are_strict_and_drop_the_sandbox ... ok
+test import_v1::receipt::tests::receipts_round_trip_and_damage_is_reported ... ok
+test import_v1::source::tests::listing_is_bounded_and_typed ... ok
+test import_v1::source::tests::reads_are_bounded_and_never_follow_symlinks ... ok
+test import_v1::source::tests::the_instance_lock_is_shared_never_created ... ok
+test learner::tests::the_allowlist_is_sorted_unique_and_learner_only ... ok
+test learner::tests::the_public_set_is_sorted_and_contains_only_queries ... ok
+test learner::tests::the_shared_procedure_fixture_matches_the_pinned_sets ... ok
+test library::tests::a_result_is_recorded_only_for_a_held_runtime_case_and_only_within_256_kib ... ok
+test library::tests::a_stored_result_on_a_specification_or_an_oversized_pack_is_dropped_on_load ... ok
+test library::tests::catalog_urls_follow_v1s_rule_for_the_configured_origin ... ok
+test library::tests::drafts_follow_v1s_product_rules_and_limits ... ok
+test library::tests::exports_and_imports_keep_v1s_file_and_refuse_foreign_or_malformed_files ... ok
+test library::tests::the_bundled_catalog_has_v1s_eleven_examples_across_five_products ... ok
+test library::tests::the_library_is_bounded_and_imports_merge_like_v1 ... ok
+test management::tests::identities_match_strings_and_numbers_only ... ok
+test management::tests::local_and_spring_pages_slice_and_report_totals ... ok
+test management::tests::offset_pages_claim_completeness_only_from_the_service ... ok
+test management::tests::requests_are_bounded ... ok
+test management::tests::secret_fields_never_leave_and_unknown_values_stay ... ok
+test observation::tests::activity_needs_known_totals ... ok
+test observation::tests::instants_parse_offsets_and_reject_other_text ... ok
+test observation::tests::key_expiry_is_inclusive_at_thirty_days_and_skips_inactive_keys ... ok
+test observation::tests::summaries_never_fabricate_benign_or_detector_counts ... ok
+test observation::tests::the_chart_contract_follows_v1 ... ok
+test offline::tests::a_commit_whose_directory_sync_failed_is_not_durable_until_one_completes ... ok
+test offline::tests::a_record_moved_to_another_name_does_not_authenticate ... ok
+test harness::tools::tests::results_are_scrubbed_redacted_and_bounded ... ok
+test offline::tests::a_wrong_key_opens_nothing_and_loses_nothing ... ok
+test offline::tests::an_interrupted_write_leaves_the_previous_version ... ok
+test offline::tests::an_update_sees_the_current_record_and_can_leave_it ... ok
+test offline::tests::another_account_or_key_cannot_read_it_and_unreadable_records_are_kept ... ok
+test avatar::tests::decoded_pixels_beyond_the_memory_budget_are_refused_before_decoding ... ok
+test offline::tests::one_instance_holds_an_account_and_keys_must_be_32_bytes ... ok
+test offline::tests::records_are_bounded_and_listed_by_kind ... ok
+test offline::tests::records_are_sealed_and_never_on_disk_in_plaintext ... ok
+test offline::tests::records_kept_aside_are_bounded_and_count_toward_the_budget ... ok
+test red_team::tests::a_target_name_never_reaches_the_targets_scope ... ok
+test red_team::tests::attack_coverage_counts_rows_received ... ok
+test red_team::tests::attack_outcomes_are_read_not_inferred ... ok
+test red_team::tests::known_labels_are_shown_in_words_and_any_other_is_other ... ok
+test red_team::tests::list_pages_follow_v1s_shape_rules ... ok
+test red_team::tests::lists_are_complete_only_when_the_service_says_so ... ok
+test red_team::tests::missing_totals_are_zero_only_when_every_count_is_zero ... ok
+test red_team::tests::rated_targets_are_validated_before_a_source_counts_as_quiet ... ok
+test red_team::tests::rows_keep_no_names_uris_or_findings ... ok
+test red_team::tests::skill_statistics_are_zero_only_when_quiet ... ok
+test red_team::tests::statistics_follow_v1s_tallies_and_bars ... ok
+test red_team::tests::statistics_need_a_recognised_error_free_reply ... ok
+test runtime::tests::admission_is_bounded_by_count_and_bytes_without_dropping_work ... ok
+test runtime::tests::cancelling_queued_work_is_not_sent_and_claimed_work_is_signalled ... ok
+test runtime::tests::retirement_settles_queued_not_sent_and_cancels_claimed ... ok
+test runtime::tests::settlement_is_single_use_and_queued_deadlines_are_not_sent ... ok
+test scanning::tests::drafts_need_content_a_valid_profile_and_bounded_text ... ok
+test scanning::tests::drafts_never_format_their_text ... ok
+test scanning::tests::verdicts_follow_v1_and_never_default_to_allow ... ok
+test sessions::tests::csv_is_rfc4180_with_v1s_formula_guard ... ok
+test sessions::tests::queries_are_classified_like_v1 ... ok
+test sessions::tests::reports_are_bounded ... ok
+test sessions::tests::reports_upsert_remove_and_undo_without_overwriting_newer ... ok
+test sessions::tests::the_cache_is_bounded_sealed_and_exports_metadata_only ... ok
+test store::tests::a_planted_symlink_is_not_written_through ... ok
+test store::tests::a_second_instance_cannot_take_the_lease ... ok
+test store::tests::a_setup_draft_and_its_credential_round_trip_through_the_file_store ... ok
+test store::tests::failures_before_the_rename_change_nothing_and_after_it_are_unconfirmed ... ok
+test store::tests::saves_atomically_with_owner_only_modes_and_reloads ... ok
+test store::tests::unreadable_or_inconsistent_documents_are_corrupt_and_untouched ... ok
+test tenants::tests::drafts_are_trimmed_and_bounded ... ok
+test tenants::tests::origins_are_https_hosts_without_extra_parts ... ok
+test tenants::tests::tenant_ids_have_the_issued_shape_only ... ok
+test transport::tests::a_recorded_call_stays_within_the_contracts_bounds ... ok
+test transport::tests::chunks_are_bounded_without_losing_bytes ... ok
+test transport::tests::invalid_policies_are_refused ... ok
+test vault::tests::record_ids_have_the_issued_shape_only ... ok
+test vault::tests::session_records_are_isolated_and_removable ... ok
+test workbench::admission::tests::generated_headers_overrides_and_extra_credentials_are_refused_at_registered_origins ... ok
+test workbench::admission::tests::host_overrides_and_url_user_info_are_refused ... ok
+test workbench::admission::tests::known_reads_pass_known_mutations_need_review_and_others_are_denied ... ok
+test workbench::admission::tests::ordinary_requests_keep_their_class_and_the_network_mode ... ok
+test workbench::admission::tests::registered_origins_are_classified_whatever_the_credential ... ok
+test workbench::admission::tests::tenant_credentials_go_only_to_their_destinations ... ok
+test workbench::adoption::tests::reads_recent_collections_and_private_environments_only ... ok
+test workbench::cookies::tests::cookies_are_host_only_secure_and_path_scoped ... ok
+test workbench::cookies::tests::the_jar_is_bounded ... ok
+test workbench::curl::tests::ansi_quotes_and_continuations_lex_literally ... ok
+test workbench::curl::tests::converts_a_literal_command_and_removes_credentials ... ok
+test workbench::curl::tests::refuses_what_it_cannot_import_faithfully ... ok
+test workbench::document::tests::a_body_not_yet_written_is_owned_by_its_case_folded_name ... ok
+test workbench::document::tests::a_json_body_is_its_requests_and_a_schema_is_owned_by_its_role ... ok
+test workbench::document::tests::checks_name_the_field_that_cannot_be_written ... ok
+test workbench::document::tests::edits_keep_comments_extensions_and_line_endings ... ok
+test workbench::document::tests::rows_round_trip_and_report_their_line ... ok
+test workbench::document::tests::settings_hold_references_never_credentials ... ok
+test workbench::environments::tests::environment_texts_hold_variables_only ... ok
+test workbench::environments::tests::layers_apply_in_order_and_secrets_stay_masked ... ok
+test workbench::execute::tests::a_pinned_file_that_changed_never_sends_its_last_piece ... ok
+test workbench::execute::tests::base64_matches_rfc4648 ... ok
+test workbench::execute::tests::secrets_follow_v1_rules ... ok
+test workbench::git::tests::porcelain_v2_records_are_parsed ... ok
+test workbench::git::tests::repository_hooks_and_fsmonitor_never_run ... ok
+test workbench::history::tests::bodies_are_sealed_frames_that_cannot_be_cut_or_moved ... ok
+test workbench::history::tests::interrupted_runs_are_marked_and_never_resent ... ok
+test workbench::history::tests::retention_keeps_running_and_viewed_runs ... ok
+test workbench::insomnia::tests::converts_supported_requests_and_refuses_scripts ... ok
+test workbench::insomnia::tests::refuses_other_formats_and_oversized_structures ... ok
+test workbench::insomnia::tests::templates_other_than_simple_variables_are_refused ... ok
+test workbench::profile::tests::recent_collections_are_bounded_and_newest_first ... ok
+test workbench::profile::tests::sealed_files_open_only_under_their_key_and_name ... ok
+test workbench::profile::tests::workbench_secrets_never_share_a_tenant_record ... ok
+test offline::tests::concurrent_writers_commit_whole_records_within_the_budget ... ok
+test workbench::project::tests::an_existing_empty_folder_becomes_a_collection_in_place ... ok
+test workbench::project::tests::anything_else_already_there_is_refused_and_left_alone ... ok
+test workbench::project::tests::collections_are_created_outside_repositories_too ... ok
+test workbench::project::tests::discovery_reports_duplicates_links_and_invalid_files ... ok
+test workbench::project::tests::paths_stay_inside_and_visible ... ok
+test workbench::project::tests::writes_refuse_links_git_and_nested_collections ... ok
+test workbench::render::tests::auth_kinds_follow_v1 ... ok
+test workbench::render::tests::bodies_by_kind ... ok
+test workbench::render::tests::secrets_stay_slots_and_names_never_hold_them ... ok
+test workbench::render::tests::unresolved_unclosed_and_nested_names_are_refused ... ok
+test workbench::schema::tests::schemas_save_only_over_the_revision_they_were_read_at ... ok
+test avatar::tests::a_24_megapixel_rotated_photo_within_the_budget_is_prepared ... ok
+test workbench::scm::tests::refresh_keeps_edits_and_respects_deletions ... ok
+test workbench::scm::tests::the_catalog_is_v1s_and_every_entry_is_a_valid_request ... ok
+test offline::tests::an_account_is_bounded_in_bytes_and_records ... ok
+test workbench::project::tests::a_directory_past_the_entry_budget_makes_the_catalog_incomplete ... ok
+
+test result: ok. 237 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 22.68s
+
+     Running unittests src/bin/harness_fixture_sidecar.rs (target/debug/deps/harness_fixture_sidecar-83972949a3b7d620)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/academy_identity/main.rs (target/debug/deps/academy_identity-6b9de5d26444b71b)
+
+running 22 tests
+test a_failed_vault_never_signs_in_and_revokes_the_grant ... ok
+test a_crash_between_write_and_commit_leaves_no_untracked_credential ... ok
+test a_failed_cleanup_is_finished_after_restart ... ok
+test a_refused_token_is_renewed_once_and_only_queries_are_asked_again ... ok
+test a_restart_resumes_the_learner_from_the_keychain_and_a_missing_record_needs_sign_in ... ok
+test a_delayed_revocation_never_removes_a_newer_sign_in ... ok
+test a_result_is_observed_once ... ok
+test an_unconfirmed_rotation_keeps_the_previous_record_until_confirmed ... ok
+test device_sign_in_is_a_public_client_flow_bound_to_the_academy_account ... ok
+test a_superseded_flow_never_writes_or_removes_credentials ... ok
+test error_envelopes_with_private_fields_never_reach_the_renderer ... ok
+test declined_expired_and_misconfigured_sign_ins_fail_explicitly ... ok
+test errors_and_private_fields_are_projected_without_leaking_truth ... ok
+test cancelling_a_sign_in_revokes_a_late_grant_and_the_browser_opens_only_the_issued_page ... ok
+test learner_calls_pass_only_allowlisted_procedures_in_wire_form ... ok
+test literal_superjson_envelopes_pass_through_unchanged ... ok
+test reset_signs_the_learner_out_and_purges_its_namespace ... ok
+test signing_out_after_a_restart_revokes_the_saved_refresh_token ... ok
+test reset_waits_for_a_held_learner_write ... ok
+test signing_out_during_a_renewal_revokes_the_new_token_and_discards_the_reply ... ok
+test tenant_switches_keep_the_learner_and_account_changes_reject_old_replies ... ok
+test slow_down_widens_the_poll_interval_by_five_seconds ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.16s
+
+     Running tests/academy_learner/main.rs (target/debug/deps/academy_learner-0d60162c565b2bf0)
+
+running 7 tests
+test a_guest_is_refused_everything_outside_the_public_queries_before_sending ... ok
+test a_refused_guest_call_is_never_renewed_or_resent ... ok
+test a_guest_reads_the_public_catalog_without_any_credential ... ok
+test a_reply_carrying_assessment_truth_never_reaches_the_renderer ... ok
+test a_knowledge_check_passes_literal_inputs_and_grades_through_unchanged ... ok
+test a_signed_in_learner_sends_the_credential_only_on_the_account_allowlist ... ok
+test each_account_change_issues_a_new_generation_and_retires_the_old_one ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.14s
+
+     Running tests/academy_offline/main.rs (target/debug/deps/academy_offline-6acc876e29402682)
+
+running 32 tests
+test a_course_academy_does_not_give_the_account_is_not_downloaded ... ok
+test a_confirmation_whose_commit_is_not_known_durable_leaves_the_local_copy ... ok
+test a_confirmed_draft_opens_offline_without_the_attempt_being_read_again ... ok
+test a_course_past_academys_bundle_cap_is_assembled_unit_by_unit ... ok
+test a_denied_keychain_keeps_offline_work_closed_and_writes_nothing ... ok
+test a_downloaded_course_is_kept_sealed_for_its_account_under_academys_lease ... ok
+test a_draft_asked_for_while_kept_work_is_opening_waits_for_it ... ok
+test a_relaunch_while_academy_is_unreachable_still_opens_downloaded_work ... ok
+test a_unit_bundle_for_another_account_or_course_is_refused ... ok
+test a_download_answered_after_a_newer_withdrawal_does_not_bring_the_course_back ... ok
+test a_withdrawal_applies_at_once_while_other_checks_are_pending ... ok
+test an_attempt_academy_no_longer_returns_is_kept_locked ... ok
+test a_wrong_offline_key_opens_nothing_and_loses_nothing ... ok
+test an_attempt_read_during_opening_keeps_academys_lock_over_kept_stamps_ahead_of_the_clock ... ok
+test an_unreadable_record_is_kept_aside_and_the_rest_still_opens ... ok
+test an_attempt_read_that_predates_a_confirmed_save_keeps_the_newer_draft ... ok
+test an_expired_lease_is_not_read_offline ... ok
+test assembling_stops_once_a_course_cannot_fit_one_record ... ok
+test cached_attempts_open_offline_and_a_submission_is_never_replayed ... ok
+test a_confirmation_the_kept_attempt_cannot_hold_leaves_the_local_copy ... ok
+test cached_attempts_lock_when_their_lease_ends_access_is_revoked_or_the_revision_is_withdrawn ... ok
+test lab_work_kept_on_this_mac_survives_restart_and_is_never_sent_by_itself ... ok
+test confirmed_work_marks_earlier_verdicts_stale_and_a_resolved_conflict_stays_resolved ... ok
+test only_the_signed_in_current_learner_keeps_work_offline ... ok
+test offline_reads_come_from_the_download_only_while_academy_is_unreachable ... ok
+test reconnecting_withdraws_courses_academy_no_longer_gives_and_marks_new_revisions ... ok
+test reset_removes_offline_work_and_its_keys ... ok
+test sign_out_locks_offline_work_and_another_account_cannot_see_it ... ok
+test revalidation_never_overwrites_a_newer_download_or_brings_back_a_removed_one ... ok
+test reset_waits_for_admitted_offline_work_and_nothing_survives_it ... ok
+test stamps_continue_after_kept_ones_when_the_clock_is_behind ... ok
+test revalidation_results_never_undo_newer_state ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.60s
+
+     Running tests/academy_program/main.rs (target/debug/deps/academy_program-96cf42a7ee67b8cd)
+
+running 16 tests
+test a_print_sheet_that_cannot_open_says_so_and_changes_nothing ... ok
+test a_failed_submission_reports_an_unknown_outcome_once_and_reconciles_by_query ... ok
+test a_chosen_photo_is_prepared_stored_at_the_presigned_destination_and_confirmed ... ok
+test an_avatar_never_goes_to_an_unreviewed_destination_or_past_a_refused_step ... ok
+test a_late_unauthorized_reply_for_an_earlier_generation_never_retires_the_newer_account ... ok
+test a_slow_optional_briefing_never_blocks_a_timed_shift_answer ... ok
+test an_upload_cancelled_after_its_photo_was_sent_is_not_reported_as_unchanged ... ok
+test assessor_grading_and_award_procedures_are_refused_before_any_request ... ok
+test desktop_lab_idempotency_keys_and_versions_reach_academy_unchanged ... ok
+test an_avatar_upload_sends_nothing_when_cancelled_or_the_photo_does_not_decode ... ok
+test an_upload_that_may_have_replaced_the_photo_is_reported_as_possibly_applied ... ok
+test print_opens_the_native_sheet_once_and_changes_no_state ... ok
+test exam_requests_pass_literally_and_academy_timing_comes_back_untouched ... ok
+test only_a_signed_in_current_learner_may_upload_an_avatar ... ok
+test extreme_landscape_and_portrait_photos_are_prepared_from_their_centre_and_uploaded ... ok
+test the_avatar_is_read_back_from_academys_origin_and_re_encoded_only ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.36s
+
+     Running tests/context_credentials/main.rs (target/debug/deps/context_credentials-cfb9a3f9dd93985f)
+
+running 44 tests
+test a_context_change_discards_a_pending_endpoint_review ... ok
+test a_failed_save_refuses_and_changes_nothing ... ok
+test a_corrupt_store_is_reported_untouched_until_reset ... ok
+test a_confirming_retry_lets_the_write_proceed ... ok
+test a_keychain_scan_key_is_stored_indexed_and_never_observed ... ok
+test a_failed_purge_retires_keys_durably_and_cleanup_finishes_after_restart ... ok
+test a_first_key_is_written_only_after_a_confirmed_write_ahead ... ok
+test a_partial_purge_and_a_failed_document_removal_report_their_stage ... ok
+test a_transport_policy_change_retires_contexts ... ok
+test a_replacement_is_written_only_after_a_confirmed_write_ahead ... ok
+test an_unconfirmed_commit_after_a_landed_write_stays_owned_by_the_ledger ... ok
+test a_renderer_reload_keeps_unsettled_work_observable ... ok
+test an_unavailable_store_refuses_reset_and_touches_nothing ... ok
+test delivery_gaps_changed_duplicates_eviction_and_rotation_never_replay ... ok
+test cancelled_or_unsupported_import_leaves_tenants_unchanged ... ok
+test invalid_profiles_are_refused_and_nothing_is_stored ... ok
+test deleting_a_tenant_cleans_its_credential_and_context ... ok
+test persisted_state_rejects_dangling_references ... ok
+test endpoint_changes_are_reviewed_and_never_carry_the_old_key ... ok
+test profile_import_previews_whitelisted_metadata_and_creates_keyless_tenants ... ok
+test a_switch_during_a_write_leaves_the_stale_record_unattached_and_cleaned ... ok
+test reset_purges_the_namespace_and_removes_the_document ... ok
+test saves_are_refused_only_when_nothing_was_written ... ok
+test locked_and_denied_stores_fail_explicitly_without_fallback ... ok
+test restart_restores_profiles_credentials_and_appearance_and_finishes_cleanup ... ok
+test tenants_are_created_selected_and_contexts_never_revive ... ok
+test session_only_keys_are_never_persisted_and_end_with_the_app ... ok
+test the_last_sequence_is_usable_and_exhaustion_requires_rotation ... ok
+test transport::a_retired_generation_sends_nothing ... ok
+test transport::a_cross_origin_redirect_never_forwards_the_credential ... ok
+test transport::bindings_require_an_exact_https_origin_and_a_usable_key ... ok
+test sign_out_and_replacement_retire_the_old_record ... ok
+test transport::proxy_modes_follow_the_policy_not_ambient_settings ... ok
+test transport::redirects_are_returned_to_the_sdk_not_followed ... ok
+test transport::response_headers_are_bounded ... ok
+test transport::the_exact_request_reaches_the_server_with_scan_headers_only ... ok
+test transport::dropping_a_request_releases_its_connection ... ok
+test transport::transport_failures_are_unknown_and_never_retried ... ok
+test transport::transport_errors_are_sanitized ... ok
+test unusable_keys_and_stale_contexts_store_nothing ... ok
+test transport::untrusted_wrong_host_and_root_less_policies_fail_before_any_request ... ok
+test reset_waits_for_in_flight_writes_and_retires_authority_at_admission ... ok
+test work_is_bounded_and_retired_with_its_context_without_replay ... ok
+test transport::gzip_is_decoded_and_the_decoded_size_is_bounded ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+
+     Running tests/dlp_subset/main.rs (target/debug/deps/dlp_subset-33c5b3d9a63270de)
+
+running 10 tests
+test a_staged_files_content_never_reaches_a_projection_and_the_pending_hold_keeps_it ... ok
+test a_file_chosen_in_the_native_sheet_is_staged_validated_and_uploaded ... ok
+test a_typed_dictionary_is_uploaded_as_literal_multipart ... ok
+test data_profiles_follow_v1s_structure_rules_and_have_no_delete ... ok
+test dictionary_files_and_names_are_bounded_before_any_request ... ok
+test data_patterns_are_created_replaced_and_deleted_exactly ... ok
+test filtering_profiles_are_replaced_only ... ok
+test denial_conflict_and_lost_settlement_keep_faithful_outcomes ... ok
+test a_sheet_answering_during_a_confirmation_ends_it_and_late_or_retired_choices_stage_nothing ... ok
+test every_supported_dlp_mutation_reports_denial_unknown_and_conflict_truthfully ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+
+     Running tests/gateway_changes/main.rs (target/debug/deps/gateway_changes-04134dd1696245a5)
+
+running 22 tests
+test a_change_made_since_review_is_a_conflict_but_traffic_counters_are_not ... ok
+test a_failed_cleanup_is_reported_and_never_called_undone ... ok
+test a_models_readback_checks_the_all_models_setting ... ok
+test a_review_is_bound_to_its_workspace_and_a_draft_cannot_choose_another ... ok
+test a_reviewed_change_inside_the_chosen_workspace_applies_once_after_confirmation ... ok
+test a_reused_scope_never_attributes_another_workspace_to_the_attempt ... ok
+test cancelling_an_apply_never_claims_a_rollback ... ok
+test an_uncertain_or_failed_step_keeps_its_outcome_and_nothing_is_retried_or_undone ... ok
+test a_credential_replacement_ends_the_review_and_nothing_is_replayed_after_restart ... ok
+test credential_text_never_reaches_this_mac_even_while_it_is_being_typed ... ok
+test credentials_never_travel_in_a_draft_and_stored_ones_are_protected ... ok
+test deletes_are_blocked_while_anything_references_the_item ... ok
+test a_write_in_flight_when_the_context_changes_is_kept_under_its_own_tenant ... ok
+test guardrail_checks_are_validated_against_the_catalog ... ok
+test drafts_and_uncertain_outcomes_survive_an_offline_restart_and_nothing_is_replayed ... ok
+test one_time_keys_are_held_in_memory_and_shown_once ... ok
+test provisioning_reports_every_step_and_reconciles_what_exists ... ok
+test readbacks_say_when_the_service_did_not_take_the_reviewed_change ... ok
+test stopping_during_the_readback_keeps_the_answered_write_and_its_key ... ok
+test every_advertised_operation_sends_its_literal_request_once_and_settles_by_outcome ... ok
+test local_work_held_across_a_reset_never_reappears ... ok
+test choosing_another_workspace_before_the_write_sends_nothing ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.46s
+
+     Running tests/gateway_inference/main.rs (target/debug/deps/gateway_inference-0132709f4d6edc75)
+
+running 18 tests
+test a_cached_gateway_answer_without_finish_reason_is_an_invalid_response ... ok
+test a_live_openai_stream_through_the_gateway_completes ... ok
+test a_run_streams_its_output_once_with_its_route_and_trace_and_is_never_retried ... ok
+test another_key_or_workspace_withdraws_the_files_and_their_attachments ... ok
+test a_responses_run_streams_once_and_reports_how_it_ended ... ok
+test a_gateway_hold_ends_only_from_a_known_day_of_its_own_workspace ... ok
+test a_replaced_or_removed_key_withdraws_its_run_from_every_snapshot_at_once ... ok
+test gateway_files_are_read_uploaded_attached_and_deleted_once_with_the_workspace_key ... ok
+test output_is_bounded_and_a_malformed_chunk_ends_the_run ... ok
+test stopping_ends_the_stream_and_never_claims_nothing_was_charged ... ok
+test file_lists_keep_their_bound_deletes_their_identity_and_times_their_range ... ok
+test the_inference_key_is_bound_to_its_workspace_and_endpoint_and_never_leaves_the_core ... ok
+test the_overview_reports_the_chosen_workspaces_gateway_day_with_its_source_state ... ok
+test uncertain_file_changes_are_kept_with_their_trace_and_never_resent ... ok
+test usage_logs_and_limits_read_only_the_chosen_workspace_and_keep_each_sources_failure ... ok
+test playground_drafts_and_uncertain_runs_survive_an_offline_restart_and_nothing_is_replayed ... ok
+test uncertain_openings_keep_their_trace_across_a_restart_and_are_never_replayed ... ok
+test another_workspace_tenant_or_key_stops_the_run_and_its_late_output_is_dropped ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.90s
+
+     Running tests/gateway_reads/main.rs (target/debug/deps/gateway_reads-aa2a7911c14f0a30)
+
+running 12 tests
+test choosing_another_workspace_retires_the_reads_of_the_one_before ... ok
+test a_context_change_clears_the_choice_which_returns_only_when_listed_again ... ok
+test a_pending_review_and_the_tenant_context_survive_gateway_use ... ok
+test details_are_shown_only_when_they_belong_to_the_chosen_workspace ... ok
+test failures_are_sanitized_and_name_no_server_text ... ok
+test every_advertised_read_sends_its_exact_get_with_the_tenant_header ... ok
+test partial_and_malformed_inventories_are_never_complete_or_empty ... ok
+test key_material_and_credential_bearing_configuration_stay_in_the_core ... ok
+test reads_are_admitted_only_for_listed_workspaces_and_their_current_reference ... ok
+test prerequisites_report_each_plane_and_the_scope_binding_as_read ... ok
+test the_choice_is_remembered_across_restarts_and_forgotten_with_the_tenant ... ok
+test a_result_settled_before_another_choice_is_withdrawn_when_observed ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s
+
+     Running tests/harness_identity_history/main.rs (target/debug/deps/harness_identity_history-a9c1a5be4117cf8a)
+
+running 30 tests
+test a_full_workspace_refuses_new_history_and_never_evicts ... ok
+test a_history_key_is_made_only_once_its_scope_is_durably_noted ... ok
+test a_finished_turn_stopped_before_its_export_is_saved_with_it ... ok
+test a_message_waiting_for_an_export_that_comes_at_a_stop_is_kept_unsent ... ok
+test a_finished_turn_whose_export_is_pending_is_kept_when_stopped ... ok
+test a_due_gateway_and_mcp_renewal_restart_once_after_one_confirmation ... ok
+test a_refused_renewal_gives_the_message_back_and_a_new_sign_in_continues ... ok
+test a_renewal_never_restores_an_export_older_than_the_conversation ... ok
+test a_renewal_restarts_the_engine_and_restores_the_conversation ... ok
+test a_renewal_and_a_sign_in_again_never_overwrite_each_other ... ok
+test a_renewal_restarts_with_changes_only_once_the_operator_allows_them_again ... ok
+test a_saved_conversation_continues_only_with_its_binding ... ok
+test a_renewal_waiting_for_an_export_at_a_stop_never_restarts_or_sends ... ok
+test a_stop_during_a_held_save_sends_nothing_waiting_or_queued ... ok
+test a_turn_cut_short_after_a_refused_export_is_kept_without_a_restore_point ... ok
+test a_stop_while_an_export_fails_keeps_the_turn_and_sends_nothing_waiting ... ok
+test another_account_or_signing_out_ends_the_grant_and_its_conversation ... ok
+test company_sign_in_verifies_both_tokens_and_keeps_only_the_refresh_token ... ok
+test history_is_sealed_after_every_turn_and_read_exported_and_deleted ... ok
+test a_renewal_under_way_when_the_mac_sleeps_never_restarts_or_loses_the_message ... ok
+test offline_history_is_read_and_exported_and_nothing_is_replayed_on_reconnect ... ok
+test history_saves_racing_tenant_removal_or_reset_never_outlive_them ... ok
+test removing_the_tenant_removes_its_history_its_key_and_its_sign_in ... ok
+test after_sleep_an_expired_sign_in_is_renewed_before_anything_is_sent ... ok
+test signing_out_during_a_sign_in_again_keeps_nothing ... ok
+test tokens_or_providers_that_do_not_verify_are_refused_and_nothing_is_kept ... ok
+test without_its_key_history_is_never_written_in_plaintext_and_reads_unreadable ... ok
+test sign_in_writes_are_owned_until_they_settle_and_need_a_confirmed_ledger ... ok
+test a_renewal_whose_engine_cannot_start_keeps_and_saves_its_message ... ok
+test refused_or_unanswered_exports_and_refused_restores_are_named ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 65.23s
+
+     Running tests/harness_process/main.rs (target/debug/deps/harness_process-7bc63871b74d4562)
+
+running 13 tests
+test a_changed_or_missing_engine_is_never_started_and_no_key_is_read ... ok
+test a_conversation_streams_through_the_pinned_engine_with_only_the_workspace_key ... ok
+test approvals_are_declined_and_an_answer_past_its_bound_is_truncated ... ok
+test completed_answers_and_token_counts_are_held_to_their_bounds ... ok
+test a_changed_key_workspace_or_context_retires_the_conversation_at_once ... ok
+test only_one_conversation_and_only_bounded_prompts_are_admitted ... ok
+test an_engine_that_ignores_its_input_closing_is_killed_with_its_descendants ... ok
+test a_failed_answer_is_named_and_only_server_failures_are_retried_by_the_engine ... ok
+test sleep_and_quit_end_the_conversation_and_reap_the_engine ... ok
+test the_engine_is_given_nothing_but_its_bootstrap ... ok
+test stopping_an_answer_interrupts_only_that_turn ... ok
+test the_sealed_engine_ships_without_node_bun_or_a_managed_cli ... ok
+test malformed_oversized_duplicate_or_foreign_frames_fail_the_conversation_and_reap_it ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.17s
+
+     Running tests/harness_tools/main.rs (target/debug/deps/harness_tools-5a497df2126f0180)
+
+running 16 tests
+test a_pending_decision_refuses_a_tenant_switch_until_it_is_resolved ... ok
+test a_proposal_is_staged_never_applied_and_never_replaces_a_review ... ok
+test a_discard_whose_removal_fails_is_reported_until_the_record_is_removed ... ok
+test a_typed_read_answers_from_the_desktop_without_any_secret ... ok
+test a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered ... ok
+test a_saved_conversation_needs_its_project_binding_and_replays_no_authority ... ok
+test a_save_admitted_before_a_discard_never_writes_the_discarded_transcript ... ok
+test completing_a_tenant_setup_is_the_guarded_switch_path ... ok
+test discard_and_switch_drops_the_pending_conversation ... ok
+test commands_need_a_project_and_the_operators_approval ... ok
+test forged_unknown_or_credential_bearing_calls_run_nothing ... ok
+test discard_removes_the_saved_transcript_and_archive_keeps_it ... ok
+test the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused ... ok
+test the_sandbox_refuses_children_pipelines_and_other_paths ... ok
+test nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_reconnect ... ok
+test tool_work_still_queued_when_its_turn_is_stopped_is_never_sent ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.20s
+
+     Running tests/imports_rollback/main.rs (target/debug/deps/imports_rollback-4ea7adb281e68aab)
+
+running 23 tests
+test a_running_v1_or_a_locked_keychain_blocks_without_fallback ... ok
+test a_declined_rollback_changes_nothing ... ok
+test academy_drafts_go_only_to_the_same_signed_in_account ... ok
+test a_source_changed_after_review_is_not_imported ... ok
+test conflicts_are_reported_and_never_overwritten ... ok
+test api_client_collections_join_the_recent_list_and_leave_it_on_rollback ... ok
+test damaged_unsupported_linked_and_oversized_sources_block_only_their_category ... ok
+test an_import_brings_work_without_credentials_and_a_rollback_removes_only_it ... ok
+test held::a_paused_import_grants_no_authority_over_what_it_staged ... ok
+test held::a_rollback_that_cannot_finish_keeps_what_the_import_writes_waiting ... ok
+test held::an_import_whose_document_copy_is_not_confirmed_writes_nothing ... ok
+test imported_conversations_are_inspect_only ... ok
+test an_interrupted_rollback_finishes_after_relaunch ... ok
+test inspection_reads_files_only_and_the_keychain_only_for_selected_categories ... ok
+test held::a_document_copy_of_a_receipt_is_checked_before_it_drives_anything ... ok
+test importing_twice_finds_everything_already_present_and_owns_nothing ... ok
+test recovery::an_identical_case_added_after_an_interruption_is_never_claimed ... ok
+test recovery::a_receipt_that_is_not_durably_recorded_authorizes_no_write ... ok
+test held::what_an_unsettled_import_wrote_is_never_published_whatever_its_receipt_files ... ok
+test reset_waits_for_an_import_and_removes_its_receipts ... ok
+test recovery::an_open_library_shows_the_previous_generation_until_the_import_commits ... ok
+test recovery::drafts_belong_to_the_planned_account_through_import_and_rollback ... ok
+test recovery::an_import_interrupted_anywhere_shows_nothing_and_is_undone_at_the_next_launch ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 45.13s
+
+     Running tests/library_observation/main.rs (target/debug/deps/library_observation-40c6c5d5d7e3031e)
+
+running 15 tests
+test a_case_copied_to_another_tenant_is_a_new_case_there ... ok
+test a_deleted_tenant_or_reset_takes_its_sealed_library_and_key ... ok
+test a_locked_keychain_or_unreadable_library_is_reported_and_kept ... ok
+test cases_are_authored_sealed_and_survive_a_restart ... ok
+test a_failed_refresh_keeps_the_last_read_and_holds_follow_the_evidence ... ok
+test delayed_library_completions_stay_with_their_tenant ... ok
+test exports_and_imports_are_explicit_bounded_and_tenant_bound ... ok
+test imported_runtime_cases_with_a_payload_and_inconsistent_charts_stay_in_contract ... ok
+test a_failed_library_cleanup_stays_ledgered_and_finishes_later ... ok
+test limits_payloads_and_unknown_types_are_refused ... ok
+test freshness_and_snooze_deadlines_are_published_without_any_event ... ok
+test the_overview_summarizes_sources_without_fabricating_zeros_or_completeness ... ok
+test the_library_works_offline_survives_restart_and_retries_a_failed_save ... ok
+test queued_saves_and_copies_report_their_real_outcome ... ok
+test catalogs_import_examples_once_and_report_unusable_catalogs ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.69s
+
+     Running tests/management_reads/main.rs (target/debug/deps/management_reads-3bd7e0cdf2829c7a)
+
+running 13 tests
+test a_redirect_is_never_followed_to_another_origin ... ok
+test a_refused_management_grant_never_affects_scanning ... ok
+test a_scan_only_tenant_scans_and_management_never_uses_or_replaces_the_scan_key ... ok
+test denial_unknown_values_secret_fields_and_catalogs_are_reported_faithfully ... ok
+test dlp_details_use_their_own_read_and_a_404_means_absent ... ok
+test a_walk_that_ends_before_the_inventory_claims_nothing ... ok
+test only_bounded_requests_from_a_tenant_with_a_tsg_are_admitted ... ok
+test protected_storage_failures_are_reported_without_any_fallback ... ok
+test removal_deletion_and_reset_retire_each_capability_as_asked ... ok
+test later_pages_are_read_one_at_a_time_and_only_the_last_claims_completeness ... ok
+test the_management_credential_survives_restart_bound_to_its_token_origin ... ok
+test credentials_replaced_mid_pagination_retire_the_old_pages ... ok
+test a_result_settled_before_its_context_retired_is_never_delivered_afterwards ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+
+     Running tests/native_quality/main.rs (target/debug/deps/native_quality-ef9d5004f220d4a2)
+
+running 7 tests
+test a_panic_is_recorded_by_where_never_by_what ... ok
+test clearing_and_reset_remove_the_diagnostics ... ok
+test a_clearing_that_cannot_remove_the_files_says_so_and_keeps_counting_them ... ok
+test diagnostics_are_exported_only_when_asked_and_redacted ... ok
+test only_values_the_app_records_are_exported ... ok
+test diagnostics_are_bounded_and_survive_a_relaunch ... ok
+test diagnostics_keep_kinds_and_codes_and_never_a_secret_or_content ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+
+     Running tests/redteam_model_reads/main.rs (target/debug/deps/redteam_model_reads-5541d2c33a4f0ea9)
+
+running 8 tests
+test attack_results_are_read_100_per_page_up_to_ten_pages_without_prompts ... ok
+test each_source_keeps_its_own_state_and_a_read_with_none_fails ... ok
+test absent_statistics_mean_no_scans_only_when_an_empty_list_proves_it ... ok
+test attack_coverage_counts_rows_received_and_capped_totals_are_bounds ... ok
+test reads_need_a_management_client ... ok
+test red_teaming_reads_statistics_and_scans_for_a_window ... ok
+test models_and_skills_read_three_sources_with_per_read_pseudonyms ... ok
+test invalid_statistics_fail_alone_and_the_other_sources_stay_usable ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/runtime_changes/main.rs (target/debug/deps/runtime_changes-e946a69671987f7a)
+
+running 16 tests
+test a_draft_captured_while_confirming_ends_the_pending_confirmation ... ok
+test a_denied_or_stale_confirmation_sends_nothing ... ok
+test a_resource_changed_since_review_is_a_conflict_and_is_not_written ... ok
+test a_reviewed_update_applies_once_after_the_native_confirmation ... ok
+test fresh_input_and_the_typed_confirmation_must_match_the_review ... ok
+test invalid_drafts_fail_review_without_any_request ... ok
+test key_creation_checks_names_injects_the_deployment_code_and_holds_the_secret ... ok
+test lost_and_refused_writes_keep_their_outcome_and_are_never_retried ... ok
+test every_supported_operation_sends_exactly_v1s_request_and_reads_back ... ok
+test nothing_about_a_change_or_its_secret_is_persisted_or_replayed_after_restart ... ok
+test offline_reviews_and_applies_fail_without_queueing_and_retry_only_when_asked ... ok
+test preview_only_profile_options_are_refused_before_any_request ... ok
+test rotation_deletion_and_their_readback ... ok
+test stopping_during_the_readback_keeps_the_completed_write_and_its_key ... ok
+test a_confirmation_that_outlives_its_review_applies_nothing ... ok
+test a_change_that_cannot_be_started_is_not_consumed_silently ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.23s
+
+     Running tests/sessions_reports/main.rs (target/debug/deps/sessions_reports-f8a88bb4de25ad2c)
+
+running 22 tests
+test a_denied_session_read_reports_denial_and_caches_nothing ... ok
+test a_failed_read_reports_its_failure_and_caches_nothing ... ok
+test a_locked_keychain_keeps_the_investigation_in_memory_never_in_plaintext ... ok
+test a_session_credentials_investigation_stays_in_memory ... ok
+test a_small_window_proves_absence_and_a_cached_session_answers_its_search ... ok
+test a_keychain_credentials_investigation_is_sealed_and_survives_a_restart ... ok
+test a_write_held_across_credential_removal_leaves_no_investigation_behind ... ok
+test a_write_held_across_reset_leaves_no_investigation_or_report_behind ... ok
+test content_is_read_only_on_reveal_and_never_kept_with_metadata ... ok
+test clearing_empties_the_cache_and_exports_carry_metadata_only ... ok
+test removing_the_credential_removes_its_sealed_investigation_and_key ... ok
+test held_report_writes_keep_each_tenants_own_latest_changes ... ok
+test reports_are_built_from_scan_metadata_and_kept_edited_removed_and_undone ... ok
+test reports_export_as_v1_csv_through_the_save_sheet ... ok
+test reports_need_the_active_context_and_an_unreadable_file_is_kept ... ok
+test reset_removes_sealed_investigations_and_reports ... ok
+test saved_reports_stay_usable_offline_without_a_management_client ... ok
+test short_and_empty_pages_that_report_more_are_walked_not_taken_as_the_end ... ok
+test the_inventory_is_the_last_day_in_bounded_pages_with_secret_fields_removed ... ok
+test searches_are_bounded_like_v1_and_say_what_they_covered ... ok
+test an_unreachable_service_fails_the_read_and_only_an_explicit_retry_reads_again ... ok
+test a_reveal_outliving_its_credential_is_withdrawn_and_kept_nowhere ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.23s
+
+     Running tests/sync_scan/main.rs (target/debug/deps/sync_scan-76df25497e1c238d)
+
+running 17 tests
+test a_locked_key_at_dispatch_sends_nothing ... ok
+test a_connect_failure_is_unknown_and_never_retried ... ok
+test a_content_error_is_incomplete_whatever_the_global_flags_say ... ok
+test a_restart_resubmits_nothing ... ok
+test a_lost_response_is_unknown_and_never_replayed ... ok
+test admission_requires_a_current_context_a_ready_key_and_a_valid_draft ... ok
+test cancelling_a_claimed_scan_before_it_is_sent_sends_nothing ... ok
+test a_tenant_switch_mid_request_discards_the_late_reply ... ok
+test a_refused_tenant_deletion_keeps_its_scans_observable_and_cancellable ... ok
+test denied_keys_and_service_failures_report_the_remote_outcome_without_retry ... ok
+test history_keeps_the_newest_five_settled_scans_per_tenant ... ok
+test malformed_responses_are_unknown ... ok
+test the_literal_request_reaches_the_endpoint_and_the_result_is_faithful ... ok
+test unknown_actions_categories_and_incomplete_scans_are_never_allow ... ok
+test cancelling_a_running_scan_is_unknown_and_a_queued_one_is_not_sent ... ok
+test v1_sized_inputs_are_sent_and_the_request_ceiling_holds ... ok
+test a_timeout_after_dispatch_is_unknown ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.52s
+
+     Running tests/ui_v2_admin/main.rs (target/debug/deps/ui_v2_admin-f68450c1cefd7466)
+
+running 3 tests
+test a_page_read_of_custom_topics_is_the_table_rows ... ok
+test the_inventory_lists_the_products_and_runtime_tabs_the_board_draws ... ok
+test the_overview_tiles_and_bars_come_from_one_read_and_the_pill_from_its_state ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/ui_v2_harness/main.rs (target/debug/deps/ui_v2_harness-5c3e1fe27edc15bd)
+
+running 6 tests
+test a_named_send_is_taken_once_and_reported_with_the_message_it_became ... ok
+test a_rotation_hand_off_and_a_workspace_guardrail_are_staged_never_applied ... ok
+test a_confirmation_that_outlives_its_conversation_runs_nothing ... ok
+test the_mcp_catalog_is_read_for_the_engine_only_once_the_operator_allows_it ... ok
+test reads_are_decided_in_the_page_and_changes_need_the_native_confirmation ... ok
+test the_opening_message_is_kept_whole_beside_its_shortened_title ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.28s
+
+     Running tests/ui_v2_harness_port/main.rs (target/debug/deps/ui_v2_harness_port-21743807c3cef457)
+
+running 3 tests
+test the_summary_lists_the_workspace_catalog_with_each_standing ... ok
+test the_board_draws_the_conversation_from_one_view ... ok
+test the_aside_holds_a_read_only_decision_until_it_is_allowed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.95s
+
+     Running tests/ui_v2_home/main.rs (target/debug/deps/ui_v2_home-fc266eaf6d66ffcc)
+
+running 3 tests
+test the_attention_list_is_the_needs_action_entries_minus_the_operators_holds ... ok
+test the_runtime_card_draws_the_summary_and_the_chart_of_one_read ... ok
+test a_recheck_is_admitted_only_for_a_product_the_read_lists_and_a_failed_source_is_partial ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+     Running tests/ui_v2_inbox/main.rs (target/debug/deps/ui_v2_inbox-4842cd39311ad36b)
+
+running 17 tests
+test a_fresh_tenant_shows_pending_reads_and_an_empty_inbox ... ok
+test a_first_product_recheck_refused_for_a_role_is_a_settled_attempt ... ok
+test a_failed_first_read_is_failed_not_pending_and_a_failed_refresh_keeps_the_older_read ... ok
+test a_refresh_over_an_expired_read_restores_nothing_until_it_lands ... ok
+test a_failed_product_attempt_is_reported_and_never_replaces_its_last_read ... ok
+test a_truncated_listing_is_incomplete_coverage_not_a_complete_read ... ok
+test an_expired_read_is_a_gap_not_an_all_clear_and_stays_so_across_a_switch ... ok
+test established_coverage_not_mere_answers_counts_as_read ... ok
+test every_scope_is_per_tenant_across_a_switch ... ok
+test a_snoozed_update_returns_at_its_deadline_and_is_published ... ok
+test reads_cover_every_chosen_product_with_finite_per_source_outcomes ... ok
+test setup_warnings_are_inbox_entries_the_operator_can_hold_across_reads ... ok
+test reads_report_per_product_coverage_and_a_recheck_names_its_product ... ok
+test snooze_returns_at_a_core_computed_time_shown_the_same_everywhere ... ok
+test unread_chosen_products_stay_in_coverage_after_a_partial_attempt ... ok
+test a_read_held_open_across_a_switch_round_trip_never_leaves_the_tenant_reading ... ok
+test a_tenants_read_survives_a_switch_away_and_back_without_a_new_read ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.80s
+
+     Running tests/ui_v2_onboarding/main.rs (target/debug/deps/ui_v2_onboarding-49fc3ace274df73b)
+
+running 10 tests
+test a_draft_id_is_never_selectable_or_deletable_as_a_tenant ... ok
+test a_desktop_with_a_tenant_is_never_sent_through_the_wizard ... ok
+test a_draft_is_not_a_tenant_and_first_run_needs_the_scan_key_to_verify ... ok
+test add_mode_without_a_key_verifies_with_a_warning_and_completes_switching_once ... ok
+test a_relaunch_drops_the_draft_and_queues_its_credentials_for_cleanup ... ok
+test add_mode_keeps_the_shell_untouched_until_completion_and_discard_cleans_up ... ok
+test a_tenant_created_outside_the_wizard_ends_a_first_run_draft_and_the_shell_takes_over ... ok
+test changing_inputs_makes_results_stale_and_products_needing_a_client_warn ... ok
+test completion_commits_the_draft_once_with_products_warnings_and_onboarding ... ok
+test credentials_attach_to_the_draft_and_a_stored_key_is_never_a_pass ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/ui_v2_reviews/main.rs (target/debug/deps/ui_v2_reviews-4dc3e6568c4e2efb)
+
+running 15 tests
+test a_held_secret_is_dropped_by_a_tenant_switch_and_never_revived ... ok
+test a_completed_version_whose_readback_missed_is_an_unconfirmed_issuance ... ok
+test a_key_detail_walk_reconciles_an_unconfirmed_removal ... ok
+test a_failed_or_unknown_issuance_claims_nothing_until_a_key_is_read_back ... ok
+test a_reused_operation_id_after_relaunch_never_links_another_key ... ok
+test a_rejected_or_unknown_removal_keeps_the_reminder_until_the_key_is_read_back_gone ... ok
+test a_rotation_is_the_admitted_sequence_with_its_reminder_and_two_timestamps ... ok
+test a_key_that_lands_after_the_review_closed_is_dropped_on_arrival ... ok
+test acknowledging_the_deployment_forgets_the_held_key ... ok
+test confirm_review_refuses_a_wrong_name_and_a_changed_tenant ... ok
+test leaving_an_applied_review_retires_its_held_key ... ok
+test the_inventory_offers_only_admitted_actions_and_the_core_refuses_the_denied_ones ... ok
+test a_switch_during_issuance_keeps_the_rotation_with_its_tenant ... ok
+test rotation_facts_survive_a_storage_failure_and_are_saved_on_recovery ... ok
+test a_switch_during_removal_keeps_the_outcome_with_its_tenant ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.60s
+
+     Running tests/ui_v2_setup_reads/main.rs (target/debug/deps/ui_v2_setup_reads-44ed1efdba9885cd)
+
+running 5 tests
+test a_source_that_fails_inside_a_read_is_a_warning_that_reaches_the_tenant ... ok
+test an_optional_service_failure_is_a_warning_the_operator_may_continue_over ... ok
+test a_draft_reads_beside_the_active_tenant_without_touching_its_gateway_choice ... ok
+test a_replaced_client_authenticates_afresh_and_profile_changes_retire_the_binding ... ok
+test discarding_a_draft_cancels_its_reads_in_flight_and_leaves_the_active_tenant_alone ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests/ui_v2_shell/main.rs (target/debug/deps/ui_v2_shell-56fd6f519ef42576)
+
+running 5 tests
+test a_fresh_store_is_legacy_with_onboarding_needed_and_calls_shown ... ok
+test a_pre_c28_state_document_loads_with_the_legacy_defaults ... ok
+test navigate_accepts_only_catalogued_destinations_and_is_session_scoped ... ok
+test onboarding_only_moves_forward_and_show_calls_persists ... ok
+test the_variant_is_persisted_restored_and_switches_the_catalogue ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/ui_v2_shell_port/main.rs (target/debug/deps/ui_v2_shell_port-2426ffa2ed8b3700)
+
+running 4 tests
+test the_rails_product_children_are_the_inventory_with_the_gated_two_named ... ok
+test the_sidebar_is_the_prototypes_nav_and_settings_is_reached_off_it ... ok
+test the_explain_switch_is_the_persisted_show_calls_preference ... ok
+test the_rails_theme_toggle_is_the_persisted_appearance ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/ui_v2_workbench/main.rs (target/debug/deps/ui_v2_workbench-cb5a37898af9e269)
+
+running 7 tests
+test before_onboarding_the_calls_are_shown_by_default ... ok
+test an_api_response_in_history_never_changes_while_a_new_send_reflects_the_change ... ok
+test the_calls_are_shown_only_while_chosen_and_never_carry_a_secret_query_or_body ... ok
+test a_scan_without_an_identifier_is_recorded_without_one_and_stays_readable ... ok
+test unsaved_packs_and_results_stay_shown_and_a_retry_keeps_them_across_a_restart ... ok
+test starter_packs_are_named_and_a_playground_scan_records_a_case_result_only_while_it_holds ... ok
+test a_result_with_no_room_in_a_full_library_is_said_and_every_case_survives ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.88s
+
+     Running tests/workbench_documents/main.rs (target/debug/deps/workbench_documents-f3eda7b1531fb6cb)
+
+running 20 tests
+test a_duplicate_identity_pair_still_owns_its_body ... ok
+test a_save_stopped_between_writes_restores_every_submitted_field ... ok
+test adoption_previews_v1s_profile_and_never_changes_it ... ok
+test a_json_body_saves_as_its_requests_while_an_associated_schema_stays_owned ... ok
+test a_body_is_owned_by_the_file_it_reaches_not_its_spelling ... ok
+test an_older_acknowledgement_never_clears_newer_unprotected_edits ... ok
+test closing_with_unprotected_edits_waits_for_protection_or_an_explicit_discard ... ok
+test documents_open_from_their_own_metadata_not_the_inventory ... ok
+test an_interrupted_save_is_found_after_a_restart_and_nothing_replays ... ok
+test empty_folders_become_collections_and_git_is_optional ... ok
+test environments_and_workbench_secrets_resolve_masked_in_the_preview ... ok
+test requests_wait_their_turn_and_the_close_guard_sees_unprotected_edits ... ok
+test imports_create_drafts_and_never_replace_or_change_sources ... ok
+test external_changes_become_conflicts_and_both_versions_are_archived ... ok
+test saving_the_saved_snapshot_drops_an_older_protected_draft ... ok
+test saves_a_fresh_snapshot_keeping_the_files_layout_and_revisions ... ok
+test the_git_view_is_read_only_and_bounded ... ok
+test stale_and_invalid_snapshots_never_write_and_typing_during_save_stays_protected ... ok
+test reset_removes_the_private_folder_and_keeps_the_operators_collections ... ok
+test the_built_in_collection_is_private_generic_and_keeps_edits ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.53s
+
+     Running tests/workbench_execution/main.rs (target/debug/deps/workbench_execution-217590b5a67bd6f3)
+
+running 18 tests
+test canary_secrets_never_reach_records_or_private_files ... ok
+test generated_overrides_and_extra_credentials_never_reach_a_registered_origin ... ok
+test known_tenant_changes_need_an_exact_confirmed_review_and_are_sent_once ... ok
+test a_jar_cookie_is_a_credential_at_a_registered_origin ... ok
+test history_survives_restarts_and_interrupted_runs_are_never_replayed ... ok
+test lost_responses_cancels_and_the_bound_never_resend ... ok
+test redirects_follow_origin_rules_and_credentials_never_cross ... ok
+test registered_prisma_origins_are_classified_whatever_the_credential ... ok
+test reset_during_planning_retires_the_send_before_anything_goes ... ok
+test reset_retires_running_sends_and_nothing_they_held_is_kept ... ok
+test offline_then_reconnected_sends_nothing_by_itself ... ok
+test reviews_are_bound_to_the_credentials_and_cookies_actually_sent ... ok
+test sends_the_fresh_snapshot_with_v1_auth_bodies_and_cookies ... ok
+test trust_and_proxies_follow_the_native_transport_policy ... ok
+test tenant_credentials_are_admitted_before_any_secret_is_read ... ok
+test wire_credentials_are_redacted_wherever_runs_are_kept ... ok
+test a_tenant_change_retires_reviews_and_unsent_requests ... ok
+test large_responses_stream_to_sealed_storage_and_save_exactly ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.86s
+
+     Running tests/workspace_mcp/main.rs (target/debug/deps/workspace_mcp-f2895498a1739ee9)
+
+running 16 tests
+test a_catalog_that_cannot_be_read_blocks_remote_use_until_read_again ... ok
+test a_pending_mcp_call_never_survives_going_offline_or_runs_on_reconnect ... ok
+test a_finished_call_waiting_for_the_model_is_kept_when_the_turn_is_cut_short ... ok
+test a_first_turns_call_cut_short_is_kept_without_a_restore_point ... ok
+test a_saved_conversation_continues_only_with_its_mcp_scope ... ok
+test a_call_cut_short_is_recorded_as_interrupted_and_never_replayed ... ok
+test an_approval_for_a_lapsed_sign_in_is_declined_natively ... ok
+test an_approved_tool_call_runs_once_with_the_memory_only_bearer ... ok
+test an_expired_sign_in_keeps_inference_and_its_tools_are_unavailable ... ok
+test a_written_token_survives_cleanup_until_it_is_settled ... ok
+test signing_out_again_or_off_or_a_new_revision_retires_the_conversation ... ok
+test the_catalog_is_read_per_workspace_and_signing_in_is_the_desktops_own_oauth ... ok
+test mcp_token_rotation_restarts_and_restores_without_asking_for_changes_again ... ok
+test without_its_catalog_a_scope_cannot_start_or_continue ... ok
+test signing_out_during_a_sign_in_again_never_signs_the_server_back_in ... ok
+test an_approval_past_its_tokens_expiry_is_declined_and_inference_goes_on ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 33.87s
+
+   Doc-tests desktop_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0
