@@ -110,3 +110,18 @@ binding and offline key assertions remain. Full retry-03 pending.
 C07 full retry-03 passed all 10 checks; controller required_pass=true, no errors.
 Both earlier failed generations remain immutable; all same-bundle native evidence
 is retained. Independent review and remaining cumulative gates are still pending.
+
+C24's first run failed required N01/N04 because the Diagnostics fieldset split
+its retention days and event-count text (including event/s). The complete
+12-file generation/source is preserved under
+`P09/native-history/C24-Worf-failed-20261101-resume-04/`. The reader now joins
+only fieldset paragraphs, retains the exact 14-day/local-only statement and
+requires a numeric event-count sentence. Actual online/offline trees and
+unknown-count/outside-region negatives pass focused checks. Privacy, network,
+Node-free and save-panel checks already passed and will rerun. The raw C24-N06
+aggregate remains a superseded failure under the unchanged assertion map;
+it is not converted to a pass. Full retry pending.
+
+C24 full retry passed all six required mapped checks. The controller reports
+required_pass=true with no errors and carries C24-N06 as its unchanged superseded
+raw failure; no aggregate pass is invented.

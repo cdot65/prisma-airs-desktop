@@ -17,6 +17,7 @@ folder and the login keychain are untouched.
 
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -103,6 +104,32 @@ def node_free(bundle):
     return [os.path.relpath(p, bundle) for p in found]
 
 
+def diagnostics_paragraphs(tree):
+    """Join inline static text only in the Diagnostics fieldset paragraphs."""
+    owner = next((i for i, n in enumerate(tree) if n.get("role") == "AXGroup"
+                  and n.get("label") == "Diagnostics"), None)
+    if owner is None:
+        return []
+    end = next((i for i in range(owner + 1, len(tree))
+                if tree[i].get("depth", 0) <= tree[owner].get("depth", 0)), len(tree))
+    paragraphs = []
+    for i in range(owner + 1, end):
+        if tree[i].get("role") != "AXGroup" or tree[i].get("depth") != tree[owner].get("depth", 0) + 1:
+            continue
+        parts = []
+        for node in tree[i + 1:end]:
+            if node.get("depth", 0) <= tree[i].get("depth", 0):
+                break
+            if node.get("role") == "AXStaticText":
+                parts.append(node.get("label") or "")
+        paragraphs.append("".join(parts))
+    return paragraphs
+
+
+def diagnostics_counted(tree):
+    return any(re.fullmatch(r"\d+ events? kept\.", p) for p in diagnostics_paragraphs(tree))
+
+
 def main():
     try:
         return run()
@@ -171,9 +198,8 @@ def run():
 
     # ---- N01: diagnostics in Settings ----
     app.open_settings()
-    tree, stated = c8.text(app, "Kept only on this Mac for 14 days and never sent anywhere", 10)
-    counted = any((n.get("label") or "").endswith("events kept.") or "events kept." in str(n.get("value") or "")
-                  for n in tree) or app.has_text(tree, "events kept.")
+    tree, stated = app.wait_for(lambda t: any("Kept only on this Mac for 14 days and never sent anywhere" in p for p in diagnostics_paragraphs(t)), 10)
+    counted = diagnostics_counted(tree)
     c23.press(app, "Export diagnostics…")
     tree, saved = c8.text(app, "Diagnostics saved.", 15)
     exported = [p for p in files(EXPORTS) if p.endswith("diagnostics.json")]
@@ -282,7 +308,7 @@ def run():
     tree, reports = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Investigate sessions") is not None, 15)
     receipt = None  # the alpha import and its receipt are retired (D060)
     app.open_settings()
-    tree, diag = c8.text(app, "events kept.", 10)
+    tree, diag = app.wait_for(diagnostics_counted, 10)
     obs["tree_offline_settings"] = save_tree("offline-settings", tree)
     sent_before = len(endpoint.requests()) + len(mgmt.requests())
     endpoint.start()
