@@ -1,0 +1,49 @@
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/docs/planning/evidence/P09/native-controller/run-p09-native.py", line 83, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/docs/planning/evidence/P09/native-controller/run-p09-native.py", line 61, in main
+    code = mod.main()
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c10.py", line 71, in main
+    return run()
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c10.py", line 282, in run
+    chose = ns.open_file(app, native_file)
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/native_sheets.py", line 111, in open_file
+    go_to(app, path)
+    ~~~~~^^^^^^^^^^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/native_sheets.py", line 84, in go_to
+    app.wait_for(lambda t: sheets(t) == 1, 6)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/fixture_app.py", line 139, in wait_for
+    tree = self.tree()
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/fixture_app.py", line 118, in tree
+    return self.ax("tree")
+           ~~~~~~~^^^^^^^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/legacy_v2.py", line 145, in ax
+    return _ax(self, command, *args)
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/fixture_app.py", line 109, in ax
+    out = sh([self.ax_bin, command, str(self.pid), *[str(a) for a in args]])
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/fixture_app.py", line 30, in sh
+    return subprocess.run(argv, capture_output=True, text=True, **kw)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/subprocess.py", line 671, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/subprocess.py", line 1395, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/subprocess.py", line 2412, in _communicate
+    new_offset, completed = _communicate_io_posix(
+                            ~~~~~~~~~~~~~~~~~~~~~^
+        selector,
+        ^^^^^^^^^
+    ...<4 lines>...
+        endtime,
+        ^^^^^^^^
+        close_on_eof=True)
+        ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/subprocess.py", line 291, in _communicate_io_posix
+    ready = selector.select(remaining)
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/selectors.py", line 398, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt

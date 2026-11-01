@@ -1,0 +1,34 @@
+diff --git a/tools/native-acceptance/ax.swift b/tools/native-acceptance/ax.swift
+index 970faa34..f2ba1090 100644
+--- a/tools/native-acceptance/ax.swift
++++ b/tools/native-acceptance/ax.swift
+@@ -67,12 +67,26 @@ func walk(_ pid: pid_t) -> [Node] {
+     // that announces itself (as assistive technologies do).
+     AXUIElementSetAttributeValue(app, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+     var out: [Node] = []
+-    func visit(_ el: AXUIElement, _ depth: Int) {
++    func visit(_ el: AXUIElement, _ depth: Int, panel: Bool = false) {
+         if out.count > 20000 || depth > 60 { return }
+         out.append(Node(el: el, depth: depth))
+-        for child in children(el) { visit(child, depth + 1) }
++        // Native file panels contain remote folder browsers. Describing their
++        // rows can stall AX for minutes and reads unrelated operator filenames.
++        // Keep actual panel controls (including nested Go to Folder sheets),
++        // with their roles, depths, geometry and focus. WebView trees retain
++        // their full traversal whenever no native sheet is present.
++        if panel && string(el, kAXRoleAttribute) == "AXScrollArea" { return }
++        for child in children(el) { visit(child, depth + 1, panel: panel) }
++    }
++    for window in (attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [] {
++        let sheets = children(window).filter { string($0, kAXRoleAttribute) == "AXSheet" }
++        if sheets.isEmpty {
++            visit(window, 0)
++        } else {
++            out.append(Node(el: window, depth: 0))
++            for sheet in sheets { visit(sheet, 1, panel: true) }
++        }
+     }
+-    for window in (attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [] { visit(window, 0) }
+     return out
+ }
+ 

@@ -139,3 +139,25 @@ Full retry pending; the input audit explicitly names this driver-only change.
 
 C37 full retry passed N01/N02, including current role destination, holds, keyboard
 and all layouts. Controller reports no errors; failed generation remains retained.
+
+
+Generation 02 C10 native-panel observation correction: two real attempts stalled
+while the AX helper described the production NSOpenPanel's remote file-browser
+contents. Both were interrupted without acceptance verdicts, and their complete
+partial evidence, original helper/driver sources and logs are hash archived under
+P09/native-history/C10-Worf-generation-02-stalled-20261101 and
+P09/native-history/Worf-generation-02-before-panel-observation-fix-20261101.
+Read-only process sampling showed repeated AX attribute requests during describe;
+the app remained in the production rfd modal panel. A roles/depth-only probe
+confirmed the actual AXSheet; a sheet-only full traversal still exceeded 20s.
+A sheet-control traversal excluding AXScrollArea contents completed in 0.45s,
+observing one actual sheet and five buttons without recording folder names.
+
+The helper now detects native AXSheet children of each window and observes the
+actual sheet controls, skipping folder scroll contents and the modal background.
+Roles, depths, geometry, focus and real actions remain available for controls and
+nested Go to Folder sheets. When no native sheet is present, the full WebView
+traversal remains unchanged. No acceptance assertion, oracle, menu/key event,
+frontmost guard or capture path changed. All generation 02 passes are retained
+as history; generation 03 rebuild and all 19 native drivers are required anew.
+No live call or permission/configuration change was used. Full retry pending.

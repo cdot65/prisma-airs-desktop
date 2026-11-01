@@ -1,0 +1,44 @@
+{
+  "schema": "airs-v2/p09-native-build-inputs/1",
+  "generation": "worf-03",
+  "source_head": "64f37d31ea1c053e0115e57507f6131b0c6b59ee",
+  "worktree_diff": "docs/planning/evidence/P09/preparations/worf-03/fixture-remediation.diff",
+  "worktree_diff_sha256": "893f5155dc127ca5b08e1767772d1bbcca17a2c8225dddf9ebcd9a582d4eea69",
+  "prepare": "docs/planning/evidence/P09/native-prepare.json",
+  "prepare_sha256": "3923a3b2025221684998356ec6c5d880f1b1b925ae56a1642c6e2f9c30d12f1d",
+  "executable_sha256": "023bd5732793f1339766baf21176373ad2e23add6e8ad9f20cedb8c4d434ef61",
+  "bundle_sha256": "12a6140568950f7c329cb859f42d0aaa9a3d4d2280ee529fa5cf02a09569a56b",
+  "inputs": {
+    "procedure": "docs/planning/evidence/P09/runs/hash-inputs.sh",
+    "procedure_sha256": "0a4f9546e1aa4a812da6a946c6ee73d9a0e69c3fd4534dd3d480d5c804b53ea1",
+    "before_inventory": "docs/planning/evidence/P09/preparations/worf-03/inputs-before.sha256",
+    "after_inventory": "docs/planning/evidence/P09/preparations/worf-03/inputs-after.sha256",
+    "before_digest": "8357599d3593119048be04f25fe5a44dc3ac951e4caaef1e3c8d0f27b0738f35",
+    "after_digest": "8357599d3593119048be04f25fe5a44dc3ac951e4caaef1e3c8d0f27b0738f35",
+    "unchanged": true,
+    "members": 18338
+  },
+  "command": {
+    "argv": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "native-prepare",
+      "--phase",
+      "P09",
+      "--target",
+      "aarch64-apple-darwin",
+      "--features",
+      "test-fixtures"
+    ],
+    "cwd": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current",
+    "exit": 0,
+    "log": "docs/planning/evidence/P09/preparations/worf-03/native-prepare.log",
+    "log_sha256": "5a36b2ecda89a53af498a2174d7e5ea3d6946cf7921445989a7e6c0dd80eea4c"
+  },
+  "prior_generation": "docs/planning/evidence/P09/native-history/Worf-generation-02-before-panel-observation-fix-20261101",
+  "qualification": "Fresh build input seal only; every mapped native driver must run on these new bytes before qualification. No old native pass transferred."
+}
