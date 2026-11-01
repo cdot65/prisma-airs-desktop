@@ -1,0 +1,21 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "-p",
+    "desktop-core",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "imports_rollback"
+  ],
+  "environment": {
+    "RUST_TEST_THREADS": "4"
+  },
+  "exit": 0,
+  "result": "23 passed; 0 failed; 0 ignored; exhaustive cut regression passed again",
+  "log": "docs/planning/evidence/P09/check-remediation/attempt-03/imports-rollback-fix-02-repeat-01.log",
+  "log_sha256": "bb820693419a95d4d409da84f76a73e752105a7307b95f8ebb9ad0c8bc31f8c7",
+  "purpose": "One complete repeated headless run to check the previously intermittent lifecycle/timing failures; no UI input and no assertions changed."
+}

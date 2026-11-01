@@ -20,6 +20,7 @@ def validate(value,schema,where='$'):
     if kind=='integer':assert schema.get('minimum',value)<=value<=schema.get('maximum',value),where
     if 'enum' in schema:assert value in schema['enum'],where
 r=read(out/'request.json');v=read(out/'verdict-returned.json');validate(v,read(root/'docs/architecture/review-verdict.schema.json'))
+transport=phase_inputs.verify_launch(root,out)
 assert r['subject']==v['subject']==subject and r['attempt_id']==v['attempt_id']==attempt
 assert r['request_id']==v['request_id'] and r['fingerprints']==v['fingerprints']
 i=read(out/'source-inventory.json');assert set(i['files'])==set(r['scope']['files'])
@@ -62,6 +63,7 @@ assert digest==r['fingerprints']['dependencies']
 qualification=phase_inputs.verify_native(root)
 assert qualification['build_inputs']['input_digest']==digest
 result={'subject':subject,'attempt':attempt,'time':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'transport':transport,
         'raw_verdict_sha256':sha(out/'verdict-returned.json'),'request_sha256':sha(out/'request.json'),
         'source_files_verified':len(i['files']),'check_runs_verified':18,'compiled_inputs_unchanged':True,
         'live_row_pass_verified':True,'scores':v['scores'],

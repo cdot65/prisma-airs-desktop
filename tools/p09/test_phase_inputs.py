@@ -103,6 +103,47 @@ class PhaseInputGuards(unittest.TestCase):
         self.assertIn('docs/planning/evidence/P09/runs/hash-inputs.sh', inventory)
         self.assertNotIn('docs/planning/evidence/P09/native-prepare.json', inventory)
 
+    def test_transport_guard_rejects_bypass_connectors_and_changed_final_message(self):
+        # Deliberately not a verdict-schema object: these temporary guard
+        # fixtures cannot qualify a review and make no model/provider call.
+        with tempfile.TemporaryDirectory(prefix='review-transport-guard-') as scratch:
+            out = Path(scratch)
+            (out / 'request.json').write_text('{}')
+            verdict = {'transport_guard_fixture_only': True}
+            (out / 'verdict-returned.json').write_text(json.dumps(verdict))
+            probe = ''.join(name + ' stable false\n' for name in sorted(phase.REVIEW_DISABLED))
+            (out / 'feature-probe.log').write_text(probe)
+            argv = ['codex', '--no-daemon', '-a', 'never']
+            argv += [arg for name in sorted(phase.REVIEW_DISABLED) for arg in ['--disable', name]]
+            argv += ['exec', '-s', 'read-only', '--ephemeral', '--ignore-user-config', '--ignore-rules', '--json',
+                     '-m', 'guard-fixture-no-model-call', '--output-schema', 'docs/architecture/review-verdict.schema.json',
+                     '-c', 'web_search="disabled"', '-c', 'model_reasoning_effort="xhigh"', '-o', str(out / 'verdict-returned.json')]
+            invocation = {'request_sha256': phase.sha(out / 'request.json'),
+                          'schema_sha256': phase.sha(ROOT / 'docs/architecture/review-verdict.schema.json'),
+                          'command_without_prompt': argv, 'model_requested': 'guard-fixture-no-model-call',
+                          'feature_probe_sha256': phase.sha(out / 'feature-probe.log'),
+                          'restricted_features_observed': {name: 'false' for name in phase.REVIEW_DISABLED},
+                          'harness_version_observed': 'guard fixture only; no actual reviewer'}
+            final = {'type': 'item.completed', 'item': {'type': 'agent_message', 'text': json.dumps(verdict)}}
+            (out / 'invocation.json').write_text(json.dumps(invocation))
+            (out / 'thread-reply.log').write_text(json.dumps(final) + '\n')
+            phase.verify_launch(ROOT, out)
+            for extra in [['--dangerously-bypass-approvals-and-sandbox'], ['-s', 'workspace-write']]:
+                altered = copy.deepcopy(invocation)
+                altered['command_without_prompt'] += extra
+                (out / 'invocation.json').write_text(json.dumps(altered))
+                with self.subTest(extra=extra), self.assertRaises(ValueError):
+                    phase.verify_launch(ROOT, out)
+            (out / 'invocation.json').write_text(json.dumps(invocation))
+            connector = {'type': 'item.completed', 'item': {'type': 'mcp_tool_call'}}
+            (out / 'thread-reply.log').write_text(json.dumps(connector) + '\n' + json.dumps(final) + '\n')
+            with self.assertRaises(ValueError):
+                phase.verify_launch(ROOT, out)
+            final['item']['text'] = '{}'
+            (out / 'thread-reply.log').write_text(json.dumps(final) + '\n')
+            with self.assertRaises(ValueError):
+                phase.verify_launch(ROOT, out)
+
 
 if __name__ == '__main__':
     unittest.main()

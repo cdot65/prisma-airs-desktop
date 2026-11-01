@@ -48,7 +48,11 @@ a model. Reading that TOML requires Python 3.11 or newer; an explicit model
 argument also works with the older Python versions supported by these scripts.
 The fresh Codex session runs in process with `--no-daemon`, read-only sandbox,
 approval policy `never`, web search disabled and captured JSONL output. It uses the retained strict
-verdict schema. Preserve every verdict and use a new attempt for another run.
+verdict schema. Hooks, plugins/apps, browser/UI tools, delegated agents and
+unbounded connection retries are explicitly disabled for the reviewer process;
+an actual CLI feature probe, invocation metadata and final-message binding are
+audited. Failed launch logs are never overwritten; use a fresh attempt.
+Preserve every verdict and use a new attempt for another run.
 
 Temporary comparison inventories go under the ignored
 `.evidence-private/p09-review/` directory, which the helpers create. Check and

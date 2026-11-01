@@ -18,6 +18,9 @@ DECISIONS = {
     'C41': 'docs/planning/reviews/C41/owner-override-2026-10-31.md',
 }
 DIMENSIONS = {'architecture', 'behavior', 'authority_security', 'validation', 'overall'}
+REVIEW_DISABLED = {'hooks', 'plugins', 'apps', 'remote_plugin', 'browser_use', 'browser_use_external',
+                   'in_app_browser', 'computer_use', 'image_generation', 'multi_agent', 'skill_search',
+                   'skill_mcp_dependency_install', 'unbounded_connection_retries'}
 
 
 def require(condition, message):
@@ -40,6 +43,57 @@ def full_gate(verdict):
     require(verdict.get('recommendation') == 'pass', 'member recommendation is not pass')
     for field in ['required_fixes', 'blockers', 'evidence_gaps']:
         require(verdict.get(field) == [], 'member has missing/nonempty ' + field)
+
+
+def verify_launch(root, out):
+    """Audit requested isolation, observed feature probe and actual JSONL events."""
+    invocation = read(out / 'invocation.json')
+    require(invocation['request_sha256'] == sha(out / 'request.json')
+            and invocation['schema_sha256'] == sha(root / 'docs/architecture/review-verdict.schema.json'),
+            'review invocation request/schema mismatch')
+    argv = invocation['command_without_prompt']
+    require(argv and argv[0] == 'codex' and argv.count('exec') == 1, 'review is not a fresh Codex exec')
+    for flag in ['--no-daemon', '--ephemeral', '--ignore-user-config', '--ignore-rules', '--json']:
+        require(argv.count(flag) == 1, 'review isolation flag missing/duplicated: ' + flag)
+    for flag, value in [('-a', 'never'), ('-s', 'read-only'), ('-m', invocation['model_requested']),
+                        ('--output-schema', 'docs/architecture/review-verdict.schema.json'),
+                        ('-o', str(out / 'verdict-returned.json'))]:
+        require(argv.count(flag) == 1 and argv[argv.index(flag) + 1] == value, 'review argument mismatch: ' + flag)
+    require(not any('dangerously' in x or x in ['--approve-for-me', 'resume', 'fork', '--last'] for x in argv),
+            'review bypass/resume argument forbidden')
+    overrides = [argv[i + 1] for i, arg in enumerate(argv) if arg == '-c']
+    require(set(overrides) == {'web_search="disabled"', 'model_reasoning_effort="xhigh"'} and len(overrides) == 2,
+            'review config overrides differ from contract')
+    disabled = [argv[i + 1] for i, arg in enumerate(argv) if arg == '--disable']
+    require(set(disabled) == REVIEW_DISABLED and len(disabled) == len(REVIEW_DISABLED), 'review feature flags differ')
+    probe = out / 'feature-probe.log'
+    require(sha(probe) == invocation['feature_probe_sha256'], 'review feature probe drift')
+    observed = {line.split()[0]: line.split()[-1] for line in probe.read_text().splitlines() if len(line.split()) >= 3}
+    require(all(observed.get(name) == invocation['restricted_features_observed'].get(name) == 'false'
+                for name in REVIEW_DISABLED), 'review feature isolation not observed')
+    messages, sessions = [], []
+    for line in (out / 'thread-reply.log').read_text().splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        item = event.get('item', {})
+        if not isinstance(item, dict):
+            item = {}
+        require(event.get('type') not in ['hook.started', 'hook.completed']
+                and item.get('type') not in ['mcp_tool_call', 'hook_execution'], 'unexpected review connector/hook event')
+        if event.get('type') == 'thread.started':
+            sessions.append(event.get('thread_id'))
+        if event.get('type') == 'item.completed' and item.get('type') in ['agent_message', 'assistant_message']:
+            messages.append(item.get('text', ''))
+    require(messages and json.loads(messages[-1]) == read(out / 'verdict-returned.json'),
+            'returned verdict does not match actual final JSONL agent message')
+    return {'invocation_sha256': sha(out / 'invocation.json'), 'thread_reply_sha256': sha(out / 'thread-reply.log'),
+            'feature_probe_sha256': sha(probe), 'model_requested': invocation['model_requested'],
+            'harness_version_observed': invocation['harness_version_observed'], 'reviewer_sessions_observed': sessions,
+            'limits': 'Observed CLI settings/events and unchanged inputs; not cryptographic proof of provider authorship.'}
 
 
 def latest_verdict(root, subject):
@@ -118,6 +172,8 @@ def native_build(root, prepared):
             and build['command']['argv'] == ['cargo', 'run', '--locked', '-p', 'xtask', '--', 'native-prepare',
                                             '--phase', 'P09', '--target', 'aarch64-apple-darwin', '--features', 'test-fixtures'],
             'native build command/path mismatch')
+    require(build['worktree_diff'] == prefix + 'fixture-remediation.diff'
+            and sha(root / build['worktree_diff']) == build['worktree_diff_sha256'], 'native source-diff provenance mismatch')
     require(build['prepare_sha256'] == sha(root / build['prepare'])
             and build['executable_sha256'] == prepared['executable_sha256']
             and build['bundle_sha256'] == prepared['bundle_sha256'], 'native build/preparation binding mismatch')
@@ -131,6 +187,8 @@ def native_build(root, prepared):
     require(sha(procedure) == value['procedure_sha256'], 'native build inventory procedure drift')
     require(value['before_digest'] == value['after_digest'] == sha(root / value['before_inventory'])
             == sha(root / value['after_inventory']), 'native build inputs changed')
+    require(value['unchanged'] is True and value['members'] == len((root / value['before_inventory']).read_text().splitlines())
+            and value['members'] > 0, 'native build inventory declaration mismatch')
     with tempfile.TemporaryDirectory(prefix='p09-native-inputs-') as scratch:
         current = subprocess.check_output(['/bin/bash', str(procedure), str(root), str(Path(scratch) / 'inputs.sha256')], text=True).strip()
     require(current == value['before_digest'], 'current compiled inputs differ from prepared native build')
@@ -162,7 +220,13 @@ def verify_native(root):
         require(sha(directory / 'native-prepare.json') == sha(phase / 'native-prepare.json'), subject + ': preparation mismatch')
         errors, carried = assess_record(record, root, prepared['executable_sha256'], required)
         require(not errors, subject + ': required native checks fail: ' + str(errors))
-        require(execution['driver_subject'] == subject and execution['phase'] == 'P09'
+        allowed_carried = {'C24': {'C24-N06'}, 'C31': {'C31-N01', 'C31-N04'}}
+        require(set(carried) <= allowed_carried.get(subject, set()), subject + ': unapproved superseded raw check')
+        require(execution['driver_return_code'] == 0 or (execution['driver_return_code'] == 1 and bool(carried)),
+                subject + ': unexplained driver exit')
+        require(execution['schema'] == 'airs-v2/p09-native-execution/1'
+                and execution['source_root'] == str(root)
+                and execution['driver_subject'] == subject and execution['phase'] == 'P09'
                 and execution['executable_sha256'] == prepared['executable_sha256']
                 and execution['raw_record_sha256'] == sha(path)
                 and execution['required_check_errors'] == errors and execution['superseded_raw_checks'] == carried,

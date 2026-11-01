@@ -158,6 +158,7 @@ def audit(root, attempt):
     out = root / 'docs/planning/reviews/P09' / attempt
     inputs.require(not (out / 'post-review-audit.json').exists(), 'preserve previous phase audit')
     request, verdict = inputs.read(out / 'request.json'), inputs.read(out / 'verdict-returned.json')
+    transport = inputs.verify_launch(root, out)
     validate(verdict, inputs.read(root / request['verdict_schema']))
     for key in ['request_id', 'attempt_id', 'subject', 'fingerprints']:
         inputs.require(request[key] == verdict[key], 'phase verdict binding mismatch: ' + key)
@@ -177,6 +178,7 @@ def audit(root, attempt):
     except ValueError:
         passed = False
     result = {'subject': 'P09', 'attempt': attempt, 'request_sha256': inputs.sha(out / 'request.json'),
+              'transport': transport,
               'raw_verdict_sha256': inputs.sha(out / 'verdict-returned.json'), 'scores': verdict['scores'],
               'source_files_verified': len(source), 'evidence_files_verified': len(evidence),
               'check_runs_verified': 18, 'native_drivers_verified': len(verified['native_acceptance']['records']),
