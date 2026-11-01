@@ -1,0 +1,46 @@
+{
+  "review_id": "C29-attempt-07-1793542279",
+  "subject": "C29",
+  "attempt": "attempt-07",
+  "request_id": "C29-attempt-07-1793542279",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-01T14:34:17.650678+00:00",
+  "model": "gpt-6.1-sol (xhigh)",
+  "harness": "OpenAI Codex v0.166.0",
+  "reviewer_session": "01a19773-5184-7ce2-86f8-bddf4502a0f2",
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": 2,
+  "blockers": 0,
+  "evidence_gaps": 2,
+  "fingerprints": {
+    "source": "d636049e5ae2d4a797cbce75a6d206c1bc18279e919b924159e2cb3f5e9cb0f1",
+    "dependencies": "e71a3a619ddb8f132ca63c6a04f63fae3d4b675ef495197c674972e52fb6cec7",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "78aa536bc6ecdba768044cd56fd4eef26de54af04bd1783ee1843f9b0cebe029"
+  },
+  "verdict_sha256": "45c0b98d7b56da5f41c2b4e0ea7ccdf54494e1dadc537172c5240b27f97f35ea",
+  "request_sha256": "d5e700856c3c7b05b4045f58b33de8960f4f093e2692b275ec72931691edfe9b",
+  "prompt_sha256": "1b163f73d07a6669f43a09618c77b2d4e1e96f78dc41f109df9ea04356989541",
+  "post_review_audit_sha256": "f3a2a92c47a0b618931f310398a15da72af42dfbe1e69797031964653289b3c3",
+  "source_frozen": true,
+  "d034_accepted": true,
+  "full_gate_pass": false,
+  "accepted_failures": {
+    "required_fixes": [
+      "R1 \u2014 tools/native-acceptance/legacy_assertions.py:322\u2013325 and acceptance_c43.py:280\u2013396: the map marks C29-N02/N03/N05 exercised by narrower C43 smoke checks. The replacement driver does not perform the Gateway workspace/key setup, rejected-client replacement and stale-verification sequence, or cancellation of a keyed draft with Keychain-removal verification. Its cancellation test creates an unkeyed draft and checks that the sheet closes. This loses mandatory native coverage while reporting the original assertions covered. Restore these assertions in the replacement driver and retain passing, source-bound native observations showing the expected verification transitions, unchanged active tenant/list after Cancel, and deletion of the cancelled draft's synthetic credential. Correct the mapping to reflect the assertions actually executed.",
+      "R2 \u2014 tools/native-acceptance/legacy_assertions.py:326 and acceptance_c43.py:411\u2013477,537: C29-N06 requires every wizard step and the add sheet in both themes at 100%/200%, with keyboard traversal on each step. C43-N03 instead requires exactly eight layout rows covering only add-mode Tenant and Verify, plus one Tenant keyboard walk. The retained first-run composites cover both themes at ordinary zoom but do not close the missing 200% and keyboard coverage. Extend and execute the replacement matrix for all required steps/modes; acceptance requires hash-bound captures, AX trees and traversal results for the complete matrix."
+    ],
+    "evidence_gaps": [
+      "E1 \u2014 docs/planning/evidence/C44/native/cumulative/C43/native-acceptance.json does not establish the retained native behavior assertions identified in R1. The historical C29 record covers the earlier presentation; it does not supply native acceptance of those interactions after the C43 re-port. These assertions are marked exercised, not retired.",
+      "E2 \u2014 Current-presentation evidence for the complete C29-N06/T09 matrix is missing. The mapped C43-N03 record explicitly limits its layouts to add-mode Tenant and Verify. Passing component tests and historical screenshots cannot substitute for the required native matrix."
+    ]
+  },
+  "outcome": "Accepted at 8 under D034 with no blockers; immediately restore and execute the retained C29 native assertions in C43, then re-review at 9. The live Vulture blocker is closed. Controller receipt regeneration remains after C26."
+}
