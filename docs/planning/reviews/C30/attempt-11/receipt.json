@@ -1,0 +1,67 @@
+{
+  "review_id": "C30-attempt-11-1793600958",
+  "subject": "C30",
+  "attempt": "attempt-11",
+  "request_id": "C30-attempt-11-1793600958",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T06:41:39.391501+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a19af2-e8d0-7993-9759-748f1489c704"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": [
+    "R1 \u2014 crates/desktop-core/src/authority/inbox_domain.rs:379, crates/desktop-core/src/authority.rs:3755 and :3837: guarded resolutions irreversibly end/discard the conversation before the tenant change is saved. If save_with returns a definite StoreError, it restores only Data; the source tenant stays active, but the conversation is stopped, the refusal reference is cleared, and Discard's history tombstone remains. The deletion job has already been drained into effects, which AuthorityHandle::dispatch clears on error at authority.rs:3484. Consequently, a refused switch can terminate the pending conversation while retaining its protected transcript without a settled discard-failure notice; retrying the old resolution is stale. Both SelectTenant and CompleteTenantSetup have this ordering. Make persistence failure preserve the unresolved conversation and guard before destructive effects occur. Acceptance: production-interface fault-injection regressions for Archive and Discard through both paths must force a save failure after obtaining the refusal binding, verify the source tenant, pending decision, conversation and protected transcript remain unchanged, then restore storage and demonstrate one successful resolution with the intended history outcome."
+  ],
+  "blockers": [],
+  "evidence_gaps": [
+    "E1 \u2014 crates/desktop-core/tests/harness_tools/main.rs covers stale resolutions, successful guarded switching/setup completion and history-removal failures, but does not inject failure of the tenant-state save during resolution. The retained passing suites and native runs therefore do not establish R1's refusal/recovery behavior. Add and retain the production-interface regressions specified in R1."
+  ],
+  "optional_suggestions": [
+    "apps/desktop/src/v2/inbox/inbox.tsx:177: allow filter-tab height to accommodate wrapping at 200% zoom. The current inbox-900x600-200-light.png capture still shows counts extending below the fixed-height tab backgrounds."
+  ],
+  "fingerprints": {
+    "source": "4197d9d6302b44123f6a5c4956b084e754c5812b154d6283506f941d049e0218",
+    "dependencies": "5b331128733b5591662ba43b0f081cb867e03081de1371b2d3b77bbe2b725d57",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "6962cbcd811fa9d6b1d7bf6aada1f69bf7a5bfc847960c6b96554f06f9f514ab"
+  },
+  "verdict_sha256": "8d20b29da7e20266c9959dc4e2a74e97eb7436304b585f6b1ab1eb92d9417217",
+  "request_sha256": "2d0a106c6a213f878bab0d885b0b28c417bcbf0aad0d0ce50ae764d4dbdc9192",
+  "prompt_sha256": "359c27b53bb7f838fabaca879b92c7e68c63bc38750ac1a4c3023f1a8b76c681",
+  "post_review_audit_sha256": "31a95b59fd7fab76baf88a8a710f6feeb38833d9a1b8d0822e103519f47ab9fa",
+  "invocation_sha256": "16e9c39bf52b02e8cc6ce3d5c5b5b05cd76415509e0bcccf6594ebd9d68d5698",
+  "thread_reply_sha256": "823a9eee0af80dcd05c3f973b89ee53eda9c25327c2e2e8812f17753e18fb744",
+  "source_frozen": true,
+  "d034_accepted": true,
+  "full_gate_pass": false,
+  "controller_complete": false,
+  "accepted_failures": {
+    "required_fixes": [
+      "R1 \u2014 crates/desktop-core/src/authority/inbox_domain.rs:379, crates/desktop-core/src/authority.rs:3755 and :3837: guarded resolutions irreversibly end/discard the conversation before the tenant change is saved. If save_with returns a definite StoreError, it restores only Data; the source tenant stays active, but the conversation is stopped, the refusal reference is cleared, and Discard's history tombstone remains. The deletion job has already been drained into effects, which AuthorityHandle::dispatch clears on error at authority.rs:3484. Consequently, a refused switch can terminate the pending conversation while retaining its protected transcript without a settled discard-failure notice; retrying the old resolution is stale. Both SelectTenant and CompleteTenantSetup have this ordering. Make persistence failure preserve the unresolved conversation and guard before destructive effects occur. Acceptance: production-interface fault-injection regressions for Archive and Discard through both paths must force a save failure after obtaining the refusal binding, verify the source tenant, pending decision, conversation and protected transcript remain unchanged, then restore storage and demonstrate one successful resolution with the intended history outcome."
+    ],
+    "evidence_gaps": [
+      "E1 \u2014 crates/desktop-core/tests/harness_tools/main.rs covers stale resolutions, successful guarded switching/setup completion and history-removal failures, but does not inject failure of the tenant-state save during resolution. The retained passing suites and native runs therefore do not establish R1's refusal/recovery behavior. Add and retain the production-interface regressions specified in R1."
+    ]
+  },
+  "limitations": [
+    "Reproduced all four supplied fingerprints. All 4,040 scoped hashes and 18,338 compiled-input entries matched, including final rechecks. Independently enumerated inventory membership found no missing or additional paths; all 18 check-log hashes matched. These checks establish consistency, not compiler execution or evidence authorship. The compiled-input procedure excludes target and node_modules.",
+    "Verified C29 attempt-09's receipt, matching passing raw verdict, request binding and unchanged scoped files. C28 and C27 receipt-to-verdict bindings also matched. D058/D059 permit the integration while C26 remains open; no controller, phase or release completion is inferred.",
+    "The prior stale-resolution defect is addressed by native refusal references bound to source context, destination, pending conversation/decision and setup generation, together with renderer retry retirement. R1 above concerns the separate persistence-failure path.",
+    "Accept the documented method-02 presentation/VM rationale for the scoped cached-switch budget. Verified all 12 raw trials and post-switch AX trees, two fixed warmups, ten alternating measured samples, unchanged synthetic management-request count and current executable/input bindings. Recomputed nearest-rank p95 is 25.065583 ms against 100 ms. Timing was not independently rerun; physical-host performance is not established.",
+    "Independently executed the retained ui_v2_shell binary: 5/5 passed. In-memory execution of the production shell store passed captured-null retirement, late-delivery rejection, refusal replacement and destructive-retry retirement probes. The binary was not rebuilt or authenticated against compiler inputs. Broader results rely on retained source-bound logs, including 550 renderer tests, 17 ui_v2_inbox tests and 18 harness_tools tests. R1 was established by source tracing, not an independently executed fault-injection scenario.",
+    "Inspected all 27 current C36/C37/C38 retained AX trees, ten historical C30 trees, current observations and three representative captures. Mapped record, preparation, executable and driver bindings matched. Independently reproduced the complete 1,621-entry mode-aware bundle hash and fixture identifier; its only executable entries are the desktop and pinned Rust Harness. Native interactions and spoken VoiceOver were not independently repeated.",
+    "Verified the retained L19 row/receipt/executable bindings as historical verification evidence. It is not current-byte live qualification. No product endpoints, real credentials, private authorization manifests or OS permissions were accessed.",
+    "No application files were changed or fixes implemented. The sandbox prevents the designated verdict artifact write; this returned JSON is the verdict artifact.",
+    "Fresh separate read-only session in implementer model family, not cryptographic provider authorship. Owner standing D034 accepts chunks>=8/no blockers; C26 controller limitation remains, no xtask/controller completion fabricated."
+  ],
+  "outcome": "Accepted at8 under owner standing D034; immediately remediate R1/E1 persistence ordering and add production fault-injection regressions, then fresh full9 review before C31/P09. Prior stale binding and current performance accepted as remediated by actual reviewer; all old verdicts unchanged."
+}

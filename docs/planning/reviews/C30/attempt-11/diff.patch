@@ -1,0 +1,1740 @@
+diff --git a/apps/desktop/src/app.tsx b/apps/desktop/src/app.tsx
+index e8682836..b5f5027f 100644
+--- a/apps/desktop/src/app.tsx
++++ b/apps/desktop/src/app.tsx
+@@ -13,7 +13,7 @@ import { followAppearance } from './shell/appearance'
+ import { type DispatchOutcome, outcomeMessage } from './features/tenants/dispatch'
+ import { V2Shell } from './v2/v2-shell'
+ import { Wizard } from './v2/wizard/wizard'
+-import { useShellStore } from './v2/store'
++import { deliveryContext, useShellStore } from './v2/store'
+ import { SHELL_COPY } from './v2/copy'
+ import { forgetAcademyPresentation } from './features/academy/presentation-storage'
+ import { SAVE_DOCUMENT_EVENT } from './v2/workbench/request-editor'
+@@ -60,12 +60,15 @@ export function App({ client }: { client: DesktopClient }) {
+     const v2Act = useCallback(
+         async (what: string, intent: Intent, quiet: Refusal[] = []): Promise<DispatchOutcome> => {
+             // A context-bound action speaks for the tenant it was sent in (I2).
+-            const boundContext = typeof (intent as { context?: unknown }).context === 'string' ? (intent as { context: string }).context : null
++            const boundContext = deliveryContext(intent)
++            // A normal switch refusal still names its intended destination,
++            // but an uncertain switch must not offer Retry in another scope.
++            const retryContext = boundContext ?? (intent.kind === 'selectTenant' ? snapshotRef.current?.active?.context ?? null : null)
+             const bound = boundContext !== null ? (snapshotRef.current?.active?.tenant ?? null) : null
+             const outcome = await dispatch(intent)
+             if (outcome.kind === 'refused' && quiet.includes(outcome.refusal)) return outcome
+             if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused(what, outcome.refusal, outcomeMessage(outcome)), 'warn', undefined, bound, boundContext)
+-            else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed(what, intent)
++            else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed(what, intent, retryContext)
+             else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed(what), 'warn', undefined, bound, boundContext)
+             return outcome
+         },
+@@ -99,7 +102,7 @@ export function App({ client }: { client: DesktopClient }) {
+                 onSnapshot: (next) => {
+                     // The shell's scope follows the snapshot before it renders: a
+                     // notification for another tenant or context is never surfaced.
+-                    useShellStore.getState().setScope(next.active?.tenant ?? null, next.active?.context ?? null)
++                    useShellStore.getState().setScope(next.active?.tenant ?? null, next.active?.context ?? null, next.switchBlocked?.review ?? null)
+                     setSnapshot(next)
+                 },
+                 onMenu: (command) => onMenu.current(command),
+diff --git a/apps/desktop/src/v2/inbox/inbox.test.tsx b/apps/desktop/src/v2/inbox/inbox.test.tsx
+index f6e82033..d544a2ff 100644
+--- a/apps/desktop/src/v2/inbox/inbox.test.tsx
++++ b/apps/desktop/src/v2/inbox/inbox.test.tsx
+@@ -108,7 +108,7 @@ describe('Inbox', () => {
+         await user.click(screen.getByRole('button', { name: /Meridian Retail/ }))
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
+         expect(toasts()).toEqual([])
+-        await native.push({ ...native.current, switchBlocked: { to: 'tn-fedcba9876543210', pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false } })
++        await native.push({ ...native.current, switchBlocked: { context: native.current.active!.context, review: 'rv-1111111111111111', targetContext: null, to: 'tn-fedcba9876543210', pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false } })
+         const guard = await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })
+         expect(within(guard).getByText(/Switching to Meridian Retail ends it/)).toBeInTheDocument()
+         // Initial focus is Stay, the safe default: Enter on arrival ends nothing.
+@@ -116,9 +116,107 @@ describe('Inbox', () => {
+         native.respond = () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
+         await user.click(within(guard).getByRole('button', { name: 'Stay' }))
+         expect(native.dispatched.at(-1)).toEqual({ kind: 'dismissSwitchGuard' })
+-        await native.push({ ...native.current, switchBlocked: { to: 'tn-fedcba9876543210', pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false } })
++        await native.push({ ...native.current, switchBlocked: { context: native.current.active!.context, review: 'rv-1111111111111111', targetContext: null, to: 'tn-fedcba9876543210', pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false } })
+         await user.click(within(await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: 'Archive and switch' }))
+-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: 'archive' })
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: { kind: 'archive', context: native.current.active!.context, review: 'rv-1111111111111111' } })
++    })
++
++    it.each(['archive', 'discard'] as const)('retires an unconfirmed %s resolution with its native refusal, even in the same context', async (kind) => {
++        const user = userEvent.setup()
++        const native = await launch(fxInbox())
++        const context = native.current.active!.context
++        const guard = { context, review: 'rv-1111111111111111', targetContext: null, to: native.current.tenants[1]!.id, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false }
++        await native.push({ ...native.current, switchBlocked: guard })
++        native.respond = () => { throw new DeliveryOutcomeUnknown('lost') }
++        const label = kind === 'archive' ? 'Archive and switch' : 'Discard and switch'
++        await user.click(within(await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: label }))
++        await waitFor(() => expect(useShellStore.getState().unconfirmed).toHaveLength(1))
++        expect(useShellStore.getState().unconfirmed[0]?.context).toBe(context)
++        const retired = native.dispatched.at(-1)!
++        const sent = native.dispatched.length
++        // A replacement pending conversation/refusal in the same tenant/context.
++        const replacement = { ...guard, review: 'rv-2222222222222222', pending: { conversation: 'op-8', decision: 'ap-2' } }
++        await native.push({ ...native.current, switchBlocked: replacement })
++        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
++        useShellStore.getState().addUnconfirmed('The retired switch', retired)
++        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
++        expect(native.dispatched).toHaveLength(sent)
++        // A fresh explicit action uses the replacement native binding.
++        native.respond = () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
++        await user.click(within(screen.getByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: label }))
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: guard.to, resolution: { kind, context, review: replacement.review } })
++        await native.push({ ...native.current, active: { tenant: guard.to, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' }, switchBlocked: null })
++        expect(document.querySelector('[data-slot="unconfirmed"]')).toBeNull()
++    })
++
++    it.each(['archive', 'discard'] as const)('never surfaces a late lost %s receipt after the source context retires', async (kind) => {
++        const user = userEvent.setup()
++        const native = await launch(fxInbox())
++        const guard = { context: native.current.active!.context, review: 'rv-1111111111111111', targetContext: null, to: native.current.tenants[1]!.id, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false }
++        await native.push({ ...native.current, switchBlocked: guard })
++        let fail: (reason: unknown) => void = () => undefined
++        native.respond = () => new Promise((_, reject) => { fail = reject })
++        await user.click(within(await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: kind === 'archive' ? 'Archive and switch' : 'Discard and switch' }))
++        await native.push({ ...native.current, active: { tenant: guard.to, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' }, switchBlocked: null })
++        fail(new DeliveryOutcomeUnknown('lost'))
++        await new Promise((resolve) => setTimeout(resolve, 50))
++        fail(new DeliveryOutcomeUnknown('lost'))
++        await new Promise((resolve) => setTimeout(resolve, 50))
++        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
++        expect(document.querySelector('[data-slot="unconfirmed"]')).toBeNull()
++        await native.push({ ...fxInbox(), active: { tenant: fxInbox().active!.tenant, context: 'cx-cccccccccccccccccccccccc' } })
++        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
++    })
++
++    it('also retires a late unconfirmed initial tenant selection with the context it was asked from', async () => {
++        const user = userEvent.setup()
++        const native = await launch(fxInbox())
++        let fail: (reason: unknown) => void = () => undefined
++        native.respond = () => new Promise((_, reject) => { fail = reject })
++        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
++        await user.click(screen.getByRole('button', { name: /Meridian Retail/ }))
++        await native.push({ ...native.current, active: { tenant: native.current.tenants[1]!.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
++        fail(new DeliveryOutcomeUnknown('lost'))
++        await new Promise((resolve) => setTimeout(resolve, 50))
++        fail(new DeliveryOutcomeUnknown('lost'))
++        await new Promise((resolve) => setTimeout(resolve, 50))
++        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
++    })
++
++    it.each(['unknown-first', 'snapshot-first'] as const)('retires a captured-null initial selection (%s) after another context appears', async (order) => {
++        const user = userEvent.setup()
++        // Deleting the active tenant leaves onboarding done and other tenants selectable.
++        const native = await launch({ ...fxFresh(), active: null })
++        const destination = native.current.tenants[0]!
++        const later = native.current.tenants[1]!
++        let fail: (reason: unknown) => void = () => undefined
++        native.respond = order === 'unknown-first'
++            ? () => { throw new DeliveryOutcomeUnknown('lost') }
++            : () => new Promise((_, reject) => { fail = reject })
++        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
++        await user.click(screen.getByRole('button', { name: new RegExp(destination.label) }))
++        const selections = native.dispatched.filter((intent) => intent.kind === 'selectTenant')
++        expect(selections).toContainEqual({ kind: 'selectTenant', tenant: destination.id, resolution: null })
++        if (order === 'unknown-first') {
++            await screen.findByRole('button', { name: 'Retry' })
++            expect(useShellStore.getState().unconfirmed[0]?.context).toBeNull()
++        }
++        await native.push({ ...native.current, active: { tenant: destination.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
++        if (order === 'snapshot-first') {
++            fail(new DeliveryOutcomeUnknown('lost'))
++            await new Promise((resolve) => setTimeout(resolve, 50))
++            fail(new DeliveryOutcomeUnknown('lost'))
++            await new Promise((resolve) => setTimeout(resolve, 50))
++        }
++        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
++        expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
++        // The client's bounded same-request resend has settled by now.
++        const settledSelections = native.dispatched.filter((intent) => intent.kind === 'selectTenant')
++        await native.push({ ...native.current, active: { tenant: later.id, context: 'cx-cccccccccccccccccccccccc' } })
++        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
++        expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
++        // Observation and retirement never re-dispatch the old destination.
++        expect(native.dispatched.filter((intent) => intent.kind === 'selectTenant')).toEqual(settledSelections)
+     })
+ 
+     it('announces a snooze once, from the core receipt: never an old hold after a switch or a reread (I11)', async () => {
+diff --git a/apps/desktop/src/v2/store.ts b/apps/desktop/src/v2/store.ts
+index b58cfba5..67f214a9 100644
+--- a/apps/desktop/src/v2/store.ts
++++ b/apps/desktop/src/v2/store.ts
+@@ -56,10 +56,26 @@ export interface Unconfirmed {
+     id: number
+     what: string
+     intent: Intent
+-    /** The context the intent was bound to, if any: once that context retires, the delivery cannot be revived. */
++    /** The native context or captured switch source this delivery belongs to; retirement never rebinds it. */
+     context: string | null
+ }
+ 
++/** An initial tenant selection captures even the absence of an active context. */
++export function unconfirmedInContext(delivery: Pick<Unconfirmed, 'intent' | 'context'>, context: string | null): boolean {
++    return delivery.context === context || (delivery.context === null && delivery.intent.kind !== 'selectTenant')
++}
++
++function switchResolution(intent: Intent) {
++    return intent.kind === 'selectTenant' || intent.kind === 'completeTenantSetup' ? intent.resolution : null
++}
++
++/** A destructive switch is bound to its source, not its destination or setup draft. */
++export function deliveryContext(intent: Intent): string | null {
++    const resolution = switchResolution(intent)
++    if (resolution) return resolution.context
++    return 'context' in intent && typeof intent.context === 'string' ? intent.context : null
++}
++
+ export interface Toast {
+     id: number
+     kind: ToastKind
+@@ -80,8 +96,8 @@ export interface Toast {
+  */
+ interface ShellStore {
+     /** The scope the shell shows now (set from each snapshot before it renders): what a notification must belong to. */
+-    scope: { tenant: string | null; context: string | null }
+-    setScope(tenant: string | null, context: string | null): void
++    scope: { tenant: string | null; context: string | null; switchReview: string | null }
++    setScope(tenant: string | null, context: string | null, switchReview?: string | null): void
+     paletteOpen: boolean
+     switcherOpen: boolean
+     /** The rail's Administration children shown or hidden (C35; the prototype's `adminNav`). */
+@@ -128,7 +144,7 @@ interface ShellStore {
+     unconfirmed: Unconfirmed[]
+     /** Toast lifetime in ms (6 s; tests shorten it). */
+     toastMs: number
+-    addUnconfirmed(what: string, intent: Intent): number
++    addUnconfirmed(what: string, intent: Intent, sourceContext?: string | null): number
+     clearUnconfirmed(id: number): void
+     openPalette(): void
+     closePalette(): void
+@@ -145,13 +161,13 @@ let nextToast = 1
+ let nextKept = 1
+ 
+ export const useShellStore = create<ShellStore>((set, get) => ({
+-    scope: { tenant: null, context: null },
+-    setScope: (tenant, context) =>
++    scope: { tenant: null, context: null, switchReview: null },
++    setScope: (tenant, context, switchReview = null) =>
+         set((s) => ({
+-            scope: { tenant, context },
++            scope: { tenant, context, switchReview },
+             // Leaving a scope retires what spoke for it, however late it would have arrived.
+             toasts: s.toasts.filter((t) => (t.tenant === null || t.tenant === tenant) && (t.context === null || t.context === context)),
+-            unconfirmed: s.unconfirmed.filter((u) => u.context === null || u.context === context),
++            unconfirmed: s.unconfirmed.filter((u) => unconfirmedInContext(u, context) && (!switchResolution(u.intent) || switchResolution(u.intent)?.review === switchReview)),
+             arrival: s.arrival && s.arrival.tenant !== tenant ? null : s.arrival,
+         })),
+     paletteOpen: false,
+@@ -188,16 +204,17 @@ export const useShellStore = create<ShellStore>((set, get) => ({
+     arrive: (target) => set((s) => ({ arrival: { ...target, sequence: (s.arrival?.sequence ?? 0) + 1 } })),
+     unconfirmed: [],
+     toastMs: 6000,
+-    addUnconfirmed: (what, intent) => {
++    addUnconfirmed: (what, intent, context = deliveryContext(intent)) => {
+         const id = nextToast++
+-        const context = typeof (intent as { context?: unknown }).context === 'string' ? ((intent as { context: string }).context ?? null) : null
+         // A delivery bound to a context the shell no longer shows is moot: never surfaced (I2).
+-        if (context !== null && context !== get().scope.context) return id
++        if (!unconfirmedInContext({ intent, context }, get().scope.context)) return id
++        const resolution = switchResolution(intent)
++        if (resolution && resolution.review !== get().scope.switchReview) return id
+         set((s) => ({ unconfirmed: [...s.unconfirmed, { id, what, intent, context }] }))
+         return id
+     },
+     scopeArrival: (tenant) => set((s) => (s.arrival && s.arrival.tenant !== tenant ? { arrival: null } : {})),
+-    retireUnconfirmed: (context) => set((s) => ({ unconfirmed: s.unconfirmed.filter((u) => u.context === null || u.context === context) })),
++    retireUnconfirmed: (context) => set((s) => ({ unconfirmed: s.unconfirmed.filter((u) => unconfirmedInContext(u, context)) })),
+     clearUnconfirmed: (id) => set((s) => ({ unconfirmed: s.unconfirmed.filter((u) => u.id !== id) })),
+     openPalette: () => set({ paletteOpen: true, switcherOpen: false }),
+     closePalette: () => set({ paletteOpen: false }),
+@@ -219,5 +236,5 @@ export const useShellStore = create<ShellStore>((set, get) => ({
+ 
+ /** Test seam: forget everything (each test starts from an empty store). */
+ export function resetShellStore() {
+-    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
++    useShellStore.setState({ scope: { tenant: null, context: null, switchReview: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
+ }
+diff --git a/apps/desktop/src/v2/switch-guard.tsx b/apps/desktop/src/v2/switch-guard.tsx
+index 4618e19a..9904904f 100644
+--- a/apps/desktop/src/v2/switch-guard.tsx
++++ b/apps/desktop/src/v2/switch-guard.tsx
+@@ -1,4 +1,4 @@
+-import type { SwitchResolution } from '@prisma-airs/desktop-contracts'
++import type { ShellSnapshot, SwitchResolution } from '@prisma-airs/desktop-contracts'
+ import { GUARD_COPY } from './copy'
+ import { Modal } from './modal'
+ 
+@@ -7,6 +7,7 @@ export interface SwitchGuardProps {
+     target: string
+     /** The switch is a setup draft's completion (the body says so). */
+     completion: boolean
++    binding: Pick<NonNullable<ShellSnapshot['switchBlocked']>, 'context' | 'review'>
+     onStay: () => void
+     onResolve: (resolution: SwitchResolution) => void
+ }
+@@ -19,7 +20,7 @@ export interface SwitchGuardProps {
+  * Initial focus is on Stay, the safe default: Enter on arrival never ends
+  * the conversation (Archive stays the visually primary action).
+  */
+-export function SwitchGuard({ target, completion, onStay, onResolve }: SwitchGuardProps) {
++export function SwitchGuard({ target, completion, binding, onStay, onResolve }: SwitchGuardProps) {
+     return (
+         <Modal label={GUARD_COPY.title} onClose={onStay} width={520} data-slot='switch-guard'>
+             <h2 className='text-[16px] font-semibold'>{GUARD_COPY.title}</h2>
+@@ -30,10 +31,10 @@ export function SwitchGuard({ target, completion, onStay, onResolve }: SwitchGua
+                 <button type='button' autoFocus onClick={onStay} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                     {GUARD_COPY.stay}
+                 </button>
+-                <button type='button' onClick={() => onResolve('discard')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
++                <button type='button' onClick={() => onResolve({ kind: 'discard', context: binding.context, review: binding.review })} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                     {GUARD_COPY.discard}
+                 </button>
+-                <button type='button' onClick={() => onResolve('archive')} className='h-8 rounded-[7px] px-3 text-[13px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
++                <button type='button' onClick={() => onResolve({ kind: 'archive', context: binding.context, review: binding.review })} className='h-8 rounded-[7px] px-3 text-[13px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
+                     {GUARD_COPY.archive}
+                 </button>
+             </div>
+diff --git a/apps/desktop/src/v2/v2-shell.tsx b/apps/desktop/src/v2/v2-shell.tsx
+index 08651d8d..38d7d240 100644
+--- a/apps/desktop/src/v2/v2-shell.tsx
++++ b/apps/desktop/src/v2/v2-shell.tsx
+@@ -11,7 +11,7 @@ import { HOME_COPY, SHELL_COPY, SNOOZE_COPY } from './copy'
+ import { readLine } from './home'
+ import { Home } from './home'
+ import { Palette } from './palette'
+-import { useShellStore } from './store'
++import { unconfirmedInContext, useShellStore } from './store'
+ import { SwitchGuard } from './switch-guard'
+ import { TenantSwitcher } from './tenant-switcher'
+ import { Toasts } from './toasts'
+@@ -83,8 +83,8 @@ export function V2Shell(props: V2ShellProps) {
+     const adminNavOpen = useShellStore((s) => s.adminNavOpen)
+     const setAdminNav = useShellStore((s) => s.setAdminNav)
+     const unconfirmedAll = useShellStore((s) => s.unconfirmed)
+-    // Only deliveries bound to the shown context, or to none (I2).
+-    const unconfirmed = unconfirmedAll.filter((u) => u.context === null || u.context === (snapshot.active?.context ?? null))
++    // A captured null switch source is a scope too; only truly unbound actions survive (I2).
++    const unconfirmed = unconfirmedAll.filter((u) => unconfirmedInContext(u, snapshot.active?.context ?? null))
+     const clearUnconfirmed = useShellStore((s) => s.clearUnconfirmed)
+     const arrival = useShellStore((s) => s.arrival)
+     const modalOpen = useModalsOpen()
+@@ -563,7 +563,7 @@ export function V2Shell(props: V2ShellProps) {
+                 <Palette snapshot={snapshot} onNavigate={props.onNavigate} onSwitchTenant={props.onSwitchTenant} onReadNow={props.onReadNow} onClose={closePalette} />
+             )}
+             {guard && guardTarget && (
+-                <SwitchGuard target={guardTarget} completion={false} onStay={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => props.onSwitchTenant(guard.to, resolution)} />
++                <SwitchGuard target={guardTarget} completion={false} binding={guard} onStay={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => props.onSwitchTenant(guard.to, resolution)} />
+             )}
+             {adding && (
+                 <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} padding={0} data-slot='add-tenant-sheet'>
+diff --git a/apps/desktop/src/v2/wizard/wizard.test.tsx b/apps/desktop/src/v2/wizard/wizard.test.tsx
+index 66cf2809..0543985e 100644
+--- a/apps/desktop/src/v2/wizard/wizard.test.tsx
++++ b/apps/desktop/src/v2/wizard/wizard.test.tsx
+@@ -439,7 +439,7 @@ describe('first-run wizard', () => {
+         expect(screen.getByRole('dialog', { name: 'Add a tenant' })).toBeInTheDocument()
+         expect(document.querySelector('[data-slot="wizard-status"]')?.textContent).toBe('')
+         const draftId = native.current.setup?.tenant.id as string
+-        await native.push({ ...native.current, switchBlocked: { to: draftId, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: true } })
++        await native.push({ ...native.current, switchBlocked: { context: native.current.active!.context, review: 'rv-1111111111111111', targetContext: DRAFT_CONTEXT, to: draftId, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: true } })
+         const guard = await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })
+         expect(within(guard).getByText(/Finishing the setup of Coastal Bank makes it active/)).toBeInTheDocument()
+         native.respond = () => admitted()
+@@ -448,9 +448,9 @@ describe('first-run wizard', () => {
+         await native.push({ ...native.current, switchBlocked: null })
+         await waitFor(() => expect(screen.queryByRole('dialog', { name: 'A Harness decision is waiting' })).toBeNull())
+         expect(screen.getByRole('dialog', { name: 'Add a tenant' })).toBeInTheDocument()
+-        await native.push({ ...native.current, switchBlocked: { to: draftId, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: true } })
++        await native.push({ ...native.current, switchBlocked: { context: native.current.active!.context, review: 'rv-1111111111111111', targetContext: DRAFT_CONTEXT, to: draftId, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: true } })
+         await user.click(within(await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: 'Archive and switch' }))
+-        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: [], resolution: 'archive' })
++        expect(native.dispatched.at(-1)).toEqual({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: [], resolution: { kind: 'archive', context: native.current.active!.context, review: 'rv-1111111111111111' } })
+         expect(await screen.findByText(/Coastal Bank is set up and active\./)).toBeInTheDocument()
+     })
+ })
+diff --git a/apps/desktop/src/v2/wizard/wizard.tsx b/apps/desktop/src/v2/wizard/wizard.tsx
+index 0e472abc..1ec34fc8 100644
+--- a/apps/desktop/src/v2/wizard/wizard.tsx
++++ b/apps/desktop/src/v2/wizard/wizard.tsx
+@@ -1035,7 +1035,7 @@ export function Wizard(props: WizardProps) {
+                 </footer>
+             </div>
+             {/* The guard is a dialog above the sheet (I8): rendered at the body, outside the sheet's inert subtree. */}
+-            {completionGuard && setup && createPortal(<SwitchGuard target={setup.tenant.label} completion onStay={() => void dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => void finish(resolution)} />, document.body)}
++            {completionGuard && setup && createPortal(<SwitchGuard target={setup.tenant.label} completion binding={completionGuard} onStay={() => void dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => void finish(resolution)} />, document.body)}
+         </div>
+     )
+ }
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 3479e458..0d865ff6 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -1199,6 +1199,11 @@ pub struct ResetFailure {
+ #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+ #[serde(rename_all = "camelCase")]
+ pub struct SwitchBlocked {
++    /// The active source context and native-issued, single refusal reference.
++    pub context: ContextRef,
++    pub review: ReviewId,
++    /// The exact setup generation when completing a draft; none for selection.
++    pub target_context: Option<ContextRef>,
+     /// The tenant the switch was asked for (a setup draft's id when the
+     /// switch is its completion).
+     pub to: TenantId,
+@@ -2155,6 +2160,15 @@ impl State {
+         self.sync_inference();
+         self.sync_files();
+         self.sync_harness();
++        if self.switch_blocked.as_ref().is_some_and(|guard| {
++            self.active_ref.as_ref() != Some(&guard.context)
++                || self.pending_decision().as_ref() != Some(&guard.pending)
++                || guard.target_context.as_ref().is_some_and(|context| {
++                    self.setup_tenant_for(context).as_ref() != Some(&guard.to)
++                })
++        }) {
++            self.switch_blocked = None;
++        }
+         self.revision += 1;
+         let update = Update::Shell(Box::new(self.snapshot()));
+         self.subscribers.publish(&update);
+@@ -2163,6 +2177,7 @@ impl State {
+     /// Issues a fresh context reference for the active tenant (or none) and
+     /// retires everything bound to the previous one.
+     fn reissue_context(&mut self) -> Vec<runtime::Start> {
++        self.switch_blocked = None;
+         self.epoch += 1;
+         self.active_ref = self
+             .data
+@@ -3733,7 +3748,7 @@ fn admit(
+             // Completion makes the new tenant active: the one guarded switch
+             // path (I1). A pending Harness decision refuses it, with the
+             // draft, the active tenant and the decision all untouched.
+-            if let Err(refusal) = state.guard_switch(&draft, resolution, true) {
++            if let Err(refusal) = state.guard_switch(&draft, resolution, Some(&context)) {
+                 state.changed();
+                 return Err(refusal);
+             }
+@@ -3810,9 +3825,12 @@ fn admit(
+             if !state.committed_tenant(&tenant) || state.v1_hides_tenant(&tenant) {
+                 return Err(Refusal::InvalidInput);
+             }
++            if resolution.is_some() && state.data.active.as_ref() == Some(&tenant) {
++                return Err(Refusal::StaleContext);
++            }
+             // The one switch path (I1): a pending Harness decision refuses
+             // it until the operator resolves the conversation.
+-            if let Err(refusal) = state.guard_switch(&tenant, resolution, false) {
++            if let Err(refusal) = state.guard_switch(&tenant, resolution, None) {
+                 state.changed();
+                 return Err(refusal);
+             }
+diff --git a/crates/desktop-core/src/authority/inbox_domain.rs b/crates/desktop-core/src/authority/inbox_domain.rs
+index 0568f5f8..1f2facd6 100644
+--- a/crates/desktop-core/src/authority/inbox_domain.rs
++++ b/crates/desktop-core/src/authority/inbox_domain.rs
+@@ -14,6 +14,7 @@ use super::observation_domain::{
+     source_names,
+ };
+ use super::{PendingDecisionRef, Refusal, State, SwitchBlocked};
++use crate::context::{ContextRef, ReviewId};
+ use crate::features::{FeatureId, ProductId, SetupWarning};
+ use crate::management::{ManagementFailure, ManagementResource};
+ use crate::observation::{Fact, InboxDestination, InboxItem, Tone};
+@@ -21,11 +22,17 @@ use crate::tenants::TenantId;
+ 
+ /// How a blocked switch is resolved (I1): the pending conversation is
+ /// ended and kept (`archive`) or ended and dropped (`discard`).
+-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+-#[serde(rename_all = "camelCase")]
++#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
++#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+ pub enum SwitchResolution {
+-    Archive,
+-    Discard,
++    Archive {
++        context: ContextRef,
++        review: ReviewId,
++    },
++    Discard {
++        context: ContextRef,
++        review: ReviewId,
++    },
+ }
+ 
+ /// Where an Inbox entry came from.
+@@ -350,33 +357,46 @@ impl State {
+         &mut self,
+         to: &TenantId,
+         resolution: Option<SwitchResolution>,
+-        completion: bool,
++        target_context: Option<&ContextRef>,
+     ) -> Result<(), Refusal> {
++        if let Some(resolution) = resolution {
++            let (context, review) = match &resolution {
++                SwitchResolution::Archive { context, review }
++                | SwitchResolution::Discard { context, review } => (context, review),
++            };
++            // A resolution names one native refusal, never whichever
++            // conversation happens to be pending when a lost delivery retries.
++            let blocked = self.switch_blocked.as_ref().ok_or(Refusal::StaleContext)?;
++            if self.active_ref.as_ref() != Some(context)
++                || &blocked.context != context
++                || &blocked.review != review
++                || &blocked.to != to
++                || blocked.target_context.as_ref() != target_context
++                || Some(&blocked.pending) != self.pending_decision().as_ref()
++            {
++                return Err(Refusal::StaleContext);
++            }
++            let id = self.live_bound_harness().ok_or(Refusal::StaleContext)?;
++            match resolution {
++                SwitchResolution::Archive { .. } => self.end_harness(&id)?,
++                SwitchResolution::Discard { .. } => self.discard_harness(&id)?,
++            }
++            self.switch_blocked = None;
++            return Ok(());
++        }
+         let Some(pending) = self.pending_decision() else {
+             self.switch_blocked = None;
+             return Ok(());
+         };
+-        let id = self.live_bound_harness().ok_or(Refusal::Busy)?;
+-        match resolution {
+-            None => {
+-                self.switch_blocked = Some(SwitchBlocked {
+-                    to: to.clone(),
+-                    pending,
+-                    completion,
+-                });
+-                Err(Refusal::DecisionPending)
+-            }
+-            Some(SwitchResolution::Archive) => {
+-                self.end_harness(&id)?;
+-                self.switch_blocked = None;
+-                Ok(())
+-            }
+-            Some(SwitchResolution::Discard) => {
+-                self.discard_harness(&id)?;
+-                self.switch_blocked = None;
+-                Ok(())
+-            }
+-        }
++        self.switch_blocked = Some(SwitchBlocked {
++            to: to.clone(),
++            pending,
++            completion: target_context.is_some(),
++            context: self.active_ref.clone().ok_or(Refusal::StaleContext)?,
++            review: ReviewId::issue().ok_or(Refusal::ShuttingDown)?,
++            target_context: target_context.cloned(),
++        });
++        Err(Refusal::DecisionPending)
+     }
+ 
+     /// The active tenant's setup warnings as items.
+diff --git a/crates/desktop-core/tests/harness_tools/main.rs b/crates/desktop-core/tests/harness_tools/main.rs
+index b806dbcd..e9897f84 100644
+--- a/crates/desktop-core/tests/harness_tools/main.rs
++++ b/crates/desktop-core/tests/harness_tools/main.rs
+@@ -1071,6 +1071,233 @@ async fn nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_re
+     std::fs::remove_dir_all(&dir).expect("cleanup");
+ }
+ 
++/// Resolve exactly the refusal the production interface just published.
++async fn reviewed_switch(desk: &mut Desk, mut intent: Value, kind: &str) -> Value {
++    assert_eq!(
++        desk.send(intent.clone()).await,
++        Err(desktop_core::Refusal::DecisionPending)
++    );
++    let guard = desk.json()["switchBlocked"].clone();
++    assert!(guard["review"].as_str().is_some(), "native reference");
++    intent["resolution"] =
++        json!({"kind": kind, "context": guard["context"], "review": guard["review"]});
++    intent
++}
++
++/// A real-engine pending command after a protected transcript was committed.
++async fn saved_pending_switch_conversation(
++    desk: &mut Desk,
++    reference: &str,
++) -> (Value, Vec<(PathBuf, Vec<u8>)>) {
++    let id = start_when_free(desk, reference).await;
++    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
++    desk.gateway.lock().expect("gateway").answer = Answer::Short;
++    desk.say(&id, "Say hello.").await.expect("sent");
++    desk.answered().await;
++    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
++    let history = desk.conversation()["historyId"]
++        .as_str()
++        .expect("saved history")
++        .to_owned();
++    tool(desk, None, "exec_command", json!({"cmd": "ls"}));
++    desk.say(&id, "List the files.")
++        .await
++        .expect("pending command");
++    let pending = answered_with(desk, |c| {
++        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
++    })
++    .await;
++    let protected: Vec<_> = files_under(&desk.history_root)
++        .into_iter()
++        .filter(|p| p.to_string_lossy().contains(&history))
++        .map(|p| {
++            let bytes = std::fs::read(&p).expect("protected history");
++            (p, bytes)
++        })
++        .collect();
++    assert!(
++        !protected.is_empty(),
++        "a real protected transcript exists before the stale action"
++    );
++    (pending, protected)
++}
++
++fn pending_switch_history_is_unchanged(
++    desk: &Desk,
++    before: &Value,
++    protected: &[(PathBuf, Vec<u8>)],
++) {
++    let current = desk.conversation();
++    assert_eq!(current["id"], before["id"]);
++    assert_eq!(current["phase"], before["phase"]);
++    assert_eq!(current["approvals"], before["approvals"]);
++    assert!(
++        protected
++            .iter()
++            .all(|(p, bytes)| std::fs::read(p).is_ok_and(|now| now == *bytes)),
++        "stale resolution neither removes nor changes protected history"
++    );
++}
++
++async fn stale_switch_resolution_is_bound(kind: &str) {
++    let mut desk = desk().await;
++    let dir = project();
++    choose_project(&mut desk, &dir).await;
++    let reference = desk.choose(WS_A).await;
++    desk.store_key(&reference, KEY, None).await;
++    let _ = saved_pending_switch_conversation(&mut desk, &reference).await;
++    let a = desk.json()["active"]["tenant"]
++        .as_str()
++        .expect("A")
++        .to_owned();
++    let origin = desk.json()["tenants"][0]["origin"].clone();
++    desk.send(json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": TSG, "destination": {"kind": "custom", "origin": origin}}})).await.expect("B");
++    let b = desk.json()["tenants"]
++        .as_array()
++        .expect("tenants")
++        .iter()
++        .find(|t| t["label"] == "Tenant B")
++        .expect("B")["id"]
++        .as_str()
++        .expect("B id")
++        .to_owned();
++    assert!(
++        serde_json::from_value::<desktop_core::Intent>(
++            json!({"kind": "selectTenant", "tenant": b, "resolution": kind})
++        )
++        .is_err(),
++        "an unbound legacy resolution is not admitted by the protocol"
++    );
++    let lost = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": b}),
++        kind,
++    )
++    .await;
++    // The native action succeeds, but the renderer never receives its receipt
++    // and later retries the old intent with a new delivery sequence.
++    desk.send(lost.clone())
++        .await
++        .expect("first action admitted, receipt lost");
++    assert_eq!(desk.json()["active"]["tenant"], b);
++    let context = desk.context();
++    desk.send(json!({"kind": "configureManagementCredential", "context": context, "mode": "keychain", "clientId": CLIENT_ID, "secret": CLIENT_SECRET})).await.expect("B synthetic management key");
++    assert!(
++        settle(|| desk.json()["tenants"]
++            .as_array()
++            .expect("tenants")
++            .iter()
++            .find(|t| t["id"] == b)
++            .expect("B")["management"]["state"]
++            == "ready")
++        .await
++    );
++    let reference = desk.choose(WS_A).await;
++    desk.store_key(&reference, KEY, None).await;
++    assert!(
++        settle(|| desk.json()["tenants"]
++            .as_array()
++            .expect("tenants")
++            .iter()
++            .find(|t| t["id"] == b)
++            .expect("B")["inference"]["state"]
++            == "ready")
++        .await
++    );
++    choose_project(&mut desk, &dir).await;
++    let (pending, protected) = saved_pending_switch_conversation(&mut desk, &reference).await;
++    // Exact exploit: the old A→B resolution must not touch B's new pending
++    // conversation, including when B is already the selected tenant.
++    assert_eq!(
++        desk.send(lost.clone()).await,
++        Err(desktop_core::Refusal::StaleContext)
++    );
++    pending_switch_history_is_unchanged(&desk, &pending, &protected);
++    let mut transplanted = lost;
++    transplanted["tenant"] = json!(a);
++    assert_eq!(
++        desk.send(transplanted.clone()).await,
++        Err(desktop_core::Refusal::StaleContext)
++    );
++    let old_guard = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": a}),
++        kind,
++    )
++    .await;
++    transplanted["resolution"]["context"] = json!(desk.context());
++    assert_eq!(
++        desk.send(transplanted).await,
++        Err(desktop_core::Refusal::StaleContext),
++        "a source-context edit cannot transplant an old native review reference"
++    );
++    let dismissed_guard = old_guard.clone();
++    desk.send(json!({"kind": "dismissSwitchGuard"}))
++        .await
++        .expect("Stay");
++    assert_eq!(
++        desk.send(old_guard.clone()).await,
++        Err(desktop_core::Refusal::StaleContext),
++        "Stay retires this refusal"
++    );
++    let old_guard = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": a}),
++        kind,
++    )
++    .await;
++    assert_ne!(
++        dismissed_guard["resolution"]["review"],
++        old_guard["resolution"]["review"]
++    );
++    assert_eq!(
++        desk.send(dismissed_guard).await,
++        Err(desktop_core::Refusal::StaleContext),
++        "republishing the same pending decision does not revive a dismissed refusal"
++    );
++    pending_switch_history_is_unchanged(&desk, &pending, &protected);
++    // A replacement conversation can use the SAME tenant context and target.
++    // Its distinct pending decision still must not inherit the prior action.
++    desk.end(pending["id"].as_str().expect("conversation"))
++        .await;
++    let unchanged_context = desk.context();
++    let (replacement, protected) = saved_pending_switch_conversation(&mut desk, &reference).await;
++    assert_eq!(desk.context(), unchanged_context);
++    assert_ne!(replacement["id"], pending["id"]);
++    assert_eq!(
++        desk.send(old_guard.clone()).await,
++        Err(desktop_core::Refusal::StaleContext)
++    );
++    let fresh = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": a}),
++        kind,
++    )
++    .await;
++    assert_eq!(
++        desk.send(old_guard).await,
++        Err(desktop_core::Refusal::StaleContext),
++        "a new refusal never revives an old resolution"
++    );
++    pending_switch_history_is_unchanged(&desk, &replacement, &protected);
++    desk.send(fresh)
++        .await
++        .expect("fresh resolution remains usable");
++    assert_eq!(desk.json()["active"]["tenant"], a);
++    desk.core.shutdown();
++    std::fs::remove_dir_all(dir).expect("synthetic project cleanup");
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn stale_archive_resolution_never_ends_another_pending_conversation() {
++    stale_switch_resolution_is_bound("archive").await;
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn stale_discard_resolution_never_deletes_another_pending_conversation() {
++    stale_switch_resolution_is_bound("discard").await;
++}
++
+ /// C30 (I1): the one tenant-switch path refuses while the operator has a
+ /// Harness decision pending; the refusal carries the guard, and the
+ /// operator's resolution ends the conversation (kept or dropped) and switches.
+@@ -1134,9 +1361,13 @@ async fn a_pending_decision_refuses_a_tenant_switch_until_it_is_resolved() {
+     assert!(desk.json()["switchBlocked"].is_null());
+     assert_eq!(desk.json()["active"]["tenant"], a);
+     // Archive and switch: the conversation is ended (kept) and B is active.
+-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "archive"}))
+-        .await
+-        .expect("switched");
++    let resolved = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": b}),
++        "archive",
++    )
++    .await;
++    desk.send(resolved).await.expect("switched");
+     let s = desk.json();
+     assert_eq!(s["active"]["tenant"], b);
+     assert!(s["switchBlocked"].is_null());
+@@ -1191,9 +1422,13 @@ async fn discard_and_switch_drops_the_pending_conversation() {
+         .and_then(|t| t["id"].as_str())
+         .expect("B id")
+         .to_owned();
+-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
+-        .await
+-        .expect("switched");
++    let resolved = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": b}),
++        "discard",
++    )
++    .await;
++    desk.send(resolved).await.expect("switched");
+     assert_eq!(desk.json()["active"]["tenant"], b);
+     desk.send(json!({"kind": "selectTenant", "tenant": a}))
+         .await
+@@ -1274,9 +1509,13 @@ async fn discard_removes_the_saved_transcript_and_archive_keeps_it() {
+         .and_then(|t| t["id"].as_str())
+         .expect("B id")
+         .to_owned();
+-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
+-        .await
+-        .expect("switched");
++    let resolved = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": b}),
++        "discard",
++    )
++    .await;
++    desk.send(resolved).await.expect("switched");
+     desk.send(json!({"kind": "selectTenant", "tenant": a}))
+         .await
+         .expect("back to A");
+@@ -1312,9 +1551,13 @@ async fn discard_removes_the_saved_transcript_and_archive_keeps_it() {
+         .as_str()
+         .expect("history id")
+         .to_owned();
+-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "archive"}))
+-        .await
+-        .expect("switched");
++    let resolved = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": b}),
++        "archive",
++    )
++    .await;
++    desk.send(resolved).await.expect("switched");
+     desk.send(json!({"kind": "selectTenant", "tenant": a}))
+         .await
+         .expect("back to A");
+@@ -1399,9 +1642,13 @@ async fn a_discard_whose_removal_fails_is_reported_until_the_record_is_removed()
+         .to_owned();
+     // Removal cannot happen: the folder refuses it.
+     std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o555)).expect("chmod");
+-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
+-        .await
+-        .expect("switched");
++    let resolved = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": b}),
++        "discard",
++    )
++    .await;
++    desk.send(resolved).await.expect("switched");
+     desk.send(json!({"kind": "selectTenant", "tenant": a}))
+         .await
+         .expect("back to A");
+@@ -1570,9 +1817,13 @@ async fn a_save_admitted_before_a_discard_never_writes_the_discarded_transcript(
+     tokio::time::sleep(Duration::from_secs(2)).await;
+     // The guard is still actionable: Discard removes the earlier record and
+     // tombstones the conversation while the save waits.
+-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
+-        .await
+-        .expect("switched");
++    let resolved = reviewed_switch(
++        &mut desk,
++        json!({"kind": "selectTenant", "tenant": b}),
++        "discard",
++    )
++    .await;
++    desk.send(resolved).await.expect("switched");
+     assert!(
+         settle_for(20, || !files_under(&desk.history_root)
+             .iter()
+@@ -1672,9 +1923,29 @@ async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
+     assert_eq!(s["active"]["tenant"], a);
+     // Archive and complete: the conversation ends (kept), the tenant is
+     // committed and active, the draft is gone.
+-    desk.send(json!({"kind": "completeTenantSetup", "context": draft, "packs": [], "resolution": "archive"}))
+-        .await
+-        .expect("completed");
++    let resolved = reviewed_switch(
++        &mut desk,
++        json!({"kind": "completeTenantSetup", "context": draft, "packs": []}),
++        "archive",
++    )
++    .await;
++    assert_eq!(
++        resolved["resolution"]["context"],
++        desk.context(),
++        "bound to the active source, not the setup draft"
++    );
++    let mut wrong_source = resolved.clone();
++    wrong_source["resolution"]["context"] = json!(draft);
++    assert_eq!(
++        desk.send(wrong_source).await,
++        Err(desktop_core::Refusal::StaleContext)
++    );
++    assert_eq!(
++        desk.conversation()["id"],
++        id,
++        "forged source does not end the conversation"
++    );
++    desk.send(resolved).await.expect("completed");
+     let s = desk.json();
+     assert!(s["setup"].is_null());
+     assert!(s["switchBlocked"].is_null());
+diff --git a/packages/desktop-contracts/src/client.ts b/packages/desktop-contracts/src/client.ts
+index ff8c31f2..751ad5b4 100644
+--- a/packages/desktop-contracts/src/client.ts
++++ b/packages/desktop-contracts/src/client.ts
+@@ -2879,6 +2879,12 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
+         !optional(
+             (g) =>
+                 isRecord(g) &&
++                typeof g.context === 'string' &&
++                CONTEXT_REF.test(g.context) &&
++                isRecord(value.active) &&
++                g.context === value.active.context &&
++                typeof g.review === 'string' &&
++                REVIEW_ID.test(g.review) &&
+                 typeof g.to === 'string' &&
+                 TENANT_ID.test(g.to) &&
+                 isRecord(g.pending) &&
+@@ -2886,7 +2892,10 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
+                 g.pending.conversation.length > 0 &&
+                 typeof g.pending.decision === 'string' &&
+                 g.pending.decision.length > 0 &&
+-                typeof g.completion === 'boolean',
++                typeof g.completion === 'boolean' &&
++                (g.completion
++                    ? typeof g.targetContext === 'string' && CONTEXT_REF.test(g.targetContext) && isRecord(value.setup) && isRecord(value.setup.tenant) && g.targetContext === value.setup.context && g.to === value.setup.tenant.id
++                    : g.targetContext === null),
+             value.switchBlocked
+         ) ||
+         // C29: the tenant setup in progress, with its draft and verification.
+diff --git a/packages/desktop-contracts/src/generated/SwitchBlocked.ts b/packages/desktop-contracts/src/generated/SwitchBlocked.ts
+index c4130191..265635f7 100644
+--- a/packages/desktop-contracts/src/generated/SwitchBlocked.ts
++++ b/packages/desktop-contracts/src/generated/SwitchBlocked.ts
+@@ -1,5 +1,7 @@
+ // This file was generated by [ts-rs](https://github.com/Aleph-Alpha/ts-rs). Do not edit this file manually.
++import type { ContextRef } from "./ContextRef";
+ import type { PendingDecisionRef } from "./PendingDecisionRef";
++import type { ReviewId } from "./ReviewId";
+ import type { TenantId } from "./TenantId";
+ 
+ /**
+@@ -9,6 +11,14 @@ import type { TenantId } from "./TenantId";
+  * guess of its own (invariant I1).
+  */
+ export type SwitchBlocked = { 
++/**
++ * The active source context and native-issued, single refusal reference.
++ */
++context: ContextRef, review: ReviewId, 
++/**
++ * The exact setup generation when completing a draft; none for selection.
++ */
++targetContext: ContextRef | null, 
+ /**
+  * The tenant the switch was asked for (a setup draft's id when the
+  * switch is its completion).
+diff --git a/packages/desktop-contracts/src/generated/SwitchResolution.ts b/packages/desktop-contracts/src/generated/SwitchResolution.ts
+index 7819a2c8..82180cf5 100644
+--- a/packages/desktop-contracts/src/generated/SwitchResolution.ts
++++ b/packages/desktop-contracts/src/generated/SwitchResolution.ts
+@@ -1,7 +1,9 @@
+ // This file was generated by [ts-rs](https://github.com/Aleph-Alpha/ts-rs). Do not edit this file manually.
++import type { ContextRef } from "./ContextRef";
++import type { ReviewId } from "./ReviewId";
+ 
+ /**
+  * How a blocked switch is resolved (I1): the pending conversation is
+  * ended and kept (`archive`) or ended and dropped (`discard`).
+  */
+-export type SwitchResolution = "archive" | "discard";
++export type SwitchResolution = { "kind": "archive", context: ContextRef, review: ReviewId, } | { "kind": "discard", context: ContextRef, review: ReviewId, };
+diff --git a/tools/p09/README.md b/tools/p09/README.md
+index abfccb1c..d3fb0ca5 100644
+--- a/tools/p09/README.md
++++ b/tools/p09/README.md
+@@ -24,7 +24,13 @@ Prerequisites:
+   fixture Clippy rejected the observer's placement after a test module. The
+   unchanged fixture-only observer was moved before that module; the exact
+   Clippy command and formatting check passed. Generation 04 requalifies this
+-  source ordering, followed by fresh check `attempt-05`.
++  source ordering; generation 04's 19 natives and check `attempt-05` then passed.
++  C29 attempt-08 passed 9/9/9/9/9. C30 attempt-10 returned 9/8/8/8/8 with
++  blocker B1 and was not accepted: stale destructive switch retries and missing
++  current switch-latency evidence require remediation. The current candidate
++  binds native guard references and retires renderer retries. Generation 05,
++  current performance acceptance, fresh check `attempt-06` and changed-source
++  C29/C30 re-reviews remain required; no old score transfers to changed inputs.
+   The current audit requires every compiled input to match the fresh native
+   build's captured before/after seal (`P09/native-build-inputs.json` and its
+   generation under `P09/preparations/`). There is no source-exemption list.
+@@ -38,11 +44,11 @@ Example after the fresh fixture/native prerequisites are satisfied (choose
+ unused attempt IDs if these already exist):
+ 
+ ```sh
+-bash docs/planning/evidence/P09/runs/run-checks.sh attempt-05
+-python3 tools/p09/audit-p09-checks.py attempt-05
+-python3 tools/p09/make-remedial-packet.py C29 attempt-08 attempt-07 attempt-05
+-python3 tools/p09/launch-remedial-review.py C29 attempt-08
+-python3 tools/p09/audit-remedial-review.py C29 attempt-08
++bash docs/planning/evidence/P09/runs/run-checks.sh attempt-06
++python3 tools/p09/audit-p09-checks.py attempt-06
++python3 tools/p09/make-remedial-packet.py C29 attempt-09 attempt-08 attempt-06
++python3 tools/p09/launch-remedial-review.py C29 attempt-09
++python3 tools/p09/audit-remedial-review.py C29 attempt-09
+ ```
+ 
+ The packet arguments are subject, new review attempt, prior review attempt and
+@@ -79,7 +85,7 @@ inferred from input verification. After those prerequisites:
+ 
+ ```sh
+ python3 -I tools/p09/test_phase_inputs.py
+-python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-05.json
++python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-06.json
+ python3 tools/p09/launch-remedial-review.py P09 attempt-01
+ python3 -I tools/p09/audit-phase-review.py attempt-01
+ ```
+@@ -89,3 +95,22 @@ current native evidence, failed Worf generations, check logs and predecessor
+ records in separate self-excluding inventories. The post-review audit rechecks
+ both inventories and the complete current gates. Phase completion still needs
+ an actual independent verdict at 9 in every dimension with no fixes/gaps/blockers.
++
++
++C30's current acceptance measurement is mandatory before cumulative C44 runs:
++
++```sh
++AIRS_NATIVE_SUBJECT=P09 python3 -I tools/perf/measure_c30.py --label acceptance --attempt attempt-01
++```
++
++Run it as the sole UI writer after C36/C43 and before C44, on the newly prepared
++fixture. It preserves the original budget/registration and refuses existing
++acceptance/attempt paths. Method2's presentation/guest rationale is recorded
++before measurement under P09/performance/C30. All12 raw trials, fixed2warmups,
++10measured switches, actual AX observations, unchanged sources/inputs and the
++prepared executable/probe are bound. The phase input verifier recomputes the
++100ms p95 gate and checks chronological nonoverlap with native drivers. A failed
++measurement remains failed evidence and must be archived before a fresh attempt;
++no result exists until this real driver runs. Fresh C30 review must assess the
++method/guest rationale. The C30 failed review and production-interface regression
++logs/original sources remain in evidence/C30/remediation-attempt-10.
+diff --git a/tools/p09/audit-p09-checks.py b/tools/p09/audit-p09-checks.py
+index 18680db1..af2f185f 100644
+--- a/tools/p09/audit-p09-checks.py
++++ b/tools/p09/audit-p09-checks.py
+@@ -35,6 +35,7 @@ result={'phase':'P09','check_attempt':attempt,'time':datetime.datetime.now(datet
+         'changes_since_historical_preparation_inputs':changes,
+         'current_native_build_inputs_match':True,'native_build_inputs':qualification['build_inputs'],
+         'native_drivers_verified':len(qualification['records']),
++        'performance':qualification['performance'],
+         'native_complete':True,'phase_complete':False,
+         'limits':'Current check/native input audit only. Actual independent chunk and phase reviews remain required.'}
+ out.write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))
+diff --git a/tools/p09/make-remedial-packet.py b/tools/p09/make-remedial-packet.py
+index 276619d7..671f2c63 100644
+--- a/tools/p09/make-remedial-packet.py
++++ b/tools/p09/make-remedial-packet.py
+@@ -104,6 +104,25 @@ scope.update(str(p.relative_to(root)) for p in (root/'tools/p09').glob('*.py'))
+ scope.add('tools/p09/README.md')
+ prefixes=['apps/desktop/src/v2/wizard','docs/planning/evidence/C29/live/L19','docs/planning/evidence/C29/remediation-attempt-07','docs/planning/evidence/P09/runs']
+ prefixes.extend(['docs/planning/evidence/P09/preparations','docs/planning/evidence/P09/check-remediation'])
++prefixes.extend(['docs/planning/evidence/P09/performance', 'docs/planning/evidence/C30/remediation-attempt-10',
++                 'docs/planning/evidence/P09/bundle-boundary-advisory-20261102',
++                 'docs/planning/evidence/P09/native-history/Worf-generation-05-complete-before-null-source-fix-20261102'])
++scope.update(['tools/perf/measure_c30.py', 'tools/perf/probe.swift',
++              'docs/planning/evidence/C30/workload-budget.md',
++              'docs/planning/evidence/C30/workload-budget-registration.json',
++              'docs/planning/evidence/C30/workload-perf.json',
++              'docs/planning/evidence/P09/workload-perf-C30.json',
++              'crates/desktop-core/src/authority/inbox_domain.rs',
++              'crates/desktop-core/tests/harness_tools/main.rs',
++              'apps/desktop/src/app.tsx', 'apps/desktop/src/v2/store.ts',
++              'apps/desktop/src/v2/switch-guard.tsx', 'apps/desktop/src/v2/v2-shell.tsx',
++              'apps/desktop/src/v2/wizard/wizard.tsx',
++              'apps/desktop/src/v2/inbox/inbox.test.tsx', 'apps/desktop/src/v2/wizard/wizard.test.tsx',
++              'packages/desktop-contracts/src/generated/SwitchResolution.ts',
++              'packages/desktop-contracts/src/generated/SwitchBlocked.ts'])
++prefixes.extend(['docs/planning/reviews/' + subject + '/' + prior,
++                 'docs/planning/reviews/C30/attempt-10',
++                 'docs/planning/evidence/P09/native-history/Worf-generation-04-before-C30-authority-fix-20261102'])
+ prefixes.extend(['docs/planning/evidence/P09/native-history/Worf-generation-03-complete-before-clippy-order-fix-20261101',
+                  'docs/planning/evidence/P09/native-history/C10-Worf-generation-02-stalled-20261101',
+                  'docs/planning/evidence/P09/native-history/Worf-generation-02-before-panel-observation-fix-20261101'])
+@@ -133,21 +152,24 @@ instructions=old['review_instructions']
+ notes=[
+  'This generation reviews the integrated current implementation, actual L19 pass, and C29 attempt-07 native-coverage remediation. Inspect it independently; no score increase is requested without substantiation.',
+  'L19 attempt-01 was interrupted by an early-settlement driver bug (the captured Pending tree became an offline regression). Attempt-02 settled with authentication rejected. The owner explicitly authorized comparing against the CLI TOML, correcting only the named local Keychain item if different, and exactly one further probe after correction. The secrets differed; correction was verified; attempt-03 passed. The original two reservations remain charged plus one separately authorized additional reservation. No secret/token/profile response or secret hash is retained.',
+- 'The L19 qualification app was an unsigned debug bundle with production Keychain/transport adapters, separate qualification data identity, and no test-fixtures. The retained current-source-match.json is the historical byte comparison before Worf fixture remediation. Current authority.rs additionally adds a read-only observer under test-fixtures only, excluded from that production qualification build; no existing production definitions, host/contracts/wizard source or live authority behavior changed. The exact diff and failed/successful test evidence are retained under P09/check-remediation. Different Harness presentation inputs remain explicitly listed. One actual first-run wizard verification passed, selected only Runtime Security, did not finish into Home, and both temporary credentials were removed. No further live read is authorized or performed.',
++ 'The L19 qualification app was an unsigned production-adapter debug bundle under its separate identity, without test-fixtures. Its immutable historical receipt/source comparison and exact executable are retained. Current source additionally has the disclosed test-only import-cut observer and the C30 production switch-guard remediation: native-issued source-context/refusal references, exact pending-conversation/target/setup-generation validation, and renderer retry retirement. Thus authority/contracts/wizard files are not claimed byte-identical to the L19 qualification tree. Inspect the scoped exact production diff. The historical live operation exercised first-run management verification, not a pending Harness switch or setup completion; its single successful read remains historical evidence, not a new live qualification of current bytes. No product call was repeated and no live allowance remains. Both temporary qualification credentials were removed.',
+  'D059/D060 apply: C43 is the current wizard presentation; the assertion-level map carries the original chunk native ids to the current P09 driver targets listed in this packet. Alpha import presentation requirements were removed under the owner decision. Core alpha-import contract removal and naming remain the later C45/P10 work and are not silently included here.',
+- 'All 18 integrated checks passed on unchanged current compiled inputs, including 541 desktop tests, 15 scope tests, 57 synthetic live-run tests and 4 driver settlement/budget tests. Mapped native targets pass on the current P09 prepared executable. C29 attempt-07 scored 9/9/9/8/8 with no blockers and was accepted under D034; its R1/R2/E1/E2 require the restored native behavior and full matrix. The new C43 record must pass the independent 24-behavior/48-row completeness and capture-hash check. No old C44/C43 record substitutes for this new coverage. Superseded raw legacy aggregates and earlier verdicts are preserved unchanged.',
++ 'All 18 integrated checks passed on unchanged current compiled inputs, with exact suite counts/results in the retained logs. Mapped native targets pass on the current P09 prepared executable. C29 attempt-07 scored 9/9/9/8/8 with no blockers and was accepted under D034; its R1/R2/E1/E2 require the restored native behavior and full matrix. The new C43 record must pass the independent 24-behavior/48-row completeness and capture-hash check. No old C44/C43 record substitutes for this new coverage. Superseded raw legacy aggregates and earlier verdicts are preserved unchanged.',
+  'The implementation includes the owner build inputs that were previously uncommitted on Kirk and were preserved byte-for-byte in the Worf migration commits. They remain fully bound in the compiled-input inventory. Unrelated owner work is outside substantive chunk review; publishing it did not close its outstanding release/native/review gates.',
+  'Fresh read-only Codex exec is the owner-approved fallback while C26 prevents controller completion. Most original application implementation was Claude Code; Codex implemented the L19 tooling and current integration. The reviewer is a separate session in the implementer model family, not a different-model review. Raw native driver historical performed_by strings are retained; execution.json reports actual Codex orchestration in the VM.',
+- 'The first Worf check attempt failed three import test lifecycle/timing assertions. Failed logs and original sources remain preserved. The harness now calls the production shutdown hook, waits for a confirmed durable receipt and observes the armed fixture cut instead of fixed delays. A read-only getter is appended under test-fixtures only; the production build excludes it. No production operation or authority behavior is changed. The fixture is freshly rebuilt and every mapped native driver rerun; exact current build/check input seals are mandatory, without source exemptions.',
++ 'The first Worf check attempt failed three import test lifecycle/timing assertions. Failed logs and original sources remain preserved. The harness now calls the production shutdown hook, waits for a confirmed durable receipt and observes the armed fixture cut instead of fixed delays. A read-only getter is present before the test module under test-fixtures only; the production build excludes it. That import-test remediation alone changes no production operation; the separate current C30 production authority remediation is explicitly disclosed below. The fixture is freshly rebuilt and every mapped native driver rerun; exact current build/check input seals are mandatory, without source exemptions.',
+  'All current native integration is complete before this review. Current source, compiled inputs, scoped native evidence and failed-history provenance remain frozen. The P09 phase review remains a separate full gate after C29–C32 pass.'
+ ]
+ notes.append('Generation 02 C10 stalled twice while describing the production native file panel browser contents; both interrupted attempts have no acceptance verdict. The shared AX helper now scopes native modal sheets to real panel controls, excludes folder scroll contents and modal background, and retains roles/depth/geometry/focus and real actions. Ordinary WebView traversal and every acceptance assertion remain unchanged. Generation 03 repeated the preparation/input seal and all 19 native drivers, which passed. Check04 then failed only Clippy because the fixture observer followed a test module; the unchanged observer was moved before that module with no lint suppression. Generation04 repeats preparation/all19natives; identical executable bytes do not substitute for requalification of the changed helper. Original helper sources, complete generation 02 evidence and failed logs are included for independent review.')
++notes.append('C29 attempt08 actually passed9/9/9/9/9 on G4. C30 attempt10 then returned9/8/8/8/8 with blockerB1, fixesR1/R2 and gapE1; it was NOT D034-accepted. Current source remediates R1 with native-issued per-refusal review references bound to the source context, target, exact pending conversation/decision and setup generation. Legacy unbound resolutions are rejected; source/context/pending changes retire guards and renderer retries. Production-interface real-Harness regressions retain protected transcripts while stale Archive/Discard requests, lost receipts, same-tenant replays and replacement conversations are refused; fresh switching/setup completion remains tested. All changed inputs are freshly rebuilt and qualified before this packet; previous accepted reviews are historical for their own tree, not transferred scores.')
++notes.append('R2/E1 requires current cached-switch performance. The packet includes the immutable original budget/registration, historical result and a fresh acceptance on the current prepared executable. Method2 replaces the removed static tenant line with the actual active tenant selector plus Home heading and its own cached status region. It preserves the100ms p95 limit, fixed2warmups/10measured alternating samples, real AXPress, monotonic clock and2ms polling; all12 raw trials, post-switch AX trees, hashes and actual guest conditions are retained. No sample is omitted/retried and no synthetic management request may occur during the switches. This explicit method/guest rationale was recorded before measurement. Independently assess and acknowledge it in the C30 review, or identify the required fix; the earlier physical-host conditions are not claimed. No passing performance or review score is invented by this instruction.')
++notes.append('The supplementary captured-null initial SelectTenant retry edge was independently reproduced after G5 all19native/currentperformance/audit passed. Full950file G5 qualification was archived before the renderer-only fix. A shared insertion/retirement/render predicate now compares captured null exactly for SelectTenant while genuinely unbound actions retain prior behavior. Both final App/DesktopClient ordering regressions fail against original G5 source at the stale-delivery assertion; current full renderer550/550/typecheck passed. All current G6native/check evidence is freshly qualified, including C30performance attempt02. Failed intermediate preflights, exact original sources, root advisory and unapplied obsolete proposal disposition remain scoped; no proposed tests count as current results. Final G6 canonical complete-bundle/identifier inspection is retained under its preparation. An optional bundle predicate proposal remains unapplied; standalone final inspection supplies actual artifact proof without altering the current workflow.')
+ request={'request_id':request_id,'attempt_id':attempt,'subject':subject,'base_commit':git('rev-parse','HEAD'),
+          'transport':'fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)',
+          'scope':{**old['scope'],'files':sorted(scope),'removed_since_prior_request':removed,'standing_generation':'current integrated tree after C44 and L19 correction; no fabricated predecessor completion'},
+          'predecessors':[predecessor],'fingerprints':fps,'fingerprint_notes':'Canonical sorted path/hash source inventory; complete current compiled-input digest; current attempt outputs excluded to prevent self-reference.',
+          'commands':[{'record':str(run_path.relative_to(root)),**run}],
+-         'native_acceptance':{'prepare':str(prep_path.relative_to(root)),'prepare_sha256':sha(prep_path),'mapped_records':natives,'assertion_mapping':mapping,'live_row':str(live_path.relative_to(root)),'live_row_sha256':sha(live_path)},
++         'native_acceptance':{'prepare':str(prep_path.relative_to(root)),'prepare_sha256':sha(prep_path),'mapped_records':natives,'performance':qualification['performance'],'assertion_mapping':mapping,'live_row':str(live_path.relative_to(root)),'live_row_sha256':sha(live_path)},
+          'limitations':notes,'verdict_schema':'docs/architecture/review-verdict.schema.json','verdict_path':str(out/'verdict.json'),'review_instructions':instructions}
+ out.mkdir(parents=True,exist_ok=True)
+ (out/'request.json').write_text(json.dumps(request,indent=2)+'\n')
+diff --git a/tools/p09/phase_inputs.py b/tools/p09/phase_inputs.py
+index 1fb425fa..005333c5 100644
+--- a/tools/p09/phase_inputs.py
++++ b/tools/p09/phase_inputs.py
+@@ -5,8 +5,10 @@ the remedial C29-C32 audits must independently qualify the integrated inputs.
+ This module never launches a review or changes a completion ledger.
+ """
+ from pathlib import Path
++import datetime
+ import hashlib
+ import json
++import math
+ import re
+ import subprocess
+ import sys
+@@ -196,6 +198,142 @@ def native_build(root, prepared):
+             'generation': build['generation'], 'input_digest': current}
+ 
+ 
++def c30_samples(value):
++    """Check real-record sample accounting; unit fixtures cannot qualify a run."""
++    require(value.get('label') == 'acceptance' and value.get('status') == 'pass'
++            and value.get('failure') is None and value.get('method') == 'c30-cached-switch-v2',
++            'C30 requires successful current-method acceptance')
++    require(set(value['metrics']) == {'tenant-switch-home'}, 'wrong C30 workload')
++    metric = value['metrics']['tenant-switch-home']
++    samples = metric['samples']
++    require(metric['unit'] == 'ms' and len(samples) == 10, 'C30 requires ten measured samples')
++    require(all(type(x) in (int, float) and math.isfinite(x) and x > 0 for x in samples),
++            'invalid C30 timing sample')
++    rows = value['details']['raw_switches']
++    require(len(rows) == 12 and value['details']['switches'] == 12, 'C30 requires all twelve raw switches')
++    for index, row in enumerate(rows):
++        source, target = ('Tenant A', 'Tenant B') if index % 2 == 0 else ('Tenant B', 'Tenant A')
++        measured = row['probe'].get('ms')
++        require(row['index'] == index and row['from'] == source and row['to'] == target
++                and row['warmup'] is (index < 2) and row['exit'] == 0
++                and row['probe']['method'] == 'c30-cached-switch-v2'
++                and type(measured) in (int, float) and math.isfinite(measured) and measured > 0
++                and type(row['probe']['polls']) is int and row['probe']['polls'] > 0,
++                'invalid/omitted C30 raw switch')
++    require(samples == [row['probe']['ms'] for row in rows[2:]], 'C30 sample selection mismatch')
++    p95 = sorted(samples)[math.ceil(.95 * len(samples)) - 1]
++    require(p95 <= 100, 'C30 cached-switch p95 exceeds registered 100ms budget')
++    return p95
++
++
++def verify_c30_performance(root, prepared, build, records):
++    phase = root / 'docs/planning/evidence/P09'
++    path = phase / 'workload-perf-C30.json'
++    value = read(path)
++    p95 = c30_samples(value)
++    attempt = value['attempt']
++    require(re.fullmatch(r'attempt-\d+', attempt) is not None, 'invalid C30 performance attempt')
++    prefix = 'docs/planning/evidence/P09/performance/C30/' + attempt + '/'
++    require(value['schema'] == 'airs-v2-workload-perf/1' and value['subject'] == 'P09'
++            and value['source_root'] == str(root) and sha(root / (prefix + 'workload-perf.json')) == sha(path),
++            'C30 performance identity/attempt mismatch')
++    require(value['executable_sha256'] == prepared['executable_sha256']
++            and value['prepare_sha256'] == sha(phase / 'native-prepare.json')
++            and value['build_inputs_sha256'] == sha(phase / 'native-build-inputs.json')
++            and value['input_digest'] == build['input_digest'] and value['inputs_unchanged'] is True
++            and sha(root / (prefix + 'inputs-before.sha256')) == value['input_digest']
++            and sha(root / (prefix + 'inputs-after.sha256')) == value['input_digest'],
++            'C30 performance differs from current prepared inputs')
++    require(value['driver_sha256'] == sha(root / 'tools/perf/measure_c30.py')
++            and value['probe_source_sha256'] == sha(root / 'tools/perf/probe.swift')
++            and value['probe_executable_sha256'] == sha(root / (prefix + 'timing-probe.bin'))
++            and value['method_sha256'] == sha(phase / 'performance/C30/method-02.md')
++            and value['sources_unchanged'] is True,
++            'C30 timing source/probe/method drift')
++    registration_path = root / 'docs/planning/evidence/C30/workload-budget-registration.json'
++    registration = read(registration_path)
++    require(registration['budgets'] == 'docs/planning/evidence/C30/workload-budget.md'
++            and value['registration_record_sha256'] == sha(registration_path)
++            and value['registration_sha256'] == registration['budgets_sha256']
++            == sha(root / registration['budgets'])
++            == '0031d2527c719b899325036f4b4ef77c638b6add974571321c5a3f2feaf5828a',
++            'C30 registered budget changed')
++    require(value['command'][1:] == ['-I', 'tools/perf/measure_c30.py', '--label', 'acceptance', '--attempt', attempt],
++            'C30 timing command mismatch')
++    require(subprocess.run(['git', 'merge-base', '--is-ancestor', value['source_head'], 'HEAD'],
++                           cwd=root, capture_output=True).returncode == 0, 'C30 timing source is not integrated')
++    details = value['details']
++    require(details['a_read'] is True and type(details['management_requests_before']) is int
++            and details['management_requests_before'] > 0
++            and details['management_requests_before'] == details['management_requests_after'],
++            'C30 cached-switch dataset/read accounting mismatch')
++    require(value['conditions']['machine'] == 'arm64' and value['conditions']['macos']
++            and value['conditions']['swiftc'] and value['host'] and value['conditions']['window'], 'C30 execution conditions missing')
++    window = value['conditions']['window']
++    require(all(isinstance(window.get(key), list) and len(window[key]) == 2
++                and all(type(number) in (int, float) and math.isfinite(number) for number in window[key])
++                for key in ['pos', 'size']) and all(number > 0 for number in window['size']), 'C30 window geometry invalid')
++    attempt_start = read(root / (prefix + 'attempt-start.json'))
++    probe_build = read(root / (prefix + 'probe-build.json'))
++    require(attempt_start['command'] == value['command']
++            and attempt_start['executable_sha256'] == value['executable_sha256']
++            and attempt_start['prepare_sha256'] == value['prepare_sha256']
++            and attempt_start['build_inputs_sha256'] == value['build_inputs_sha256']
++            and attempt_start['input_digest'] == value['input_digest'] and probe_build['exit'] == 0,
++            'C30 startup/probe-build provenance mismatch')
++    require(attempt_start['source_hashes'] == {
++        str(root / 'tools/perf/measure_c30.py'): value['driver_sha256'],
++        str(root / 'tools/perf/probe.swift'): value['probe_source_sha256'],
++        str(phase / 'performance/C30/method-02.md'): value['method_sha256']}
++        and probe_build['argv'][:4] == ['swiftc', '-O', str(root / 'tools/perf/probe.swift'), '-o'],
++        'C30 starting sources or compiler command mismatch')
++    started = datetime.datetime.fromisoformat(value['started_utc'])
++    finished = datetime.datetime.fromisoformat(value['finished_utc'])
++    require(started <= finished, 'C30 timing interval invalid')
++    for record in records:
++        native_start = datetime.datetime.fromisoformat(record['started_utc'])
++        native_end = datetime.datetime.fromisoformat(record['finished_utc'])
++        require(native_end <= started or finished <= native_start, 'C30 timing overlaps a native UI writer')
++        if record['subject'] == 'C43':
++            require(native_end <= started, 'C30 timing precedes guest wizard qualification')
++        if record['subject'] == 'C44':
++            require(finished <= native_start, 'C44 cumulative must run after C30 timing')
++    for index, row in enumerate(details['raw_switches']):
++        raw = read(root / (prefix + f'probe-{index:02}.json'))
++        marker = 'Read finished at' if row['to'] == 'Tenant A' else 'First read pending'
++        require(raw['exit'] == 0 and json.loads(raw['stdout']) == row['probe']
++                and raw['argv'][0] == probe_build['argv'][4]
++                and raw['argv'][1] == 'switch-home' and raw['argv'][2] == str(value['conditions']['fixture_pid'])
++                and raw['argv'][3:] == [row['to'], marker, '10000', str(root / prepared['bundle'] / 'Contents/MacOS/prisma-airs-desktop-v2')],
++                'C30 raw probe differs from selected sample')
++        tree_path = prefix + f'switch-{index:02}-ax.json'
++        require(row['tree'] == tree_path and row['tree_sha256'] == sha(root / tree_path), 'C30 AX hash/path mismatch')
++        tree = read(root / tree_path)
++        require(any(n.get('role') == 'AXPopUpButton' and (n.get('label') or '').startswith('Switch tenant: ' + row['to'] + ' ·') for n in tree),
++                'C30 destination identity not observed')
++        main = next((i for i, n in enumerate(tree) if n.get('subrole') == 'AXLandmarkMain'), None)
++        require(main is not None, 'C30 main content missing')
++        nodes = []
++        for node in tree[main + 1:]:
++            if node.get('depth', 0) <= tree[main].get('depth', 0):
++                break
++            nodes.append(node)
++        require(any(n.get('role') == 'AXHeading' and n.get('label') == 'Home' for n in nodes), 'C30 Home heading missing')
++        status_depth, seen_status = None, False
++        for node in nodes:
++            if status_depth is not None and node.get('depth', 0) <= status_depth:
++                status_depth = None
++            if node.get('subrole') == 'AXApplicationStatus':
++                status_depth = node.get('depth', 0)
++            if status_depth is not None and node.get('role') == 'AXStaticText' and marker in str(node.get('value') or node.get('label') or ''):
++                seen_status = True
++        require(seen_status, 'C30 destination cached status missing from main status region')
++    return {'record': str(path.relative_to(root)), 'sha256': sha(path), 'attempt': attempt,
++            'samples': 10, 'raw_switches': 12, 'p95_ms': p95, 'budget_ms': 100,
++            'method': value['method'], 'host_observed': value['host'],
++            'limits': 'Actual guest measurement and hash consistency; no physical-host or signed-installed qualification inferred.'}
++
++
+ def verify_native(root):
+     controller = root / 'docs/planning/evidence/P09/native-controller'
+     sys.path.insert(0, str(controller))
+@@ -241,12 +379,23 @@ def verify_native(root):
+             errors = wizard_coverage.problems(read(directory / 'native/observations.json')['observations'], root)
+             require(not errors, 'C43 retained coverage: ' + str(errors))
+         records.append({'subject': subject, 'record': str(path.relative_to(root)), 'sha256': sha(path),
++                        'started_utc': execution['started_utc'], 'finished_utc': execution['finished_utc'],
+                         'execution': str((directory / 'execution.json').relative_to(root)),
+                         'execution_sha256': sha(directory / 'execution.json'),
+                         'required_targets': sorted(required), 'superseded_raw_checks': carried,
+                         'executable_sha256': prepared['executable_sha256']})
++    ordered = sorted(records, key=lambda record: datetime.datetime.fromisoformat(record['started_utc']))
++    require([record['subject'] for record in ordered[:2]] == ['C36', 'C43'] and ordered[-1]['subject'] == 'C44',
++            'native order requires C36/C43 first and cumulative C44 last')
++    for index, record in enumerate(ordered):
++        start = datetime.datetime.fromisoformat(record['started_utc'])
++        end = datetime.datetime.fromisoformat(record['finished_utc'])
++        require(start <= end, 'invalid native execution interval')
++        if index:
++            require(datetime.datetime.fromisoformat(ordered[index - 1]['finished_utc']) <= start, 'native UI writers overlap')
+     return {'prepare': str((phase / 'native-prepare.json').relative_to(root)),
+-            'prepare_sha256': sha(phase / 'native-prepare.json'), 'build_inputs': build, 'records': records}
++            'prepare_sha256': sha(phase / 'native-prepare.json'), 'build_inputs': build, 'records': records,
++            'performance': verify_c30_performance(root, prepared, build, records)}
+ 
+ 
+ def verify_checks(root, record_path):
+diff --git a/tools/p09/phase_packet.py b/tools/p09/phase_packet.py
+index afc1def8..1bc312b3 100644
+--- a/tools/p09/phase_packet.py
++++ b/tools/p09/phase_packet.py
+@@ -59,13 +59,14 @@ def live_evidence(root):
+ def evidence_inventory(root, run_path, verified):
+     files = set()
+     phase = root / 'docs/planning/evidence/P09'
+-    prefixes = [phase / 'native', phase / 'parity', phase / 'screens', phase / 'preparations', phase / 'check-remediation', phase / 'phase-tooling-history', phase / 'phase-tooling-validation', run_path.parent / inputs.read(run_path)['attempt'],
++    prefixes = [phase / 'native', phase / 'parity', phase / 'screens', phase / 'preparations', phase / 'check-remediation', phase / 'performance', phase / 'phase-tooling-history', phase / 'phase-tooling-validation', run_path.parent / inputs.read(run_path)['attempt'],
+                 root / 'docs/planning/evidence/C29/live/L19']
+-    prefixes += list((phase / 'native-history').glob('*-Worf-failed*'))
++    prefixes += list((phase / 'native-history').glob('*Worf*'))
+     for prefix in prefixes:
+         files.update(p for p in prefix.rglob('*') if p.is_file() and '__pycache__' not in p.parts)
+     files.update(phase / name for name in ['native-prepare.json', 'native-acceptance.json', 'execution.json'])
+     files.add(phase / 'native-build-inputs.json')
++    files.add(phase / 'workload-perf-C30.json')
+     files.add(run_path)
+     files.add(root / 'docs/planning/evidence/C29/live/L19-verify.json')
+     files.add(root / 'docs/planning/reviews/C44/legacy-retirements.md')
+diff --git a/tools/p09/test_phase_inputs.py b/tools/p09/test_phase_inputs.py
+index a531b145..065c6ecc 100644
+--- a/tools/p09/test_phase_inputs.py
++++ b/tools/p09/test_phase_inputs.py
+@@ -18,6 +18,52 @@ class PhaseInputGuards(unittest.TestCase):
+     def setUp(self):
+         self.verdict = phase.read(ROOT / 'docs/planning/reviews/C44/attempt-05/verdict-returned.json')
+ 
++    def c30_accounting_fixture(self):
++        # Incomplete unit-only dictionary: no schema, executable, paths or
++        # provenance. It cannot qualify as actual performance evidence.
++        rows = [{'index': i, 'from': 'Tenant A' if i % 2 == 0 else 'Tenant B',
++                 'to': 'Tenant B' if i % 2 == 0 else 'Tenant A', 'warmup': i < 2, 'exit': 0,
++                 'probe': {'ms': float(20 + i), 'polls': 2, 'method': 'c30-cached-switch-v2'}} for i in range(12)]
++        return {'label': 'acceptance', 'status': 'pass', 'failure': None, 'method': 'c30-cached-switch-v2',
++                'metrics': {'tenant-switch-home': {'unit': 'ms', 'samples': [r['probe']['ms'] for r in rows[2:]]}},
++                'details': {'switches': 12, 'raw_switches': rows}}
++
++    def test_c30_accounting_keeps_all_trials_and_the_registered_limit(self):
++        value = self.c30_accounting_fixture()
++        self.assertEqual(phase.c30_samples(value), 31)
++        value['details']['raw_switches'][-1]['probe']['ms'] = 101
++        value['metrics']['tenant-switch-home']['samples'][-1] = 101
++        with self.assertRaisesRegex(ValueError, '100ms'):
++            phase.c30_samples(value)
++
++    def test_c30_never_qualifies_calibration_old_or_failed_measurements(self):
++        for field, invalid in [('label', 'calibration'), ('status', 'fail'), ('method', 'legacy'), ('failure', 'probe timeout')]:
++            value = self.c30_accounting_fixture()
++            value[field] = invalid
++            with self.subTest(field=field), self.assertRaises(ValueError):
++                phase.c30_samples(value)
++        with self.assertRaises(ValueError):
++            phase.c30_samples(phase.read(ROOT / 'docs/planning/evidence/C30/workload-perf.json'))
++
++    def test_c30_rejects_missing_trials_or_posthoc_sample_selection(self):
++        for field in ['missing', 'selected', 'warmup', 'direction', 'exit']:
++            value = self.c30_accounting_fixture()
++            if field == 'missing': value['details']['raw_switches'].pop()
++            elif field == 'selected': value['metrics']['tenant-switch-home']['samples'].reverse()
++            elif field == 'warmup': value['details']['raw_switches'][2]['warmup'] = True
++            elif field == 'direction': value['details']['raw_switches'][3]['to'] = 'Tenant B'
++            else: value['details']['raw_switches'][3]['exit'] = 2
++            with self.subTest(field=field), self.assertRaises(ValueError):
++                phase.c30_samples(value)
++
++    def test_c30_rejects_nonfinite_boolean_and_nonpositive_timings(self):
++        for invalid in [True, float('nan'), float('inf'), 0, -1]:
++            value = self.c30_accounting_fixture()
++            value['details']['raw_switches'][2]['probe']['ms'] = invalid
++            value['metrics']['tenant-switch-home']['samples'][0] = invalid
++            with self.subTest(value=invalid), self.assertRaises(ValueError):
++                phase.c30_samples(value)
++
+     def test_actual_full_gate_and_retained_accepted_eight(self):
+         phase.full_gate(self.verdict)
+         with self.assertRaises(ValueError):
+diff --git a/tools/perf/measure_c30.py b/tools/perf/measure_c30.py
+index ff12ebb7..f6e5323b 100644
+--- a/tools/perf/measure_c30.py
++++ b/tools/perf/measure_c30.py
+@@ -1,30 +1,23 @@
+ #!/usr/bin/env python3
+-"""C30 measurement of the tenant-switch workload against the budget
+-registered before C30 measured it (docs/planning/evidence/C30/workload-budget.md,
+-registration in docs/planning/evidence/C30/workload-budget-registration.json).
++"""C30 current-presentation cached-switch measurement; synthetic services only.
+ 
+-  measure_c30.py --label calibration|acceptance
++AIRS_NATIVE_SUBJECT=P09 python3 -I tools/perf/measure_c30.py --label acceptance --attempt attempt-01
+ 
+-Run from the repository root on the prepared C30 fixture bundle. Only an
+-acceptance run writes docs/planning/evidence/<subject>/workload-perf.json
+-(in a phase, workload-perf-C30.json); it refuses to start unless the budget
+-table matches its registration. Raw samples are recorded; `xtask native`
+-recomputes the statistic.
+-
+-Workload, on one launch in the v2 presentation against the synthetic
+-management endpoint on loopback, with Tenant A read once and Tenant B never
+-read:
+-
+-- tenant-switch-home: from AXPress on the other tenant's row in the open
+-  switcher to the Home heading and the new tenant's name line existing in
+-  the accessibility tree (probe.swift activate, 2 ms polling); samples
+-  alternate A→B and B→A.
++The immutable original C30 budget/registration stays binding. Method 2 and its
++VM/presentation rationale are recorded before measuring in P09/performance/C30.
++Every raw trial is retained, two fixed warmups then ten alternating samples.
++An existing canonical acceptance or attempt directory is never overwritten.
+ """
+ 
+ import argparse
++import datetime
+ import hashlib
+ import json
+ import os
++import math
++import platform
++import shutil
++import subprocess
+ import sys
+ import tempfile
+ import time
+@@ -33,11 +26,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
+ sys.path.insert(0, os.path.join(HERE, "..", "native-acceptance"))
+ import fixture_app as fx  # noqa: E402
+ import acceptance_c08 as c8  # noqa: E402
++import v2_setup as v2s  # noqa: E402
+ 
+ ROOT = os.getcwd()
+ SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C30")
+ EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
+ REGISTRATION = os.path.join(ROOT, "docs/planning/evidence/C30/workload-budget-registration.json")
++METHOD = os.path.join(ROOT, "docs/planning/evidence/P09/performance/C30/method-02.md")
+ 
+ 
+ def sha256_file(path):
+@@ -46,32 +41,62 @@ def sha256_file(path):
+ 
+ 
+ def utc():
+-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
++    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+ 
+ 
+ def open_switcher(app):
+     app.menu("Go", "Switch Tenant…")
+-    app.wait_for(lambda t: any(n.get("role") == "AXGroup" and (n.get("label") or "") == "Switch tenant" for n in t), 8)
++    _, shown = app.wait_for(lambda t: any(n.get("role") == "AXGroup" and (n.get("label") or "") == "Switch tenant" for n in t), 8)
++    if not shown:
++        raise RuntimeError("the current tenant switcher did not open")
+     time.sleep(0.3)
+ 
+ 
+ def main():
+     parser = argparse.ArgumentParser()
+     parser.add_argument("--label", choices=["calibration", "acceptance"], required=True)
+-    label = parser.parse_args().label
++    parser.add_argument("--attempt", default="attempt-01")
++    args = parser.parse_args()
++    label = args.label
++    if not args.attempt.startswith("attempt-") or not args.attempt[8:].isdigit():
++        raise SystemExit("choose a fresh numbered attempt")
++    own = "workload-perf.json" if SUBJECT == "C30" else "workload-perf-C30.json"
++    canonical = os.path.join(EVIDENCE, own)
++    if label == "acceptance" and os.path.exists(canonical):
++        raise SystemExit("preserve/archive the existing performance record before another acceptance")
++    output = os.path.join(EVIDENCE, "performance", "C30", args.attempt)
++    os.makedirs(output, exist_ok=False)
++    source_paths = [os.path.join(HERE, "measure_c30.py"), os.path.join(HERE, "probe.swift"), METHOD]
++    source_hashes = {path: sha256_file(path) for path in source_paths}
++    procedure = os.path.join(ROOT, "docs/planning/evidence/P09/runs/hash-inputs.sh")
++    before_file = os.path.join(output, "inputs-before.sha256")
++    before = subprocess.check_output(["bash", procedure, ROOT, before_file], text=True).strip()
++    seal_path = os.path.join(EVIDENCE, "native-build-inputs.json")
++    seal = json.load(open(seal_path))
++    if before != seal["inputs"]["before_digest"]:
++        raise SystemExit("current compiled inputs differ from prepared native build")
+     registration = json.load(open(REGISTRATION))
+     table = os.path.join(ROOT, registration["budgets"])
+     table_sha = sha256_file(table)
+     if table_sha != registration["budgets_sha256"]:
+         raise SystemExit("the workload budget table does not match its C30 registration")
+     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
++    prepare_hash = sha256_file(os.path.join(EVIDENCE, "native-prepare.json"))
++    build_hash = sha256_file(seal_path)
+     bundle = os.path.join(ROOT, prepared["bundle"])
+     exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+     if sha256_file(exe) != prepared["executable_sha256"]:
+         raise SystemExit("prepared executable changed since native-prepare")
++    with open(os.path.join(output, "attempt-start.json"), "x") as f:
++        json.dump({"started_utc": utc(), "command": list(sys.orig_argv), "source_hashes": source_hashes,
++                   "prepare_sha256": prepare_hash, "build_inputs_sha256": build_hash,
++                   "executable_sha256": prepared["executable_sha256"], "input_digest": before}, f, indent=2)
+     work = tempfile.mkdtemp(prefix="airs-v2-c30-perf-")
+     probe = os.path.join(work, "probe")
+     built = fx.sh(["swiftc", "-O", os.path.join(HERE, "probe.swift"), "-o", probe])
++    with open(os.path.join(output, "probe-build.json"), "x") as f:
++        json.dump({"argv": ["swiftc", "-O", os.path.join(HERE, "probe.swift"), "-o", probe],
++                   "exit": built.returncode, "stdout": built.stdout, "stderr": built.stderr}, f, indent=2)
+     if built.returncode != 0:
+         raise SystemExit(f"probe did not build: {built.stderr}")
+     started = utc()
+@@ -85,48 +110,102 @@ def main():
+     mgmt.install()
+     mgmt.start()
+     mgmt.mode()
+-    metrics, details = {}, {}
++    shutil.copy2(probe, os.path.join(output, "timing-probe.bin"))
++    metrics, details = {}, {"raw_switches": []}
++    failure = None
++    conditions = {"platform": platform.platform(), "machine": platform.machine(),
++                  "macos": fx.sh(["sw_vers", "-productVersion"]).stdout.strip(),
++                  "swiftc": fx.sh(["swiftc", "--version"]).stdout.strip(),
++                  "load_average": list(os.getloadavg()),
++                  "execution_environment": "owner-authorized Worf macOS guest; guest-level observations only"}
+     try:
+         app.launch()
+-        # Two tenants in the legacy Settings, then the v2 presentation.
+-        app.open_settings()
+-        app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
+-        app.create_custom_tenant("Tenant A", endpoint.origin)
+-        app.save_key(c8.SCAN_KEY)
+-        c8.save_client(app)
+-        app.type_into("AXTextField", "TSG ID (optional)", c8.TSG)
+-        app.create_custom_tenant("Tenant B", endpoint.origin)
+-        app.make_active("Tenant A")
+-        app.ax("press", "AXCheckBox", "Use the new interface")
+-        app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None, 15)
+-        # Tenant A read once: its Home shows the read status and items.
+-        app.ax("press", "AXButton", "Read now")
+-        app.wait_for(lambda t: any(x.startswith("Read finished at") for x in app.texts(t)), 30)
++        conditions["fixture_pid"] = app.pid
++        # The one current presentation: actual first-run wizard, then the
++        # available tenant Settings form. No removed variant switch is required.
++        _, home = v2s.tenant_on_home(app, endpoint.origin, label="Tenant A", extra=("Tenant B",))
++        if not home:
++            raise RuntimeError("current presentation setup did not reach Home")
++        app.ax("press", "AXButton", "Refresh")
++        tree, read = app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Home") is not None and app.has_text(t, "Read finished at"), 30)
++        if not read:
++            raise RuntimeError("Tenant A's single read did not settle")
+         details["a_read"] = True
++        conditions["window"] = next(({k: n.get(k) for k in ("pos", "size")} for n in tree if n.get("role") == "AXWindow"), None)
++        details["management_requests_before"] = len(mgmt.requests())
+         samples = []
+         current = "Tenant A"
+-        for _ in range(12):
++        for index in range(12):
+             other = "Tenant B" if current == "Tenant A" else "Tenant A"
+             open_switcher(app)
+             # Shown means the destination's Home with its own cached read status: Tenant A's
+             # finished read, Tenant B's first read still pending (never the other's).
+             status = "Read finished at" if other == "Tenant A" else "First read pending"
+-            out = fx.sh([probe, "activate", str(app.pid), "AXCheckBox", other, "Home", f"{other} ·", "10000", status])
++            app.front()
++            argv = [probe, "switch-home", str(app.pid), other, status, "10000", exe]
++            out = fx.sh(argv)
+             result = json.loads(out.stdout or "{}")
+-            if "ms" in result:
+-                samples.append(result["ms"])
++            details["raw_switches"].append({"index": index, "from": current, "to": other,
++                "warmup": index < 2, "exit": out.returncode, "probe": result})
++            with open(os.path.join(output, f"probe-{index:02}.json"), "x") as f:
++                json.dump({"argv": argv, "exit": out.returncode, "stdout": out.stdout, "stderr": out.stderr}, f, indent=2)
++            measured = result.get("ms")
++            if out.returncode != 0 or type(measured) not in (int, float) or not math.isfinite(measured) or measured <= 0:
++                raise RuntimeError(f"switch {index} did not produce a valid native timing")
++            samples.append(measured)
++            after_tree = app.tree()
++            with open(os.path.join(output, f"switch-{index:02}-ax.json"), "x") as f:
++                json.dump(after_tree, f)
++            details["raw_switches"][-1]["tree"] = os.path.relpath(os.path.join(output, f"switch-{index:02}-ax.json"), ROOT)
++            details["raw_switches"][-1]["tree_sha256"] = sha256_file(os.path.join(output, f"switch-{index:02}-ax.json"))
+             current = other
+             time.sleep(0.5)
+         metrics["tenant-switch-home"] = {"unit": "ms", "samples": samples[2:]}
+         details["switches"] = len(samples)
++        details["management_requests_after"] = len(mgmt.requests())
++        if details["management_requests_after"] != details["management_requests_before"]:
++            raise RuntimeError("cached switches unexpectedly made synthetic management requests")
++    except Exception as error:
++        failure = f"{type(error).__name__}: {error}"
+     finally:
+         app.quit()
+         endpoint.stop()
+         mgmt.stop()
+         fx.clean_fixture_root()
++    after_file = os.path.join(output, "inputs-after.sha256")
++    after = subprocess.check_output(["bash", procedure, ROOT, after_file], text=True).strip()
++    if before != after or sha256_file(exe) != prepared["executable_sha256"]:
++        failure = "compiled inputs or prepared executable changed during measurement"
++    sources_unchanged = all(sha256_file(path) == digest for path, digest in source_hashes.items())
++    if not sources_unchanged or sha256_file(os.path.join(EVIDENCE, "native-prepare.json")) != prepare_hash or sha256_file(seal_path) != build_hash:
++        failure = "timing sources or prepared records changed during measurement"
++    observed = metrics.get("tenant-switch-home", {}).get("samples", [])
++    p95 = sorted(observed)[-1] if len(observed) == 10 else None
++    if failure is None and p95 is not None and p95 > 100:
++        failure = f"registered p95 budget exceeded: {p95} ms > 100 ms"
++    passed = failure is None and details.get("switches") == 12 and p95 is not None and p95 <= 100
+     record = {
+         "schema": "airs-v2-workload-perf/1",
+         "label": label,
++        "status": "pass" if passed else "fail",
++        "failure": failure,
++        "method": "c30-cached-switch-v2",
++        "method_sha256": source_hashes[METHOD],
++        "registration_record_sha256": sha256_file(REGISTRATION),
++        "subject": SUBJECT,
++        "attempt": args.attempt,
++        "command": list(sys.orig_argv),
++        "conditions": conditions,
++        "prepare_sha256": prepare_hash,
++        "build_inputs_sha256": build_hash,
++        "sources_unchanged": sources_unchanged,
++        "input_digest": before,
++        "inputs_unchanged": before == after,
++        "source_root": ROOT,
++        "source_head": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
++        "driver_sha256": source_hashes[os.path.join(HERE, "measure_c30.py")],
++        "probe_source_sha256": source_hashes[os.path.join(HERE, "probe.swift")],
++        "probe_executable_sha256": sha256_file(os.path.join(output, "timing-probe.bin")),
+         "registration_sha256": table_sha,
+         "started_utc": started,
+         "finished_utc": utc(),
+@@ -135,19 +214,21 @@ def main():
+         "metrics": metrics,
+         "details": details,
+     }
+-    own = "workload-perf.json" if SUBJECT == "C30" else "workload-perf-C30.json"
+-    name = own if label == "acceptance" else f"workload-perf-calibration-{started.replace(':', '')}.json"
+-    path = os.path.join(EVIDENCE, name)
+-    with open(path, "w") as f:
+-        json.dump(record, f, indent=1)
+-        f.write("\n")
++    path = os.path.join(output, "workload-perf.json")
++    payload = json.dumps(record, indent=2) + "\n"
++    with open(path, "x") as f:
++        f.write(payload)
++    if label == "acceptance":
++        with open(canonical, "x") as f:
++            f.write(payload)
+     for key, metric in metrics.items():
+         ordered = sorted(metric["samples"])
+         if ordered:
+             p95 = ordered[max(1, -(-95 * len(ordered) // 100)) - 1]
+             print(f"{key}: n={len(ordered)} p95={p95} max={ordered[-1]} {metric['unit']}")
+     print(os.path.relpath(path, ROOT))
+-    return 0
++    shutil.rmtree(work)
++    return 0 if passed else 1
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/tools/perf/probe.swift b/tools/perf/probe.swift
+index 7f4e2974..f1211be7 100644
+--- a/tools/perf/probe.swift
++++ b/tools/perf/probe.swift
+@@ -157,6 +157,75 @@ case "activate":
+     }
+     emit(["ms": NSNull(), "polls": polls])
+     exit(2)
++case "switch-home":
++    // C30 method 2: the current shell names its tenant in an AXPopUpButton.
++    // Require Home's own status region as well; a changed rail alone is not
++    // a completed cached switch. Same monotonic clock and 2 ms polling.
++    guard args.count == 7, let pid = pid_t(args[2]), let timeout = Double(args[5]) else {
++        fail("switch-home <pid> <tenant label> <cached status marker> <timeout ms> <prepared executable>")
++    }
++    guard NSRunningApplication(processIdentifier: pid)?.executableURL?.resolvingSymlinksInPath().path
++            == URL(fileURLWithPath: args[6]).resolvingSymlinksInPath().path else { fail("wrong prepared fixture process") }
++    guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
++        fail("fixture is not frontmost")
++    }
++    let app = AXUIElementCreateApplication(pid)
++    func walk(_ roots: [AXUIElement]) -> [AXUIElement] {
++        var out: [AXUIElement] = []
++        var stack = Array(roots.reversed())
++        while let el = stack.popLast(), out.count < 20000 {
++            out.append(el)
++            stack.append(contentsOf: ((attr(el, kAXChildrenAttribute) as? [AXUIElement]) ?? []).reversed())
++        }
++        return out
++    }
++    let elements = walk((attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [])
++    let targetPrefix = args[3] + " ·"
++    let targets = elements.filter {
++        (attr($0, kAXRoleAttribute) as? String) == "AXCheckBox" && label($0).hasPrefix(targetPrefix)
++    }
++    guard targets.count == 1, let target = targets.first,
++          (attr(target, kAXValueAttribute) as? NSNumber)?.boolValue != true else {
++        fail("expected exactly one unselected destination tenant row")
++    }
++    guard let selector = elements.first(where: {
++        (attr($0, kAXRoleAttribute) as? String) == "AXPopUpButton" && label($0).hasPrefix("Switch tenant:")
++    }), let main = elements.first(where: {
++        (attr($0, kAXSubroleAttribute) as? String) == "AXLandmarkMain"
++    }) else { fail("current tenant selector or main content unavailable") }
++    func homeReady() -> Bool {
++        var heading = false
++        var status = false
++        var seen = 0
++        var stack: [(AXUIElement, Bool)] = [(main, false)]
++        while let (el, wasStatus) = stack.popLast(), seen < 20000 {
++            seen += 1
++            let role = attr(el, kAXRoleAttribute) as? String
++            let inStatus = wasStatus || (attr(el, kAXSubroleAttribute) as? String) == "AXApplicationStatus"
++            if role == "AXHeading", label(el) == "Home" { heading = true }
++            if inStatus, role == "AXStaticText", let value = attr(el, kAXValueAttribute) as? String,
++               value.contains(args[4]) { status = true }
++            if heading && status { return true }
++            for child in ((attr(el, kAXChildrenAttribute) as? [AXUIElement]) ?? []).reversed() {
++                stack.append((child, inStatus))
++            }
++        }
++        return false
++    }
++    let start = DispatchTime.now().uptimeNanoseconds
++    guard AXUIElementPerformAction(target, kAXPressAction as CFString) == .success else { fail("press failed") }
++    var polls = 0
++    while ms(since: start) < timeout {
++        polls += 1
++        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { fail("fixture lost foreground") }
++        if label(selector).hasPrefix("Switch tenant: " + targetPrefix) && homeReady() {
++            emit(["ms": ms(since: start), "polls": polls, "method": "c30-cached-switch-v2"])
++            exit(0)
++        }
++        usleep(2_000)
++    }
++    emit(["ms": NSNull(), "polls": polls, "method": "c30-cached-switch-v2"])
++    exit(2)
+ case "activate-field":
+     // From AXPress on a control to a text field labelled <field> exposing
+     // exactly <value> (the newly selected tab's editor is ready).
