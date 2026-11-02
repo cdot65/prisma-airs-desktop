@@ -1199,6 +1199,11 @@ pub struct ResetFailure {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct SwitchBlocked {
+    /// The active source context and native-issued, single refusal reference.
+    pub context: ContextRef,
+    pub review: ReviewId,
+    /// The exact setup generation when completing a draft; none for selection.
+    pub target_context: Option<ContextRef>,
     /// The tenant the switch was asked for (a setup draft's id when the
     /// switch is its completion).
     pub to: TenantId,
@@ -2155,6 +2160,15 @@ impl State {
         self.sync_inference();
         self.sync_files();
         self.sync_harness();
+        if self.switch_blocked.as_ref().is_some_and(|guard| {
+            self.active_ref.as_ref() != Some(&guard.context)
+                || self.pending_decision().as_ref() != Some(&guard.pending)
+                || guard.target_context.as_ref().is_some_and(|context| {
+                    self.setup_tenant_for(context).as_ref() != Some(&guard.to)
+                })
+        }) {
+            self.switch_blocked = None;
+        }
         self.revision += 1;
         let update = Update::Shell(Box::new(self.snapshot()));
         self.subscribers.publish(&update);
@@ -2163,6 +2177,7 @@ impl State {
     /// Issues a fresh context reference for the active tenant (or none) and
     /// retires everything bound to the previous one.
     fn reissue_context(&mut self) -> Vec<runtime::Start> {
+        self.switch_blocked = None;
         self.epoch += 1;
         self.active_ref = self
             .data
@@ -3733,7 +3748,7 @@ fn admit(
             // Completion makes the new tenant active: the one guarded switch
             // path (I1). A pending Harness decision refuses it, with the
             // draft, the active tenant and the decision all untouched.
-            if let Err(refusal) = state.guard_switch(&draft, resolution, true) {
+            if let Err(refusal) = state.guard_switch(&draft, resolution, Some(&context)) {
                 state.changed();
                 return Err(refusal);
             }
@@ -3810,9 +3825,12 @@ fn admit(
             if !state.committed_tenant(&tenant) || state.v1_hides_tenant(&tenant) {
                 return Err(Refusal::InvalidInput);
             }
+            if resolution.is_some() && state.data.active.as_ref() == Some(&tenant) {
+                return Err(Refusal::StaleContext);
+            }
             // The one switch path (I1): a pending Harness decision refuses
             // it until the operator resolves the conversation.
-            if let Err(refusal) = state.guard_switch(&tenant, resolution, false) {
+            if let Err(refusal) = state.guard_switch(&tenant, resolution, None) {
                 state.changed();
                 return Err(refusal);
             }

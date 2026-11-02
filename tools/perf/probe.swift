@@ -157,6 +157,75 @@ case "activate":
     }
     emit(["ms": NSNull(), "polls": polls])
     exit(2)
+case "switch-home":
+    // C30 method 2: the current shell names its tenant in an AXPopUpButton.
+    // Require Home's own status region as well; a changed rail alone is not
+    // a completed cached switch. Same monotonic clock and 2 ms polling.
+    guard args.count == 7, let pid = pid_t(args[2]), let timeout = Double(args[5]) else {
+        fail("switch-home <pid> <tenant label> <cached status marker> <timeout ms> <prepared executable>")
+    }
+    guard NSRunningApplication(processIdentifier: pid)?.executableURL?.resolvingSymlinksInPath().path
+            == URL(fileURLWithPath: args[6]).resolvingSymlinksInPath().path else { fail("wrong prepared fixture process") }
+    guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+        fail("fixture is not frontmost")
+    }
+    let app = AXUIElementCreateApplication(pid)
+    func walk(_ roots: [AXUIElement]) -> [AXUIElement] {
+        var out: [AXUIElement] = []
+        var stack = Array(roots.reversed())
+        while let el = stack.popLast(), out.count < 20000 {
+            out.append(el)
+            stack.append(contentsOf: ((attr(el, kAXChildrenAttribute) as? [AXUIElement]) ?? []).reversed())
+        }
+        return out
+    }
+    let elements = walk((attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [])
+    let targetPrefix = args[3] + " ·"
+    let targets = elements.filter {
+        (attr($0, kAXRoleAttribute) as? String) == "AXCheckBox" && label($0).hasPrefix(targetPrefix)
+    }
+    guard targets.count == 1, let target = targets.first,
+          (attr(target, kAXValueAttribute) as? NSNumber)?.boolValue != true else {
+        fail("expected exactly one unselected destination tenant row")
+    }
+    guard let selector = elements.first(where: {
+        (attr($0, kAXRoleAttribute) as? String) == "AXPopUpButton" && label($0).hasPrefix("Switch tenant:")
+    }), let main = elements.first(where: {
+        (attr($0, kAXSubroleAttribute) as? String) == "AXLandmarkMain"
+    }) else { fail("current tenant selector or main content unavailable") }
+    func homeReady() -> Bool {
+        var heading = false
+        var status = false
+        var seen = 0
+        var stack: [(AXUIElement, Bool)] = [(main, false)]
+        while let (el, wasStatus) = stack.popLast(), seen < 20000 {
+            seen += 1
+            let role = attr(el, kAXRoleAttribute) as? String
+            let inStatus = wasStatus || (attr(el, kAXSubroleAttribute) as? String) == "AXApplicationStatus"
+            if role == "AXHeading", label(el) == "Home" { heading = true }
+            if inStatus, role == "AXStaticText", let value = attr(el, kAXValueAttribute) as? String,
+               value.contains(args[4]) { status = true }
+            if heading && status { return true }
+            for child in ((attr(el, kAXChildrenAttribute) as? [AXUIElement]) ?? []).reversed() {
+                stack.append((child, inStatus))
+            }
+        }
+        return false
+    }
+    let start = DispatchTime.now().uptimeNanoseconds
+    guard AXUIElementPerformAction(target, kAXPressAction as CFString) == .success else { fail("press failed") }
+    var polls = 0
+    while ms(since: start) < timeout {
+        polls += 1
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { fail("fixture lost foreground") }
+        if label(selector).hasPrefix("Switch tenant: " + targetPrefix) && homeReady() {
+            emit(["ms": ms(since: start), "polls": polls, "method": "c30-cached-switch-v2"])
+            exit(0)
+        }
+        usleep(2_000)
+    }
+    emit(["ms": NSNull(), "polls": polls, "method": "c30-cached-switch-v2"])
+    exit(2)
 case "activate-field":
     // From AXPress on a control to a text field labelled <field> exposing
     // exactly <value> (the newly selected tab's editor is ready).

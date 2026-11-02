@@ -24,7 +24,13 @@ Prerequisites:
   fixture Clippy rejected the observer's placement after a test module. The
   unchanged fixture-only observer was moved before that module; the exact
   Clippy command and formatting check passed. Generation 04 requalifies this
-  source ordering, followed by fresh check `attempt-05`.
+  source ordering; generation 04's 19 natives and check `attempt-05` then passed.
+  C29 attempt-08 passed 9/9/9/9/9. C30 attempt-10 returned 9/8/8/8/8 with
+  blocker B1 and was not accepted: stale destructive switch retries and missing
+  current switch-latency evidence require remediation. The current candidate
+  binds native guard references and retires renderer retries. Generation 05,
+  current performance acceptance, fresh check `attempt-06` and changed-source
+  C29/C30 re-reviews remain required; no old score transfers to changed inputs.
   The current audit requires every compiled input to match the fresh native
   build's captured before/after seal (`P09/native-build-inputs.json` and its
   generation under `P09/preparations/`). There is no source-exemption list.
@@ -38,11 +44,11 @@ Example after the fresh fixture/native prerequisites are satisfied (choose
 unused attempt IDs if these already exist):
 
 ```sh
-bash docs/planning/evidence/P09/runs/run-checks.sh attempt-05
-python3 tools/p09/audit-p09-checks.py attempt-05
-python3 tools/p09/make-remedial-packet.py C29 attempt-08 attempt-07 attempt-05
-python3 tools/p09/launch-remedial-review.py C29 attempt-08
-python3 tools/p09/audit-remedial-review.py C29 attempt-08
+bash docs/planning/evidence/P09/runs/run-checks.sh attempt-06
+python3 tools/p09/audit-p09-checks.py attempt-06
+python3 tools/p09/make-remedial-packet.py C29 attempt-09 attempt-08 attempt-06
+python3 tools/p09/launch-remedial-review.py C29 attempt-09
+python3 tools/p09/audit-remedial-review.py C29 attempt-09
 ```
 
 The packet arguments are subject, new review attempt, prior review attempt and
@@ -79,7 +85,7 @@ inferred from input verification. After those prerequisites:
 
 ```sh
 python3 -I tools/p09/test_phase_inputs.py
-python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-05.json
+python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-06.json
 python3 tools/p09/launch-remedial-review.py P09 attempt-01
 python3 -I tools/p09/audit-phase-review.py attempt-01
 ```
@@ -89,3 +95,22 @@ current native evidence, failed Worf generations, check logs and predecessor
 records in separate self-excluding inventories. The post-review audit rechecks
 both inventories and the complete current gates. Phase completion still needs
 an actual independent verdict at 9 in every dimension with no fixes/gaps/blockers.
+
+
+C30's current acceptance measurement is mandatory before cumulative C44 runs:
+
+```sh
+AIRS_NATIVE_SUBJECT=P09 python3 -I tools/perf/measure_c30.py --label acceptance --attempt attempt-01
+```
+
+Run it as the sole UI writer after C36/C43 and before C44, on the newly prepared
+fixture. It preserves the original budget/registration and refuses existing
+acceptance/attempt paths. Method2's presentation/guest rationale is recorded
+before measurement under P09/performance/C30. All12 raw trials, fixed2warmups,
+10measured switches, actual AX observations, unchanged sources/inputs and the
+prepared executable/probe are bound. The phase input verifier recomputes the
+100ms p95 gate and checks chronological nonoverlap with native drivers. A failed
+measurement remains failed evidence and must be archived before a fresh attempt;
+no result exists until this real driver runs. Fresh C30 review must assess the
+method/guest rationale. The C30 failed review and production-interface regression
+logs/original sources remain in evidence/C30/remediation-attempt-10.

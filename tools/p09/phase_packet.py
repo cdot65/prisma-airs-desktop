@@ -59,13 +59,14 @@ def live_evidence(root):
 def evidence_inventory(root, run_path, verified):
     files = set()
     phase = root / 'docs/planning/evidence/P09'
-    prefixes = [phase / 'native', phase / 'parity', phase / 'screens', phase / 'preparations', phase / 'check-remediation', phase / 'phase-tooling-history', phase / 'phase-tooling-validation', run_path.parent / inputs.read(run_path)['attempt'],
+    prefixes = [phase / 'native', phase / 'parity', phase / 'screens', phase / 'preparations', phase / 'check-remediation', phase / 'performance', phase / 'phase-tooling-history', phase / 'phase-tooling-validation', run_path.parent / inputs.read(run_path)['attempt'],
                 root / 'docs/planning/evidence/C29/live/L19']
-    prefixes += list((phase / 'native-history').glob('*-Worf-failed*'))
+    prefixes += list((phase / 'native-history').glob('*Worf*'))
     for prefix in prefixes:
         files.update(p for p in prefix.rglob('*') if p.is_file() and '__pycache__' not in p.parts)
     files.update(phase / name for name in ['native-prepare.json', 'native-acceptance.json', 'execution.json'])
     files.add(phase / 'native-build-inputs.json')
+    files.add(phase / 'workload-perf-C30.json')
     files.add(run_path)
     files.add(root / 'docs/planning/evidence/C29/live/L19-verify.json')
     files.add(root / 'docs/planning/reviews/C44/legacy-retirements.md')

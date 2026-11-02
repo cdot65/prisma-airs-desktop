@@ -1,4 +1,4 @@
-import type { SwitchResolution } from '@prisma-airs/desktop-contracts'
+import type { ShellSnapshot, SwitchResolution } from '@prisma-airs/desktop-contracts'
 import { GUARD_COPY } from './copy'
 import { Modal } from './modal'
 
@@ -7,6 +7,7 @@ export interface SwitchGuardProps {
     target: string
     /** The switch is a setup draft's completion (the body says so). */
     completion: boolean
+    binding: Pick<NonNullable<ShellSnapshot['switchBlocked']>, 'context' | 'review'>
     onStay: () => void
     onResolve: (resolution: SwitchResolution) => void
 }
@@ -19,7 +20,7 @@ export interface SwitchGuardProps {
  * Initial focus is on Stay, the safe default: Enter on arrival never ends
  * the conversation (Archive stays the visually primary action).
  */
-export function SwitchGuard({ target, completion, onStay, onResolve }: SwitchGuardProps) {
+export function SwitchGuard({ target, completion, binding, onStay, onResolve }: SwitchGuardProps) {
     return (
         <Modal label={GUARD_COPY.title} onClose={onStay} width={520} data-slot='switch-guard'>
             <h2 className='text-[16px] font-semibold'>{GUARD_COPY.title}</h2>
@@ -30,10 +31,10 @@ export function SwitchGuard({ target, completion, onStay, onResolve }: SwitchGua
                 <button type='button' autoFocus onClick={onStay} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
                     {GUARD_COPY.stay}
                 </button>
-                <button type='button' onClick={() => onResolve('discard')} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
+                <button type='button' onClick={() => onResolve({ kind: 'discard', context: binding.context, review: binding.review })} className='h-8 rounded-[7px] border px-3 text-[13px]' style={{ borderColor: 'var(--v2-rule)' }}>
                     {GUARD_COPY.discard}
                 </button>
-                <button type='button' onClick={() => onResolve('archive')} className='h-8 rounded-[7px] px-3 text-[13px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
+                <button type='button' onClick={() => onResolve({ kind: 'archive', context: binding.context, review: binding.review })} className='h-8 rounded-[7px] px-3 text-[13px] font-semibold' style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
                     {GUARD_COPY.archive}
                 </button>
             </div>

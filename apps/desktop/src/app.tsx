@@ -13,7 +13,7 @@ import { followAppearance } from './shell/appearance'
 import { type DispatchOutcome, outcomeMessage } from './features/tenants/dispatch'
 import { V2Shell } from './v2/v2-shell'
 import { Wizard } from './v2/wizard/wizard'
-import { useShellStore } from './v2/store'
+import { deliveryContext, useShellStore } from './v2/store'
 import { SHELL_COPY } from './v2/copy'
 import { forgetAcademyPresentation } from './features/academy/presentation-storage'
 import { SAVE_DOCUMENT_EVENT } from './v2/workbench/request-editor'
@@ -60,12 +60,15 @@ export function App({ client }: { client: DesktopClient }) {
     const v2Act = useCallback(
         async (what: string, intent: Intent, quiet: Refusal[] = []): Promise<DispatchOutcome> => {
             // A context-bound action speaks for the tenant it was sent in (I2).
-            const boundContext = typeof (intent as { context?: unknown }).context === 'string' ? (intent as { context: string }).context : null
+            const boundContext = deliveryContext(intent)
+            // A normal switch refusal still names its intended destination,
+            // but an uncertain switch must not offer Retry in another scope.
+            const retryContext = boundContext ?? (intent.kind === 'selectTenant' ? snapshotRef.current?.active?.context ?? null : null)
             const bound = boundContext !== null ? (snapshotRef.current?.active?.tenant ?? null) : null
             const outcome = await dispatch(intent)
             if (outcome.kind === 'refused' && quiet.includes(outcome.refusal)) return outcome
             if (outcome.kind === 'refused') useShellStore.getState().toast(SHELL_COPY.toastRefused(what, outcome.refusal, outcomeMessage(outcome)), 'warn', undefined, bound, boundContext)
-            else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed(what, intent)
+            else if (outcome.kind === 'unknown') useShellStore.getState().addUnconfirmed(what, intent, retryContext)
             else if (outcome.kind === 'failed') useShellStore.getState().toast(SHELL_COPY.toastFailed(what), 'warn', undefined, bound, boundContext)
             return outcome
         },
@@ -99,7 +102,7 @@ export function App({ client }: { client: DesktopClient }) {
                 onSnapshot: (next) => {
                     // The shell's scope follows the snapshot before it renders: a
                     // notification for another tenant or context is never surfaced.
-                    useShellStore.getState().setScope(next.active?.tenant ?? null, next.active?.context ?? null)
+                    useShellStore.getState().setScope(next.active?.tenant ?? null, next.active?.context ?? null, next.switchBlocked?.review ?? null)
                     setSnapshot(next)
                 },
                 onMenu: (command) => onMenu.current(command),

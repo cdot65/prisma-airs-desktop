@@ -14,6 +14,7 @@ use super::observation_domain::{
     source_names,
 };
 use super::{PendingDecisionRef, Refusal, State, SwitchBlocked};
+use crate::context::{ContextRef, ReviewId};
 use crate::features::{FeatureId, ProductId, SetupWarning};
 use crate::management::{ManagementFailure, ManagementResource};
 use crate::observation::{Fact, InboxDestination, InboxItem, Tone};
@@ -21,11 +22,17 @@ use crate::tenants::TenantId;
 
 /// How a blocked switch is resolved (I1): the pending conversation is
 /// ended and kept (`archive`) or ended and dropped (`discard`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum SwitchResolution {
-    Archive,
-    Discard,
+    Archive {
+        context: ContextRef,
+        review: ReviewId,
+    },
+    Discard {
+        context: ContextRef,
+        review: ReviewId,
+    },
 }
 
 /// Where an Inbox entry came from.
@@ -350,33 +357,46 @@ impl State {
         &mut self,
         to: &TenantId,
         resolution: Option<SwitchResolution>,
-        completion: bool,
+        target_context: Option<&ContextRef>,
     ) -> Result<(), Refusal> {
+        if let Some(resolution) = resolution {
+            let (context, review) = match &resolution {
+                SwitchResolution::Archive { context, review }
+                | SwitchResolution::Discard { context, review } => (context, review),
+            };
+            // A resolution names one native refusal, never whichever
+            // conversation happens to be pending when a lost delivery retries.
+            let blocked = self.switch_blocked.as_ref().ok_or(Refusal::StaleContext)?;
+            if self.active_ref.as_ref() != Some(context)
+                || &blocked.context != context
+                || &blocked.review != review
+                || &blocked.to != to
+                || blocked.target_context.as_ref() != target_context
+                || Some(&blocked.pending) != self.pending_decision().as_ref()
+            {
+                return Err(Refusal::StaleContext);
+            }
+            let id = self.live_bound_harness().ok_or(Refusal::StaleContext)?;
+            match resolution {
+                SwitchResolution::Archive { .. } => self.end_harness(&id)?,
+                SwitchResolution::Discard { .. } => self.discard_harness(&id)?,
+            }
+            self.switch_blocked = None;
+            return Ok(());
+        }
         let Some(pending) = self.pending_decision() else {
             self.switch_blocked = None;
             return Ok(());
         };
-        let id = self.live_bound_harness().ok_or(Refusal::Busy)?;
-        match resolution {
-            None => {
-                self.switch_blocked = Some(SwitchBlocked {
-                    to: to.clone(),
-                    pending,
-                    completion,
-                });
-                Err(Refusal::DecisionPending)
-            }
-            Some(SwitchResolution::Archive) => {
-                self.end_harness(&id)?;
-                self.switch_blocked = None;
-                Ok(())
-            }
-            Some(SwitchResolution::Discard) => {
-                self.discard_harness(&id)?;
-                self.switch_blocked = None;
-                Ok(())
-            }
-        }
+        self.switch_blocked = Some(SwitchBlocked {
+            to: to.clone(),
+            pending,
+            completion: target_context.is_some(),
+            context: self.active_ref.clone().ok_or(Refusal::StaleContext)?,
+            review: ReviewId::issue().ok_or(Refusal::ShuttingDown)?,
+            target_context: target_context.cloned(),
+        });
+        Err(Refusal::DecisionPending)
     }
 
     /// The active tenant's setup warnings as items.

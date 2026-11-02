@@ -1071,6 +1071,233 @@ async fn nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_re
     std::fs::remove_dir_all(&dir).expect("cleanup");
 }
 
+/// Resolve exactly the refusal the production interface just published.
+async fn reviewed_switch(desk: &mut Desk, mut intent: Value, kind: &str) -> Value {
+    assert_eq!(
+        desk.send(intent.clone()).await,
+        Err(desktop_core::Refusal::DecisionPending)
+    );
+    let guard = desk.json()["switchBlocked"].clone();
+    assert!(guard["review"].as_str().is_some(), "native reference");
+    intent["resolution"] =
+        json!({"kind": kind, "context": guard["context"], "review": guard["review"]});
+    intent
+}
+
+/// A real-engine pending command after a protected transcript was committed.
+async fn saved_pending_switch_conversation(
+    desk: &mut Desk,
+    reference: &str,
+) -> (Value, Vec<(PathBuf, Vec<u8>)>) {
+    let id = start_when_free(desk, reference).await;
+    assert!(settle_for(30, || desk.conversation()["phase"] == "ready").await);
+    desk.gateway.lock().expect("gateway").answer = Answer::Short;
+    desk.say(&id, "Say hello.").await.expect("sent");
+    desk.answered().await;
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("saved history")
+        .to_owned();
+    tool(desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.")
+        .await
+        .expect("pending command");
+    let pending = answered_with(desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let protected: Vec<_> = files_under(&desk.history_root)
+        .into_iter()
+        .filter(|p| p.to_string_lossy().contains(&history))
+        .map(|p| {
+            let bytes = std::fs::read(&p).expect("protected history");
+            (p, bytes)
+        })
+        .collect();
+    assert!(
+        !protected.is_empty(),
+        "a real protected transcript exists before the stale action"
+    );
+    (pending, protected)
+}
+
+fn pending_switch_history_is_unchanged(
+    desk: &Desk,
+    before: &Value,
+    protected: &[(PathBuf, Vec<u8>)],
+) {
+    let current = desk.conversation();
+    assert_eq!(current["id"], before["id"]);
+    assert_eq!(current["phase"], before["phase"]);
+    assert_eq!(current["approvals"], before["approvals"]);
+    assert!(
+        protected
+            .iter()
+            .all(|(p, bytes)| std::fs::read(p).is_ok_and(|now| now == *bytes)),
+        "stale resolution neither removes nor changes protected history"
+    );
+}
+
+async fn stale_switch_resolution_is_bound(kind: &str) {
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let reference = desk.choose(WS_A).await;
+    desk.store_key(&reference, KEY, None).await;
+    let _ = saved_pending_switch_conversation(&mut desk, &reference).await;
+    let a = desk.json()["active"]["tenant"]
+        .as_str()
+        .expect("A")
+        .to_owned();
+    let origin = desk.json()["tenants"][0]["origin"].clone();
+    desk.send(json!({"kind": "createTenant", "profile": {"label": "Tenant B", "tsgId": TSG, "destination": {"kind": "custom", "origin": origin}}})).await.expect("B");
+    let b = desk.json()["tenants"]
+        .as_array()
+        .expect("tenants")
+        .iter()
+        .find(|t| t["label"] == "Tenant B")
+        .expect("B")["id"]
+        .as_str()
+        .expect("B id")
+        .to_owned();
+    assert!(
+        serde_json::from_value::<desktop_core::Intent>(
+            json!({"kind": "selectTenant", "tenant": b, "resolution": kind})
+        )
+        .is_err(),
+        "an unbound legacy resolution is not admitted by the protocol"
+    );
+    let lost = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": b}),
+        kind,
+    )
+    .await;
+    // The native action succeeds, but the renderer never receives its receipt
+    // and later retries the old intent with a new delivery sequence.
+    desk.send(lost.clone())
+        .await
+        .expect("first action admitted, receipt lost");
+    assert_eq!(desk.json()["active"]["tenant"], b);
+    let context = desk.context();
+    desk.send(json!({"kind": "configureManagementCredential", "context": context, "mode": "keychain", "clientId": CLIENT_ID, "secret": CLIENT_SECRET})).await.expect("B synthetic management key");
+    assert!(
+        settle(|| desk.json()["tenants"]
+            .as_array()
+            .expect("tenants")
+            .iter()
+            .find(|t| t["id"] == b)
+            .expect("B")["management"]["state"]
+            == "ready")
+        .await
+    );
+    let reference = desk.choose(WS_A).await;
+    desk.store_key(&reference, KEY, None).await;
+    assert!(
+        settle(|| desk.json()["tenants"]
+            .as_array()
+            .expect("tenants")
+            .iter()
+            .find(|t| t["id"] == b)
+            .expect("B")["inference"]["state"]
+            == "ready")
+        .await
+    );
+    choose_project(&mut desk, &dir).await;
+    let (pending, protected) = saved_pending_switch_conversation(&mut desk, &reference).await;
+    // Exact exploit: the old A→B resolution must not touch B's new pending
+    // conversation, including when B is already the selected tenant.
+    assert_eq!(
+        desk.send(lost.clone()).await,
+        Err(desktop_core::Refusal::StaleContext)
+    );
+    pending_switch_history_is_unchanged(&desk, &pending, &protected);
+    let mut transplanted = lost;
+    transplanted["tenant"] = json!(a);
+    assert_eq!(
+        desk.send(transplanted.clone()).await,
+        Err(desktop_core::Refusal::StaleContext)
+    );
+    let old_guard = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": a}),
+        kind,
+    )
+    .await;
+    transplanted["resolution"]["context"] = json!(desk.context());
+    assert_eq!(
+        desk.send(transplanted).await,
+        Err(desktop_core::Refusal::StaleContext),
+        "a source-context edit cannot transplant an old native review reference"
+    );
+    let dismissed_guard = old_guard.clone();
+    desk.send(json!({"kind": "dismissSwitchGuard"}))
+        .await
+        .expect("Stay");
+    assert_eq!(
+        desk.send(old_guard.clone()).await,
+        Err(desktop_core::Refusal::StaleContext),
+        "Stay retires this refusal"
+    );
+    let old_guard = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": a}),
+        kind,
+    )
+    .await;
+    assert_ne!(
+        dismissed_guard["resolution"]["review"],
+        old_guard["resolution"]["review"]
+    );
+    assert_eq!(
+        desk.send(dismissed_guard).await,
+        Err(desktop_core::Refusal::StaleContext),
+        "republishing the same pending decision does not revive a dismissed refusal"
+    );
+    pending_switch_history_is_unchanged(&desk, &pending, &protected);
+    // A replacement conversation can use the SAME tenant context and target.
+    // Its distinct pending decision still must not inherit the prior action.
+    desk.end(pending["id"].as_str().expect("conversation"))
+        .await;
+    let unchanged_context = desk.context();
+    let (replacement, protected) = saved_pending_switch_conversation(&mut desk, &reference).await;
+    assert_eq!(desk.context(), unchanged_context);
+    assert_ne!(replacement["id"], pending["id"]);
+    assert_eq!(
+        desk.send(old_guard.clone()).await,
+        Err(desktop_core::Refusal::StaleContext)
+    );
+    let fresh = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": a}),
+        kind,
+    )
+    .await;
+    assert_eq!(
+        desk.send(old_guard).await,
+        Err(desktop_core::Refusal::StaleContext),
+        "a new refusal never revives an old resolution"
+    );
+    pending_switch_history_is_unchanged(&desk, &replacement, &protected);
+    desk.send(fresh)
+        .await
+        .expect("fresh resolution remains usable");
+    assert_eq!(desk.json()["active"]["tenant"], a);
+    desk.core.shutdown();
+    std::fs::remove_dir_all(dir).expect("synthetic project cleanup");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn stale_archive_resolution_never_ends_another_pending_conversation() {
+    stale_switch_resolution_is_bound("archive").await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn stale_discard_resolution_never_deletes_another_pending_conversation() {
+    stale_switch_resolution_is_bound("discard").await;
+}
+
 /// C30 (I1): the one tenant-switch path refuses while the operator has a
 /// Harness decision pending; the refusal carries the guard, and the
 /// operator's resolution ends the conversation (kept or dropped) and switches.
@@ -1134,9 +1361,13 @@ async fn a_pending_decision_refuses_a_tenant_switch_until_it_is_resolved() {
     assert!(desk.json()["switchBlocked"].is_null());
     assert_eq!(desk.json()["active"]["tenant"], a);
     // Archive and switch: the conversation is ended (kept) and B is active.
-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "archive"}))
-        .await
-        .expect("switched");
+    let resolved = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": b}),
+        "archive",
+    )
+    .await;
+    desk.send(resolved).await.expect("switched");
     let s = desk.json();
     assert_eq!(s["active"]["tenant"], b);
     assert!(s["switchBlocked"].is_null());
@@ -1191,9 +1422,13 @@ async fn discard_and_switch_drops_the_pending_conversation() {
         .and_then(|t| t["id"].as_str())
         .expect("B id")
         .to_owned();
-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
-        .await
-        .expect("switched");
+    let resolved = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": b}),
+        "discard",
+    )
+    .await;
+    desk.send(resolved).await.expect("switched");
     assert_eq!(desk.json()["active"]["tenant"], b);
     desk.send(json!({"kind": "selectTenant", "tenant": a}))
         .await
@@ -1274,9 +1509,13 @@ async fn discard_removes_the_saved_transcript_and_archive_keeps_it() {
         .and_then(|t| t["id"].as_str())
         .expect("B id")
         .to_owned();
-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
-        .await
-        .expect("switched");
+    let resolved = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": b}),
+        "discard",
+    )
+    .await;
+    desk.send(resolved).await.expect("switched");
     desk.send(json!({"kind": "selectTenant", "tenant": a}))
         .await
         .expect("back to A");
@@ -1312,9 +1551,13 @@ async fn discard_removes_the_saved_transcript_and_archive_keeps_it() {
         .as_str()
         .expect("history id")
         .to_owned();
-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "archive"}))
-        .await
-        .expect("switched");
+    let resolved = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": b}),
+        "archive",
+    )
+    .await;
+    desk.send(resolved).await.expect("switched");
     desk.send(json!({"kind": "selectTenant", "tenant": a}))
         .await
         .expect("back to A");
@@ -1399,9 +1642,13 @@ async fn a_discard_whose_removal_fails_is_reported_until_the_record_is_removed()
         .to_owned();
     // Removal cannot happen: the folder refuses it.
     std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o555)).expect("chmod");
-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
-        .await
-        .expect("switched");
+    let resolved = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": b}),
+        "discard",
+    )
+    .await;
+    desk.send(resolved).await.expect("switched");
     desk.send(json!({"kind": "selectTenant", "tenant": a}))
         .await
         .expect("back to A");
@@ -1570,9 +1817,13 @@ async fn a_save_admitted_before_a_discard_never_writes_the_discarded_transcript(
     tokio::time::sleep(Duration::from_secs(2)).await;
     // The guard is still actionable: Discard removes the earlier record and
     // tombstones the conversation while the save waits.
-    desk.send(json!({"kind": "selectTenant", "tenant": b, "resolution": "discard"}))
-        .await
-        .expect("switched");
+    let resolved = reviewed_switch(
+        &mut desk,
+        json!({"kind": "selectTenant", "tenant": b}),
+        "discard",
+    )
+    .await;
+    desk.send(resolved).await.expect("switched");
     assert!(
         settle_for(20, || !files_under(&desk.history_root)
             .iter()
@@ -1672,9 +1923,29 @@ async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
     assert_eq!(s["active"]["tenant"], a);
     // Archive and complete: the conversation ends (kept), the tenant is
     // committed and active, the draft is gone.
-    desk.send(json!({"kind": "completeTenantSetup", "context": draft, "packs": [], "resolution": "archive"}))
-        .await
-        .expect("completed");
+    let resolved = reviewed_switch(
+        &mut desk,
+        json!({"kind": "completeTenantSetup", "context": draft, "packs": []}),
+        "archive",
+    )
+    .await;
+    assert_eq!(
+        resolved["resolution"]["context"],
+        desk.context(),
+        "bound to the active source, not the setup draft"
+    );
+    let mut wrong_source = resolved.clone();
+    wrong_source["resolution"]["context"] = json!(draft);
+    assert_eq!(
+        desk.send(wrong_source).await,
+        Err(desktop_core::Refusal::StaleContext)
+    );
+    assert_eq!(
+        desk.conversation()["id"],
+        id,
+        "forged source does not end the conversation"
+    );
+    desk.send(resolved).await.expect("completed");
     let s = desk.json();
     assert!(s["setup"].is_null());
     assert!(s["switchBlocked"].is_null());

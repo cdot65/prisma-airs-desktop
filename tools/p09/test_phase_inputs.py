@@ -18,6 +18,52 @@ class PhaseInputGuards(unittest.TestCase):
     def setUp(self):
         self.verdict = phase.read(ROOT / 'docs/planning/reviews/C44/attempt-05/verdict-returned.json')
 
+    def c30_accounting_fixture(self):
+        # Incomplete unit-only dictionary: no schema, executable, paths or
+        # provenance. It cannot qualify as actual performance evidence.
+        rows = [{'index': i, 'from': 'Tenant A' if i % 2 == 0 else 'Tenant B',
+                 'to': 'Tenant B' if i % 2 == 0 else 'Tenant A', 'warmup': i < 2, 'exit': 0,
+                 'probe': {'ms': float(20 + i), 'polls': 2, 'method': 'c30-cached-switch-v2'}} for i in range(12)]
+        return {'label': 'acceptance', 'status': 'pass', 'failure': None, 'method': 'c30-cached-switch-v2',
+                'metrics': {'tenant-switch-home': {'unit': 'ms', 'samples': [r['probe']['ms'] for r in rows[2:]]}},
+                'details': {'switches': 12, 'raw_switches': rows}}
+
+    def test_c30_accounting_keeps_all_trials_and_the_registered_limit(self):
+        value = self.c30_accounting_fixture()
+        self.assertEqual(phase.c30_samples(value), 31)
+        value['details']['raw_switches'][-1]['probe']['ms'] = 101
+        value['metrics']['tenant-switch-home']['samples'][-1] = 101
+        with self.assertRaisesRegex(ValueError, '100ms'):
+            phase.c30_samples(value)
+
+    def test_c30_never_qualifies_calibration_old_or_failed_measurements(self):
+        for field, invalid in [('label', 'calibration'), ('status', 'fail'), ('method', 'legacy'), ('failure', 'probe timeout')]:
+            value = self.c30_accounting_fixture()
+            value[field] = invalid
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                phase.c30_samples(value)
+        with self.assertRaises(ValueError):
+            phase.c30_samples(phase.read(ROOT / 'docs/planning/evidence/C30/workload-perf.json'))
+
+    def test_c30_rejects_missing_trials_or_posthoc_sample_selection(self):
+        for field in ['missing', 'selected', 'warmup', 'direction', 'exit']:
+            value = self.c30_accounting_fixture()
+            if field == 'missing': value['details']['raw_switches'].pop()
+            elif field == 'selected': value['metrics']['tenant-switch-home']['samples'].reverse()
+            elif field == 'warmup': value['details']['raw_switches'][2]['warmup'] = True
+            elif field == 'direction': value['details']['raw_switches'][3]['to'] = 'Tenant B'
+            else: value['details']['raw_switches'][3]['exit'] = 2
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                phase.c30_samples(value)
+
+    def test_c30_rejects_nonfinite_boolean_and_nonpositive_timings(self):
+        for invalid in [True, float('nan'), float('inf'), 0, -1]:
+            value = self.c30_accounting_fixture()
+            value['details']['raw_switches'][2]['probe']['ms'] = invalid
+            value['metrics']['tenant-switch-home']['samples'][0] = invalid
+            with self.subTest(value=invalid), self.assertRaises(ValueError):
+                phase.c30_samples(value)
+
     def test_actual_full_gate_and_retained_accepted_eight(self):
         phase.full_gate(self.verdict)
         with self.assertRaises(ValueError):

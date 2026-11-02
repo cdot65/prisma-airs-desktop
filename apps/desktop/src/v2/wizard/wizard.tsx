@@ -1035,7 +1035,7 @@ export function Wizard(props: WizardProps) {
                 </footer>
             </div>
             {/* The guard is a dialog above the sheet (I8): rendered at the body, outside the sheet's inert subtree. */}
-            {completionGuard && setup && createPortal(<SwitchGuard target={setup.tenant.label} completion onStay={() => void dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => void finish(resolution)} />, document.body)}
+            {completionGuard && setup && createPortal(<SwitchGuard target={setup.tenant.label} completion binding={completionGuard} onStay={() => void dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => void finish(resolution)} />, document.body)}
         </div>
     )
 }

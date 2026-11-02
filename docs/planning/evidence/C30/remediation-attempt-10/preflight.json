@@ -1,0 +1,151 @@
+{
+  "schema": "airs-v2/c30-remediation-preflight/1",
+  "recorded_utc": "2026-11-02T02:43:42.140155+00:00",
+  "review": "docs/planning/reviews/C30/attempt-10/verdict-returned.json",
+  "review_scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 8,
+    "validation": 8,
+    "overall": 8
+  },
+  "d034_accepted": false,
+  "blocking_finding": "B1",
+  "original_sources": {
+    "crates/desktop-core/src/authority.rs": {
+      "sha256": "6011100e7308085ff71f3ac96047656781ae0178aa13abd7f3fe11c83e443284",
+      "verified_against_review_inventory": true
+    },
+    "crates/desktop-core/src/authority/inbox_domain.rs": {
+      "sha256": "79f2167d6cc4919e3270abe1e597f0a948f755dc48621076c391650f3a85b2c9",
+      "verified_against_review_inventory": true
+    },
+    "crates/desktop-core/tests/harness_tools/main.rs": {
+      "sha256": "6b1baea4ab7784492ed8ee592178ad85aeb449d2129baeaf7614bee65c755971",
+      "verified_against_review_inventory": true
+    },
+    "apps/desktop/src/app.tsx": {
+      "sha256": "b41aa5e39f92bde2869e7846a11f38401ad44bc1df37d2937dbc85b36706c7dc",
+      "verified_against_review_inventory": true
+    },
+    "apps/desktop/src/v2/store.ts": {
+      "sha256": "3b498fce87bc9228410358046b385b0b4623f45d63b68be96c556019897539c5",
+      "verified_against_review_inventory": true
+    },
+    "apps/desktop/src/v2/switch-guard.tsx": {
+      "sha256": "af23dd3a74c61786bad15532cf39927dfdd6f9412ab73d871b656250120d2824",
+      "verified_against_review_inventory": true
+    },
+    "apps/desktop/src/v2/v2-shell.tsx": {
+      "sha256": "c627d152a23df4cbdee83c4de07e9b8c31372ca08377d3aca82c93c131cbc780",
+      "verified_against_review_inventory": true
+    },
+    "apps/desktop/src/v2/wizard/wizard.tsx": {
+      "sha256": "af56bc2c39d62aef5f29fd116ea659a851aaebb95314938bdea156859c03c0b7",
+      "verified_against_review_inventory": true
+    },
+    "packages/desktop-contracts/src/client.ts": {
+      "sha256": "1edaafab988ddaa3a0e82d312f97d6b7b7227953c4a03380aa4d81e61cce289c",
+      "verified_against_review_inventory": true
+    },
+    "packages/desktop-contracts/src/generated/SwitchBlocked.ts": {
+      "sha256": "3d1093947a0ab66b4f9884ed1e74cf129d9978b69f3f6b50d94ded824e3f41a7",
+      "verified_against_review_inventory": true
+    },
+    "packages/desktop-contracts/src/generated/SwitchResolution.ts": {
+      "sha256": "e8392db1b8f8ae44581286c3d093dca1d509c47825b2b24e8866f4c56cdfc9c9",
+      "verified_against_review_inventory": true
+    },
+    "tools/perf/measure_c30.py": {
+      "sha256": "215c4ae99c902d30710badbfa43bb295e4a20a998ee6893f934d8aa512841b4d",
+      "verified_against_review_inventory": true
+    },
+    "tools/perf/probe.swift": {
+      "sha256": "8eb9c4abfb1cdfee5945de700bd7a5269f2c2555a52ed52320a2cc36094c12b3",
+      "verified_against_review_inventory": true
+    }
+  },
+  "results": {
+    "bindings": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-remediation-bindings.log",
+      "sha256": "2f0cf39db2f5f7ccc2f7cbf7c1fdfd4fb87912f1fb47a2bf510de0232487e0f7",
+      "exit": 0
+    },
+    "typecheck": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-remediation-typecheck-03.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit": 0
+    },
+    "clippy": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-remediation-clippy-01.log",
+      "sha256": "b76fead71b1d523d9f80b2da1236dc98b3f08872356bace03bf9cb10a79601ac",
+      "exit": 0
+    },
+    "harness_tools": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-remediation-harness-tools-01.log",
+      "sha256": "7003cf9661b2d3dfd0e5f6dd50cf5f2a607ed0bd76fc097ba8d30e74313d0d9f",
+      "exit": 0
+    },
+    "native_regressions": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-remediation-native-regressions-02.log",
+      "sha256": "caff7f1c125f12560bde7e243ef9dfd9cdc2954db7ebe1652fb4aa886acedf17",
+      "exit": 0
+    },
+    "renderer_failed": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-remediation-renderer-full-01.log",
+      "sha256": "0e6f588a5f755d39fefec8291e16e7834b0ed2596924fd57287b10c6d4fb14f5",
+      "exit": 1
+    },
+    "renderer_passed": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-remediation-renderer-full-02.log",
+      "sha256": "d126352b16f9b23cc27268ad866698edddb524ffb5d63a183da6b30f026f8bee",
+      "exit": 0
+    },
+    "phase_guards": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-remediation-phase-guards-03.log",
+      "sha256": "9d414629c260874c875522a693151936d4aad731ffa55f616143718e0e925e2b",
+      "exit": 0
+    },
+    "timing_probe_compile": {
+      "log": "docs/planning/evidence/C30/remediation-attempt-10/C30-timing-probe-compile-02.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit": 0
+    }
+  },
+  "actual_results": {
+    "harness_tools": "18/18; same production authority, before extra dismissed-refusal assertion; final targeted2/2 proves strengthened assertion",
+    "native_regressions": "2/2, real production interfaces/Harness and protected synthetic history",
+    "renderer_failed": "547passed/1failed: normal switch refusal toast incorrectly retired by retry-scope change",
+    "renderer_passed": "548/548 after separating toast/retry scope; existing assertion unchanged",
+    "phase_guards": "14/14 unit guards, not native acceptance evidence"
+  },
+  "source_files_now": {
+    "crates/desktop-core/src/authority.rs": "5cc7f1d77484eaf9f0453e0bc647c0adc74b6d3f14aebee4d4f6b7d269788480",
+    "crates/desktop-core/src/authority/inbox_domain.rs": "0e5ef3f03215b1d44ade8b0f886e07cdf380726f76032bc29a26d2bbb17bfc6f",
+    "crates/desktop-core/tests/harness_tools/main.rs": "8e0fe1efd7341b574509deb837051e0eadc82fa4846e835f24b4b45535082812",
+    "apps/desktop/src/app.tsx": "25e719f786ccc7061a81f279ee510103cd1c1d9b12efbfe9b0a86cbed055293c",
+    "apps/desktop/src/v2/store.ts": "fe187b4f18706c671d3b4a0be0e3287f9a8648340a56dfec772546e51e620280",
+    "apps/desktop/src/v2/switch-guard.tsx": "f419c814a9400ee9385d86c75ab22ddbf5545f488e578a099490edab05ade036",
+    "apps/desktop/src/v2/v2-shell.tsx": "3e108f5fc9077d3f05060f67952996a6664fce953b71d3603acdca966111c1d8",
+    "apps/desktop/src/v2/wizard/wizard.tsx": "2dad02a98b260442e02adc43e225ff02ff96785003395b91a453544a945cbbde",
+    "packages/desktop-contracts/src/client.ts": "d5b740b99e181f768db7fe81fddd7d3605d91b486a68169fc0f58e87e320a182",
+    "packages/desktop-contracts/src/generated/SwitchBlocked.ts": "d1116f30b4db1643034a5ce7ac20ca52509d6c83b5735109ea8ff8aa15f923e9",
+    "packages/desktop-contracts/src/generated/SwitchResolution.ts": "ddd2e10924d95ca0ead99e2254602ec0b5c9097aad0777ab62190d8244bd4a80",
+    "tools/perf/measure_c30.py": "5cf42690a907b1c625f46b83a68c8f310e69c33b3ed9621bc28c8f866bba2028",
+    "tools/perf/probe.swift": "8ddf5bcb8ad3b13471a484c41cbfe196d1b0779db05e76e56e22b87f181d3b0c",
+    "apps/desktop/src/v2/inbox/inbox.test.tsx": "2f988f1084a36ffe165d42a4852491ea6c1498e2b953cf83be71ee391eda73fd",
+    "apps/desktop/src/v2/wizard/wizard.test.tsx": "5660dbdf91ae5560cd8dce8f1d63579b2c5e2b6f2e9d7c47d863ed32301fc2f6",
+    "apps/desktop/src/contracts/snapshot-validation.test.ts": "92b4917810b627e0729cc4f051eca8703090bfedb849e53ab5bf38428bb1cb82"
+  },
+  "diff_sha256": "2ee707a8de7d7c52bb6e6a85422dd251a371231a42c180b1745205b80cc9daf1",
+  "pending": [
+    "fresh G5 prepared executable",
+    "all19 mapped native drivers",
+    "actual current C30 performance acceptance with10 samples/p95<=100ms",
+    "fresh18-check attempt06",
+    "fresh C29->C30->C31->C32 reviews",
+    "P09phase9"
+  ],
+  "limits": "Preflight results only. No new native gate, performance result, independent passing score, controller completion or phase pass is claimed.",
+  "post_preflight_note": "Only Unconfirmed.context documentation comment clarified after passing preflight; current source hashes refreshed before freezing. Full fresh G5 checks remain pending."
+}

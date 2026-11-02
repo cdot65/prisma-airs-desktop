@@ -563,7 +563,7 @@ export function V2Shell(props: V2ShellProps) {
                 <Palette snapshot={snapshot} onNavigate={props.onNavigate} onSwitchTenant={props.onSwitchTenant} onReadNow={props.onReadNow} onClose={closePalette} />
             )}
             {guard && guardTarget && (
-                <SwitchGuard target={guardTarget} completion={false} onStay={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => props.onSwitchTenant(guard.to, resolution)} />
+                <SwitchGuard target={guardTarget} completion={false} binding={guard} onStay={() => void props.dispatch({ kind: 'dismissSwitchGuard' })} onResolve={(resolution) => props.onSwitchTenant(guard.to, resolution)} />
             )}
             {adding && (
                 <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} padding={0} data-slot='add-tenant-sheet'>

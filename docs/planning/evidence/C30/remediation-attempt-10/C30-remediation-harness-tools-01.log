@@ -1,0 +1,25 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running tests/harness_tools/main.rs (target/debug/deps/harness_tools-5a497df2126f0180)
+
+running 18 tests
+test completing_a_tenant_setup_is_the_guarded_switch_path ... ok
+test discard_and_switch_drops_the_pending_conversation ... ok
+test a_pending_decision_refuses_a_tenant_switch_until_it_is_resolved ... ok
+test a_typed_read_answers_from_the_desktop_without_any_secret ... ok
+test a_proposal_is_staged_never_applied_and_never_replaces_a_review ... ok
+test a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered ... ok
+test a_discard_whose_removal_fails_is_reported_until_the_record_is_removed ... ok
+test forged_unknown_or_credential_bearing_calls_run_nothing ... ok
+test commands_need_a_project_and_the_operators_approval ... ok
+test discard_removes_the_saved_transcript_and_archive_keeps_it ... ok
+test a_saved_conversation_needs_its_project_binding_and_replays_no_authority ... ok
+test the_sandbox_refuses_children_pipelines_and_other_paths ... ok
+test stale_archive_resolution_never_ends_another_pending_conversation ... ok
+test stale_discard_resolution_never_deletes_another_pending_conversation ... ok
+test a_save_admitted_before_a_discard_never_writes_the_discarded_transcript ... ok
+test the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused ... ok
+test nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_reconnect ... ok
+test tool_work_still_queued_when_its_turn_is_stopped_is_never_sent ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.15s
+

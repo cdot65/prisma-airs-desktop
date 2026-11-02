@@ -2879,6 +2879,12 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !optional(
             (g) =>
                 isRecord(g) &&
+                typeof g.context === 'string' &&
+                CONTEXT_REF.test(g.context) &&
+                isRecord(value.active) &&
+                g.context === value.active.context &&
+                typeof g.review === 'string' &&
+                REVIEW_ID.test(g.review) &&
                 typeof g.to === 'string' &&
                 TENANT_ID.test(g.to) &&
                 isRecord(g.pending) &&
@@ -2886,7 +2892,10 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
                 g.pending.conversation.length > 0 &&
                 typeof g.pending.decision === 'string' &&
                 g.pending.decision.length > 0 &&
-                typeof g.completion === 'boolean',
+                typeof g.completion === 'boolean' &&
+                (g.completion
+                    ? typeof g.targetContext === 'string' && CONTEXT_REF.test(g.targetContext) && isRecord(value.setup) && isRecord(value.setup.tenant) && g.targetContext === value.setup.context && g.to === value.setup.tenant.id
+                    : g.targetContext === null),
             value.switchBlocked
         ) ||
         // C29: the tenant setup in progress, with its draft and verification.

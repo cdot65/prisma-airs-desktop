@@ -108,7 +108,7 @@ describe('Inbox', () => {
         await user.click(screen.getByRole('button', { name: /Meridian Retail/ }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: null })
         expect(toasts()).toEqual([])
-        await native.push({ ...native.current, switchBlocked: { to: 'tn-fedcba9876543210', pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false } })
+        await native.push({ ...native.current, switchBlocked: { context: native.current.active!.context, review: 'rv-1111111111111111', targetContext: null, to: 'tn-fedcba9876543210', pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false } })
         const guard = await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })
         expect(within(guard).getByText(/Switching to Meridian Retail ends it/)).toBeInTheDocument()
         // Initial focus is Stay, the safe default: Enter on arrival ends nothing.
@@ -116,9 +116,71 @@ describe('Inbox', () => {
         native.respond = () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
         await user.click(within(guard).getByRole('button', { name: 'Stay' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'dismissSwitchGuard' })
-        await native.push({ ...native.current, switchBlocked: { to: 'tn-fedcba9876543210', pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false } })
+        await native.push({ ...native.current, switchBlocked: { context: native.current.active!.context, review: 'rv-1111111111111111', targetContext: null, to: 'tn-fedcba9876543210', pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false } })
         await user.click(within(await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: 'Archive and switch' }))
-        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: 'archive' })
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: 'tn-fedcba9876543210', resolution: { kind: 'archive', context: native.current.active!.context, review: 'rv-1111111111111111' } })
+    })
+
+    it.each(['archive', 'discard'] as const)('retires an unconfirmed %s resolution with its native refusal, even in the same context', async (kind) => {
+        const user = userEvent.setup()
+        const native = await launch(fxInbox())
+        const context = native.current.active!.context
+        const guard = { context, review: 'rv-1111111111111111', targetContext: null, to: native.current.tenants[1]!.id, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false }
+        await native.push({ ...native.current, switchBlocked: guard })
+        native.respond = () => { throw new DeliveryOutcomeUnknown('lost') }
+        const label = kind === 'archive' ? 'Archive and switch' : 'Discard and switch'
+        await user.click(within(await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: label }))
+        await waitFor(() => expect(useShellStore.getState().unconfirmed).toHaveLength(1))
+        expect(useShellStore.getState().unconfirmed[0]?.context).toBe(context)
+        const retired = native.dispatched.at(-1)!
+        const sent = native.dispatched.length
+        // A replacement pending conversation/refusal in the same tenant/context.
+        const replacement = { ...guard, review: 'rv-2222222222222222', pending: { conversation: 'op-8', decision: 'ap-2' } }
+        await native.push({ ...native.current, switchBlocked: replacement })
+        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
+        useShellStore.getState().addUnconfirmed('The retired switch', retired)
+        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
+        expect(native.dispatched).toHaveLength(sent)
+        // A fresh explicit action uses the replacement native binding.
+        native.respond = () => ({ outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-1', operation: null } })
+        await user.click(within(screen.getByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: label }))
+        expect(native.dispatched.at(-1)).toEqual({ kind: 'selectTenant', tenant: guard.to, resolution: { kind, context, review: replacement.review } })
+        await native.push({ ...native.current, active: { tenant: guard.to, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' }, switchBlocked: null })
+        expect(document.querySelector('[data-slot="unconfirmed"]')).toBeNull()
+    })
+
+    it.each(['archive', 'discard'] as const)('never surfaces a late lost %s receipt after the source context retires', async (kind) => {
+        const user = userEvent.setup()
+        const native = await launch(fxInbox())
+        const guard = { context: native.current.active!.context, review: 'rv-1111111111111111', targetContext: null, to: native.current.tenants[1]!.id, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false }
+        await native.push({ ...native.current, switchBlocked: guard })
+        let fail: (reason: unknown) => void = () => undefined
+        native.respond = () => new Promise((_, reject) => { fail = reject })
+        await user.click(within(await screen.findByRole('dialog', { name: 'A Harness decision is waiting' })).getByRole('button', { name: kind === 'archive' ? 'Archive and switch' : 'Discard and switch' }))
+        await native.push({ ...native.current, active: { tenant: guard.to, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' }, switchBlocked: null })
+        fail(new DeliveryOutcomeUnknown('lost'))
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        fail(new DeliveryOutcomeUnknown('lost'))
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
+        expect(document.querySelector('[data-slot="unconfirmed"]')).toBeNull()
+        await native.push({ ...fxInbox(), active: { tenant: fxInbox().active!.tenant, context: 'cx-cccccccccccccccccccccccc' } })
+        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
+    })
+
+    it('also retires a late unconfirmed initial tenant selection with the context it was asked from', async () => {
+        const user = userEvent.setup()
+        const native = await launch(fxInbox())
+        let fail: (reason: unknown) => void = () => undefined
+        native.respond = () => new Promise((_, reject) => { fail = reject })
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        await user.click(screen.getByRole('button', { name: /Meridian Retail/ }))
+        await native.push({ ...native.current, active: { tenant: native.current.tenants[1]!.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
+        fail(new DeliveryOutcomeUnknown('lost'))
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        fail(new DeliveryOutcomeUnknown('lost'))
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
     })
 
     it('announces a snooze once, from the core receipt: never an old hold after a switch or a reread (I11)', async () => {

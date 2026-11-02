@@ -5,8 +5,10 @@ the remedial C29-C32 audits must independently qualify the integrated inputs.
 This module never launches a review or changes a completion ledger.
 """
 from pathlib import Path
+import datetime
 import hashlib
 import json
+import math
 import re
 import subprocess
 import sys
@@ -196,6 +198,142 @@ def native_build(root, prepared):
             'generation': build['generation'], 'input_digest': current}
 
 
+def c30_samples(value):
+    """Check real-record sample accounting; unit fixtures cannot qualify a run."""
+    require(value.get('label') == 'acceptance' and value.get('status') == 'pass'
+            and value.get('failure') is None and value.get('method') == 'c30-cached-switch-v2',
+            'C30 requires successful current-method acceptance')
+    require(set(value['metrics']) == {'tenant-switch-home'}, 'wrong C30 workload')
+    metric = value['metrics']['tenant-switch-home']
+    samples = metric['samples']
+    require(metric['unit'] == 'ms' and len(samples) == 10, 'C30 requires ten measured samples')
+    require(all(type(x) in (int, float) and math.isfinite(x) and x > 0 for x in samples),
+            'invalid C30 timing sample')
+    rows = value['details']['raw_switches']
+    require(len(rows) == 12 and value['details']['switches'] == 12, 'C30 requires all twelve raw switches')
+    for index, row in enumerate(rows):
+        source, target = ('Tenant A', 'Tenant B') if index % 2 == 0 else ('Tenant B', 'Tenant A')
+        measured = row['probe'].get('ms')
+        require(row['index'] == index and row['from'] == source and row['to'] == target
+                and row['warmup'] is (index < 2) and row['exit'] == 0
+                and row['probe']['method'] == 'c30-cached-switch-v2'
+                and type(measured) in (int, float) and math.isfinite(measured) and measured > 0
+                and type(row['probe']['polls']) is int and row['probe']['polls'] > 0,
+                'invalid/omitted C30 raw switch')
+    require(samples == [row['probe']['ms'] for row in rows[2:]], 'C30 sample selection mismatch')
+    p95 = sorted(samples)[math.ceil(.95 * len(samples)) - 1]
+    require(p95 <= 100, 'C30 cached-switch p95 exceeds registered 100ms budget')
+    return p95
+
+
+def verify_c30_performance(root, prepared, build, records):
+    phase = root / 'docs/planning/evidence/P09'
+    path = phase / 'workload-perf-C30.json'
+    value = read(path)
+    p95 = c30_samples(value)
+    attempt = value['attempt']
+    require(re.fullmatch(r'attempt-\d+', attempt) is not None, 'invalid C30 performance attempt')
+    prefix = 'docs/planning/evidence/P09/performance/C30/' + attempt + '/'
+    require(value['schema'] == 'airs-v2-workload-perf/1' and value['subject'] == 'P09'
+            and value['source_root'] == str(root) and sha(root / (prefix + 'workload-perf.json')) == sha(path),
+            'C30 performance identity/attempt mismatch')
+    require(value['executable_sha256'] == prepared['executable_sha256']
+            and value['prepare_sha256'] == sha(phase / 'native-prepare.json')
+            and value['build_inputs_sha256'] == sha(phase / 'native-build-inputs.json')
+            and value['input_digest'] == build['input_digest'] and value['inputs_unchanged'] is True
+            and sha(root / (prefix + 'inputs-before.sha256')) == value['input_digest']
+            and sha(root / (prefix + 'inputs-after.sha256')) == value['input_digest'],
+            'C30 performance differs from current prepared inputs')
+    require(value['driver_sha256'] == sha(root / 'tools/perf/measure_c30.py')
+            and value['probe_source_sha256'] == sha(root / 'tools/perf/probe.swift')
+            and value['probe_executable_sha256'] == sha(root / (prefix + 'timing-probe.bin'))
+            and value['method_sha256'] == sha(phase / 'performance/C30/method-02.md')
+            and value['sources_unchanged'] is True,
+            'C30 timing source/probe/method drift')
+    registration_path = root / 'docs/planning/evidence/C30/workload-budget-registration.json'
+    registration = read(registration_path)
+    require(registration['budgets'] == 'docs/planning/evidence/C30/workload-budget.md'
+            and value['registration_record_sha256'] == sha(registration_path)
+            and value['registration_sha256'] == registration['budgets_sha256']
+            == sha(root / registration['budgets'])
+            == '0031d2527c719b899325036f4b4ef77c638b6add974571321c5a3f2feaf5828a',
+            'C30 registered budget changed')
+    require(value['command'][1:] == ['-I', 'tools/perf/measure_c30.py', '--label', 'acceptance', '--attempt', attempt],
+            'C30 timing command mismatch')
+    require(subprocess.run(['git', 'merge-base', '--is-ancestor', value['source_head'], 'HEAD'],
+                           cwd=root, capture_output=True).returncode == 0, 'C30 timing source is not integrated')
+    details = value['details']
+    require(details['a_read'] is True and type(details['management_requests_before']) is int
+            and details['management_requests_before'] > 0
+            and details['management_requests_before'] == details['management_requests_after'],
+            'C30 cached-switch dataset/read accounting mismatch')
+    require(value['conditions']['machine'] == 'arm64' and value['conditions']['macos']
+            and value['conditions']['swiftc'] and value['host'] and value['conditions']['window'], 'C30 execution conditions missing')
+    window = value['conditions']['window']
+    require(all(isinstance(window.get(key), list) and len(window[key]) == 2
+                and all(type(number) in (int, float) and math.isfinite(number) for number in window[key])
+                for key in ['pos', 'size']) and all(number > 0 for number in window['size']), 'C30 window geometry invalid')
+    attempt_start = read(root / (prefix + 'attempt-start.json'))
+    probe_build = read(root / (prefix + 'probe-build.json'))
+    require(attempt_start['command'] == value['command']
+            and attempt_start['executable_sha256'] == value['executable_sha256']
+            and attempt_start['prepare_sha256'] == value['prepare_sha256']
+            and attempt_start['build_inputs_sha256'] == value['build_inputs_sha256']
+            and attempt_start['input_digest'] == value['input_digest'] and probe_build['exit'] == 0,
+            'C30 startup/probe-build provenance mismatch')
+    require(attempt_start['source_hashes'] == {
+        str(root / 'tools/perf/measure_c30.py'): value['driver_sha256'],
+        str(root / 'tools/perf/probe.swift'): value['probe_source_sha256'],
+        str(phase / 'performance/C30/method-02.md'): value['method_sha256']}
+        and probe_build['argv'][:4] == ['swiftc', '-O', str(root / 'tools/perf/probe.swift'), '-o'],
+        'C30 starting sources or compiler command mismatch')
+    started = datetime.datetime.fromisoformat(value['started_utc'])
+    finished = datetime.datetime.fromisoformat(value['finished_utc'])
+    require(started <= finished, 'C30 timing interval invalid')
+    for record in records:
+        native_start = datetime.datetime.fromisoformat(record['started_utc'])
+        native_end = datetime.datetime.fromisoformat(record['finished_utc'])
+        require(native_end <= started or finished <= native_start, 'C30 timing overlaps a native UI writer')
+        if record['subject'] == 'C43':
+            require(native_end <= started, 'C30 timing precedes guest wizard qualification')
+        if record['subject'] == 'C44':
+            require(finished <= native_start, 'C44 cumulative must run after C30 timing')
+    for index, row in enumerate(details['raw_switches']):
+        raw = read(root / (prefix + f'probe-{index:02}.json'))
+        marker = 'Read finished at' if row['to'] == 'Tenant A' else 'First read pending'
+        require(raw['exit'] == 0 and json.loads(raw['stdout']) == row['probe']
+                and raw['argv'][0] == probe_build['argv'][4]
+                and raw['argv'][1] == 'switch-home' and raw['argv'][2] == str(value['conditions']['fixture_pid'])
+                and raw['argv'][3:] == [row['to'], marker, '10000', str(root / prepared['bundle'] / 'Contents/MacOS/prisma-airs-desktop-v2')],
+                'C30 raw probe differs from selected sample')
+        tree_path = prefix + f'switch-{index:02}-ax.json'
+        require(row['tree'] == tree_path and row['tree_sha256'] == sha(root / tree_path), 'C30 AX hash/path mismatch')
+        tree = read(root / tree_path)
+        require(any(n.get('role') == 'AXPopUpButton' and (n.get('label') or '').startswith('Switch tenant: ' + row['to'] + ' ·') for n in tree),
+                'C30 destination identity not observed')
+        main = next((i for i, n in enumerate(tree) if n.get('subrole') == 'AXLandmarkMain'), None)
+        require(main is not None, 'C30 main content missing')
+        nodes = []
+        for node in tree[main + 1:]:
+            if node.get('depth', 0) <= tree[main].get('depth', 0):
+                break
+            nodes.append(node)
+        require(any(n.get('role') == 'AXHeading' and n.get('label') == 'Home' for n in nodes), 'C30 Home heading missing')
+        status_depth, seen_status = None, False
+        for node in nodes:
+            if status_depth is not None and node.get('depth', 0) <= status_depth:
+                status_depth = None
+            if node.get('subrole') == 'AXApplicationStatus':
+                status_depth = node.get('depth', 0)
+            if status_depth is not None and node.get('role') == 'AXStaticText' and marker in str(node.get('value') or node.get('label') or ''):
+                seen_status = True
+        require(seen_status, 'C30 destination cached status missing from main status region')
+    return {'record': str(path.relative_to(root)), 'sha256': sha(path), 'attempt': attempt,
+            'samples': 10, 'raw_switches': 12, 'p95_ms': p95, 'budget_ms': 100,
+            'method': value['method'], 'host_observed': value['host'],
+            'limits': 'Actual guest measurement and hash consistency; no physical-host or signed-installed qualification inferred.'}
+
+
 def verify_native(root):
     controller = root / 'docs/planning/evidence/P09/native-controller'
     sys.path.insert(0, str(controller))
@@ -241,12 +379,23 @@ def verify_native(root):
             errors = wizard_coverage.problems(read(directory / 'native/observations.json')['observations'], root)
             require(not errors, 'C43 retained coverage: ' + str(errors))
         records.append({'subject': subject, 'record': str(path.relative_to(root)), 'sha256': sha(path),
+                        'started_utc': execution['started_utc'], 'finished_utc': execution['finished_utc'],
                         'execution': str((directory / 'execution.json').relative_to(root)),
                         'execution_sha256': sha(directory / 'execution.json'),
                         'required_targets': sorted(required), 'superseded_raw_checks': carried,
                         'executable_sha256': prepared['executable_sha256']})
+    ordered = sorted(records, key=lambda record: datetime.datetime.fromisoformat(record['started_utc']))
+    require([record['subject'] for record in ordered[:2]] == ['C36', 'C43'] and ordered[-1]['subject'] == 'C44',
+            'native order requires C36/C43 first and cumulative C44 last')
+    for index, record in enumerate(ordered):
+        start = datetime.datetime.fromisoformat(record['started_utc'])
+        end = datetime.datetime.fromisoformat(record['finished_utc'])
+        require(start <= end, 'invalid native execution interval')
+        if index:
+            require(datetime.datetime.fromisoformat(ordered[index - 1]['finished_utc']) <= start, 'native UI writers overlap')
     return {'prepare': str((phase / 'native-prepare.json').relative_to(root)),
-            'prepare_sha256': sha(phase / 'native-prepare.json'), 'build_inputs': build, 'records': records}
+            'prepare_sha256': sha(phase / 'native-prepare.json'), 'build_inputs': build, 'records': records,
+            'performance': verify_c30_performance(root, prepared, build, records)}
 
 
 def verify_checks(root, record_path):

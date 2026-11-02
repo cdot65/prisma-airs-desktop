@@ -1179,3 +1179,24 @@ describe('local diagnostics (C24)', () => {
         }
     })
 })
+
+
+describe('native switch-guard binding', () => {
+    const target = 'tn-fedcba9876543210'
+    const guard = { context: valid.active!.context, review: 'rv-1111111111111111', targetContext: null,
+        to: target, pending: { conversation: 'op-7', decision: 'ap-1' }, completion: false }
+    const snapshot = (switchBlocked: unknown) => ({ ...valid, tenants: [...valid.tenants, tenant({ id: target, label: 'B' })], switchBlocked })
+
+    it('preserves the native source and refusal references for a valid guard', () => {
+        expect(parseShellSnapshot(snapshot(guard)).switchBlocked).toEqual(guard)
+    })
+
+    it('refuses missing, malformed, cross-context and orphaned setup guard bindings', () => {
+        for (const broken of [
+            { ...guard, context: undefined }, { ...guard, review: undefined }, { ...guard, review: 'not-a-review' },
+            { ...guard, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' },
+            { ...guard, targetContext: undefined }, { ...guard, targetContext: 'cx-draft' },
+            { ...guard, completion: true }, { ...guard, completion: true, targetContext: 'cx-draft' },
+        ]) expect(() => parseShellSnapshot(snapshot(broken))).toThrow(ContractViolation)
+    })
+})

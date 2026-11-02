@@ -35,6 +35,7 @@ result={'phase':'P09','check_attempt':attempt,'time':datetime.datetime.now(datet
         'changes_since_historical_preparation_inputs':changes,
         'current_native_build_inputs_match':True,'native_build_inputs':qualification['build_inputs'],
         'native_drivers_verified':len(qualification['records']),
+        'performance':qualification['performance'],
         'native_complete':True,'phase_complete':False,
         'limits':'Current check/native input audit only. Actual independent chunk and phase reviews remain required.'}
 out.write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))

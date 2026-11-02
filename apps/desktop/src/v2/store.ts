@@ -56,8 +56,19 @@ export interface Unconfirmed {
     id: number
     what: string
     intent: Intent
-    /** The context the intent was bound to, if any: once that context retires, the delivery cannot be revived. */
+    /** The native context or captured switch source this delivery belongs to; retirement never rebinds it. */
     context: string | null
+}
+
+function switchResolution(intent: Intent) {
+    return intent.kind === 'selectTenant' || intent.kind === 'completeTenantSetup' ? intent.resolution : null
+}
+
+/** A destructive switch is bound to its source, not its destination or setup draft. */
+export function deliveryContext(intent: Intent): string | null {
+    const resolution = switchResolution(intent)
+    if (resolution) return resolution.context
+    return 'context' in intent && typeof intent.context === 'string' ? intent.context : null
 }
 
 export interface Toast {
@@ -80,8 +91,8 @@ export interface Toast {
  */
 interface ShellStore {
     /** The scope the shell shows now (set from each snapshot before it renders): what a notification must belong to. */
-    scope: { tenant: string | null; context: string | null }
-    setScope(tenant: string | null, context: string | null): void
+    scope: { tenant: string | null; context: string | null; switchReview: string | null }
+    setScope(tenant: string | null, context: string | null, switchReview?: string | null): void
     paletteOpen: boolean
     switcherOpen: boolean
     /** The rail's Administration children shown or hidden (C35; the prototype's `adminNav`). */
@@ -128,7 +139,7 @@ interface ShellStore {
     unconfirmed: Unconfirmed[]
     /** Toast lifetime in ms (6 s; tests shorten it). */
     toastMs: number
-    addUnconfirmed(what: string, intent: Intent): number
+    addUnconfirmed(what: string, intent: Intent, sourceContext?: string | null): number
     clearUnconfirmed(id: number): void
     openPalette(): void
     closePalette(): void
@@ -145,13 +156,13 @@ let nextToast = 1
 let nextKept = 1
 
 export const useShellStore = create<ShellStore>((set, get) => ({
-    scope: { tenant: null, context: null },
-    setScope: (tenant, context) =>
+    scope: { tenant: null, context: null, switchReview: null },
+    setScope: (tenant, context, switchReview = null) =>
         set((s) => ({
-            scope: { tenant, context },
+            scope: { tenant, context, switchReview },
             // Leaving a scope retires what spoke for it, however late it would have arrived.
             toasts: s.toasts.filter((t) => (t.tenant === null || t.tenant === tenant) && (t.context === null || t.context === context)),
-            unconfirmed: s.unconfirmed.filter((u) => u.context === null || u.context === context),
+            unconfirmed: s.unconfirmed.filter((u) => (u.context === null || u.context === context) && (!switchResolution(u.intent) || switchResolution(u.intent)?.review === switchReview)),
             arrival: s.arrival && s.arrival.tenant !== tenant ? null : s.arrival,
         })),
     paletteOpen: false,
@@ -188,11 +199,12 @@ export const useShellStore = create<ShellStore>((set, get) => ({
     arrive: (target) => set((s) => ({ arrival: { ...target, sequence: (s.arrival?.sequence ?? 0) + 1 } })),
     unconfirmed: [],
     toastMs: 6000,
-    addUnconfirmed: (what, intent) => {
+    addUnconfirmed: (what, intent, context = deliveryContext(intent)) => {
         const id = nextToast++
-        const context = typeof (intent as { context?: unknown }).context === 'string' ? ((intent as { context: string }).context ?? null) : null
         // A delivery bound to a context the shell no longer shows is moot: never surfaced (I2).
         if (context !== null && context !== get().scope.context) return id
+        const resolution = switchResolution(intent)
+        if (resolution && resolution.review !== get().scope.switchReview) return id
         set((s) => ({ unconfirmed: [...s.unconfirmed, { id, what, intent, context }] }))
         return id
     },
@@ -219,5 +231,5 @@ export const useShellStore = create<ShellStore>((set, get) => ({
 
 /** Test seam: forget everything (each test starts from an empty store). */
 export function resetShellStore() {
-    useShellStore.setState({ scope: { tenant: null, context: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
+    useShellStore.setState({ scope: { tenant: null, context: null, switchReview: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
 }
