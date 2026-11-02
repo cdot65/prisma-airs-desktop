@@ -1,0 +1,44 @@
+{
+  "schema": "airs-v2/p09-native-build-inputs/1",
+  "generation": "worf-08-c31",
+  "source_head": "17cdd10439c916d6bd8a9573eaff906db4875cb7",
+  "worktree_diff": "docs/planning/evidence/P09/preparations/worf-08-c31/fixture-remediation.diff",
+  "worktree_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "prepare": "docs/planning/evidence/P09/native-prepare.json",
+  "prepare_sha256": "2fbdc8310ea9cdf89ca4d689594731ccaf90e6a0339aa2f17b8b8eeb429b9c5f",
+  "executable_sha256": "bb85a44cb53b3099e5fd16121b0cc6c2964b2a896b6c55e989f3fd3c933d6e64",
+  "bundle_sha256": "645d898e6eaa43043b21e45e8d97f49c4046c8e5641b3b5ba894732c528ddd65",
+  "inputs": {
+    "procedure": "docs/planning/evidence/P09/runs/hash-inputs.sh",
+    "procedure_sha256": "0a4f9546e1aa4a812da6a946c6ee73d9a0e69c3fd4534dd3d480d5c804b53ea1",
+    "before_inventory": "docs/planning/evidence/P09/preparations/worf-08-c31/inputs-before.sha256",
+    "after_inventory": "docs/planning/evidence/P09/preparations/worf-08-c31/inputs-after.sha256",
+    "before_digest": "fa8d896deb2d641ccdb5823ccd5b5538ab8297a1befc2a84979e14784aff1df1",
+    "after_digest": "fa8d896deb2d641ccdb5823ccd5b5538ab8297a1befc2a84979e14784aff1df1",
+    "unchanged": true,
+    "members": 18341
+  },
+  "command": {
+    "argv": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "native-prepare",
+      "--phase",
+      "P09",
+      "--target",
+      "aarch64-apple-darwin",
+      "--features",
+      "test-fixtures"
+    ],
+    "cwd": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current",
+    "exit": 0,
+    "log": "docs/planning/evidence/P09/preparations/worf-08-c31/native-prepare.log",
+    "log_sha256": "4294330cc958f21889ea1666dda9bc3e48ff5420f13f36d6c6cc3132598a34fd"
+  },
+  "prior_generation": "docs/planning/evidence/P09/native-history/Worf-generation-07-canonical-before-C31-20261102",
+  "qualification": "Current C31 changed production bytes; all19 native drivers and18 checks required. Historical C30 timing unchanged, no current timing claim."
+}
