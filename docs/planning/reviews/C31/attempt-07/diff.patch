@@ -1,0 +1,1670 @@
+diff --git a/apps/desktop/src-tauri/src/native_confirmation.rs b/apps/desktop/src-tauri/src/native_confirmation.rs
+index 9c1ba615..25798d21 100644
+--- a/apps/desktop/src-tauri/src/native_confirmation.rs
++++ b/apps/desktop/src-tauri/src/native_confirmation.rs
+@@ -48,6 +48,13 @@ impl Registry {
+         sender.is_some_and(|tx| tx.send(accepted).is_ok())
+     }
+ 
++    pub fn is_pending(&self, nonce: u64) -> bool {
++        self.pending
++            .lock()
++            .map(|pending| pending.contains_key(&nonce))
++            .unwrap_or(false)
++    }
++
+     pub fn open_count(&self) -> usize {
+         self.pending.lock().map(|p| p.len()).unwrap_or(0)
+     }
+@@ -81,6 +88,107 @@ impl SecretOwnership {
+     }
+ }
+ 
++/// The same revocation check is used immediately before AppKit presentation
++/// and again in its explicit copy callback.
++#[derive(Clone)]
++pub struct SecretCopyPermit {
++    lease: desktop_core::PresentationLease,
++    generation: u64,
++}
++impl SecretCopyPermit {
++    pub fn allowed(&self, owner: &SecretOwnership) -> bool {
++        self.lease.is_current() && owner.owns(self.generation)
++    }
++}
++
++/// An admitted secret waiting for the main-thread queue. Its revocable owner
++/// is captured at admission; a refused callback cannot claim the sheet slot.
++/// Dropping a refused task zeroizes its key.
++pub struct SecretPresentation {
++    label: String,
++    secret: zeroize::Zeroizing<String>,
++    lease: desktop_core::PresentationLease,
++}
++impl SecretPresentation {
++    pub fn new(
++        label: String,
++        secret: zeroize::Zeroizing<String>,
++        lease: desktop_core::PresentationLease,
++    ) -> Self {
++        Self {
++            label,
++            secret,
++            lease,
++        }
++    }
++    pub fn run(
++        self,
++        owner: &SecretOwnership,
++        show: impl FnOnce(String, zeroize::Zeroizing<String>, SecretCopyPermit),
++    ) -> bool {
++        if !self.lease.is_current() {
++            return false;
++        }
++        let permit = SecretCopyPermit {
++            lease: self.lease,
++            generation: owner.begin(),
++        };
++        if !permit.allowed(owner) {
++            return false;
++        }
++        show(self.label, self.secret, permit);
++        true
++    }
++}
++
++pub struct ConfirmationPermit {
++    lease: desktop_core::PresentationLease,
++    nonce: u64,
++}
++impl ConfirmationPermit {
++    pub fn complete(&self, registry: &Registry, accepted: bool) -> bool {
++        registry.complete(self.nonce, accepted && self.lease.is_current())
++    }
++}
++/// Production queue entry shared by AppKit and deterministic host regressions.
++pub struct ConfirmationPresentation {
++    nonce: u64,
++    request: desktop_core::ConfirmationRequest,
++    lease: desktop_core::PresentationLease,
++}
++impl ConfirmationPresentation {
++    pub fn new(
++        nonce: u64,
++        request: desktop_core::ConfirmationRequest,
++        lease: desktop_core::PresentationLease,
++    ) -> Self {
++        Self {
++            nonce,
++            request,
++            lease,
++        }
++    }
++    pub fn run(
++        self,
++        registry: &Registry,
++        show: impl FnOnce(u64, desktop_core::ConfirmationRequest, ConfirmationPermit),
++    ) -> bool {
++        if !self.lease.is_current() || !registry.is_pending(self.nonce) {
++            registry.complete(self.nonce, false);
++            return false;
++        }
++        show(
++            self.nonce,
++            self.request,
++            ConfirmationPermit {
++                lease: self.lease,
++                nonce: self.nonce,
++            },
++        );
++        true
++    }
++}
++
+ /// The receiver side of a confirmation: false if it was dropped.
+ pub async fn outcome(receiver: Option<oneshot::Receiver<bool>>) -> bool {
+     match receiver {
+@@ -112,7 +220,10 @@ mod appkit {
+     use tauri::{AppHandle, Manager, Runtime};
+     use zeroize::Zeroizing;
+ 
+-    use super::{REVEAL_FOR, Registry, outcome};
++    use super::{
++        ConfirmationPermit, ConfirmationPresentation, REVEAL_FOR, Registry, SecretCopyPermit,
++        SecretPresentation, outcome,
++    };
+     use crate::MAIN_WINDOW;
+     use crate::clipboard_secret::{AppKitPasteboard, CLEAR_AFTER, ClipboardGuard};
+ 
+@@ -151,14 +262,33 @@ mod appkit {
+ 
+     impl<R: Runtime> OperatorConfirmation for NativeConfirmation<R> {
+         fn confirm(&self, nonce: u64, request: ConfirmationRequest) -> BoxFuture<'static, bool> {
++            self.confirm_scoped(nonce, request, desktop_core::PresentationLease::default())
++        }
++
++        fn confirm_scoped(
++            &self,
++            nonce: u64,
++            request: ConfirmationRequest,
++            lease: desktop_core::PresentationLease,
++        ) -> BoxFuture<'static, bool> {
++            if !lease.is_current() {
++                return Box::pin(async { false });
++            }
+             let receiver = self.registry.open(nonce);
+             if receiver.is_some() {
++                if !lease.is_current() {
++                    self.registry.complete(nonce, false);
++                    return Box::pin(outcome(receiver));
++                }
++                let task = ConfirmationPresentation::new(nonce, request, lease);
+                 let registry = Arc::clone(&self.registry);
+                 let app = self.app.clone();
+                 let presented = self.app.run_on_main_thread(move || {
+-                    if !present(&app, nonce, &request, &registry) {
+-                        registry.complete(nonce, false);
+-                    }
++                    task.run(&registry, |nonce, request, permit| {
++                        if !present(&app, nonce, &request, &registry, permit) {
++                            registry.complete(nonce, false);
++                        }
++                    });
+                 });
+                 if presented.is_err() {
+                     self.registry.complete(nonce, false);
+@@ -178,6 +308,7 @@ mod appkit {
+         nonce: u64,
+         request: &ConfirmationRequest,
+         registry: &Arc<Registry>,
++        permit: ConfirmationPermit,
+     ) -> bool {
+         let Some(mtm) = MainThreadMarker::new() else {
+             return false;
+@@ -199,7 +330,7 @@ mod appkit {
+         }
+         let registry = Arc::clone(registry);
+         let handler = RcBlock::new(move |response: NSModalResponse| {
+-            registry.complete(nonce, response == NSAlertFirstButtonReturn);
++            permit.complete(&registry, response == NSAlertFirstButtonReturn);
+             SHEETS.with(|s| s.borrow_mut().remove(&nonce));
+         });
+         alert.beginSheetModalForWindow_completionHandler(&window, Some(&handler));
+@@ -217,18 +348,38 @@ mod appkit {
+ 
+     impl<R: Runtime> SecretPresenter for NativeSecrets<R> {
+         fn reveal(&self, label: String, secret: Zeroizing<String>) {
++            self.reveal_scoped(label, secret, desktop_core::PresentationLease::default());
++        }
++        fn reveal_scoped(
++            &self,
++            label: String,
++            secret: Zeroizing<String>,
++            lease: desktop_core::PresentationLease,
++        ) {
+             let app = self.app.clone();
+-            let _ = self
+-                .app
+-                .run_on_main_thread(move || reveal(&app, &label, secret));
++            let task = SecretPresentation::new(label, secret, lease);
++            let _ = self.app.run_on_main_thread(move || {
++                task.run(&SECRET_OWNER, |label, secret, permit| {
++                    reveal(&app, &label, secret, permit)
++                });
++            });
+         }
+-
+         fn dismiss(&self) {
+-            let _ = self.app.run_on_main_thread(|| end_sheet(SECRET_SHEET));
++            let generation = SECRET_OWNER.begin();
++            let _ = self.app.run_on_main_thread(move || {
++                if SECRET_OWNER.owns(generation) {
++                    end_sheet(SECRET_SHEET);
++                }
++            });
+         }
+     }
+ 
+-    fn reveal<R: Runtime>(app: &AppHandle<R>, label: &str, secret: Zeroizing<String>) {
++    fn reveal<R: Runtime>(
++        app: &AppHandle<R>,
++        label: &str,
++        secret: Zeroizing<String>,
++        permit: SecretCopyPermit,
++    ) {
+         let Some(mtm) = MainThreadMarker::new() else {
+             return;
+         };
+@@ -236,7 +387,7 @@ mod appkit {
+             return;
+         };
+         end_sheet(SECRET_SHEET);
+-        let generation = SECRET_OWNER.begin();
++        let generation = permit.generation;
+         let alert = NSAlert::new(mtm);
+         alert.setMessageText(&NSString::from_str(label));
+         alert.setInformativeText(&NSString::from_str(
+@@ -264,7 +415,7 @@ mod appkit {
+             if SECRET_OWNER.owns(generation) {
+                 SHEETS.with(|s| s.borrow_mut().remove(&SECRET_SHEET));
+             }
+-            if response != NSAlertFirstButtonReturn {
++            if response != NSAlertFirstButtonReturn || !permit.allowed(&SECRET_OWNER) {
+                 return;
+             }
+             let Some(secret) = secret else { return };
+diff --git a/apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs b/apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs
+index 6e2bd612..58f7c0ef 100644
+--- a/apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs
++++ b/apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs
+@@ -91,6 +91,9 @@ struct Desk {
+ 
+ impl Desk {
+     async fn new(delay_issuance: bool) -> Self {
++        Self::with_presenter(delay_issuance, None).await
++    }
++    async fn with_presenter(delay_issuance: bool, queued: Option<Arc<QueuedNative>>) -> Self {
+         let ca = TestCa::new("C31 renderer lifetime fixture");
+         let plane = Arc::new(Mutex::new(Plane {
+             keys: vec![
+@@ -108,7 +111,11 @@ impl Desk {
+         )
+         .await;
+         let origin = format!("https://localhost:{}", server.port);
+-        let (adapters, handles) = fixtures::adapters();
++        let (mut adapters, handles) = fixtures::adapters();
++        if let Some(queued) = queued {
++            adapters.confirmer = queued.clone();
++            adapters.secrets = queued;
++        }
+         let core = Core::new(
+             CoreConfig {
+                 management: ManagementEndpoints::at_origin(&origin),
+@@ -150,8 +157,15 @@ impl Desk {
+     }
+ 
+     fn call(&self, command: &str, body: Value) -> Result<Value, Value> {
++        Self::call_window(&self.window, command, body)
++    }
++    fn call_window(
++        window: &WebviewWindow<MockRuntime>,
++        command: &str,
++        body: Value,
++    ) -> Result<Value, Value> {
+         get_ipc_response(
+-            &self.window,
++            window,
+             InvokeRequest {
+                 cmd: command.into(),
+                 callback: CallbackFn(0),
+@@ -164,6 +178,12 @@ impl Desk {
+         )
+         .map(|response| response.deserialize::<Value>().expect("response JSON"))
+     }
++    fn send_thread(&mut self, intent: Value) -> std::thread::JoinHandle<Result<Value, Value>> {
++        self.sequence += 1;
++        let window = self.window.clone();
++        let body = json!({"protocol":1,"session":self.session,"sequence":self.sequence.to_string(),"intent":intent});
++        std::thread::spawn(move || Self::call_window(&window, "desktop_dispatch", body))
++    }
+     fn register(&mut self) {
+         let value = self
+             .call(
+@@ -195,8 +215,11 @@ impl Desk {
+         }
+     }
+     async fn review(&mut self) -> desktop_core::ChangeReviewView {
++        self.review_draft(draft()).await
++    }
++    async fn review_draft(&mut self, draft: Value) -> desktop_core::ChangeReviewView {
+         let context = self.snap().active.expect("active").context;
+-        self.send(json!({"kind":"reviewChange","context":context,"draft":draft()}))
++        self.send(json!({"kind":"reviewChange","context":context,"draft":draft}))
+             .expect("review");
+         assert!(
+             eventually(|| self
+@@ -212,11 +235,19 @@ impl Desk {
+             .await
+         );
+         let review = self.snap().changes.review.expect("review exists");
+-        assert_eq!(review.state, desktop_core::ChangeReviewState::Ready);
++        assert_eq!(
++            review.state,
++            desktop_core::ChangeReviewState::Ready,
++            "{:?}",
++            review.failure
++        );
+         review
+     }
+     fn apply(&mut self, review: &desktop_core::ChangeReviewView) {
+-        self.send(json!({"kind":"requestApply","review":review.review,"draft":draft(),"confirmation":"CREATE"})).expect("apply requested");
++        self.apply_draft(review, draft());
++    }
++    fn apply_draft(&mut self, review: &desktop_core::ChangeReviewView, draft: Value) {
++        self.send(json!({"kind":"requestApply","review":review.review,"draft":draft,"confirmation":"CREATE"})).expect("apply requested");
+     }
+     async fn settled(&self) -> desktop_core::ChangeResultView {
+         assert!(
+@@ -242,7 +273,10 @@ impl Desk {
+ }
+ 
+ fn draft() -> Value {
+-    json!({"kind":"apiKeys","action":"version","target":"key-1","body":json!({"cust_app":"Support bot","cust_env":"production","cust_cloud_provider":"aws","api_key_name":"Support key 2","dp_name":"dp-1","revoked":false,"rotation_time_interval":30,"rotation_time_unit":"days"}).to_string()})
++    draft_named("Support key 2")
++}
++fn draft_named(name: &str) -> Value {
++    json!({"kind":"apiKeys","action":"version","target":"key-1","body":json!({"cust_app":"Support bot","cust_env":"production","cust_cloud_provider":"aws","api_key_name":name,"dp_name":"dp-1","revoked":false,"rotation_time_interval":30,"rotation_time_unit":"days"}).to_string()})
+ }
+ 
+ #[tokio::test(flavor = "multi_thread")]
+@@ -387,3 +421,349 @@ async fn renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review(
+     assert_eq!(desk.adapters.secrets.shown().len(), 1);
+     assert_eq!(desk.writes(), 1);
+ }
++
++// Both queue adapters use the production callback guards. The unscoped fallback
++// deliberately preserves the old public adapter contract: the old core's calls
++// have no owner to revoke. This makes the old-red failures behavioral, not a
++// missing-new-API compilation failure.
++#[derive(Default)]
++struct QueuedNative {
++    registry: desktop_host::native_confirmation::Registry,
++    owner: desktop_host::native_confirmation::SecretOwnership,
++    queue_confirms: std::sync::atomic::AtomicBool,
++    confirm_entries: std::sync::atomic::AtomicUsize,
++    state: Mutex<QueuedState>,
++}
++#[derive(Default)]
++struct QueuedState {
++    secrets: Vec<SecretTask>,
++    confirmations: Vec<ConfirmationTask>,
++    shown_secrets: usize,
++    copied_secrets: usize,
++    shown_confirmations: usize,
++}
++enum SecretTask {
++    Legacy(String, zeroize::Zeroizing<String>),
++    Scoped(desktop_host::native_confirmation::SecretPresentation),
++}
++enum ConfirmationTask {
++    Legacy(u64, desktop_core::ConfirmationRequest),
++    Scoped(desktop_host::native_confirmation::ConfirmationPresentation),
++}
++impl QueuedNative {
++    fn secret_count(&self) -> usize {
++        self.state.lock().expect("queue").secrets.len()
++    }
++    fn confirmation_count(&self) -> usize {
++        self.state.lock().expect("queue").confirmations.len()
++    }
++    fn drain(&self) {
++        use desktop_host::native_confirmation::SecretPresentation;
++        let (secrets, confirmations) = {
++            let mut state = self.state.lock().expect("queue");
++            (
++                std::mem::take(&mut state.secrets),
++                std::mem::take(&mut state.confirmations),
++            )
++        };
++        for task in secrets {
++            let task = match task {
++                SecretTask::Legacy(label, secret) => SecretPresentation::new(
++                    label,
++                    secret,
++                    desktop_core::PresentationLease::default(),
++                ),
++                SecretTask::Scoped(task) => task,
++            };
++            task.run(&self.owner, |_, _, permit| {
++                let mut state = self.state.lock().expect("queue");
++                state.shown_secrets += 1;
++                if permit.allowed(&self.owner) {
++                    state.copied_secrets += 1;
++                }
++            });
++        }
++        for task in confirmations {
++            match task {
++                ConfirmationTask::Legacy(nonce, _request) => {
++                    self.state.lock().expect("queue").shown_confirmations += 1;
++                    self.registry.complete(nonce, true);
++                }
++                ConfirmationTask::Scoped(task) => {
++                    task.run(&self.registry, |_, _, permit| {
++                        self.state.lock().expect("queue").shown_confirmations += 1;
++                        permit.complete(&self.registry, true);
++                    });
++                }
++            }
++        }
++    }
++}
++impl desktop_core::SecretPresenter for QueuedNative {
++    fn reveal(&self, label: String, secret: zeroize::Zeroizing<String>) {
++        self.state
++            .lock()
++            .expect("queue")
++            .secrets
++            .push(SecretTask::Legacy(label, secret));
++    }
++    fn reveal_scoped(
++        &self,
++        label: String,
++        secret: zeroize::Zeroizing<String>,
++        lease: desktop_core::PresentationLease,
++    ) {
++        let task = desktop_host::native_confirmation::SecretPresentation::new(label, secret, lease);
++        self.state
++            .lock()
++            .expect("queue")
++            .secrets
++            .push(SecretTask::Scoped(task));
++    }
++    fn dismiss(&self) {
++        self.owner.begin();
++    }
++}
++impl desktop_core::OperatorConfirmation for QueuedNative {
++    fn confirm(
++        &self,
++        nonce: u64,
++        request: desktop_core::ConfirmationRequest,
++    ) -> futures_util::future::BoxFuture<'static, bool> {
++        if !self
++            .queue_confirms
++            .load(std::sync::atomic::Ordering::Acquire)
++        {
++            self.confirm_entries
++                .fetch_add(1, std::sync::atomic::Ordering::Release);
++            return Box::pin(async { true });
++        }
++        let receiver = self.registry.open(nonce);
++        self.state
++            .lock()
++            .expect("queue")
++            .confirmations
++            .push(ConfirmationTask::Legacy(nonce, request));
++        self.confirm_entries
++            .fetch_add(1, std::sync::atomic::Ordering::Release);
++        Box::pin(desktop_host::native_confirmation::outcome(receiver))
++    }
++    fn confirm_scoped(
++        &self,
++        nonce: u64,
++        request: desktop_core::ConfirmationRequest,
++        lease: desktop_core::PresentationLease,
++    ) -> futures_util::future::BoxFuture<'static, bool> {
++        if !lease.is_current() {
++            self.confirm_entries
++                .fetch_add(1, std::sync::atomic::Ordering::Release);
++            return Box::pin(async { false });
++        }
++        if !self
++            .queue_confirms
++            .load(std::sync::atomic::Ordering::Acquire)
++        {
++            self.confirm_entries
++                .fetch_add(1, std::sync::atomic::Ordering::Release);
++            return Box::pin(async { true });
++        }
++        let receiver = self.registry.open(nonce);
++        let task =
++            desktop_host::native_confirmation::ConfirmationPresentation::new(nonce, request, lease);
++        self.state
++            .lock()
++            .expect("queue")
++            .confirmations
++            .push(ConfirmationTask::Scoped(task));
++        self.confirm_entries
++            .fetch_add(1, std::sync::atomic::Ordering::Release);
++        Box::pin(desktop_host::native_confirmation::outcome(receiver))
++    }
++    fn dismiss(&self, nonce: u64) {
++        self.registry.complete(nonce, false);
++    }
++}
++
++async fn cross_teardown(secret: bool, before_effect: bool) {
++    let native = Arc::new(QueuedNative::default());
++    let mut desk = Desk::with_presenter(false, Some(Arc::clone(&native))).await;
++    let review = desk.review().await;
++    let original = if secret {
++        desk.apply(&review);
++        Some(desk.settled().await)
++    } else {
++        native
++            .queue_confirms
++            .store(true, std::sync::atomic::Ordering::Release);
++        None
++    };
++    let confirm_before = native
++        .confirm_entries
++        .load(std::sync::atomic::Ordering::Acquire);
++    let gate = before_effect.then(|| desk.core.operator().hold_next_native_presentation());
++    let intent = if let Some(result) = &original {
++        json!({"kind":"revealSecret","operation":result.operation})
++    } else {
++        json!({"kind":"requestApply","review":review.review,"draft":draft(),"confirmation":"CREATE"})
++    };
++    let dispatch = desk.send_thread(intent);
++    if let Some(gate) = &gate {
++        assert!(
++            eventually(|| gate.entered()).await,
++            "real admission completed; effect not executed"
++        );
++    } else {
++        assert!(
++            eventually(|| if secret {
++                native.secret_count() == 1
++            } else {
++                native.confirmation_count() == 1
++            })
++            .await,
++            "real native callback queued"
++        );
++    }
++    desk.retire();
++    desk.register();
++    if let Some(gate) = gate {
++        gate.release();
++    }
++    dispatch
++        .join()
++        .expect("dispatch thread")
++        .expect("original admission receipt");
++    if !secret {
++        assert!(
++            eventually(|| native
++                .confirm_entries
++                .load(std::sync::atomic::Ordering::Acquire)
++                > confirm_before)
++            .await,
++            "native adapter has made its queue/refusal decision"
++        );
++    }
++    native.drain();
++    {
++        let state = native.state.lock().expect("queue");
++        assert_eq!(
++            state.shown_secrets, 0,
++            "departed page's admitted/queued key must never be presented"
++        );
++        assert_eq!(
++            state.copied_secrets, 0,
++            "departed page's key must never be copied"
++        );
++        assert_eq!(
++            state.shown_confirmations, 0,
++            "departed page's confirmation must never be presented"
++        );
++    }
++    assert_eq!(native.registry.open_count(), 0, "no stale pending nonce");
++    assert_eq!(desk.writes(), usize::from(secret), "no mutation replay");
++    if let Some(original) = original {
++        let result = &desk.snap().changes.results[0];
++        assert_eq!(result.operation, original.operation);
++        assert_eq!(
++            result.outcome,
++            Some(desktop_core::runtime::Outcome::Completed)
++        );
++        assert!(
++            desk.send(json!({"kind":"revealSecret","operation":original.operation}))
++                .is_err()
++        );
++    }
++    native
++        .queue_confirms
++        .store(false, std::sync::atomic::Ordering::Release);
++    let fresh = desk.review_draft(draft_named("Support key 3")).await;
++    desk.apply_draft(&fresh, draft_named("Support key 3"));
++    let fresh = desk.settled().await;
++    assert_eq!(
++        fresh.outcome,
++        Some(desktop_core::runtime::Outcome::Completed)
++    );
++    assert_eq!(
++        desk.writes(),
++        usize::from(secret) + 1,
++        "only explicit fresh-page work writes"
++    );
++    desk.send(json!({"kind":"revealSecret","operation":fresh.operation}))
++        .expect("fresh reveal");
++    native.drain();
++    let state = native.state.lock().expect("queue");
++    assert_eq!(state.shown_secrets, 1, "fresh-page presentation works");
++    assert_eq!(state.copied_secrets, 1, "fresh-page explicit copy works");
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_secret_admitted_before_teardown_cannot_present_after_effect_release() {
++    cross_teardown(true, true).await;
++}
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_secret_queued_before_teardown_cannot_present_or_copy() {
++    cross_teardown(true, false).await;
++}
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_confirmation_admitted_before_teardown_cannot_present_after_effect_release() {
++    cross_teardown(false, true).await;
++}
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_confirmation_queued_before_teardown_cannot_present() {
++    cross_teardown(false, false).await;
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_review_exit_revokes_a_queued_secret_without_retiring_the_page() {
++    let native = Arc::new(QueuedNative::default());
++    let mut desk = Desk::with_presenter(false, Some(Arc::clone(&native))).await;
++    let review = desk.review().await;
++    desk.apply(&review);
++    let result = desk.settled().await;
++    desk.send(json!({"kind":"revealSecret","operation":result.operation}))
++        .expect("admitted reveal");
++    assert_eq!(native.secret_count(), 1);
++    desk.send(json!({"kind":"discardChange","review":review.review}))
++        .expect("review exit");
++    native.drain();
++    let state = native.state.lock().expect("queue");
++    assert_eq!(state.shown_secrets, 0);
++    assert_eq!(state.copied_secrets, 0);
++    assert_eq!(desk.writes(), 1);
++    assert_eq!(
++        desk.snap().changes.results[0].outcome,
++        Some(desktop_core::runtime::Outcome::Completed)
++    );
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_old_callbacks_drained_last_cannot_retire_fresh_page_presentation() {
++    let native = Arc::new(QueuedNative::default());
++    let mut desk = Desk::with_presenter(false, Some(Arc::clone(&native))).await;
++    let review = desk.review().await;
++    desk.apply(&review);
++    let result = desk.settled().await;
++    desk.send(json!({"kind":"revealSecret","operation":result.operation}))
++        .expect("old admitted reveal");
++    desk.retire();
++    desk.register();
++    let fresh = desk.review_draft(draft_named("Support key 3")).await;
++    desk.apply_draft(&fresh, draft_named("Support key 3"));
++    let result = desk.settled().await;
++    desk.send(json!({"kind":"revealSecret","operation":result.operation}))
++        .expect("new admitted reveal");
++    native.state.lock().expect("queue").secrets.reverse();
++    let prior_generation = native.owner.begin();
++    native.drain();
++    let state = native.state.lock().expect("queue");
++    assert_eq!(state.shown_secrets, 1, "only the fresh callback presents");
++    assert_eq!(state.copied_secrets, 1, "only its copy is authorized");
++    assert!(
++        native.owner.owns(prior_generation + 1),
++        "stale callback allocated no new sheet ownership"
++    );
++    assert_eq!(
++        desk.writes(),
++        2,
++        "one original and one explicit fresh write"
++    );
++}
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 906e815b..38430a52 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -1461,6 +1461,20 @@ pub trait OperatorConfirmation: Send + Sync + 'static {
+         nonce: u64,
+         request: ConfirmationRequest,
+     ) -> futures_util::future::BoxFuture<'static, bool>;
++    /// The scoped production path carries admission-time ownership into any
++    /// deferred native callback. Asynchronous adapters must override this method.
++    fn confirm_scoped(
++        &self,
++        nonce: u64,
++        request: ConfirmationRequest,
++        lease: crate::PresentationLease,
++    ) -> futures_util::future::BoxFuture<'static, bool> {
++        if lease.is_current() {
++            self.confirm(nonce, request)
++        } else {
++            Box::pin(async { false })
++        }
++    }
+     /// Ends confirmation `nonce` if it is still shown (resolving it false).
+     /// Called with the authority locked: it must not block.
+     fn dismiss(&self, nonce: u64);
+@@ -1471,6 +1485,18 @@ pub trait SecretPresenter: Send + Sync + 'static {
+     /// Shows `secret` under `label` with an explicit copy action; the host
+     /// owns its expiry and clipboard cleanup.
+     fn reveal(&self, label: String, secret: Zeroizing<String>);
++    /// Carries admission-time ownership through deferred presentation/copy.
++    /// Asynchronous adapters must override this method and check at execution.
++    fn reveal_scoped(
++        &self,
++        label: String,
++        secret: Zeroizing<String>,
++        lease: crate::PresentationLease,
++    ) {
++        if lease.is_current() {
++            self.reveal(label, secret);
++        }
++    }
+     /// Ends any shown secret sheet and zeroizes its copy. Must not block.
+     fn dismiss(&self);
+ }
+@@ -2708,6 +2734,7 @@ enum Effect {
+         review: ReviewId,
+         nonce: u64,
+         request: ConfirmationRequest,
++        presentation: crate::PresentationLease,
+     },
+     /// The native confirmation of a Harness decision that may change
+     /// things (C32).
+@@ -2720,6 +2747,7 @@ enum Effect {
+     RevealSecret {
+         label: String,
+         secret: Zeroizing<String>,
++        presentation: crate::PresentationLease,
+     },
+     ChooseTextFile {
+         lease: u64,
+@@ -2794,6 +2822,8 @@ enum Effect {
+ }
+ 
+ struct Inner {
++    #[cfg(any(test, feature = "test-fixtures"))]
++    presentation_gate: Mutex<Option<Arc<crate::PresentationGate>>>,
+     state: Mutex<State>,
+     adapters: Adapters,
+     session: Arc<SessionVault>,
+@@ -2946,6 +2976,8 @@ impl Core {
+         };
+         let _ = state.reissue_context();
+         let inner = Arc::new(Inner {
++            #[cfg(any(test, feature = "test-fixtures"))]
++            presentation_gate: Mutex::default(),
+             state: Mutex::new(state),
+             adapters,
+             session: Arc::new(SessionVault::new()),
+@@ -3454,9 +3486,18 @@ impl AuthorityHandle {
+         lock(&self.inner)?.operator_sessions.register()
+     }
+ 
+-    /// Called by the native main-page lifecycle, never by a renderer intent.
+-    /// Review/disclosure ownership ends with the page; admitted work and its
+-    /// outcomes survive. Delivery-session recovery alone does not end a page.
++    /// Fixture-only gate at the real admission-to-native-effect boundary.
++    #[cfg(any(test, feature = "test-fixtures"))]
++    pub fn hold_next_native_presentation(&self) -> Arc<crate::PresentationGate> {
++        let gate = Arc::new(crate::PresentationGate::default());
++        if let Ok(mut pending) = self.inner.presentation_gate.lock() {
++            *pending = Some(Arc::clone(&gate));
++        }
++        gate
++    }
++
++    /// Called by the native main-page lifecycle. Admitted business work survives;
++    /// review/disclosure owners and the departed page's delivery session retire.
+     pub fn retire_renderer(&self) -> Result<(), Refusal> {
+         let mut state = lock(&self.inner)?;
+         state.operator_sessions.retire();
+@@ -4139,11 +4180,13 @@ fn admit(
+             draft,
+             confirmation,
+         } => {
+-            let (nonce, request) = state.request_apply(&review, &draft, &confirmation)?;
++            let (nonce, request, presentation) =
++                state.request_apply(&review, &draft, &confirmation)?;
+             effects.push(Effect::Confirm {
+                 review,
+                 nonce,
+                 request,
++                presentation,
+             });
+             state.changed();
+         }
+@@ -4158,8 +4201,12 @@ fn admit(
+             state.changed();
+         }
+         Intent::RevealSecret { operation } => {
+-            let (label, secret) = state.reveal_secret(&operation)?;
+-            effects.push(Effect::RevealSecret { label, secret });
++            let (label, secret, presentation) = state.reveal_secret(&operation)?;
++            effects.push(Effect::RevealSecret {
++                label,
++                secret,
++                presentation,
++            });
+             // The key is no longer held: publish that, or the presentation
+             // keeps offering a reveal that will be refused.
+             state.changed();
+@@ -5099,6 +5146,20 @@ fn intent_digest(salt: &[u8; 16], intent: &Intent) -> [u8; 32] {
+ 
+ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
+     for effect in effects {
++        #[cfg(any(test, feature = "test-fixtures"))]
++        if matches!(
++            &effect,
++            Effect::Confirm { .. } | Effect::RevealSecret { .. }
++        ) {
++            let gate = inner
++                .presentation_gate
++                .lock()
++                .ok()
++                .and_then(|mut gate| gate.take());
++            if let Some(gate) = gate {
++                gate.pause();
++            }
++        }
+         match effect {
+             Effect::Harness(start) => {
+                 let inner = Arc::clone(inner);
+@@ -5285,10 +5346,15 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
+                 review,
+                 nonce,
+                 request,
++                presentation,
+             } => {
+                 let inner = Arc::clone(inner);
+                 tokio::spawn(async move {
+-                    let accepted = inner.adapters.confirmer.confirm(nonce, request).await;
++                    let accepted = inner
++                        .adapters
++                        .confirmer
++                        .confirm_scoped(nonce, request, presentation)
++                        .await;
+                     settle_confirmation(&inner, &review, nonce, accepted);
+                 });
+             }
+@@ -5346,8 +5412,15 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
+                     }
+                 });
+             }
+-            Effect::RevealSecret { label, secret } => {
+-                inner.adapters.secrets.reveal(label, secret);
++            Effect::RevealSecret {
++                label,
++                secret,
++                presentation,
++            } => {
++                inner
++                    .adapters
++                    .secrets
++                    .reveal_scoped(label, secret, presentation);
+             }
+             Effect::LoadReports { lease } => {
+                 let inner = Arc::clone(inner);
+diff --git a/crates/desktop-core/src/authority/change_domain.rs b/crates/desktop-core/src/authority/change_domain.rs
+index 6a68a7fe..94c830fd 100644
+--- a/crates/desktop-core/src/authority/change_domain.rs
++++ b/crates/desktop-core/src/authority/change_domain.rs
+@@ -34,6 +34,7 @@ use crate::management::{
+     BindingSource, ManagementBinding, ManagementFailure, ManagementResource, PageError, Walk,
+     outcome_of,
+ };
++use crate::presentation::{PresentationLease, PresentationOwner};
+ use crate::runtime::{Claim, OperationId, OperationState, Outcome, Work};
+ use crate::tenants::TenantId;
+ use crate::vault::SessionVault;
+@@ -274,6 +275,7 @@ enum Phase {
+ }
+ 
+ pub(super) struct ChangeReview {
++    presentation: PresentationOwner,
+     id: ReviewId,
+     context: ContextRef,
+     tenant: TenantId,
+@@ -347,6 +349,7 @@ enum Progress {
+ type ProgressSlot = Arc<Mutex<Progress>>;
+ 
+ pub(super) struct ChangeRecord {
++    presentation: PresentationOwner,
+     operation: OperationId,
+     /// The review this change was applied from: ending that review ends the
+     /// disclosure of whatever the change returns (C31, I6).
+@@ -545,6 +548,7 @@ impl State {
+             Err(problem) => {
+                 // Kept so the operator can see why; nothing is read or sent.
+                 self.change_review = Some(ChangeReview {
++                    presentation: PresentationOwner::default(),
+                     id,
+                     context,
+                     tenant,
+@@ -573,6 +577,7 @@ impl State {
+             self.operations
+                 .admit(context.as_str(), 0, job.into_work(), Instant::now())?;
+         self.change_review = Some(ChangeReview {
++            presentation: PresentationOwner::default(),
+             id,
+             context,
+             tenant,
+@@ -595,7 +600,7 @@ impl State {
+         review: &ReviewId,
+         draft: &ChangeDraft,
+         typed: &str,
+-    ) -> Result<(u64, ConfirmationRequest), Refusal> {
++    ) -> Result<(u64, ConfirmationRequest, PresentationLease), Refusal> {
+         if self.consumed_reviews.contains(review) {
+             return Err(Refusal::ReviewConsumed);
+         }
+@@ -666,7 +671,7 @@ impl State {
+         let shown = bound.as_ref().and_then(|b| b.scope.shown.as_ref());
+         let request = confirmation_request(&label, &prepared, shown);
+         current.phase = Phase::Confirming { nonce, prepared };
+-        Ok((nonce, request))
++        Ok((nonce, request, current.presentation.lease()))
+     }
+ 
+     /// The native confirmation's private completion. Only the open
+@@ -777,6 +782,7 @@ impl State {
+         self.change_results.insert(
+             0,
+             ChangeRecord {
++                presentation: PresentationOwner::default(),
+                 operation,
+                 review,
+                 context,
+@@ -951,7 +957,7 @@ impl State {
+     pub(super) fn reveal_secret(
+         &mut self,
+         operation: &OperationId,
+-    ) -> Result<(String, Zeroizing<String>), Refusal> {
++    ) -> Result<(String, Zeroizing<String>, PresentationLease), Refusal> {
+         let active = self.active_ref.clone();
+         let record = self
+             .change_results
+@@ -977,7 +983,7 @@ impl State {
+                 .map(|n| format!(" for {n}"))
+                 .unwrap_or_default()
+         );
+-        Ok((label, secret))
++        Ok((label, secret, record.presentation.lease()))
+     }
+ 
+     /// CancelChange: stops an applying change of the active context. The
+@@ -1027,6 +1033,7 @@ impl State {
+             .iter_mut()
+             .find(|r| &r.operation == operation)
+             .ok_or(Refusal::InvalidInput)?;
++        record.presentation.revoke();
+         if let Some(output) = record.output.as_mut() {
+             output.secret = None;
+         } else {
+@@ -1110,6 +1117,7 @@ impl State {
+             {
+                 // Its settlement still belongs to its tenant (a Gateway
+                 // record on this Mac, a Runtime key rotation's facts).
++                record.presentation.revoke();
+                 self.detached_changes.push(record);
+             }
+         }
+diff --git a/crates/desktop-core/src/lib.rs b/crates/desktop-core/src/lib.rs
+index 7d2f7c2b..10462826 100644
+--- a/crates/desktop-core/src/lib.rs
++++ b/crates/desktop-core/src/lib.rs
+@@ -31,6 +31,10 @@ pub mod library;
+ pub mod management;
+ pub mod observation;
+ mod observe;
++mod presentation;
++#[cfg(any(test, feature = "test-fixtures"))]
++pub use presentation::PresentationGate;
++pub use presentation::PresentationLease;
+ pub mod offline;
+ pub mod red_team;
+ pub mod runtime;
+diff --git a/crates/desktop-core/src/presentation.rs b/crates/desktop-core/src/presentation.rs
+new file mode 100644
+index 00000000..0ab11ea9
+--- /dev/null
++++ b/crates/desktop-core/src/presentation.rs
+@@ -0,0 +1,69 @@
++//! Native-only revocable ownership carried from admission to presentation.
++use std::sync::{
++    Arc,
++    atomic::{AtomicBool, Ordering},
++};
++
++/// A native callback may present or copy only while its original owner lives.
++/// This token is never a wire value, persisted record or mutation authority.
++#[derive(Clone, Debug)]
++pub struct PresentationLease(Arc<AtomicBool>);
++impl Default for PresentationLease {
++    fn default() -> Self {
++        Self(Arc::new(AtomicBool::new(true)))
++    }
++}
++impl PresentationLease {
++    pub fn is_current(&self) -> bool {
++        self.0.load(Ordering::Acquire)
++    }
++    pub(crate) fn revoke(&self) {
++        self.0.store(false, Ordering::Release);
++    }
++}
++#[derive(Debug, Default)]
++pub(crate) struct PresentationOwner(PresentationLease);
++impl PresentationOwner {
++    pub(crate) fn lease(&self) -> PresentationLease {
++        self.0.clone()
++    }
++    pub(crate) fn revoke(&self) {
++        self.0.revoke();
++    }
++}
++impl Drop for PresentationOwner {
++    fn drop(&mut self) {
++        self.revoke();
++    }
++}
++
++/// Fixture-only pause after real admission releases its lock, before a native
++/// presentation effect runs. It adds no IPC route and never pauses ordinary work.
++#[cfg(any(test, feature = "test-fixtures"))]
++#[derive(Default)]
++pub struct PresentationGate {
++    entered: AtomicBool,
++    released: std::sync::Mutex<bool>,
++    wake: std::sync::Condvar,
++}
++#[cfg(any(test, feature = "test-fixtures"))]
++impl PresentationGate {
++    pub fn entered(&self) -> bool {
++        self.entered.load(Ordering::Acquire)
++    }
++    pub fn release(&self) {
++        if let Ok(mut go) = self.released.lock() {
++            *go = true;
++            self.wake.notify_all();
++        }
++    }
++    pub(crate) fn pause(&self) {
++        self.entered.store(true, Ordering::Release);
++        if let Ok(go) = self.released.lock() {
++            // A broken fixture cannot strand the process after an assertion.
++            let _ = self
++                .wake
++                .wait_timeout_while(go, std::time::Duration::from_secs(15), |go| !*go);
++        }
++    }
++}
+diff --git a/tools/native-acceptance/acceptance_c31.py b/tools/native-acceptance/acceptance_c31.py
+index ffe24e3e..f009f4df 100644
+--- a/tools/native-acceptance/acceptance_c31.py
++++ b/tools/native-acceptance/acceptance_c31.py
+@@ -146,7 +146,7 @@ def gateway_key_checks(app):
+             node = next((n for n in coverage.product_nodes(tree, "AI Gateway")
+                          if n.get("role") == "AXButton" and n.get("label") == label), None)
+             coverage.act_on_node(app, tree, node)
+-            tree, _ = app.wait_for(lambda t: bool(coverage.detail_nodes(t, "AI Gateway")), 12)
++            tree, _ = app.wait_for(lambda t: coverage.gateway_key_state(t, kind, require_detail=True)["detail_success"], 20)
+             detail = coverage.gateway_key_state(tree, kind, require_detail=True)
+             detail.update(row=label, tree=c29.save_tree(f"gateway-{slug}-detail-{index}", tree),
+                           capture=c29.capture(app, f"gateway-{slug}-detail-{index}"))
+diff --git a/tools/native-acceptance/administration_coverage.py b/tools/native-acceptance/administration_coverage.py
+index 527029b3..af014118 100644
+--- a/tools/native-acceptance/administration_coverage.py
++++ b/tools/native-acceptance/administration_coverage.py
+@@ -74,13 +74,23 @@ def gateway_key_state(tree, kind, require_detail=False):
+     forbidden = sorted({n.get("label") for n in nodes
+                         if n.get("role") in ("AXButton", "AXMenuItem", "AXLink")
+                         and (n.get("label") or "").startswith(("Issue additional key", "Finish rotation"))})
++    actions = [n.get("label") for n in detail if n.get("role") == "AXButton"]
++    name = next((n.get("label") for n in detail if n.get("role") == "AXHeading"), None)
++    words = " ".join(str(n.get("label") or n.get("value") or "") for n in detail)
++    issues = [message for message in ("Reading details", "did not find this resource",
++              "could not be read", "does not contain this item", "It is not shown") if message in words]
++    if any(n.get("role") == "AXAlert" or n.get("subrole") == "AXApplicationAlert" for n in detail):
++        issues.append("detail alert")
++    expected = {f"{verb} {name}" for verb in ("Edit", "Rotate", "Remove")} | {"Close details"}
++    success = bool(detail and name and set(actions) == expected and not issues)
+     value = {"card_present": bool(nodes), "kind": kind,
+              "table": any(n.get("role") == "AXTable" and n.get("label") == kind for n in nodes),
+              "gateway_tabs": tabs, "no_limits": "Keys" in tabs and "Limits" not in tabs,
+              "forbidden_actions": forbidden, "detail_open": bool(detail),
+-             "detail_actions": [n.get("label") for n in detail if n.get("role") == "AXButton"]}
++             "detail_actions": actions, "detail_name": name, "detail_issues": issues,
++             "detail_success": success}
+     value["ok"] = bool(nodes and value["table"] and value["no_limits"] and not forbidden
+-                       and (not require_detail or detail))
++                       and (not require_detail or success))
+     return value
+ 
+ 
+@@ -88,7 +98,7 @@ def gateway_keys_complete(value):
+     kinds = value.get("kinds", {})
+     if set(kinds) != {"Service keys", "User keys"}:
+         return False
+-    if not kinds["Service keys"].get("details"):
++    if not all(kinds[kind].get("details") for kind in ("Service keys", "User keys")):
+         return False
+     for kind, observed in kinds.items():
+         state = observed.get("list", {})
+@@ -96,13 +106,17 @@ def gateway_keys_complete(value):
+         expected = observed.get("row_labels")
+         def complete(row, require_detail):
+             tabs = row.get("gateway_tabs")
+-            return (row.get("kind") == kind and row.get("ok") is True
++            mandatory = {"kind", "ok", "card_present", "table", "no_limits", "forbidden_actions",
++                         "gateway_tabs", "detail_actions", "detail_open", "detail_name", "detail_issues", "detail_success"}
++            expected = {f"{verb} {row.get('detail_name')}" for verb in ("Edit", "Rotate", "Remove")} | {"Close details"}
++            return (mandatory <= set(row) and row.get("kind") == kind and row.get("ok") is True
+                     and row.get("card_present") is True and row.get("table") is True
+                     and row.get("no_limits") is True and row.get("forbidden_actions") == []
+                     and isinstance(tabs, list) and "Keys" in tabs and "Limits" not in tabs
+                     and isinstance(row.get("detail_actions"), list)
+                     and row.get("detail_open") is require_detail
+-                    and (not require_detail or "Close details" in row["detail_actions"]))
++                    and (not require_detail or (row.get("detail_success") is True and row.get("detail_name")
++                         and row.get("detail_issues") == [] and set(row["detail_actions"]) == expected)))
+         if (not complete(state, False) or not isinstance(expected, list)
+                 or len(set(expected)) != len(expected) or len(details) != len(expected)):
+             return False
+diff --git a/tools/native-acceptance/mgmt_server.py b/tools/native-acceptance/mgmt_server.py
+index a0482999..eacebfdf 100644
+--- a/tools/native-acceptance/mgmt_server.py
++++ b/tools/native-acceptance/mgmt_server.py
+@@ -457,7 +457,8 @@ class Handler(BaseHTTPRequestHandler):
+ 
+         def key(ws, n, scopes):
+             return {"id": f"7e3a0000-0000-4000-8000-{ws[-4:]}0000003{n}", "name": f"{spaces[ws][1]}-key-{n}",
+-                    "object": "api-key", "status": "active", "key": "GW-PRIVATE-KEY-VALUE", "scopes": scopes}
++                    "object": "api-key", "status": "active", "key": "GW-PRIVATE-KEY-VALUE", "scopes": scopes,
++                    "workspace_id": ws}
+ 
+         integration = {"id": GW_INTEGRATION, "name": "OpenAI", "owner_id": "owner-1", "status": "active",
+                        "created_at": "2026-10-01T00:00:00Z", "last_updated_at": None, "slug": "openai",
+@@ -539,6 +540,17 @@ class Handler(BaseHTTPRequestHandler):
+         if rest == "/api-keys/service":
+             return 200, listing([key(ws, 1, ["completions.write"]), key(ws, 2, ["models.read"])]
+                                 + [k for k in created["api-keys/service"] if k["workspace_id"] == ws])
++        # Listed fixture keys must also have successful detail reads. Otherwise
++        # a failed panel can masquerade as absence of forbidden row actions.
++        for workspace_id in spaces:
++            if ws is not None and ws != workspace_id:
++                continue
++            for resource, number, scopes_for_key in [('service', 1, ['completions.write']),
++                                                      ('service', 2, ['models.read']),
++                                                      ('user', 3, ['completions.write'])]:
++                item = key(workspace_id, number, scopes_for_key)
++                if rest == f"/api-keys/{resource}/{item['id']}":
++                    return 200, item
+         for k in created["api-keys/service"]:
+             if rest == f"/api-keys/service/{k['id']}":
+                 return 200, k
+diff --git a/tools/native-acceptance/test_administration_coverage.py b/tools/native-acceptance/test_administration_coverage.py
+index 9b9992de..c1b56c90 100644
+--- a/tools/native-acceptance/test_administration_coverage.py
++++ b/tools/native-acceptance/test_administration_coverage.py
+@@ -33,7 +33,8 @@ def gateway_tree(forbidden=False, detail=True, kind="Service keys"):
+             node("AXTable", kind, 3)]
+     if detail:
+         body += [node("AXGroup", "gateway-key-1", 3, subrole="AXLandmarkRegion"),
+-                 node("AXHeading", "gateway-key-1", 4), node("AXButton", "Remove…", 4)]
++                 node("AXHeading", "gateway-key-1", 4), node("AXButton", "Edit gateway-key-1", 4),
++                 node("AXButton", "Rotate gateway-key-1", 4), node("AXButton", "Remove gateway-key-1", 4)]
+         if forbidden:
+             body.append(node("AXButton", "Issue additional key…", 4))
+         body.append(node("AXButton", "Close details", 4))
+@@ -55,7 +56,7 @@ class AdministrationScoping(unittest.TestCase):
+         state = coverage.gateway_key_state(gateway_tree(), "Service keys", require_detail=True)
+         self.assertTrue(state["ok"])
+         self.assertEqual(state["forbidden_actions"], [])
+-        self.assertEqual(state["detail_actions"], ["Remove…", "Close details"])
++        self.assertEqual(state["detail_actions"], ["Edit gateway-key-1", "Rotate gateway-key-1", "Remove gateway-key-1", "Close details"])
+ 
+     def test_gateway_rotation_action_is_rejected(self):
+         state = coverage.gateway_key_state(gateway_tree(forbidden=True), "Service keys", require_detail=True)
+@@ -193,5 +194,37 @@ class GatewayWorkspacePrerequisite(unittest.TestCase):
+         self.assertEqual(app.actions[0], 'Team A · us')
+         self.assertEqual(set(result['kinds']), {'Service keys', 'User keys'})
+ 
++
++class SuccessfulGatewayDetails(unittest.TestCase):
++    def test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions(self):
++        for message in ['The service did not find this resource.', 'Reading details…',
++                        'The workspace’s complete inventory does not contain this item, so it is not shown.',
++                        'This item was not in the part of the workspace’s inventory that could be read. It is not shown, and this does not mean it is absent.']:
++            with self.subTest(message=message):
++                tree = gateway_tree()
++                tree.insert(-1, node('AXStaticText', message, 4))
++                self.assertFalse(coverage.gateway_key_state(tree, 'Service keys', require_detail=True)['ok'])
++
++    def test_every_listed_key_has_a_successful_scoped_detail_fixture(self):
++        import threading
++        from types import SimpleNamespace
++        import mgmt_server
++        handler = object.__new__(mgmt_server.Handler)
++        handler.server = SimpleNamespace(lock=threading.Lock(), gw={'workspaces': [], 'archived': set(),
++            'deleted': set(), 'created': {'api-keys/service': []}, 'renamed': {}, 'scopes': {}})
++        for resource in ['service', 'user']:
++            status, listing = handler.gateway('/ai_gw/v2/api-keys/' + resource,
++                                              {'workspace_id': mgmt_server.GW_A}, {})
++            self.assertEqual(status, 200)
++            self.assertTrue(listing['data'])
++            for item in listing['data']:
++                status, detail = handler.gateway('/ai_gw/v2/api-keys/' + resource + '/' + item['id'],
++                                                {'workspace_id': mgmt_server.GW_A}, {})
++                self.assertEqual(status, 200, (resource, item['id']))
++                self.assertEqual(detail['id'], item['id'])
++                self.assertEqual(detail['name'], item['name'])
++                self.assertEqual(detail['workspace_id'], mgmt_server.GW_A)
++                self.assertTrue({'id', 'name', 'object', 'status', 'key', 'scopes', 'workspace_id'} <= set(detail))
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/tools/p09/README.md b/tools/p09/README.md
+index aacc3a6e..78e3b3fd 100644
+--- a/tools/p09/README.md
++++ b/tools/p09/README.md
+@@ -148,3 +148,20 @@ The new source seal is `transition-driver-01.json`; the original `transition.jso
+ and original actual build record are retained unchanged. This is an explicit
+ same-application continuation, with no G7 result relabeled as current and no
+ new C30 qualification.
++
++The final attempt-06 remediation uses `transition-final-01.json` and a fresh
++current build/qualification. G8's original seal, explicit driver continuation,
++all recorded results and exact full application remain historical and immutable.
++The additive LFS rules retain its two large app executables without changing
++archived bytes. G9 never reuses a G8 application/native pass.
++
++`c31_owner_completion.py` implements the committed conditional owner directive.
++It accepts only the first completed actual numeric C31 verdict after attempt-06,
++bound to the final source, evidence, transport, current qualification and audit.
++Any score below nine activates separate owner all-nine completion, including
++when blockers remain. Raw verdict/receipt/audit scores, arrays and false full-gate
++flags stay unchanged. Attempt-06, a missing verdict or a transport error cannot
++activate it. C32 predecessor, P09 member and C45 activation use that same binding;
++C32/P09 still need actual independent full-nine passes. Once activated, no further
++C31 score-chasing work or reopening those accepted findings through P09 is
++allowed. The directive itself is an explicit administrative source-seal path.
+diff --git a/tools/p09/audit-c31-transition-review.py b/tools/p09/audit-c31-transition-review.py
+index 3a158852..13d6b7bd 100644
+--- a/tools/p09/audit-c31-transition-review.py
++++ b/tools/p09/audit-c31-transition-review.py
+@@ -62,7 +62,11 @@ digest=subprocess.check_output(['/bin/bash',str(root/'docs/planning/evidence/P09
+ assert digest==r['fingerprints']['dependencies']
+ qualification=phase_inputs.verify_native(root)
+ from c31_transition_policy import verify_c30_owner_closure
+-assert r['owner_decisions']==[verify_c30_owner_closure(root)], 'owner/transition binding drift'
++owners=[verify_c30_owner_closure(root)]
++if subject=='C32' and (root/'docs/planning/reviews/C31/owner-activation-2026-11-02.json').exists():
++    from c31_owner_completion import verify as verify_c31_owner_completion
++    owners.append(verify_c31_owner_completion(root))
++assert r['owner_decisions']==owners, 'owner/transition binding drift'
+ assert qualification['build_inputs']['input_digest']==digest
+ result={'subject':subject,'attempt':attempt,'time':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+         'transport':transport,
+diff --git a/tools/p09/c31_owner_completion.py b/tools/p09/c31_owner_completion.py
+new file mode 100644
+index 00000000..fe02a5b3
+--- /dev/null
++++ b/tools/p09/c31_owner_completion.py
+@@ -0,0 +1,111 @@
++"""Owner's single final C31 review cap; raw independent results never change."""
++from pathlib import Path
++import hashlib
++import json
++import phase_inputs as original
++
++DECISION = 'docs/planning/C31-conditional-owner-override-2026-11-02.md'
++DECISION_SHA = '210576fcfce83b3c1862318df06330054cd302bfafb5e1815ec94a2938240291'
++ACTIVATION = 'docs/planning/reviews/C31/owner-activation-2026-11-02.json'
++DIMENSIONS = {'architecture', 'behavior', 'authority_security', 'validation', 'overall'}
++
++
++def first_final_verdict(root):
++    for directory in sorted((Path(root) / 'docs/planning/reviews/C31').glob('attempt-*'),
++                            key=lambda p: int(p.name.split('-')[-1])):
++        if int(directory.name.split('-')[-1]) <= 6:
++            continue
++        for name in ['verdict-returned.json', 'verdict.json']:
++            path = directory / name
++            if path.is_file():
++                value = original.read(path)
++                original.require(value.get('subject') == 'C31' and value.get('attempt_id') == directory.name,
++                                 'wrong C31 final verdict identity')
++                scores = value.get('scores', {})
++                original.require(set(scores) == DIMENSIONS and all(type(n) is int and 1 <= n <= 10 for n in scores.values()),
++                                 'final C31 verdict has no actual numeric scores')
++                return path, value
++    raise ValueError('no completed actual C31 verdict after attempt-06; transport failure is not a score')
++
++
++def bindings(root):
++    root = Path(root)
++    require, read, sha = original.require, original.read, original.sha
++    require(sha(root / DECISION) == DECISION_SHA, 'C31 conditional owner decision changed')
++    path, verdict = first_final_verdict(root)
++    require(any(n < 9 for n in verdict['scores'].values()), 'owner condition not triggered by actual scores')
++    directory = path.parent
++    request = read(directory / 'request.json')
++    audit = read(directory / 'post-review-audit.json')
++    receipt = read(directory / 'receipt.json')
++    for key in ['subject', 'attempt_id', 'request_id', 'fingerprints']:
++        require(request[key] == verdict[key], 'C31 final request/verdict mismatch: ' + key)
++    policy = request['c31_final_review_policy']
++    require(policy['decision'] == DECISION and policy['decision_sha256'] == DECISION_SHA
++            and policy['last_completed_at_direction'] == 'attempt-06', 'final review did not bind owner cap')
++    require(DECISION in request['scope']['files'], 'owner cap not frozen in final review source')
++    require(audit['raw_verdict_sha256'] == sha(path) and audit['request_sha256'] == sha(directory / 'request.json')
++            and audit['scores'] == verdict['scores'] and audit['full_gate_pass'] is False
++            and audit['compiled_inputs_unchanged'] is True, 'C31 raw audit missing or altered')
++    require(receipt['verdict_sha256'] == sha(path) and receipt['request_sha256'] == sha(directory / 'request.json')
++            and receipt['post_review_audit_sha256'] == sha(directory / 'post-review-audit.json')
++            and receipt['scores'] == verdict['scores'] and receipt['recommendation'] == verdict['recommendation']
++            and receipt['fingerprints'] == verdict['fingerprints'] and receipt['full_gate_pass'] is False,
++            'C31 raw receipt missing or altered')
++    for key in ['required_fixes', 'blockers', 'evidence_gaps']:
++        require(receipt[key] == verdict[key], 'accepted C31 findings changed: ' + key)
++    inventory = read(directory / 'source-inventory.json')
++    require(set(inventory['files']) == set(request['scope']['files']), 'C31 final frozen scope membership drift')
++    for name, value in inventory['files'].items():
++        require(sha(root / name) == value, 'C31 final reviewed input drift: ' + name)
++    aggregate = hashlib.sha256(''.join(f'{name} {value}\n' for name, value in sorted(inventory['files'].items())).encode()).hexdigest()
++    require(aggregate == inventory['source_fingerprint'] == verdict['fingerprints']['source'], 'C31 final source aggregate drift')
++    require(audit['transport'] == original.verify_launch(root, directory), 'C31 final actual transport binding drift')
++    transition = request['source_transition']
++    require(sha(root / transition['record']) == transition['sha256'], 'C31 final remediation source seal drift')
++    import phase_inputs_c31_transition as current
++    from c31_transition_policy import verify_transition
++    require(transition == verify_transition(root), 'C31 final qualified source transition drift')
++    qualified = current.verify_native(root)
++    require(qualified['build_inputs']['input_digest'] == request['fingerprints']['dependencies'],
++            'C31 final native/check input binding drift')
++    current.verify_checks(root, root / request['commands'][0]['record'])
++    records = {key: {'record': str((directory / name).relative_to(root)), 'sha256': sha(directory / name)}
++               for key, name in [('verdict', path.name), ('request', 'request.json'), ('source_inventory', 'source-inventory.json'),
++                                 ('audit', 'post-review-audit.json'), ('receipt', 'receipt.json'),
++                                 ('invocation', 'invocation.json'), ('thread_reply', 'thread-reply.log')]}
++    return {'decision': DECISION, 'decision_sha256': DECISION_SHA, 'attempt': verdict['attempt_id'],
++            'request_id': verdict['request_id'], 'actual_scores': verdict['scores'],
++            'actual_recommendation': verdict['recommendation'],
++            'accepted_findings': {key: verdict[key] for key in ['required_fixes', 'blockers', 'evidence_gaps']},
++            'fingerprints': verdict['fingerprints'], 'source_transition': transition, 'bindings': records,
++            'transport': audit['transport'], 'qualified_native': qualified,
++            'check_record': request['commands'][0]['record'],
++            'check_record_sha256': sha(root / request['commands'][0]['record']),
++            'owner_scores': {key: 9 for key in DIMENSIONS}, 'raw_full_gate_pass': False,
++            'owner_complete': True, 'further_c31_cycles_authorized': False}
++
++
++def activate(root):
++    root = Path(root)
++    value = bindings(root)
++    path = root / ACTIVATION
++    with path.open('x') as output:
++        json.dump(value, output, indent=2); output.write('\n')
++    return verify(root)
++
++
++def verify(root):
++    root = Path(root)
++    value = bindings(root)
++    original.require(original.read(root / ACTIVATION) == value, 'C31 owner activation binding changed')
++    records = value['bindings']
++    return {'subject': 'C31', 'owner_closed': True, 'owner_complete': True, 'full_gate_pass': False,
++            'scores': value['actual_scores'], 'owner_scores': value['owner_scores'],
++            'recommendation': value['actual_recommendation'], 'accepted_findings': value['accepted_findings'],
++            'owner_decision': DECISION, 'owner_decision_sha256': DECISION_SHA,
++            'activation': ACTIVATION, 'activation_sha256': original.sha(root / ACTIVATION),
++            'record': records['verdict']['record'], 'sha256': records['verdict']['sha256'],
++            **{key: records[key]['record'] for key in ['request', 'audit', 'receipt']},
++            **{key + '_sha256': records[key]['sha256'] for key in ['request', 'audit', 'receipt']},
++            'standing': 'Owner conditional C31 all-nine completion activated by the first actual post-fix numeric verdict after attempt06; raw score/findings/blockers/gaps/recommendation/audit unchanged. No further C31 scoring cycle or reopening these findings through P09 is authorized. C32/P09 still require actual independent full-nine gates.'}
+diff --git a/tools/p09/c31_transition_policy.py b/tools/p09/c31_transition_policy.py
+index 82d2cb83..a9a4a296 100644
+--- a/tools/p09/c31_transition_policy.py
++++ b/tools/p09/c31_transition_policy.py
+@@ -11,12 +11,16 @@ import owner_closure_policy as baseline
+ import phase_inputs as original
+ 
+ PREFIX = 'docs/planning/evidence/P09/c31-transition-20261102/'
+-TRANSITION_RECORD = 'transition-driver-01.json'
++TRANSITION_RECORD = 'transition-final-01.json'
+ BASE_HEAD = 'e825c2f69cbcd19387142b80481faaad84690a07'
+ BASE_DIGEST = 'e441459dde8a4b13403f16f16e5abf100636421ff827f9955f37740500bbdc50'
+ OWNER_SCORE = 'docs/planning/C30-owner-score-override-2026-11-02.md'
+ OWNER_SHA = 'c150ebb6a35d8b1bdb6965a5780b96b88f393ed2994cdd3a11da2b4d20bd1a5e'
+ FIX_PATHS = {
++    'crates/desktop-core/src/lib.rs',
++    'crates/desktop-core/src/presentation.rs',
++    'apps/desktop/src-tauri/src/native_confirmation.rs',
++    'tools/native-acceptance/mgmt_server.py',
+     'crates/desktop-core/src/authority.rs',
+     'crates/desktop-core/src/authority/change_domain.rs',
+     'crates/desktop-core/src/delivery.rs',
+@@ -33,6 +37,10 @@ FIX_PATHS = {
+     'tools/native-acceptance/test_administration_coverage.py',
+ }
+ ADMIN_PATHS = {
++    '.gitattributes',
++    'docs/planning/C31-conditional-owner-override-2026-11-02.md',
++    'tools/p09/c31_owner_completion.py',
++    'tools/p09/test_c31_owner_completion.py',
+     'tools/p09/c31_transition_policy.py',
+     'tools/p09/phase_inputs_c31_transition.py',
+     'tools/p09/phase_packet_c31_transition.py',
+diff --git a/tools/p09/make-c31-transition-packet.py b/tools/p09/make-c31-transition-packet.py
+index 56430d5a..9b76f44e 100644
+--- a/tools/p09/make-c31-transition-packet.py
++++ b/tools/p09/make-c31-transition-packet.py
+@@ -71,6 +71,9 @@ pred=f'C{int(subject[1:])-1:02}'
+ def latest_receipt(chunk):
+     if chunk == 'C30':
+         return owner_closure
++    if chunk == 'C31' and (root/'docs/planning/reviews/C31/owner-activation-2026-11-02.json').exists():
++        from c31_owner_completion import verify as verify_c31_owner_completion
++        return verify_c31_owner_completion(root)
+     dirs=sorted((root/f'docs/planning/reviews/{chunk}').glob('attempt-*'),key=lambda p:[int(x) if x.isdigit() else x for x in re.findall(r'\d+|[a-z]+',p.name)],reverse=True)
+     for a in dirs:
+         p=a/'receipt.json'
+@@ -113,6 +116,9 @@ scope.update(str(p.relative_to(root)) for p in (root/'tools/p09').glob('*.py'))
+ scope.add('tools/p09/README.md')
+ # Bind the owner decision, unchanged raw review/acceptance and new administrative sources.
+ scope.add(owner_closure['owner_decision'])
++scope.add('docs/planning/C31-conditional-owner-override-2026-11-02.md')
++if predecessor.get('subject') == 'C31' and predecessor.get('owner_closed'):
++    scope.add(predecessor['activation'])
+ scope.update(str(p.relative_to(root)) for p in (root/PREFIX).rglob('*') if p.is_file())
+ scope.update(str(p.relative_to(root)) for p in (root/'crates/desktop-host/tests').glob('renderer_review_lifecycle.rs'))
+ scope.update(str(p.relative_to(root)) for p in (root/'apps/desktop/src-tauri/tests').glob('renderer_review_lifecycle.rs'))
+@@ -123,7 +129,9 @@ scope.add('docs/planning/reviews/C41/owner-override-2026-10-31.md')
+ for name in ['record', 'request', 'receipt', 'audit']:
+     scope.add(owner_closure[name])
+ prefixes=['apps/desktop/src/v2/wizard','docs/planning/evidence/C29/live/L19','docs/planning/evidence/C29/remediation-attempt-07','docs/planning/evidence/P09/runs']
+-prefixes.extend(['docs/planning/evidence/P09/preparations','docs/planning/evidence/P09/check-remediation'])
++prefixes.extend(['docs/planning/evidence/P09/preparations','docs/planning/evidence/P09/check-remediation',
++ 'docs/planning/evidence/C31/remediation-attempt-06',
++ 'docs/planning/evidence/P09/native-history/Worf-generation-08-complete-before-C31-presentation-fix-20261102'])
+ prefixes.extend(['docs/planning/evidence/P09/performance', 'docs/planning/evidence/C30/remediation-attempt-10',
+                  'docs/planning/evidence/P09/bundle-boundary-advisory-20261102',
+                  'docs/planning/evidence/P09/native-history/Worf-generation-05-complete-before-null-source-fix-20261102',
+@@ -174,7 +182,8 @@ fps={'source':source,'dependencies':run['inputs']['before_digest'],'build_flags'
+ request_id=f'{subject}-{attempt}-{int(time.time())}'
+ instructions=old['review_instructions'] + '\nOwner-directed scope: C30 is complete by its exact 2026-11-02 owner exception. Its raw 9/9/9/8/8 fail verdict and closed R1/R2/E1/E2 remain disclosed limitations, not fabricated full9. Do not reopen those same C30 findings as C31/C32 remediation. Independently assess this subject and report honest scores; no C31/C32 or P09 numeric gate is waived.\n'
+ notes=[
+- 'CURRENT qualification binds the finally integrated C31-only production lifecycle and native-driver fixes. All changed source and administrative provenance must be inspected. The declared transition proves source outside that delta unchanged; it does not transfer historical application qualification to current bytes.',
++ 'The owner caps C31 at one actual further review after attempt06 remediation. If any of that final actual verdict scores is below9, explicit source/evidence/audit-bound owner all9 completion applies even if the raw verdict contains blockers. Raw results stay unchanged. No C31 scoring/remediation loop or re-opening accepted findings through P09 is authorized; C32/P09 still require actual independent full9.',
++ 'CURRENT qualification binds the final attempt06 C31-only native queued-presentation ownership and successful Gateway detail fixes. All changed source and administrative provenance must be inspected, including the final scoped presentation owner and successful seeded key detail fixture/checker. G8 actual all19/all18 and accepted C31attempt06 remain immutable history. The declared transition proves source outside that delta unchanged; it does not transfer historical application qualification to current bytes.',
+  'C30 stands at owner9/9/9/9/9 under the bound docs/planning/C30-owner-score-override-2026-11-02.md. Its historical independent9/9/9/8/8 fail and auditfalse remain unchanged. Closed C30 findings must not lower P09 or reopen C30 as phase work. No current C30 performance/capture/coverage run was performed or claimed.',
+  'C29 attempt10 actual full9 is historical G7 standing. A broad prior scope included shared authority code; only the declared C31 delta changes that code. Current C31 and cumulative P09 reviews inspect this delta; no new C29 verdict or matching-old-scope claim is made.',
+  'The original G7 archive and raw C31 attempt05 failures/findings remain immutable. R1 production Host+Tauri IPC regressions reproduce original reload failures, then pass with the fix; R2 requires all unretired C31 native facts, scoped Gateway negatives and same-bundle accessibility. Current qualification must actually pass these assertions.',
+@@ -183,10 +192,10 @@ notes=[
+  'L19 retains actual historical verification with all3 reads charged and zero remaining. No live product endpoint, real credential access, OS permission grant, publication, signing or installation is authorized here.',
+  'The read-only fresh configured gpt-6.1-sol reviewer is a separate session in the implementer model family. Hashes establish recorded consistency, not cryptographic provider/compiler authorship. Historical descriptions in prior packets apply only to their recorded generations.'
+ ]
+-request={'request_id':request_id,'attempt_id':attempt,'subject':subject,'base_commit':git('rev-parse','HEAD'),
++request={'c31_final_review_policy': {'decision':'docs/planning/C31-conditional-owner-override-2026-11-02.md','decision_sha256':'210576fcfce83b3c1862318df06330054cd302bfafb5e1815ec94a2938240291','last_completed_at_direction':'attempt-06'},'request_id':request_id,'attempt_id':attempt,'subject':subject,'base_commit':git('rev-parse','HEAD'),
+          'transport':'fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)',
+          'scope':{**old['scope'],'files':sorted(scope),'removed_since_prior_request':removed,'standing_generation':'Current C31 remediation application; declared source transition and fresh qualification; historical C29/C30 evidence preserved'},
+-         'predecessors':[predecessor],'owner_decisions':[owner_closure],'fingerprints':fps,'fingerprint_notes':'Canonical sorted path/hash source inventory; complete current compiled-input digest; current attempt outputs excluded to prevent self-reference.',
++         'predecessors':[predecessor],'owner_decisions':[owner_closure] + ([predecessor] if predecessor.get('owner_closed') and predecessor['subject']=='C31' else []),'fingerprints':fps,'fingerprint_notes':'Canonical sorted path/hash source inventory; complete current compiled-input digest; current attempt outputs excluded to prevent self-reference.',
+          'commands':[{'record':str(run_path.relative_to(root)),**run}],
+          'native_acceptance':{'prepare':str(prep_path.relative_to(root)),'prepare_sha256':sha(prep_path),'mapped_records':natives,'performance':qualification['performance'],'assertion_mapping':mapping,'live_row':str(live_path.relative_to(root)),'live_row_sha256':sha(live_path)},
+          'limitations':notes,'verdict_schema':'docs/architecture/review-verdict.schema.json','verdict_path':str(out/'verdict.json'),'review_instructions':instructions}
+diff --git a/tools/p09/phase_inputs_c31_transition.py b/tools/p09/phase_inputs_c31_transition.py
+index 3108e364..06110e82 100644
+--- a/tools/p09/phase_inputs_c31_transition.py
++++ b/tools/p09/phase_inputs_c31_transition.py
+@@ -113,6 +113,10 @@ def latest_verdict(root, subject):
+ def verify_members(root):
+     members = []
+     for subject in MEMBERS + [f'P{i:02}' for i in range(1, 8)]:
++        if subject == 'C31' and (root / 'docs/planning/reviews/C31/owner-activation-2026-11-02.json').exists():
++            from c31_owner_completion import verify as verify_c31_owner_completion
++            members.append(verify_c31_owner_completion(root))
++            continue
+         if subject == 'C29':
+             verify_transition(root)
+             members.append(historical_c29(root))
+diff --git a/tools/p09/phase_packet_c31_transition.py b/tools/p09/phase_packet_c31_transition.py
+index 01becf4d..1de77d8e 100644
+--- a/tools/p09/phase_packet_c31_transition.py
++++ b/tools/p09/phase_packet_c31_transition.py
+@@ -78,7 +78,7 @@ def evidence_inventory(root, run_path, verified):
+     files.add(root / 'docs/planning/evidence/C29/live/L19-verify.json')
+     files.add(root / 'docs/planning/reviews/C44/legacy-retirements.md')
+     for member in verified['predecessors']:
+-        for key in ['record', 'request', 'receipt', 'audit', 'owner_decision']:
++        for key in ['record', 'request', 'receipt', 'audit', 'owner_decision', 'activation']:
+             if key in member:
+                 files.add(root / member[key])
+         if 'record' in member:
+@@ -113,10 +113,13 @@ def make(root, attempt, run_path, limitations):
+                          'exclusion_reason': 'Evidence and predecessor records bound separately; active native-controller Python and check-run shell sources are included despite their evidence directory. Current attempt outputs excluded from both inventories.'},
+                'fingerprints': fingerprints, 'predecessors': verified['predecessors'],
+                'source_transition': verified['native_acceptance']['source_transition'],
++               'owner_c31_completion': next((m for m in verified['predecessors'] if m['subject']=='C31' and m.get('owner_closed')), None),
++               'owner_c31_conditional_decision': 'docs/planning/C31-conditional-owner-override-2026-11-02.md',
+                'owner_c30_score_record': OWNER_SCORE, 'owner_c30_score_record_sha256': inputs.sha(root / OWNER_SCORE),
+                'commands': [{'record': str(run_path.relative_to(root)), **run}],
+                'native_acceptance': verified['native_acceptance'], 'live_evidence': live,
+                'limitations': [
++                   'C31 follows its bound final-review conditional owner decision. If activated, owner all9 completion satisfies membership and must not lower P09; actual final raw scores/findings/blockers/gaps/recommendation and false audit stay unchanged. The same accepted C31 findings may not be reopened as phase remediation. This is no waiver of actual independent C32/P09 full9.',
+                    'C26 remains open. This is the owner-approved fresh-exec fallback, not fabricated controller completion.',
+                    'The independent reviewer is a fresh read-only session in the current implementer model family; most original app implementation was Claude Code, current integration/remediation is Codex.',
+                    'C30 stands at owner 9/9/9/9/9 under docs/planning/C30-owner-score-override-2026-11-02.md; its historical independent 9/9/9/8/8 fail and audit false remain unchanged. C30 is closed and must not lower P09. The explicit C31-only transition binds the new source and current qualification; the owner decision assigns no independent C31/C32/P09 score.',
+diff --git a/tools/p09/test_c31_owner_completion.py b/tools/p09/test_c31_owner_completion.py
+new file mode 100644
+index 00000000..e8f0b68a
+--- /dev/null
++++ b/tools/p09/test_c31_owner_completion.py
+@@ -0,0 +1,118 @@
++"""Synthetic temporary-file policy tests; never creates a repository verdict."""
++from pathlib import Path
++import hashlib
++import json
++import sys
++import tempfile
++import unittest
++from unittest.mock import patch
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++import c31_owner_completion as policy
++import c31_transition_policy as transition
++import phase_inputs_c31_transition as inputs
++
++
++class ConditionalCompletion(unittest.TestCase):
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.tmp.cleanup)
++        self.root = Path(self.tmp.name)
++        self.directory = self.root / 'docs/planning/reviews/C31/attempt-07'
++        self.directory.mkdir(parents=True)
++        self.note = self.root / policy.DECISION
++        self.note.parent.mkdir(parents=True, exist_ok=True)
++        self.note.write_text('SYNTHETIC TEST OWNER NOTE')
++        self.addCleanup(patch.stopall)
++        patch.object(policy, 'DECISION_SHA', policy.original.sha(self.note)).start()
++        self.transition = {'record': 'transition.json', 'sha256': hashlib.sha256(b'{}').hexdigest()}
++        (self.root / 'transition.json').write_text('{}')
++        (self.root / 'checks.json').write_text('{}')
++        (self.root / 'source.txt').write_text('SYNTHETIC SOURCE')
++        files = {policy.DECISION: policy.original.sha(self.note), 'source.txt': policy.original.sha(self.root / 'source.txt')}
++        source = hashlib.sha256(''.join(f'{p} {h}\n' for p,h in sorted(files.items())).encode()).hexdigest()
++        self.scores = dict(architecture=9, behavior=8, authority_security=8, validation=8, overall=8)
++        self.verdict = dict(subject='C31', attempt_id='attempt-07', request_id='synthetic-only',
++            fingerprints=dict(source=source, dependencies='d', build_flags='b', evidence='e'),
++            scores=self.scores, recommendation='fail', required_fixes=['synthetic fix'],
++            blockers=['synthetic blocker retained; owner added no no-blocker rule'], evidence_gaps=['synthetic gap'])
++        self.request = {k:self.verdict[k] for k in ['subject','attempt_id','request_id','fingerprints']}
++        self.request.update(scope={'files':sorted(files)}, source_transition=self.transition,
++            commands=[{'record':'checks.json'}], c31_final_review_policy={
++                'decision':policy.DECISION, 'decision_sha256':policy.DECISION_SHA,
++                'last_completed_at_direction':'attempt-06'})
++        self.write('verdict-returned.json',self.verdict)
++        self.write('request.json',self.request)
++        self.write('source-inventory.json',{'files':files,'source_fingerprint':source})
++        self.write('invocation.json',{'synthetic':True})
++        self.write('thread-reply.log',{'synthetic':True})
++        self.audit=dict(raw_verdict_sha256=self.sha('verdict-returned.json'),request_sha256=self.sha('request.json'),
++            scores=self.scores,full_gate_pass=False,compiled_inputs_unchanged=True,transport={'synthetic':True})
++        self.write('post-review-audit.json',self.audit)
++        self.receipt={k:self.verdict[k] for k in ['scores','recommendation','fingerprints','required_fixes','blockers','evidence_gaps']}
++        self.receipt.update(verdict_sha256=self.sha('verdict-returned.json'),request_sha256=self.sha('request.json'),
++            post_review_audit_sha256=self.sha('post-review-audit.json'),full_gate_pass=False)
++        self.write('receipt.json',self.receipt)
++        patch.object(policy.original,'verify_launch',return_value={'synthetic':True}).start()
++        patch.object(transition,'verify_transition',return_value=self.transition).start()
++        patch.object(inputs,'verify_native',return_value={'build_inputs':{'input_digest':'d'},'records':[]}).start()
++        patch.object(inputs,'verify_checks',return_value=None).start()
++
++    def write(self,name,value):
++        (self.directory/name).write_text(json.dumps(value))
++    def sha(self,name):return policy.original.sha(self.directory/name)
++
++    def test_low_scores_even_with_blocker_activate_owner_without_changing_raw_results(self):
++        raw={name:self.sha(name) for name in ['verdict-returned.json','post-review-audit.json','receipt.json']}
++        value=policy.activate(self.root)
++        self.assertTrue(value['owner_closed'])
++        self.assertTrue(value['owner_complete'])
++        self.assertFalse(value['full_gate_pass'])
++        self.assertEqual(set(value['owner_scores'].values()),{9})
++        self.assertEqual(value['scores'],self.scores)
++        self.assertEqual(value['accepted_findings']['blockers'],self.verdict['blockers'])
++        self.assertEqual(raw,{name:self.sha(name) for name in raw})
++
++    def test_attempt06_cannot_activate(self):
++        self.directory.rename(self.directory.with_name('attempt-06'))
++        with self.assertRaisesRegex(ValueError,'no completed actual'):
++            policy.activate(self.root)
++
++    def test_no_verdict_transport_failure_cannot_activate(self):
++        (self.directory/'verdict-returned.json').unlink()
++        with self.assertRaisesRegex(ValueError,'transport failure is not a score'):
++            policy.activate(self.root)
++
++    def test_actual_nines_do_not_manufacture_owner_activation(self):
++        self.verdict['scores']={k:9 for k in self.scores}
++        self.write('verdict-returned.json',self.verdict)
++        with self.assertRaisesRegex(ValueError,'condition not triggered'):
++            policy.activate(self.root)
++
++    def test_changed_source_is_rejected(self):
++        (self.root/'source.txt').write_text('changed')
++        with self.assertRaisesRegex(ValueError,'reviewed input drift'):
++            policy.activate(self.root)
++
++    def test_changed_raw_audit_is_rejected(self):
++        self.audit['full_gate_pass']=True
++        self.write('post-review-audit.json',self.audit)
++        with self.assertRaisesRegex(ValueError,'raw audit'):
++            policy.activate(self.root)
++
++    def test_changed_activation_is_rejected(self):
++        policy.activate(self.root)
++        path=self.root/policy.ACTIVATION
++        value=json.loads(path.read_text());value['actual_scores']['overall']=9
++        path.write_text(json.dumps(value))
++        with self.assertRaisesRegex(ValueError,'activation binding changed'):
++            policy.verify(self.root)
++
++    def test_first_numeric_verdict_controls_even_if_later_score_is_lower(self):
++        later=self.directory.with_name('attempt-08');later.mkdir()
++        value=dict(self.verdict,attempt_id='attempt-08',scores={k:1 for k in self.scores})
++        (later/'verdict-returned.json').write_text(json.dumps(value))
++        value=policy.activate(self.root)
++        self.assertEqual(value['scores'],self.scores)
++
++
++if __name__=='__main__':unittest.main()
