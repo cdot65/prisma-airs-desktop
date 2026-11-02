@@ -1,0 +1,39 @@
+{
+  "red": {
+    "command": [
+      "/usr/bin/python3",
+      "-B",
+      "test_bundle_predicate.py"
+    ],
+    "proposal_override": "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/proposal/tools/p09/phase_inputs.py",
+    "exit": 1,
+    "test_methods": 7,
+    "failed_subtests": 8,
+    "expected_red": true,
+    "meaning": "Original proposal incorrectly accepts all four binary-plist controls at both prefix/suffix after rebinding bundle hash."
+  },
+  "green": {
+    "command": [
+      "/usr/bin/python3",
+      "-B",
+      "test_bundle_predicate.py"
+    ],
+    "exit": 0,
+    "test_methods": 7,
+    "passed_methods": 7,
+    "control_subcases": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "patch_check": {
+    "command": [
+      "git",
+      "apply",
+      "--check",
+      "../proposal.patch"
+    ],
+    "cwd": "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/base",
+    "exit": 0
+  }
+}

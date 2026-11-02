@@ -1,0 +1,81 @@
+--- a/tools/p09/phase_inputs.py
++++ b/tools/p09/phase_inputs.py
+@@ -9,6 +9,8 @@
+ import hashlib
+ import json
+ import math
++import os
++import stat
+ import re
+ import subprocess
+ import sys
+@@ -36,6 +38,59 @@
+ 
+ def sha(path):
+     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++
++def bundle_tree_hash(bundle):
++    """Canonical xtask fingerprint::tree_hash inventory; never follow links."""
++    entries = []
++
++    def collect(directory):
++        for child in sorted(directory.iterdir(), key=lambda path: os.fsencode(path.name)):
++            metadata = child.lstat()
++            if stat.S_ISDIR(metadata.st_mode):
++                collect(child)
++                continue
++            # Rust collect_tree uses to_string_lossy, then file_entry joins
++            # that relative path to the root again. Preserve that behavior.
++            relative = os.fsencode(child.relative_to(bundle)).decode('utf-8', 'replace')
++            full = bundle / relative
++            try:
++                metadata = full.lstat()
++            except OSError:
++                entries.append((relative, 'deleted', ''))
++                continue
++            if stat.S_ISLNK(metadata.st_mode):
++                mode = 'symlink'
++                identity = hashlib.sha256(os.fsencode(os.readlink(full))).hexdigest()
++            else:
++                mode = '100755' if metadata.st_mode & 0o111 else '100644'
++                identity = sha(full)
++            entries.append((relative, mode, identity))
++
++    collect(bundle)
++    inventory = ''.join(path + '\0' + mode + '\0' + identity + '\n'
++                        for path, mode, identity in sorted(entries, key=lambda entry: entry[0]))
++    return hashlib.sha256(inventory.encode('utf-8')).hexdigest()
++
++
++def verify_current_bundle(root, prepared):
++    """Recheck live prepared bytes and fixture identity at the final boundary."""
++    bundle = root / prepared['bundle']
++    executable = bundle / 'Contents/MacOS/prisma-airs-desktop-v2'
++    require(sha(executable) == prepared['executable_sha256'], 'prepared executable drift')
++    require(bundle_tree_hash(bundle) == prepared['bundle_sha256'], 'prepared bundle drift')
++    # Match native::plist_value: raw plutil extraction, empty environment,
++    # lossy UTF-8 decoding and trimmed output.
++    identifier = subprocess.check_output(
++        ['/usr/bin/plutil', '-extract', 'CFBundleIdentifier', 'raw', '-o', '-',
++         str(bundle / 'Contents/Info.plist')], env={}).decode('utf-8', 'replace')
++    # Python strip also removes U+001C-U+001F; Rust trim preserves them.
++    require(not any(control in identifier for control in '\x1c\x1d\x1e\x1f'),
++            'prepared fixture identity drift')
++    identifier = identifier.strip()
++    fixture = read(root / 'docs/architecture/native-checks.json')['fixture_identifier']
++    require(prepared['identifier'] == identifier == fixture, 'prepared fixture identity drift')
+ 
+ 
+ def full_gate(verdict):
+@@ -344,8 +399,7 @@
+     prepared = read(phase / 'native-prepare.json')
+     require(prepared['subject'] == 'P09' and prepared['features'] == ['test-fixtures']
+             and prepared['target'] == 'aarch64-apple-darwin', 'wrong prepared subject/features/target')
+-    executable = root / prepared['bundle'] / 'Contents/MacOS/prisma-airs-desktop-v2'
+-    require(sha(executable) == prepared['executable_sha256'], 'prepared executable drift')
++    verify_current_bundle(root, prepared)
+     build = native_build(root, prepared)
+     records = []
+     for subject, required in sorted(load_requirements(root).items()):

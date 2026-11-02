@@ -1,0 +1,15 @@
+--- a/tools/p09/phase_inputs.py
++++ b/tools/p09/phase_inputs.py
+@@ -84,7 +84,11 @@
+     # lossy UTF-8 decoding and trimmed output.
+     identifier = subprocess.check_output(
+         ['/usr/bin/plutil', '-extract', 'CFBundleIdentifier', 'raw', '-o', '-',
+-         str(bundle / 'Contents/Info.plist')], env={}).decode('utf-8', 'replace').strip()
++         str(bundle / 'Contents/Info.plist')], env={}).decode('utf-8', 'replace')
++    # Python strip also removes U+001C-U+001F; Rust trim preserves them.
++    require(not any(control in identifier for control in '\x1c\x1d\x1e\x1f'),
++            'prepared fixture identity drift')
++    identifier = identifier.strip()
+     fixture = read(root / 'docs/architecture/native-checks.json')['fixture_identifier']
+     require(prepared['identifier'] == identifier == fixture, 'prepared fixture identity drift')
+ 

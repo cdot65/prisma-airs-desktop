@@ -1,0 +1,75 @@
+test_canonical_inventory_vector_sorted_modes_links_and_no_directories (__main__.PreparedBundleBoundary) ... ok
+test_executable_bit_change_is_rejected_without_byte_change (__main__.PreparedBundleBoundary) ... ok
+test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) ... test_resource_drift_with_identical_executable_is_rejected (__main__.PreparedBundleBoundary) ... ok
+test_symlink_target_change_is_rejected_even_for_equal_target_bytes (__main__.PreparedBundleBoundary) ... ok
+test_valid_bound_bundle_is_accepted (__main__.PreparedBundleBoundary) ... ok
+test_wrong_identifier_is_rejected_even_with_matching_live_bundle_hash (__main__.PreparedBundleBoundary) ... ok
+
+======================================================================
+FAIL: test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) (control='U+001C', position='prefix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/test_bundle_predicate.py", line 106, in test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity
+    predicate.verify_current_bundle(self.root, self.prepared)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) (control='U+001C', position='suffix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/test_bundle_predicate.py", line 106, in test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity
+    predicate.verify_current_bundle(self.root, self.prepared)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) (control='U+001D', position='prefix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/test_bundle_predicate.py", line 106, in test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity
+    predicate.verify_current_bundle(self.root, self.prepared)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) (control='U+001D', position='suffix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/test_bundle_predicate.py", line 106, in test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity
+    predicate.verify_current_bundle(self.root, self.prepared)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) (control='U+001E', position='prefix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/test_bundle_predicate.py", line 106, in test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity
+    predicate.verify_current_bundle(self.root, self.prepared)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) (control='U+001E', position='suffix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/test_bundle_predicate.py", line 106, in test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity
+    predicate.verify_current_bundle(self.root, self.prepared)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) (control='U+001F', position='prefix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/test_bundle_predicate.py", line 106, in test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity
+    predicate.verify_current_bundle(self.root, self.prepared)
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity (__main__.PreparedBundleBoundary) (control='U+001F', position='suffix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/p09-bundle-predicate-proposal/revision-02/test_bundle_predicate.py", line 106, in test_non_rust_whitespace_controls_in_binary_plist_never_become_fixture_identity
+    predicate.verify_current_bundle(self.root, self.prepared)
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.059s
+
+FAILED (failures=8)
