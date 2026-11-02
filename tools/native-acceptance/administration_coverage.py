@@ -74,13 +74,23 @@ def gateway_key_state(tree, kind, require_detail=False):
     forbidden = sorted({n.get("label") for n in nodes
                         if n.get("role") in ("AXButton", "AXMenuItem", "AXLink")
                         and (n.get("label") or "").startswith(("Issue additional key", "Finish rotation"))})
+    actions = [n.get("label") for n in detail if n.get("role") == "AXButton"]
+    name = next((n.get("label") for n in detail if n.get("role") == "AXHeading"), None)
+    words = " ".join(str(n.get("label") or n.get("value") or "") for n in detail)
+    issues = [message for message in ("Reading details", "did not find this resource",
+              "could not be read", "does not contain this item", "It is not shown") if message in words]
+    if any(n.get("role") == "AXAlert" or n.get("subrole") == "AXApplicationAlert" for n in detail):
+        issues.append("detail alert")
+    expected = {f"{verb} {name}" for verb in ("Edit", "Rotate", "Remove")} | {"Close details"}
+    success = bool(detail and name and set(actions) == expected and not issues)
     value = {"card_present": bool(nodes), "kind": kind,
              "table": any(n.get("role") == "AXTable" and n.get("label") == kind for n in nodes),
              "gateway_tabs": tabs, "no_limits": "Keys" in tabs and "Limits" not in tabs,
              "forbidden_actions": forbidden, "detail_open": bool(detail),
-             "detail_actions": [n.get("label") for n in detail if n.get("role") == "AXButton"]}
+             "detail_actions": actions, "detail_name": name, "detail_issues": issues,
+             "detail_success": success}
     value["ok"] = bool(nodes and value["table"] and value["no_limits"] and not forbidden
-                       and (not require_detail or detail))
+                       and (not require_detail or success))
     return value
 
 
@@ -88,7 +98,7 @@ def gateway_keys_complete(value):
     kinds = value.get("kinds", {})
     if set(kinds) != {"Service keys", "User keys"}:
         return False
-    if not kinds["Service keys"].get("details"):
+    if not all(kinds[kind].get("details") for kind in ("Service keys", "User keys")):
         return False
     for kind, observed in kinds.items():
         state = observed.get("list", {})
@@ -96,13 +106,17 @@ def gateway_keys_complete(value):
         expected = observed.get("row_labels")
         def complete(row, require_detail):
             tabs = row.get("gateway_tabs")
-            return (row.get("kind") == kind and row.get("ok") is True
+            mandatory = {"kind", "ok", "card_present", "table", "no_limits", "forbidden_actions",
+                         "gateway_tabs", "detail_actions", "detail_open", "detail_name", "detail_issues", "detail_success"}
+            expected = {f"{verb} {row.get('detail_name')}" for verb in ("Edit", "Rotate", "Remove")} | {"Close details"}
+            return (mandatory <= set(row) and row.get("kind") == kind and row.get("ok") is True
                     and row.get("card_present") is True and row.get("table") is True
                     and row.get("no_limits") is True and row.get("forbidden_actions") == []
                     and isinstance(tabs, list) and "Keys" in tabs and "Limits" not in tabs
                     and isinstance(row.get("detail_actions"), list)
                     and row.get("detail_open") is require_detail
-                    and (not require_detail or "Close details" in row["detail_actions"]))
+                    and (not require_detail or (row.get("detail_success") is True and row.get("detail_name")
+                         and row.get("detail_issues") == [] and set(row["detail_actions"]) == expected)))
         if (not complete(state, False) or not isinstance(expected, list)
                 or len(set(expected)) != len(expected) or len(details) != len(expected)):
             return False

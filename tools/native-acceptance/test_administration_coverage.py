@@ -33,7 +33,8 @@ def gateway_tree(forbidden=False, detail=True, kind="Service keys"):
             node("AXTable", kind, 3)]
     if detail:
         body += [node("AXGroup", "gateway-key-1", 3, subrole="AXLandmarkRegion"),
-                 node("AXHeading", "gateway-key-1", 4), node("AXButton", "Remove…", 4)]
+                 node("AXHeading", "gateway-key-1", 4), node("AXButton", "Edit gateway-key-1", 4),
+                 node("AXButton", "Rotate gateway-key-1", 4), node("AXButton", "Remove gateway-key-1", 4)]
         if forbidden:
             body.append(node("AXButton", "Issue additional key…", 4))
         body.append(node("AXButton", "Close details", 4))
@@ -55,7 +56,7 @@ class AdministrationScoping(unittest.TestCase):
         state = coverage.gateway_key_state(gateway_tree(), "Service keys", require_detail=True)
         self.assertTrue(state["ok"])
         self.assertEqual(state["forbidden_actions"], [])
-        self.assertEqual(state["detail_actions"], ["Remove…", "Close details"])
+        self.assertEqual(state["detail_actions"], ["Edit gateway-key-1", "Rotate gateway-key-1", "Remove gateway-key-1", "Close details"])
 
     def test_gateway_rotation_action_is_rejected(self):
         state = coverage.gateway_key_state(gateway_tree(forbidden=True), "Service keys", require_detail=True)
@@ -192,6 +193,36 @@ class GatewayWorkspacePrerequisite(unittest.TestCase):
         self.assertTrue(coverage.gateway_keys_complete(result))
         self.assertEqual(app.actions[0], 'Team A · us')
         self.assertEqual(set(result['kinds']), {'Service keys', 'User keys'})
+
+
+class SuccessfulGatewayDetails(unittest.TestCase):
+    def test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions(self):
+        for message in ['The service did not find this resource.', 'Reading details…',
+                        'The workspace’s complete inventory does not contain this item, so it is not shown.',
+                        'This item was not in the part of the workspace’s inventory that could be read. It is not shown, and this does not mean it is absent.']:
+            with self.subTest(message=message):
+                tree = gateway_tree()
+                tree.insert(-1, node('AXStaticText', message, 4))
+                self.assertFalse(coverage.gateway_key_state(tree, 'Service keys', require_detail=True)['ok'])
+
+    def test_every_listed_key_has_a_successful_scoped_detail_fixture(self):
+        import threading
+        from types import SimpleNamespace
+        import mgmt_server
+        handler = object.__new__(mgmt_server.Handler)
+        handler.server = SimpleNamespace(lock=threading.Lock(), gw={'workspaces': [], 'archived': set(),
+            'deleted': set(), 'created': {'api-keys/service': []}, 'renamed': {}, 'scopes': {}})
+        for resource in ['service', 'user']:
+            status, listing = handler.gateway('/ai_gw/v2/api-keys/' + resource,
+                                              {'workspace_id': mgmt_server.GW_A}, {})
+            self.assertEqual(status, 200)
+            self.assertTrue(listing['data'])
+            for item in listing['data']:
+                status, detail = handler.gateway('/ai_gw/v2/api-keys/' + resource + '/' + item['id'],
+                                                {'workspace_id': mgmt_server.GW_A}, {})
+                self.assertEqual(status, 200, (resource, item['id']))
+                self.assertEqual(detail['id'], item['id'])
+                self.assertEqual(detail['name'], item['name'])
 
 if __name__ == "__main__":
     unittest.main()

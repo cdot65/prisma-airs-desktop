@@ -539,6 +539,17 @@ class Handler(BaseHTTPRequestHandler):
         if rest == "/api-keys/service":
             return 200, listing([key(ws, 1, ["completions.write"]), key(ws, 2, ["models.read"])]
                                 + [k for k in created["api-keys/service"] if k["workspace_id"] == ws])
+        # Listed fixture keys must also have successful detail reads. Otherwise
+        # a failed panel can masquerade as absence of forbidden row actions.
+        for workspace_id in spaces:
+            if ws is not None and ws != workspace_id:
+                continue
+            for resource, number, scopes_for_key in [('service', 1, ['completions.write']),
+                                                      ('service', 2, ['models.read']),
+                                                      ('user', 3, ['completions.write'])]:
+                item = key(workspace_id, number, scopes_for_key)
+                if rest == f"/api-keys/{resource}/{item['id']}":
+                    return 200, item
         for k in created["api-keys/service"]:
             if rest == f"/api-keys/service/{k['id']}":
                 return 200, k

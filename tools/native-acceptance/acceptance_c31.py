@@ -146,7 +146,7 @@ def gateway_key_checks(app):
             node = next((n for n in coverage.product_nodes(tree, "AI Gateway")
                          if n.get("role") == "AXButton" and n.get("label") == label), None)
             coverage.act_on_node(app, tree, node)
-            tree, _ = app.wait_for(lambda t: bool(coverage.detail_nodes(t, "AI Gateway")), 12)
+            tree, _ = app.wait_for(lambda t: coverage.gateway_key_state(t, kind, require_detail=True)["detail_success"], 20)
             detail = coverage.gateway_key_state(tree, kind, require_detail=True)
             detail.update(row=label, tree=c29.save_tree(f"gateway-{slug}-detail-{index}", tree),
                           capture=c29.capture(app, f"gateway-{slug}-detail-{index}"))
