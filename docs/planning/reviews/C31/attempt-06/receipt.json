@@ -1,0 +1,61 @@
+{
+  "review_id": "C31-attempt-06-1793628063",
+  "subject": "C31",
+  "attempt": "attempt-06",
+  "request_id": "C31-attempt-06-1793628063",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T14:11:13.724516+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a19c90-50b0-7210-a977-7b76bb6f5568"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 8,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": [
+    "R1 \u2014 crates/desktop-core/src/authority.rs:3513 and :4162; crates/desktop-core/src/authority/change_domain.rs:903; apps/desktop/src-tauri/src/native_confirmation.rs:153, :176 and :219: renderer retirement does not revoke native presentation already admitted or queued. RevealSecret removes the secret from its record into an effect, releases the state lock, and later schedules presentation without a page/review lifetime binding. Teardown can dismiss the current sheet before that effect or its AppKit callback executes; the later callback then creates a new secret sheet and permits copying after the review/page has ended. NativeSecrets allocates its ownership generation inside the presentation callback, and dismiss does not invalidate queued callbacks. The pinned Tauri runtime executes main-thread tasks inline while queuing tasks from other threads, so dismissal cannot establish the required ordering. Confirmation presentation has the same stale-sheet problem: present does not verify that its nonce remains pending. Core settlement still prevents the retired confirmation from applying a mutation; the defect does not establish a mutation-authority bypass. Acceptance: bind admitted presentation to revocable native page/review ownership and check it when presentation actually executes, covering both the admission-to-effect and queued-callback windows. Deterministic production-path regressions must retire the page in both windows, then drain callbacks and establish no secret presentation/copy, no stale confirmation sheet, no mutation replay, preserved admitted outcomes, and successful explicit fresh-page work.",
+    "R2 \u2014 tools/native-acceptance/administration_coverage.py:70 and :97; tools/native-acceptance/acceptance_c31.py:149; tools/native-acceptance/mgmt_server.py:539: Gateway detail negatives still pass without reaching a successful detail/action surface. The checker requires a detail container and Close details but accepts loading or failed details. Every retained service-key and user-key detail tree in both current C31 and C39 says 'The service did not find this resource.' and contains only Close details. The fixture lists seeded keys but supplies detail replies only for newly created service keys. Thus the strengthened mapping still cannot establish the mandatory native restrictions where successful key details render their admitted actions. Acceptance: provide contract-correct successful detail fixtures for the listed keys in both kinds, wait for each successful detail to settle, require its expected admitted actions including Rotate, and reject loading/error/absent/incomplete panels as restriction evidence. Add negative probes for these states and forbidden controls, then retain fresh affected native observations and captures. Preserve all existing raw results."
+  ],
+  "blockers": [],
+  "evidence_gaps": [
+    "E1 \u2014 apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs covers retirement before Reveal, after confirmation is held, and during delayed issuance using scripted native adapters. It does not cover an admitted RevealSecret effect or queued AppKit presentation crossing teardown, nor confirmation presentation queued before dismissal. The four passing regressions and current native happy paths do not establish R1's remaining lifetime boundary.",
+    "E2 \u2014 docs/planning/evidence/P09/native/cumulative/C31/native/tree-gateway-service-keys-detail-0.json, tree-gateway-service-keys-detail-1.json and tree-gateway-user-keys-detail-0.json, plus the corresponding C39 trees, all retain failed detail reads. Independently recomputing the current checker accepts all six. Successful native Gateway key-detail action coverage remains missing; this is not evidence that the application offers forbidden actions."
+  ],
+  "optional_suggestions": [
+    "apps/desktop/src/v2/admin/review-sheet.tsx:265: derive the header state from the rotation stage when displaying a rotation. The issued rotation capture still labels the sheet Draft while its panel correctly reports that the additional key was issued."
+  ],
+  "fingerprints": {
+    "source": "f78d8a920d3ebd166ce8cea4b72d7402b494bcd6164d36d113efa4dcc6a53a56",
+    "dependencies": "800b1e273a556682c6c52bbf69d8d7f8309b36b768a4f1e000460b6d81327577",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "787a1ac2e5c7c1f291c2071891d38d1cf29c28c502032ef429fd57a53940fd10"
+  },
+  "verdict_sha256": "18cb6eb33aad546fbe228d1630ed5d4d24ef22e297978d6c6565bfa22604f00b",
+  "request_sha256": "8c4744a3bd874d188f5ce94f9343bc0a311d70226f88d50eb634c5388172693d",
+  "prompt_sha256": "b58517fce1179e3022861b88be601c0137a4d2efa10e68241780b14799792093",
+  "post_review_audit_sha256": "6bea0e1afb61a52921d739a629a766a3ebecc66d943b06e13b59d31738e6f767",
+  "invocation_sha256": "d7ea7157f4ab7ea0e97aac4fbf97850947bd4572d3f9716ace5e252b5f8369f3",
+  "thread_reply_sha256": "b87f47731572697d8390f0f82cbf1554dcf2baa12a1a6bd2215d6536b2b08647",
+  "source_frozen": true,
+  "d034_accepted": true,
+  "full_gate_pass": false,
+  "controller_complete": false,
+  "limitations": [
+    "Recomputed all four supplied fingerprints. All 5,208 scoped file hashes matched initially and at final recheck. Verified membership and content of all 18,341 compiled-input entries, identical before/after check inventories, build flags, and all 18 recorded check-log hashes. Hash consistency does not authenticate compiler execution or evidence authorship.",
+    "Recomputed the complete 1,621-entry fixture-bundle hash, including executable modes and symlink targets, and verified its executable. Verified the declared source transition and driver-only continuation: original build digest fa8d896deb2d641ccdb5823ccd5b5538ab8297a1befc2a84979e14784aff1df1 differs from current driver/check digest 800b1e273a556682c6c52bbf69d8d7f8309b36b768a4f1e000460b6d81327577 only for acceptance_c31.py and its coverage test. The executable and full bundle match; ten retained G8 records remain unchanged. The original failed G8 C31 attempt and historical G7 failures remain disclosed, without relabeling.",
+    "Verified the recorded requirements, evidence existence, preparation bindings and driver/controller hashes across all 19 current native drivers. Current C31-N01\u2013N04 and C39-N01\u2013N04 report pass. Semantic inspection found the Gateway coverage gap despite those recorded statuses; the restored accessibility mapping and retained AX observations otherwise provide useful current evidence.",
+    "Independently ran the ten read-only administration coverage unit tests; all passed. Inspected retained logs reporting 550 renderer tests, 15 ui_v2_reviews tests and four renderer lifecycle regressions passing. No fresh Rust suite, application build, native UI interaction, endpoint call, credential access or OS permission grant was performed.",
+    "R1 follows the inspected production effect, adapter and pinned Tauri scheduling paths. I did not dynamically reproduce the AppKit race. The existing scripted-adapter regressions establish the narrower scenarios they actually exercise.",
+    "Verified C30 predecessor/owner-closure bindings and historical C29 standing. C30 is complete under the exact owner exception; its raw independent 9/9/9/8/8 fail verdict and closed R1/R2/E1/E2 remain unchanged and are not reopened here. C29 attempt-10 is historical full-nine G7 evidence. C41 retains its separate owner exception. No C31, C32 or P09 numeric gate is waived.",
+    "The retained C31 topic create/apply/readback/cleanup receipts establish historical live evidence for their recorded inputs. They do not establish a new live run of current bytes. L19's three reads remain charged with zero remaining. Spoken VoiceOver output, signed installed-release behavior and C26/P08 completion were not established.",
+    "No files were changed. The read-only sandbox prevents writing the designated verdict artifact; this returned JSON is the verdict.",
+    "Fresh separate configured-model read-only session in implementer model family; hash consistency is not cryptographic provider/compiler authorship. C26/P08 controller/release remain open."
+  ],
+  "outcome": "Actual independent current G8 review audited. Historical G7/C29 evidence and C30/C41 owner decisions remain explicitly distinguished."
+}
