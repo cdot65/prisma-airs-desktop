@@ -1,0 +1,19 @@
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop/src-tauri)
+error[E0609]: no field `open` on type `WorkbenchView`
+   --> apps/desktop/src-tauri/tests/workbench_review_lifecycle.rs:235:34
+    |
+235 |         if self.snap().workbench.open.is_none() {
+    |                                  ^^^^ unknown field
+    |
+    = note: available fields are: `available`, `loaded`, `failure`, `recent`, `collection` ... and 9 others
+
+error[E0614]: type `ShellSnapshot` cannot be dereferenced
+   --> apps/desktop/src-tauri/tests/workbench_review_lifecycle.rs:232:9
+    |
+232 |         *snapshot
+    |         ^^^^^^^^^ can't be dereferenced
+
+Some errors have detailed explanations: E0609, E0614.
+For more information about an error, try `rustc --explain E0609`.
+error: could not compile `desktop-host` (test "workbench_review_lifecycle") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...

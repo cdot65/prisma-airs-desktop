@@ -1,0 +1,39 @@
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.22s
+     Running tests/ui_v2_workbench/main.rs (target/debug/deps/ui_v2_workbench-cb5a37898af9e269)
+
+running 7 tests
+test a_result_with_no_room_in_a_full_library_is_said_and_every_case_survives ... ok
+test a_scan_without_an_identifier_is_recorded_without_one_and_stays_readable ... ok
+test an_api_response_in_history_never_changes_while_a_new_send_reflects_the_change ... ok
+test before_onboarding_the_calls_are_shown_by_default ... ok
+test starter_packs_are_named_and_a_playground_scan_records_a_case_result_only_while_it_holds ... ok
+test the_calls_are_shown_only_while_chosen_and_never_carry_a_secret_query_or_body ... ok
+test unsaved_packs_and_results_stay_shown_and_a_retry_keeps_them_across_a_restart ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.46s
+
+     Running tests/workbench_execution/main.rs (target/debug/deps/workbench_execution-217590b5a67bd6f3)
+
+running 18 tests
+test a_jar_cookie_is_a_credential_at_a_registered_origin ... ok
+test a_tenant_change_retires_reviews_and_unsent_requests ... ok
+test canary_secrets_never_reach_records_or_private_files ... ok
+test generated_overrides_and_extra_credentials_never_reach_a_registered_origin ... ok
+test history_survives_restarts_and_interrupted_runs_are_never_replayed ... ok
+test known_tenant_changes_need_an_exact_confirmed_review_and_are_sent_once ... ok
+test large_responses_stream_to_sealed_storage_and_save_exactly ... ok
+test lost_responses_cancels_and_the_bound_never_resend ... ok
+test offline_then_reconnected_sends_nothing_by_itself ... ok
+test redirects_follow_origin_rules_and_credentials_never_cross ... ok
+test registered_prisma_origins_are_classified_whatever_the_credential ... ok
+test reset_during_planning_retires_the_send_before_anything_goes ... ok
+test reset_retires_running_sends_and_nothing_they_held_is_kept ... ok
+test reviews_are_bound_to_the_credentials_and_cookies_actually_sent ... ok
+test sends_the_fresh_snapshot_with_v1_auth_bodies_and_cookies ... ok
+test tenant_credentials_are_admitted_before_any_secret_is_read ... ok
+test trust_and_proxies_follow_the_native_transport_policy ... ok
+test wire_credentials_are_redacted_wherever_runs_are_kept ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.69s
+

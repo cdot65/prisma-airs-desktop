@@ -1,0 +1,111 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C39",
+  "recorded_utc": "2026-11-02T18:47:40Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c39.py",
+  "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "d8bf6a0f91507b6643a9888169873fe5c8bc1c96739bc2cd33b61aa3805ebcca",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C39-N01",
+      "description": "Administration as the prototype board draws it (R2App start=admin) with a tenant whose read has landed through the synthetic management plane: the heading and its line (tenant \u00b7 every change is reviewed before it is applied) with Expand all and Collapse all; the six product cards in order, each with its description, headline figure, status pill and alerts (AI Runtime Security: its detection events from the read, Connected; the agentic products Not available); AI Runtime Security open on Custom topics: the tab strip (Overview, Playground, Security profiles, Custom topics, Applications, API keys, DLP, Deployment profiles), the search field, New topic\u2026, the table's rows from the plane with View per row and the footer's count and read time; View opens the detail with exactly the admitted actions; the Overview tab's three tiles and 24-hour bars from the same read; the Playground tab's form (profile, prompt, response, application, Scan, Save as test case\u2026) and the verdict card after a synthetic scan; Expand all opens every available product and Collapse all closes them (D059 parity: the composites under evidence/C39/parity are captured by this script from this state, the owner's judgement recorded in parity/notes.md). Other products' tab bodies remain C39b's.",
+      "result": "pass",
+      "observation": "heading True, line True, Expand/Collapse all True; cards in order True (6); Runtime chrome True with a figure True; agentic products Not available True; tabs [True, True, True, True, True, True, True, True] with Custom topics selected True; table True with 2 row(s) and View ['Details for Finance', 'Details for Finance'], search True, New topic\u2026 True, footer {'count': '1 item', 'read': 'Read 06:43 PM'}; detail True with ['Edit\u2026', 'Delete\u2026', 'Close details']; Overview tiles True and bars True; Playground True fields {'Profile name or ID': True, 'Application name (optional)': True, 'Case name': True, 'textareas': 2}, scanned True \u2192 Allowed; Expand all True, Collapse all True; composites ['docs/planning/evidence/P09/native/cumulative/C39/parity/admin-dark.png', 'docs/planning/evidence/P09/native/cumulative/C39/parity/admin-light.png']",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C39/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-admin.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-admin-detail.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-admin-overview.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-admin-playground.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-overview-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-playground-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/parity/admin-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/parity/admin-light.png"
+      ]
+    },
+    {
+      "id": "C39-N02",
+      "description": "A change through the prototype's review sheet (R2App start=review): Edit\u2026 on a custom topic's detail opens the sheet docked to the window's right edge under the header, 620 CSS px wide, titled 'Review a change' with the review's state pill (Draft, then Ready for review, then Applied) and a Close review control; Review change prepares the review in the core, Apply\u2026 stays disabled while the typed name is empty or wrong and enables on the exact name, the native confirmation names the update, and the applied result is read back live with one write to the plane; Done closes the sheet. The review composites (parity/review-*) are captured with the sheet open on the draft.",
+      "result": "pass",
+      "observation": "the sheet opened True docked right at 620px True ((899, 135, 1519, 979)) with its title True, state Draft True then Ready for review True, close control True; Apply\u2026 disabled empty True and wrong True, enabled on the typed name True; the native confirmation True titled True; applied and read back live True (state Applied True) with 1 write(s); Done closed it True; composites ['docs/planning/evidence/P09/native/cumulative/C39/parity/review-dark.png', 'docs/planning/evidence/P09/native/cumulative/C39/parity/review-light.png']",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C39/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-review-sheet.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-review-applied.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/review-applied-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/parity/review-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/parity/review-light.png"
+      ]
+    },
+    {
+      "id": "C39-N03",
+      "description": "The other products on the card pattern (C39b): AI Gateway with the workspace Team A chosen \u2014 the Workspaces tab's chooser and the chosen workspace's settings read with its admitted Edit\u2026 / Archive\u2026, the Routes tab as a table with search, New route\u2026 and a detail whose actions are the inventory's, the Keys tab with the service / user kinds; AI Red Teaming \u2014 the Overview's summary tiles and ranked bars, the Targets table with Results per target (identifiers only), the Scans tab's list without the tiles; Model and skill scans \u2014 the Model scans table (or the plane's 'none read') and Codebase scans not available in this release. Every table is read through the management client and says its coverage.",
+      "result": "pass",
+      "observation": "Gateway tabs True: Workspaces with Team A chosen True and its settings read True; Routes as a table True with search True, New route\u2026 True and a detail with Edit True; Keys table with the kinds True, both scoped key lists and every returned detail forbid Issue additional key / Finish rotation True; Red Teaming tabs True: Overview tiles True and ranked bars True, Targets table True with Results True, Scans heading True without the tiles True; Model scans True, Codebase scans not available True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C39/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-gateway-workspaces.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-gateway-routes.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-red-team-overview.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-model-scans.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-gateway-service-keys.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/gateway-service-keys.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-gateway-service-keys-detail-0.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/gateway-service-keys-detail-0.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-gateway-service-keys-detail-1.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/gateway-service-keys-detail-1.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-gateway-user-keys.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/gateway-user-keys.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-gateway-user-keys-detail-0.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/gateway-user-keys-detail-0.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/gateway-routes-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/red-team-overview-light.png"
+      ]
+    },
+    {
+      "id": "C39-N04",
+      "description": "Keyboard and layout (T09): Tab from the heading reaches Expand all, the Runtime card's header, its tabs and the table's first View in order, the focus ring on the first View; Administration at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with Runtime open on Custom topics and no horizontal overflow, the tab strip scrolling within the card rather than widening it, the table's header, first row and footer inside the card; every row records the WebView's measured size and the viewport from its own tree and asserts them.",
+      "result": "pass",
+      "observation": "Tab from Expand all reached [('Collapse all', 0), ('AI Runtime Security', 1), ('Overview', 2), ('Custom topics', 5), ('Details for', 13)] in order True; ring on the first View 396 px; admin-1440x1657-light: web [1440, 1657] viewport [1440, 900] overflow 0 px, scroll bars 0, table/view/footer/tab inside the card True/True/True/True; admin-1440x1657-dark: web [1440, 1657] viewport [1440, 900] overflow 0 px, scroll bars 0, table/view/footer/tab inside the card True/True/True/True; admin-900x600-200-light: web [900, 5469] viewport [900, 600] overflow 0 px, scroll bars 0, table/view/footer/tab inside the card True/True/True/True; admin-900x600-200-dark: web [900, 5469] viewport [900, 600] overflow 0 px, scroll bars 0, table/view/footer/tab inside the card True/True/True/True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C39/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-admin-1440x1657-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-admin-1440x1657-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-admin-900x600-200-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/tree-admin-900x600-200-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-1440x1657-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-1440x1657-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-900x600-200-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-900x600-200-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-ring-plain.png",
+        "docs/planning/evidence/P09/native/cumulative/C39/native/captures/admin-ring-view.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size) beside it.",
+    "Synthetic scan and management endpoints only; the inventories are the synthetic plane's. The review's native confirmation is the fixture sheet adapter's.",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "admin-light.png",
+    "admin-overview-light.png",
+    "admin-playground-light.png",
+    "admin-ring-focused.png",
+    "admin-ring-plain.png",
+    "gateway-routes-light.png",
+    "layouts-admin-1440x1657-dark.png",
+    "layouts-admin-1440x1657-light.png",
+    "layouts-admin-900x600-200-dark.png",
+    "layouts-admin-900x600-200-light.png",
+    "red-team-overview-light.png",
+    "review-applied-light.png"
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "schema": "airs-v2/p09-workbench-source-transition/1",
+  "baseline_review": "docs/planning/reviews/P09/attempt-01/request.json",
+  "baseline_source_digest": "2ced3ba55ff87ea3652028dc3c25937375322eaafef4b6956e1e3133afeca265",
+  "fix_commit": "66d50db0",
+  "source_delta": {
+    ".gitattributes": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "a11abe825e289e9b1ee6f55775791b9e2b607e68ce319839889f0d5cd0ef1052"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "144b1848b959aa274059b675388c4f0fbc24817b2c68b3e1fac532e5d3c23689"
+      }
+    },
+    "apps/desktop/src-tauri/Cargo.toml": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "e051d6781c547d0b1e9af95543926d03db46bfa373e5c53d915351b11435cc2a"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "b787a5212c6130ca51bbf47781979f2620bd9afee2756a9863309b948af98b9e"
+      }
+    },
+    "apps/desktop/src-tauri/tests/workbench_review_lifecycle.rs": {
+      "before": null,
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "794f057c21359a56a4b3016d74c86c5b5b1b6163f56c62a20e0e7352e9d5bd9e"
+      }
+    },
+    "crates/desktop-core/src/authority.rs": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "89fcb7cd19c21f7df62de25f4dde87e28cc5b7a6e89341a92b8ce007756812c2"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "9c1228fad8dfc2a4b7c9f08fd49c081396714b8d671ba83ebb6d6fbece2dcff9"
+      }
+    },
+    "crates/desktop-core/src/authority/workbench_domain.rs": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "e8195180fae7bcdca9a79c9260fff6ffc9d5118380db1d3f62a02ba05f500b2b"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "d7950d2cf26125dd23f5020d94dfa7d5fed698df08e929174d63466cf6a5742a"
+      }
+    },
+    "crates/desktop-core/src/authority/workbench_domain/send.rs": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "b4d4b1c2a99a0e3a08475f7708a32a60f602aa43a2e9efe277f9183017e12424"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "f8fbe53d3c746fca5da90c8af825907e100d1ae960bde35dc1815e3a3fce4ea3"
+      }
+    },
+    "crates/desktop-core/tests/workbench_execution/main.rs": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "f658dab9411b9c70b916b2bcbf95166daa5cf4960ade5a8cb8cb40d7203c50b7"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "b8a1a2ade84cec2a9bf6f0285e820987eb02107594bbaa4f23315eeab40b98b6"
+      }
+    },
+    "tools/p09/audit-p09-checks-workbench.py": {
+      "before": null,
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "06461f877a128d45ccbefc26aaa77e7fce7b87bd5c2cf06eeaab3a0b4123cf8e"
+      }
+    },
+    "tools/p09/audit-phase-review-p09-workbench.py": {
+      "before": null,
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "3391c3cc38be7aa7c33ef0c0283caf520354c536ab93adb137600bed599d5c0e"
+      }
+    },
+    "tools/p09/make-phase-packet-p09-workbench.py": {
+      "before": null,
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "e171723af184d4659c59f8d63297208ee2f04a3dec1115e7fc0cb4a3e61e0834"
+      }
+    },
+    "tools/p09/p09_workbench_policy.py": {
+      "before": null,
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "7a73c5c0fabca09d97151e46bec31d6c49f79d50c105c0ee0b518f4ec896dc80"
+      }
+    },
+    "tools/p09/phase_inputs_p09_workbench.py": {
+      "before": null,
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "7bcd0d54d7bc9968c881e9b80b1f53892ac0bc47839b4472530685dafb0d21c7"
+      }
+    },
+    "tools/p09/phase_packet_p09_workbench.py": {
+      "before": null,
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "25906dd52b2519c76419747423ed4245356af3a1de2fa64c39a8f498789e4813"
+      }
+    },
+    "tools/p09/test_p09_workbench_policy.py": {
+      "before": null,
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "147b26aa116509f7695d15991cc5c3935d2db0ae000e8fa027cefb3055a484a9"
+      }
+    }
+  },
+  "current_source_digest": "d8671203522596d4460eafa9f622696494c471d469d1ab321177db6fb9f1e253",
+  "focused_results": [
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/bindings-result.json",
+      "sha256": "c8e169d1cd89bcf735e2f78589b8c6afecca4807f006ac753ee6a5b1e1ad5234"
+    },
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/clippy-default-result.json",
+      "sha256": "fd055b8f8f9d610d020c16eb0b3566f6901f9e1e53e59479f7a7f92b9fc198d8"
+    },
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/clippy-fixtures-result.json",
+      "sha256": "ab6f8a5388b080530a5b939f4e44ae2ed1bbf5472726eff93bcd1766b0c3642b"
+    },
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/contracts-typecheck-result.json",
+      "sha256": "4519a24b78eca1bc94823b43d7535758874c5c2f0f6f2008f45d835bfd69a8a7"
+    },
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/desktop-typecheck-result.json",
+      "sha256": "7f8177b0f8700c9e4c053ee48a6163c03901fcdc4f1b83a54dfa1dcdad60f02c"
+    },
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/format-result.json",
+      "sha256": "571388258abfbe48832608eb8a0b900b23d8d0912f125f7735d3b1f55fca8785"
+    },
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/host-ipc-result.json",
+      "sha256": "3f9050764be921695cd797f53b05e672afabc3929970ce5e2b9f3ca6b2a30d43"
+    },
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/policy-result.json",
+      "sha256": "2b4ff88b9a589ab000b10f1ccc0e05b87c395a55d9c78c9289d7de6b315db54b"
+    },
+    {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/workbench-core-result.json",
+      "sha256": "e5d960e5306e411404e29fa3440450ed0c5951f23a53df614f4dc9d83708ffc0"
+    }
+  ],
+  "historical_generation": "docs/planning/evidence/P09/native-history/Worf-generation-10-complete-before-P09-workbench-lifetime-20261102/",
+  "required_current_qualification": "G11 current20 native/current18checks, actual P09attempt02; no C31/C32 review or C30 work",
+  "owner_c30_record": "docs/planning/C30-owner-score-override-2026-11-02.md",
+  "owner_c30_sha256": "c150ebb6a35d8b1bdb6965a5780b96b88f393ed2994cdd3a11da2b4d20bd1a5e"
+}

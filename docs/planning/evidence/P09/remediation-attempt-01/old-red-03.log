@@ -1,0 +1,33 @@
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.57s
+     Running tests/workbench_review_lifecycle.rs (target/debug/deps/workbench_review_lifecycle-c9d43ce3e542f96d)
+
+running 2 tests
+test queued_mutation_confirmation_is_revoked_by_main_page_reload ... FAILED
+test shown_mutation_confirmation_is_revoked_by_main_page_reload ... FAILED
+
+failures:
+
+---- queued_mutation_confirmation_is_revoked_by_main_page_reload stdout ----
+
+thread 'queued_mutation_confirmation_is_revoked_by_main_page_reload' (2898628) panicked at apps/desktop/src-tauri/tests/workbench_review_lifecycle.rs:285:5:
+assertion `left == right` failed: retired page must never authorize a mutation: {"kind":"ran","run":{"preview":"{\"deleted\":true}","previewBytes":16,"record":{"at":1793651121,"bytes":16,"class":"anonymous","elapsedMs":107,"failure":null,"headers":[["content-type","application/json"],["content-length","16"],["connection","close"]],"id":"run-c5dcfd7cf0602e0b","method":"DELETE","operation":"Management/IAM/AccessPolicies/Delete an access policy","redirect":null,"relative":"change.request.toml","request":"change","state":"completed","status":200,"stored":true,"uncertain":false,"url":"https://localhost:62660/iam/v1/access_policies/synthetic"},"tokenDropped":false}}
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- shown_mutation_confirmation_is_revoked_by_main_page_reload stdout ----
+
+thread 'shown_mutation_confirmation_is_revoked_by_main_page_reload' (2898650) panicked at apps/desktop/src-tauri/tests/workbench_review_lifecycle.rs:285:5:
+assertion `left == right` failed: retired page must never authorize a mutation: {"kind":"ran","run":{"preview":"{\"deleted\":true}","previewBytes":16,"record":{"at":1793651121,"bytes":16,"class":"anonymous","elapsedMs":7,"failure":null,"headers":[["content-type","application/json"],["content-length","16"],["connection","close"]],"id":"run-f888c4361e3d2608","method":"DELETE","operation":"Management/IAM/AccessPolicies/Delete an access policy","redirect":null,"relative":"change.request.toml","request":"change","state":"completed","status":200,"stored":true,"uncertain":false,"url":"https://localhost:62662/iam/v1/access_policies/synthetic"},"tokenDropped":false}}
+  left: 1
+ right: 0
+
+
+failures:
+    queued_mutation_confirmation_is_revoked_by_main_page_reload
+    shown_mutation_confirmation_is_revoked_by_main_page_reload
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+error: test failed, to rerun pass `-p desktop-host --test workbench_review_lifecycle`

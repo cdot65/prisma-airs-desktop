@@ -1,0 +1,29 @@
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.36s
+     Running tests/workbench_review_lifecycle.rs (target/debug/deps/workbench_review_lifecycle-c9d43ce3e542f96d)
+
+running 2 tests
+test queued_mutation_confirmation_is_revoked_by_main_page_reload ... FAILED
+test shown_mutation_confirmation_is_revoked_by_main_page_reload ... FAILED
+
+failures:
+
+---- queued_mutation_confirmation_is_revoked_by_main_page_reload stdout ----
+
+thread 'queued_mutation_confirmation_is_revoked_by_main_page_reload' (2897269) panicked at apps/desktop/src-tauri/tests/workbench_review_lifecycle.rs:206:56:
+operation: Error("invalid type: null, expected a string", line: 0, column: 0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- shown_mutation_confirmation_is_revoked_by_main_page_reload stdout ----
+
+thread 'shown_mutation_confirmation_is_revoked_by_main_page_reload' (2897288) panicked at apps/desktop/src-tauri/tests/workbench_review_lifecycle.rs:206:56:
+operation: Error("invalid type: null, expected a string", line: 0, column: 0)
+
+
+failures:
+    queued_mutation_confirmation_is_revoked_by_main_page_reload
+    shown_mutation_confirmation_is_revoked_by_main_page_reload
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p desktop-host --test workbench_review_lifecycle`
