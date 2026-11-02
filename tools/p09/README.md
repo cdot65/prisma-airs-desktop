@@ -31,6 +31,15 @@ Prerequisites:
   binds native guard references and retires renderer retries. Generation 05,
   current performance acceptance, fresh check `attempt-06` and changed-source
   C29/C30 re-reviews remain required; no old score transfers to changed inputs.
+  G6 then passed all19 natives/current C30p95=25.065583ms/check06all18,
+  and C29attempt09 passed full9. C30attempt11 returned9/8/9/8/8 without
+  blockers, accepted underD034 with R1/E1: a definite tenant-state save
+  refusal could occur after conversation resolution. Both switch paths now
+  persist staged Data before resolution/history/context retirement; all4
+  real-Harness fault/recovery cases fail originalG6 and pass corrected code.
+  Broader22Harness/10onboarding/5setup-read preflight and strictClippy/fmt pass.
+  G7 preparation/all19/currentperformance/check07 and fresh C29attempt10 ->
+  C30attempt12 remain required before C31/C32/phase. No score transfers.
   The current audit requires every compiled input to match the fresh native
   build's captured before/after seal (`P09/native-build-inputs.json` and its
   generation under `P09/preparations/`). There is no source-exemption list.
@@ -44,11 +53,11 @@ Example after the fresh fixture/native prerequisites are satisfied (choose
 unused attempt IDs if these already exist):
 
 ```sh
-bash docs/planning/evidence/P09/runs/run-checks.sh attempt-06
-python3 tools/p09/audit-p09-checks.py attempt-06
-python3 tools/p09/make-remedial-packet.py C29 attempt-09 attempt-08 attempt-06
-python3 tools/p09/launch-remedial-review.py C29 attempt-09
-python3 tools/p09/audit-remedial-review.py C29 attempt-09
+bash docs/planning/evidence/P09/runs/run-checks.sh attempt-07
+python3 tools/p09/audit-p09-checks.py attempt-07
+python3 tools/p09/make-remedial-packet.py C29 attempt-10 attempt-09 attempt-07
+python3 tools/p09/launch-remedial-review.py C29 attempt-10
+python3 tools/p09/audit-remedial-review.py C29 attempt-10
 ```
 
 The packet arguments are subject, new review attempt, prior review attempt and
@@ -85,7 +94,7 @@ inferred from input verification. After those prerequisites:
 
 ```sh
 python3 -I tools/p09/test_phase_inputs.py
-python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-06.json
+python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-07.json
 python3 tools/p09/launch-remedial-review.py P09 attempt-01
 python3 -I tools/p09/audit-phase-review.py attempt-01
 ```
@@ -100,7 +109,7 @@ an actual independent verdict at 9 in every dimension with no fixes/gaps/blocker
 C30's current acceptance measurement is mandatory before cumulative C44 runs:
 
 ```sh
-AIRS_NATIVE_SUBJECT=P09 python3 -I tools/perf/measure_c30.py --label acceptance --attempt attempt-01
+AIRS_NATIVE_SUBJECT=P09 python3 -I tools/perf/measure_c30.py --label acceptance --attempt attempt-03
 ```
 
 Run it as the sole UI writer after C36/C43 and before C44, on the newly prepared
