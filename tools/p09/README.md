@@ -135,3 +135,16 @@ bytes; G7 results are historical. No new C30 qualification is performed. C30's
 bound owner all-nine score continues; its actual low independent verdict remains
 unchanged. C29's actual full-nine G7 review stays historical. Current C31, C32
 and cumulative P09 require actual independent full-nine reviews and audits.
+
+G8's first C31 driver stopped before acceptance because Keys requires an
+explicit Gateway workspace. The driver-only amendment preserves that failed
+attempt and the first source seal. `verify_driver_amendment` binds the original
+G8 preparation, exact executable and complete bundle, proves the compiled-input
+delta contains only the C31 driver and its test, and checks that runtime changes
+are confined to `gateway_key_checks` (called only by C31/C39). The ten completed
+G8 records/logs and direct driver hashes stay immutable. C31/C39/C44 and all
+unrun drivers execute freshly; the 18 current checks run after continuation.
+The new source seal is `transition-driver-01.json`; the original `transition.json`
+and original actual build record are retained unchanged. This is an explicit
+same-application continuation, with no G7 result relabeled as current and no
+new C30 qualification.

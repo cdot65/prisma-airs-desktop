@@ -18,7 +18,7 @@ parser.add_argument('--fix', action='append', required=True)
 parser.add_argument('--result', action='append', required=True)
 args = parser.parse_args()
 root = Path.cwd().resolve()
-path = root / policy.PREFIX / 'transition.json'
+path = root / policy.PREFIX / policy.TRANSITION_RECORD
 assert not path.exists(), 'preserve sealed transition'
 old = json.loads((root / policy.PREFIX / 'baseline-source.json').read_text())
 current = source_inventory(root)

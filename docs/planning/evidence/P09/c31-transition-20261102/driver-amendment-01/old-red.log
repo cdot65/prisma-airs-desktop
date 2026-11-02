@@ -1,0 +1,19 @@
+test_key_inspection_selects_the_required_workspace_before_key_controls (__main__.GatewayWorkspacePrerequisite.test_key_inspection_selects_the_required_workspace_before_key_controls) ... ERROR
+
+======================================================================
+ERROR: test_key_inspection_selects_the_required_workspace_before_key_controls (__main__.GatewayWorkspacePrerequisite.test_key_inspection_selects_the_required_workspace_before_key_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/test_administration_coverage.py", line 191, in test_key_inspection_selects_the_required_workspace_before_key_controls
+    result = driver.gateway_key_checks(app)
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c31.py", line 113, in gateway_key_checks
+    coverage.act_on_node(app, tree, choice)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/administration_coverage.py", line 53, in act_on_node
+    raise ValueError("required scoped AX node is missing")
+ValueError: required scoped AX node is missing
+
+----------------------------------------------------------------------
+Ran 1 test in 0.037s
+
+FAILED (errors=1)

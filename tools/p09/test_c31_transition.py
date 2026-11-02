@@ -35,7 +35,7 @@ class TransitionGuards(unittest.TestCase):
         patch.object(policy.original, 'sha', side_effect=lambda p: policy.OWNER_SHA if str(p).endswith(policy.OWNER_SCORE) else 'result').start()
 
     def verify(self):
-        (self.directory / 'transition.json').write_text(json.dumps(self.seal))
+        (self.directory / policy.TRANSITION_RECORD).write_text(json.dumps(self.seal))
         return policy.verify_transition(self.root)
 
     def test_complete_declared_transition(self):
@@ -74,6 +74,46 @@ class TransitionGuards(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'sealed C31 delta'):
             policy.verify_transition(self.root)
 
+
+
+class DriverContinuationGuards(unittest.TestCase):
+    root = Path(__file__).resolve().parents[2]
+
+    def current_digest(self):
+        return json.loads((self.root / policy.PREFIX / 'driver-amendment-01/equivalence.json').read_text())['after_digest']
+
+    def test_actual_complete_equivalence(self):
+        result = policy.verify_driver_amendment(self.root, self.current_digest())
+        self.assertEqual(result['retained_native_steps'], 10)
+
+    def test_changed_application_artifact_rejected(self):
+        original_sha = policy.original.sha
+        prep = json.loads((self.root / 'docs/planning/evidence/P09/native-prepare.json').read_text())
+        executable = self.root / prep['bundle'] / 'Contents/MacOS/prisma-airs-desktop-v2'
+        with patch.object(policy.original, 'sha', side_effect=lambda p: 'changed' if Path(p) == executable else original_sha(p)):
+            with self.assertRaisesRegex(ValueError, 'executable changed'):
+                policy.verify_driver_amendment(self.root, self.current_digest())
+
+    def test_changed_runtime_outside_the_one_function_rejected(self):
+        original_text = Path.read_text
+        driver = self.root / 'tools/native-acceptance/acceptance_c31.py'
+        def text(path, *args, **kwargs):
+            value = original_text(path, *args, **kwargs)
+            return value + '\nUNRELATED_RUNTIME_CHANGE = True\n' if path == driver else value
+        with patch.object(Path, 'read_text', text):
+            with self.assertRaisesRegex(ValueError, 'exceeds the Gateway'):
+                policy.verify_driver_amendment(self.root, self.current_digest())
+
+    def test_changed_retained_evidence_rejected(self):
+        read = policy.original.read
+        def changed(path):
+            value = read(path)
+            if str(path).endswith('driver-amendment-01/equivalence.json'):
+                value['completed_native_steps'][0]['record_sha256'] = 'wrong'
+            return value
+        with patch.object(policy.original, 'read', side_effect=changed):
+            with self.assertRaisesRegex(ValueError, 'retained G8 evidence changed'):
+                policy.verify_driver_amendment(self.root, self.current_digest())
 
 if __name__ == '__main__':
     unittest.main()

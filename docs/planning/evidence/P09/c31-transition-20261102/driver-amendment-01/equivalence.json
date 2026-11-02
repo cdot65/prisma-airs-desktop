@@ -1,0 +1,202 @@
+{
+  "schema": "airs-v2/current-g8-driver-amendment/1",
+  "time": "2026-11-02T13:10:15.490443+00:00",
+  "fix_commit": "e8939df2",
+  "original_transition_sha256": "39a2fd816437d55fbc163598a4b09f1dcb8f682c7acbe2f57cd1df4f7c070d4d",
+  "source_delta_since_first_seal": {
+    "tools/native-acceptance/acceptance_c31.py": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "99f0b6ba11ec8779c7f074552f4cb59236a6076aa9ac5bc550721c172f162dc7"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "17e1f5f729c170c15541c30520f9d57f71e3c46ea75bc41b7f6304cd6ac733da"
+      }
+    },
+    "tools/native-acceptance/test_administration_coverage.py": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "4061a19b00fd677020c8f0aeced6b0887e1f8aacca16c7ca034b4cf56c177cac"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "edd2bcb65b62344290e067c972ca1a971cb26ea51e51e2906f55f119bc8e0b14"
+      }
+    },
+    "tools/p09/README.md": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "1c7b00ee96762f406941541e23bfcbfc09c37a058dbf8ceff6e366dc78f34184"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "3162698dfa097f4931f95b9229eb904cb09d8bd327861411103041ea7d981153"
+      }
+    },
+    "tools/p09/c31_transition_policy.py": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "f53c0ac1d670c6939121130101e3abb936cf78878b14133ff281c10dd4b624d7"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "7c8acb1d77306e5062a969f97f1de88aa276efb08c72b0696b959435b46c35de"
+      }
+    },
+    "tools/p09/phase_inputs_c31_transition.py": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "fda155ac10b5153a4210ad6cfc79a9a3010fb278078bf148dbde617734a25af6"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "207f789cba4aea04591dddf6a955036b21bfb2f1013ba943c1130e8205b5b4cc"
+      }
+    },
+    "tools/p09/seal-c31-transition.py": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "7a52f1faf4cede4cd7e4990a0781580210dc76b35cf3708153527da36589b0b3"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "2d712478ca0c8b4ca9e56c796694555b52e70f81e862789f7562b12778edee34"
+      }
+    },
+    "tools/p09/test_c31_transition.py": {
+      "before": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "5f086575f38e99e4c5e9d83dca69d3fad8f8a10ebbf025eeb70734f889d4b72a"
+      },
+      "after": {
+        "mode": 420,
+        "kind": "file",
+        "sha256": "ba8d4f70d5d6cf1c730d4a85008bf696db81e11de1f2d51bfdab0db88bd01509"
+      }
+    }
+  },
+  "compiled_inputs_before": "docs/planning/evidence/P09/preparations/worf-08-c31/inputs-after.sha256",
+  "compiled_inputs_after": "docs/planning/evidence/P09/c31-transition-20261102/driver-amendment-01/inputs-after.sha256",
+  "before_digest": "fa8d896deb2d641ccdb5823ccd5b5538ab8297a1befc2a84979e14784aff1df1",
+  "after_digest": "800b1e273a556682c6c52bbf69d8d7f8309b36b768a4f1e000460b6d81327577",
+  "compiled_input_changes": [
+    "tools/native-acceptance/acceptance_c31.py",
+    "tools/native-acceptance/test_administration_coverage.py"
+  ],
+  "prepare_sha256": "2fbdc8310ea9cdf89ca4d689594731ccaf90e6a0339aa2f17b8b8eeb429b9c5f",
+  "build_record_sha256": "bcd5e8ba02c8b0601043604004783d2d2630668b931e59e51b452dfb175e4dcf",
+  "executable_sha256": "bb85a44cb53b3099e5fd16121b0cc6c2964b2a896b6c55e989f3fd3c933d6e64",
+  "bundle_sha256": "645d898e6eaa43043b21e45e8d97f49c4046c8e5641b3b5ba894732c528ddd65",
+  "completed_native_steps": [
+    {
+      "subject": "C36",
+      "record": "docs/planning/evidence/P09/native/cumulative/C36/native-acceptance.json",
+      "record_sha256": "f8a1453a4f9a80fc67cc38336692812eae4238f9562d11cdfb8a1bfd9cb9e1ba",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C36/execution.json",
+      "execution_sha256": "118f6dab7a15fa083c00f7f8338f79b267251e97d206ab7c69288f7a7237e0c8",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c36.log",
+      "log_sha256": "80dc54086bf7c91f0c442e5b9f82ec81fe64753dca424086e3c8c50e839ede87"
+    },
+    {
+      "subject": "C43",
+      "record": "docs/planning/evidence/P09/native/cumulative/C43/native-acceptance.json",
+      "record_sha256": "745e6aac0e699d5fb1ab34afe58b047ab8e4568f30335755eda3e056bf68408c",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C43/execution.json",
+      "execution_sha256": "9164404affa2e7aa819fbf34017ca2f7a0bc7cd4125a73de8c608f34edc9043c",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c43.log",
+      "log_sha256": "dd5a49e265eb925bb71a8c76cd24ece311eae4fd1a373a0988dbc3f6ed9810a5"
+    },
+    {
+      "subject": "C11",
+      "record": "docs/planning/evidence/P09/native/cumulative/C11/native-acceptance.json",
+      "record_sha256": "3e665033622e953c345524c8b207f2a0d1a25fc8f6b534335651989bb5801a18",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C11/execution.json",
+      "execution_sha256": "c1b3ec0a4ecdab12e34402d366a98234cca1a0f88d4551e2151ea5ab5adef4e7",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c11.log",
+      "log_sha256": "553939b85889ddc1ab2530162c4f226d6edf55ecaa80a16030aa24a19b675f06"
+    },
+    {
+      "subject": "C10",
+      "record": "docs/planning/evidence/P09/native/cumulative/C10/native-acceptance.json",
+      "record_sha256": "d551edf2d20e2eac99a0eddb2f79fcaf56ef856e53f3e573dd990f177c999de3",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C10/execution.json",
+      "execution_sha256": "0f232d7a262e20d18b038bf73dc7d5956009f66ebf4d4c44fb71d0ed57421630",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c10.log",
+      "log_sha256": "ef3cb2cffd36e1c857bf054e2b21e57a5d3b6a6dfffa02dc930cb62dfa8a834f"
+    },
+    {
+      "subject": "C03",
+      "record": "docs/planning/evidence/P09/native/cumulative/C03/native-acceptance.json",
+      "record_sha256": "6dc9d858b7f7620994d870944603c4a0323442f03ef445c4956c083a268c30d0",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C03/execution.json",
+      "execution_sha256": "ab64cb178d274e886d55ee7c33de446e01c151a986093f91402ba04cfd16c0cc",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c03.log",
+      "log_sha256": "b2dc988f76ec3155b3cea1d8e8a63a78ec26e2ae4d67cb1c7f8b3f29090a5860"
+    },
+    {
+      "subject": "C04",
+      "record": "docs/planning/evidence/P09/native/cumulative/C04/native-acceptance.json",
+      "record_sha256": "2a6af154bd98901a88ec63be456a05d0d203f77fd6bbf5dc6a0132aec9124866",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C04/execution.json",
+      "execution_sha256": "e31aa142649319286f1f2de6007b82c5aeea467c24015003fac438acc90adb12",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c04.log",
+      "log_sha256": "f6cc9c6bd6796b26a8734a9c08cd986f6719270b19b49ea898942caaf1b7772d"
+    },
+    {
+      "subject": "C05",
+      "record": "docs/planning/evidence/P09/native/cumulative/C05/native-acceptance.json",
+      "record_sha256": "a83c3166b7736885b8dd2262f9f89c03d026e0714873660a4ce0ecf0f7ad7bc4",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C05/execution.json",
+      "execution_sha256": "21e46d91815edda6ffca0ea0e22a3c069c63965e313c4fb39770976cfe8a726b",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c05.log",
+      "log_sha256": "42a29acc5a6b5cc1b22cb997d1575f47918191d1c73db3c0fbb3010b1a112bdd"
+    },
+    {
+      "subject": "C06",
+      "record": "docs/planning/evidence/P09/native/cumulative/C06/native-acceptance.json",
+      "record_sha256": "12379ea99406a84d028a8c73c4adfa97a9829caab889dd32685576a1c5656e8c",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C06/execution.json",
+      "execution_sha256": "2f88696f2be25bc08b54912379af47947fab5d51dc64d932bdff77c7bb74479b",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c06.log",
+      "log_sha256": "0d2f531b86c729de2bb859780fb5126e59c5c48c65be8661845008d817b56410"
+    },
+    {
+      "subject": "C07",
+      "record": "docs/planning/evidence/P09/native/cumulative/C07/native-acceptance.json",
+      "record_sha256": "1a4e173c8729400e41158d448c2911a4db970657bce6938f5267ba3f30cdb82c",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C07/execution.json",
+      "execution_sha256": "1e370eb733d009c021b034c77f0675a463a63d77bf1cde597dabcbad106144f7",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c07.log",
+      "log_sha256": "6eb562d359d667acf513e4729b18e786bae80f604d43356005e4ecebf51bf505"
+    },
+    {
+      "subject": "C24",
+      "record": "docs/planning/evidence/P09/native/cumulative/C24/native-acceptance.json",
+      "record_sha256": "08825087b48848e361b54593fce046ec3dcd9ea98fe26d373979e6ec36fdef47",
+      "execution": "docs/planning/evidence/P09/native/cumulative/C24/execution.json",
+      "execution_sha256": "9bbba2cb6ac9cbed8c4be3d2e8d81d8cec1650e7d1743562e41d76e49a7d638b",
+      "log": ".evidence-private/worf-agent/2026-11-02-c31-integration-01/native-08-c24.log",
+      "log_sha256": "2e50dc571ff7cb3551a02b408a9f16ace038800c0a4e6d2dbad496c22903ea5b"
+    }
+  ],
+  "affected_native_steps": [
+    "C31",
+    "C39",
+    "C44"
+  ],
+  "conditions": "Same guest, fixture application, identifier, bundle, flags and native helpers except the declared single Gateway key-check function. Failed C31 has no verdict and is archived; no passed step is restarted. Current18 checks have not yet run. No current C30 timing."
+}

@@ -13,7 +13,7 @@ import subprocess
 import sys
 import tempfile
 
-from c31_transition_policy import (verify_c30_owner_closure, verify_transition, historical_c29, historical_performance)
+from c31_transition_policy import (verify_c30_owner_closure, verify_transition, historical_c29, historical_performance, verify_driver_amendment)
 
 MEMBERS = ['C27', 'C28', 'C29', 'C30', 'C31', 'C32', 'C33', *[f'C{i}' for i in range(35, 45)]]
 DECISIONS = {
@@ -204,9 +204,12 @@ def native_build(root, prepared):
             and value['members'] > 0, 'native build inventory declaration mismatch')
     with tempfile.TemporaryDirectory(prefix='p09-native-inputs-') as scratch:
         current = subprocess.check_output(['/bin/bash', str(procedure), str(root), str(Path(scratch) / 'inputs.sha256')], text=True).strip()
-    require(current == value['before_digest'], 'current compiled inputs differ from prepared native build')
+    amendment = None
+    if current != value['before_digest']:
+        amendment = verify_driver_amendment(root, current)
     return {'record': str(path.relative_to(root)), 'sha256': sha(path),
-            'generation': build['generation'], 'input_digest': current}
+            'generation': build['generation'], 'input_digest': current,
+            'original_build_input_digest': value['before_digest'], 'driver_amendment': amendment}
 
 
 def verify_native(root):

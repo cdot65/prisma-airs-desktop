@@ -11,6 +11,7 @@ import owner_closure_policy as baseline
 import phase_inputs as original
 
 PREFIX = 'docs/planning/evidence/P09/c31-transition-20261102/'
+TRANSITION_RECORD = 'transition-driver-01.json'
 BASE_HEAD = 'e825c2f69cbcd19387142b80481faaad84690a07'
 BASE_DIGEST = 'e441459dde8a4b13403f16f16e5abf100636421ff827f9955f37740500bbdc50'
 OWNER_SCORE = 'docs/planning/C30-owner-score-override-2026-11-02.md'
@@ -57,7 +58,7 @@ def verify_transition(root):
     old = read(root / PREFIX / 'baseline-source.json')
     require(old['head'] == BASE_HEAD and digest(old['files']) == old['digest'] == BASE_DIGEST,
             'C31 transition baseline changed')
-    seal_path = root / PREFIX / 'transition.json'
+    seal_path = root / PREFIX / TRANSITION_RECORD
     seal = read(seal_path)
     require(seal['baseline_head'] == BASE_HEAD and seal['baseline_digest'] == BASE_DIGEST,
             'wrong transition baseline')
@@ -89,7 +90,7 @@ def verify_transition(root):
                 'focused preflight result missing/changed')
     require(bool(seal['focused_results']), 'no focused preflight results')
     require(sha(root / OWNER_SCORE) == OWNER_SHA, 'owner all-nine decision changed')
-    return {'record': PREFIX + 'transition.json', 'sha256': sha(seal_path),
+    return {'record': PREFIX + TRANSITION_RECORD, 'sha256': sha(seal_path),
             'baseline_head': BASE_HEAD, 'baseline_source_digest': BASE_DIGEST,
             'current_source_digest': digest(current), 'changed_paths': sorted(changed),
             'fix_commits': seal['fix_commits'], 'standing': 'C31-only production and native-driver remediation plus explicit administrative provenance; current qualification required'}
@@ -145,3 +146,92 @@ def historical_performance(root):
     original.require(hashlib.sha256(old).hexdigest() == original.sha(root / rel), 'historical C30 performance changed')
     return {'record': rel, 'sha256': original.sha(root / rel), 'current_qualification': False,
             'standing': 'Historical G7 measurement retained under owner C30 closure; not a measurement of current C31 application bytes; no new C30 scenario or timing run authorized.'}
+
+
+def verify_driver_amendment(root, current_digest):
+    """Explicit same-G8 application continuation; never relabel historical runs."""
+    import ast
+    import os
+    from phase_packet_owner_closure import source_inventory
+    root = Path(root)
+    require, read, sha = original.require, original.read, original.sha
+    prefix = PREFIX + 'driver-amendment-01/'
+    proof_path = root / prefix / 'equivalence.json'
+    proof = read(proof_path)
+    old_seal = root / PREFIX / 'transition.json'
+    require(sha(old_seal) == proof['original_transition_sha256'] == '39a2fd816437d55fbc163598a4b09f1dcb8f682c7acbe2f57cd1df4f7c070d4d', 'first source seal changed')
+    old = read(root / PREFIX / 'baseline-source.json')['files'].copy()
+    for name, value in read(old_seal)['source_delta'].items():
+        if value['after'] is None:
+            old.pop(name, None)
+        else:
+            old[name] = value['after']
+    current = source_inventory(root)
+    changed = {name: {'before': old.get(name), 'after': current.get(name)}
+               for name in sorted(set(old) | set(current)) if old.get(name) != current.get(name)}
+    require(changed == proof['source_delta_since_first_seal'], 'driver amendment source delta drift')
+    native_paths = {'tools/native-acceptance/acceptance_c31.py', 'tools/native-acceptance/test_administration_coverage.py'}
+    require(set(changed) <= native_paths | ADMIN_PATHS, 'driver continuation changed application or unrelated source')
+    def inventory(path):
+        return {name.strip(): value for value, name in (line.split(None, 1) for line in path.read_text().splitlines())}
+    before_path = root / proof['compiled_inputs_before']
+    after_path = root / proof['compiled_inputs_after']
+    require(sha(before_path) == proof['before_digest'] and sha(after_path) == proof['after_digest'] == current_digest,
+            'driver amendment compiled-input seal drift')
+    before, after = inventory(before_path), inventory(after_path)
+    input_delta = sorted(name for name in set(before) | set(after) if before.get(name) != after.get(name))
+    require(input_delta == proof['compiled_input_changes'] and set(input_delta) <= native_paths,
+            'reused G8 application has changed compiled application inputs')
+    driver = 'tools/native-acceptance/acceptance_c31.py'
+    old_driver = root / prefix / 'original-acceptance_c31.py'
+    require(sha(old_driver) == old[driver]['sha256'], 'old driver snapshot does not match first seal')
+    def normalized(path):
+        tree = ast.parse(path.read_text())
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name == 'gateway_key_checks':
+                node.body = [ast.Pass()]
+        return ast.dump(tree, include_attributes=False)
+    require(normalized(old_driver) == normalized(root / driver), 'runtime change exceeds the Gateway key-check function')
+    callers = set()
+    for path in (root / 'tools/native-acceptance').glob('*.py'):
+        if path.name.startswith('test_'):
+            continue
+        tree = ast.parse(path.read_text())
+        if any(isinstance(n, ast.Call) and ((isinstance(n.func, ast.Name) and n.func.id == 'gateway_key_checks')
+                   or (isinstance(n.func, ast.Attribute) and n.func.attr == 'gateway_key_checks')) for n in ast.walk(tree)):
+            callers.add(str(path.relative_to(root)))
+    require(callers == {'tools/native-acceptance/acceptance_c31.py', 'tools/native-acceptance/acceptance_c39.py'},
+            'changed helper has additional runtime callers')
+    prep_path = root / 'docs/planning/evidence/P09/native-prepare.json'
+    build_path = root / 'docs/planning/evidence/P09/native-build-inputs.json'
+    require(sha(prep_path) == proof['prepare_sha256'] and sha(build_path) == proof['build_record_sha256'],
+            'original actual G8 preparation/build record changed')
+    prep = read(prep_path)
+    require(sha(root / prep['bundle'] / 'Contents/MacOS/prisma-airs-desktop-v2') == prep['executable_sha256'] == proof['executable_sha256'],
+            'G8 application executable changed')
+    entries = []
+    bundle = root / prep['bundle']
+    for path in sorted(bundle.rglob('*')):
+        if path.is_dir() and not path.is_symlink():
+            continue
+        if path.is_symlink():
+            mode, value = 'symlink', hashlib.sha256(os.readlink(path).encode()).hexdigest()
+        else:
+            mode, value = ('100755' if path.stat().st_mode & 0o111 else '100644'), sha(path)
+        entries.append(f'{path.relative_to(bundle)}\0{mode}\0{value}\n')
+    require(hashlib.sha256(''.join(entries).encode()).hexdigest() == prep['bundle_sha256'] == proof['bundle_sha256'],
+            'complete G8 bundle changed')
+    require(len(proof['completed_native_steps']) == 10, 'wrong retained G8 step count')
+    for item in proof['completed_native_steps']:
+        for key in ['record', 'execution', 'log']:
+            require(sha(root / item[key]) == item[key + '_sha256'], 'retained G8 evidence changed: ' + item[key])
+        execution = read(root / item['execution'])
+        require(execution['driver_subject'] == item['subject'] and item['subject'] not in ['C31', 'C39', 'C44']
+                and execution['required_check_errors'] == [] and execution['executable_sha256'] == proof['executable_sha256'],
+                'invalid retained G8 native step')
+        require(sha(root / 'tools/native-acceptance' / ('acceptance_' + item['subject'].lower() + '.py')) == execution['driver_sha256'],
+                'retained native driver changed')
+    return {'record': str(proof_path.relative_to(root)), 'sha256': sha(proof_path),
+            'original_build_input_digest': proof['before_digest'], 'current_driver_input_digest': current_digest,
+            'retained_native_steps': 10, 'affected_native_steps': ['C31', 'C39', 'C44'],
+            'meaning': 'Same current G8 application/full bundle; only Gateway key-check flow and its test changed. Ten original passing records remain unchanged; affected/unrun drivers execute freshly. No G7 result is current and no current C30 timing is claimed.'}

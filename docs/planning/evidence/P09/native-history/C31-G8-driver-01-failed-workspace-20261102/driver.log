@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/docs/planning/evidence/P09/native-controller/run-p09-native.py", line 83, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/docs/planning/evidence/P09/native-controller/run-p09-native.py", line 61, in main
+    code = mod.main()
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c31.py", line 147, in main
+    return run()
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c31.py", line 180, in run
+    return exercise(app, mgmt, endpoint, prepared, FINAL)
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c31.py", line 230, in exercise
+    n1["gateway_keys"] = gateway_key_checks(app)
+                         ~~~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c31.py", line 113, in gateway_key_checks
+    coverage.act_on_node(app, tree, choice)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/administration_coverage.py", line 53, in act_on_node
+    raise ValueError("required scoped AX node is missing")
+ValueError: required scoped AX node is missing
