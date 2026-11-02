@@ -1,0 +1,59 @@
+{
+  "review_id": "C29-attempt-09-1793600388",
+  "subject": "C29",
+  "attempt": "attempt-09",
+  "request_id": "C29-attempt-09-1793600388",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T06:29:15.535989+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a19aea-3ee5-7d02-bf08-324ab1c76ee9"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "recommendation": "pass",
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [],
+  "fingerprints": {
+    "source": "2be15e87d274c5298c3b1a06f6fb9355a2e70e388542ff93c79f1bd03cc38878",
+    "dependencies": "5b331128733b5591662ba43b0f081cb867e03081de1371b2d3b77bbe2b725d57",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "6962cbcd811fa9d6b1d7bf6aada1f69bf7a5bfc847960c6b96554f06f9f514ab"
+  },
+  "verdict_sha256": "612cc4791375760863c0c95cafec90d935583aa247f87d7649ec1061df29d691",
+  "request_sha256": "7d769b0a20fa630309cef2b20ba2eb3073a5e1f5217878603205d8f88267664e",
+  "prompt_sha256": "5356495ecc32e1556e57d6f49c3087a79afb1ee86bb67a5c94ee101a0919d25b",
+  "post_review_audit_sha256": "6939c86d2d9a466a7d010dcb1667580a950a1d777c5f0490edee7e9185129faf",
+  "invocation_sha256": "40647e2804aeb9b046d30783fd14ee87a59e4e19d75c5c53829fd7e9cd4f6c34",
+  "thread_reply_sha256": "05c1b0563667da96119042dfc13035e2dcdb31054af7333c612e53b6b07e6720",
+  "source_frozen": true,
+  "d034_accepted": false,
+  "full_gate_pass": true,
+  "controller_complete": false,
+  "limitations": [
+    "Reproduced all four supplied fingerprints. All 4,466 scoped hashes and 18,338 compiled-input entries matched, including the final recheck. Independently enumerated compiled inputs found no missing or additional paths. All 18 check-log hashes matched. Hash consistency does not authenticate compiler execution or evidence authorship.",
+    "Verified C28's predecessor receipt hash and its matching passing raw verdict; also verified C27's receipt-to-verdict binding. D058/D059 authorize this integration while C26 remains open. This verdict does not complete C26 or the cumulative P09 phase gate.",
+    "Independently executed the retained onboarding binary: 10/10 passed; the mock-runtime IPC setup secret-confinement test: 1/1 passed; and offline L19 settlement regressions: 2/2 passed. These binaries were not rebuilt or independently authenticated against compiler inputs. Broader results rely on retained source-bound logs, including 550 renderer tests and the five setup-read integration tests.",
+    "Inspected the current C43 driver, all 48 retained matrix AX trees, focused behavior trees, observations and two representative 200% captures. The restored 24 behavior assertions and complete matrix address attempt-07 R1/R2/E1/E2. Capture/tree hashes matched; in-memory negative probes correctly rejected a missing matrix row and failed credential cleanup. Native interactions and Keychain deletion were not independently repeated.",
+    "Independently reproduced the current executable and complete mode-aware bundle hashes, verified the fixture identifier and native build-input seal, and found only the desktop and Rust Harness executables in the bundle. This unsigned fixture qualification on VirtualMac2,1 does not establish signed installed-package readiness or physical-host performance.",
+    "Verified the L19 receipt/build/inventory/executable chain and inspected its terminal AX evidence. It supports historical successful management verification, with the placeholder scan key reported Stored rather than Pass. The qualification-to-current production diff includes switch-guard and renderer retirement changes; the inspected management-verification path remains unchanged. No current-byte live qualification or independently observed HTTP request count is claimed.",
+    "No product endpoints, real credentials, private authorization manifests or OS permissions were accessed. Hosted Academy sign-in and spoken VoiceOver output were not independently exercised. Recorded owner authorization was assessed as repository evidence, not independently authenticated.",
+    "No application files were changed. The sandbox prevents the designated verdict artifact write; this returned JSON is the verdict artifact.",
+    "Separate fresh read-only reviewer session in the implementer model family. Observed CLI invocation/events and frozen inputs are not cryptographic proof of provider authorship. C26 controller completion remains open; no phase/release completion inferred."
+  ],
+  "outcome": "Actual independent C29 full9 manual fallback review passed and audited on G6/check06. Historical verdicts unchanged; no controller completion or phase/release pass inferred.",
+  "remediated_prior_accepted_findings": [
+    "attempt-07 R1",
+    "attempt-07 R2",
+    "attempt-07 E1",
+    "attempt-07 E2"
+  ]
+}
