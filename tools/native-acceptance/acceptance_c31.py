@@ -104,9 +104,31 @@ def gateway_key_checks(app):
     rail from standing in for Gateway facts. Keep a tree and capture for each
     list/detail, including failures; the caller enforces gateway_keys_complete.
     """
+    # A fresh tenant has no Gateway workspace until the operator chooses one.
+    # Keys shows that chooser, not key-kind controls, until its binding settles.
+    def first_kind(tree):
+        return next((n for n in coverage.product_nodes(tree, "AI Gateway")
+                     if n.get("role") in ("AXRadioButton", "AXTab")
+                     and n.get("label") == "Service keys"), None)
+    def workspace(tree):
+        return next((n for n in coverage.product_nodes(tree, "AI Gateway")
+                     if n.get("role") == "AXRadioButton"
+                     and (n.get("label") or "").startswith("Team A")), None)
+    tree, ready = app.wait_for(lambda t: first_kind(t) is not None or workspace(t) is not None, 20)
+    if not ready:
+        raise ValueError("Gateway Keys has neither its workspace chooser nor key-kind controls")
+    if first_kind(tree) is None:
+        coverage.act_on_node(app, tree, workspace(tree))
+        tree, ready = app.wait_for(lambda t: first_kind(t) is not None, 20)
+        if not ready:
+            raise ValueError("Gateway Keys workspace did not settle")
     result = {"kinds": {}}
     for kind in ("Service keys", "User keys"):
-        tree = app.tree()
+        tree, ready = app.wait_for(lambda t: any(n.get("role") in ("AXRadioButton", "AXTab")
+                                   and n.get("label") == kind
+                                   for n in coverage.product_nodes(t, "AI Gateway")), 20)
+        if not ready:
+            raise ValueError("Gateway key-kind control did not settle: " + kind)
         nodes = coverage.product_nodes(tree, "AI Gateway")
         choice = next((n for n in nodes if n.get("role") in ("AXRadioButton", "AXTab")
                        and n.get("label") == kind), None)

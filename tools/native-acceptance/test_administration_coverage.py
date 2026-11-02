@@ -153,5 +153,45 @@ class RequiredNativeAssertions(unittest.TestCase):
             self.assertIn("stale executable", errors)
 
 
+
+class GatewayWorkspacePrerequisite(unittest.TestCase):
+    def test_key_inspection_selects_the_required_workspace_before_key_controls(self):
+        from unittest.mock import patch
+        import acceptance_c31 as driver
+        class App:
+            def __init__(self):
+                self.workspace = False
+                self.kind = 'Service keys'
+                self.detail = False
+                self.actions = []
+            def tree(self):
+                if not self.workspace:
+                    return product('AI Gateway', [node('AXRadioButton', 'Keys', 3),
+                        node('AXRadioButton', 'Team A · us', 3),
+                        node('AXStaticText', 'Choose a workspace to read its configuration.', 3)])
+                tree = gateway_tree(detail=self.detail, kind=self.kind)
+                if not self.detail:
+                    tree.append(node('AXButton', 'Details for gateway-key-1', 3))
+                return tree
+            def wait_for(self, predicate, timeout=12):
+                tree = self.tree()
+                return tree, bool(predicate(tree))
+            def ax(self, action, role, label, occurrence=0):
+                self.actions.append(label)
+                if label.startswith('Team A'):
+                    self.workspace = True
+                elif label in ['Service keys', 'User keys']:
+                    self.kind = label
+                elif label.startswith('Details for '):
+                    self.detail = True
+                elif label == 'Close details':
+                    self.detail = False
+        app = App()
+        with patch.object(driver.c29, 'save_tree', return_value='synthetic-tree.json'), patch.object(driver.c29, 'capture', return_value='synthetic-capture.png'):
+            result = driver.gateway_key_checks(app)
+        self.assertTrue(coverage.gateway_keys_complete(result))
+        self.assertEqual(app.actions[0], 'Team A · us')
+        self.assertEqual(set(result['kinds']), {'Service keys', 'User keys'})
+
 if __name__ == "__main__":
     unittest.main()
