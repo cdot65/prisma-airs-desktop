@@ -1,0 +1,61 @@
+{
+  "review_id": "C32-attempt-22-1793640942",
+  "subject": "C32",
+  "attempt": "attempt-22",
+  "request_id": "C32-attempt-22-1793640942",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T17:43:39.524484+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a19d54-d8c7-77d2-8596-58f9333d4d00"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": [
+    "R1 \u2014 New C32 finding: crates/desktop-core/src/authority.rs:5368 spawns ConfirmHarness and calls the unscoped confirmer.confirm at :5369. If End conversation or context retirement happens before that task registers its native confirmation, authority/harness_tools.rs:300 dismisses an unknown nonce and removes harness_confirming. The late task nevertheless obtains a fresh default PresentationLease through apps/desktop/src-tauri/src/native_confirmation.rs:265 and opens the nonce at :277; Registry::complete does not remember earlier dismissal. A stale, blocking confirmation sheet can therefore appear after its conversation has ended or retired. The private settlement check prevents its acceptance from executing the command, but the native dialog lifecycle remains incorrect. Carry revocable ownership from the original Harness approval admission into its confirmation effect and retire it with the decision, using the existing scoped presentation API. Acceptance: a production-interface regression pauses this C32 effect before native registration, ends or retires its conversation, then releases it and proves no sheet appears and no command runs; fresh approvals must still support native Cancel and Allow once. This concerns Harness tool decisions, not the closed C31 configuration-review findings."
+  ],
+  "blockers": [],
+  "evidence_gaps": [
+    "E1 \u2014 crates/desktop-core/tests/ui_v2_harness/main.rs:455 waits until the confirmation is already held before ending the conversation. That test and the retained C32 native Cancel/Allow evidence do not exercise R1's earlier admission-to-registration ordering. Production-interface evidence for that ordering is required with the fix."
+  ],
+  "optional_suggestions": [],
+  "fingerprints": {
+    "source": "f0fea3027597ca654b8a7950cfb5c04f64f0e3b2e1e08ee993365a9e64a6d34c",
+    "dependencies": "01c11e8cae1314d9c9cc4c1a398a5c33cde58c0f34b7eb6605336766e7a0635d",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "1121a1fd30c42999941d7597e821558f71ae6f69bbf4bfe3459c43201ffbd659"
+  },
+  "verdict_sha256": "00f55840f85cf91462be6fd8ec33d0150f5049e76e074da8c10779c7e5c3c332",
+  "request_sha256": "d8679abedef0d059ffbb6e78c13942e06609e66019607ee8e6b8b063c3b5624e",
+  "prompt_sha256": "fa11e1bbae581dd2ade0f1371fd56e6dc53f2fa983215b2d7c0f9fbf26911ece",
+  "post_review_audit_sha256": "fb3ddefb9e960da5daa3f39dfd00894de7f02238ca11aa021f761d21596c2caa",
+  "invocation_sha256": "787ddebd5465d4ba1aeb1832ec1fc201a68ea4ef489c4e1c2f5cc4b03d6f822c",
+  "thread_reply_sha256": "790106fd8acbed0b45c888d4d0dd1655328d46338c5c7e1972fb0049d93d8974",
+  "source_frozen": true,
+  "d034_accepted": true,
+  "full_gate_pass": false,
+  "controller_complete": false,
+  "limitations": [
+    "The previous attempt-21 native-coverage omissions are remedied. The supplemental record recomputes the completed attempt-02 facts plus the two separately executed attempt-03 assertions, preserving attempt-02's raw failures and exit 1. This verdict fails for the separate C32 production race described above.",
+    "R1 is established by the source interleaving; I did not reproduce it by executing the application. Late acceptance remains blocked by settle_harness_confirmation, so no unauthorized command execution was established.",
+    "Recomputed all four supplied fingerprints. All 8,083 scoped file hashes matched initially and at final recheck. Independently reconstructed the 18,348-entry current compiled-input inventory and verified the seven declared Python input changes, matching original build/check inventories, build flags and all 18 check-log hashes.",
+    "Verified the unchanged complete 1,621-entry application bundle, including modes and symlink targets, application executable, bundled engine and engine archive hashes. Verified all six frozen prototype hashes. No Node/Bun executable was found by bundle filename inspection.",
+    "Verified recorded preparation, executable, driver, controller, ancestry and required-check bindings for the 19 retained G9 native drivers. The superseded C24-N06 raw failure remains disclosed. Hash consistency does not authenticate execution or compiler/provider authorship.",
+    "Independently passed nine read-only C32 coverage/reuse tests and recomputed the supplemental native audit and source-transition verification. Inspected the retained 14-test focused validation logs. Rust, renderer, build and native suites were not rerun.",
+    "Read retained native trees and inspected representative light, minimum-size dark 200%, and ended-status captures. Evidence supports the restored guard isolation/focus, typed-review handoff, enabled Send focus, ended status and Reduce Motion assertions. Native interaction and spoken VoiceOver output were not independently exercised.",
+    "Inspected the C31 scoped presentation and successful-detail fixes, original failing evidence, intermediate failures and final passing evidence. Current Gateway detail trees satisfy the strengthened checker. C31 attempt-07 is an actual audited all-nine predecessor pass; its review cap remains honored and no further C31 review is requested.",
+    "C30 remains complete under its exact owner exception. Its raw independent 9/9/9/8/8 fail verdict remains distinct from owner-assigned standing; its closed findings were not reopened.",
+    "Historical C29/L19 receipt, cleanup, budget and executable bindings were verified. All three L19 reads remain charged with zero remaining allowance. Historical live and C30 performance records establish no fresh live or timing result.",
+    "Semantic inspection focused on C32 and affected shared boundaries; broader retained material was checked through inventories and relevant evidence. Fixture qualification does not establish signed installed-release readiness. P09 and C26/P08 remain separate gates.",
+    "No application files were changed, product endpoints called, real credentials accessed or OS permissions granted. The read-only sandbox prevents the designated artifact write; this returned JSON is the verdict.",
+    "Fresh separate configured-model read-only session in implementer model family; hash consistency is not cryptographic provider/compiler authorship. C26/P08 controller/release remain open."
+  ],
+  "outcome": "Actual independent current G9 review audited. Historical G7/C29 evidence and C30/C41 owner decisions remain explicitly distinguished."
+}

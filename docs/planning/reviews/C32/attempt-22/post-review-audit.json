@@ -1,0 +1,79 @@
+{
+  "subject": "C32",
+  "attempt": "attempt-22",
+  "time": "2026-11-02T17:43:39.508625+00:00",
+  "transport": {
+    "invocation_sha256": "787ddebd5465d4ba1aeb1832ec1fc201a68ea4ef489c4e1c2f5cc4b03d6f822c",
+    "thread_reply_sha256": "790106fd8acbed0b45c888d4d0dd1655328d46338c5c7e1972fb0049d93d8974",
+    "feature_probe_sha256": "bb4d01d583993c8e3c431e0437092e6c288e9b5da919595063853d37e2d89862",
+    "model_requested": "gpt-6.1-sol",
+    "harness_version_observed": "codex-cli 0.166.0",
+    "reviewer_sessions_observed": [
+      "01a19d54-d8c7-77d2-8596-58f9333d4d00"
+    ],
+    "limits": "Observed CLI settings/events and unchanged inputs; not cryptographic proof of provider authorship."
+  },
+  "raw_verdict_sha256": "00f55840f85cf91462be6fd8ec33d0150f5049e76e074da8c10779c7e5c3c332",
+  "request_sha256": "d8679abedef0d059ffbb6e78c13942e06609e66019607ee8e6b8b063c3b5624e",
+  "source_files_verified": 8083,
+  "check_runs_verified": 18,
+  "compiled_inputs_unchanged": true,
+  "qualification_reuse": {
+    "transition": {
+      "record": "docs/planning/evidence/C32/remediation-attempt-21/transition.json",
+      "sha256": "e0655b9f7276faba07416f0ae593ad1b012a9f7870ddf9fd322b31a8f541eb1d",
+      "current_source_digest": "a2a88c3a2e5c8894c49c3746a3d5ac09937e2fb5b5394fdbe714316b81e3a68a",
+      "changed_paths": [
+        "tools/native-acceptance/acceptance_c32_current.py",
+        "tools/native-acceptance/acceptance_c32_followup.py",
+        "tools/native-acceptance/c32_coverage.py",
+        "tools/native-acceptance/c32_native_audit.py",
+        "tools/native-acceptance/legacy_assertions.py",
+        "tools/native-acceptance/test_c32_coverage.py",
+        "tools/native-acceptance/test_c32_native_audit.py",
+        "tools/p09/audit-c32-transition-review.py",
+        "tools/p09/audit-phase-review-c32-transition.py",
+        "tools/p09/c32_transition_policy.py",
+        "tools/p09/make-c32-transition-packet.py",
+        "tools/p09/make-phase-packet-c32-transition.py",
+        "tools/p09/phase_inputs_c32_transition.py",
+        "tools/p09/phase_packet_c32_transition.py",
+        "tools/p09/test_c32_transition.py"
+      ],
+      "standing": "C32-only supplemental native coverage and additive provenance; unchanged production, application bundle, existing driver/helper closures and historical G9 results. C31 actual full-nine remains closed; no C30 work."
+    },
+    "original_g9_input_digest": "404662cdc1e76235824fc92b55fe49a7e8d2ebfd9f1ea4cb1ae7c8a2bcdf544e",
+    "current_input_digest": "01c11e8cae1314d9c9cc4c1a398a5c33cde58c0f34b7eb6605336766e7a0635d",
+    "reuse_reason": "Only new C32 Python driver/validator/tests and C32 map entries changed. Rust, TypeScript, fixture/service helpers and actual complete bundle unchanged. G9 native19/check18 retained unchanged, not relabeled; new C32 native executes affected coverage."
+  },
+  "current_native_drivers_verified": 19,
+  "supplemental_c32_native_verified": {
+    "subject": "C32",
+    "record": "docs/planning/evidence/C32/remediation-attempt-21/coverage/native-acceptance.json",
+    "sha256": "1477608b0ab6162a9f61a2bded082237ec17ef83e37e9998d89a4ac9b54d8a45",
+    "required_targets": [
+      "C32-N01",
+      "C32-N02",
+      "C32-N03",
+      "C32-N04"
+    ],
+    "executable_sha256": "38a08638a5e8bf27d65d5fbf9ac28ec042f684114e6df7025aa30ad8de201e72",
+    "raw_results_preserved": {
+      "C32-N01": "pass",
+      "C32-N02": "fail",
+      "C32-N03": "fail",
+      "C32-N04": "fail"
+    },
+    "standing": "New source-bound aggregation of actual separate native executions; raw failed reporting retained unchanged, not relabeled."
+  },
+  "live_row_pass_verified": true,
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "d034_eligible": true,
+  "full_gate_pass": false
+}
