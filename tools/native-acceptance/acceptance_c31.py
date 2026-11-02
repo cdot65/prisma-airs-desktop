@@ -28,6 +28,7 @@ import acceptance_c08 as c8  # noqa: E402
 import acceptance_c09 as c9  # noqa: E402
 import acceptance_c28 as c28  # noqa: E402
 import acceptance_c29 as c29  # noqa: E402
+import administration_coverage as coverage  # noqa: E402
 
 ROOT = os.getcwd()
 SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C31")
@@ -95,6 +96,52 @@ def press_tab(app, label):
     time.sleep(0.6)
 
 
+
+def gateway_key_checks(app):
+    """Inspect both Gateway key kinds and every returned detail, on this app.
+
+    Card-scoped selectors prevent an open Runtime detail or the navigation
+    rail from standing in for Gateway facts. Keep a tree and capture for each
+    list/detail, including failures; the caller enforces gateway_keys_complete.
+    """
+    result = {"kinds": {}}
+    for kind in ("Service keys", "User keys"):
+        tree = app.tree()
+        nodes = coverage.product_nodes(tree, "AI Gateway")
+        choice = next((n for n in nodes if n.get("role") in ("AXRadioButton", "AXTab")
+                       and n.get("label") == kind), None)
+        coverage.act_on_node(app, tree, choice)
+        tree, _ = app.wait_for(lambda t: coverage.gateway_key_state(t, kind)["table"], 20)
+        state = coverage.gateway_key_state(tree, kind)
+        slug = kind.lower().replace(" ", "-")
+        state.update(tree=c29.save_tree("gateway-" + slug, tree),
+                     capture=c29.capture(app, "gateway-" + slug))
+        rows = sorted({n["label"] for n in coverage.product_nodes(tree, "AI Gateway")
+                       if n.get("role") == "AXButton" and (n.get("label") or "").startswith("Details for ")})
+        observed = {"list": state, "row_labels": rows, "details": []}
+        for index, label in enumerate(rows):
+            tree = app.tree()
+            node = next((n for n in coverage.product_nodes(tree, "AI Gateway")
+                         if n.get("role") == "AXButton" and n.get("label") == label), None)
+            coverage.act_on_node(app, tree, node)
+            tree, _ = app.wait_for(lambda t: bool(coverage.detail_nodes(t, "AI Gateway")), 12)
+            detail = coverage.gateway_key_state(tree, kind, require_detail=True)
+            detail.update(row=label, tree=c29.save_tree(f"gateway-{slug}-detail-{index}", tree),
+                          capture=c29.capture(app, f"gateway-{slug}-detail-{index}"))
+            observed["details"].append(detail)
+            close = coverage.button(coverage.detail_nodes(tree, "AI Gateway"), "Close details")
+            coverage.act_on_node(app, tree, close)
+            app.wait_for(lambda t: not coverage.detail_nodes(t, "AI Gateway"), 8)
+        result["kinds"][kind] = observed
+    return result
+
+
+def gateway_key_evidence(value):
+    return [row[key] for kind in value.get("kinds", {}).values()
+            for row in [kind["list"], *kind["details"]]
+            for key in ("tree", "capture") if row.get(key)]
+
+
 def main():
     try:
         return run()
@@ -154,32 +201,37 @@ def exercise(app, mgmt, endpoint, prepared, FINAL):
 
     # ---- N01: the inventory ----
     n1 = {}
-    n1["gates"] = app.has_text(tree, "needs an admitted Agentic Identity Security service") and app.has_text(tree, "needs an admitted Agentic Endpoint Security service")
+    n1["gates"] = all(coverage.gated_product(tree, name, "needs an admitted " + name + " service")
+                       for name in ("Agentic Identity Security", "Agentic Endpoint Security"))
     n1["runtime_tabs"] = [n.get("label") for n in tree if n.get("role") in ("AXRadioButton", "AXTab")]
     c8.text(app, "Details for Finance", 12)
     n1["new_topic"] = button(app.tree(), "New topic…") is not None
     press_tab(app, "Applications")
     tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Details for Support bot") is not None, 12)
-    n1["no_new_application"] = not any(n.get("role") == "AXButton" and (n.get("label") or "").startswith("New ") for n in tree)
+    n1["no_new_application"] = not any(n.get("role") == "AXButton" and (n.get("label") or "").startswith("New ")
+                                           for n in coverage.product_nodes(tree, "AI Runtime Security"))
     press_tab(app, "API keys")
     tree, _ = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Details for Runtime") is not None, 12)
     n1["new_api_key"] = button(tree, "New API key…") is not None
     app.ax("press", "AXButton", "Details for Runtime")
     tree, _ = app.wait_for(lambda t: button(t, "Issue additional key…") is not None, 10)
-    n1["key_actions"] = [l for l in ("Issue additional key…", "Regenerate…", "Remove…", "Edit…") if button(tree, l)]
+    n1["key_actions"] = [n.get("label") for n in coverage.detail_nodes(tree, "AI Runtime Security")
+                         if n.get("role") == "AXButton" and n.get("label") != "Close details"]
     obs["tree_admin"] = c29.save_tree("admin-keys", tree)
     obs["captures"]["admin"] = c29.matrix(app, "admin")
-    # Collapse Runtime Security so what follows is the Gateway product only.
-    c29.press(app, "AXButton", "AI Runtime Security")
-    app.wait_for(lambda t: tab(t, "Custom topics") is None, 8)
-    c29.press(app, "AXButton", "AI Gateway")
-    tree, _ = app.wait_for(lambda t: tab(t, "Keys") is not None, 10)
-    n1["gateway_tabs"] = [n.get("label") for n in tree if n.get("role") in ("AXRadioButton", "AXTab")]
-    press_tab(app, "Keys")
+    # Open the actual Gateway card, not its navigation-rail namesake. Runtime
+    # may remain open: its legitimate rotation actions must not taint Gateway.
     tree = app.tree()
-    n1["gateway_no_version"] = not app.has_text(tree, "Issue additional key") and not app.has_text(tree, "Finish rotation")
-    c29.press(app, "AXButton", "AI Gateway")
-    app.wait_for(lambda t: tab(t, "Keys") is None, 8)
+    coverage.act_on_node(app, tree, coverage.product_header(tree, "AI Gateway"))
+    tree, _ = app.wait_for(lambda t: tab(coverage.product_nodes(t, "AI Gateway"), "Keys") is not None, 10)
+    n1["gateway_tabs"] = [n.get("label") for n in coverage.product_nodes(tree, "AI Gateway")
+                          if n.get("role") in ("AXRadioButton", "AXTab")]
+    coverage.act_on_node(app, tree, tab(coverage.product_nodes(tree, "AI Gateway"), "Keys"))
+    n1["gateway_keys"] = gateway_key_checks(app)
+    n1["gateway_no_version"] = coverage.gateway_keys_complete(n1["gateway_keys"])
+    tree = app.tree()
+    coverage.act_on_node(app, tree, coverage.product_header(tree, "AI Gateway"))
+    app.wait_for(lambda t: tab(coverage.product_nodes(t, "AI Gateway"), "Keys") is None, 8)
     c29.press(app, "AXButton", "Model and skill scans")
     press_tab(app, "Codebase scans")
     tree = app.tree()
@@ -295,12 +347,15 @@ def exercise(app, mgmt, endpoint, prepared, FINAL):
     # ---- N04: accessibility additions ----
     n4 = {}
     tree = app.tree()
-    n4["sheet_topmost"] = c29.switcher(tree) == {} and dialog(tree, ROTATE) is not None
+    n4["modal_count"] = sum(n.get("subrole") in ("AXDialog", "AXApplicationDialog") for n in tree)
+    n4["sheet_topmost"] = c29.switcher(tree) == {} and dialog(tree, ROTATE) is not None and n4["modal_count"] == 1
+    obs["tree_topmost"] = c29.save_tree("rotation-modal-topmost", tree)
     app.keycode(53)
     tree, n4["sheet_closed"] = app.wait_for(lambda t: dialog(t, ROTATE) is None, 8)
     time.sleep(0.5)
     focused = fx.App.focused(app.tree()) or {}
     n4["focus_after"] = focused.get("label")
+    obs["tree_focus_returned"] = c29.save_tree("rotation-focus-returned", app.tree())
     # The opener ("Finish rotation…") is gone once the rotation completed:
     # focus goes to the page heading, never nowhere.
     n4["focus_returned"] = focused.get("role") == "AXHeading" and (focused.get("label") or "") == "Administration"
@@ -311,12 +366,19 @@ def exercise(app, mgmt, endpoint, prepared, FINAL):
     app.menu("Go", "Administration")
     app.wait_for(lambda t: fx.App.node(t, "AXHeading", "Administration") is not None, 10)
     # Keyboard: from the Runtime header, Tab reaches its tabs.
-    app.ax("focus", "AXButton", "AI Runtime Security")
+    tree = app.tree()
+    if tab(coverage.product_nodes(tree, "AI Runtime Security"), "Custom topics") is None:
+        coverage.act_on_node(app, tree, coverage.product_header(tree, "AI Runtime Security"))
+        tree, _ = app.wait_for(lambda t: tab(coverage.product_nodes(t, "AI Runtime Security"), "Custom topics") is not None, 10)
+    coverage.act_on_node(app, tree, coverage.product_header(tree, "AI Runtime Security"), "focus")
     walk = []
-    for _ in range(10):
+    n4["keyboard_trees"] = []
+    for index in range(10):
         app.keycode(48)
-        f = fx.App.focused(app.tree()) or {}
+        tree = app.tree()
+        f = fx.App.focused(tree) or {}
         walk.append(f.get("label") or "")
+        n4["keyboard_trees"].append(c29.save_tree(f"administration-keyboard-{index}", tree))
     n4["walk"] = walk
     n4["tabs_reached"] = any(l in ("Overview", "Playground", "Security profiles", "Custom topics") for l in walk)
     # 900×600 and 200% in both themes: nothing past the window's right edge.
@@ -409,7 +471,7 @@ def exercise(app, mgmt, endpoint, prepared, FINAL):
     caps = lambda name: list(obs["captures"].get(name, {}).values())  # noqa: E731
     add("C31-N01", n1["gates"] and n1["new_topic"] and n1["no_new_application"] and n1["new_api_key"] and set(n1["key_actions"]) == {"Issue additional key…", "Regenerate…", "Remove…"} and "Limits" not in n1["gateway_tabs"] and n1["gateway_no_version"] and n1["codebase_unavailable"],
         f"AIS/AES gates {n1['gates']}; New topic… {n1['new_topic']}; no New application… {n1['no_new_application']}; New API key… {n1['new_api_key']}; key actions {n1['key_actions']}; Gateway tabs {n1['gateway_tabs']}; Gateway keys never offer a version {n1['gateway_no_version']}; Codebase scans unavailable {n1['codebase_unavailable']}",
-        [run_rel, obs["tree_admin"]] + caps("admin"))
+        [run_rel, obs["tree_admin"]] + gateway_key_evidence(n1["gateway_keys"]) + caps("admin"))
     add("C31-N02", n2["sheet"] and n2["disabled_empty"] and n2["disabled_wrong"] and n2["enabled_match"] and n2["native_confirmation"] and n2["confirmation_title"] and n2["live"] and n2["writes"] == 1 and n2["closed"],
         f"review sheet {n2['sheet']}; Apply disabled empty {n2['disabled_empty']} and wrong-case {n2['disabled_wrong']}, enabled on the exact name {n2['enabled_match']}; native confirmation {n2['native_confirmation']} titled for Finance {n2['confirmation_title']}; applied panel 'Live. The item was read back.' {n2['live']}; PUT writes {n2['writes']}; Done closed {n2['closed']}",
         [run_rel, obs["tree_applied"]] + caps("review-applied"))
@@ -425,7 +487,7 @@ def exercise(app, mgmt, endpoint, prepared, FINAL):
         f"rotation sheet topmost (rail hidden) {n4['sheet_topmost']}; Escape closed {n4['sheet_closed']} returning focus to '{n4['focus_after']}' ({n4['focus_returned']}); reminder cleared after completion {n4['reminder_cleared']}; Tab from the Runtime header reached its tabs {n4['tabs_reached']}; at 900×600 and 200% overflow light {n4['zoom']['light']['overflow_px']} px, dark {n4['zoom']['dark']['overflow_px']} px; "
         f"focus ring on the review sheet's Close {n2['ring'].get('diff')} px changed ({ring_ok}); applied result in a status region {n2['announced']}; rotation completion announced in the panel's status region {n3['announced']}; "
         f"Reduce Motion active {rmo.get('active')}: the applied toast shown {rmo.get('toast')}, still present after 8 s {rmo.get('persists')}, dismissed {rmo.get('dismissed')}, setting restored {rmo.get('restored')}",
-        [run_rel, rmo.get("tree")] + [v["tree"] for v in n4["zoom"].values()] + caps("admin-min-200") + caps("review-ring") + caps("reduce-motion"))
+        [run_rel, rmo.get("tree"), obs["tree_topmost"], obs["tree_focus_returned"]] + n4["keyboard_trees"] + [v["tree"] for v in n4["zoom"].values()] + caps("admin-min-200") + caps("review-ring") + caps("reduce-motion"))
 
     hw = fx.sh(["sysctl", "-n", "hw.model"]).stdout.strip()
     os_ver = fx.sh(["sw_vers", "-productVersion"]).stdout.strip() + " (" + fx.sh(["sw_vers", "-buildVersion"]).stdout.strip() + ")"

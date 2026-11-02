@@ -1,0 +1,11 @@
+# C31 attempt-05 R2/E1 native assertion correction
+
+Raw attempt-05 verdict and historical native failures remain unchanged. This changes qualification requirements and future driver observations; it does not call old failed records passed or claim fresh native execution.
+
+- C31-N01 now requires its own inventory assertions plus C39-N01/N03. Agentic products must contain only their gate and header. Runtime key details must contain exactly their admitted actions. Gateway checks operate within the actual product-card subtree, require both Service keys and User keys lists, open every returned key detail, reject Issue additional key / Finish rotation there, and retain each source tree/capture. A missing card, table, detail or required assertion cannot satisfy a negative check.
+- C31-N04 now requires its own accessibility observations plus current C39-N02/N04 review/board facts on the same executable. The C31 driver focuses the actual Runtime card header rather than the navigation-rail namesake, retains the focus walk and modal/focus-return trees, and requires exactly one topmost review modal. All original review ring/status/Reduce Motion/restoration/reminder requirements remain enforced.
+- C39 Gateway route/key actions are scoped to that product's table/detail; an open Runtime detail can no longer stand in for a Gateway result. Both key-kind lists and every returned detail restriction are mandatory for C39-N03. Custom-topic detail actions are checked exactly.
+
+Focused verification: nine Python unittest methods passed, including Runtime/Gateway contamination, forbidden Gateway controls, missing context/detail, actual card-header selection, gate-only surfaces, mandatory per-kind/per-row facts and missing/failed/stale native-record controls. The production mapper previously required C31-N02/N03 only; it now requires all four unretired C31 checks. See R2-focused-results.json. Syntax and git diff --check passed. No native UI run, app build, Rust suite or full repository suite was performed in this isolated worktree.
+
+C30 owner closure and all C30 mapping entries are untouched. No C30 measurement, scenario, capture matrix or raw verdict was changed or run. Root's integration author owns the actual current-source qualification and new independent C31 review.

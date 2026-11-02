@@ -37,6 +37,7 @@ import acceptance_c28 as c28  # noqa: E402
 import acceptance_c29 as c29  # noqa: E402
 import v2_setup as v2s  # noqa: E402
 import acceptance_c31 as c31  # noqa: E402
+import administration_coverage as coverage  # noqa: E402
 
 ROOT = os.getcwd()
 EVIDENCE = os.path.join(ROOT, "docs/planning/evidence/C39")
@@ -376,7 +377,8 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     if views:
         app.ax("press", "AXButton", views[0]["label"][:60])
         tree, n1["detail"] = app.wait_for(lambda t: any(n.get("role") == "AXButton" and (n.get("label") or "") == "Close details" for n in t), 15)
-        detail_buttons = [(n.get("label") or "") for n in tree if n.get("role") == "AXButton" and (n.get("label") or "") in ("Edit…", "Delete…", "Close details")]
+        detail_buttons = [(n.get("label") or "") for n in coverage.detail_nodes(tree, "AI Runtime Security")
+                          if n.get("role") == "AXButton"]
         n1["detail_actions"] = detail_buttons
         obs["tree_detail"] = c29.save_tree("admin-detail", tree)
         c29.press(app, "AXButton", "Close details")
@@ -479,7 +481,9 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     tree, n3["gateway_tabs"] = app.wait_for(lambda t: tab_of(t, "Workspaces") is not None and tab_of(t, "Routes") is not None, 10)
     t = tab_of(app.tree(), "Workspaces")
     app.ax("press", t["role"], "Workspaces")
-    tree, n3["workspace_detail"] = app.wait_for(lambda t: app.has_text(t, "Settings of Team A as read from the service.") and fx.App.node(t, "AXButton", "Edit…") is not None, 20)
+    tree, n3["workspace_detail"] = app.wait_for(
+        lambda t: app.has_text(coverage.product_nodes(t, "AI Gateway"), "Settings of Team A as read from the service.")
+        and coverage.button(coverage.product_nodes(t, "AI Gateway"), "Edit…") is not None, 20)
     n3["workspace_chosen"] = any(n.get("role") == "AXRadioButton" and (n.get("label") or "").startswith("Team A") and str(n.get("value", "")).lower() in ("1", "true", "selected") for n in tree)
     obs["tree_gateway_workspaces"] = c29.save_tree("gateway-workspaces", tree)
     t = tab_of(app.tree(), "Routes")
@@ -487,15 +491,25 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     tree, n3["routes_table"] = app.wait_for(lambda t: any(n.get("role") == "AXTable" and (n.get("label") or "") == "Routes" for n in t) and fx.App.node(t, "AXButton", "Details for") is not None, 20)
     n3["routes_search"] = any(n.get("role") in ("AXTextField", "AXSearchField") and (n.get("label") or "") == "Search routes" for n in tree)
     n3["routes_create"] = fx.App.node(tree, "AXButton", "New route…") is not None
-    app.ax("press", "AXButton", fx.App.node(tree, "AXButton", "Details for")["label"][:60])
-    tree, n3["route_detail"] = app.wait_for(lambda t: fx.App.node(t, "AXButton", "Close details") is not None and fx.App.node(t, "AXButton", "Edit") is not None, 15)
+    route = next((n for n in coverage.product_nodes(tree, "AI Gateway")
+                  if n.get("role") == "AXButton" and (n.get("label") or "").startswith("Details for ")), None)
+    coverage.act_on_node(app, tree, route)
+    tree, n3["route_detail"] = app.wait_for(
+        lambda t: bool(coverage.detail_nodes(t, "AI Gateway"))
+        and any(n.get("role") == "AXButton" and (n.get("label") or "").startswith("Edit")
+                for n in coverage.detail_nodes(t, "AI Gateway")), 15)
     obs["tree_gateway_routes"] = c29.save_tree("gateway-routes", tree)
     obs["captures"]["gateway-routes"] = {"light": c29.capture(app, "gateway-routes-light")}
-    c29.press(app, "AXButton", "Close details")
-    t = tab_of(app.tree(), "Keys")
-    app.ax("press", t["role"], "Keys")
-    tree, n3["keys_table"] = app.wait_for(lambda t: any(n.get("role") == "AXTable" and (n.get("label") or "") == "Service keys" for n in t), 20)
-    n3["keys_kinds"] = all(any(n.get("role") == "AXRadioButton" and (n.get("label") or "") == k for n in tree) for k in ("Service keys", "User keys"))
+    coverage.act_on_node(app, tree, coverage.button(coverage.detail_nodes(tree, "AI Gateway"), "Close details"))
+    tree = app.tree()
+    t = tab_of(coverage.product_nodes(tree, "AI Gateway"), "Keys")
+    coverage.act_on_node(app, tree, t)
+    tree, n3["keys_table"] = app.wait_for(lambda t: coverage.gateway_key_state(t, "Service keys")["table"], 20)
+    n3["keys_kinds"] = all(any(n.get("role") == "AXRadioButton" and (n.get("label") or "") == k
+                               for n in coverage.product_nodes(tree, "AI Gateway"))
+                            for k in ("Service keys", "User keys"))
+    n3["gateway_keys"] = c31.gateway_key_checks(app)
+    n3["gateway_key_restrictions"] = coverage.gateway_keys_complete(n3["gateway_keys"])
     c29.press(app, "AXButton", "AI Gateway")
     c29.press(app, "AXButton", "AI Red Teaming")
     tree, n3["red_team_tabs"] = app.wait_for(lambda t: tab_of(t, "Targets") is not None and tab_of(t, "Scans") is not None, 10)
@@ -601,7 +615,7 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     caps = lambda name: [v for v in obs["captures"].get(name, {}).values() if v]  # noqa: E731
     n1_ok = (n1["heading"] and n1["line"] and n1["expand_collapse"] and n1["cards_in_order"] and n1["runtime_chrome"] and n1["runtime_figure"] and n1["agentic_unavailable"]
              and n1["tabs_ok"] and n1["table"] and n1["rows"] >= 1 and len(n1["views"]) >= 1 and n1["search"] and n1["new_topic"] and bool(n1["footer"]["count"]) and bool(n1["footer"]["read"])
-             and n1["detail"] and "Edit…" in n1["detail_actions"] and n1["overview"] and n1["bars"] and n1["playground"] and all(n1["playground_fields"][k] for k in ("Profile name or ID", "Application name (optional)", "Case name"))
+             and n1["detail"] and set(n1["detail_actions"]) == {"Edit…", "Delete…", "Close details"} and n1["overview"] and n1["bars"] and n1["playground"] and all(n1["playground_fields"][k] for k in ("Profile name or ID", "Application name (optional)", "Case name"))
              and n1["scanned"] and n1["expanded_all"] and n1["collapsed_all"] and len(n1["parity"]) == 2)
     add("C39-N01", n1_ok,
         f"heading {n1['heading']}, line {n1['line']}, Expand/Collapse all {n1['expand_collapse']}; cards in order {n1['cards_in_order']} ({len(n1['cards'])}); Runtime chrome {n1['runtime_chrome']} with a figure {n1['runtime_figure']}; agentic products Not available {n1['agentic_unavailable']}; "
@@ -612,10 +626,10 @@ def exercise(app, endpoint, mgmt, prepared, FINAL):
     add("C39-N02", n2_ok,
         f"the sheet opened {n2.get('sheet')} docked right at 620px {n2.get('sheet_docked')} ({n2.get('sheet_frame')}) with its title {n2.get('sheet_title')}, state Draft {n2.get('sheet_state')} then Ready for review {n2.get('state_ready')}, close control {n2.get('sheet_close')}; Apply… disabled empty {n2.get('disabled_empty')} and wrong {n2.get('disabled_wrong')}, enabled on the typed name {n2.get('enabled_match')}; the native confirmation {n2.get('native_confirmation')} titled {n2.get('confirmation_title')}; applied and read back live {n2.get('live')} (state Applied {n2.get('state_applied')}) with {n2.get('writes')} write(s); Done closed it {n2.get('closed')}; composites {sorted(n2.get('parity', {}).values())}",
         [run_rel, obs.get("tree_sheet"), obs.get("tree_applied")] + caps("review-applied") + sorted(n2.get("parity", {}).values()))
-    n3_ok = all(n3.get(k) for k in ("gateway_tabs", "workspace_detail", "workspace_chosen", "routes_table", "routes_search", "routes_create", "route_detail", "keys_table", "keys_kinds", "red_team_tabs", "red_team_tiles", "red_team_ranked", "targets_table", "targets_results", "scans_heading", "scans_no_tiles", "models_tabs", "model_scans", "codebase_unavailable"))
+    n3_ok = all(n3.get(k) for k in ("gateway_tabs", "workspace_detail", "workspace_chosen", "routes_table", "routes_search", "routes_create", "route_detail", "keys_table", "keys_kinds", "gateway_key_restrictions", "red_team_tabs", "red_team_tiles", "red_team_ranked", "targets_table", "targets_results", "scans_heading", "scans_no_tiles", "models_tabs", "model_scans", "codebase_unavailable"))
     add("C39-N03", n3_ok,
-        f"Gateway tabs {n3.get('gateway_tabs')}: Workspaces with Team A chosen {n3.get('workspace_chosen')} and its settings read {n3.get('workspace_detail')}; Routes as a table {n3.get('routes_table')} with search {n3.get('routes_search')}, New route… {n3.get('routes_create')} and a detail with Edit {n3.get('route_detail')}; Keys table with the kinds {n3.get('keys_table') and n3.get('keys_kinds')}; Red Teaming tabs {n3.get('red_team_tabs')}: Overview tiles {n3.get('red_team_tiles')} and ranked bars {n3.get('red_team_ranked')}, Targets table {n3.get('targets_table')} with Results {n3.get('targets_results')}, Scans heading {n3.get('scans_heading')} without the tiles {n3.get('scans_no_tiles')}; Model scans {n3.get('model_scans')}, Codebase scans not available {n3.get('codebase_unavailable')}",
-        [run_rel, obs.get("tree_gateway_workspaces"), obs.get("tree_gateway_routes"), obs.get("tree_red_team"), obs.get("tree_models")] + caps("gateway-routes") + caps("red-team-overview"))
+        f"Gateway tabs {n3.get('gateway_tabs')}: Workspaces with Team A chosen {n3.get('workspace_chosen')} and its settings read {n3.get('workspace_detail')}; Routes as a table {n3.get('routes_table')} with search {n3.get('routes_search')}, New route… {n3.get('routes_create')} and a detail with Edit {n3.get('route_detail')}; Keys table with the kinds {n3.get('keys_table') and n3.get('keys_kinds')}, both scoped key lists and every returned detail forbid Issue additional key / Finish rotation {n3.get('gateway_key_restrictions')}; Red Teaming tabs {n3.get('red_team_tabs')}: Overview tiles {n3.get('red_team_tiles')} and ranked bars {n3.get('red_team_ranked')}, Targets table {n3.get('targets_table')} with Results {n3.get('targets_results')}, Scans heading {n3.get('scans_heading')} without the tiles {n3.get('scans_no_tiles')}; Model scans {n3.get('model_scans')}, Codebase scans not available {n3.get('codebase_unavailable')}",
+        [run_rel, obs.get("tree_gateway_workspaces"), obs.get("tree_gateway_routes"), obs.get("tree_red_team"), obs.get("tree_models")] + c31.gateway_key_evidence(n3["gateway_keys"]) + caps("gateway-routes") + caps("red-team-overview"))
     lay = n4["layouts"]
     ring_ok = (n4["ring"].get("diff") or 0) > 40
     layouts_ok = len(lay) == 4 and all(v["overflow_px"] == 0 and v["horizontal_scrollbars"] == 0 and v["table"]["ok"] for v in lay.values()) \

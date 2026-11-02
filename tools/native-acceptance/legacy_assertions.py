@@ -330,10 +330,10 @@ ASSERTIONS = {
     "C30-N03": (X, ["C37-N01"], "snooze, acknowledge and unsnooze with the core's return time stated the same everywhere"),
     "C30-N04": (X, ["C37-N02"], "Tab from Read now reaches the tabs and rows; Enter opens a row's detail"),
     # ---- C31 Administration → C39 ----
-    "C31-N01": (X, ["C39-N01"], "the inventory per tab with exactly its admitted actions; the gated products show their gate"),
+    "C31-N01": (S, ["C31-N01", "C39-N01", "C39-N03"], "C31-N01 requires each Runtime tab's exact admitted actions, gate-only Agentic products, no Gateway Limits tab and both Gateway key lists plus every returned detail without Runtime rotation actions; C39-N01/N03 bind the current board and other-product inventories on the same bundle"),
     "C31-N02": (S, ["C31-N02", "C39-N02"], "acceptance_c31.py through legacy_v2: the custom topic edit through the review sheet, Apply on the exact name, the native confirmation, applied once; C39-N02 asserts the same on the board"),
     "C31-N03": (S, ["C31-N03"], "acceptance_c31.py through legacy_v2: Issue additional key… reviewed and confirmed natively, the issued key revealed through the host's secret sheet, the review exit, the Inbox reminder and its resumption, the old key's removal (invariants I6/I7)"),
-    "C31-N04": (X, ["C39-N02"], "the review sheet docked with Close review and Done"),
+    "C31-N04": (S, ["C31-N04", "C39-N02", "C39-N04"], "C31-N04 requires the sole topmost modal, Escape focus return, cleared rotation reminder, product-header Tab reach, minimum/200% themes, review-control ring, polite applied/rotation results and Reduce Motion toast persistence/dismissal/restoration; C39-N02/N04 require current review geometry and measured board keyboard/layout facts on the same bundle"),
     # ---- C32 Harness in v2 → C38 ----
     "C32-N01": (X, ["C38-N01"], "the title band names tenant, engine and workspace; a fresh tenant's first send starts a conversation"),
     "C32-N02": (X, ["C38-N01", "C38-N02", "C38-N03"], "a decision held in the aside; Approve once / Decline; a tenant switch while it waits meets the guard"),

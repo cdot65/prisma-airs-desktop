@@ -1,0 +1,40 @@
+{
+  "recorded_utc": "2026-11-02T12:01:10.638913+00:00",
+  "command": "/opt/homebrew/bin/python3 -B tools/native-acceptance/test_administration_coverage.py -v",
+  "cwd": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-native-fix",
+  "result": "pass",
+  "exit": 0,
+  "test_methods_passed": 9,
+  "reported_seconds": 0.005,
+  "provenance": "Recorded from the actual tool-returned command result; full verbose output is in this task conversation, not represented as a separately captured raw process log.",
+  "syntax": "All changed/new Python source compiled in memory; no app compilation",
+  "diff_check_exit": 0,
+  "control": {
+    "original_c31_required": [
+      "C31-N02",
+      "C31-N03"
+    ],
+    "corrected_c31_required": [
+      "C31-N01",
+      "C31-N02",
+      "C31-N03",
+      "C31-N04"
+    ],
+    "previously_omitted_now_required": [
+      "C31-N01",
+      "C31-N04"
+    ],
+    "only_changed_map_ids": [
+      "C31-N01",
+      "C31-N04"
+    ],
+    "c30_map_entries_unchanged": true
+  },
+  "not_run": [
+    "native UI/drivers",
+    "application build",
+    "Rust checks",
+    "repository full suite",
+    "C30 work"
+  ]
+}
