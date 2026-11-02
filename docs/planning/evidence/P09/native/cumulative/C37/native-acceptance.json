@@ -1,14 +1,14 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C37",
-  "recorded_utc": "2026-11-02T19:22:08Z",
+  "recorded_utc": "2026-11-02T22:10:16Z",
   "method": "cua",
   "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c37.py",
   "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
   "app": {
     "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
     "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
-    "executable_sha256": "d8bf6a0f91507b6643a9888169873fe5c8bc1c96739bc2cd33b61aa3805ebcca",
+    "executable_sha256": "7f6ed0cc4d7c5ba38c255b4d8a579b69a0e621bbe5d5e37a6f4182e2ab3afd48",
     "fixture": true
   },
   "checks": [
@@ -16,7 +16,7 @@
       "id": "C37-N01",
       "description": "The Inbox as the prototype draws it (R2App start=inbox) with a tenant whose read has landed: the heading and its line naming the tenant; a 430px list card with the filter tabs (All, Needs action, Updates, Snoozed, each with its count) over the rows (severity tile and word, title, product and source, when; an acknowledged row marked) and a footer naming the read's coverage; selecting a row fills the detail card (severity tile and word, product and source, the 22px title, the body, the facts as a three-column grid, the entry's own action, Acknowledge or Mark as needing action, Snooze or Unsnooze); the empty states name the read (first read pending; the failed first read, every source answering 500; with the sessions chart denied, AI Runtime Security needing a role: Open role issue offered, the footer's partial coverage, the empty pane qualifying what was read and naming the unread source rather than a bare all-clear, and the issue opening that product in Administration); snooze, acknowledge and unsnooze stay the C30 core intents with the core's return time stated the same in the row, the detail and the toast (D059 parity: the composites under evidence/C37/parity are captured by this script from the populated state with the first row opened, parity/bundle.json rewritten with the bundle they came from, and the owner's approval of them is recorded in parity/notes.md).",
       "result": "pass",
-      "observation": "heading True; empty state before any read named it True; the failed first read named True; with the chart denied, Open role issue offered True with the footer '1 of 2 sources read at 19:19.', the empty pane 'Nothing needs action in what was read (1 of 2 sources). Activity for sessions chart is unknown until it can be read.' (no bare all-clear True) and opening AI Runtime Security in Administration True; Read now landed True; line 'Everything that needs you in Northwind Health \u00b7 newest first' (True); tabs {'All': 'All 2', 'Needs action': 'Needs action 2', 'Updates': 'Updates 0', 'Snoozed': 'Snoozed 0'} (True); rows ['3 violating sessions to investigate Warning \u00b7 AI Runtime Security \u00b7 Runtime Security \u00b7 last 24h 19:19', 'Runtime expires in 5 days Warning \u00b7 AI Runtime Security \u00b7 Runtime Security API keys 19:19'] with severity words True; footer 'All sources read at 19:19.'; detail: title True, severity True, facts grid True, own action True, actions {'Acknowledge': True, 'Snooze 24 hours': True}; holds: snooze toast True times {'toast': 'tomorrow 19:19', 'row': 'tomorrow 19:19', 'pane': 'tomorrow 19:19'} same True, unsnoozed True, acknowledged True, unmarked True",
+      "observation": "heading True; empty state before any read named it True; the failed first read named True; with the chart denied, Open role issue offered True with the footer '1 of 2 sources read at 22:07.', the empty pane 'Nothing needs action in what was read (1 of 2 sources). Activity for sessions chart is unknown until it can be read.' (no bare all-clear True) and opening AI Runtime Security in Administration True; Read now landed True; line 'Everything that needs you in Northwind Health \u00b7 newest first' (True); tabs {'All': 'All 2', 'Needs action': 'Needs action 2', 'Updates': 'Updates 0', 'Snoozed': 'Snoozed 0'} (True); rows ['3 violating sessions to investigate Warning \u00b7 AI Runtime Security \u00b7 Runtime Security \u00b7 last 24h 22:07', 'Runtime expires in 5 days Warning \u00b7 AI Runtime Security \u00b7 Runtime Security API keys 22:07'] with severity words True; footer 'All sources read at 22:07.'; detail: title True, severity True, facts grid True, own action True, actions {'Acknowledge': True, 'Snooze 24 hours': True}; holds: snooze toast True times {'toast': 'tomorrow 22:08', 'row': 'tomorrow 22:08', 'pane': 'tomorrow 22:08'} same True, unsnoozed True, acknowledged True, unmarked True",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C37/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-failed.json",

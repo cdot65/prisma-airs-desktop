@@ -1,0 +1,83 @@
+$ cargo test --locked -p desktop-core --features test-fixtures --test ui_v2_closure --test ui_v2_shell_port --test ui_v2_home --test ui_v2_inbox_port --test ui_v2_harness_port --test ui_v2_admin --test ui_v2_api --test ui_v2_academy --test ui_v2_wizard
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/ui_v2_academy/main.rs (target/debug/deps/ui_v2_academy-e025b40ddf85c448)
+
+running 2 tests
+test a_guest_generation_cannot_read_account_pages_the_frame_offers_only_when_signed_in ... ok
+test the_chrome_draws_from_the_snapshot_as_a_guest_then_as_the_account ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
+
+     Running tests/ui_v2_admin/main.rs (target/debug/deps/ui_v2_admin-f68450c1cefd7466)
+
+running 3 tests
+test a_page_read_of_custom_topics_is_the_table_rows ... ok
+test the_inventory_lists_the_products_and_runtime_tabs_the_board_draws ... ok
+test the_overview_tiles_and_bars_come_from_one_read_and_the_pill_from_its_state ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/ui_v2_api/main.rs (target/debug/deps/ui_v2_api-ce5e28f7d330d8d7)
+
+running 4 tests
+test the_tree_tabs_and_selection_the_board_draws_from ... ok
+test cloned_collection_roots_have_distinct_view_scopes_even_with_the_same_id_and_basename ... ok
+test history_lists_runs_newest_first_and_a_shown_run_is_the_record_as_it_was ... ok
+test params_rows_are_the_files_lines_read_by_preview_and_sent_as_the_query ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/ui_v2_closure/main.rs (target/debug/deps/ui_v2_closure-a80a398054df4103)
+
+running 3 tests
+test a_fresh_store_starts_in_the_first_run_wizard_of_the_only_presentation ... ok
+test an_older_store_that_persisted_the_legacy_presentation_still_gets_v2 ... ok
+test every_destination_the_legacy_shell_reached_is_a_v2_destination ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ui_v2_harness_port/main.rs (target/debug/deps/ui_v2_harness_port-21743807c3cef457)
+
+running 3 tests
+test the_summary_lists_the_workspace_catalog_with_each_standing ... ok
+test the_board_draws_the_conversation_from_one_view ... ok
+test the_aside_holds_a_read_only_decision_until_it_is_allowed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.94s
+
+     Running tests/ui_v2_home/main.rs (target/debug/deps/ui_v2_home-fc266eaf6d66ffcc)
+
+running 3 tests
+test the_runtime_card_draws_the_summary_and_the_chart_of_one_read ... ok
+test the_attention_list_is_the_needs_action_entries_minus_the_operators_holds ... ok
+test a_recheck_is_admitted_only_for_a_product_the_read_lists_and_a_failed_source_is_partial ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests/ui_v2_inbox_port/main.rs (target/debug/deps/ui_v2_inbox_port-f2c5e6427092ed1f)
+
+running 2 tests
+test the_list_is_newest_first_with_the_facts_the_detail_shows_and_the_footer_names_the_coverage ... ok
+test the_tabs_count_needs_action_updates_and_snoozed_and_the_holds_are_the_c30_intents ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/ui_v2_shell_port/main.rs (target/debug/deps/ui_v2_shell_port-2426ffa2ed8b3700)
+
+running 4 tests
+test the_rails_product_children_are_the_inventory_with_the_gated_two_named ... ok
+test the_sidebar_is_the_prototypes_nav_and_settings_is_reached_off_it ... ok
+test the_explain_switch_is_the_persisted_show_calls_preference ... ok
+test the_rails_theme_toggle_is_the_persisted_appearance ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ui_v2_wizard/main.rs (target/debug/deps/ui_v2_wizard-9d92390a6774c509)
+
+running 2 tests
+test add_mode_has_no_required_scan_key_and_the_sheet_discards_its_draft_on_cancel ... ok
+test the_board_draws_the_draft_the_tags_the_cards_and_the_checks_from_the_setup_view ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0

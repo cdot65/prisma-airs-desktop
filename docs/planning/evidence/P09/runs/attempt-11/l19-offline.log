@@ -1,0 +1,88 @@
+$ cargo test --locked -p xtask --features test-fixtures --test controlled_live --test live_run
+   Compiling xtask v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.33s
+     Running tests/controlled_live.rs (target/debug/deps/controlled_live-ad32fb1c3735c2ca)
+
+running 15 tests
+test a_designated_family_names_its_environment_and_operations ... ok
+test a_complete_private_manifest_passes ... ok
+test every_family_is_present_and_a_blocked_one_says_why ... ok
+test consuming_families_need_a_budget ... ok
+test every_required_row_reports_its_access ... ok
+test isolation_needs_its_own_environment_and_credentials ... ok
+test production_is_never_an_environment ... ok
+test mutating_families_need_disposable_names_and_cleanup ... ok
+test l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults ... ok
+test secret_references_stay_in_v2_test_storage_outside_the_repository ... ok
+test secrets_are_referenced_never_written ... ok
+test the_template_parses_but_is_not_approved ... ok
+test the_manifest_must_be_approved_and_current ... ok
+test the_manifest_file_is_private_and_strict ... ok
+test l19_rejects_scope_expansion_and_incomplete_credentials ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/live_run/main.rs (target/debug/deps/live_run-26b82a0364b20d70)
+
+running 57 tests
+test academy::an_answer_that_does_not_hold_its_expectation_fails_the_check ... ok
+test academy::an_exhausted_call_budget_sends_nothing_and_an_untagged_call_is_refused ... ok
+test academy::a_known_avatar_upload_refusal_never_removes_the_existing_avatar ... ok
+test academy::a_read_timeout_stops_without_claiming_a_remote_mutation ... ok
+test academy::an_unexpected_or_undesignated_account_cannot_run_a_mutating_program ... ok
+test academy::correct_grading_passes_and_a_failed_query_dependency_is_never_sent ... ok
+test academy::daily_incident_uses_the_started_run_and_served_order_for_its_interactive_checkpoints ... ok
+test academy::an_unsettled_daily_is_reconciled_when_budget_or_cleanup_dependencies_stop_the_run ... ok
+test academy::a_sign_in_the_operator_never_approves_blocks_every_academy_check ... ok
+test academy::call_labels_cannot_select_receipt_paths ... ok
+test academy::diagnostic_observations_are_read_only_and_never_claim_a_workflow ... ok
+test academy::reads_do_not_close_interactive_rows_and_a_failed_dependency_is_never_sent ... ok
+test academy::sign_in_and_failed_receipts_never_echo_private_expectation_literals ... ok
+test academy::the_academy_families_share_one_operator_sign_in_and_judge_only_the_core ... ok
+test academy::destructive_procedures_cannot_bypass_contracts_by_changing_workflow_tags ... ok
+test academy::reset_qualification_rejects_unchanged_progress_lost_certificates_and_an_empty_baseline ... ok
+test academy::wrong_exam_identity_fails_and_the_state_read_uses_the_started_attempt ... ok
+test academy::unasserted_calls_shape_only_grading_and_forward_references_are_refused_unsent ... ok
+test academy::weak_interactive_assertions_are_refused_before_any_program_call ... ok
+test changes::a_blocked_write_back_is_recorded_with_its_reason_and_the_rest_still_runs ... ok
+test changes::a_lost_write_stops_the_run_and_leaves_its_resources_for_reconciliation ... ok
+test changes::a_resource_this_run_did_not_create_is_never_updated_or_deleted ... ok
+test academy::every_unobserved_mutation_stops_for_reconciliation_before_later_changes ... ok
+test inference::a_run_over_its_token_cap_stops_the_family ... ok
+test inference::streamed_stopped_and_refused_runs_are_bounded_and_recorded ... ok
+test mcp::a_server_found_by_name_waits_for_the_operator_when_absent ... ok
+test reads::a_read_only_principals_gateway_write_is_refused_and_read_back_as_absent ... ok
+test changes::runtime_dlp_and_gateway_changes_apply_once_and_clean_up ... ok
+test reads::a_read_only_principals_write_is_refused_and_read_back_as_absent ... ok
+test reads::a_restricted_principal_that_can_read_stops_the_run_as_unexpected_authority ... ok
+test reads::a_restricted_gateway_write_that_is_applied_is_deleted_and_stops_the_run ... ok
+test reads::l05_discovers_only_the_synthetic_apps_newest_session ... ok
+test reads::a_restricted_write_that_is_applied_is_deleted_and_stops_the_run ... ok
+test reads::l05_with_no_session_of_the_synthetic_app_is_blocked ... ok
+test reads::missing_designations_are_blocked_never_passed ... ok
+test mcp::the_operator_signs_in_changes_scope_and_the_desktop_revokes ... ok
+test reads::l06_discovers_the_newest_completed_scan_or_is_blocked_without_one ... ok
+test scan::a_ledger_counts_earlier_spend_and_fails_closed_when_it_cannot_be_read ... ok
+test reads::without_a_prefix_the_write_denial_is_blocked ... ok
+test scan::a_lost_reply_needs_reconciliation_and_stops_the_run ... ok
+test reads::the_read_families_pass_through_the_production_management_intent ... ok
+test scan::a_receipt_that_would_hold_a_secret_is_refused ... ok
+test scan::a_request_over_its_budget_is_never_sent ... ok
+test scan::blocked_and_unacceptable_scopes_are_refused_before_anything_runs ... ok
+test scan::an_answer_for_another_profile_stops_the_run ... ok
+test scan::budgets_refuse_before_charging_and_names_stay_under_the_prefix ... ok
+test academy::wrong_shift_settlement_unknown_debrief_ungraded_breached_and_duplicate_daily_fail ... ok
+test scan::the_harness_family_is_recorded_as_needing_the_desktop_app ... ok
+test scan::another_scopes_key_answered_for_its_profile_stops_the_run ... ok
+test wizard::explicitly_selecting_l19_refuses_before_resolving_its_secret ... ok
+test scan::l01_and_l18_drive_the_production_core_and_record_redacted_fixture_receipts ... ok
+test wizard::an_optional_wizard_designation_never_enters_default_c25_execution ... ok
+test workbench::a_created_resource_outside_the_prefix_is_not_deleted_and_stops_the_run ... ok
+test scan::budgets_bind_every_run_together_and_fixture_runs_never_charge_the_live_ledger ... ok
+test workbench::a_non_echo_endpoint_proves_only_the_download_and_a_write_is_removed_by_its_reported_id ... ok
+test workbench::a_write_that_does_not_name_the_prefix_is_never_sent ... ok
+test workbench::the_api_client_sends_exactly_and_holds_tenant_writes_for_review ... ok
+
+test result: ok. 57 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.35s
+
+EXIT 0
