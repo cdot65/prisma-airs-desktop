@@ -1,0 +1,17 @@
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/desktop-core)
+error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable
+   --> crates/desktop-core/src/authority/harness_tools.rs:320:23
+    |
+317 |           let Some(confirmation) = self.harness_confirming.as_ref() else {
+    |                                    ----------------------- immutable borrow occurs here
+...
+320 |           let pending = self
+    |  _______________________^
+321 | |             .harness_live(&confirmation.conversation)
+    | |_____________________________________________________^ mutable borrow occurs here
+...
+326 |                       .any(|a| a.id == confirmation.approval)
+    |                                        --------------------- immutable borrow later captured here by closure
+
+For more information about this error, try `rustc --explain E0502`.
+error: could not compile `desktop-core` (lib) due to 1 previous error

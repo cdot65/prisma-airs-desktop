@@ -1,0 +1,32 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running tests/ui_v2_harness/main.rs (target/debug/deps/ui_v2_harness-5c3e1fe27edc15bd)
+
+running 2 tests
+test late_harness_confirmation_after_end_never_opens ... FAILED
+test late_harness_confirmation_after_project_retirement_never_opens ... FAILED
+
+failures:
+
+---- late_harness_confirmation_after_end_never_opens stdout ----
+
+thread 'late_harness_confirmation_after_end_never_opens' (2658064) panicked at crates/desktop-core/tests/ui_v2_harness/main.rs:639:5:
+assertion `left == right` failed: retired Harness decision must not register a native sheet
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- late_harness_confirmation_after_project_retirement_never_opens stdout ----
+
+thread 'late_harness_confirmation_after_project_retirement_never_opens' (2658166) panicked at crates/desktop-core/tests/ui_v2_harness/main.rs:639:5:
+assertion `left == right` failed: retired Harness decision must not register a native sheet
+  left: 1
+ right: 0
+
+
+failures:
+    late_harness_confirmation_after_end_never_opens
+    late_harness_confirmation_after_project_retirement_never_opens
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 6 filtered out; finished in 3.57s
+
+error: test failed, to rerun pass `-p desktop-core --test ui_v2_harness`
