@@ -1,7 +1,7 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C06",
-  "recorded_utc": "2026-11-01T22:15:45Z",
+  "recorded_utc": "2026-11-01T23:57:57Z",
   "method": "cua",
   "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic Academy endpoint tools/native-acceptance/academy_server.py serving tools/native-acceptance/academy_catalog.py and academy_program.py; tools/native-acceptance/acceptance_c06.py",
   "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
@@ -51,7 +51,7 @@
       "id": "C06-N04",
       "description": "The certificate's public verify URL (shared to LinkedIn) is on Academy web's origin, not the app's; 'Download PDF' opens exactly one native print sheet (recorded by the fixture build), stays on the certificate, and makes no learner call beyond the certificate and account reads; when the sheet cannot open, the page says so in an alert region, no sheet is opened and nothing is sent.",
       "result": "pass",
-      "observation": "certificate shown: True; public verify URL https://localhost:61156/verify/cert-certification (Academy web origin https://localhost:61156/verify/cert-certification); print sheets opened: 0 -> 1; a sheet that cannot open says 'The print sheet could not open' in an alert region: True, sheets opened after it: 1; still on the certificate: True; learner calls (no mutation) [['certificate.mine', 200]]",
+      "observation": "certificate shown: True; public verify URL https://localhost:51469/verify/cert-certification (Academy web origin https://localhost:51469/verify/cert-certification); print sheets opened: 0 -> 1; a sheet that cannot open says 'The print sheet could not open' in an alert region: True, sheets opened after it: 1; still on the certificate: True; learner calls (no mutation) [['certificate.mine', 200]]",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C06/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C06/native/tree-certificate.json",
@@ -62,7 +62,7 @@
       "id": "C06-N05",
       "description": "A guided lab runs through Academy's desktop attempt contract: one start with the lab id and a request id, draft saves naming the base version with a client mutation id, one grading request naming a confirmed draft version with a submission id, and Academy's pass shown; no web lab runtime call is made. A lab Academy refuses to start for lack of a desktop adapter is previewed with no sandbox started.",
       "result": "pass",
-      "observation": "lab intro: True; attempt started once with labId and requestId: [{'labId': 'm-rt-1-lab-def', 'requestId': 'daee3d78-ba41-4bd0-84b4-d565c14e917a'}]; draft saves with baseVersion and clientMutationId: 1; grading request [{'attemptId': '00000000-0000-4000-8000-0000000000a1', 'draftVersion': 1, 'submissionId': '1c12a339-743e-400c-ad3b-0b3c55854b93'}]; 'Lab passed. Academy recorded it on your account.': True; web lab run calls: []; a lab without a desktop adapter is previewed: True (calls [['units.get', 200], ['labs.get', 200], ['desktop.attempt.start', 412]])",
+      "observation": "lab intro: True; attempt started once with labId and requestId: [{'labId': 'm-rt-1-lab-def', 'requestId': '2ec70865-ca3c-426f-8edf-5a50077bc217'}]; draft saves with baseVersion and clientMutationId: 1; grading request [{'attemptId': '00000000-0000-4000-8000-0000000000a1', 'draftVersion': 1, 'submissionId': '56aa1d05-2b7c-4560-9e28-69d8c721b3cb'}]; 'Lab passed. Academy recorded it on your account.': True; web lab run calls: []; a lab without a desktop adapter is previewed: True (calls [['units.get', 200], ['labs.get', 200], ['desktop.attempt.start', 412]])",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C06/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C06/native/tree-lab-intro.json",
@@ -74,7 +74,7 @@
       "id": "C06-N06",
       "description": "In Shift, the unstamped alert is served and the learner's answer is sent and answered (Academy's explanation shown) before a slow optional briefing replies; the answer carries only the learner's choice, and the SLA countdown comes from Academy's stamp.",
       "result": "pass",
-      "observation": "Shift alert shown: True; serve replied at [0.13] s and the answer at [1.09] s while the optional briefing replied at 6.13 s; Academy's explanation shown after 1.57 s: True; answer request {'shiftId': '00000000-0000-4000-8000-0000000000d1', 'order': 2, 'values': ['0']}; Academy's SLA countdown present: True",
+      "observation": "Shift alert shown: True; serve replied at [0.13] s and the answer at [1.09] s while the optional briefing replied at 6.13 s; Academy's explanation shown after 1.55 s: True; answer request {'shiftId': '00000000-0000-4000-8000-0000000000d1', 'order': 2, 'values': ['0']}; Academy's SLA countdown present: True",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C06/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C06/native/tree-shift-answered.json"
@@ -94,7 +94,7 @@
       "id": "C06-N08",
       "description": "Academy's Settings entry opens the learner account page, which offers 'Change photo' on the desktop and says the app sets theme and accent (no theme choice); its Sign out ends the Academy session through the desktop: the destination returns to guest navigation, Settings shows 'Not signed in to Academy.', the refresh token is revoked and the learner keychain namespace is empty.",
       "result": "pass",
-      "observation": "account page from Academy's Settings entry: True; photo changed here ('Change photo'): True; appearance follows the app: True, no theme choice: True; Academy's Sign out returned the destination to guest navigation ['Learn', 'Open Runtime Security Path'] and Settings shows 'Not signed in to Academy.': True; learner keychain items ['cr-58ba6fd014506ab8', 'cr-c96c89268a0c295b'] -> ['cr-58ba6fd014506ab8']; revoked: True",
+      "observation": "account page from Academy's Settings entry: True; photo changed here ('Change photo'): True; appearance follows the app: True, no theme choice: True; Academy's Sign out returned the destination to guest navigation ['Learn', 'Open Runtime Security Path'] and Settings shows 'Not signed in to Academy.': True; learner keychain items ['cr-58ba6fd014506ab8', 'cr-9ded6750ea3d6e4b'] -> ['cr-58ba6fd014506ab8']; revoked: True",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C06/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C06/native/tree-account.json",
@@ -144,7 +144,7 @@
       "id": "C06-N13",
       "description": "'Change photo' takes a photo chosen natively (here larger than Academy's 2 MiB cap), prepares it in the core as a 512-pixel JPEG within the cap, presigns with the account credential (the prepared type and size), stores the bytes at the presigned destination with no credential, confirms with Academy, and reads the photo back from Academy's public avatar address (no credential) so the page shows it without a load warning; an extreme 1x8192 portrait is prepared from its centre and uploaded; a later photo the store keeps under the same address but whose reply is lost is reported as possibly changed (never unchanged), is not confirmed or resent, and the photo at the unchanged address is read again; a file with an image signature that does not decode, and a photo within 8192 pixels a side whose decoded pixels exceed the decoder memory budget, send nothing and says the photo is unchanged; a cancelled pick sends nothing and shows no error; 'Remove photo' removes it with one learner call.",
       "result": "pass",
-      "observation": "'Change photo' prepared the staged 5883258 byte PNG (above Academy's 2 MiB cap) as a 232488 byte JPEG: presign (input, Authorization) [[{'contentType': 'image/jpeg', 'size': 232488}, True]]; store PUT (type, bytes, Authorization, status) [['image/jpeg', 232488, False, 200]]; a stored photo whose reply was lost said 'Your photo may have changed, but Academy did not confirm it': True (PUT statuses [0], confirmations 0) and read the photo at the same address again: ['/api/avatars/user_2fixturelearner.jpg']; a 1x8192 portrait was prepared from its centre and uploaded (PUT [['image/jpeg', 7797, 200]], confirmed 1, load warning False); a 7000x7000 photo beyond the decoder memory budget said the photo is unchanged: True and sent []; a file with a PNG signature that does not decode said 'Upload failed. Your photo is unchanged' in an alert region: True and sent []; confirm [[{'ext': 'jpg'}, True]]; read back (path, Authorization, status) [['/api/avatars/user_2fixturelearner.jpg', False, 200]]; 'Remove photo' offered: True; image load warning: False; a cancelled pick sent [] and showed an error: False; 'Remove photo' removed it: True (1 removal)",
+      "observation": "'Change photo' prepared the staged 5883258 byte PNG (above Academy's 2 MiB cap) as a 232824 byte JPEG: presign (input, Authorization) [[{'contentType': 'image/jpeg', 'size': 232824}, True]]; store PUT (type, bytes, Authorization, status) [['image/jpeg', 232824, False, 200]]; a stored photo whose reply was lost said 'Your photo may have changed, but Academy did not confirm it': True (PUT statuses [0], confirmations 0) and read the photo at the same address again: ['/api/avatars/user_2fixturelearner.jpg']; a 1x8192 portrait was prepared from its centre and uploaded (PUT [['image/jpeg', 7797, 200]], confirmed 1, load warning False); a 7000x7000 photo beyond the decoder memory budget said the photo is unchanged: True and sent []; a file with a PNG signature that does not decode said 'Upload failed. Your photo is unchanged' in an alert region: True and sent []; confirm [[{'ext': 'jpg'}, True]]; read back (path, Authorization, status) [['/api/avatars/user_2fixturelearner.jpg', False, 200]]; 'Remove photo' offered: True; image load warning: False; a cancelled pick sent [] and showed an error: False; 'Remove photo' removed it: True (1 removal)",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C06/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C06/native/tree-avatar-uploaded.json",
