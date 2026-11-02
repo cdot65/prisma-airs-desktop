@@ -1,0 +1,71 @@
+{
+  "review_id": "C30-attempt-12-1793616377",
+  "subject": "C30",
+  "attempt": "attempt-12",
+  "request_id": "C30-attempt-12-1793616377",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T11:04:44.898220+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a19bde-5570-7e53-8709-9f6fb604bd8b"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": [
+    "R1 \u2014 tools/native-acceptance/legacy_assertions.py:330 and tools/native-acceptance/acceptance_c37.py:366: the replacement for C30-N03 drops its mandatory capture matrix. docs/architecture/native-checks.json requires every hold-workflow step captured in light and dark at 100% and 200%; the current driver exercises holds once, then captures ordinary populated layouts separately. Current C36/C37 records establish useful behavior but contain no complete themed/zoomed snooze, acknowledge and unsnooze capture sequence. This check was not retired by the owner's C44 retirement decision. Acceptance: complete the replacement coverage and mapping, retain source-bound observations and captures for every required hold step in all four combinations, and make missing coverage fail qualification. Preserve historical records.",
+    "R2 \u2014 tools/native-acceptance/legacy_assertions.py:331, tools/native-acceptance/acceptance_c37.py:143 and tools/native-acceptance/acceptance_c38.py:425: C30-N04 is mapped to a narrower replacement. The current checks do not establish Escape returning guard focus to the switcher, viewport containment of every focused Inbox detail action at 900\u00d7600/200% in both themes, or the specified native snooze-toast persistence after relaunch with Reduce Motion enabled. The mapper can therefore report coverage while these required assertions are absent. Acceptance: restore these assertions in the replacement drivers, retain the focused AX observations and snooze-toast persistence/dismissal evidence with system-setting restoration, and require their results in the C30 mapping."
+  ],
+  "blockers": [],
+  "evidence_gaps": [
+    "E1 \u2014 Current C36/C37 evidence lacks C30-N03's complete hold-step capture matrix. The historical C30 record belongs to executable ab1f940ef078fae3476fd15290489fab1138fbc9eb613fe4db4890297432f85e, whereas current preparation names 2791b5a1eaf6b9268e0574502c62a20f3027fd2b76ff9ed08289eef1f56147ea; historical captures do not establish current qualification.",
+    "E2 \u2014 Current mapped evidence does not cover the remaining C30-N04 scenarios listed in R2. C31's retained observations demonstrate applied-change toast persistence under Reduce Motion, and C38 demonstrates guard dismissal and preserved decisions, but neither supplies the missing C30 scenario evidence. Passing component tests and mapped target IDs do not establish those unperformed native assertions."
+  ],
+  "optional_suggestions": [
+    "apps/desktop/src/v2/inbox/inbox.tsx:177: allow filter tabs to grow when labels wrap. The retained 900\u00d7600/200% light capture shows counts extending below the fixed-height tab backgrounds."
+  ],
+  "fingerprints": {
+    "source": "115e378f18e9aa09495d4fc7ab191365a4beb8248c323349c8483e4b104ffabf",
+    "dependencies": "f5f26271b8823df8a2b5299417146784d345d4e04f8b59341706e6a41750210d",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "20ced4524fae643c13c11b29f8924c0b733b1505855924493a289a50de8962e2"
+  },
+  "verdict_sha256": "f49d633701dcb7d606ca176f3edaeee8d435866e1ee0d142c540029c3035d2ec",
+  "request_sha256": "940ebc477172fab9d078c458cb88646cbf1ce62de0f82b1e83c0e9ab8e75326e",
+  "prompt_sha256": "8a0dc69277945886fd13f4e5dbdb77a3e4369b15468eac05de4587fe36b808f0",
+  "post_review_audit_sha256": "00f40540847cceb52ffad681d59b72aa0bf64cc51446ab540282ec28346ac97b",
+  "invocation_sha256": "547e5272bce8b2006168b79ff8c46068c4a485238557a18a51bf330eadab1c67",
+  "thread_reply_sha256": "ea62b09f99bb1fa880072257359924e62a28da093518f6d40f9eb870ceeba879",
+  "source_frozen": true,
+  "d034_accepted": true,
+  "full_gate_pass": false,
+  "controller_complete": false,
+  "accepted_failures": {
+    "required_fixes": [
+      "R1 \u2014 tools/native-acceptance/legacy_assertions.py:330 and tools/native-acceptance/acceptance_c37.py:366: the replacement for C30-N03 drops its mandatory capture matrix. docs/architecture/native-checks.json requires every hold-workflow step captured in light and dark at 100% and 200%; the current driver exercises holds once, then captures ordinary populated layouts separately. Current C36/C37 records establish useful behavior but contain no complete themed/zoomed snooze, acknowledge and unsnooze capture sequence. This check was not retired by the owner's C44 retirement decision. Acceptance: complete the replacement coverage and mapping, retain source-bound observations and captures for every required hold step in all four combinations, and make missing coverage fail qualification. Preserve historical records.",
+      "R2 \u2014 tools/native-acceptance/legacy_assertions.py:331, tools/native-acceptance/acceptance_c37.py:143 and tools/native-acceptance/acceptance_c38.py:425: C30-N04 is mapped to a narrower replacement. The current checks do not establish Escape returning guard focus to the switcher, viewport containment of every focused Inbox detail action at 900\u00d7600/200% in both themes, or the specified native snooze-toast persistence after relaunch with Reduce Motion enabled. The mapper can therefore report coverage while these required assertions are absent. Acceptance: restore these assertions in the replacement drivers, retain the focused AX observations and snooze-toast persistence/dismissal evidence with system-setting restoration, and require their results in the C30 mapping."
+    ],
+    "evidence_gaps": [
+      "E1 \u2014 Current C36/C37 evidence lacks C30-N03's complete hold-step capture matrix. The historical C30 record belongs to executable ab1f940ef078fae3476fd15290489fab1138fbc9eb613fe4db4890297432f85e, whereas current preparation names 2791b5a1eaf6b9268e0574502c62a20f3027fd2b76ff9ed08289eef1f56147ea; historical captures do not establish current qualification.",
+      "E2 \u2014 Current mapped evidence does not cover the remaining C30-N04 scenarios listed in R2. C31's retained observations demonstrate applied-change toast persistence under Reduce Motion, and C38 demonstrates guard dismissal and preserved decisions, but neither supplies the missing C30 scenario evidence. Passing component tests and mapped target IDs do not establish those unperformed native assertions."
+    ]
+  },
+  "limitations": [
+    "Reproduced all four supplied fingerprints. All 5,108 scoped hashes matched initially and at final recheck. Independently checked membership and content of all 18,338 compiled-input entries, matching build/check seals, build flags and all 18 check-log hashes. These establish consistency, not compiler execution or evidence authorship.",
+    "Verified C29 attempt-10's receipt hash, request/verdict bindings, passing scores and unchanged scoped inventory. C28 and C27 receipt-to-verdict bindings also matched. No controller, phase or release completion is inferred.",
+    "The attempt-11 persistence-order finding is remediated: both switch paths save staged Data before destructive resolution and authority retirement. Inspected all four real-Harness save-failure regressions, original failing logs and current passing logs, including preservation, storage recovery, consumed-resolution refusal and Archive/Discard history outcomes. Those regressions were not independently rerun.",
+    "Independently executed the retained ui_v2_shell binary: 5/5 passed. In-memory execution of the production shell store passed captured-null retirement, late-delivery rejection, refusal replacement and tenant-toast retirement probes. The retained binary was not rebuilt or independently authenticated against compiler inputs. Broader results rely on retained logs, including 550 renderer tests, 17 Inbox tests and 22 Harness-tool tests.",
+    "Recomputed the complete 1,621-entry mode-aware fixture-bundle hash, executable hash and identifier. Its only executable files are the desktop application and pinned Rust Harness. Inspected 27 current C36/C37/C38 AX trees, ten historical C30 trees, observations and representative captures. Native interactions and spoken VoiceOver were not independently repeated.",
+    "Accept the documented method-02 presentation/guest rationale for this scoped performance gate. Verified all 12 raw switches, two fixed warmups, ten alternating measured samples, post-switch AX trees, current bindings and unchanged synthetic management-request count. Recomputed p95 is 23.69475 ms against 100 ms. No physical-host performance is established.",
+    "Verified historical L19 receipt and executable bindings. L19 remains historical production-adapter debug evidence, not live qualification of current bytes. Actual HTTP counts and private authorization were not independently observed.",
+    "No application files were changed, endpoints called, real credentials accessed or OS permissions granted. The read-only sandbox prevents the designated artifact write; this returned JSON is the verdict.",
+    "Fresh separate read-only configured-model session in implementer model family, no cryptographic provider authorship claim. Standing D034 acceptance, manual fallback while C26controlleropen; no phase/controller/release completion."
+  ],
+  "outcome": "Acceptedat8 under standingD034 withR1/R2/E1/E2; immediately restore full retained C30N03/N04 native behavior/matrix/ReduceMotion evidence and re-review at9. Reviewer confirms prior production persistence-order finding remediated and accepts current timing method/result. C31waitsforC30full9; historicalverdictsunchanged."
+}

@@ -1,0 +1,439 @@
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 0d865ff6..cd230256 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -3748,15 +3748,22 @@ fn admit(
+             // Completion makes the new tenant active: the one guarded switch
+             // path (I1). A pending Harness decision refuses it, with the
+             // draft, the active tenant and the decision all untouched.
+-            if let Err(refusal) = state.guard_switch(&draft, resolution, Some(&context)) {
+-                state.changed();
+-                return Err(refusal);
+-            }
+-            effects.extend(state.take_history_jobs());
++            let resolution = match state.guard_switch(&draft, resolution, Some(&context)) {
++                Ok(resolution) => resolution,
++                Err(refusal) => {
++                    state.changed();
++                    return Err(refusal);
++                }
++            };
+             let before = state.data.clone();
+             let recorded_secs = wall_secs(state.clock_offset);
+             let done = state.complete_setup(&context, packs, recorded_secs)?;
+             state.save_with(&before)?;
++            if let Some(resolution) = resolution {
++                resolution.resolve(state)?;
++            }
++            effects.extend(state.take_history_jobs());
++            state.retire_setup_context(&context, done.retired_workspace.as_ref());
+             effects.push(Effect::Start(state.reissue_context()));
+             effects.push(Effect::Start(state.take_gateway_starts()));
+             if !done.packs.is_empty() {
+@@ -3830,14 +3837,20 @@ fn admit(
+             }
+             // The one switch path (I1): a pending Harness decision refuses
+             // it until the operator resolves the conversation.
+-            if let Err(refusal) = state.guard_switch(&tenant, resolution, None) {
+-                state.changed();
+-                return Err(refusal);
+-            }
+-            effects.extend(state.take_history_jobs());
++            let resolution = match state.guard_switch(&tenant, resolution, None) {
++                Ok(resolution) => resolution,
++                Err(refusal) => {
++                    state.changed();
++                    return Err(refusal);
++                }
++            };
+             let before = state.data.clone();
+             state.data.active = Some(tenant);
+             state.save_with(&before)?;
++            if let Some(resolution) = resolution {
++                resolution.resolve(state)?;
++            }
++            effects.extend(state.take_history_jobs());
+             effects.push(Effect::Start(state.reissue_context()));
+             // The new tenant's Home is what a switch shows (C30, shell.md).
+             if state.ui_variant() == features::UiVariant::V2 {
+diff --git a/crates/desktop-core/src/authority/inbox_domain.rs b/crates/desktop-core/src/authority/inbox_domain.rs
+index 1f2facd6..6c103d8d 100644
+--- a/crates/desktop-core/src/authority/inbox_domain.rs
++++ b/crates/desktop-core/src/authority/inbox_domain.rs
+@@ -18,6 +18,7 @@ use crate::context::{ContextRef, ReviewId};
+ use crate::features::{FeatureId, ProductId, SetupWarning};
+ use crate::management::{ManagementFailure, ManagementResource};
+ use crate::observation::{Fact, InboxDestination, InboxItem, Tone};
++use crate::runtime::OperationId;
+ use crate::tenants::TenantId;
+ 
+ /// How a blocked switch is resolved (I1): the pending conversation is
+@@ -35,6 +36,25 @@ pub enum SwitchResolution {
+     },
+ }
+ 
++/// A validated resolution held only inside the synchronous admission lock.
++/// Persist the tenant transition before consuming it; the old context and
++/// workspace remain bound until resolution and context retirement finish.
++pub(super) enum GuardedSwitch {
++    Archive(OperationId),
++    Discard(OperationId),
++}
++
++impl GuardedSwitch {
++    pub(super) fn resolve(self, state: &mut State) -> Result<(), Refusal> {
++        match self {
++            Self::Archive(id) => state.end_harness(&id)?,
++            Self::Discard(id) => state.discard_harness(&id)?,
++        }
++        state.switch_blocked = None;
++        Ok(())
++    }
++}
++
+ /// Where an Inbox entry came from.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+ #[serde(rename_all = "camelCase")]
+@@ -358,7 +378,7 @@ impl State {
+         to: &TenantId,
+         resolution: Option<SwitchResolution>,
+         target_context: Option<&ContextRef>,
+-    ) -> Result<(), Refusal> {
++    ) -> Result<Option<GuardedSwitch>, Refusal> {
+         if let Some(resolution) = resolution {
+             let (context, review) = match &resolution {
+                 SwitchResolution::Archive { context, review }
+@@ -377,16 +397,17 @@ impl State {
+                 return Err(Refusal::StaleContext);
+             }
+             let id = self.live_bound_harness().ok_or(Refusal::StaleContext)?;
+-            match resolution {
+-                SwitchResolution::Archive { .. } => self.end_harness(&id)?,
+-                SwitchResolution::Discard { .. } => self.discard_harness(&id)?,
+-            }
+-            self.switch_blocked = None;
+-            return Ok(());
++            // Validation alone changes no conversation, guard or history.
++            // A definite store refusal can restore Data and leave all of
++            // this unresolved work exactly as it was.
++            return Ok(Some(match resolution {
++                SwitchResolution::Archive { .. } => GuardedSwitch::Archive(id),
++                SwitchResolution::Discard { .. } => GuardedSwitch::Discard(id),
++            }));
+         }
+         let Some(pending) = self.pending_decision() else {
+             self.switch_blocked = None;
+-            return Ok(());
++            return Ok(None);
+         };
+         self.switch_blocked = Some(SwitchBlocked {
+             to: to.clone(),
+diff --git a/crates/desktop-core/src/authority/setup_domain.rs b/crates/desktop-core/src/authority/setup_domain.rs
+index a2ca1271..f4bdc9b1 100644
+--- a/crates/desktop-core/src/authority/setup_domain.rs
++++ b/crates/desktop-core/src/authority/setup_domain.rs
+@@ -14,7 +14,7 @@ use tokio::time::Instant;
+ 
+ use super::gateway_domain::SetupGateway;
+ use super::{CredentialClass, MAX_TENANTS, Refusal, ScanCapability, State, Tenant};
+-use crate::context::ContextRef;
++use crate::context::{ContextRef, WorkspaceRef};
+ use crate::features::{
+     OnboardingState, PackView, ProductId, SetupMode, SetupView, VerifyLine, VerifyState,
+     VerifyStep, VerifyView, VerifyWarning,
+@@ -58,6 +58,7 @@ pub(super) struct Completed {
+     pub tenant: TenantId,
+     pub first_run: bool,
+     pub packs: Vec<CaseProduct>,
++    pub retired_workspace: Option<WorkspaceRef>,
+ }
+ 
+ const MAX_WARNINGS: usize = 8;
+@@ -845,9 +846,9 @@ impl State {
+         self.completable_setup(context, &packs)?;
+         let setup = self.setup_for(context)?;
+         let view = Self::verify_view(setup).ok_or(Refusal::InvalidInput)?;
+-        // The draft's authority ends with it: the tenant gets a fresh active
+-        // context and its own binding.
+-        self.retire_setup_authority();
++        // Stage only Data before persistence. Authority retirement is
++        // irreversible and waits for the handler's successful save.
++        let retired_workspace = self.setup_workspace_reference();
+         let Some(mut setup) = self.data.setup.take() else {
+             return Err(Refusal::StaleContext);
+         };
+@@ -878,6 +879,7 @@ impl State {
+             tenant: id,
+             first_run,
+             packs,
++            retired_workspace,
+         })
+     }
+ 
+@@ -912,7 +914,16 @@ impl State {
+         }) else {
+             return;
+         };
+-        self.retire_management_binding(&context);
++        self.retire_setup_context(&context, reference.as_ref());
++    }
++
++    /// Retire a committed draft only after its state replacement succeeded.
++    pub(super) fn retire_setup_context(
++        &mut self,
++        context: &ContextRef,
++        reference: Option<&WorkspaceRef>,
++    ) {
++        self.retire_management_binding(context);
+         let now = Instant::now();
+         let mut starts = self.operations.retire_context(context.as_str(), now);
+         if let Some(reference) = reference {
+diff --git a/crates/desktop-core/tests/harness_tools/main.rs b/crates/desktop-core/tests/harness_tools/main.rs
+index e9897f84..ed22c779 100644
+--- a/crates/desktop-core/tests/harness_tools/main.rs
++++ b/crates/desktop-core/tests/harness_tools/main.rs
+@@ -1974,3 +1974,161 @@ async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
+     );
+     std::fs::remove_dir_all(&dir).expect("cleanup");
+ }
++
++/// C30 attempt11 R1/E1: a refused state save authorizes no destructive
++/// resolution. The same native refusal remains actionable after recovery.
++async fn guarded_resolution_save_failure(completion: bool, kind: &str) {
++    let mut desk = desk().await;
++    let dir = project();
++    choose_project(&mut desk, &dir).await;
++    let id = ready(&mut desk).await;
++    desk.say(&id, "Say hello.").await.expect("sent");
++    desk.answered().await;
++    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
++    let history = desk.conversation()["historyId"]
++        .as_str()
++        .expect("history")
++        .to_owned();
++    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
++    desk.say(&id, "List the files.")
++        .await
++        .expect("pending turn");
++    answered_with(&mut desk, |c| {
++        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
++    })
++    .await;
++    let origin = desk.json()["tenants"][0]["origin"]
++        .as_str()
++        .expect("origin")
++        .to_owned();
++    let intent = if completion {
++        desk.send(json!({"kind":"beginTenantSetup","mode":"add","profile":{"label":"Tenant B","tsgId":"1234567890","destination":{"kind":"custom","origin":origin}}})).await.expect("draft");
++        let draft = desk.json()["setup"]["context"]
++            .as_str()
++            .expect("draft context")
++            .to_owned();
++        desk.send(json!({"kind":"verifyTenantSetup","context":draft}))
++            .await
++            .expect("verify");
++        assert!(settle(|| desk.json()["setup"]["verify"]["done"] == true).await);
++        json!({"kind":"completeTenantSetup","context":draft,"packs":[]})
++    } else {
++        desk.send(json!({"kind":"createTenant","profile":{"label":"Tenant B","tsgId":"1234567890","destination":{"kind":"custom","origin":origin}}})).await.expect("B");
++        let b = desk.json()["tenants"]
++            .as_array()
++            .expect("tenants")
++            .iter()
++            .find(|t| t["label"] == "Tenant B")
++            .expect("B")["id"]
++            .clone();
++        json!({"kind":"selectTenant","tenant":b})
++    };
++    let resolved = reviewed_switch(&mut desk, intent, kind).await;
++    let before = desk.json();
++    let stored = serde_json::to_value(desk.adapters.store.saved()).expect("stored document");
++    let protected: Vec<_> = files_under(&desk.history_root)
++        .into_iter()
++        .filter(|f| f.to_string_lossy().contains(&history))
++        .map(|f| {
++            let bytes = std::fs::read(&f).expect("protected transcript");
++            (f, bytes)
++        })
++        .collect();
++    assert!(
++        !protected.is_empty(),
++        "the completed first turn is protected on disk"
++    );
++    desk.adapters.store.fail_saves(true);
++    assert_eq!(
++        desk.send(resolved.clone()).await,
++        Err(desktop_core::Refusal::DeniedStore)
++    );
++    let refused = desk.json();
++    assert_eq!(
++        refused["active"], before["active"],
++        "the source remains active"
++    );
++    assert_eq!(
++        refused["switchBlocked"], before["switchBlocked"],
++        "save refusal preserves the exact native guard"
++    );
++    assert_eq!(
++        refused["setup"], before["setup"],
++        "the draft remains actionable"
++    );
++    for field in ["id", "phase", "approvals", "historyId", "savedAt"] {
++        assert_eq!(
++            refused["harness"]["conversation"][field], before["harness"]["conversation"][field],
++            "pending conversation {field} unchanged"
++        );
++    }
++    assert_eq!(
++        serde_json::to_value(desk.adapters.store.saved()).expect("saved"),
++        stored
++    );
++    for (path, bytes) in &protected {
++        assert_eq!(&std::fs::read(path).expect("still protected"), bytes);
++    }
++    // Recovery uses the same refusal binding, with a new explicit delivery.
++    desk.adapters.store.fail_saves(false);
++    desk.send(resolved.clone())
++        .await
++        .expect("one successful resolution after storage recovery");
++    assert_ne!(desk.json()["active"]["tenant"], before["active"]["tenant"]);
++    assert!(desk.json()["switchBlocked"].is_null());
++    if completion {
++        assert!(desk.json()["setup"].is_null());
++    }
++    assert_eq!(
++        desk.send(resolved).await,
++        Err(desktop_core::Refusal::StaleContext),
++        "a consumed resolution cannot run again"
++    );
++    desk.send(json!({"kind":"selectTenant","tenant":before["active"]["tenant"]}))
++        .await
++        .expect("back to source");
++    assert!(
++        settle_for(30, || {
++            let c = desk.conversation();
++            c.is_null() || c["phase"] == "ended"
++        })
++        .await
++    );
++    let mut listed = history_ids(&mut desk).await;
++    for _ in 0..60 {
++        if listed.contains(&history) == (kind == "archive") {
++            break;
++        }
++        tokio::time::sleep(Duration::from_millis(100)).await;
++        listed = history_ids(&mut desk).await;
++    }
++    assert_eq!(
++        listed.contains(&history),
++        kind == "archive",
++        "successful recovery honors the chosen history outcome"
++    );
++    assert_eq!(
++        files_under(&desk.history_root)
++            .iter()
++            .any(|f| f.to_string_lossy().contains(&history)),
++        kind == "archive"
++    );
++    std::fs::remove_dir_all(&dir).expect("cleanup");
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn select_archive_resolution_save_failure_preserves_pending_work() {
++    guarded_resolution_save_failure(false, "archive").await;
++}
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn select_discard_resolution_save_failure_preserves_pending_work() {
++    guarded_resolution_save_failure(false, "discard").await;
++}
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn setup_archive_resolution_save_failure_preserves_pending_work() {
++    guarded_resolution_save_failure(true, "archive").await;
++}
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn setup_discard_resolution_save_failure_preserves_pending_work() {
++    guarded_resolution_save_failure(true, "discard").await;
++}
+diff --git a/tools/p09/README.md b/tools/p09/README.md
+index d3fb0ca5..900359f2 100644
+--- a/tools/p09/README.md
++++ b/tools/p09/README.md
+@@ -31,6 +31,15 @@ Prerequisites:
+   binds native guard references and retires renderer retries. Generation 05,
+   current performance acceptance, fresh check `attempt-06` and changed-source
+   C29/C30 re-reviews remain required; no old score transfers to changed inputs.
++  G6 then passed all19 natives/current C30p95=25.065583ms/check06all18,
++  and C29attempt09 passed full9. C30attempt11 returned9/8/9/8/8 without
++  blockers, accepted underD034 with R1/E1: a definite tenant-state save
++  refusal could occur after conversation resolution. Both switch paths now
++  persist staged Data before resolution/history/context retirement; all4
++  real-Harness fault/recovery cases fail originalG6 and pass corrected code.
++  Broader22Harness/10onboarding/5setup-read preflight and strictClippy/fmt pass.
++  G7 preparation/all19/currentperformance/check07 and fresh C29attempt10 ->
++  C30attempt12 remain required before C31/C32/phase. No score transfers.
+   The current audit requires every compiled input to match the fresh native
+   build's captured before/after seal (`P09/native-build-inputs.json` and its
+   generation under `P09/preparations/`). There is no source-exemption list.
+@@ -44,11 +53,11 @@ Example after the fresh fixture/native prerequisites are satisfied (choose
+ unused attempt IDs if these already exist):
+ 
+ ```sh
+-bash docs/planning/evidence/P09/runs/run-checks.sh attempt-06
+-python3 tools/p09/audit-p09-checks.py attempt-06
+-python3 tools/p09/make-remedial-packet.py C29 attempt-09 attempt-08 attempt-06
+-python3 tools/p09/launch-remedial-review.py C29 attempt-09
+-python3 tools/p09/audit-remedial-review.py C29 attempt-09
++bash docs/planning/evidence/P09/runs/run-checks.sh attempt-07
++python3 tools/p09/audit-p09-checks.py attempt-07
++python3 tools/p09/make-remedial-packet.py C29 attempt-10 attempt-09 attempt-07
++python3 tools/p09/launch-remedial-review.py C29 attempt-10
++python3 tools/p09/audit-remedial-review.py C29 attempt-10
+ ```
+ 
+ The packet arguments are subject, new review attempt, prior review attempt and
+@@ -85,7 +94,7 @@ inferred from input verification. After those prerequisites:
+ 
+ ```sh
+ python3 -I tools/p09/test_phase_inputs.py
+-python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-06.json
++python3 -I tools/p09/make-phase-packet.py attempt-01 docs/planning/evidence/P09/runs/run-attempt-07.json
+ python3 tools/p09/launch-remedial-review.py P09 attempt-01
+ python3 -I tools/p09/audit-phase-review.py attempt-01
+ ```
+@@ -100,7 +109,7 @@ an actual independent verdict at 9 in every dimension with no fixes/gaps/blocker
+ C30's current acceptance measurement is mandatory before cumulative C44 runs:
+ 
+ ```sh
+-AIRS_NATIVE_SUBJECT=P09 python3 -I tools/perf/measure_c30.py --label acceptance --attempt attempt-01
++AIRS_NATIVE_SUBJECT=P09 python3 -I tools/perf/measure_c30.py --label acceptance --attempt attempt-03
+ ```
+ 
+ Run it as the sole UI writer after C36/C43 and before C44, on the newly prepared
+diff --git a/tools/p09/make-remedial-packet.py b/tools/p09/make-remedial-packet.py
+index 671f2c63..e1a3129f 100644
+--- a/tools/p09/make-remedial-packet.py
++++ b/tools/p09/make-remedial-packet.py
+@@ -106,7 +106,11 @@ prefixes=['apps/desktop/src/v2/wizard','docs/planning/evidence/C29/live/L19','do
+ prefixes.extend(['docs/planning/evidence/P09/preparations','docs/planning/evidence/P09/check-remediation'])
+ prefixes.extend(['docs/planning/evidence/P09/performance', 'docs/planning/evidence/C30/remediation-attempt-10',
+                  'docs/planning/evidence/P09/bundle-boundary-advisory-20261102',
+-                 'docs/planning/evidence/P09/native-history/Worf-generation-05-complete-before-null-source-fix-20261102'])
++                 'docs/planning/evidence/P09/native-history/Worf-generation-05-complete-before-null-source-fix-20261102',
++                 'docs/planning/evidence/P09/native-history/Worf-generation-06-complete-before-store-order-fix-20261102',
++                 'docs/planning/evidence/C30/remediation-attempt-11',
++                 'docs/planning/reviews/C30/attempt-11',
++                 'docs/planning/evidence/P09/native-history/C05-Worf-generation-07-interrupted-capacity-20261102'])
+ scope.update(['tools/perf/measure_c30.py', 'tools/perf/probe.swift',
+               'docs/planning/evidence/C30/workload-budget.md',
+               'docs/planning/evidence/C30/workload-budget-registration.json',
+@@ -163,7 +167,9 @@ notes=[
+ notes.append('Generation 02 C10 stalled twice while describing the production native file panel browser contents; both interrupted attempts have no acceptance verdict. The shared AX helper now scopes native modal sheets to real panel controls, excludes folder scroll contents and modal background, and retains roles/depth/geometry/focus and real actions. Ordinary WebView traversal and every acceptance assertion remain unchanged. Generation 03 repeated the preparation/input seal and all 19 native drivers, which passed. Check04 then failed only Clippy because the fixture observer followed a test module; the unchanged observer was moved before that module with no lint suppression. Generation04 repeats preparation/all19natives; identical executable bytes do not substitute for requalification of the changed helper. Original helper sources, complete generation 02 evidence and failed logs are included for independent review.')
+ notes.append('C29 attempt08 actually passed9/9/9/9/9 on G4. C30 attempt10 then returned9/8/8/8/8 with blockerB1, fixesR1/R2 and gapE1; it was NOT D034-accepted. Current source remediates R1 with native-issued per-refusal review references bound to the source context, target, exact pending conversation/decision and setup generation. Legacy unbound resolutions are rejected; source/context/pending changes retire guards and renderer retries. Production-interface real-Harness regressions retain protected transcripts while stale Archive/Discard requests, lost receipts, same-tenant replays and replacement conversations are refused; fresh switching/setup completion remains tested. All changed inputs are freshly rebuilt and qualified before this packet; previous accepted reviews are historical for their own tree, not transferred scores.')
+ notes.append('R2/E1 requires current cached-switch performance. The packet includes the immutable original budget/registration, historical result and a fresh acceptance on the current prepared executable. Method2 replaces the removed static tenant line with the actual active tenant selector plus Home heading and its own cached status region. It preserves the100ms p95 limit, fixed2warmups/10measured alternating samples, real AXPress, monotonic clock and2ms polling; all12 raw trials, post-switch AX trees, hashes and actual guest conditions are retained. No sample is omitted/retried and no synthetic management request may occur during the switches. This explicit method/guest rationale was recorded before measurement. Independently assess and acknowledge it in the C30 review, or identify the required fix; the earlier physical-host conditions are not claimed. No passing performance or review score is invented by this instruction.')
+-notes.append('The supplementary captured-null initial SelectTenant retry edge was independently reproduced after G5 all19native/currentperformance/audit passed. Full950file G5 qualification was archived before the renderer-only fix. A shared insertion/retirement/render predicate now compares captured null exactly for SelectTenant while genuinely unbound actions retain prior behavior. Both final App/DesktopClient ordering regressions fail against original G5 source at the stale-delivery assertion; current full renderer550/550/typecheck passed. All current G6native/check evidence is freshly qualified, including C30performance attempt02. Failed intermediate preflights, exact original sources, root advisory and unapplied obsolete proposal disposition remain scoped; no proposed tests count as current results. Final G6 canonical complete-bundle/identifier inspection is retained under its preparation. An optional bundle predicate proposal remains unapplied; standalone final inspection supplies actual artifact proof without altering the current workflow.')
++notes.append('The supplementary captured-null initial SelectTenant retry edge was independently reproduced after G5 all19native/currentperformance/audit passed. Full950file G5 qualification was archived before the renderer-only fix. A shared insertion/retirement/render predicate now compares captured null exactly for SelectTenant while genuinely unbound actions retain prior behavior. Both final App/DesktopClient ordering regressions fail against original G5 source at the stale-delivery assertion; current full renderer550/550/typecheck passed. G6 native/check evidence was freshly qualified, including C30performance attempt02, before the later persistence-order finding. The current packet separately binds its newly qualified preparation/check/performance generation. Failed intermediate preflights, exact original sources, root advisory and unapplied obsolete proposal disposition remain scoped; no proposed tests count as current results. Final G6 canonical complete-bundle/identifier inspection is retained under its preparation. An optional bundle predicate proposal remains unapplied; standalone final inspection supplies actual artifact proof without altering the current workflow.')
++notes.append('C30attempt11 returned actual9/8/9/8/8 with no blockers and was accepted under D034 with R1/E1, immediately remediated toward9. Original stale binding and current performance method were accepted as fixed. Its new finding was conversation end/discard before tenant-state persistence. Both SelectTenant and CompleteTenantSetup now save staged Data before destructive resolution/history jobs/context retirement; draft authority retirement also waits. Four real-Harness production-interface save-failure regressions (Archive/Discard x both paths) fail against original G6 at exact native-guard preservation, then pass after the fix; full22Harness/10onboarding/5setup-read preflight, strictClippy/fmt pass. Actual current native/check qualification is separately bound in this packet. Independently verify R1/E1 remediation, including storage recovery and one-time history outcome. Complete G6 source/evidence archive and actual accepted verdict remain immutable. No current score is transferred and no live qualification repeated.')
++notes.append('G7 qualification continued after a provider model-capacity CLI exit, not a native/network/quota failure. Six completed exact-G7 drivers were verified unchanged and retained, interrupted C05 four-tree evidence was archived with no verdict, the orphan fixture was retired via existing guarded App.quit, and remaining13drivers ran serially in resume05 with currentperformanceattempt03 immediatelybeforeC44last. The prepared executable, complete bundle, identifier and full compiled-input seal matched on recovery and at final acceptance. This is continuation of one unchanged source generation, not retroactive future-policy reuse or transfer from G6. Inspect scoped recovery/continuation/archive provenance; original resume04 logs/status/exit remain immutable.')
+ request={'request_id':request_id,'attempt_id':attempt,'subject':subject,'base_commit':git('rev-parse','HEAD'),
+          'transport':'fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)',
+          'scope':{**old['scope'],'files':sorted(scope),'removed_since_prior_request':removed,'standing_generation':'current integrated tree after C44 and L19 correction; no fabricated predecessor completion'},
