@@ -1,0 +1,61 @@
+{
+  "review_id": "C29-attempt-10-1793615721",
+  "subject": "C29",
+  "attempt": "attempt-10",
+  "request_id": "C29-attempt-10-1793615721",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T10:46:14.331118+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a19bd4-33f7-7962-a6b7-06ded27076e9"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "recommendation": "pass",
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [
+    "Extend acceptance_c43.py's starter-case check to exercise Save again when needed and reopen Test Cases after relaunch. The retained imported-cases tree explicitly reports an unsaved Keychain failure; row presence establishes in-memory import, not durable storage. Preserve that failure evidence."
+  ],
+  "fingerprints": {
+    "source": "fed86b49c2c557fd1bdbf641bdd6ffe528bf90a7c396bb4b60f8879d5b8b3431",
+    "dependencies": "f5f26271b8823df8a2b5299417146784d345d4e04f8b59341706e6a41750210d",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "20ced4524fae643c13c11b29f8924c0b733b1505855924493a289a50de8962e2"
+  },
+  "verdict_sha256": "9300969c4ca9268f59e59b062d5a11c373a1880b8cb18afaa36d225790561a38",
+  "request_sha256": "a4cfe954d5021564062a7c2c4ec8ec064c56c8497a2f19b0f5938e0af2e52e0a",
+  "prompt_sha256": "84294aadef7ab92e60e514f6f36e297ea60fa68d4f8ba7d894d521d372fc2d2c",
+  "post_review_audit_sha256": "edb8b108b32d802ff506013bd963b23bcaf8c8c8506c1266c29226d38e27ebdb",
+  "invocation_sha256": "a4c6b7c896496c1f50117c7b8fc5ca64433108300de84d108ba5c02abcec45cf",
+  "thread_reply_sha256": "0c60d5c74c58fb2d0cfecb7f7085b3f81a264a478514e3601f9a9ed7112b26e3",
+  "source_frozen": true,
+  "d034_accepted": false,
+  "full_gate_pass": true,
+  "controller_complete": false,
+  "limitations": [
+    "Recomputed all four supplied fingerprints. All 5,544 scoped file hashes matched initially and at final recheck. Independently verified membership and content of all 18,338 compiled-input entries, identical build/check before-and-after inventories, and all 18 recorded run-log hashes. These establish consistency under the supplied procedures, not compiler or evidence authorship.",
+    "Recomputed the complete 1,621-entry fixture-bundle hash, including executable modes and symlink handling, and verified its identifier and executable against preparation. No fresh build, Rust/frontend suite, native interaction, Keychain operation or signed-installed qualification was performed during this review.",
+    "Verified C28's predecessor receipt hash and its matching passing raw verdict, plus C27's receipt/verdict binding. D058/D059 permit this integration while C26 remains open; this verdict does not complete C26, later chunks or P09.",
+    "Inspected the production setup transitions, real-pipeline tests, current completion-order diff and four save-failure regressions. Retained current logs report 10 onboarding, five setup-read and 22 Harness-tool tests passing, including preservation and subsequent one-time resolution of pending work after storage recovery. Failed original-source regression logs remain retained; they were not independently rerun.",
+    "Inspected all 48 matrix AX trees, focused behavior trees, observations, driver assertions and two representative 200% captures. The coverage checker passed; in-memory controls rejected a missing row and failed credential cleanup. The restored 24 behaviors and complete matrix address attempt-07 R1/R2/E1/E2. Spoken VoiceOver output and hosted Academy sign-in were not independently exercised.",
+    "C43's starter-case tree truthfully exposes an unsaved-library failure, so its immediate list assertion is not persistence proof. Separately inspected current C24-N04 and its offline-library tree, which show persisted starter cases on the same prepared executable. Those supplementary records are outside this request's scoped source inventory; no broader phase qualification is inferred.",
+    "Verified the historical L19 receipt/build/inventory/executable hash chain and successful verification AX tree. Current qualification-to-source comparison found 38 changed existing inputs; the management verifier remains unchanged and the scoped wizard/setup production changes concern switch binding and completion ordering. L19 remains historical production-adapter debug evidence, not live qualification of current bytes. Actual HTTP counts and private owner authorization were not independently observed.",
+    "No application files were changed, endpoints called, real credentials accessed or OS permissions granted. The read-only sandbox prevents writing the designated verdict artifact; this returned JSON is the verdict.",
+    "Separate fresh read-only reviewer session in the implementer model family. Observed CLI invocation/events and frozen inputs are not cryptographic proof of provider authorship. C26 controller completion remains open; no phase/release completion inferred."
+  ],
+  "outcome": "Actual independent C29 full9 manual fallback review passed and audited on G7/check07. Historical verdicts unchanged; no controller completion or phase/release pass inferred.",
+  "remediated_prior_accepted_findings": [
+    "attempt-07 R1",
+    "attempt-07 R2",
+    "attempt-07 E1",
+    "attempt-07 E2"
+  ]
+}
