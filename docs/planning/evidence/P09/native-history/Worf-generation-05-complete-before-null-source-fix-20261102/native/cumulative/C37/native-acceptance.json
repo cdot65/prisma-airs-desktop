@@ -1,0 +1,74 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C37",
+  "recorded_utc": "2026-11-02T04:07:07Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c37.py",
+  "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "b2b78863682a597e6a79ad99616d616afbbda6337149b33c7faf7f32f0717cad",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C37-N01",
+      "description": "The Inbox as the prototype draws it (R2App start=inbox) with a tenant whose read has landed: the heading and its line naming the tenant; a 430px list card with the filter tabs (All, Needs action, Updates, Snoozed, each with its count) over the rows (severity tile and word, title, product and source, when; an acknowledged row marked) and a footer naming the read's coverage; selecting a row fills the detail card (severity tile and word, product and source, the 22px title, the body, the facts as a three-column grid, the entry's own action, Acknowledge or Mark as needing action, Snooze or Unsnooze); the empty states name the read (first read pending; the failed first read, every source answering 500; with the sessions chart denied, AI Runtime Security needing a role: Open role issue offered, the footer's partial coverage, the empty pane qualifying what was read and naming the unread source rather than a bare all-clear, and the issue opening that product in Administration); snooze, acknowledge and unsnooze stay the C30 core intents with the core's return time stated the same in the row, the detail and the toast (D059 parity: the composites under evidence/C37/parity are captured by this script from the populated state with the first row opened, parity/bundle.json rewritten with the bundle they came from, and the owner's approval of them is recorded in parity/notes.md).",
+      "result": "pass",
+      "observation": "heading True; empty state before any read named it True; the failed first read named True; with the chart denied, Open role issue offered True with the footer '1 of 2 sources read at 04:04.', the empty pane 'Nothing needs action in what was read (1 of 2 sources). Activity for sessions chart is unknown until it can be read.' (no bare all-clear True) and opening AI Runtime Security in Administration True; Read now landed True; line 'Everything that needs you in Northwind Health \u00b7 newest first' (True); tabs {'All': 'All 2', 'Needs action': 'Needs action 2', 'Updates': 'Updates 0', 'Snoozed': 'Snoozed 0'} (True); rows ['3 violating sessions to investigate Warning \u00b7 AI Runtime Security \u00b7 Runtime Security \u00b7 last 24h 04:04', 'Runtime expires in 5 days Warning \u00b7 AI Runtime Security \u00b7 Runtime Security API keys 04:04'] with severity words True; footer 'All sources read at 04:04.'; detail: title True, severity True, facts grid True, own action True, actions {'Acknowledge': True, 'Snooze 24 hours': True}; holds: snooze toast True times {'toast': 'tomorrow 04:04', 'row': 'tomorrow 04:04', 'pane': 'tomorrow 04:04'} same True, unsnoozed True, acknowledged True, unmarked True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C37/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-failed.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-role-issue.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-role-issue-administration.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-detail.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-empty-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-failed-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-role-issue-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/parity/inbox-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/parity/inbox-light.png"
+      ]
+    },
+    {
+      "id": "C37-N02",
+      "description": "Keyboard and layout (T09): the Inbox at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the list populated; at each layout no horizontal overflow, the list card at least 160 CSS px tall with its tabs, first row and footer inside its own frame (nothing clipped), Tab from Read now reaching a tab then a row, and Enter on a focused row the detail does not show (scrolled into the viewport by its focus) changing the detail to it; the focus ring on the first row; every row records the WebView's measured size and the viewport from its own tree and asserts them.",
+      "result": "pass",
+      "observation": "Tab from the heading reached [('All', 0), ('3 violating ', 4), ('Acknowledge', 7)] in order True; ring on the first row 1926 px (True); Enter on the row opened its detail True; measured sizes by row inbox-1440x900-light: web [1440, 900] viewport [1440, 900], inbox-1440x900-dark: web [1440, 900] viewport [1440, 900], inbox-900x600-200-light: web [900, 607] viewport [900, 600], inbox-900x600-200-dark: web [900, 607] viewport [900, 600] (asserted True); overflow px inbox-1440x900-light: overflow 0 px, list height 684 pt (tabs/rows/first row by focus/footer inside True/2/True/True), Tab reached {'tab': 0, 'row': 4}, Enter on 'Runtime expires in 5 days Warn' changed the detail True, inbox-1440x900-dark: overflow 0 px, list height 684 pt (tabs/rows/first row by focus/footer inside True/2/True/True), Tab reached {'tab': 0, 'row': 4}, Enter on '3 violating sessions to invest' changed the detail True, inbox-900x600-200-light: overflow 0 px, list height 480 pt (tabs/rows/first row by focus/footer inside True/1/True/True), Tab reached {'tab': 0, 'row': 4}, Enter on 'Runtime expires in 5 days Warn' changed the detail True, inbox-900x600-200-dark: overflow 0 px, list height 480 pt (tabs/rows/first row by focus/footer inside True/1/True/True), Tab reached {'tab': 0, 'row': 4}, Enter on '3 violating sessions to invest' changed the detail True, horizontal scroll bars [0, 0, 0, 0]",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C37/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/row-ring.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/row-ring-plain.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-1440x900-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-1440x900-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-900x600-200-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/captures/inbox-900x600-200-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-1440x900-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-1440x900-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-900x600-200-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C37/native/tree-inbox-900x600-200-dark.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the appearance is selected before each capture.",
+    "Scan and management endpoints are synthetic services on this Mac (scan_server.py, mgmt_server.py): the read's entries are the synthetic plane's.",
+    "Window geometry is measured from each row's own accessibility tree (WebView area and viewport), never assumed.",
+    "Visual parity with the prototype is the owner's judgement from the composites under evidence/C37/parity, not a check here.",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "inbox-dark.png",
+    "inbox-empty-light.png",
+    "inbox-failed-light.png",
+    "inbox-light.png",
+    "inbox-role-light.png",
+    "layouts-inbox-1440x900-dark.png",
+    "layouts-inbox-1440x900-light.png",
+    "layouts-inbox-900x600-200-dark.png",
+    "layouts-inbox-900x600-200-light.png"
+  ]
+}

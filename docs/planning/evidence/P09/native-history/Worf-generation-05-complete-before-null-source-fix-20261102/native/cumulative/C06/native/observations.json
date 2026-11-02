@@ -1,0 +1,2465 @@
+{
+ "observations": {
+  "origin": "https://localhost:58807",
+  "guest_nav": [
+   "Learn",
+   "Open Runtime Security Path"
+  ],
+  "tree_guest": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-guest-learn.json",
+  "signed_in": true,
+  "account_nav": [
+   "Home",
+   "Learn",
+   "Program",
+   "Downloads",
+   "Notifications",
+   "Settings",
+   "Open Runtime Security Path"
+  ],
+  "home": {
+   "briefing": true,
+   "failure_toast": false,
+   "calls": [
+    [
+     "caches.list",
+     200
+    ],
+    [
+     "courses.list",
+     200
+    ],
+    [
+     "gamification.summary",
+     200
+    ],
+    [
+     "gamification.dossier",
+     404
+    ],
+    [
+     "shift.eligibility",
+     200
+    ],
+    [
+     "shift.getActive",
+     200
+    ],
+    [
+     "shift.daily",
+     412
+    ]
+   ]
+  },
+  "tree_home": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-home.json",
+  "program": {
+   "hub": true,
+   "cards": [
+    "CAPSTONE Exams The proctored assessments that close out each certification.",
+    "CREDENTIALS Certificates Credentials you have earned, with public verification links.",
+    "RECORD Dossier Your operative record: rank, commendations, and activity.",
+    "SUPPLY Requisitions Spend earned credits on gear and cosmetics.",
+    "STANDINGS Weekly Board Where you stand on this week\u2019s leaderboard."
+   ]
+  },
+  "tree_program": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-program.json",
+  "tree_exam_intro": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-exam-intro.json",
+  "tree_exam_runner": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-exam-runner.json",
+  "tree_exam_unknown": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-exam-unknown-outcome.json",
+  "tree_exam_pending": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-exam-pending-review.json",
+  "exam": {
+   "intro": true,
+   "runner": true,
+   "countdown": "59:59",
+   "proctored": true,
+   "unknown": true,
+   "answer_kept": true,
+   "submits_before_check": 1,
+   "pending_review": true,
+   "server_text_hidden": true,
+   "calls": [
+    [
+     "settings.get",
+     200,
+     true
+    ],
+    [
+     "certifications.list",
+     200,
+     true
+    ],
+    [
+     "exam.eligibility",
+     200,
+     true
+    ],
+    [
+     "exam.eligibility",
+     200,
+     true
+    ],
+    [
+     "exam.start",
+     200,
+     true
+    ],
+    [
+     "exam.getActive",
+     200,
+     true
+    ],
+    [
+     "exam.answer",
+     200,
+     true
+    ],
+    [
+     "exam.submit",
+     503,
+     true
+    ],
+    [
+     "exam.submissionState",
+     200,
+     true
+    ],
+    [
+     "exam.result",
+     200,
+     true
+    ]
+   ],
+   "bodies": {
+    "exam.start": {
+     "consent": true,
+     "certificationId": "ai-app-security"
+    },
+    "exam.answer": {
+     "attemptId": "00000000-0000-4000-8000-0000000000e1",
+     "questionId": "q1",
+     "value": 0
+    },
+    "exam.submit": {
+     "attemptId": "00000000-0000-4000-8000-0000000000e1",
+     "answers": [
+      {
+       "questionId": "q1",
+       "value": 0
+      }
+     ]
+    }
+   }
+  },
+  "exam_keyboard": {
+   "option_focused": true,
+   "option_selected": true,
+   "submit_focused": true,
+   "unknown_announced": true,
+   "unknown_in_alert": true,
+   "check_focused": true,
+   "pending_review": true,
+   "submits": 1
+  },
+  "tree_exam_keyboard": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-exam-keyboard.json",
+  "tree_certificate": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-certificate.json",
+  "tree_certificate_print_failed": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-certificate-print-failed.json",
+  "certificate": {
+   "shown": true,
+   "cert_url": "https://localhost:58807/verify/cert-certification",
+   "prints_before": [],
+   "prints_after": [
+    "print"
+   ],
+   "failure_shown": true,
+   "in_alert": true,
+   "prints_after_failure": [
+    "print"
+   ],
+   "still_on_certificate": true,
+   "calls": [
+    [
+     "certificate.mine",
+     200
+    ]
+   ]
+  },
+  "tree_lab_intro": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-lab-intro.json",
+  "tree_lab_passed": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-lab-passed.json",
+  "lab": {
+   "intro": true,
+   "started": true,
+   "passed": true,
+   "calls": [
+    [
+     "units.get",
+     200
+    ],
+    [
+     "labs.get",
+     200
+    ],
+    [
+     "desktop.attempt.list",
+     200
+    ],
+    [
+     "desktop.attempt.start",
+     200
+    ],
+    [
+     "desktop.attempt.get",
+     200
+    ],
+    [
+     "desktop.draft.save",
+     200
+    ],
+    [
+     "desktop.attempt.submit",
+     200
+    ],
+    [
+     "desktop.attempt.list",
+     200
+    ],
+    [
+     "units.get",
+     200
+    ],
+    [
+     "paths.list",
+     200
+    ]
+   ],
+   "bodies": [
+    [
+     "desktop.attempt.list",
+     {
+      "limit": 100
+     }
+    ],
+    [
+     "desktop.attempt.start",
+     {
+      "labId": "m-rt-1-lab-def",
+      "requestId": "687319ab-1e01-4420-a3ca-afd5f928446c"
+     }
+    ],
+    [
+     "desktop.attempt.get",
+     {
+      "attemptId": "00000000-0000-4000-8000-0000000000a1"
+     }
+    ],
+    [
+     "desktop.draft.save",
+     {
+      "attemptId": "00000000-0000-4000-8000-0000000000a1",
+      "baseVersion": 0,
+      "clientMutationId": "bd62a9c5-f3f7-4b51-ac20-ab64487485c9",
+      "draft": {
+       "commands": [],
+       "debrief": "",
+       "steps": {},
+       "classifications": {
+        "f1": "true-positive",
+        "f2": "false-positive"
+       },
+       "decision": "block"
+      }
+     }
+    ],
+    [
+     "desktop.attempt.submit",
+     {
+      "attemptId": "00000000-0000-4000-8000-0000000000a1",
+      "draftVersion": 1,
+      "submissionId": "34d68fd4-760f-42d1-ad2a-f49a382e2663"
+     }
+    ],
+    [
+     "desktop.attempt.list",
+     {
+      "limit": 100
+     }
+    ]
+   ]
+  },
+  "lab_unsupported": {
+   "previewed": true,
+   "calls": [
+    [
+     "units.get",
+     200
+    ],
+    [
+     "labs.get",
+     200
+    ],
+    [
+     "desktop.attempt.start",
+     412
+    ]
+   ]
+  },
+  "tree_lab_unsupported": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-lab-unsupported.json",
+  "tree_shift": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-shift-answered.json",
+  "shift": {
+   "shown": true,
+   "explained": true,
+   "answered_after_s": 1.6,
+   "sla_from_academy": true,
+   "serve": [
+    0.15
+   ],
+   "answer": [
+    1.12
+   ],
+   "briefing_replied": 6.14,
+   "answer_body": {
+    "shiftId": "00000000-0000-4000-8000-0000000000d1",
+    "order": 2,
+    "values": [
+     "0"
+    ]
+   }
+  },
+  "tree_feedback": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-lesson-feedback.json",
+  "feedback": {
+   "not_done_asks": false,
+   "widget": true,
+   "thanks": true,
+   "sent": [
+    {
+     "moduleId": "m-rt-1",
+     "rating": 4,
+     "lessonId": "m-rt-1-lesson-03"
+    }
+   ]
+  },
+  "tree_reset_dialog": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-reset-dialog.json",
+  "reset": {
+   "dialog": true,
+   "counts": true,
+   "certificates_stay": true,
+   "after_cancel": [],
+   "resets": [
+    {
+     "courseId": "runtime-security"
+    }
+   ]
+  },
+  "tree_removal_dialog": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-removal-dialog.json",
+  "removal": {
+   "dialog": true,
+   "names_certification": true,
+   "names_courses": true,
+   "certificates_stay": true,
+   "after_cancel": [],
+   "removals": [
+    {
+     "courseId": "runtime-security"
+    }
+   ]
+  },
+  "away": {
+   "Runtime Security": {
+    "tree": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-away-runtime.json",
+    "markers": []
+   },
+   "Harness": {
+    "tree": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-away-harness.json",
+    "markers": []
+   }
+  },
+  "away_requests": [],
+  "zoom_runner": true,
+  "tree_zoom_start": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-zoom-start.json",
+  "zoom": {
+   "zoom": 2,
+   "window": {
+    "pos": [
+     320,
+     95
+    ],
+    "size": [
+     1280,
+     820
+    ]
+   },
+   "found": {
+    "label": "See results",
+    "pos": [
+     717,
+     819
+    ],
+    "size": [
+     268,
+     96
+    ]
+   },
+   "clear": true
+  },
+  "min_size": {
+   "zoom": 1,
+   "window": {
+    "pos": [
+     320,
+     95
+    ],
+    "size": [
+     900,
+     600
+    ]
+   },
+   "found": {
+    "label": "See results",
+    "pos": [
+     665,
+     558
+    ],
+    "size": [
+     139,
+     48
+    ]
+   },
+   "clear": true
+  },
+  "tree_account": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-account.json",
+  "tree_avatar": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-avatar-uploaded.json",
+  "tree_avatar_lost_reply": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-avatar-lost-reply.json",
+  "avatar": {
+   "uploaded": true,
+   "load_warning": false,
+   "presign": [
+    [
+     {
+      "contentType": "image/jpeg",
+      "size": 232473
+     },
+     true
+    ]
+   ],
+   "put": [
+    [
+     "image/jpeg",
+     232473,
+     false,
+     200
+    ]
+   ],
+   "confirm": [
+    [
+     {
+      "ext": "jpg"
+     },
+     true
+    ]
+   ],
+   "read_back": [
+    [
+     "/api/avatars/user_2fixturelearner.jpg",
+     false,
+     200
+    ]
+   ],
+   "image_bytes": 5883258,
+   "strip_put": [
+    [
+     "image/jpeg",
+     7797,
+     200
+    ]
+   ],
+   "strip_confirmed": 1,
+   "strip_warning": false,
+   "lost_message": true,
+   "lost_put": [
+    0
+   ],
+   "lost_confirms": 0,
+   "lost_read_again": [
+    "/api/avatars/user_2fixturelearner.jpg"
+   ],
+   "malformed_message": true,
+   "malformed_in_alert": true,
+   "malformed_requests": [],
+   "over_budget_message": true,
+   "over_budget_requests": [],
+   "cancel_requests": [],
+   "cancel_alert": false,
+   "removed": true,
+   "removals": 1
+  },
+  "account": {
+   "page": true,
+   "photo_here": true,
+   "host_appearance": true,
+   "no_theme_choice": true,
+   "items_before": [
+    "cr-4e952370c261445f",
+    "cr-58ba6fd014506ab8"
+   ],
+   "guest_nav": true,
+   "guest_nav_links": [
+    "Learn"
+   ],
+   "shell_signed_out": true,
+   "items_after": [
+    "cr-58ba6fd014506ab8"
+   ],
+   "revoked": true
+  },
+  "tree_after_sign_out": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-after-sign-out.json",
+  "exam_deadline": {
+   "countdown": "00:07",
+   "unknown": true,
+   "submits": 1,
+   "submitted_after_s": 8.04,
+   "timer_after": "00:00"
+  },
+  "tree_exam_deadline": "docs/planning/evidence/P09/native/cumulative/C06/native/tree-exam-deadline.json",
+  "truth_in_trees": [],
+  "requests": [
+   {
+    "t": 1793591035.7406778,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 1.658
+   },
+   {
+    "t": 1793591035.741146,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.152
+   },
+   {
+    "t": 1793591042.181382,
+    "method": "GET",
+    "path": "/api/desktop/config",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591042.183014,
+    "method": "GET",
+    "path": "/.well-known/oauth-authorization-server",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591042.1846972,
+    "method": "POST",
+    "path": "/oauth/device",
+    "fields": [
+     "client_id",
+     "scope"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591043.188658,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591043.189802,
+    "method": "GET",
+    "path": "/api/trpc/desktop.me",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591044.058041,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.089
+   },
+   {
+    "t": 1793591044.060952,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.077
+   },
+   {
+    "t": 1793591045.381477,
+    "method": "GET",
+    "path": "/api/trpc/caches.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "caches.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.128
+   },
+   {
+    "t": 1793591045.382507,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.081
+   },
+   {
+    "t": 1793591045.383584,
+    "method": "GET",
+    "path": "/api/trpc/gamification.summary",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "gamification.summary",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.129
+   },
+   {
+    "t": 1793591045.384684,
+    "method": "GET",
+    "path": "/api/trpc/gamification.dossier",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "gamification.dossier",
+    "input": null,
+    "status": 404,
+    "handlingMs": 0.089
+   },
+   {
+    "t": 1793591045.395692,
+    "method": "GET",
+    "path": "/api/trpc/shift.eligibility",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.eligibility",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.115
+   },
+   {
+    "t": 1793591045.3965068,
+    "method": "GET",
+    "path": "/api/trpc/shift.getActive",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.getActive",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.095
+   },
+   {
+    "t": 1793591045.408177,
+    "method": "GET",
+    "path": "/api/trpc/shift.daily",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.daily",
+    "input": null,
+    "status": 412,
+    "handlingMs": 0.115
+   },
+   {
+    "t": 1793591047.932725,
+    "method": "GET",
+    "path": "/api/trpc/settings.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.get",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.125
+   },
+   {
+    "t": 1793591047.935297,
+    "method": "GET",
+    "path": "/api/trpc/certifications.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "certifications.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.214
+   },
+   {
+    "t": 1793591047.936874,
+    "method": "GET",
+    "path": "/api/trpc/exam.eligibility",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.eligibility",
+    "input": "{\"json\":{\"certificationId\":null},\"meta\":{\"values\":{\"certificationId\":[\"undefined\"]},\"v\":1}}",
+    "status": 200,
+    "handlingMs": 0.135
+   },
+   {
+    "t": 1793591047.9404101,
+    "method": "GET",
+    "path": "/api/trpc/exam.eligibility",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.eligibility",
+    "input": "{\"json\":{\"certificationId\":\"ai-app-security\"}}",
+    "status": 200,
+    "handlingMs": 1.289
+   },
+   {
+    "t": 1793591048.999528,
+    "method": "POST",
+    "path": "/api/trpc/exam.start",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.start",
+    "input": "{\"json\":{\"consent\":true,\"certificationId\":\"ai-app-security\"}}",
+    "status": 200,
+    "handlingMs": 0.146
+   },
+   {
+    "t": 1793591049.006331,
+    "method": "GET",
+    "path": "/api/trpc/exam.getActive",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.getActive",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.194
+   },
+   {
+    "t": 1793591050.866105,
+    "method": "POST",
+    "path": "/api/trpc/exam.answer",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.answer",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"questionId\":\"q1\",\"value\":0}}",
+    "status": 200,
+    "handlingMs": 0.097
+   },
+   {
+    "t": 1793591052.081486,
+    "method": "POST",
+    "path": "/api/trpc/exam.submit",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.submit",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"answers\":[{\"questionId\":\"q1\",\"value\":0}]}}",
+    "status": 503,
+    "handlingMs": 0.093
+   },
+   {
+    "t": 1793591054.463563,
+    "method": "GET",
+    "path": "/api/trpc/exam.submissionState",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.submissionState",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\"}}",
+    "status": 200,
+    "handlingMs": 0.123
+   },
+   {
+    "t": 1793591054.469044,
+    "method": "GET",
+    "path": "/api/trpc/exam.result",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.result",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\"}}",
+    "status": 200,
+    "handlingMs": 0.126
+   },
+   {
+    "t": 1793591057.2011268,
+    "method": "POST",
+    "path": "/api/trpc/exam.answer",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.answer",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"questionId\":\"q1\",\"value\":0}}",
+    "status": 200,
+    "handlingMs": 0.113
+   },
+   {
+    "t": 1793591060.233223,
+    "method": "POST",
+    "path": "/api/trpc/exam.submit",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.submit",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"answers\":[{\"questionId\":\"q1\",\"value\":0}]}}",
+    "status": 503,
+    "handlingMs": 0.11
+   },
+   {
+    "t": 1793591079.2928152,
+    "method": "GET",
+    "path": "/api/trpc/exam.submissionState",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.submissionState",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\"}}",
+    "status": 200,
+    "handlingMs": 0.121
+   },
+   {
+    "t": 1793591080.072994,
+    "method": "GET",
+    "path": "/api/trpc/certificate.mine",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "certificate.mine",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.111
+   },
+   {
+    "t": 1793591082.8555698,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.161
+   },
+   {
+    "t": 1793591082.857374,
+    "method": "GET",
+    "path": "/api/trpc/paths.forCourse",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.forCourse",
+    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.099
+   },
+   {
+    "t": 1793591082.863047,
+    "method": "GET",
+    "path": "/api/trpc/progress.courseSummary",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "progress.courseSummary",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.122
+   },
+   {
+    "t": 1793591082.870744,
+    "method": "GET",
+    "path": "/api/trpc/enrollment.affectedByCourseRemoval",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "enrollment.affectedByCourseRemoval",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.137
+   },
+   {
+    "t": 1793591082.8717399,
+    "method": "GET",
+    "path": "/api/trpc/units.listByModule",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByModule",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.135
+   },
+   {
+    "t": 1793591082.884854,
+    "method": "GET",
+    "path": "/api/trpc/modules.intro",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "modules.intro",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.121
+   },
+   {
+    "t": 1793591083.14746,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lab\"}}",
+    "status": 200,
+    "handlingMs": 1.601
+   },
+   {
+    "t": 1793591083.459764,
+    "method": "GET",
+    "path": "/api/trpc/labs.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "labs.get",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\",\"order\":2}}",
+    "status": 200,
+    "handlingMs": 0.184
+   },
+   {
+    "t": 1793591083.464923,
+    "method": "GET",
+    "path": "/api/trpc/desktop.attempt.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "desktop.attempt.list",
+    "input": "{\"json\":{\"limit\":100}}",
+    "status": 200,
+    "handlingMs": 0.222
+   },
+   {
+    "t": 1793591083.818122,
+    "method": "POST",
+    "path": "/api/trpc/desktop.attempt.start",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "desktop.attempt.start",
+    "input": "{\"json\":{\"labId\":\"m-rt-1-lab-def\",\"requestId\":\"687319ab-1e01-4420-a3ca-afd5f928446c\"}}",
+    "status": 200,
+    "handlingMs": 0.127
+   },
+   {
+    "t": 1793591083.824739,
+    "method": "GET",
+    "path": "/api/trpc/desktop.attempt.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "desktop.attempt.get",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\"}}",
+    "status": 200,
+    "handlingMs": 0.157
+   },
+   {
+    "t": 1793591085.6708758,
+    "method": "POST",
+    "path": "/api/trpc/desktop.draft.save",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "desktop.draft.save",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\",\"baseVersion\":0,\"clientMutationId\":\"bd62a9c5-f3f7-4b51-ac20-ab64487485c9\",\"draft\":{\"commands\":[],\"debrief\":\"\",\"steps\":{},\"classifications\":{\"f1\":\"true-positive\",\"f2\":\"false-positive\"},\"decision\":\"block\"}}}",
+    "status": 200,
+    "handlingMs": 0.113
+   },
+   {
+    "t": 1793591085.678359,
+    "method": "POST",
+    "path": "/api/trpc/desktop.attempt.submit",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "desktop.attempt.submit",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000a1\",\"draftVersion\":1,\"submissionId\":\"34d68fd4-760f-42d1-ad2a-f49a382e2663\"}}",
+    "status": 200,
+    "handlingMs": 0.122
+   },
+   {
+    "t": 1793591085.687179,
+    "method": "GET",
+    "path": "/api/trpc/desktop.attempt.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "desktop.attempt.list",
+    "input": "{\"json\":{\"limit\":100}}",
+    "status": 200,
+    "handlingMs": 0.094
+   },
+   {
+    "t": 1793591085.693641,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lab\"}}",
+    "status": 200,
+    "handlingMs": 1.716
+   },
+   {
+    "t": 1793591085.6941938,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.085
+   },
+   {
+    "t": 1793591085.900369,
+    "method": "GET",
+    "path": "/api/trpc/units.listByModule",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByModule",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.136
+   },
+   {
+    "t": 1793591086.2765162,
+    "method": "GET",
+    "path": "/api/trpc/units.listByModule",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByModule",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-2\"}}",
+    "status": 200,
+    "handlingMs": 0.148
+   },
+   {
+    "t": 1793591086.2830138,
+    "method": "GET",
+    "path": "/api/trpc/modules.intro",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "modules.intro",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-2\"}}",
+    "status": 200,
+    "handlingMs": 0.127
+   },
+   {
+    "t": 1793591086.654281,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-2-lab\"}}",
+    "status": 200,
+    "handlingMs": 1.551
+   },
+   {
+    "t": 1793591086.66187,
+    "method": "GET",
+    "path": "/api/trpc/labs.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "labs.get",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\",\"order\":3}}",
+    "status": 200,
+    "handlingMs": 0.154
+   },
+   {
+    "t": 1793591086.919889,
+    "method": "POST",
+    "path": "/api/trpc/desktop.attempt.start",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "desktop.attempt.start",
+    "input": "{\"json\":{\"labId\":\"m-rt-2-lab-def\",\"requestId\":\"0f6b5229-0ffa-4099-874f-7bc29383970a\"}}",
+    "status": 412,
+    "handlingMs": 0.121
+   },
+   {
+    "t": 1793591087.122829,
+    "method": "GET",
+    "path": "/api/trpc/gamification.dossier",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "gamification.dossier",
+    "input": null,
+    "status": 404,
+    "handlingMs": 0.105
+   },
+   {
+    "t": 1793591097.5997272,
+    "method": "GET",
+    "path": "/api/trpc/orientation.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "orientation.get",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.108
+   },
+   {
+    "t": 1793591097.606642,
+    "method": "GET",
+    "path": "/api/trpc/shift.dailyBoard",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.dailyBoard",
+    "input": null,
+    "status": 404,
+    "handlingMs": 0.11
+   },
+   {
+    "t": 1793591097.613746,
+    "method": "GET",
+    "path": "/api/trpc/shop.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shop.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.122
+   },
+   {
+    "t": 1793591097.625553,
+    "method": "POST",
+    "path": "/api/trpc/shift.serve",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.serve",
+    "input": "{\"json\":{\"shiftId\":\"00000000-0000-4000-8000-0000000000d1\"}}",
+    "status": 200,
+    "handlingMs": 0.113
+   },
+   {
+    "t": 1793591097.629235,
+    "method": "GET",
+    "path": "/api/trpc/shift.getActive",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.getActive",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.154
+   },
+   {
+    "t": 1793591097.6314712,
+    "method": "GET",
+    "path": "/api/trpc/shift.dailyBoard",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.dailyBoard",
+    "input": null,
+    "status": 404,
+    "handlingMs": 0.105
+   },
+   {
+    "t": 1793591097.6335192,
+    "method": "GET",
+    "path": "/api/trpc/gamification.summary",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "gamification.summary",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.254
+   },
+   {
+    "t": 1793591098.598953,
+    "method": "POST",
+    "path": "/api/trpc/shift.answer",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.answer",
+    "input": "{\"json\":{\"shiftId\":\"00000000-0000-4000-8000-0000000000d1\",\"order\":2,\"values\":[\"0\"]}}",
+    "status": 200,
+    "handlingMs": 0.081
+   },
+   {
+    "t": 1793591098.601784,
+    "method": "GET",
+    "path": "/api/trpc/shift.getActive",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.getActive",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.096
+   },
+   {
+    "t": 1793591098.603953,
+    "method": "GET",
+    "path": "/api/trpc/shift.dailyBoard",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.dailyBoard",
+    "input": null,
+    "status": 404,
+    "handlingMs": 0.064
+   },
+   {
+    "t": 1793591098.606019,
+    "method": "GET",
+    "path": "/api/trpc/gamification.summary",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "gamification.summary",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.072
+   },
+   {
+    "t": 1793591103.6216729,
+    "method": "GET",
+    "path": "/api/trpc/shift.briefing",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shift.briefing",
+    "input": "{\"json\":{\"shiftId\":\"00000000-0000-4000-8000-0000000000d1\",\"stage\":1}}",
+    "status": 200,
+    "handlingMs": 6006.953
+   },
+   {
+    "t": 1793591106.230614,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.093
+   },
+   {
+    "t": 1793591106.657525,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.076
+   },
+   {
+    "t": 1793591106.921689,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
+    "status": 200,
+    "handlingMs": 1.64
+   },
+   {
+    "t": 1793591109.195158,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-03\"}}",
+    "status": 200,
+    "handlingMs": 1.35
+   },
+   {
+    "t": 1793591111.4528372,
+    "method": "POST",
+    "path": "/api/trpc/admin.feedback.submit",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "admin.feedback.submit",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\",\"rating\":4,\"lessonId\":\"m-rt-1-lesson-03\"}}",
+    "status": 200,
+    "handlingMs": 0.144
+   },
+   {
+    "t": 1793591114.119765,
+    "method": "POST",
+    "path": "/api/trpc/progress.resetCourse",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "progress.resetCourse",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.116
+   },
+   {
+    "t": 1793591114.123255,
+    "method": "GET",
+    "path": "/api/trpc/progress.courseSummary",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "progress.courseSummary",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.283
+   },
+   {
+    "t": 1793591114.13039,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.181
+   },
+   {
+    "t": 1793591114.133512,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.106
+   },
+   {
+    "t": 1793591114.1365561,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.159
+   },
+   {
+    "t": 1793591118.191969,
+    "method": "POST",
+    "path": "/api/trpc/enrollment.removeByCourse",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "enrollment.removeByCourse",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.152
+   },
+   {
+    "t": 1793591118.19508,
+    "method": "GET",
+    "path": "/api/trpc/enrollment.affectedByCourseRemoval",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "enrollment.affectedByCourseRemoval",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.124
+   },
+   {
+    "t": 1793591118.200167,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.147
+   },
+   {
+    "t": 1793591118.205408,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.113
+   },
+   {
+    "t": 1793591118.208071,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.101
+   },
+   {
+    "t": 1793591134.8204029,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.13
+   },
+   {
+    "t": 1793591134.8214872,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.063
+   },
+   {
+    "t": 1793591134.8242261,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.081
+   },
+   {
+    "t": 1793591135.2004218,
+    "method": "GET",
+    "path": "/api/trpc/settings.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.get",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.132
+   },
+   {
+    "t": 1793591135.202358,
+    "method": "GET",
+    "path": "/api/trpc/certifications.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "certifications.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.11
+   },
+   {
+    "t": 1793591135.20387,
+    "method": "GET",
+    "path": "/api/trpc/exam.eligibility",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.eligibility",
+    "input": "{\"json\":{\"certificationId\":null},\"meta\":{\"values\":{\"certificationId\":[\"undefined\"]},\"v\":1}}",
+    "status": 200,
+    "handlingMs": 0.119
+   },
+   {
+    "t": 1793591135.207805,
+    "method": "GET",
+    "path": "/api/trpc/exam.eligibility",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.eligibility",
+    "input": "{\"json\":{\"certificationId\":\"ai-app-security\"}}",
+    "status": 200,
+    "handlingMs": 0.115
+   },
+   {
+    "t": 1793591135.425397,
+    "method": "GET",
+    "path": "/api/trpc/exam.getActive",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.getActive",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.177
+   },
+   {
+    "t": 1793591135.6733172,
+    "method": "POST",
+    "path": "/api/trpc/exam.answer",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.answer",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"questionId\":\"q1\",\"value\":0}}",
+    "status": 200,
+    "handlingMs": 0.154
+   },
+   {
+    "t": 1793591169.499421,
+    "method": "GET",
+    "path": "/api/trpc/gamification.summary",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "gamification.summary",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.095
+   },
+   {
+    "t": 1793591169.518672,
+    "method": "GET",
+    "path": "/api/trpc/shop.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "shop.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.121
+   },
+   {
+    "t": 1793591169.9987168,
+    "method": "POST",
+    "path": "/api/trpc/settings.avatarUploadUrl",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.avatarUploadUrl",
+    "input": "{\"json\":{\"contentType\":\"image/jpeg\",\"size\":232473}}",
+    "status": 200,
+    "handlingMs": 0.29
+   },
+   {
+    "t": 1793591170.000876,
+    "method": "PUT",
+    "path": "/upload/avatars/user_2fixturelearner.jpg",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "put": true,
+    "contentType": "image/jpeg",
+    "bytes": 232473,
+    "status": 200
+   },
+   {
+    "t": 1793591170.001767,
+    "method": "POST",
+    "path": "/api/trpc/settings.confirmAvatar",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.confirmAvatar",
+    "input": "{\"json\":{\"ext\":\"jpg\"}}",
+    "status": 200,
+    "handlingMs": 0.077
+   },
+   {
+    "t": 1793591170.006808,
+    "method": "GET",
+    "path": "/api/trpc/settings.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.get",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.11
+   },
+   {
+    "t": 1793591170.010137,
+    "method": "GET",
+    "path": "/api/avatars/user_2fixturelearner.jpg",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "avatarRead": "/api/avatars/user_2fixturelearner.jpg",
+    "status": 200
+   },
+   {
+    "t": 1793591172.9246771,
+    "method": "POST",
+    "path": "/api/trpc/settings.avatarUploadUrl",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.avatarUploadUrl",
+    "input": "{\"json\":{\"contentType\":\"image/jpeg\",\"size\":7797}}",
+    "status": 200,
+    "handlingMs": 0.108
+   },
+   {
+    "t": 1793591172.926076,
+    "method": "PUT",
+    "path": "/upload/avatars/user_2fixturelearner.jpg",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "put": true,
+    "contentType": "image/jpeg",
+    "bytes": 7797,
+    "status": 200
+   },
+   {
+    "t": 1793591172.927259,
+    "method": "POST",
+    "path": "/api/trpc/settings.confirmAvatar",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.confirmAvatar",
+    "input": "{\"json\":{\"ext\":\"jpg\"}}",
+    "status": 200,
+    "handlingMs": 0.106
+   },
+   {
+    "t": 1793591172.9304059,
+    "method": "GET",
+    "path": "/api/trpc/settings.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.get",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.108
+   },
+   {
+    "t": 1793591172.9412658,
+    "method": "GET",
+    "path": "/api/avatars/user_2fixturelearner.jpg",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "avatarRead": "/api/avatars/user_2fixturelearner.jpg",
+    "status": 200
+   },
+   {
+    "t": 1793591175.54226,
+    "method": "POST",
+    "path": "/api/trpc/settings.avatarUploadUrl",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.avatarUploadUrl",
+    "input": "{\"json\":{\"contentType\":\"image/jpeg\",\"size\":7797}}",
+    "status": 200,
+    "handlingMs": 0.127
+   },
+   {
+    "t": 1793591175.543584,
+    "method": "PUT",
+    "path": "/upload/avatars/user_2fixturelearner.jpg",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "put": true,
+    "contentType": "image/jpeg",
+    "bytes": 7797,
+    "status": 0
+   },
+   {
+    "t": 1793591175.547638,
+    "method": "GET",
+    "path": "/api/trpc/settings.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.get",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.112
+   },
+   {
+    "t": 1793591175.556745,
+    "method": "GET",
+    "path": "/api/avatars/user_2fixturelearner.jpg",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "avatarRead": "/api/avatars/user_2fixturelearner.jpg",
+    "status": 200
+   },
+   {
+    "t": 1793591182.463189,
+    "method": "POST",
+    "path": "/api/trpc/settings.removeAvatar",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.removeAvatar",
+    "input": "{}",
+    "status": 200,
+    "handlingMs": 0.115
+   },
+   {
+    "t": 1793591182.8527849,
+    "method": "POST",
+    "path": "/oauth/revoke",
+    "fields": [
+     "client_id",
+     "token",
+     "token_type_hint"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": "refresh_token",
+    "revokedToken": "fixture-refresh-1",
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591182.873375,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.114
+   },
+   {
+    "t": 1793591182.874431,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.12
+   },
+   {
+    "t": 1793591191.436734,
+    "method": "GET",
+    "path": "/api/desktop/config",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591191.438359,
+    "method": "GET",
+    "path": "/.well-known/oauth-authorization-server",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591191.439512,
+    "method": "POST",
+    "path": "/oauth/device",
+    "fields": [
+     "client_id",
+     "scope"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591192.442899,
+    "method": "POST",
+    "path": "/oauth/token",
+    "fields": [
+     "client_id",
+     "device_code",
+     "grant_type"
+    ],
+    "clientId": "desktop_public_client",
+    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591192.444063,
+    "method": "GET",
+    "path": "/api/trpc/desktop.me",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false
+   },
+   {
+    "t": 1793591193.324521,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.086
+   },
+   {
+    "t": 1793591193.327199,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.089
+   },
+   {
+    "t": 1793591193.7106822,
+    "method": "GET",
+    "path": "/api/trpc/settings.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "settings.get",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.183
+   },
+   {
+    "t": 1793591193.712245,
+    "method": "GET",
+    "path": "/api/trpc/certifications.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "certifications.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.08
+   },
+   {
+    "t": 1793591193.7130182,
+    "method": "GET",
+    "path": "/api/trpc/exam.eligibility",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.eligibility",
+    "input": "{\"json\":{\"certificationId\":null},\"meta\":{\"values\":{\"certificationId\":[\"undefined\"]},\"v\":1}}",
+    "status": 200,
+    "handlingMs": 0.083
+   },
+   {
+    "t": 1793591193.715155,
+    "method": "GET",
+    "path": "/api/trpc/exam.eligibility",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.eligibility",
+    "input": "{\"json\":{\"certificationId\":\"ai-app-security\"}}",
+    "status": 200,
+    "handlingMs": 0.088
+   },
+   {
+    "t": 1793591193.952798,
+    "method": "GET",
+    "path": "/api/trpc/exam.getActive",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.getActive",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.208
+   },
+   {
+    "t": 1793591201.993312,
+    "method": "POST",
+    "path": "/api/trpc/exam.submit",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "exam.submit",
+    "input": "{\"json\":{\"attemptId\":\"00000000-0000-4000-8000-0000000000e1\",\"answers\":[]}}",
+    "status": 503,
+    "handlingMs": 0.283
+   }
+  ]
+ },
+ "log": [
+  {
+   "t": "03:43:44",
+   "step": "typed",
+   "field": "Display name",
+   "attempts": 1
+  },
+  {
+   "t": "03:43:46",
+   "step": "typed",
+   "field": "TSG ID",
+   "attempts": 1
+  },
+  {
+   "t": "03:43:49",
+   "step": "typed",
+   "field": "Scan API key",
+   "attempts": 1
+  }
+ ]
+}

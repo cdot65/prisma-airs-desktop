@@ -1,0 +1,251 @@
+{
+  "schema": "airs-v2-workload-perf/1",
+  "label": "acceptance",
+  "status": "pass",
+  "failure": null,
+  "method": "c30-cached-switch-v2",
+  "method_sha256": "35830b74e6c0c9721080de1b51f6d25ff68265a98adb1bc76eba041e723bc582",
+  "registration_record_sha256": "9065a742f836824a30d2913c0032723523703fdb93cb81934d219236dfa9c326",
+  "subject": "P09",
+  "attempt": "attempt-01",
+  "command": [
+    "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python",
+    "-I",
+    "tools/perf/measure_c30.py",
+    "--label",
+    "acceptance",
+    "--attempt",
+    "attempt-01"
+  ],
+  "conditions": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "macos": "26.6.2",
+    "swiftc": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx26.0",
+    "load_average": [
+      1.375,
+      1.3515625,
+      1.3974609375
+    ],
+    "execution_environment": "owner-authorized Worf macOS guest; guest-level observations only",
+    "fixture_pid": 29103,
+    "window": {
+      "pos": [
+        320,
+        95
+      ],
+      "size": [
+        1280,
+        820
+      ]
+    }
+  },
+  "prepare_sha256": "3ee4f3dc33680c69d7076f35e81de57c251008b9ee4bea7a2b93fe1374f4fe3e",
+  "build_inputs_sha256": "e2e09053cab2a592dfd0a711cd95b643bdd91d215142e90a4b6164559d2d8096",
+  "sources_unchanged": true,
+  "input_digest": "06f25a6dfa6156b464019059f17c54dbe0c205a5161b1e8f77ac36a88da062e4",
+  "inputs_unchanged": true,
+  "source_root": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current",
+  "source_head": "cdd8e312e5c53a7987ce9819910dae3431dc323f",
+  "driver_sha256": "5cf42690a907b1c625f46b83a68c8f310e69c33b3ed9621bc28c8f866bba2028",
+  "probe_source_sha256": "8ddf5bcb8ad3b13471a484c41cbfe196d1b0779db05e76e56e22b87f181d3b0c",
+  "probe_executable_sha256": "19f409a72220282a7fcfd9a7731d05c628647d9534a1f97186ce6905f0fdbc8a",
+  "registration_sha256": "0031d2527c719b899325036f4b4ef77c638b6add974571321c5a3f2feaf5828a",
+  "started_utc": "2026-11-02T04:27:42.436356+00:00",
+  "finished_utc": "2026-11-02T04:28:55.945752+00:00",
+  "executable_sha256": "b2b78863682a597e6a79ad99616d616afbbda6337149b33c7faf7f32f0717cad",
+  "host": "VirtualMac2,1",
+  "metrics": {
+    "tenant-switch-home": {
+      "unit": "ms",
+      "samples": [
+        25.143542,
+        22.45975,
+        22.11475,
+        21.54425,
+        20.255375,
+        22.963125,
+        20.585291,
+        25.714625,
+        20.71675,
+        21.415833
+      ]
+    }
+  },
+  "details": {
+    "raw_switches": [
+      {
+        "index": 0,
+        "from": "Tenant A",
+        "to": "Tenant B",
+        "warmup": true,
+        "exit": 0,
+        "probe": {
+          "ms": 19.669625,
+          "method": "c30-cached-switch-v2",
+          "polls": 6
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-00-ax.json",
+        "tree_sha256": "eff01d583de366fa876f9eb48f2d00aaca75d5081495562e05f3b26a63010ddd"
+      },
+      {
+        "index": 1,
+        "from": "Tenant B",
+        "to": "Tenant A",
+        "warmup": true,
+        "exit": 0,
+        "probe": {
+          "ms": 19.851042,
+          "method": "c30-cached-switch-v2",
+          "polls": 6
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-01-ax.json",
+        "tree_sha256": "eb453a4dacac9353b1b7c40d0eeff19843aedee6956490e084ee2ae0c326c12f"
+      },
+      {
+        "index": 2,
+        "from": "Tenant A",
+        "to": "Tenant B",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "polls": 8,
+          "ms": 25.143542,
+          "method": "c30-cached-switch-v2"
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-02-ax.json",
+        "tree_sha256": "eaef414af0212aee668742f9cbe7ce499c51048bb0c9f66521069f5c859dbb45"
+      },
+      {
+        "index": 3,
+        "from": "Tenant B",
+        "to": "Tenant A",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "ms": 22.45975,
+          "polls": 7,
+          "method": "c30-cached-switch-v2"
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-03-ax.json",
+        "tree_sha256": "a0b6211757e9a97d899614fd59d2a991df4706df05b861ddf4c92b4311b54bdd"
+      },
+      {
+        "index": 4,
+        "from": "Tenant A",
+        "to": "Tenant B",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "polls": 6,
+          "method": "c30-cached-switch-v2",
+          "ms": 22.11475
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-04-ax.json",
+        "tree_sha256": "a70afcfd87f9c8d39ecfabbbf9f12d4843c05988158cc77b7e40037cce40bb6a"
+      },
+      {
+        "index": 5,
+        "from": "Tenant B",
+        "to": "Tenant A",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "method": "c30-cached-switch-v2",
+          "ms": 21.54425,
+          "polls": 7
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-05-ax.json",
+        "tree_sha256": "43ef98f3250df869833cb26f8a2dc9960db17d2aab500b6bfb65bad2d778a483"
+      },
+      {
+        "index": 6,
+        "from": "Tenant A",
+        "to": "Tenant B",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "method": "c30-cached-switch-v2",
+          "ms": 20.255375,
+          "polls": 6
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-06-ax.json",
+        "tree_sha256": "788a302ca9cbf9a1d940137439697f400f8bf3c4f56b27f6eb8b61f94be42115"
+      },
+      {
+        "index": 7,
+        "from": "Tenant B",
+        "to": "Tenant A",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "polls": 7,
+          "method": "c30-cached-switch-v2",
+          "ms": 22.963125
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-07-ax.json",
+        "tree_sha256": "7b8518ad6b9421dc0507ef9262a8033c05395dcfcb4dd98e664b2437a314305c"
+      },
+      {
+        "index": 8,
+        "from": "Tenant A",
+        "to": "Tenant B",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "method": "c30-cached-switch-v2",
+          "polls": 6,
+          "ms": 20.585291
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-08-ax.json",
+        "tree_sha256": "4721b4658b935ec06f462a6efad10ba6af67608eb92d9e68a32f7419e1c5ac26"
+      },
+      {
+        "index": 9,
+        "from": "Tenant B",
+        "to": "Tenant A",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "ms": 25.714625,
+          "polls": 6,
+          "method": "c30-cached-switch-v2"
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-09-ax.json",
+        "tree_sha256": "e821d8dcf53fa9c00c9f825674addad48126c5103e4f369ea2d599e59d335628"
+      },
+      {
+        "index": 10,
+        "from": "Tenant A",
+        "to": "Tenant B",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "method": "c30-cached-switch-v2",
+          "polls": 6,
+          "ms": 20.71675
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-10-ax.json",
+        "tree_sha256": "038a4103981dd68b8e86138d147560d0fa2ef671bc1ccbdef2cd983e4e2baf75"
+      },
+      {
+        "index": 11,
+        "from": "Tenant B",
+        "to": "Tenant A",
+        "warmup": false,
+        "exit": 0,
+        "probe": {
+          "method": "c30-cached-switch-v2",
+          "polls": 6,
+          "ms": 21.415833
+        },
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-01/switch-11-ax.json",
+        "tree_sha256": "5f46d06ad1d04d3796bd089bcf4286d4c92a86ab1e186507c877e2dc2f6b6d1d"
+      }
+    ],
+    "a_read": true,
+    "management_requests_before": 3,
+    "switches": 12,
+    "management_requests_after": 3
+  }
+}
