@@ -34,6 +34,7 @@ use crate::management::{
     BindingSource, ManagementBinding, ManagementFailure, ManagementResource, PageError, Walk,
     outcome_of,
 };
+use crate::presentation::{PresentationLease, PresentationOwner};
 use crate::runtime::{Claim, OperationId, OperationState, Outcome, Work};
 use crate::tenants::TenantId;
 use crate::vault::SessionVault;
@@ -274,6 +275,7 @@ enum Phase {
 }
 
 pub(super) struct ChangeReview {
+    presentation: PresentationOwner,
     id: ReviewId,
     context: ContextRef,
     tenant: TenantId,
@@ -347,6 +349,7 @@ enum Progress {
 type ProgressSlot = Arc<Mutex<Progress>>;
 
 pub(super) struct ChangeRecord {
+    presentation: PresentationOwner,
     operation: OperationId,
     /// The review this change was applied from: ending that review ends the
     /// disclosure of whatever the change returns (C31, I6).
@@ -545,6 +548,7 @@ impl State {
             Err(problem) => {
                 // Kept so the operator can see why; nothing is read or sent.
                 self.change_review = Some(ChangeReview {
+                    presentation: PresentationOwner::default(),
                     id,
                     context,
                     tenant,
@@ -573,6 +577,7 @@ impl State {
             self.operations
                 .admit(context.as_str(), 0, job.into_work(), Instant::now())?;
         self.change_review = Some(ChangeReview {
+            presentation: PresentationOwner::default(),
             id,
             context,
             tenant,
@@ -595,7 +600,7 @@ impl State {
         review: &ReviewId,
         draft: &ChangeDraft,
         typed: &str,
-    ) -> Result<(u64, ConfirmationRequest), Refusal> {
+    ) -> Result<(u64, ConfirmationRequest, PresentationLease), Refusal> {
         if self.consumed_reviews.contains(review) {
             return Err(Refusal::ReviewConsumed);
         }
@@ -666,7 +671,7 @@ impl State {
         let shown = bound.as_ref().and_then(|b| b.scope.shown.as_ref());
         let request = confirmation_request(&label, &prepared, shown);
         current.phase = Phase::Confirming { nonce, prepared };
-        Ok((nonce, request))
+        Ok((nonce, request, current.presentation.lease()))
     }
 
     /// The native confirmation's private completion. Only the open
@@ -777,6 +782,7 @@ impl State {
         self.change_results.insert(
             0,
             ChangeRecord {
+                presentation: PresentationOwner::default(),
                 operation,
                 review,
                 context,
@@ -951,7 +957,7 @@ impl State {
     pub(super) fn reveal_secret(
         &mut self,
         operation: &OperationId,
-    ) -> Result<(String, Zeroizing<String>), Refusal> {
+    ) -> Result<(String, Zeroizing<String>, PresentationLease), Refusal> {
         let active = self.active_ref.clone();
         let record = self
             .change_results
@@ -977,7 +983,7 @@ impl State {
                 .map(|n| format!(" for {n}"))
                 .unwrap_or_default()
         );
-        Ok((label, secret))
+        Ok((label, secret, record.presentation.lease()))
     }
 
     /// CancelChange: stops an applying change of the active context. The
@@ -1027,6 +1033,7 @@ impl State {
             .iter_mut()
             .find(|r| &r.operation == operation)
             .ok_or(Refusal::InvalidInput)?;
+        record.presentation.revoke();
         if let Some(output) = record.output.as_mut() {
             output.secret = None;
         } else {
@@ -1110,6 +1117,7 @@ impl State {
             {
                 // Its settlement still belongs to its tenant (a Gateway
                 // record on this Mac, a Runtime key rotation's facts).
+                record.presentation.revoke();
                 self.detached_changes.push(record);
             }
         }

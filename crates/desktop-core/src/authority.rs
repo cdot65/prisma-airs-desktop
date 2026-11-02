@@ -1461,6 +1461,20 @@ pub trait OperatorConfirmation: Send + Sync + 'static {
         nonce: u64,
         request: ConfirmationRequest,
     ) -> futures_util::future::BoxFuture<'static, bool>;
+    /// The scoped production path carries admission-time ownership into any
+    /// deferred native callback. Asynchronous adapters must override this method.
+    fn confirm_scoped(
+        &self,
+        nonce: u64,
+        request: ConfirmationRequest,
+        lease: crate::PresentationLease,
+    ) -> futures_util::future::BoxFuture<'static, bool> {
+        if lease.is_current() {
+            self.confirm(nonce, request)
+        } else {
+            Box::pin(async { false })
+        }
+    }
     /// Ends confirmation `nonce` if it is still shown (resolving it false).
     /// Called with the authority locked: it must not block.
     fn dismiss(&self, nonce: u64);
@@ -1471,6 +1485,18 @@ pub trait SecretPresenter: Send + Sync + 'static {
     /// Shows `secret` under `label` with an explicit copy action; the host
     /// owns its expiry and clipboard cleanup.
     fn reveal(&self, label: String, secret: Zeroizing<String>);
+    /// Carries admission-time ownership through deferred presentation/copy.
+    /// Asynchronous adapters must override this method and check at execution.
+    fn reveal_scoped(
+        &self,
+        label: String,
+        secret: Zeroizing<String>,
+        lease: crate::PresentationLease,
+    ) {
+        if lease.is_current() {
+            self.reveal(label, secret);
+        }
+    }
     /// Ends any shown secret sheet and zeroizes its copy. Must not block.
     fn dismiss(&self);
 }
@@ -2708,6 +2734,7 @@ enum Effect {
         review: ReviewId,
         nonce: u64,
         request: ConfirmationRequest,
+        presentation: crate::PresentationLease,
     },
     /// The native confirmation of a Harness decision that may change
     /// things (C32).
@@ -2720,6 +2747,7 @@ enum Effect {
     RevealSecret {
         label: String,
         secret: Zeroizing<String>,
+        presentation: crate::PresentationLease,
     },
     ChooseTextFile {
         lease: u64,
@@ -2794,6 +2822,8 @@ enum Effect {
 }
 
 struct Inner {
+    #[cfg(any(test, feature = "test-fixtures"))]
+    presentation_gate: Mutex<Option<Arc<crate::PresentationGate>>>,
     state: Mutex<State>,
     adapters: Adapters,
     session: Arc<SessionVault>,
@@ -2946,6 +2976,8 @@ impl Core {
         };
         let _ = state.reissue_context();
         let inner = Arc::new(Inner {
+            #[cfg(any(test, feature = "test-fixtures"))]
+            presentation_gate: Mutex::default(),
             state: Mutex::new(state),
             adapters,
             session: Arc::new(SessionVault::new()),
@@ -3454,9 +3486,18 @@ impl AuthorityHandle {
         lock(&self.inner)?.operator_sessions.register()
     }
 
-    /// Called by the native main-page lifecycle, never by a renderer intent.
-    /// Review/disclosure ownership ends with the page; admitted work and its
-    /// outcomes survive. Delivery-session recovery alone does not end a page.
+    /// Fixture-only gate at the real admission-to-native-effect boundary.
+    #[cfg(any(test, feature = "test-fixtures"))]
+    pub fn hold_next_native_presentation(&self) -> Arc<crate::PresentationGate> {
+        let gate = Arc::new(crate::PresentationGate::default());
+        if let Ok(mut pending) = self.inner.presentation_gate.lock() {
+            *pending = Some(Arc::clone(&gate));
+        }
+        gate
+    }
+
+    /// Called by the native main-page lifecycle. Admitted business work survives;
+    /// review/disclosure owners and the departed page's delivery session retire.
     pub fn retire_renderer(&self) -> Result<(), Refusal> {
         let mut state = lock(&self.inner)?;
         state.operator_sessions.retire();
@@ -4139,11 +4180,13 @@ fn admit(
             draft,
             confirmation,
         } => {
-            let (nonce, request) = state.request_apply(&review, &draft, &confirmation)?;
+            let (nonce, request, presentation) =
+                state.request_apply(&review, &draft, &confirmation)?;
             effects.push(Effect::Confirm {
                 review,
                 nonce,
                 request,
+                presentation,
             });
             state.changed();
         }
@@ -4158,8 +4201,12 @@ fn admit(
             state.changed();
         }
         Intent::RevealSecret { operation } => {
-            let (label, secret) = state.reveal_secret(&operation)?;
-            effects.push(Effect::RevealSecret { label, secret });
+            let (label, secret, presentation) = state.reveal_secret(&operation)?;
+            effects.push(Effect::RevealSecret {
+                label,
+                secret,
+                presentation,
+            });
             // The key is no longer held: publish that, or the presentation
             // keeps offering a reveal that will be refused.
             state.changed();
@@ -5099,6 +5146,20 @@ fn intent_digest(salt: &[u8; 16], intent: &Intent) -> [u8; 32] {
 
 fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
     for effect in effects {
+        #[cfg(any(test, feature = "test-fixtures"))]
+        if matches!(
+            &effect,
+            Effect::Confirm { .. } | Effect::RevealSecret { .. }
+        ) {
+            let gate = inner
+                .presentation_gate
+                .lock()
+                .ok()
+                .and_then(|mut gate| gate.take());
+            if let Some(gate) = gate {
+                gate.pause();
+            }
+        }
         match effect {
             Effect::Harness(start) => {
                 let inner = Arc::clone(inner);
@@ -5285,10 +5346,15 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                 review,
                 nonce,
                 request,
+                presentation,
             } => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
-                    let accepted = inner.adapters.confirmer.confirm(nonce, request).await;
+                    let accepted = inner
+                        .adapters
+                        .confirmer
+                        .confirm_scoped(nonce, request, presentation)
+                        .await;
                     settle_confirmation(&inner, &review, nonce, accepted);
                 });
             }
@@ -5346,8 +5412,15 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     }
                 });
             }
-            Effect::RevealSecret { label, secret } => {
-                inner.adapters.secrets.reveal(label, secret);
+            Effect::RevealSecret {
+                label,
+                secret,
+                presentation,
+            } => {
+                inner
+                    .adapters
+                    .secrets
+                    .reveal_scoped(label, secret, presentation);
             }
             Effect::LoadReports { lease } => {
                 let inner = Arc::clone(inner);

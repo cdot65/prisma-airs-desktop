@@ -31,6 +31,10 @@ pub mod library;
 pub mod management;
 pub mod observation;
 mod observe;
+mod presentation;
+#[cfg(any(test, feature = "test-fixtures"))]
+pub use presentation::PresentationGate;
+pub use presentation::PresentationLease;
 pub mod offline;
 pub mod red_team;
 pub mod runtime;

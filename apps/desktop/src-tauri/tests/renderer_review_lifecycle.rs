@@ -91,6 +91,9 @@ struct Desk {
 
 impl Desk {
     async fn new(delay_issuance: bool) -> Self {
+        Self::with_presenter(delay_issuance, None).await
+    }
+    async fn with_presenter(delay_issuance: bool, queued: Option<Arc<QueuedNative>>) -> Self {
         let ca = TestCa::new("C31 renderer lifetime fixture");
         let plane = Arc::new(Mutex::new(Plane {
             keys: vec![
@@ -108,7 +111,11 @@ impl Desk {
         )
         .await;
         let origin = format!("https://localhost:{}", server.port);
-        let (adapters, handles) = fixtures::adapters();
+        let (mut adapters, handles) = fixtures::adapters();
+        if let Some(queued) = queued {
+            adapters.confirmer = queued.clone();
+            adapters.secrets = queued;
+        }
         let core = Core::new(
             CoreConfig {
                 management: ManagementEndpoints::at_origin(&origin),
@@ -150,8 +157,15 @@ impl Desk {
     }
 
     fn call(&self, command: &str, body: Value) -> Result<Value, Value> {
+        Self::call_window(&self.window, command, body)
+    }
+    fn call_window(
+        window: &WebviewWindow<MockRuntime>,
+        command: &str,
+        body: Value,
+    ) -> Result<Value, Value> {
         get_ipc_response(
-            &self.window,
+            window,
             InvokeRequest {
                 cmd: command.into(),
                 callback: CallbackFn(0),
@@ -163,6 +177,12 @@ impl Desk {
             },
         )
         .map(|response| response.deserialize::<Value>().expect("response JSON"))
+    }
+    fn send_thread(&mut self, intent: Value) -> std::thread::JoinHandle<Result<Value, Value>> {
+        self.sequence += 1;
+        let window = self.window.clone();
+        let body = json!({"protocol":1,"session":self.session,"sequence":self.sequence.to_string(),"intent":intent});
+        std::thread::spawn(move || Self::call_window(&window, "desktop_dispatch", body))
     }
     fn register(&mut self) {
         let value = self
@@ -195,8 +215,11 @@ impl Desk {
         }
     }
     async fn review(&mut self) -> desktop_core::ChangeReviewView {
+        self.review_draft(draft()).await
+    }
+    async fn review_draft(&mut self, draft: Value) -> desktop_core::ChangeReviewView {
         let context = self.snap().active.expect("active").context;
-        self.send(json!({"kind":"reviewChange","context":context,"draft":draft()}))
+        self.send(json!({"kind":"reviewChange","context":context,"draft":draft}))
             .expect("review");
         assert!(
             eventually(|| self
@@ -212,11 +235,19 @@ impl Desk {
             .await
         );
         let review = self.snap().changes.review.expect("review exists");
-        assert_eq!(review.state, desktop_core::ChangeReviewState::Ready);
+        assert_eq!(
+            review.state,
+            desktop_core::ChangeReviewState::Ready,
+            "{:?}",
+            review.failure
+        );
         review
     }
     fn apply(&mut self, review: &desktop_core::ChangeReviewView) {
-        self.send(json!({"kind":"requestApply","review":review.review,"draft":draft(),"confirmation":"CREATE"})).expect("apply requested");
+        self.apply_draft(review, draft());
+    }
+    fn apply_draft(&mut self, review: &desktop_core::ChangeReviewView, draft: Value) {
+        self.send(json!({"kind":"requestApply","review":review.review,"draft":draft,"confirmation":"CREATE"})).expect("apply requested");
     }
     async fn settled(&self) -> desktop_core::ChangeResultView {
         assert!(
@@ -242,7 +273,10 @@ impl Desk {
 }
 
 fn draft() -> Value {
-    json!({"kind":"apiKeys","action":"version","target":"key-1","body":json!({"cust_app":"Support bot","cust_env":"production","cust_cloud_provider":"aws","api_key_name":"Support key 2","dp_name":"dp-1","revoked":false,"rotation_time_interval":30,"rotation_time_unit":"days"}).to_string()})
+    draft_named("Support key 2")
+}
+fn draft_named(name: &str) -> Value {
+    json!({"kind":"apiKeys","action":"version","target":"key-1","body":json!({"cust_app":"Support bot","cust_env":"production","cust_cloud_provider":"aws","api_key_name":name,"dp_name":"dp-1","revoked":false,"rotation_time_interval":30,"rotation_time_unit":"days"}).to_string()})
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -386,4 +420,350 @@ async fn renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review(
         .expect("same live page may reveal");
     assert_eq!(desk.adapters.secrets.shown().len(), 1);
     assert_eq!(desk.writes(), 1);
+}
+
+// Both queue adapters use the production callback guards. The unscoped fallback
+// deliberately preserves the old public adapter contract: the old core's calls
+// have no owner to revoke. This makes the old-red failures behavioral, not a
+// missing-new-API compilation failure.
+#[derive(Default)]
+struct QueuedNative {
+    registry: desktop_host::native_confirmation::Registry,
+    owner: desktop_host::native_confirmation::SecretOwnership,
+    queue_confirms: std::sync::atomic::AtomicBool,
+    confirm_entries: std::sync::atomic::AtomicUsize,
+    state: Mutex<QueuedState>,
+}
+#[derive(Default)]
+struct QueuedState {
+    secrets: Vec<SecretTask>,
+    confirmations: Vec<ConfirmationTask>,
+    shown_secrets: usize,
+    copied_secrets: usize,
+    shown_confirmations: usize,
+}
+enum SecretTask {
+    Legacy(String, zeroize::Zeroizing<String>),
+    Scoped(desktop_host::native_confirmation::SecretPresentation),
+}
+enum ConfirmationTask {
+    Legacy(u64, desktop_core::ConfirmationRequest),
+    Scoped(desktop_host::native_confirmation::ConfirmationPresentation),
+}
+impl QueuedNative {
+    fn secret_count(&self) -> usize {
+        self.state.lock().expect("queue").secrets.len()
+    }
+    fn confirmation_count(&self) -> usize {
+        self.state.lock().expect("queue").confirmations.len()
+    }
+    fn drain(&self) {
+        use desktop_host::native_confirmation::SecretPresentation;
+        let (secrets, confirmations) = {
+            let mut state = self.state.lock().expect("queue");
+            (
+                std::mem::take(&mut state.secrets),
+                std::mem::take(&mut state.confirmations),
+            )
+        };
+        for task in secrets {
+            let task = match task {
+                SecretTask::Legacy(label, secret) => SecretPresentation::new(
+                    label,
+                    secret,
+                    desktop_core::PresentationLease::default(),
+                ),
+                SecretTask::Scoped(task) => task,
+            };
+            task.run(&self.owner, |_, _, permit| {
+                let mut state = self.state.lock().expect("queue");
+                state.shown_secrets += 1;
+                if permit.allowed(&self.owner) {
+                    state.copied_secrets += 1;
+                }
+            });
+        }
+        for task in confirmations {
+            match task {
+                ConfirmationTask::Legacy(nonce, _request) => {
+                    self.state.lock().expect("queue").shown_confirmations += 1;
+                    self.registry.complete(nonce, true);
+                }
+                ConfirmationTask::Scoped(task) => {
+                    task.run(&self.registry, |_, _, permit| {
+                        self.state.lock().expect("queue").shown_confirmations += 1;
+                        permit.complete(&self.registry, true);
+                    });
+                }
+            }
+        }
+    }
+}
+impl desktop_core::SecretPresenter for QueuedNative {
+    fn reveal(&self, label: String, secret: zeroize::Zeroizing<String>) {
+        self.state
+            .lock()
+            .expect("queue")
+            .secrets
+            .push(SecretTask::Legacy(label, secret));
+    }
+    fn reveal_scoped(
+        &self,
+        label: String,
+        secret: zeroize::Zeroizing<String>,
+        lease: desktop_core::PresentationLease,
+    ) {
+        let task = desktop_host::native_confirmation::SecretPresentation::new(label, secret, lease);
+        self.state
+            .lock()
+            .expect("queue")
+            .secrets
+            .push(SecretTask::Scoped(task));
+    }
+    fn dismiss(&self) {
+        self.owner.begin();
+    }
+}
+impl desktop_core::OperatorConfirmation for QueuedNative {
+    fn confirm(
+        &self,
+        nonce: u64,
+        request: desktop_core::ConfirmationRequest,
+    ) -> futures_util::future::BoxFuture<'static, bool> {
+        if !self
+            .queue_confirms
+            .load(std::sync::atomic::Ordering::Acquire)
+        {
+            self.confirm_entries
+                .fetch_add(1, std::sync::atomic::Ordering::Release);
+            return Box::pin(async { true });
+        }
+        let receiver = self.registry.open(nonce);
+        self.state
+            .lock()
+            .expect("queue")
+            .confirmations
+            .push(ConfirmationTask::Legacy(nonce, request));
+        self.confirm_entries
+            .fetch_add(1, std::sync::atomic::Ordering::Release);
+        Box::pin(desktop_host::native_confirmation::outcome(receiver))
+    }
+    fn confirm_scoped(
+        &self,
+        nonce: u64,
+        request: desktop_core::ConfirmationRequest,
+        lease: desktop_core::PresentationLease,
+    ) -> futures_util::future::BoxFuture<'static, bool> {
+        if !lease.is_current() {
+            self.confirm_entries
+                .fetch_add(1, std::sync::atomic::Ordering::Release);
+            return Box::pin(async { false });
+        }
+        if !self
+            .queue_confirms
+            .load(std::sync::atomic::Ordering::Acquire)
+        {
+            self.confirm_entries
+                .fetch_add(1, std::sync::atomic::Ordering::Release);
+            return Box::pin(async { true });
+        }
+        let receiver = self.registry.open(nonce);
+        let task =
+            desktop_host::native_confirmation::ConfirmationPresentation::new(nonce, request, lease);
+        self.state
+            .lock()
+            .expect("queue")
+            .confirmations
+            .push(ConfirmationTask::Scoped(task));
+        self.confirm_entries
+            .fetch_add(1, std::sync::atomic::Ordering::Release);
+        Box::pin(desktop_host::native_confirmation::outcome(receiver))
+    }
+    fn dismiss(&self, nonce: u64) {
+        self.registry.complete(nonce, false);
+    }
+}
+
+async fn cross_teardown(secret: bool, before_effect: bool) {
+    let native = Arc::new(QueuedNative::default());
+    let mut desk = Desk::with_presenter(false, Some(Arc::clone(&native))).await;
+    let review = desk.review().await;
+    let original = if secret {
+        desk.apply(&review);
+        Some(desk.settled().await)
+    } else {
+        native
+            .queue_confirms
+            .store(true, std::sync::atomic::Ordering::Release);
+        None
+    };
+    let confirm_before = native
+        .confirm_entries
+        .load(std::sync::atomic::Ordering::Acquire);
+    let gate = before_effect.then(|| desk.core.operator().hold_next_native_presentation());
+    let intent = if let Some(result) = &original {
+        json!({"kind":"revealSecret","operation":result.operation})
+    } else {
+        json!({"kind":"requestApply","review":review.review,"draft":draft(),"confirmation":"CREATE"})
+    };
+    let dispatch = desk.send_thread(intent);
+    if let Some(gate) = &gate {
+        assert!(
+            eventually(|| gate.entered()).await,
+            "real admission completed; effect not executed"
+        );
+    } else {
+        assert!(
+            eventually(|| if secret {
+                native.secret_count() == 1
+            } else {
+                native.confirmation_count() == 1
+            })
+            .await,
+            "real native callback queued"
+        );
+    }
+    desk.retire();
+    desk.register();
+    if let Some(gate) = gate {
+        gate.release();
+    }
+    dispatch
+        .join()
+        .expect("dispatch thread")
+        .expect("original admission receipt");
+    if !secret {
+        assert!(
+            eventually(|| native
+                .confirm_entries
+                .load(std::sync::atomic::Ordering::Acquire)
+                > confirm_before)
+            .await,
+            "native adapter has made its queue/refusal decision"
+        );
+    }
+    native.drain();
+    {
+        let state = native.state.lock().expect("queue");
+        assert_eq!(
+            state.shown_secrets, 0,
+            "departed page's admitted/queued key must never be presented"
+        );
+        assert_eq!(
+            state.copied_secrets, 0,
+            "departed page's key must never be copied"
+        );
+        assert_eq!(
+            state.shown_confirmations, 0,
+            "departed page's confirmation must never be presented"
+        );
+    }
+    assert_eq!(native.registry.open_count(), 0, "no stale pending nonce");
+    assert_eq!(desk.writes(), usize::from(secret), "no mutation replay");
+    if let Some(original) = original {
+        let result = &desk.snap().changes.results[0];
+        assert_eq!(result.operation, original.operation);
+        assert_eq!(
+            result.outcome,
+            Some(desktop_core::runtime::Outcome::Completed)
+        );
+        assert!(
+            desk.send(json!({"kind":"revealSecret","operation":original.operation}))
+                .is_err()
+        );
+    }
+    native
+        .queue_confirms
+        .store(false, std::sync::atomic::Ordering::Release);
+    let fresh = desk.review_draft(draft_named("Support key 3")).await;
+    desk.apply_draft(&fresh, draft_named("Support key 3"));
+    let fresh = desk.settled().await;
+    assert_eq!(
+        fresh.outcome,
+        Some(desktop_core::runtime::Outcome::Completed)
+    );
+    assert_eq!(
+        desk.writes(),
+        usize::from(secret) + 1,
+        "only explicit fresh-page work writes"
+    );
+    desk.send(json!({"kind":"revealSecret","operation":fresh.operation}))
+        .expect("fresh reveal");
+    native.drain();
+    let state = native.state.lock().expect("queue");
+    assert_eq!(state.shown_secrets, 1, "fresh-page presentation works");
+    assert_eq!(state.copied_secrets, 1, "fresh-page explicit copy works");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn scoped_secret_admitted_before_teardown_cannot_present_after_effect_release() {
+    cross_teardown(true, true).await;
+}
+#[tokio::test(flavor = "multi_thread")]
+async fn scoped_secret_queued_before_teardown_cannot_present_or_copy() {
+    cross_teardown(true, false).await;
+}
+#[tokio::test(flavor = "multi_thread")]
+async fn scoped_confirmation_admitted_before_teardown_cannot_present_after_effect_release() {
+    cross_teardown(false, true).await;
+}
+#[tokio::test(flavor = "multi_thread")]
+async fn scoped_confirmation_queued_before_teardown_cannot_present() {
+    cross_teardown(false, false).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn scoped_review_exit_revokes_a_queued_secret_without_retiring_the_page() {
+    let native = Arc::new(QueuedNative::default());
+    let mut desk = Desk::with_presenter(false, Some(Arc::clone(&native))).await;
+    let review = desk.review().await;
+    desk.apply(&review);
+    let result = desk.settled().await;
+    desk.send(json!({"kind":"revealSecret","operation":result.operation}))
+        .expect("admitted reveal");
+    assert_eq!(native.secret_count(), 1);
+    desk.send(json!({"kind":"discardChange","review":review.review}))
+        .expect("review exit");
+    native.drain();
+    let state = native.state.lock().expect("queue");
+    assert_eq!(state.shown_secrets, 0);
+    assert_eq!(state.copied_secrets, 0);
+    assert_eq!(desk.writes(), 1);
+    assert_eq!(
+        desk.snap().changes.results[0].outcome,
+        Some(desktop_core::runtime::Outcome::Completed)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn scoped_old_callbacks_drained_last_cannot_retire_fresh_page_presentation() {
+    let native = Arc::new(QueuedNative::default());
+    let mut desk = Desk::with_presenter(false, Some(Arc::clone(&native))).await;
+    let review = desk.review().await;
+    desk.apply(&review);
+    let result = desk.settled().await;
+    desk.send(json!({"kind":"revealSecret","operation":result.operation}))
+        .expect("old admitted reveal");
+    desk.retire();
+    desk.register();
+    let fresh = desk.review_draft(draft_named("Support key 3")).await;
+    desk.apply_draft(&fresh, draft_named("Support key 3"));
+    let result = desk.settled().await;
+    desk.send(json!({"kind":"revealSecret","operation":result.operation}))
+        .expect("new admitted reveal");
+    native.state.lock().expect("queue").secrets.reverse();
+    let prior_generation = native.owner.begin();
+    native.drain();
+    let state = native.state.lock().expect("queue");
+    assert_eq!(state.shown_secrets, 1, "only the fresh callback presents");
+    assert_eq!(state.copied_secrets, 1, "only its copy is authorized");
+    assert!(
+        native.owner.owns(prior_generation + 1),
+        "stale callback allocated no new sheet ownership"
+    );
+    assert_eq!(
+        desk.writes(),
+        2,
+        "one original and one explicit fresh write"
+    );
 }

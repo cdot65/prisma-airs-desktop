@@ -48,6 +48,13 @@ impl Registry {
         sender.is_some_and(|tx| tx.send(accepted).is_ok())
     }
 
+    pub fn is_pending(&self, nonce: u64) -> bool {
+        self.pending
+            .lock()
+            .map(|pending| pending.contains_key(&nonce))
+            .unwrap_or(false)
+    }
+
     pub fn open_count(&self) -> usize {
         self.pending.lock().map(|p| p.len()).unwrap_or(0)
     }
@@ -78,6 +85,107 @@ impl SecretOwnership {
     /// Whether `generation` is still the sheet's reveal.
     pub fn owns(&self, generation: u64) -> bool {
         self.current.load(std::sync::atomic::Ordering::SeqCst) == generation
+    }
+}
+
+/// The same revocation check is used immediately before AppKit presentation
+/// and again in its explicit copy callback.
+#[derive(Clone)]
+pub struct SecretCopyPermit {
+    lease: desktop_core::PresentationLease,
+    generation: u64,
+}
+impl SecretCopyPermit {
+    pub fn allowed(&self, owner: &SecretOwnership) -> bool {
+        self.lease.is_current() && owner.owns(self.generation)
+    }
+}
+
+/// An admitted secret waiting for the main-thread queue. Its revocable owner
+/// is captured at admission; a refused callback cannot claim the sheet slot.
+/// Dropping a refused task zeroizes its key.
+pub struct SecretPresentation {
+    label: String,
+    secret: zeroize::Zeroizing<String>,
+    lease: desktop_core::PresentationLease,
+}
+impl SecretPresentation {
+    pub fn new(
+        label: String,
+        secret: zeroize::Zeroizing<String>,
+        lease: desktop_core::PresentationLease,
+    ) -> Self {
+        Self {
+            label,
+            secret,
+            lease,
+        }
+    }
+    pub fn run(
+        self,
+        owner: &SecretOwnership,
+        show: impl FnOnce(String, zeroize::Zeroizing<String>, SecretCopyPermit),
+    ) -> bool {
+        if !self.lease.is_current() {
+            return false;
+        }
+        let permit = SecretCopyPermit {
+            lease: self.lease,
+            generation: owner.begin(),
+        };
+        if !permit.allowed(owner) {
+            return false;
+        }
+        show(self.label, self.secret, permit);
+        true
+    }
+}
+
+pub struct ConfirmationPermit {
+    lease: desktop_core::PresentationLease,
+    nonce: u64,
+}
+impl ConfirmationPermit {
+    pub fn complete(&self, registry: &Registry, accepted: bool) -> bool {
+        registry.complete(self.nonce, accepted && self.lease.is_current())
+    }
+}
+/// Production queue entry shared by AppKit and deterministic host regressions.
+pub struct ConfirmationPresentation {
+    nonce: u64,
+    request: desktop_core::ConfirmationRequest,
+    lease: desktop_core::PresentationLease,
+}
+impl ConfirmationPresentation {
+    pub fn new(
+        nonce: u64,
+        request: desktop_core::ConfirmationRequest,
+        lease: desktop_core::PresentationLease,
+    ) -> Self {
+        Self {
+            nonce,
+            request,
+            lease,
+        }
+    }
+    pub fn run(
+        self,
+        registry: &Registry,
+        show: impl FnOnce(u64, desktop_core::ConfirmationRequest, ConfirmationPermit),
+    ) -> bool {
+        if !self.lease.is_current() || !registry.is_pending(self.nonce) {
+            registry.complete(self.nonce, false);
+            return false;
+        }
+        show(
+            self.nonce,
+            self.request,
+            ConfirmationPermit {
+                lease: self.lease,
+                nonce: self.nonce,
+            },
+        );
+        true
     }
 }
 
@@ -112,7 +220,10 @@ mod appkit {
     use tauri::{AppHandle, Manager, Runtime};
     use zeroize::Zeroizing;
 
-    use super::{REVEAL_FOR, Registry, outcome};
+    use super::{
+        ConfirmationPermit, ConfirmationPresentation, REVEAL_FOR, Registry, SecretCopyPermit,
+        SecretPresentation, outcome,
+    };
     use crate::MAIN_WINDOW;
     use crate::clipboard_secret::{AppKitPasteboard, CLEAR_AFTER, ClipboardGuard};
 
@@ -151,14 +262,33 @@ mod appkit {
 
     impl<R: Runtime> OperatorConfirmation for NativeConfirmation<R> {
         fn confirm(&self, nonce: u64, request: ConfirmationRequest) -> BoxFuture<'static, bool> {
+            self.confirm_scoped(nonce, request, desktop_core::PresentationLease::default())
+        }
+
+        fn confirm_scoped(
+            &self,
+            nonce: u64,
+            request: ConfirmationRequest,
+            lease: desktop_core::PresentationLease,
+        ) -> BoxFuture<'static, bool> {
+            if !lease.is_current() {
+                return Box::pin(async { false });
+            }
             let receiver = self.registry.open(nonce);
             if receiver.is_some() {
+                if !lease.is_current() {
+                    self.registry.complete(nonce, false);
+                    return Box::pin(outcome(receiver));
+                }
+                let task = ConfirmationPresentation::new(nonce, request, lease);
                 let registry = Arc::clone(&self.registry);
                 let app = self.app.clone();
                 let presented = self.app.run_on_main_thread(move || {
-                    if !present(&app, nonce, &request, &registry) {
-                        registry.complete(nonce, false);
-                    }
+                    task.run(&registry, |nonce, request, permit| {
+                        if !present(&app, nonce, &request, &registry, permit) {
+                            registry.complete(nonce, false);
+                        }
+                    });
                 });
                 if presented.is_err() {
                     self.registry.complete(nonce, false);
@@ -178,6 +308,7 @@ mod appkit {
         nonce: u64,
         request: &ConfirmationRequest,
         registry: &Arc<Registry>,
+        permit: ConfirmationPermit,
     ) -> bool {
         let Some(mtm) = MainThreadMarker::new() else {
             return false;
@@ -199,7 +330,7 @@ mod appkit {
         }
         let registry = Arc::clone(registry);
         let handler = RcBlock::new(move |response: NSModalResponse| {
-            registry.complete(nonce, response == NSAlertFirstButtonReturn);
+            permit.complete(&registry, response == NSAlertFirstButtonReturn);
             SHEETS.with(|s| s.borrow_mut().remove(&nonce));
         });
         alert.beginSheetModalForWindow_completionHandler(&window, Some(&handler));
@@ -217,18 +348,38 @@ mod appkit {
 
     impl<R: Runtime> SecretPresenter for NativeSecrets<R> {
         fn reveal(&self, label: String, secret: Zeroizing<String>) {
-            let app = self.app.clone();
-            let _ = self
-                .app
-                .run_on_main_thread(move || reveal(&app, &label, secret));
+            self.reveal_scoped(label, secret, desktop_core::PresentationLease::default());
         }
-
+        fn reveal_scoped(
+            &self,
+            label: String,
+            secret: Zeroizing<String>,
+            lease: desktop_core::PresentationLease,
+        ) {
+            let app = self.app.clone();
+            let task = SecretPresentation::new(label, secret, lease);
+            let _ = self.app.run_on_main_thread(move || {
+                task.run(&SECRET_OWNER, |label, secret, permit| {
+                    reveal(&app, &label, secret, permit)
+                });
+            });
+        }
         fn dismiss(&self) {
-            let _ = self.app.run_on_main_thread(|| end_sheet(SECRET_SHEET));
+            let generation = SECRET_OWNER.begin();
+            let _ = self.app.run_on_main_thread(move || {
+                if SECRET_OWNER.owns(generation) {
+                    end_sheet(SECRET_SHEET);
+                }
+            });
         }
     }
 
-    fn reveal<R: Runtime>(app: &AppHandle<R>, label: &str, secret: Zeroizing<String>) {
+    fn reveal<R: Runtime>(
+        app: &AppHandle<R>,
+        label: &str,
+        secret: Zeroizing<String>,
+        permit: SecretCopyPermit,
+    ) {
         let Some(mtm) = MainThreadMarker::new() else {
             return;
         };
@@ -236,7 +387,7 @@ mod appkit {
             return;
         };
         end_sheet(SECRET_SHEET);
-        let generation = SECRET_OWNER.begin();
+        let generation = permit.generation;
         let alert = NSAlert::new(mtm);
         alert.setMessageText(&NSString::from_str(label));
         alert.setInformativeText(&NSString::from_str(
@@ -264,7 +415,7 @@ mod appkit {
             if SECRET_OWNER.owns(generation) {
                 SHEETS.with(|s| s.borrow_mut().remove(&SECRET_SHEET));
             }
-            if response != NSAlertFirstButtonReturn {
+            if response != NSAlertFirstButtonReturn || !permit.allowed(&SECRET_OWNER) {
                 return;
             }
             let Some(secret) = secret else { return };
