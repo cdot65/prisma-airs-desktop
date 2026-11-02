@@ -13,7 +13,7 @@
 //! workbench lane (at most four at a time, each cancellable); their results
 //! go to history and nothing is ever sent again by itself.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
@@ -106,11 +106,29 @@ struct Active {
     method: String,
 }
 
+/// The review owns every native presentation registered for it. Dropping it
+/// revokes queued callbacks before dismissing any already shown sheet.
+struct ReviewPresentation {
+    owner: crate::presentation::PresentationOwner,
+    confirmer: Arc<dyn super::super::OperatorConfirmation>,
+    nonces: BTreeSet<u64>,
+}
+impl Drop for ReviewPresentation {
+    fn drop(&mut self) {
+        self.owner.revoke();
+        for nonce in &self.nonces {
+            self.confirmer.dismiss(*nonce);
+        }
+    }
+}
+
 struct Pending {
     view: SendReviewView,
     digest: String,
     context: Option<ContextRef>,
     created: Instant,
+    presented_in: Option<ContextRef>,
+    presentation: ReviewPresentation,
 }
 
 /// Send state held by the workbench.
@@ -130,6 +148,9 @@ pub(in crate::authority) struct Sending {
     /// Advanced by every reset: work planned in an earlier epoch was
     /// retired and neither stores nor publishes anything.
     epoch: u64,
+    /// Separate from the reset epoch: page retirement must not cancel or
+    /// discard outcomes of requests already dispatched.
+    page: crate::presentation::PresentationOwner,
     /// Held shared by each private-storage step of a send and exclusively
     /// by reset from before its purge to its end.
     fence: Arc<tokio::sync::RwLock<()>>,
@@ -144,6 +165,7 @@ impl Sending {
     /// histories are forgotten (their files go with the private folder).
     pub(super) fn clear(&mut self) {
         self.epoch += 1;
+        self.retire_renderer_review();
         for active in self.runs.values() {
             active.cancel.cancel();
         }
@@ -161,6 +183,17 @@ impl Sending {
     #[cfg(feature = "test-fixtures")]
     pub(in crate::authority) fn planning(&self) -> (Arc<tokio::sync::Mutex<()>>, Arc<AtomicU64>) {
         (Arc::clone(&self.planning.0), Arc::clone(&self.planning.1))
+    }
+
+    pub(in crate::authority) fn page_lease(&self) -> crate::PresentationLease {
+        self.page.lease()
+    }
+
+    /// Retire only review/presentation authority. Running requests and their
+    /// outcomes keep their original admission and storage epoch.
+    pub(in crate::authority) fn retire_renderer_review(&mut self) {
+        self.review = None;
+        self.page = crate::presentation::PresentationOwner::default();
     }
 
     /// A collection was closed or another opened.
@@ -231,10 +264,9 @@ impl Sending {
     /// The active context changed (tenant switch, credential replacement,
     /// reset): a review bound to another context is retired for good.
     pub(in crate::authority) fn retire(&mut self, keep: Option<&ContextRef>) {
-        let retired = self
-            .review
-            .as_ref()
-            .is_some_and(|p| p.context.is_some() && p.context.as_ref() != keep);
+        let retired = self.review.as_ref().is_some_and(|p| {
+            p.presented_in.as_ref() != keep || (p.context.is_some() && p.context.as_ref() != keep)
+        });
         if retired && let Some(p) = self.review.take() {
             self.consumed.push(p.view.review);
         }
@@ -715,7 +747,14 @@ fn review_view(p: &Planned, review: ReviewId, expires: u64) -> SendReviewView {
 }
 
 /// A Send or Apply in its turn on the lane.
-pub(super) async fn begin(inner: &Arc<Inner>, request: WorkbenchRequest) -> Step {
+pub(super) async fn begin(
+    inner: &Arc<Inner>,
+    request: WorkbenchRequest,
+    page: crate::PresentationLease,
+) -> Step {
+    if !page.is_current() {
+        return Step::Done(Box::new(retired()));
+    }
     let (id, revision, fields, context, review) = match request {
         WorkbenchRequest::Send {
             id,
@@ -776,7 +815,7 @@ pub(super) async fn begin(inner: &Arc<Inner>, request: WorkbenchRequest) -> Step
     let Ok(mut state) = lock(inner) else {
         return Step::Done(Box::new(refused(WorkbenchProblem::Unavailable)));
     };
-    if state.workbench.sending.epoch != planned.epoch {
+    if state.workbench.sending.epoch != planned.epoch || !page.is_current() {
         return Step::Done(Box::new(retired()));
     }
     let lifetime = state.review_lifetime;
@@ -786,11 +825,18 @@ pub(super) async fn begin(inner: &Arc<Inner>, request: WorkbenchRequest) -> Step
         };
         let expires = history::now() + lifetime.as_secs();
         let view = review_view(&planned, id, expires);
+        let presented_in = state.active_ref.clone();
         state.workbench.sending.review = Some(Pending {
             view: view.clone(),
             digest,
             context: planned.context.clone(),
             created: Instant::now(),
+            presented_in,
+            presentation: ReviewPresentation {
+                owner: crate::presentation::PresentationOwner::default(),
+                confirmer: Arc::clone(&inner.adapters.confirmer),
+                nonces: BTreeSet::new(),
+            },
         });
         state.changed();
         return Step::Done(Box::new(WorkbenchResult::ReviewRequired { review: view }));
@@ -923,12 +969,75 @@ async fn apply(
         confirm_label: "Send".to_owned(),
         destructive: view.method == "DELETE",
     };
-    if !inner
-        .adapters
-        .confirmer
-        .confirm(u64::from_be_bytes(nonce), request)
-        .await
+    let nonce = u64::from_be_bytes(nonce);
+    let (presentation, remaining) = {
+        let Ok(mut state) = lock(&inner) else {
+            return refused(WorkbenchProblem::Unavailable);
+        };
+        let lifetime = state.review_lifetime;
+        let Some(pending) = state
+            .workbench
+            .sending
+            .review
+            .as_mut()
+            .filter(|p| p.view.review == view.review)
+        else {
+            return refusal(SendRefusal::ReviewMissing);
+        };
+        let remaining = lifetime.saturating_sub(pending.created.elapsed());
+        if remaining.is_zero() {
+            state.workbench.sending.review = None;
+            state.changed();
+            return refusal(SendRefusal::ReviewExpired);
+        }
+        pending.presentation.nonces.insert(nonce);
+        (pending.presentation.owner.lease(), remaining)
+    };
+    #[cfg(any(test, feature = "test-fixtures"))]
+    if let Some(gate) = inner
+        .presentation_gate
+        .lock()
+        .ok()
+        .and_then(|mut gate| gate.take())
     {
+        gate.pause();
+    }
+    let accepted = tokio::time::timeout(
+        remaining,
+        inner
+            .adapters
+            .confirmer
+            .confirm_scoped(nonce, request, presentation),
+    )
+    .await;
+    {
+        let Ok(mut state) = lock(&inner) else {
+            return refused(WorkbenchProblem::Unavailable);
+        };
+        if accepted.is_err() {
+            if state
+                .workbench
+                .sending
+                .review
+                .as_ref()
+                .is_some_and(|p| p.view.review == view.review)
+            {
+                state.workbench.sending.review = None;
+                state.changed();
+            }
+            return refusal(SendRefusal::ReviewExpired);
+        }
+        if let Some(pending) = state
+            .workbench
+            .sending
+            .review
+            .as_mut()
+            .filter(|p| p.view.review == view.review)
+        {
+            pending.presentation.nonces.remove(&nonce);
+        }
+    }
+    if !accepted.unwrap_or(false) {
         return refusal(SendRefusal::Declined);
     }
     let planned = match plan(&inner, &root, &id, &revision, fields, context, epoch).await {

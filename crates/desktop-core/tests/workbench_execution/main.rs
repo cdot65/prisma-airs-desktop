@@ -1463,7 +1463,15 @@ async fn a_tenant_change_retires_reviews_and_unsent_requests() {
     assert!(support::eventually(|| desk.adapters.confirmer.held() == 1).await);
     select(&mut desk, "Tenant B").await;
     assert_eq!(desk.workbench()["review"], Value::Null, "retired at once");
-    assert!(desk.adapters.confirmer.complete(true));
+    assert_eq!(
+        desk.adapters.confirmer.held(),
+        0,
+        "retired native confirmation"
+    );
+    assert!(
+        !desk.adapters.confirmer.complete(true),
+        "late acceptance is rejected"
+    );
     let r = desk.wait(op).await;
     assert_eq!(r["kind"], "sendRefused", "{r}");
     select(&mut desk, "Tenant A").await;

@@ -3503,6 +3503,7 @@ impl AuthorityHandle {
         let mut state = lock(&self.inner)?;
         state.operator_sessions.retire();
         state.retire_renderer_reviews();
+        state.workbench.sending.retire_renderer_review();
         state.changed();
         Ok(())
     }

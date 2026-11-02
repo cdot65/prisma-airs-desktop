@@ -509,6 +509,7 @@ impl WorkbenchHandle {
 
 struct Call {
     operation: OperationId,
+    page: crate::PresentationLease,
     cell: Arc<Cell>,
     settled: bool,
     observed: bool,
@@ -630,6 +631,7 @@ impl State {
         let operation = self.operations.reserve();
         self.workbench.calls.push(Call {
             operation: operation.clone(),
+            page: self.workbench.sending.page_lease(),
             cell: Arc::default(),
             settled: false,
             observed: false,
@@ -840,7 +842,17 @@ pub(super) async fn run(inner: Arc<Inner>, operation: OperationId, request: Work
         let _turn = lane.lock().await;
         match request {
             WorkbenchRequest::Send { .. } | WorkbenchRequest::Apply { .. } => {
-                send::begin(&inner, request).await
+                let page = lock(&inner).ok().and_then(|s| {
+                    s.workbench
+                        .calls
+                        .iter()
+                        .find(|c| c.operation == operation)
+                        .map(|c| c.page.clone())
+                });
+                match page {
+                    Some(page) => send::begin(&inner, request, page).await,
+                    None => send::Step::Done(Box::new(refused(WorkbenchProblem::Unavailable))),
+                }
             }
             other => send::Step::Done(Box::new(execute(&inner, other).await)),
         }
