@@ -1,0 +1,68 @@
+{
+  "review_id": "C31-attempt-05-1793619521",
+  "subject": "C31",
+  "attempt": "attempt-05",
+  "request_id": "C31-attempt-05-1793619521",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T11:52:45.853996+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a19c0d-f1ce-7d40-bc45-afcab7c42569"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 8,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": [
+    "R1 \u2014 apps/desktop/src-tauri/src/lib.rs:132 and :248; apps/desktop/src/v2/admin/review-sheet.tsx:128; crates/desktop-core/src/authority.rs:3453: renderer reload does not retire the departed page's review or disclosure ownership. ReviewSheet relies on React cleanup followed by a window timer to send DiscardChange/ForgetSecret; document destruction does not guarantee either runs. The native PageLoadEvent::Started handler only retires observations, and registering the replacement delivery session only changes delivery bookkeeping. Consequently, an unrevealed issued key remains Held and revealable after its review disappeared; a pending native confirmation also retains its valid review. This violates I6's review-exit lifetime and the native editor-lease contract. Acceptance: native page teardown must invalidate its pending reviews/confirmations, dismiss disclosure, forget held keys and mark unsettled issuances forgotten-on-settle while preserving remote outcomes. Production-interface host regressions must exercise reload before reveal, during confirmation and during delayed issuance; the replacement page must receive no surviving disclosure authority, stale confirmation must apply nothing, and no mutation may be replayed.",
+    "R2 \u2014 tools/native-acceptance/legacy_assertions.py:333 and :336; tools/native-acceptance/acceptance_c39.py:602: the C31 replacement mapping overstates assertion coverage. C31-N01 maps solely to C39-N01, which checks Runtime topics and board presentation but does not enforce the required Gateway key restrictions or several other inventory assertions. C31-N04 maps solely to C39-N02's review geometry/apply checks, omitting its accessibility obligations; useful existing C31 observations and C39-N04 results are not required by that mapping. Acceptance: preserve each unretired C31 obligation in an enforced assertion-level mapping. Correctly scope the Gateway Keys/detail negative assertions, require the existing same-bundle checks that establish the accessibility facts, and retain source-bound evidence for missing assertions. Qualification must reject removal or failure of those assertions; preserve historical failed records."
+  ],
+  "blockers": [],
+  "evidence_gaps": [
+    "E1 \u2014 docs/planning/evidence/P09/native/cumulative/C31/native-acceptance.json retains C31-N01 as failed with gateway_no_version=false. The replacement C39-N01 does not test Gateway key actions; C39-N03 checks the Keys table and key-kind controls without asserting that Gateway row details exclude Issue additional key and Finish rotation. The retained evidence therefore does not establish this mandatory C31 native restriction. This is an evidence gap, not proof that the product offers forbidden actions. Passing component tests do not replace the missing native assertion."
+  ],
+  "optional_suggestions": [
+    "apps/desktop/src/v2/admin/review-sheet.tsx:265: derive the header state pill from the rotation stage when showing a rotation. The retained issued and completed rotation captures both show Draft beside the title despite the panel reporting the actual completed operation."
+  ],
+  "fingerprints": {
+    "source": "bb2b1d2e79472c3fe2394f5298fe0b33eb8ff4197e2b909d52f92e6c027be35f",
+    "dependencies": "f5f26271b8823df8a2b5299417146784d345d4e04f8b59341706e6a41750210d",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "20ced4524fae643c13c11b29f8924c0b733b1505855924493a289a50de8962e2"
+  },
+  "verdict_sha256": "82d8c6d3b01ad693bc072f49971a53d9c9a1b234c39a8c0d6e891957e587b030",
+  "request_sha256": "b57c4e068e35f3fb25af4c32f36bcbbfba4090b8b97a52900d2612b00bf968be",
+  "prompt_sha256": "107e65e3f23d257b973579da00f427e576c2ba1f855acd0b260fbcd0656d5fca",
+  "post_review_audit_sha256": "f634bb7a0b9c1dd35e26e0903e809848e61e402f44faba7b9212253439d84172",
+  "invocation_sha256": "d1224a6c6436a393b93164387a9f996f35ecf738ad5b51c07a38098b47d95da4",
+  "thread_reply_sha256": "dde2fd237dc295bdb7837c8c19b00af380e2c1bcd1dc1ec78ab473415217f5e0",
+  "source_frozen": true,
+  "d034_accepted": true,
+  "full_gate_pass": false,
+  "controller_complete": false,
+  "accepted_failures": {
+    "required_fixes": [
+      "R1 \u2014 apps/desktop/src-tauri/src/lib.rs:132 and :248; apps/desktop/src/v2/admin/review-sheet.tsx:128; crates/desktop-core/src/authority.rs:3453: renderer reload does not retire the departed page's review or disclosure ownership. ReviewSheet relies on React cleanup followed by a window timer to send DiscardChange/ForgetSecret; document destruction does not guarantee either runs. The native PageLoadEvent::Started handler only retires observations, and registering the replacement delivery session only changes delivery bookkeeping. Consequently, an unrevealed issued key remains Held and revealable after its review disappeared; a pending native confirmation also retains its valid review. This violates I6's review-exit lifetime and the native editor-lease contract. Acceptance: native page teardown must invalidate its pending reviews/confirmations, dismiss disclosure, forget held keys and mark unsettled issuances forgotten-on-settle while preserving remote outcomes. Production-interface host regressions must exercise reload before reveal, during confirmation and during delayed issuance; the replacement page must receive no surviving disclosure authority, stale confirmation must apply nothing, and no mutation may be replayed.",
+      "R2 \u2014 tools/native-acceptance/legacy_assertions.py:333 and :336; tools/native-acceptance/acceptance_c39.py:602: the C31 replacement mapping overstates assertion coverage. C31-N01 maps solely to C39-N01, which checks Runtime topics and board presentation but does not enforce the required Gateway key restrictions or several other inventory assertions. C31-N04 maps solely to C39-N02's review geometry/apply checks, omitting its accessibility obligations; useful existing C31 observations and C39-N04 results are not required by that mapping. Acceptance: preserve each unretired C31 obligation in an enforced assertion-level mapping. Correctly scope the Gateway Keys/detail negative assertions, require the existing same-bundle checks that establish the accessibility facts, and retain source-bound evidence for missing assertions. Qualification must reject removal or failure of those assertions; preserve historical failed records."
+    ],
+    "evidence_gaps": [
+      "E1 \u2014 docs/planning/evidence/P09/native/cumulative/C31/native-acceptance.json retains C31-N01 as failed with gateway_no_version=false. The replacement C39-N01 does not test Gateway key actions; C39-N03 checks the Keys table and key-kind controls without asserting that Gateway row details exclude Issue additional key and Finish rotation. The retained evidence therefore does not establish this mandatory C31 native restriction. This is an evidence gap, not proof that the product offers forbidden actions. Passing component tests do not replace the missing native assertion."
+    ]
+  },
+  "limitations": [
+    "Recomputed all four supplied fingerprints. All 5,031 scoped file hashes matched initially and at final recheck. Independently verified current membership and content of all 18,338 compiled-input entries, identical check inventories, build flags and all 18 recorded check-log hashes. Hash consistency does not independently authenticate compiler execution or evidence authorship.",
+    "Recomputed the complete 1,621-entry fixture-bundle hash, including executable modes and symlink targets, and verified its executable and bundle identifier against preparation. The six frozen prototype files also match their manifest. No fresh build, test suite, native interaction, endpoint call, credential access or OS permission grant was performed.",
+    "The reload finding follows the inspected production lifecycle and authority paths; it was not independently reproduced by driving or reloading the application during this read-only review.",
+    "Retained logs report 550 renderer tests and all 15 ui_v2_reviews production-interface tests passing. Inspected tests cover typed confirmation, tenant retirement, delayed settlement, unknown outcomes, reconciliation, storage recovery, stable timestamps and operation-ID reuse after relaunch. These results do not exercise the renderer-teardown defect.",
+    "Inspected current C31/C39 native records, observations, retained AX trees and representative rotation/parity captures. C31-N02/N03 support typed review and staged rotation behavior. Raw C31-N01/N04 failures remain preserved; their supersession does not itself prove equivalent assertion coverage. Spoken VoiceOver output and signed installed-release behavior were not established.",
+    "Verified C30 predecessor record, request, receipt, audit and owner-decision hashes. C30 is accepted as complete under the exact owner exception; its raw 9/9/9/8/8 fail verdict remains unchanged. Its closed R1/R2/E1/E2 findings are not reopened here. C29 attempt-10 reports a passing full-9 review on matching compiled inputs. C41's separate owner exception remains disclosed.",
+    "The retained C31 Redtail topic create/update/readback/cleanup receipts establish historical live evidence for their recorded source and runner. They do not establish a fresh live run of current application bytes; no additional live operation was attempted.",
+    "No files were changed. The read-only sandbox prevents writing the designated verdict artifact; this returned JSON is the verdict."
+  ],
+  "outcome": "Accepted at eight under standing D034, no blockers. R1 native renderer-lifetime authority retirement and R2/E1 C31 assertion coverage are being remediated in isolated worktrees before actual C31 re-review. C30 remains owner-rated all9; its historical raw verdict is unchanged and its closed work is not reopened."
+}
