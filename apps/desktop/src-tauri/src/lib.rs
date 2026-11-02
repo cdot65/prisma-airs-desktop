@@ -127,9 +127,13 @@ impl Host {
         self.operator.observer_count()
     }
 
-    /// Ends every observation of a webview: used on page reload and window
-    /// destruction. Business work is unaffected.
+    /// Ends a webview's observations on page reload and window destruction.
+    /// The main page also loses its reviews and disclosures; admitted business
+    /// work and its remote outcomes remain observable by the replacement page.
     pub fn retire_webview(&self, webview: &str) {
+        if webview == MAIN_WINDOW {
+            let _ = self.operator.retire_renderer();
+        }
         if let Ok(mut observations) = self.observations.lock() {
             observations.tasks.retain(|task| {
                 if task.webview == webview {
@@ -242,8 +246,8 @@ pub fn main_window<R: Runtime, M: Manager<R>>(manager: &M) -> tauri::Result<Webv
             .on_new_window(|_, _| NewWindowResponse::Deny)
             .on_download(|_, _| false)
             .on_page_load(|webview, payload| {
-                // A (re)loading page owns none of the previous page's
-                // observations; retire them so nothing leaks across reloads.
+                // The departing page owns no surviving observations, review
+                // confirmation or one-time disclosure, even without JS cleanup.
                 if payload.event() == PageLoadEvent::Started {
                     webview.state::<Host>().retire_webview(webview.label());
                 }

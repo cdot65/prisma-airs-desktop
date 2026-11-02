@@ -1,0 +1,38 @@
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/crates/desktop-core)
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 14.06s
+     Running tests/renderer_review_lifecycle.rs (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/target/debug/deps/renderer_review_lifecycle-13d2a3dce7eb986e)
+
+running 4 tests
+test renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review ... ok
+test renderer_reload_before_reveal_forgets_the_native_held_key ... FAILED
+test renderer_reload_during_confirmation_retires_the_native_review ... FAILED
+test renderer_reload_during_issuance_drops_the_late_key_without_replaying ... FAILED
+
+failures:
+
+---- renderer_reload_before_reveal_forgets_the_native_held_key stdout ----
+
+thread 'renderer_reload_before_reveal_forgets_the_native_held_key' (2066218) panicked at apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs:270:14:
+old page nonce retired: Object {"outcome": String("refusal"), "refusal": String("staleContext")}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- renderer_reload_during_confirmation_retires_the_native_review stdout ----
+
+thread 'renderer_reload_during_confirmation_retires_the_native_review' (2066232) panicked at apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs:308:5:
+old review refuses in new page
+
+---- renderer_reload_during_issuance_drops_the_late_key_without_replaying stdout ----
+
+thread 'renderer_reload_during_issuance_drops_the_late_key_without_replaying' (2066247) panicked at apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs:352:5:
+assertion failed: desk.send(json!({"kind":"revealSecret","operation":operation})).is_err()
+
+
+failures:
+    renderer_reload_before_reveal_forgets_the_native_held_key
+    renderer_reload_during_confirmation_retires_the_native_review
+    renderer_reload_during_issuance_drops_the_late_key_without_replaying
+
+test result: FAILED. 1 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.83s
+
+error: test failed, to rerun pass `-p desktop-host --test renderer_review_lifecycle`

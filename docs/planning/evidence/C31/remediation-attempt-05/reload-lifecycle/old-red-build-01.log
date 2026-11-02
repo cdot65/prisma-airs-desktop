@@ -1,0 +1,42 @@
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/apps/desktop/src-tauri)
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 29.62s
+     Running tests/renderer_review_lifecycle.rs (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/target/debug/deps/renderer_review_lifecycle-13d2a3dce7eb986e)
+
+running 4 tests
+test renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review ... ok
+test renderer_reload_before_reveal_forgets_the_native_held_key ... FAILED
+test renderer_reload_during_confirmation_retires_the_native_review ... FAILED
+test renderer_reload_during_issuance_drops_the_late_key_without_replaying ... FAILED
+
+failures:
+
+---- renderer_reload_before_reveal_forgets_the_native_held_key stdout ----
+
+thread 'renderer_reload_before_reveal_forgets_the_native_held_key' (2063208) panicked at apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs:159:5:
+assertion `left == right` failed: native teardown drops held key before any replacement renderer call
+  left: Held
+ right: Forgotten
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- renderer_reload_during_confirmation_retires_the_native_review stdout ----
+
+thread 'renderer_reload_during_confirmation_retires_the_native_review' (2063222) panicked at apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs:178:5:
+departed editor owns no review
+
+---- renderer_reload_during_issuance_drops_the_late_key_without_replaying stdout ----
+
+thread 'renderer_reload_during_issuance_drops_the_late_key_without_replaying' (2063236) panicked at apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs:205:5:
+assertion `left == right` failed: reply after page exit never acquires disclosure authority
+  left: Held
+ right: Forgotten
+
+
+failures:
+    renderer_reload_before_reveal_forgets_the_native_held_key
+    renderer_reload_during_confirmation_retires_the_native_review
+    renderer_reload_during_issuance_drops_the_late_key_without_replaying
+
+test result: FAILED. 1 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.81s
+
+error: test failed, to rerun pass `-p desktop-host --test renderer_review_lifecycle`

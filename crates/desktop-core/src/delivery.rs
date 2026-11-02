@@ -67,6 +67,12 @@ impl Sessions {
         }
     }
 
+    /// The native page ended. Late deliveries from it can no longer admit work;
+    /// a replacement page must register its own delivery session.
+    pub(crate) fn retire(&mut self) {
+        self.current = None;
+    }
+
     /// Registers a new session and retires the previous one.
     pub(crate) fn register(&mut self) -> Result<DeliverySession, Refusal> {
         let mut entropy = [0u8; 16];

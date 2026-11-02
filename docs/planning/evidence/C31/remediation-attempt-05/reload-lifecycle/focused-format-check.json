@@ -1,0 +1,34 @@
+{
+  "checks": [
+    {
+      "command": [
+        "rustfmt",
+        "--check",
+        "--edition",
+        "2024",
+        "apps/desktop/src-tauri/src/lib.rs",
+        "apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs",
+        "crates/desktop-core/src/authority.rs",
+        "crates/desktop-core/src/authority/change_domain.rs",
+        "crates/desktop-core/src/delivery.rs"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "apps/desktop/src-tauri/src/lib.rs",
+        "apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs",
+        "crates/desktop-core/src/authority.rs",
+        "crates/desktop-core/src/authority/change_domain.rs",
+        "crates/desktop-core/src/delivery.rs"
+      ],
+      "exit": 0
+    }
+  ],
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

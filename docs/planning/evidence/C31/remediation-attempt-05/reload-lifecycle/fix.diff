@@ -1,0 +1,112 @@
+diff --git a/apps/desktop/src-tauri/Cargo.toml b/apps/desktop/src-tauri/Cargo.toml
+index a374c65f..d79588ac 100644
+--- a/apps/desktop/src-tauri/Cargo.toml
++++ b/apps/desktop/src-tauri/Cargo.toml
+@@ -109,3 +109,7 @@ required-features = ["test-fixtures"]
+ [[test]]
+ name = "sidecar_supervision"
+ required-features = ["test-fixtures"]
++
++[[test]]
++name = "renderer_review_lifecycle"
++required-features = ["test-fixtures"]
+diff --git a/apps/desktop/src-tauri/src/lib.rs b/apps/desktop/src-tauri/src/lib.rs
+index 6314f35e..eb37adb2 100644
+--- a/apps/desktop/src-tauri/src/lib.rs
++++ b/apps/desktop/src-tauri/src/lib.rs
+@@ -127,9 +127,13 @@ impl Host {
+         self.operator.observer_count()
+     }
+ 
+-    /// Ends every observation of a webview: used on page reload and window
+-    /// destruction. Business work is unaffected.
++    /// Ends a webview's observations on page reload and window destruction.
++    /// The main page also loses its reviews and disclosures; admitted business
++    /// work and its remote outcomes remain observable by the replacement page.
+     pub fn retire_webview(&self, webview: &str) {
++        if webview == MAIN_WINDOW {
++            let _ = self.operator.retire_renderer();
++        }
+         if let Ok(mut observations) = self.observations.lock() {
+             observations.tasks.retain(|task| {
+                 if task.webview == webview {
+@@ -242,8 +246,8 @@ pub fn main_window<R: Runtime, M: Manager<R>>(manager: &M) -> tauri::Result<Webv
+             .on_new_window(|_, _| NewWindowResponse::Deny)
+             .on_download(|_, _| false)
+             .on_page_load(|webview, payload| {
+-                // A (re)loading page owns none of the previous page's
+-                // observations; retire them so nothing leaks across reloads.
++                // The departing page owns no surviving observations, review
++                // confirmation or one-time disclosure, even without JS cleanup.
+                 if payload.event() == PageLoadEvent::Started {
+                     webview.state::<Host>().retire_webview(webview.label());
+                 }
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index cd230256..906e815b 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -3454,6 +3454,17 @@ impl AuthorityHandle {
+         lock(&self.inner)?.operator_sessions.register()
+     }
+ 
++    /// Called by the native main-page lifecycle, never by a renderer intent.
++    /// Review/disclosure ownership ends with the page; admitted work and its
++    /// outcomes survive. Delivery-session recovery alone does not end a page.
++    pub fn retire_renderer(&self) -> Result<(), Refusal> {
++        let mut state = lock(&self.inner)?;
++        state.operator_sessions.retire();
++        state.retire_renderer_reviews();
++        state.changed();
++        Ok(())
++    }
++
+     /// Admits or refuses one delivered Intent. Admission never awaits remote
+     /// IO, Keychain calls or an operator answer while holding the state.
+     pub async fn dispatch(&self, delivery: Delivery, intent: Intent) -> Result<Receipt, Refusal> {
+diff --git a/crates/desktop-core/src/authority/change_domain.rs b/crates/desktop-core/src/authority/change_domain.rs
+index 3bc2e940..6a68a7fe 100644
+--- a/crates/desktop-core/src/authority/change_domain.rs
++++ b/crates/desktop-core/src/authority/change_domain.rs
+@@ -897,6 +897,25 @@ impl State {
+         };
+     }
+ 
++    /// A native page exit ends its configuration editor and every one-time
++    /// disclosure, including keys whose admitted issuance has not settled.
++    /// The operations and their remote outcomes remain owned by the core.
++    pub(super) fn retire_renderer_reviews(&mut self) {
++        if let Some(review) = self.change_review_id() {
++            let _ = self.discard_change(&review);
++        }
++        let operations: Vec<_> = self
++            .change_results
++            .iter()
++            .map(|record| record.operation.clone())
++            .collect();
++        for operation in operations {
++            let _ = self.forget_secret(&operation);
++        }
++        // A sheet may already hold the sole copy after RevealSecret consumed it.
++        self.secrets.dismiss();
++    }
++
+     pub(super) fn discard_change(&mut self, review: &ReviewId) -> Result<(), Refusal> {
+         match &self.change_review {
+             Some(r) if &r.id == review => {
+diff --git a/crates/desktop-core/src/delivery.rs b/crates/desktop-core/src/delivery.rs
+index 466156f9..eb51990c 100644
+--- a/crates/desktop-core/src/delivery.rs
++++ b/crates/desktop-core/src/delivery.rs
+@@ -67,6 +67,12 @@ impl Sessions {
+         }
+     }
+ 
++    /// The native page ended. Late deliveries from it can no longer admit work;
++    /// a replacement page must register its own delivery session.
++    pub(crate) fn retire(&mut self) {
++        self.current = None;
++    }
++
+     /// Registers a new session and retires the previous one.
+     pub(crate) fn register(&mut self) -> Result<DeliverySession, Refusal> {
+         let mut entropy = [0u8; 16];

@@ -3454,6 +3454,17 @@ impl AuthorityHandle {
         lock(&self.inner)?.operator_sessions.register()
     }
 
+    /// Called by the native main-page lifecycle, never by a renderer intent.
+    /// Review/disclosure ownership ends with the page; admitted work and its
+    /// outcomes survive. Delivery-session recovery alone does not end a page.
+    pub fn retire_renderer(&self) -> Result<(), Refusal> {
+        let mut state = lock(&self.inner)?;
+        state.operator_sessions.retire();
+        state.retire_renderer_reviews();
+        state.changed();
+        Ok(())
+    }
+
     /// Admits or refuses one delivered Intent. Admission never awaits remote
     /// IO, Keychain calls or an operator answer while holding the state.
     pub async fn dispatch(&self, delivery: Delivery, intent: Intent) -> Result<Receipt, Refusal> {

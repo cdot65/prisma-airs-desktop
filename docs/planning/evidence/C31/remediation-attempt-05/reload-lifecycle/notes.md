@@ -1,0 +1,11 @@
+# C31 attempt-05 R1 — native renderer lifecycle
+
+The native main-page lifecycle now retires its delivery nonce and configuration review/confirmation, forgets held keys, marks unsettled issuances forgotten-on-settle, dismisses disclosure, and publishes current state. It preserves the active business context, admitted work and remote outcomes. Ordinary delivery-session recovery and secondary-webview retirement preserve the live main-page review/disclosure.
+
+Four focused host production-interface tests exercise the existing `Host::retire_webview` callback and real Tauri IPC against a synthetic localhost TLS management service. Unmodified application sources failed all three reload assertions: held secret survived, pending review survived, and delayed-issued key became Held. The delivery/secondary-window control passed. Original source copies and `old-red-build-01` preserve this actual result.
+
+After the native fix, `new-green-01` reached the correct lifecycle states but its later refusal assertions exposed a test helper error: Tauri returns domain refusal in an `outcome: refusal` JSON envelope, not an IPC command error. The helper was corrected to parse the production envelope; no application change was made between green01 and green02. The original red assertions precede those later helper checks and remain unchanged.
+
+`new-green-02`: all four tests passed (1.82s execution). They prove reload before Reveal, reload during native confirmation, reload while the original issuance is dispatched but its response pending, refusal of old/new-page disclosure, no stale confirmation write, preserved completed outcome and rotation facts, exactly one issuance, and an explicit fresh review that still applies. The fourth control proves delivery recovery alone and another webview do not revoke the main page's still-live disclosure. Focused formatting and whitespace checks passed; the test target compiled without warnings.
+
+No full Rust check suite, repository suite, app bundle build, native gate, product endpoint, actual AppKit interaction or live credential was used. All raw failed attempts are retained. Existing performance/native evidence remains historical on its original bytes; this focused remediation makes no claim that it qualified a rebuilt bundle. C30 is outside this change and remains owner-closed.

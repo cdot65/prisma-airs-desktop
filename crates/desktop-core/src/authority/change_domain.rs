@@ -897,6 +897,25 @@ impl State {
         };
     }
 
+    /// A native page exit ends its configuration editor and every one-time
+    /// disclosure, including keys whose admitted issuance has not settled.
+    /// The operations and their remote outcomes remain owned by the core.
+    pub(super) fn retire_renderer_reviews(&mut self) {
+        if let Some(review) = self.change_review_id() {
+            let _ = self.discard_change(&review);
+        }
+        let operations: Vec<_> = self
+            .change_results
+            .iter()
+            .map(|record| record.operation.clone())
+            .collect();
+        for operation in operations {
+            let _ = self.forget_secret(&operation);
+        }
+        // A sheet may already hold the sole copy after RevealSecret consumed it.
+        self.secrets.dismiss();
+    }
+
     pub(super) fn discard_change(&mut self, review: &ReviewId) -> Result<(), Refusal> {
         match &self.change_review {
             Some(r) if &r.id == review => {
