@@ -1730,7 +1730,7 @@ struct State {
     rotation_unsaved: bool,
     /// A Harness decision that may change things, waiting on the native
     /// confirmation: its conversation, approval and nonce (C32).
-    harness_confirming: Option<(OperationId, String, u64)>,
+    harness_confirming: Option<harness_tools::PendingConfirmation>,
     cleaning: bool,
     /// Cleanup was asked for while a pass ran: run another when it ends,
     /// so a record released meanwhile is not left waiting (P06).
@@ -2743,6 +2743,7 @@ enum Effect {
         approval: String,
         nonce: u64,
         request: ConfirmationRequest,
+        presentation: crate::PresentationLease,
     },
     RevealSecret {
         label: String,
@@ -4391,14 +4392,18 @@ fn admit(
         } => {
             // Allowing a decision that may change things opens the native
             // confirmation; only its private completion lets it run (C32).
-            if let Some((nonce, request)) =
-                state.decide_harness_approval(&conversation, &approval, allow)?
+            if let Some(harness_tools::NativeDecisionConfirmation {
+                nonce,
+                request,
+                presentation,
+            }) = state.decide_harness_approval(&conversation, &approval, allow)?
             {
                 effects.push(Effect::ConfirmHarness {
                     conversation,
                     approval,
                     nonce,
                     request,
+                    presentation,
                 });
             }
             state.changed();
@@ -5149,7 +5154,7 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
         #[cfg(any(test, feature = "test-fixtures"))]
         if matches!(
             &effect,
-            Effect::Confirm { .. } | Effect::RevealSecret { .. }
+            Effect::Confirm { .. } | Effect::RevealSecret { .. } | Effect::ConfirmHarness { .. }
         ) {
             let gate = inner
                 .presentation_gate
@@ -5363,10 +5368,15 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                 approval,
                 nonce,
                 request,
+                presentation,
             } => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
-                    let accepted = inner.adapters.confirmer.confirm(nonce, request).await;
+                    let accepted = inner
+                        .adapters
+                        .confirmer
+                        .confirm_scoped(nonce, request, presentation)
+                        .await;
                     if let Ok(mut state) = lock(&inner) {
                         state.settle_harness_confirmation(
                             &conversation,

@@ -602,3 +602,90 @@ async fn a_named_send_is_taken_once_and_reported_with_the_message_it_became() {
     );
     desk.end(&id).await;
 }
+
+/// C32 attempt22 R1: retire the original decision before its effect can
+/// register a native confirmation. This uses actual production admission,
+/// the real pinned engine and the native adapter interface, not a renderer timer.
+async fn late_harness_confirmation(retire_project: bool) {
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let context = desk.context();
+    desk.send(json!({"kind":"setHarnessWrite","context":context,"write":true}))
+        .await
+        .expect("write");
+    let id = ready(&mut desk).await;
+    tool(
+        &desk,
+        None,
+        "exec_command",
+        json!({"cmd":"echo stale > stale-c32.txt"}),
+    );
+    desk.say(&id, "Write a synthetic marker.")
+        .await
+        .expect("sent");
+    assert!(
+        settle_for(40, || desk.conversation()["approvals"]
+            .as_array()
+            .is_some_and(|a| a.len() == 1))
+        .await
+    );
+    let approval = desk.conversation()["approvals"][0]["id"].clone();
+    desk.adapters.confirmer.auto(None);
+    let before = desk.adapters.confirmer.requests().len();
+    let gate = desk.handle.hold_next_native_presentation();
+    desk.sequence += 1;
+    let delivery = desktop_core::Delivery {
+        session: desk.session.clone(),
+        sequence: desk.sequence,
+    };
+    let intent = serde_json::from_value(
+        json!({"kind":"decideHarnessApproval","conversation":id,"approval":approval,"allow":true}),
+    )
+    .expect("intent");
+    let handle = desk.handle.clone();
+    let dispatch = tokio::spawn(async move { handle.dispatch(delivery, intent).await });
+    assert!(
+        settle(|| gate.entered()).await,
+        "actual admission completed before native registration"
+    );
+    if retire_project {
+        let context = desk.context();
+        desk.send(json!({"kind":"setHarnessWrite","context":context,"write":false}))
+            .await
+            .expect("retire project binding");
+        assert!(
+            settle(|| desk.conversation()["phase"] == "ended" || desk.conversation().is_null())
+                .await
+        );
+    } else {
+        desk.end(&id).await;
+    }
+    gate.release();
+    dispatch
+        .await
+        .expect("dispatch task")
+        .expect("admitted decision");
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(
+        desk.adapters.confirmer.requests().len(),
+        before,
+        "retired Harness decision must not register a native sheet"
+    );
+    assert_eq!(
+        desk.adapters.confirmer.held(),
+        0,
+        "no stale native confirmation remains"
+    );
+    assert!(!dir.join("stale-c32.txt").exists(), "no command ran");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn late_harness_confirmation_after_end_never_opens() {
+    late_harness_confirmation(false).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn late_harness_confirmation_after_project_retirement_never_opens() {
+    late_harness_confirmation(true).await;
+}

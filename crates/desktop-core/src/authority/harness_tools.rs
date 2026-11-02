@@ -131,6 +131,20 @@ pub(super) struct Proposal {
     pub(super) view: ProposalView,
 }
 
+/// Native presentation ownership belongs to the admitted Harness decision.
+pub(super) struct PendingConfirmation {
+    conversation: OperationId,
+    approval: String,
+    nonce: u64,
+    _presentation: crate::presentation::PresentationOwner,
+}
+
+pub(super) struct NativeDecisionConfirmation {
+    pub(super) nonce: u64,
+    pub(super) request: super::ConfirmationRequest,
+    pub(super) presentation: crate::PresentationLease,
+}
+
 impl State {
     /// The active tenant's project, if any.
     pub(super) fn harness_project(&self, tenant: &TenantId) -> Option<StoredProject> {
@@ -223,7 +237,7 @@ impl State {
         conversation: &OperationId,
         approval: &str,
         allow: bool,
-    ) -> Result<Option<(u64, super::ConfirmationRequest)>, Refusal> {
+    ) -> Result<Option<NativeDecisionConfirmation>, Refusal> {
         let c = self.harness_live(conversation)?;
         let Some(pending) = c
             .progress_approvals()
@@ -244,8 +258,19 @@ impl State {
                 return Err(Refusal::Busy);
             }
             let nonce = super::change_domain::nonce().ok_or(Refusal::Busy)?;
-            self.harness_confirming = Some((conversation.clone(), approval.to_owned(), nonce));
-            return Ok(Some((nonce, harness_confirmation(&pending))));
+            let owner = crate::presentation::PresentationOwner::default();
+            let presentation = owner.lease();
+            self.harness_confirming = Some(PendingConfirmation {
+                conversation: conversation.clone(),
+                approval: approval.to_owned(),
+                nonce,
+                _presentation: owner,
+            });
+            return Ok(Some(NativeDecisionConfirmation {
+                nonce,
+                request: harness_confirmation(&pending),
+                presentation,
+            }));
         }
         self.decide_now(conversation, &pending, allow)?;
         Ok(None)
@@ -264,7 +289,7 @@ impl State {
         if self
             .harness_confirming
             .as_ref()
-            .map(|(c, a, n)| (c, a.as_str(), *n))
+            .map(|p| (&p.conversation, p.approval.as_str(), p.nonce))
             != Some((conversation, approval, nonce))
         {
             return;
@@ -289,7 +314,11 @@ impl State {
     /// Ends a native confirmation that no longer has its decision (the
     /// conversation ended or retired, the turn moved on).
     pub(super) fn retire_harness_confirmation(&mut self) {
-        let Some((conversation, approval, nonce)) = self.harness_confirming.clone() else {
+        let Some((conversation, approval, nonce)) = self
+            .harness_confirming
+            .as_ref()
+            .map(|p| (p.conversation.clone(), p.approval.clone(), p.nonce))
+        else {
             return;
         };
         let pending = self
@@ -297,8 +326,10 @@ impl State {
             .ok()
             .is_some_and(|c| c.progress_approvals().iter().any(|a| a.id == approval));
         if !pending {
-            self.confirmer.dismiss(nonce);
+            // Revoke before dismissing: an effect not yet registered must
+            // remain retired even when its callback arrives after dismissal.
             self.harness_confirming = None;
+            self.confirmer.dismiss(nonce);
         }
     }
 
