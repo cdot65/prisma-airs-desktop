@@ -7,7 +7,7 @@
   "method_sha256": "35830b74e6c0c9721080de1b51f6d25ff68265a98adb1bc76eba041e723bc582",
   "registration_record_sha256": "9065a742f836824a30d2913c0032723523703fdb93cb81934d219236dfa9c326",
   "subject": "P09",
-  "attempt": "attempt-02",
+  "attempt": "attempt-03",
   "command": [
     "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python",
     "-I",
@@ -15,7 +15,7 @@
     "--label",
     "acceptance",
     "--attempt",
-    "attempt-02"
+    "attempt-03"
   ],
   "conditions": {
     "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
@@ -23,12 +23,12 @@
     "macos": "26.6.2",
     "swiftc": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx26.0",
     "load_average": [
-      1.517578125,
-      1.3857421875,
-      1.34423828125
+      1.57470703125,
+      1.3125,
+      1.3544921875
     ],
     "execution_environment": "owner-authorized Worf macOS guest; guest-level observations only",
-    "fixture_pid": 56695,
+    "fixture_pid": 3656,
     "window": {
       "pos": [
         320,
@@ -40,35 +40,35 @@
       ]
     }
   },
-  "prepare_sha256": "5255a58e9a00568474fbf15fbd0364cd3959589faf844817f8d297e506cd8677",
-  "build_inputs_sha256": "262934775a01a1bffcf97bc42a88fb1984f58986b90dc0ccc6d9b8a70dcb8e7c",
+  "prepare_sha256": "93beddb1f4bcb85b21ee8fa0290768b2aaa1c41d00387b3dda140a9ead4efb86",
+  "build_inputs_sha256": "938c4eacf7bb02a39d2fe771ee66f447af00f6ef5f356389f1965c8b41db61cf",
   "sources_unchanged": true,
-  "input_digest": "5b331128733b5591662ba43b0f081cb867e03081de1371b2d3b77bbe2b725d57",
+  "input_digest": "f5f26271b8823df8a2b5299417146784d345d4e04f8b59341706e6a41750210d",
   "inputs_unchanged": true,
   "source_root": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current",
-  "source_head": "0ac9be269cbac5527d8c3429975f62452fbd95fe",
+  "source_head": "f468beb755c77bbe1f531a280a6b43781d871395",
   "driver_sha256": "5cf42690a907b1c625f46b83a68c8f310e69c33b3ed9621bc28c8f866bba2028",
   "probe_source_sha256": "8ddf5bcb8ad3b13471a484c41cbfe196d1b0779db05e76e56e22b87f181d3b0c",
   "probe_executable_sha256": "19f409a72220282a7fcfd9a7731d05c628647d9534a1f97186ce6905f0fdbc8a",
   "registration_sha256": "0031d2527c719b899325036f4b4ef77c638b6add974571321c5a3f2feaf5828a",
-  "started_utc": "2026-11-02T06:04:35.698003+00:00",
-  "finished_utc": "2026-11-02T06:05:49.456658+00:00",
-  "executable_sha256": "fd51e81755a555f0daeee52168f134254c569e84b8ae82f684c3f3f839f83d56",
+  "started_utc": "2026-11-02T10:19:19.115231+00:00",
+  "finished_utc": "2026-11-02T10:20:33.187176+00:00",
+  "executable_sha256": "2791b5a1eaf6b9268e0574502c62a20f3027fd2b76ff9ed08289eef1f56147ea",
   "host": "VirtualMac2,1",
   "metrics": {
     "tenant-switch-home": {
       "unit": "ms",
       "samples": [
-        25.065583,
-        23.732709,
-        23.039125,
-        24.198334,
-        20.291,
-        19.128083,
-        20.59775,
-        19.188458,
-        20.056084,
-        21.2555
+        21.204417,
+        21.634417,
+        21.121958,
+        23.69475,
+        21.202292,
+        21.299042,
+        22.123792,
+        20.440875,
+        19.681417,
+        20.750583
       ]
     }
   },
@@ -81,12 +81,12 @@
         "warmup": true,
         "exit": 0,
         "probe": {
-          "ms": 24.866459,
-          "polls": 8,
-          "method": "c30-cached-switch-v2"
+          "method": "c30-cached-switch-v2",
+          "polls": 7,
+          "ms": 22.733833
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-00-ax.json",
-        "tree_sha256": "0fafae7d36b2609e6c7a69c13cb7fc4fbc500f5bf555243bdee12a8f8e85b53d"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-00-ax.json",
+        "tree_sha256": "d94c567c2ca875d9e6764d788fba67eb0e3532b4289ed327fac0f8894ec0a364"
       },
       {
         "index": 1,
@@ -95,12 +95,12 @@
         "warmup": true,
         "exit": 0,
         "probe": {
-          "ms": 21.967708,
-          "polls": 7,
-          "method": "c30-cached-switch-v2"
+          "method": "c30-cached-switch-v2",
+          "ms": 21.996916,
+          "polls": 6
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-01-ax.json",
-        "tree_sha256": "9a32aa619ee9ff6ec3f3243e7c4d02345ae4ebb00c99a787bdb2b842fd9f34d6"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-01-ax.json",
+        "tree_sha256": "6bd4bda7a395430d3310e886488c4ff25070c4b951506a44c346ffde174df9b3"
       },
       {
         "index": 2,
@@ -109,12 +109,12 @@
         "warmup": false,
         "exit": 0,
         "probe": {
-          "ms": 25.065583,
-          "polls": 7,
-          "method": "c30-cached-switch-v2"
+          "polls": 6,
+          "method": "c30-cached-switch-v2",
+          "ms": 21.204417
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-02-ax.json",
-        "tree_sha256": "0656fdab036e480f2a7da8e259ba3a940d11d2403d3340b82b4beca1b0d11444"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-02-ax.json",
+        "tree_sha256": "8a522cbc5500a0828f6944a3da05bb19c59f8e3a607c97de017020790531ce7f"
       },
       {
         "index": 3,
@@ -123,12 +123,12 @@
         "warmup": false,
         "exit": 0,
         "probe": {
-          "ms": 23.732709,
-          "polls": 7,
-          "method": "c30-cached-switch-v2"
+          "ms": 21.634417,
+          "method": "c30-cached-switch-v2",
+          "polls": 7
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-03-ax.json",
-        "tree_sha256": "f41a951073d966c492dda735f15fa303881e840aab30636c46285ccee0769a37"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-03-ax.json",
+        "tree_sha256": "887abf79c5a28ad96fa22f5210ee858db555ddab5469ac767758a66ee38b76a0"
       },
       {
         "index": 4,
@@ -139,10 +139,10 @@
         "probe": {
           "polls": 6,
           "method": "c30-cached-switch-v2",
-          "ms": 23.039125
+          "ms": 21.121958
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-04-ax.json",
-        "tree_sha256": "b3c203229ca8dc963c2458c5b9caff039f590c9dc7416e92f422401b1e7b3940"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-04-ax.json",
+        "tree_sha256": "4f37f75b3af9a077484b56ce9b653cb982c550ad1c82ba2f4790e544da2b1292"
       },
       {
         "index": 5,
@@ -152,11 +152,11 @@
         "exit": 0,
         "probe": {
           "method": "c30-cached-switch-v2",
-          "ms": 24.198334,
+          "ms": 23.69475,
           "polls": 7
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-05-ax.json",
-        "tree_sha256": "8a51b50b1d3163fe09b898a226e60e25ec9755dcd97c8b8b26b563471b132160"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-05-ax.json",
+        "tree_sha256": "efe9a381f69d4782d9fa78150899fc369818375a812ed606019dbf6b4ff78ce8"
       },
       {
         "index": 6,
@@ -165,12 +165,12 @@
         "warmup": false,
         "exit": 0,
         "probe": {
-          "method": "c30-cached-switch-v2",
-          "ms": 20.291,
-          "polls": 6
+          "ms": 21.202292,
+          "polls": 6,
+          "method": "c30-cached-switch-v2"
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-06-ax.json",
-        "tree_sha256": "294098dbf2751968d200cfc657125f5debb4ef5ef485cba667ed54f1b828d4b6"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-06-ax.json",
+        "tree_sha256": "580f295a7c6c9b5af285ee974ea80e87a51c0de7ae0a49a1212c80bff49fdebd"
       },
       {
         "index": 7,
@@ -179,12 +179,12 @@
         "warmup": false,
         "exit": 0,
         "probe": {
-          "polls": 6,
-          "method": "c30-cached-switch-v2",
-          "ms": 19.128083
+          "polls": 5,
+          "ms": 21.299042,
+          "method": "c30-cached-switch-v2"
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-07-ax.json",
-        "tree_sha256": "5a26d84cceb31f07caf0037402b6b2cc0c64859c4752925544e55fd3e57c5479"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-07-ax.json",
+        "tree_sha256": "03168e825b47fc8b9e0fa4cb8b2bdbed554a120edbe6ed37f8c1541a86aebc04"
       },
       {
         "index": 8,
@@ -193,12 +193,12 @@
         "warmup": false,
         "exit": 0,
         "probe": {
-          "polls": 6,
+          "polls": 7,
           "method": "c30-cached-switch-v2",
-          "ms": 20.59775
+          "ms": 22.123792
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-08-ax.json",
-        "tree_sha256": "b04d9ba0fa102a8b408844f5cd9967c10a217dde441b2fbd1e903df173275cf4"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-08-ax.json",
+        "tree_sha256": "ad15d0c715143afb57173359926f18fa30484c7d728c913765d2b9232572647c"
       },
       {
         "index": 9,
@@ -207,12 +207,12 @@
         "warmup": false,
         "exit": 0,
         "probe": {
-          "ms": 19.188458,
+          "ms": 20.440875,
           "polls": 6,
           "method": "c30-cached-switch-v2"
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-09-ax.json",
-        "tree_sha256": "be34ea5f86bbb5007116981b9ba72a2ecc5eef94655790a20f75bccc2f93bcb4"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-09-ax.json",
+        "tree_sha256": "d82a4b00c37b7f657f53b9ed27b5b407c32dd70aaec16e0b78cd6427b4a775f0"
       },
       {
         "index": 10,
@@ -221,12 +221,12 @@
         "warmup": false,
         "exit": 0,
         "probe": {
-          "method": "c30-cached-switch-v2",
-          "ms": 20.056084,
-          "polls": 6
+          "polls": 6,
+          "ms": 19.681417,
+          "method": "c30-cached-switch-v2"
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-10-ax.json",
-        "tree_sha256": "7ae440f2923bbdf7455e5cba7fda6cf03d95dd2e513fc451aec9f2e30054f935"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-10-ax.json",
+        "tree_sha256": "530a7a51d994e6af54a354cc9474646c763c0aca568cf511f6dbc9d5b7b2f9cf"
       },
       {
         "index": 11,
@@ -236,11 +236,11 @@
         "exit": 0,
         "probe": {
           "method": "c30-cached-switch-v2",
-          "polls": 6,
-          "ms": 21.2555
+          "ms": 20.750583,
+          "polls": 6
         },
-        "tree": "docs/planning/evidence/P09/performance/C30/attempt-02/switch-11-ax.json",
-        "tree_sha256": "520037e9d6d8fff60873b77c4d4b345876b1c50a70b08929ce2e5e5d9619ff6d"
+        "tree": "docs/planning/evidence/P09/performance/C30/attempt-03/switch-11-ax.json",
+        "tree_sha256": "571e9b4aa2894bff20c6cfa0d0fa47211cf84bec2ea06f80dd9476f8d7ce227b"
       }
     ],
     "a_read": true,
