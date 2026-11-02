@@ -1,14 +1,14 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C11",
-  "recorded_utc": "2026-11-02T05:06:52Z",
+  "recorded_utc": "2026-11-02T07:24:05Z",
   "method": "cua",
   "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against tools/native-acceptance/mgmt_server.py; tools/native-acceptance/acceptance_c11.py",
   "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
   "app": {
     "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
     "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
-    "executable_sha256": "fd51e81755a555f0daeee52168f134254c569e84b8ae82f684c3f3f839f83d56",
+    "executable_sha256": "2791b5a1eaf6b9268e0574502c62a20f3027fd2b76ff9ed08289eef1f56147ea",
     "fixture": true
   },
   "checks": [
@@ -49,7 +49,7 @@
       "id": "C11-N04",
       "description": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV\u2026 saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response.",
       "result": "pass",
-      "observation": "listed with metadata: True; remove/undo: True; CSV {'saved': True, 'file': 'fpfn-reports-tenant-a-20261102-0504.csv', 'mode': '0o600', 'header': 'tenant,tsg_id,kind,scan_id,scan_sub_req_id,session_id,application,application_id,verdict,action,detectors,profile,reason_category,reason,reported_at,exported_at', 'rows': 1, 'crlf': True, 'content': False}",
+      "observation": "listed with metadata: True; remove/undo: True; CSV {'saved': True, 'file': 'fpfn-reports-tenant-a-20261102-0721.csv', 'mode': '0o600', 'header': 'tenant,tsg_id,kind,scan_id,scan_sub_req_id,session_id,application,application_id,verdict,action,detectors,profile,reason_category,reason,reported_at,exported_at', 'rows': 1, 'crlf': True, 'content': False}",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C11/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C11/native/tree-reports.json",
@@ -70,7 +70,7 @@
       "id": "C11-N06",
       "description": "Export metadata\u2026 saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again.",
       "result": "pass",
-      "observation": "metadata export {'saved': True, 'file': 'investigation-tenant-a-20261102-0504.json', 'sessions': True, 'content': False, 'mode': '0o600'}; cleared with the seal removed: True; read again after clearing: True (resealed: True)",
+      "observation": "metadata export {'saved': True, 'file': 'investigation-tenant-a-20261102-0721.json', 'sessions': True, 'content': False, 'mode': '0o600'}; cleared with the seal removed: True; read again after clearing: True (resealed: True)",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C11/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C11/native/tree-cleared.json"
