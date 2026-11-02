@@ -457,7 +457,8 @@ class Handler(BaseHTTPRequestHandler):
 
         def key(ws, n, scopes):
             return {"id": f"7e3a0000-0000-4000-8000-{ws[-4:]}0000003{n}", "name": f"{spaces[ws][1]}-key-{n}",
-                    "object": "api-key", "status": "active", "key": "GW-PRIVATE-KEY-VALUE", "scopes": scopes}
+                    "object": "api-key", "status": "active", "key": "GW-PRIVATE-KEY-VALUE", "scopes": scopes,
+                    "workspace_id": ws}
 
         integration = {"id": GW_INTEGRATION, "name": "OpenAI", "owner_id": "owner-1", "status": "active",
                        "created_at": "2026-10-01T00:00:00Z", "last_updated_at": None, "slug": "openai",

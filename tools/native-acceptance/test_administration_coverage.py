@@ -223,6 +223,8 @@ class SuccessfulGatewayDetails(unittest.TestCase):
                 self.assertEqual(status, 200, (resource, item['id']))
                 self.assertEqual(detail['id'], item['id'])
                 self.assertEqual(detail['name'], item['name'])
+                self.assertEqual(detail['workspace_id'], mgmt_server.GW_A)
+                self.assertTrue({'id', 'name', 'object', 'status', 'key', 'scopes', 'workspace_id'} <= set(detail))
 
 if __name__ == "__main__":
     unittest.main()
