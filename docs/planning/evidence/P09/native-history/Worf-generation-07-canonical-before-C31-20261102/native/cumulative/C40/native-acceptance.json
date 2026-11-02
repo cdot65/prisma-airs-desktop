@@ -1,0 +1,84 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C40",
+  "recorded_utc": "2026-11-02T10:12:41Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c40.py",
+  "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "2791b5a1eaf6b9268e0574502c62a20f3027fd2b76ff9ed08289eef1f56147ea",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C40-N01",
+      "description": "Test Cases as the prototype board draws it (R2App start=cases) with a tenant: the title row (heading; 'n cases in <tenant> \u00b7 sealed on this Mac, per tenant'; Load starter packs\u2026 and New case), the empty card first; the Explain banner shown while the shell's Show the calls switch is on and gone when it is off, captured in both themes; Load starter packs\u2026 opens the 560px dialog with the bundled packs and the public examples as checks (the bundled checked) and Import\u2026 / Export\u2026 for the operator's own cases, Load selected adds the packs; the one table card: search, the product pills with their counts, the rows (name with the pack under it, product, input in mono, the result pill or Not run, Open in Playground for a Runtime Security case or Inspect for the others, and the \u22ef menu), the footer's range and pages; a filter and a search with Clear search and filters; Inspect opens the 520px detail sheet docked right (the rows, which product runs it, the never-run note) and dispatches no scan; Open in Playground fills the Playground without scanning, the scan run there records the verdict on the case; New case opens the dialog, a Runtime case and a specification are saved (the specification without profile or application, inspect-only); the \u22ef menu removes a case and copies one to another tenant; Export\u2026 saves or is cancelled through the native sheet and Import\u2026 of the exported file says its cases are already here; nothing on this screen scans (D059 parity: the composites under evidence/C40/parity are captured by this script from the populated list, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md).",
+      "result": "pass",
+      "observation": "screen True with the count line '11 cases in Northwind Health \u00b7 sealed on this Mac, per tenant'; empty first True; the packs dialog True with [('Bundled starter packs Shipped with this app', 1), ('Public examples Fetched from the public catalog', 0)] and Import\u2026/Export\u2026 True; loaded True (3 runtime, 8 spec rows, pack named True, Not run True); pills ['All 11', 'Runtime Security 3', 'AI Red Teaming 2'], range 1\u201311 of 11; filter AI Red Teaming 2 \u2192 0/2; search empty with Clear True; Inspect opened the sheet True docked at 520px True naming Red Teaming True and the never-run note True, 0 scan requests; Open in Playground True without a scan True, scanned there True and recorded True (1 request); New case dialog True: runtime saved True and listed True, spec form True saved True inspect-only True; \u22ef menu True: removed True, copied to Tenant B True; export saved True (file True) / cancelled True, import of the same file True; no scan from the library True; the Explain banner absent before True, shown with the shell's Show the calls switch True (captured light and dark) and gone with it off True; composites ['docs/planning/evidence/P09/native/cumulative/C40/parity/cases-dark.png', 'docs/planning/evidence/P09/native/cumulative/C40/parity/cases-light.png']",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C40/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-empty.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-packs.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-inspect.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-result.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-library.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-explain.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-explain-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-explain-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-packs-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-light-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-dark-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-dark-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-light-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-inspect-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-result-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/parity/cases-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/parity/cases-light.png"
+      ]
+    },
+    {
+      "id": "C40-N02",
+      "description": "Keyboard and layout (T09): Tab from Load starter packs\u2026 reaches New case, the search field and the first product pill in order; the focus ring on New case; Test Cases at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the packs loaded, no horizontal overflow, the row action at least 32 CSS px inside the table card and the footer's pages present; every row records the WebView's measured size and the viewport from its own tree and asserts them.",
+      "result": "pass",
+      "observation": "Tab from Load starter packs\u2026 reached [('New case', 0), ('Search cases', 1), ('All ', 2), ('Open in Playground:', None)] in order True (walk ['New case', 'Search cases', 'All 12', 'Runtime Security 3', 'AI Gateway 2', 'AI Red Teaming 3', 'Model Security 2', 'Skill Scanning 2']); ring on New case 608 px; cases-1440x900-light: web [1440, 900] viewport [1440, 900] overflow 0 px, scroll bars 0, table {'table': True, 'action_size': [138, 33], 'action_ok': True, 'foot': True, 'zoom': 1, 'action_inside': True, 'row_cells': 10, 'regions': {'name': 'Benign support question', 'input': 'How do I reset my password?', 'result': 'Blocked: Show the result of Benign suppo', 'action': 'Open in Playground: Benign support quest', 'header_0': 'Case', 'header_1': 'Product', 'header_2': 'Input or specification', 'header_3': 'Last result'}, 'regions_present': True, 'regions_wide': True, 'overlaps': [], 'readable': True, 'ok': True}; cases-1440x900-dark: web [1440, 900] viewport [1440, 900] overflow 0 px, scroll bars 0, table {'table': True, 'action_size': [138, 33], 'action_ok': True, 'foot': True, 'zoom': 1, 'action_inside': True, 'row_cells': 10, 'regions': {'name': 'Benign support question', 'input': 'How do I reset my password?', 'result': 'Blocked: Show the result of Benign suppo', 'action': 'Open in Playground: Benign support quest', 'header_0': 'Case', 'header_1': 'Product', 'header_2': 'Input or specification', 'header_3': 'Last result'}, 'regions_present': True, 'regions_wide': True, 'overlaps': [], 'readable': True, 'ok': True}; cases-900x600-200-light: web [900, 1092] viewport [900, 600] overflow 0 px, scroll bars 0, table {'table': True, 'action_size': [255, 64], 'action_ok': True, 'foot': True, 'zoom': 2, 'action_inside': True, 'row_cells': 10, 'regions': {'name': 'Benign support question', 'input': 'How do I reset my password?', 'result': 'Blocked: Show the result of Benign suppo', 'action': 'Open in Playground: Benign support quest', 'header_0': 'Case', 'header_1': 'Product', 'header_2': 'Input or specification', 'header_3': 'Last result'}, 'regions_present': True, 'regions_wide': True, 'overlaps': [], 'readable': True, 'ok': True}; cases-900x600-200-dark: web [900, 1092] viewport [900, 600] overflow 0 px, scroll bars 0, table {'table': True, 'action_size': [255, 64], 'action_ok': True, 'foot': True, 'zoom': 2, 'action_inside': True, 'row_cells': 10, 'regions': {'name': 'Benign support question', 'input': 'How do I reset my password?', 'result': 'Blocked: Show the result of Benign suppo', 'action': 'Open in Playground: Benign support quest', 'header_0': 'Case', 'header_1': 'Product', 'header_2': 'Input or specification', 'header_3': 'Last result'}, 'regions_present': True, 'regions_wide': True, 'overlaps': [], 'readable': True, 'ok': True}",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C40/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-1440x900-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-1440x900-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-900x600-200-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/tree-cases-900x600-200-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-1440x900-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-1440x900-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-900x600-200-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-900x600-200-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-ring-plain.png",
+        "docs/planning/evidence/P09/native/cumulative/C40/native/captures/cases-ring-new.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the parity composites put the prototype board (rendered at the WebView's measured size) beside it; the native file sheets are driven through the fixture sheet adapter.",
+    "Synthetic scan and management endpoints only; the starter packs are the bundled ones (the public catalog is not fetched natively).",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "cases-dark-100.png",
+    "cases-dark-200.png",
+    "cases-explain-dark.png",
+    "cases-explain-light.png",
+    "cases-inspect-light.png",
+    "cases-light-100.png",
+    "cases-light-200.png",
+    "cases-packs-light.png",
+    "cases-result-light.png",
+    "cases-ring-focused.png",
+    "cases-ring-plain.png",
+    "layouts-cases-1440x900-dark.png",
+    "layouts-cases-1440x900-light.png",
+    "layouts-cases-900x600-200-dark.png",
+    "layouts-cases-900x600-200-light.png"
+  ]
+}

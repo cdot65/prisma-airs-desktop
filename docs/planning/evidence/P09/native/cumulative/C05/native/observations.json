@@ -1,11 +1,11 @@
 {
  "observations": {
-  "origin": "https://localhost:50773",
+  "origin": "https://localhost:57953",
   "guest_catalog": true,
   "tree_guest_catalog": "docs/planning/evidence/P09/native/cumulative/C05/native/tree-guest-catalog.json",
   "guest_requests": [
    {
-    "t": 1793611836.926311,
+    "t": 1793623624.839333,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -18,10 +18,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 1.742
+    "handlingMs": 1.69
    },
    {
-    "t": 1793611836.926888,
+    "t": 1793623624.8398862,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -34,7 +34,7 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.237
+    "handlingMs": 0.128
    }
   ],
   "guest_kc_sign_in": true,
@@ -55,7 +55,7 @@
   "tree_account_catalog": "docs/planning/evidence/P09/native/cumulative/C05/native/tree-account-catalog.json",
   "account_requests": [
    {
-    "t": 1793611881.164727,
+    "t": 1793623668.9928908,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -68,10 +68,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.086
+    "handlingMs": 0.084
    },
    {
-    "t": 1793611881.167552,
+    "t": 1793623668.99584,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -84,7 +84,7 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.09
+    "handlingMs": 0.092
    }
   ],
   "keyboard": {
@@ -131,7 +131,7 @@
   },
   "kc_requests": [
    {
-    "t": 1793611900.726367,
+    "t": 1793623688.407385,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -144,10 +144,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
     "status": 200,
-    "handlingMs": 1.248
+    "handlingMs": 1.495
    },
    {
-    "t": 1793611900.972016,
+    "t": 1793623688.645746,
     "method": "POST",
     "path": "/api/trpc/units.startKnowledgeCheck",
     "fields": [],
@@ -160,10 +160,10 @@
     "procedure": "units.startKnowledgeCheck",
     "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
     "status": 200,
-    "handlingMs": 0.103
+    "handlingMs": 0.102
    },
    {
-    "t": 1793611901.890041,
+    "t": 1793623689.55827,
     "method": "POST",
     "path": "/api/trpc/units.submitKnowledgeCheck",
     "fields": [],
@@ -176,10 +176,10 @@
     "procedure": "units.submitKnowledgeCheck",
     "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\",\"attemptId\":\"3f9c2a7e-0d4b-4c1a-9e2f-6b8d1a5c7e90\",\"answers\":[{\"questionId\":\"q-pi-1\",\"value\":0}]}}",
     "status": 200,
-    "handlingMs": 0.092
+    "handlingMs": 0.222
    },
    {
-    "t": 1793611901.896278,
+    "t": 1793623689.5643709,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -192,10 +192,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
     "status": 200,
-    "handlingMs": 1.55
+    "handlingMs": 1.791
    },
    {
-    "t": 1793611901.8990028,
+    "t": 1793623689.56556,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -208,10 +208,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.101
+    "handlingMs": 0.099
    },
    {
-    "t": 1793611901.90167,
+    "t": 1793623689.567671,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -224,14 +224,14 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.072
+    "handlingMs": 0.145
    }
   ],
   "tree_kc": "docs/planning/evidence/P09/native/cumulative/C05/native/tree-knowledge-check-graded.json",
   "lab_preview": true,
   "lab_requests": [
    {
-    "t": 1793611902.4009302,
+    "t": 1793623690.037612,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -244,10 +244,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lab\"}}",
     "status": 200,
-    "handlingMs": 1.248
+    "handlingMs": 1.54
    },
    {
-    "t": 1793611902.71203,
+    "t": 1793623690.344428,
     "method": "GET",
     "path": "/api/trpc/labs.get",
     "fields": [],
@@ -260,10 +260,10 @@
     "procedure": "labs.get",
     "input": "{\"json\":{\"courseId\":\"runtime-security\",\"order\":2}}",
     "status": 200,
-    "handlingMs": 0.178
+    "handlingMs": 0.124
    },
    {
-    "t": 1793611902.723912,
+    "t": 1793623690.34924,
     "method": "GET",
     "path": "/api/trpc/desktop.attempt.list",
     "fields": [],
@@ -276,7 +276,7 @@
     "procedure": "desktop.attempt.list",
     "input": "{\"json\":{\"limit\":100}}",
     "status": 404,
-    "handlingMs": 0.158
+    "handlingMs": 0.096
    }
   ],
   "tree_lab": "docs/planning/evidence/P09/native/cumulative/C05/native/tree-lab-preview.json",
@@ -455,7 +455,7 @@
   "truth_in_trees": [],
   "requests": [
    {
-    "t": 1793611836.926311,
+    "t": 1793623624.839333,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -468,10 +468,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 1.742
+    "handlingMs": 1.69
    },
    {
-    "t": 1793611836.926888,
+    "t": 1793623624.8398862,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -484,10 +484,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.237
+    "handlingMs": 0.128
    },
    {
-    "t": 1793611838.142623,
+    "t": 1793623626.055681,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -500,10 +500,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.199
+    "handlingMs": 0.103
    },
    {
-    "t": 1793611838.144681,
+    "t": 1793623626.0586162,
     "method": "GET",
     "path": "/api/trpc/paths.forCourse",
     "fields": [],
@@ -516,282 +516,10 @@
     "procedure": "paths.forCourse",
     "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.187
+    "handlingMs": 0.24
    },
    {
-    "t": 1793611838.149981,
-    "method": "GET",
-    "path": "/api/trpc/units.listByPath",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "units.listByPath",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.134
-   },
-   {
-    "t": 1793611838.1702862,
-    "method": "GET",
-    "path": "/api/trpc/units.listByModule",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "units.listByModule",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.173
-   },
-   {
-    "t": 1793611838.176558,
-    "method": "GET",
-    "path": "/api/trpc/modules.intro",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "modules.intro",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.127
-   },
-   {
-    "t": 1793611838.42526,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
-    "status": 200,
-    "handlingMs": 1.639
-   },
-   {
-    "t": 1793611849.00932,
-    "method": "GET",
-    "path": "/api/trpc/paths.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "paths.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.085
-   },
-   {
-    "t": 1793611849.0119581,
-    "method": "GET",
-    "path": "/api/trpc/library.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "library.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.082
-   },
-   {
-    "t": 1793611849.413422,
-    "method": "GET",
-    "path": "/api/trpc/courses.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "courses.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.097
-   },
-   {
-    "t": 1793611849.414866,
-    "method": "GET",
-    "path": "/api/trpc/paths.forCourse",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "paths.forCourse",
-    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.09
-   },
-   {
-    "t": 1793611849.417931,
-    "method": "GET",
-    "path": "/api/trpc/units.listByPath",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "units.listByPath",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.101
-   },
-   {
-    "t": 1793611849.436672,
-    "method": "GET",
-    "path": "/api/trpc/units.listByModule",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "units.listByModule",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.172
-   },
-   {
-    "t": 1793611849.4418502,
-    "method": "GET",
-    "path": "/api/trpc/modules.intro",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "modules.intro",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.115
-   },
-   {
-    "t": 1793611849.6848419,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
-    "status": 200,
-    "handlingMs": 1.421
-   },
-   {
-    "t": 1793611850.6495109,
-    "method": "GET",
-    "path": "/api/trpc/paths.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "paths.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.099
-   },
-   {
-    "t": 1793611861.7115788,
-    "method": "GET",
-    "path": "/api/trpc/paths.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "paths.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.096
-   },
-   {
-    "t": 1793611861.714241,
-    "method": "GET",
-    "path": "/api/trpc/library.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "library.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.086
-   },
-   {
-    "t": 1793611862.118263,
-    "method": "GET",
-    "path": "/api/trpc/courses.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "courses.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.102
-   },
-   {
-    "t": 1793611862.1204412,
-    "method": "GET",
-    "path": "/api/trpc/paths.forCourse",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "paths.forCourse",
-    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.102
-   },
-   {
-    "t": 1793611862.125632,
+    "t": 1793623626.061904,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -807,7 +535,7 @@
     "handlingMs": 0.151
    },
    {
-    "t": 1793611862.141024,
+    "t": 1793623626.079416,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -820,10 +548,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.154
+    "handlingMs": 0.155
    },
    {
-    "t": 1793611862.146951,
+    "t": 1793623626.084967,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -836,10 +564,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.132
+    "handlingMs": 0.114
    },
    {
-    "t": 1793611862.396898,
+    "t": 1793623626.332869,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -850,28 +578,12 @@
     "authorization": false,
     "clientSecret": false,
     "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-02\"}}",
+    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
     "status": 200,
-    "handlingMs": 1.267
+    "handlingMs": 1.88
    },
    {
-    "t": 1793611863.062559,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"unit-members\"}}",
-    "status": 401,
-    "handlingMs": 1.354
-   },
-   {
-    "t": 1793611873.364182,
+    "t": 1793623636.967202,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -884,10 +596,298 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.085
+    "handlingMs": 0.098
    },
    {
-    "t": 1793611873.366936,
+    "t": 1793623636.9700649,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.081
+   },
+   {
+    "t": 1793623637.368441,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.103
+   },
+   {
+    "t": 1793623637.370193,
+    "method": "GET",
+    "path": "/api/trpc/paths.forCourse",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "paths.forCourse",
+    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.093
+   },
+   {
+    "t": 1793623637.373,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.097
+   },
+   {
+    "t": 1793623637.390371,
+    "method": "GET",
+    "path": "/api/trpc/units.listByModule",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "units.listByModule",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.163
+   },
+   {
+    "t": 1793623637.39505,
+    "method": "GET",
+    "path": "/api/trpc/modules.intro",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "modules.intro",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.102
+   },
+   {
+    "t": 1793623637.63658,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
+    "status": 200,
+    "handlingMs": 1.623
+   },
+   {
+    "t": 1793623638.56613,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.121
+   },
+   {
+    "t": 1793623649.582144,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.087
+   },
+   {
+    "t": 1793623649.584841,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.08
+   },
+   {
+    "t": 1793623649.982859,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.105
+   },
+   {
+    "t": 1793623649.984789,
+    "method": "GET",
+    "path": "/api/trpc/paths.forCourse",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "paths.forCourse",
+    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.098
+   },
+   {
+    "t": 1793623649.988033,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.128
+   },
+   {
+    "t": 1793623650.004849,
+    "method": "GET",
+    "path": "/api/trpc/units.listByModule",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "units.listByModule",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.17
+   },
+   {
+    "t": 1793623650.009197,
+    "method": "GET",
+    "path": "/api/trpc/modules.intro",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "modules.intro",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.095
+   },
+   {
+    "t": 1793623650.250518,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-02\"}}",
+    "status": 200,
+    "handlingMs": 1.688
+   },
+   {
+    "t": 1793623650.93952,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"unit-members\"}}",
+    "status": 401,
+    "handlingMs": 1.518
+   },
+   {
+    "t": 1793623661.228881,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.093
+   },
+   {
+    "t": 1793623661.231872,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -903,7 +903,7 @@
     "handlingMs": 0.085
    },
    {
-    "t": 1793611873.771039,
+    "t": 1793623661.629118,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -916,10 +916,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.091
+    "handlingMs": 0.104
    },
    {
-    "t": 1793611873.773111,
+    "t": 1793623661.631275,
     "method": "GET",
     "path": "/api/trpc/paths.forCourse",
     "fields": [],
@@ -932,10 +932,10 @@
     "procedure": "paths.forCourse",
     "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.129
+    "handlingMs": 0.135
    },
    {
-    "t": 1793611873.778518,
+    "t": 1793623661.634827,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -948,10 +948,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.123
+    "handlingMs": 0.118
    },
    {
-    "t": 1793611873.792922,
+    "t": 1793623661.6485078,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -964,10 +964,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.182
+    "handlingMs": 0.144
    },
    {
-    "t": 1793611873.7976372,
+    "t": 1793623661.6526442,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -980,10 +980,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.112
+    "handlingMs": 0.1
    },
    {
-    "t": 1793611874.045245,
+    "t": 1793623661.893404,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -996,10 +996,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-02\"}}",
     "status": 200,
-    "handlingMs": 1.294
+    "handlingMs": 1.659
    },
    {
-    "t": 1793611874.7064152,
+    "t": 1793623662.547148,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1012,10 +1012,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"unit-locked\"}}",
     "status": 401,
-    "handlingMs": 1.291
+    "handlingMs": 1.704
    },
    {
-    "t": 1793611879.268019,
+    "t": 1793623667.108994,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -1027,7 +1027,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793611879.269377,
+    "t": 1793623667.110563,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -1039,7 +1039,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793611879.2710578,
+    "t": 1793623667.111925,
     "method": "POST",
     "path": "/oauth/device",
     "fields": [
@@ -1054,7 +1054,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793611880.273771,
+    "t": 1793623668.114605,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -1070,7 +1070,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793611880.2750652,
+    "t": 1793623668.115926,
     "method": "GET",
     "path": "/api/trpc/desktop.me",
     "fields": [],
@@ -1082,7 +1082,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793611881.164727,
+    "t": 1793623668.9928908,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -1095,10 +1095,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.086
+    "handlingMs": 0.084
    },
    {
-    "t": 1793611881.167552,
+    "t": 1793623668.99584,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -1110,251 +1110,11 @@
     "clientSecret": false,
     "procedure": "library.list",
     "input": null,
-    "status": 200,
-    "handlingMs": 0.09
-   },
-   {
-    "t": 1793611888.272446,
-    "method": "GET",
-    "path": "/api/trpc/courses.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "courses.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.106
-   },
-   {
-    "t": 1793611888.273773,
-    "method": "GET",
-    "path": "/api/trpc/paths.forCourse",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "paths.forCourse",
-    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.101
-   },
-   {
-    "t": 1793611888.278187,
-    "method": "GET",
-    "path": "/api/trpc/units.listByPath",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.listByPath",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.122
-   },
-   {
-    "t": 1793611888.281968,
-    "method": "GET",
-    "path": "/api/trpc/progress.courseSummary",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "progress.courseSummary",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.122
-   },
-   {
-    "t": 1793611888.2845042,
-    "method": "GET",
-    "path": "/api/trpc/enrollment.affectedByCourseRemoval",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "enrollment.affectedByCourseRemoval",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.094
-   },
-   {
-    "t": 1793611888.285934,
-    "method": "GET",
-    "path": "/api/trpc/units.listByModule",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.listByModule",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.123
-   },
-   {
-    "t": 1793611888.290028,
-    "method": "GET",
-    "path": "/api/trpc/modules.intro",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "modules.intro",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.097
-   },
-   {
-    "t": 1793611894.431658,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
-    "status": 200,
-    "handlingMs": 1.387
-   },
-   {
-    "t": 1793611900.726367,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
-    "status": 200,
-    "handlingMs": 1.248
-   },
-   {
-    "t": 1793611900.972016,
-    "method": "POST",
-    "path": "/api/trpc/units.startKnowledgeCheck",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.startKnowledgeCheck",
-    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
-    "status": 200,
-    "handlingMs": 0.103
-   },
-   {
-    "t": 1793611901.890041,
-    "method": "POST",
-    "path": "/api/trpc/units.submitKnowledgeCheck",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.submitKnowledgeCheck",
-    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\",\"attemptId\":\"3f9c2a7e-0d4b-4c1a-9e2f-6b8d1a5c7e90\",\"answers\":[{\"questionId\":\"q-pi-1\",\"value\":0}]}}",
     "status": 200,
     "handlingMs": 0.092
    },
    {
-    "t": 1793611901.896278,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
-    "status": 200,
-    "handlingMs": 1.55
-   },
-   {
-    "t": 1793611901.8990028,
-    "method": "GET",
-    "path": "/api/trpc/units.listByPath",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.listByPath",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.101
-   },
-   {
-    "t": 1793611901.90167,
-    "method": "GET",
-    "path": "/api/trpc/paths.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "paths.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.072
-   },
-   {
-    "t": 1793611902.1287072,
-    "method": "GET",
-    "path": "/api/trpc/units.listByModule",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.listByModule",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.148
-   },
-   {
-    "t": 1793611902.1351528,
+    "t": 1793623676.0597131,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -1367,122 +1127,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.144
+    "handlingMs": 0.116
    },
    {
-    "t": 1793611902.4009302,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"m-rt-1-lab\"}}",
-    "status": 200,
-    "handlingMs": 1.248
-   },
-   {
-    "t": 1793611902.71203,
-    "method": "GET",
-    "path": "/api/trpc/labs.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "labs.get",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\",\"order\":2}}",
-    "status": 200,
-    "handlingMs": 0.178
-   },
-   {
-    "t": 1793611902.723912,
-    "method": "GET",
-    "path": "/api/trpc/desktop.attempt.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "desktop.attempt.list",
-    "input": "{\"json\":{\"limit\":100}}",
-    "status": 404,
-    "handlingMs": 0.158
-   },
-   {
-    "t": 1793611913.245316,
-    "method": "GET",
-    "path": "/api/trpc/units.listByPath",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.listByPath",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.119
-   },
-   {
-    "t": 1793611913.2462988,
-    "method": "GET",
-    "path": "/api/trpc/paths.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "paths.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.068
-   },
-   {
-    "t": 1793611913.249333,
-    "method": "GET",
-    "path": "/api/trpc/library.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "library.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.086
-   },
-   {
-    "t": 1793611913.6778922,
-    "method": "GET",
-    "path": "/api/trpc/courses.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "courses.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.105
-   },
-   {
-    "t": 1793611913.679801,
+    "t": 1793623676.0614212,
     "method": "GET",
     "path": "/api/trpc/paths.forCourse",
     "fields": [],
@@ -1495,106 +1143,10 @@
     "procedure": "paths.forCourse",
     "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.103
+    "handlingMs": 0.108
    },
    {
-    "t": 1793611913.6855512,
-    "method": "GET",
-    "path": "/api/trpc/progress.courseSummary",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "progress.courseSummary",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.107
-   },
-   {
-    "t": 1793611913.688457,
-    "method": "GET",
-    "path": "/api/trpc/enrollment.affectedByCourseRemoval",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "enrollment.affectedByCourseRemoval",
-    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.093
-   },
-   {
-    "t": 1793611913.693849,
-    "method": "GET",
-    "path": "/api/trpc/units.listByModule",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.listByModule",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.15
-   },
-   {
-    "t": 1793611913.706479,
-    "method": "GET",
-    "path": "/api/trpc/modules.intro",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": false,
-    "clientSecret": false,
-    "procedure": "modules.intro",
-    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
-    "status": 200,
-    "handlingMs": 0.131
-   },
-   {
-    "t": 1793611913.958893,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-02\"}}",
-    "status": 200,
-    "handlingMs": 1.338
-   },
-   {
-    "t": 1793611914.627258,
-    "method": "GET",
-    "path": "/api/trpc/units.get",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"unit-locked\"}}",
-    "status": 403,
-    "handlingMs": 1.191
-   },
-   {
-    "t": 1793611924.941602,
+    "t": 1793623676.065046,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -1610,71 +1162,7 @@
     "handlingMs": 0.124
    },
    {
-    "t": 1793611924.943022,
-    "method": "GET",
-    "path": "/api/trpc/paths.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "paths.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.072
-   },
-   {
-    "t": 1793611924.946003,
-    "method": "GET",
-    "path": "/api/trpc/library.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "library.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.077
-   },
-   {
-    "t": 1793611925.370176,
-    "method": "GET",
-    "path": "/api/trpc/courses.list",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "courses.list",
-    "input": null,
-    "status": 200,
-    "handlingMs": 0.097
-   },
-   {
-    "t": 1793611925.372403,
-    "method": "GET",
-    "path": "/api/trpc/paths.forCourse",
-    "fields": [],
-    "clientId": null,
-    "grantType": null,
-    "tokenHint": null,
-    "revokedToken": null,
-    "authorization": true,
-    "clientSecret": false,
-    "procedure": "paths.forCourse",
-    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
-    "status": 200,
-    "handlingMs": 0.098
-   },
-   {
-    "t": 1793611925.377718,
+    "t": 1793623676.06806,
     "method": "GET",
     "path": "/api/trpc/progress.courseSummary",
     "fields": [],
@@ -1687,10 +1175,10 @@
     "procedure": "progress.courseSummary",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.107
+    "handlingMs": 0.085
    },
    {
-    "t": 1793611925.3878772,
+    "t": 1793623676.070575,
     "method": "GET",
     "path": "/api/trpc/enrollment.affectedByCourseRemoval",
     "fields": [],
@@ -1703,10 +1191,10 @@
     "procedure": "enrollment.affectedByCourseRemoval",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.144
+    "handlingMs": 0.104
    },
    {
-    "t": 1793611925.3887029,
+    "t": 1793623676.072302,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -1719,10 +1207,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.106
+    "handlingMs": 0.146
    },
    {
-    "t": 1793611925.396823,
+    "t": 1793623676.076117,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -1735,10 +1223,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.087
+    "handlingMs": 0.085
    },
    {
-    "t": 1793611925.653169,
+    "t": 1793623682.212714,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1749,12 +1237,12 @@
     "authorization": true,
     "clientSecret": false,
     "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-02\"}}",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
     "status": 200,
-    "handlingMs": 1.509
+    "handlingMs": 1.653
    },
    {
-    "t": 1793611926.318985,
+    "t": 1793623688.407385,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1765,12 +1253,60 @@
     "authorization": true,
     "clientSecret": false,
     "procedure": "units.get",
-    "input": "{\"json\":{\"unitId\":\"unit-members\"}}",
+    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
     "status": 200,
-    "handlingMs": 1.428
+    "handlingMs": 1.495
    },
    {
-    "t": 1793611936.665382,
+    "t": 1793623688.645746,
+    "method": "POST",
+    "path": "/api/trpc/units.startKnowledgeCheck",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.startKnowledgeCheck",
+    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
+    "status": 200,
+    "handlingMs": 0.102
+   },
+   {
+    "t": 1793623689.55827,
+    "method": "POST",
+    "path": "/api/trpc/units.submitKnowledgeCheck",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.submitKnowledgeCheck",
+    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\",\"attemptId\":\"3f9c2a7e-0d4b-4c1a-9e2f-6b8d1a5c7e90\",\"answers\":[{\"questionId\":\"q-pi-1\",\"value\":0}]}}",
+    "status": 200,
+    "handlingMs": 0.222
+   },
+   {
+    "t": 1793623689.5643709,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"unit-kc-prompt-injection\"}}",
+    "status": 200,
+    "handlingMs": 1.791
+   },
+   {
+    "t": 1793623689.56556,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -1783,10 +1319,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.111
+    "handlingMs": 0.099
    },
    {
-    "t": 1793611936.6661289,
+    "t": 1793623689.567671,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -1799,12 +1335,12 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.062
+    "handlingMs": 0.145
    },
    {
-    "t": 1793611936.6688058,
+    "t": 1793623689.773739,
     "method": "GET",
-    "path": "/api/trpc/library.list",
+    "path": "/api/trpc/units.listByModule",
     "fields": [],
     "clientId": null,
     "grantType": null,
@@ -1812,13 +1348,13 @@
     "revokedToken": null,
     "authorization": true,
     "clientSecret": false,
-    "procedure": "library.list",
-    "input": null,
+    "procedure": "units.listByModule",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.07
+    "handlingMs": 0.148
    },
    {
-    "t": 1793611937.089374,
+    "t": 1793623689.775923,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -1831,10 +1367,122 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.093
+    "handlingMs": 0.074
    },
    {
-    "t": 1793611937.09105,
+    "t": 1793623690.037612,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lab\"}}",
+    "status": 200,
+    "handlingMs": 1.54
+   },
+   {
+    "t": 1793623690.344428,
+    "method": "GET",
+    "path": "/api/trpc/labs.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "labs.get",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\",\"order\":2}}",
+    "status": 200,
+    "handlingMs": 0.124
+   },
+   {
+    "t": 1793623690.34924,
+    "method": "GET",
+    "path": "/api/trpc/desktop.attempt.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "desktop.attempt.list",
+    "input": "{\"json\":{\"limit\":100}}",
+    "status": 404,
+    "handlingMs": 0.096
+   },
+   {
+    "t": 1793623700.539309,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.147
+   },
+   {
+    "t": 1793623700.541114,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.078
+   },
+   {
+    "t": 1793623700.544823,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.096
+   },
+   {
+    "t": 1793623700.9931781,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.087
+   },
+   {
+    "t": 1793623700.9951842,
     "method": "GET",
     "path": "/api/trpc/paths.forCourse",
     "fields": [],
@@ -1847,10 +1495,10 @@
     "procedure": "paths.forCourse",
     "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.098
+    "handlingMs": 0.097
    },
    {
-    "t": 1793611937.096098,
+    "t": 1793623700.9991198,
     "method": "GET",
     "path": "/api/trpc/progress.courseSummary",
     "fields": [],
@@ -1863,10 +1511,362 @@
     "procedure": "progress.courseSummary",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.122
+    "handlingMs": 0.11
    },
    {
-    "t": 1793611937.09995,
+    "t": 1793623701.008665,
+    "method": "GET",
+    "path": "/api/trpc/enrollment.affectedByCourseRemoval",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "enrollment.affectedByCourseRemoval",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.101
+   },
+   {
+    "t": 1793623701.013333,
+    "method": "GET",
+    "path": "/api/trpc/units.listByModule",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByModule",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.123
+   },
+   {
+    "t": 1793623701.017205,
+    "method": "GET",
+    "path": "/api/trpc/modules.intro",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "modules.intro",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.065
+   },
+   {
+    "t": 1793623701.268236,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-02\"}}",
+    "status": 200,
+    "handlingMs": 1.642
+   },
+   {
+    "t": 1793623701.932595,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"unit-locked\"}}",
+    "status": 403,
+    "handlingMs": 1.623
+   },
+   {
+    "t": 1793623712.370128,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.139
+   },
+   {
+    "t": 1793623712.3714938,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.07
+   },
+   {
+    "t": 1793623712.374453,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.072
+   },
+   {
+    "t": 1793623712.7912052,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.096
+   },
+   {
+    "t": 1793623712.793097,
+    "method": "GET",
+    "path": "/api/trpc/paths.forCourse",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.forCourse",
+    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.137
+   },
+   {
+    "t": 1793623712.797001,
+    "method": "GET",
+    "path": "/api/trpc/progress.courseSummary",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "progress.courseSummary",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.112
+   },
+   {
+    "t": 1793623712.8075168,
+    "method": "GET",
+    "path": "/api/trpc/enrollment.affectedByCourseRemoval",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "enrollment.affectedByCourseRemoval",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.103
+   },
+   {
+    "t": 1793623712.812478,
+    "method": "GET",
+    "path": "/api/trpc/units.listByModule",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByModule",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.127
+   },
+   {
+    "t": 1793623712.816294,
+    "method": "GET",
+    "path": "/api/trpc/modules.intro",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": false,
+    "clientSecret": false,
+    "procedure": "modules.intro",
+    "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
+    "status": 200,
+    "handlingMs": 0.093
+   },
+   {
+    "t": 1793623713.0666518,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-02\"}}",
+    "status": 200,
+    "handlingMs": 1.694
+   },
+   {
+    "t": 1793623713.729826,
+    "method": "GET",
+    "path": "/api/trpc/units.get",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.get",
+    "input": "{\"json\":{\"unitId\":\"unit-members\"}}",
+    "status": 200,
+    "handlingMs": 1.695
+   },
+   {
+    "t": 1793623724.134704,
+    "method": "GET",
+    "path": "/api/trpc/units.listByPath",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "units.listByPath",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.12
+   },
+   {
+    "t": 1793623724.136043,
+    "method": "GET",
+    "path": "/api/trpc/paths.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.069
+   },
+   {
+    "t": 1793623724.143391,
+    "method": "GET",
+    "path": "/api/trpc/library.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "library.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.1
+   },
+   {
+    "t": 1793623724.556651,
+    "method": "GET",
+    "path": "/api/trpc/courses.list",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "courses.list",
+    "input": null,
+    "status": 200,
+    "handlingMs": 0.196
+   },
+   {
+    "t": 1793623724.5584671,
+    "method": "GET",
+    "path": "/api/trpc/paths.forCourse",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "paths.forCourse",
+    "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.102
+   },
+   {
+    "t": 1793623724.562743,
+    "method": "GET",
+    "path": "/api/trpc/progress.courseSummary",
+    "fields": [],
+    "clientId": null,
+    "grantType": null,
+    "tokenHint": null,
+    "revokedToken": null,
+    "authorization": true,
+    "clientSecret": false,
+    "procedure": "progress.courseSummary",
+    "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
+    "status": 200,
+    "handlingMs": 0.105
+   },
+   {
+    "t": 1793623724.5656,
     "method": "GET",
     "path": "/api/trpc/enrollment.affectedByCourseRemoval",
     "fields": [],
@@ -1882,7 +1882,7 @@
     "handlingMs": 0.1
    },
    {
-    "t": 1793611937.106125,
+    "t": 1793623724.5721412,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -1895,10 +1895,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.174
+    "handlingMs": 0.166
    },
    {
-    "t": 1793611937.117405,
+    "t": 1793623724.581984,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -1911,10 +1911,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.129
+    "handlingMs": 0.108
    },
    {
-    "t": 1793611937.37078,
+    "t": 1793623724.831764,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1927,10 +1927,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-02\"}}",
     "status": 200,
-    "handlingMs": 1.473
+    "handlingMs": 1.769
    },
    {
-    "t": 1793611938.037281,
+    "t": 1793623725.493685,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -1943,10 +1943,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"unit-missing\"}}",
     "status": 404,
-    "handlingMs": 1.227
+    "handlingMs": 1.61
    },
    {
-    "t": 1793611948.356704,
+    "t": 1793623735.781217,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -1962,7 +1962,7 @@
     "handlingMs": 0.126
    },
    {
-    "t": 1793611948.357325,
+    "t": 1793623735.781867,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -1975,10 +1975,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.066
+    "handlingMs": 0.062
    },
    {
-    "t": 1793611948.3602931,
+    "t": 1793623735.784461,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -1991,10 +1991,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.075
+    "handlingMs": 0.072
    },
    {
-    "t": 1793611948.785138,
+    "t": 1793623736.197626,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -2007,10 +2007,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.089
+    "handlingMs": 0.091
    },
    {
-    "t": 1793611948.786806,
+    "t": 1793623736.1989498,
     "method": "GET",
     "path": "/api/trpc/paths.forCourse",
     "fields": [],
@@ -2023,10 +2023,10 @@
     "procedure": "paths.forCourse",
     "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.101
+    "handlingMs": 0.097
    },
    {
-    "t": 1793611948.789859,
+    "t": 1793623736.202144,
     "method": "GET",
     "path": "/api/trpc/progress.courseSummary",
     "fields": [],
@@ -2039,10 +2039,10 @@
     "procedure": "progress.courseSummary",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.102
+    "handlingMs": 0.094
    },
    {
-    "t": 1793611948.801152,
+    "t": 1793623736.206388,
     "method": "GET",
     "path": "/api/trpc/enrollment.affectedByCourseRemoval",
     "fields": [],
@@ -2055,10 +2055,10 @@
     "procedure": "enrollment.affectedByCourseRemoval",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.117
+    "handlingMs": 0.092
    },
    {
-    "t": 1793611948.8080971,
+    "t": 1793623736.2117639,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -2071,10 +2071,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.159
+    "handlingMs": 0.142
    },
    {
-    "t": 1793611948.811577,
+    "t": 1793623736.221466,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -2087,10 +2087,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.087
+    "handlingMs": 0.102
    },
    {
-    "t": 1793611949.169718,
+    "t": 1793623736.575958,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -2106,7 +2106,7 @@
     "handlingMs": 0.157
    },
    {
-    "t": 1793611949.17534,
+    "t": 1793623736.581455,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -2119,10 +2119,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-2\"}}",
     "status": 200,
-    "handlingMs": 0.121
+    "handlingMs": 0.193
    },
    {
-    "t": 1793611949.54159,
+    "t": 1793623736.930725,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -2135,10 +2135,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-2-kc\"}}",
     "status": 200,
-    "handlingMs": 1.368
+    "handlingMs": 1.705
    },
    {
-    "t": 1793611949.801547,
+    "t": 1793623737.171017,
     "method": "POST",
     "path": "/api/trpc/units.startKnowledgeCheck",
     "fields": [],
@@ -2151,10 +2151,10 @@
     "procedure": "units.startKnowledgeCheck",
     "input": "{\"json\":{\"unitId\":\"m-rt-2-kc\"}}",
     "status": 200,
-    "handlingMs": 0.103
+    "handlingMs": 0.101
    },
    {
-    "t": 1793611950.673643,
+    "t": 1793623738.085512,
     "method": "POST",
     "path": "/api/trpc/units.submitKnowledgeCheck",
     "fields": [],
@@ -2167,10 +2167,10 @@
     "procedure": "units.submitKnowledgeCheck",
     "input": "{\"json\":{\"unitId\":\"m-rt-2-kc\",\"attemptId\":\"3f9c2a7e-0d4b-4c1a-9e2f-6b8d1a5c7e90\",\"answers\":[{\"questionId\":\"q-pi-1\",\"value\":0}]}}",
     "status": 500,
-    "handlingMs": 0.107
+    "handlingMs": 0.104
    },
    {
-    "t": 1793611950.678883,
+    "t": 1793623738.090733,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -2183,10 +2183,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-2-kc\"}}",
     "status": 200,
-    "handlingMs": 1.468
+    "handlingMs": 1.564
    },
    {
-    "t": 1793611950.680212,
+    "t": 1793623738.0918882,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -2199,10 +2199,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.157
+    "handlingMs": 0.148
    },
    {
-    "t": 1793611950.6808388,
+    "t": 1793623738.09329,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -2215,10 +2215,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.075
+    "handlingMs": 0.088
    },
    {
-    "t": 1793611953.0046248,
+    "t": 1793623740.414123,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -2231,10 +2231,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.137
+    "handlingMs": 0.138
    },
    {
-    "t": 1793611953.008939,
+    "t": 1793623740.4182851,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -2247,10 +2247,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.089
+    "handlingMs": 0.083
    },
    {
-    "t": 1793611953.275917,
+    "t": 1793623740.6811268,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -2263,10 +2263,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
     "status": 200,
-    "handlingMs": 1.34
+    "handlingMs": 1.742
    },
    {
-    "t": 1793611968.813323,
+    "t": 1793623756.012009,
     "method": "GET",
     "path": "/api/trpc/units.listByPath",
     "fields": [],
@@ -2279,10 +2279,10 @@
     "procedure": "units.listByPath",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.129
+    "handlingMs": 0.113
    },
    {
-    "t": 1793611968.814193,
+    "t": 1793623756.012631,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -2295,10 +2295,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.07
+    "handlingMs": 0.06
    },
    {
-    "t": 1793611968.816735,
+    "t": 1793623756.015449,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -2311,10 +2311,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.07
+    "handlingMs": 0.062
    },
    {
-    "t": 1793611969.236504,
+    "t": 1793623756.431225,
     "method": "GET",
     "path": "/api/trpc/courses.list",
     "fields": [],
@@ -2327,10 +2327,10 @@
     "procedure": "courses.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.1
+    "handlingMs": 0.105
    },
    {
-    "t": 1793611969.2384791,
+    "t": 1793623756.4338071,
     "method": "GET",
     "path": "/api/trpc/paths.forCourse",
     "fields": [],
@@ -2343,10 +2343,10 @@
     "procedure": "paths.forCourse",
     "input": "{\"json\":{\"courseSlug\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.103
+    "handlingMs": 0.146
    },
    {
-    "t": 1793611969.242762,
+    "t": 1793623756.438145,
     "method": "GET",
     "path": "/api/trpc/progress.courseSummary",
     "fields": [],
@@ -2359,10 +2359,10 @@
     "procedure": "progress.courseSummary",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.157
+    "handlingMs": 0.136
    },
    {
-    "t": 1793611969.254026,
+    "t": 1793623756.441545,
     "method": "GET",
     "path": "/api/trpc/enrollment.affectedByCourseRemoval",
     "fields": [],
@@ -2375,10 +2375,10 @@
     "procedure": "enrollment.affectedByCourseRemoval",
     "input": "{\"json\":{\"courseId\":\"runtime-security\"}}",
     "status": 200,
-    "handlingMs": 0.109
+    "handlingMs": 0.099
    },
    {
-    "t": 1793611969.2591832,
+    "t": 1793623756.447061,
     "method": "GET",
     "path": "/api/trpc/units.listByModule",
     "fields": [],
@@ -2391,10 +2391,10 @@
     "procedure": "units.listByModule",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.151
+    "handlingMs": 0.156
    },
    {
-    "t": 1793611969.263326,
+    "t": 1793623756.45764,
     "method": "GET",
     "path": "/api/trpc/modules.intro",
     "fields": [],
@@ -2407,10 +2407,10 @@
     "procedure": "modules.intro",
     "input": "{\"json\":{\"moduleId\":\"m-rt-1\"}}",
     "status": 200,
-    "handlingMs": 0.077
+    "handlingMs": 0.124
    },
    {
-    "t": 1793611969.5173912,
+    "t": 1793623756.714176,
     "method": "GET",
     "path": "/api/trpc/units.get",
     "fields": [],
@@ -2423,10 +2423,10 @@
     "procedure": "units.get",
     "input": "{\"json\":{\"unitId\":\"m-rt-1-lesson-01\"}}",
     "status": 200,
-    "handlingMs": 1.422
+    "handlingMs": 1.758
    },
    {
-    "t": 1793612028.262866,
+    "t": 1793623815.523386,
     "method": "POST",
     "path": "/oauth/revoke",
     "fields": [
@@ -2442,7 +2442,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793612028.7644448,
+    "t": 1793623816.0076768,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -2455,10 +2455,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.084
+    "handlingMs": 0.09
    },
    {
-    "t": 1793612028.767317,
+    "t": 1793623816.0107021,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -2471,10 +2471,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.075
+    "handlingMs": 0.071
    },
    {
-    "t": 1793612034.4895418,
+    "t": 1793623821.336641,
     "method": "GET",
     "path": "/api/desktop/config",
     "fields": [],
@@ -2486,7 +2486,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793612034.4912388,
+    "t": 1793623821.338469,
     "method": "GET",
     "path": "/.well-known/oauth-authorization-server",
     "fields": [],
@@ -2498,7 +2498,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793612034.49266,
+    "t": 1793623821.3399282,
     "method": "POST",
     "path": "/oauth/device",
     "fields": [
@@ -2513,7 +2513,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793612035.5000808,
+    "t": 1793623822.343721,
     "method": "POST",
     "path": "/oauth/token",
     "fields": [
@@ -2529,7 +2529,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793612035.501355,
+    "t": 1793623822.344918,
     "method": "GET",
     "path": "/api/trpc/desktop.me",
     "fields": [],
@@ -2541,7 +2541,7 @@
     "clientSecret": false
    },
    {
-    "t": 1793612036.354313,
+    "t": 1793623823.2183208,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -2554,10 +2554,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.083
+    "handlingMs": 0.085
    },
    {
-    "t": 1793612036.3570611,
+    "t": 1793623823.220913,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -2570,10 +2570,10 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.077
+    "handlingMs": 0.081
    },
    {
-    "t": 1793612103.5390038,
+    "t": 1793623890.411127,
     "method": "GET",
     "path": "/api/trpc/paths.list",
     "fields": [],
@@ -2586,10 +2586,10 @@
     "procedure": "paths.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.103
+    "handlingMs": 0.101
    },
    {
-    "t": 1793612103.542698,
+    "t": 1793623890.414625,
     "method": "GET",
     "path": "/api/trpc/library.list",
     "fields": [],
@@ -2602,43 +2602,43 @@
     "procedure": "library.list",
     "input": null,
     "status": 200,
-    "handlingMs": 0.114
+    "handlingMs": 0.107
    }
   ]
  },
  "log": [
   {
-   "t": "09:30:25",
+   "t": "12:46:53",
    "step": "typed",
    "field": "Display name",
    "attempts": 1
   },
   {
-   "t": "09:30:27",
+   "t": "12:46:55",
    "step": "typed",
    "field": "TSG ID",
    "attempts": 1
   },
   {
-   "t": "09:30:30",
+   "t": "12:46:58",
    "step": "typed",
    "field": "Scan API key",
    "attempts": 1
   },
   {
-   "t": "09:34:27",
+   "t": "12:50:53",
    "step": "typed",
    "field": "Display name",
    "attempts": 1
   },
   {
-   "t": "09:34:28",
+   "t": "12:50:55",
    "step": "typed",
    "field": "TSG ID",
    "attempts": 1
   },
   {
-   "t": "09:34:31",
+   "t": "12:50:58",
    "step": "typed",
    "field": "Scan API key",
    "attempts": 1

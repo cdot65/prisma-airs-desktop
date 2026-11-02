@@ -60,14 +60,6 @@
    ],
    "gateway_tabs": [
     "Overview",
-    "Playground",
-    "Security profiles",
-    "Custom topics",
-    "Applications",
-    "API keys",
-    "DLP",
-    "Deployment profiles",
-    "Overview",
     "Workspaces",
     "Routes",
     "Providers",
@@ -79,7 +71,160 @@
     "Team A",
     "Team B"
    ],
-   "gateway_no_version": false,
+   "gateway_keys": {
+    "kinds": {
+     "Service keys": {
+      "list": {
+       "card_present": true,
+       "kind": "Service keys",
+       "table": true,
+       "gateway_tabs": [
+        "Overview",
+        "Workspaces",
+        "Routes",
+        "Providers",
+        "Guardrails",
+        "Keys",
+        "Integrations",
+        "Logs",
+        "MCP servers",
+        "Service keys",
+        "User keys"
+       ],
+       "no_limits": true,
+       "forbidden_actions": [],
+       "detail_open": false,
+       "detail_actions": [],
+       "ok": true,
+       "tree": "docs/planning/evidence/P09/native/cumulative/C31/native/tree-gateway-service-keys.json",
+       "capture": "docs/planning/evidence/P09/native/cumulative/C31/native/captures/gateway-service-keys.png"
+      },
+      "row_labels": [
+       "Details for team-a-key-1",
+       "Details for team-a-key-2"
+      ],
+      "details": [
+       {
+        "card_present": true,
+        "kind": "Service keys",
+        "table": true,
+        "gateway_tabs": [
+         "Overview",
+         "Workspaces",
+         "Routes",
+         "Providers",
+         "Guardrails",
+         "Keys",
+         "Integrations",
+         "Logs",
+         "MCP servers",
+         "Service keys",
+         "User keys"
+        ],
+        "no_limits": true,
+        "forbidden_actions": [],
+        "detail_open": true,
+        "detail_actions": [
+         "Close details"
+        ],
+        "ok": true,
+        "row": "Details for team-a-key-1",
+        "tree": "docs/planning/evidence/P09/native/cumulative/C31/native/tree-gateway-service-keys-detail-0.json",
+        "capture": "docs/planning/evidence/P09/native/cumulative/C31/native/captures/gateway-service-keys-detail-0.png"
+       },
+       {
+        "card_present": true,
+        "kind": "Service keys",
+        "table": true,
+        "gateway_tabs": [
+         "Overview",
+         "Workspaces",
+         "Routes",
+         "Providers",
+         "Guardrails",
+         "Keys",
+         "Integrations",
+         "Logs",
+         "MCP servers",
+         "Service keys",
+         "User keys"
+        ],
+        "no_limits": true,
+        "forbidden_actions": [],
+        "detail_open": true,
+        "detail_actions": [
+         "Close details"
+        ],
+        "ok": true,
+        "row": "Details for team-a-key-2",
+        "tree": "docs/planning/evidence/P09/native/cumulative/C31/native/tree-gateway-service-keys-detail-1.json",
+        "capture": "docs/planning/evidence/P09/native/cumulative/C31/native/captures/gateway-service-keys-detail-1.png"
+       }
+      ]
+     },
+     "User keys": {
+      "list": {
+       "card_present": true,
+       "kind": "User keys",
+       "table": true,
+       "gateway_tabs": [
+        "Overview",
+        "Workspaces",
+        "Routes",
+        "Providers",
+        "Guardrails",
+        "Keys",
+        "Integrations",
+        "Logs",
+        "MCP servers",
+        "Service keys",
+        "User keys"
+       ],
+       "no_limits": true,
+       "forbidden_actions": [],
+       "detail_open": false,
+       "detail_actions": [],
+       "ok": true,
+       "tree": "docs/planning/evidence/P09/native/cumulative/C31/native/tree-gateway-user-keys.json",
+       "capture": "docs/planning/evidence/P09/native/cumulative/C31/native/captures/gateway-user-keys.png"
+      },
+      "row_labels": [
+       "Details for team-a-key-3"
+      ],
+      "details": [
+       {
+        "card_present": true,
+        "kind": "User keys",
+        "table": true,
+        "gateway_tabs": [
+         "Overview",
+         "Workspaces",
+         "Routes",
+         "Providers",
+         "Guardrails",
+         "Keys",
+         "Integrations",
+         "Logs",
+         "MCP servers",
+         "Service keys",
+         "User keys"
+        ],
+        "no_limits": true,
+        "forbidden_actions": [],
+        "detail_open": true,
+        "detail_actions": [
+         "Close details"
+        ],
+        "ok": true,
+        "row": "Details for team-a-key-3",
+        "tree": "docs/planning/evidence/P09/native/cumulative/C31/native/tree-gateway-user-keys-detail-0.json",
+        "capture": "docs/planning/evidence/P09/native/cumulative/C31/native/captures/gateway-user-keys-detail-0.png"
+       }
+      ]
+     }
+    }
+   },
+   "gateway_no_version": true,
    "codebase_unavailable": true
   },
   "tree_applied": "docs/planning/evidence/P09/native/cumulative/C31/native/tree-review-applied.json",
@@ -98,7 +243,7 @@
    "confirmation_title": true,
    "live": true,
    "status_regions": [
-    "Live. The item was read back. Applied. The item was read back. Tenant Tenant A Resource custom topic Name Finance Revision 2 Read back at 09:47 Done"
+    "Live. The item was read back. Applied. The item was read back. Tenant Tenant A Resource custom topic Name Finance Revision 2 Read back at 13:15 Done"
    ],
    "announced": true,
    "writes": 1,
@@ -126,25 +271,40 @@
    ],
    "announced": true
   },
+  "tree_topmost": "docs/planning/evidence/P09/native/cumulative/C31/native/tree-rotation-modal-topmost.json",
+  "tree_focus_returned": "docs/planning/evidence/P09/native/cumulative/C31/native/tree-rotation-focus-returned.json",
   "n4": {
+   "modal_count": 1,
    "sheet_topmost": true,
    "sheet_closed": true,
    "focus_after": "Administration",
    "focus_returned": true,
    "reminder_cleared": true,
-   "walk": [
-    "AI Gateway",
-    "AI Red Teaming",
-    "Model and skill scans",
-    "Agentic Identity Security New",
-    "Agentic Endpoint Security New",
-    "Connected First read pending",
-    "Settings \u2318,",
-    "Switch light or dark appearance",
-    "Search or go to\u2026 Command K",
-    "Show the calls"
+   "keyboard_trees": [
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-0.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-1.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-2.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-3.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-4.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-5.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-6.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-7.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-8.json",
+    "docs/planning/evidence/P09/native/cumulative/C31/native/tree-administration-keyboard-9.json"
    ],
-   "tabs_reached": false,
+   "walk": [
+    "Overview",
+    "Playground",
+    "Security profiles",
+    "Custom topics",
+    "Applications",
+    "API keys",
+    "DLP",
+    "Deployment profiles",
+    "Search custom topics",
+    "Refresh"
+   ],
+   "tabs_reached": true,
    "zoom": {
     "light": {
      "overflow_px": 0,
@@ -173,103 +333,103 @@
  },
  "log": [
   {
-   "t": "09:44:46",
+   "t": "13:12:49",
    "step": "typed",
    "field": "Display name",
    "attempts": 1
   },
   {
-   "t": "09:44:47",
+   "t": "13:12:51",
    "step": "typed",
    "field": "TSG ID",
    "attempts": 1
   },
   {
-   "t": "09:44:50",
+   "t": "13:12:54",
    "step": "typed",
    "field": "Scan API key",
    "attempts": 1
   },
   {
-   "t": "09:44:59",
+   "t": "13:13:03",
    "step": "typed",
    "field": "TSG ID (optional)",
    "attempts": 1
   },
   {
-   "t": "09:45:01",
+   "t": "13:13:04",
    "step": "typed",
    "field": "Label",
    "attempts": 1
   },
   {
-   "t": "09:45:03",
+   "t": "13:13:06",
    "step": "typed",
    "field": "Endpoint origin",
    "attempts": 1
   },
   {
-   "t": "09:45:07",
+   "t": "13:13:10",
    "step": "typed",
    "field": "AIRS API key",
    "attempts": 1
   },
   {
-   "t": "09:45:09",
+   "t": "13:13:13",
    "step": "typed",
    "field": "Client ID",
    "attempts": 1
   },
   {
-   "t": "09:45:11",
+   "t": "13:13:15",
    "step": "typed",
    "field": "Client secret",
    "attempts": 1
   },
   {
-   "t": "09:46:54",
+   "t": "13:14:52",
    "step": "typed",
    "field": "custom topic draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "09:47:01",
+   "t": "13:14:59",
    "step": "typed",
    "field": "Type Finance to confirm",
    "attempts": 1
   },
   {
-   "t": "09:47:06",
+   "t": "13:15:04",
    "step": "typed",
    "field": "Type Finance to confirm",
    "attempts": 2
   },
   {
-   "t": "09:48:00",
+   "t": "13:15:57",
    "step": "typed",
    "field": "API key draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "09:48:01",
+   "t": "13:15:59",
    "step": "typed",
    "field": "Type CREATE to confirm",
    "attempts": 1
   },
   {
-   "t": "09:48:55",
+   "t": "13:16:54",
    "step": "typed",
    "field": "Type Runtime to confirm",
    "attempts": 1
   },
   {
-   "t": "09:50:46",
+   "t": "13:18:46",
    "step": "typed",
    "field": "custom topic draft (JSON)",
    "attempts": 2
   },
   {
-   "t": "09:50:48",
+   "t": "13:18:48",
    "step": "typed",
    "field": "Type Finance to confirm",
    "attempts": 1

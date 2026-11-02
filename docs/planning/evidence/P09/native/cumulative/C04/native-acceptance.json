@@ -1,14 +1,14 @@
 {
   "schema": "airs-v2/native-acceptance/1",
   "subject": "C04",
-  "recorded_utc": "2026-11-02T07:32:53Z",
+  "recorded_utc": "2026-11-02T12:46:47Z",
   "method": "cua",
   "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (tools/native-acceptance/ax.swift, System Events keystrokes) against the synthetic Academy + Clerk endpoint tools/native-acceptance/academy_server.py; tools/native-acceptance/acceptance_c04.py",
   "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
   "app": {
     "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
     "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
-    "executable_sha256": "2791b5a1eaf6b9268e0574502c62a20f3027fd2b76ff9ed08289eef1f56147ea",
+    "executable_sha256": "bb85a44cb53b3099e5fd16121b0cc6c2964b2a896b6c55e989f3fd3c933d6e64",
     "fixture": true
   },
   "checks": [
@@ -26,7 +26,7 @@
       "id": "C04-N02",
       "description": "Starting sign-in shows the device code (accessible name 'Sign-in code \u2026') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL.",
       "result": "pass",
-      "observation": "code shown: True; accessible name 'Sign-in code W D J B \u2026': True; issuer page shown: True; pages handed to the browser: ['https://localhost:50617/activate?user_code=WDJB-MJHT']",
+      "observation": "code shown: True; accessible name 'Sign-in code W D J B \u2026': True; issuer page shown: True; pages handed to the browser: ['https://localhost:57916/activate?user_code=WDJB-MJHT']",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C04/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C04/native/tree-awaiting.json"
@@ -36,7 +36,7 @@
       "id": "C04-N03",
       "description": "After approval in the browser the window shows 'Signed in to Academy as <name>'; the endpoint saw a public-client device flow (client_id, no client secret, no Authorization on identity requests); the learner Keychain namespace holds exactly one item and the scan namespace none; no token appears in the data root or any AX snapshot.",
       "result": "pass",
-      "observation": "'Signed in to Academy as Ada Lovelace': True; public-client device flow (device fields ['client_id', 'scope'], 6 polls, no secret or Authorization on identity requests, desktop.me with Authorization): True; learner namespace items ['cr-2c3acd2b2d8fb8f8']; scan namespace items added by the sign-in [] (present before: ['cr-fad25acebc772ffe']); token in AX snapshots []; in data root []",
+      "observation": "'Signed in to Academy as Ada Lovelace': True; public-client device flow (device fields ['client_id', 'scope'], 6 polls, no secret or Authorization on identity requests, desktop.me with Authorization): True; learner namespace items ['cr-2827b0af1cfc7605']; scan namespace items added by the sign-in [] (present before: ['cr-eac7c510a7083e5b']); token in AX snapshots []; in data root []",
       "evidence": [
         "docs/planning/evidence/P09/native/cumulative/C04/native/observations.json",
         "docs/planning/evidence/P09/native/cumulative/C04/native/tree-signed-in.json"
