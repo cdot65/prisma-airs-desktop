@@ -1,0 +1,61 @@
+{
+  "review_id": "C29-attempt-08-1793580668",
+  "subject": "C29",
+  "attempt": "attempt-08",
+  "request_id": "C29-attempt-08-1793580668",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T01:01:17.251562+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a199be-21fe-7641-bc5b-31d69c775565"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "recommendation": "pass",
+  "required_fixes": [],
+  "blockers": [],
+  "evidence_gaps": [],
+  "optional_suggestions": [
+    "apps/desktop/src/v2/wizard/wizard.tsx, no-scan banner and Secondary: consider preventing the secondary action from shrinking or allowing its height to grow. In wizard-add-products-900x600-200-light.png, \u201cAdd a scan key\u201d wraps below its button border. The retained traversal reaches the action; this is a minor presentation issue."
+  ],
+  "fingerprints": {
+    "source": "69bf2a8f96c3ac3451b27241790aa4e381a00292567f30f32429d40999b8cf8c",
+    "dependencies": "71ef915a9161a52e1f37889f8e321504da052f35c59b9d9aaccd13260b9e56ba",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "eee69e3b180b3d22c62bc324df1105a0e90211220bbba6a3662488ace8fc0f76"
+  },
+  "verdict_sha256": "881b4644b76313b2fb775c8841d951752b90154b42f9d60af87d3780f37645b6",
+  "request_sha256": "f30cc370180aea988d8498414b5cb82094d4c8ac9f9b5303deb5b2297b783543",
+  "prompt_sha256": "1b59da743c8ce45e29911a7cdd8f6c72f44f368aa55d724e31b9af3675c49313",
+  "post_review_audit_sha256": "3851c1445309f618caa1a6c7fd26e9f7722d222be0ecf37754a70176d7e92755",
+  "invocation_sha256": "3ef4b6bdcde6da39dd7c66a74f8a27bbfa21654ca5070f4f0e85576344a6d4d3",
+  "thread_reply_sha256": "b6318c0d8e22fb1e1b9a61cc14d85a7bd81445d8d63141ebb5b71deb33c74b80",
+  "source_frozen": true,
+  "d034_accepted": false,
+  "full_gate_pass": true,
+  "controller_complete": false,
+  "remediated_prior_accepted_findings": [
+    "attempt-07 R1",
+    "attempt-07 R2",
+    "attempt-07 E1",
+    "attempt-07 E2"
+  ],
+  "limitations": [
+    "Reproduced all four supplied fingerprints. All 2,383 scoped file hashes and all 18,338 compiled-input inventory entries matched. Independently checked inventory membership, identical before/after inventories, all 18 run-log hashes, and the final source freeze. These establish consistency under the supplied procedures, not compiler or provider authorship.",
+    "Independently reproduced the prepared executable hash and the complete 1,621-entry bundle hash, including executable modes and symlink targets. Verified the native preparation, C43 execution record, driver hash and source ancestry. Did not rebuild the application.",
+    "Attempt-07 R1/R2/E1/E2 are substantiated as remediated: retained evidence covers all 24 behaviors and 48 required layout rows. Read all 48 matrix AX trees programmatically, cross-checked focused primaries and traversed controls, verified capture/tree hashes, and visually inspected six representative captures/composites. The completeness checker passes current evidence, rejects the old evidence with 72 omissions, and rejects an independently removed matrix row.",
+    "Independently executed the retained onboarding test binary (10 passed), IPC setup secret-confinement test (1 passed), and offline L19 settlement regressions (2 passed). Broader test/build results, including 541 desktop tests and five setup-read tests, rely on the retained source-bound logs. The existing Rust binaries were not independently authenticated against compiler inputs.",
+    "Verified the L19 receipt/build/inventory hash chain, retained qualification executable, and successful verification AX tree. The live evidence establishes management verification; the scan key is explicitly Stored, not remotely verified. Current authority source matches the qualified source after removing the disclosed fixture-only observer. Harness presentation, test and driver differences remain disclosed. No live operation was repeated; HTTP request counts and private authorization manifests were not independently observed.",
+    "Verified C28 and C27 passing raw verdicts against their requests and receipts. D058/D059/D060 govern the current presentation and removed alpha-import UI. This verdict covers C29; it does not complete C26, other remedial chunk reviews, signed installed-artifact acceptance or the cumulative P09 phase gate.",
+    "Native conclusions rely on retained execution evidence. Did not drive the GUI, record spoken VoiceOver, exercise hosted Academy sign-in, access real credentials, call product endpoints or grant OS permissions. Hashing every scoped file does not imply substantive review of every historical file.",
+    "No application files were changed. The sandbox is read-only; the returned JSON must be persisted as the verdict artifact.",
+    "Separate fresh read-only reviewer session in implementer model family; CLI invocation/events establish requested model and isolation, not cryptographic provider authorship. C26 controller completion remains open."
+  ],
+  "outcome": "Actual independent C29 full9 manual review gate passed and audited. Previous raw verdict/acceptance remains immutable. Optional presentation note retained, not required. No controller completion/phase pass/release inferred."
+}
