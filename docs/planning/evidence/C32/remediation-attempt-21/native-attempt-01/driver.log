@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c32_current.py", line 493, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c32_current.py", line 86, in main
+    return run()
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c32_current.py", line 130, in run
+    return exercise(app, endpoint, mgmt, prepared, project, FINAL)
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/acceptance_c32_current.py", line 384, in exercise
+    app.ax("press", "AXRadioButton", "Team A")
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/fixture_app.py", line 114, in ax
+    raise RuntimeError(f"ax {command} {args}: {out.stderr.strip()} [tree: {self.dump_tree('failure')}]")
+RuntimeError: ax press ('AXRadioButton', 'Team A'): no AXRadioButton labelled Team A (0 found) [tree: /var/folders/p7/f_99nxmj7s16qrxbl0cbpz4r0000gn/T/airs-v2-c32-acceptance-4rxonnpv/ax-failure-171916.json (228 nodes; headings ['Administration', 'AI Runtime Security LLM and MCP guardrails: prompts, responses and tool calls are checked as they happen. —\ndetections · 24h First read pending', 'AI Gateway LLM, MCP and Agent Gateway, integrated with Idira through AIS. —\nrequests · today Not read here', 'AI Red Teaming Read-only Automated testing of application, agent and model guardrails. —\nscans · 30d Not read here', 'Model and skill scans Read-only Scans AI artifacts before they ship: models, Skills and codebases. —\nfindings · 30d Not read here', 'Agentic Identity Security New Secures MCP tool invocations, with identities from Idira and enforcement in AI Gateway. —\ntool calls · 24h Not available']; window True; pid 85470 running 85470)]

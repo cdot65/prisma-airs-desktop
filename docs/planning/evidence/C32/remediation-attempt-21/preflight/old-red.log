@@ -1,0 +1,19 @@
+test_complete (test_c32_coverage.Coverage.test_complete) ... ok
+test_every_missing_or_false_fact_rejected (test_c32_coverage.Coverage.test_every_missing_or_false_fact_rejected) ... ok
+test_guard_layout_ring_and_write_negative (test_c32_coverage.Coverage.test_guard_layout_ring_and_write_negative) ... ok
+test_motion_each_required (test_c32_coverage.Coverage.test_motion_each_required) ... ok
+test_native_mapping_requires_original_assertions (test_c32_coverage.Coverage.test_native_mapping_requires_original_assertions) ... FAIL
+
+======================================================================
+FAIL: test_native_mapping_requires_original_assertions (test_c32_coverage.Coverage.test_native_mapping_requires_original_assertions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/test_c32_coverage.py", line 34, in test_native_mapping_requires_original_assertions
+    self.assertIn(cid,a[cid][1])
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: 'C32-N02' not found in ['C38-N01', 'C38-N02', 'C38-N03']
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.002s
+
+FAILED (failures=1)

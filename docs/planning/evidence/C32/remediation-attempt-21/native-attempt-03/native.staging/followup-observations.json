@@ -1,0 +1,72 @@
+{
+  "subject": "C32",
+  "app": {
+    "subject": "P09",
+    "built_utc": "2026-11-02T15:19:08Z",
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "38a08638a5e8bf27d65d5fbf9ac28ec042f684114e6df7025aa30ad8de201e72",
+    "bundle_sha256": "4073e0fe2087fb59ea35277b9a34af29df64e133bce6ceb8556009d79af5e20e",
+    "features": [
+      "test-fixtures"
+    ],
+    "target": "aarch64-apple-darwin",
+    "commands": [
+      [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "build"
+      ],
+      [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "tauri",
+        "build",
+        "--ci",
+        "--no-sign",
+        "--target",
+        "aarch64-apple-darwin",
+        "--bundles",
+        "app",
+        "--features",
+        "test-fixtures",
+        "--config",
+        "src-tauri/tauri.fixture.conf.json",
+        "--config",
+        "src-tauri/tauri.harness.conf.json"
+      ]
+    ]
+  },
+  "keyboard": {
+    "draft_entered": true,
+    "before": {
+      "role": "AXTextArea",
+      "label": "Message"
+    },
+    "after": {
+      "role": "AXButton",
+      "label": "Send"
+    },
+    "send_reached": true,
+    "tree": "docs/planning/evidence/C32/remediation-attempt-21/native-attempt-03/native.staging/tree-c32-composer-tab-enabled.json",
+    "capture": "docs/planning/evidence/C32/remediation-attempt-21/native-attempt-03/native.staging/captures/c32-composer-tab-enabled.png"
+  },
+  "ended_status": {
+    "engine_gone": true,
+    "ended_announced": true,
+    "status_regions": [
+      "Ended You ended this conversation.",
+      "Note: Conversation ended. Its transcript is saved on this Mac (f63e36ab). Dismiss"
+    ],
+    "saved_transcript": true,
+    "rail_ended": true,
+    "tree": "docs/planning/evidence/C32/remediation-attempt-21/native-attempt-03/native.staging/tree-c32-ended-status-settled.json",
+    "capture": "docs/planning/evidence/C32/remediation-attempt-21/native-attempt-03/native.staging/captures/c32-ended-status-settled.png"
+  },
+  "limitations": [
+    "Only these two follow-up native assertions executed here; earlier completed facts are bound separately, never relabeled. Spoken VoiceOver output not recorded."
+  ]
+}
