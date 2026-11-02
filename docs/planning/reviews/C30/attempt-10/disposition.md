@@ -1,0 +1,3 @@
+# C30 attempt10 not accepted
+
+Actual scores9/8/8/8/8; recommendation fail. Post-review audit passed frozen inputs and actual transport, but D034 eligibility is false because B1 blocks acceptance. R1: bind destructive switch resolutions to the native-issued source context, target and exact pending conversation/decision; retire stale renderer retries and test production interfaces. R2/E1: restore current-presentation cached-switch performance measurement on the prepared executable, at least10 alternating samples/p95≤100ms under the retained registered budget. Optional Inbox tab wrapping suggestion retained. No waiver, full-nine pass, controller completion or phase pass is inferred.

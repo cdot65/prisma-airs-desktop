@@ -1,0 +1,60 @@
+{
+  "review_id": "C30-attempt-10-1793581280",
+  "subject": "C30",
+  "attempt": "attempt-10",
+  "request_id": "C30-attempt-10-1793581280",
+  "transport": "fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)",
+  "time": "2026-11-02T01:16:51.080563+00:00",
+  "model_requested": "gpt-6.1-sol",
+  "harness_version_observed": "codex-cli 0.166.0",
+  "reviewer_sessions_observed": [
+    "01a199c6-c0f0-7b63-aeb0-430edbea324f"
+  ],
+  "scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 8,
+    "validation": 8,
+    "overall": 8
+  },
+  "recommendation": "fail",
+  "required_fixes": [
+    "R1 \u2014 crates/desktop-core/src/authority/inbox_domain.rs:349, apps/desktop/src/app.tsx:180, and apps/desktop/src/v2/store.ts:193: destructive switch resolutions are not bound to the conversation or source context that the operator resolved. A successful A\u2192B 'Discard and switch' whose receipt is lost leaves an unconfirmed selectTenant{tenant:B,resolution:discard} with context:null. It survives switching contexts. If B subsequently has a new pending conversation, Retry dispatches that old resolution again; guard_switch selects B's current conversation and discards it, including its protected history, without a fresh guard. SelectTenant also permits this when B is already active. Bind destructive resolutions natively to the refused switch's source context, target and pending conversation, and retire obsolete renderer retries. Acceptance: production-interface regressions must demonstrate that lost receipts, context changes and replacement conversations cannot make a stale Archive/Discard resolution affect another conversation; fresh resolutions must still work through switching and setup completion.",
+    "R2 \u2014 docs/planning/evidence/C30/workload-perf.json and tools/perf/measure_c30.py:91: the mandatory cached-switch latency result covers executable ab1f940ef078fae3476fd15290489fab1138fbc9eb613fe4db4890297432f85e, whereas this review's prepared executable is 023bd5732793f1339766baf21176373ad2e23add6e8ad9f20cedb8c4d434ef61. No current P09 measurement or valid equivalence record was found. The timing driver still requires removed legacy setup controls, including 'Use the new interface'. Update the driver for the current presentation and retain a source-bound acceptance measurement on the current prepared executable. Acceptance: at least ten alternating cached-tenant switches satisfy the registered p95 \u2264100 ms budget, with executable, inputs, methodology and execution conditions recorded; preserve the historical result."
+  ],
+  "blockers": [
+    "B1 \u2014 R1 permits a stale destructive retry to discard a different tenant's pending conversation and protected history. This tenant-isolation/data-loss path blocks acceptance."
+  ],
+  "evidence_gaps": [
+    "E1 \u2014 C30's required \u2264100 ms tenant-switch workload is unproven on the current implementation. The retained historical p95 is 39.379958 ms, but its executable differs from the reviewed artifact; the current functional native checks do not measure this latency. Closure requires R2's current acceptance evidence."
+  ],
+  "optional_suggestions": [
+    "apps/desktop/src/v2/inbox/inbox.tsx: allow filter-tab height to accommodate wrapping at 200% zoom. In the retained inbox-900x600-200-light.png capture, tab counts extend below their fixed-height backgrounds. Keyboard traversal remains evidenced."
+  ],
+  "fingerprints": {
+    "source": "d176e51ffd8d05dfbc495bd9b21ed4c606a81c76dcaee9e2b7501d0d2c894f8a",
+    "dependencies": "71ef915a9161a52e1f37889f8e321504da052f35c59b9d9aaccd13260b9e56ba",
+    "build_flags": "166488b352224eb230ddfca178064d76f43deecbb6c73fb6d9359f56632e1a1f",
+    "evidence": "eee69e3b180b3d22c62bc324df1105a0e90211220bbba6a3662488ace8fc0f76"
+  },
+  "verdict_sha256": "7f8cf9d5febf9752e5ee8278b1e5a4ffefcb38a4a25213251c33b6e84277b71a",
+  "request_sha256": "42ea9c8e74e96874f657fa11d16665cc7208430b10b2b19609d15a67101ad1dc",
+  "prompt_sha256": "ccb6d024151943ac1e6ab403c020ed020466c3041d2584991038653985747995",
+  "post_review_audit_sha256": "bb5e9081d68004f428be76edb641300b4c813462502d993552b902f344459397",
+  "source_frozen": true,
+  "d034_accepted": false,
+  "full_gate_pass": false,
+  "controller_complete": false,
+  "limitations": [
+    "Reproduced all four supplied fingerprints. All 1,979 scoped file hashes and all 18,338 compiled-input entries matched. Independently checked inventory membership, identical before/after inventories, all 18 run-log hashes and final source/input freeze.",
+    "Verified the current executable hash, complete 1,621-entry bundle hash including executable modes and symlink targets, native build input seal, mapped C36/C37/C38 records, driver hashes and execution-source ancestry. Hash consistency does not independently authenticate compilation or evidence authorship. The supplied compiled-input procedure excludes node_modules and target.",
+    "Verified C29 attempt-08's passing raw verdict against its request and receipt, with no current scoped-file drift. C28 and C27 passing raw verdicts also match their requests and receipts. The former C29 predecessor blocker is resolved; C26 controller completion and P09 phase completion remain separate.",
+    "Inspected current native observations, all 27 retained C36/C37/C38 AX trees, all ten historical C30 AX trees and three representative current captures. Native conclusions rely on retained execution evidence; no GUI acceptance, timing run or spoken VoiceOver recording was independently performed.",
+    "Independently executed the existing ui_v2_shell test binary: 5/5 passed. An in-memory execution of the production shell store confirmed that destructive selectTenant retries remain context:null across tenant/context changes. R1's subsequent native discard follows directly from the inspected admission path; that destructive scenario was not executed against a running Harness.",
+    "Broader test results rely on source-bound retained logs, including 541 desktop tests, 17 ui_v2_inbox tests and the switch/history regressions. These passing tests do not cover R1's stale destructive retry. The existing test executable was not independently rebuilt or authenticated against compiler inputs.",
+    "C29's retained L19 row and receipt hash match and report successful authorized verification. No live operation was repeated; actual HTTP request counts and private authorization manifests were not independently observed.",
+    "Substantive review focused on C30 and its affected production interfaces. Hashing scoped historical files does not imply substantive review of every historical artifact. No application files were changed, endpoints called, real credentials accessed or OS permissions granted. The sandbox is read-only; this returned JSON must be persisted as the verdict artifact.",
+    "Fresh independent same-model-family session; no cryptographic provider authorship claim."
+  ],
+  "outcome": "Not accepted: B1 blocks D034 eligibility despite every score being at least8. R1/R2/E1 and optional suggestion preserved. Remediate natively, add real regressions/current timing evidence, then fresh review; C31 cannot proceed."
+}
