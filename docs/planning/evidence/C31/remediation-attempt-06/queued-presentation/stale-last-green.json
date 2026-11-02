@@ -1,0 +1,19 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "-p",
+    "desktop-host",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "renderer_review_lifecycle",
+    "scoped_old_callbacks_drained_last_cannot_retire_fresh_page_presentation",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit": 0,
+  "log": "docs/planning/evidence/C31/remediation-attempt-06/queued-presentation/stale-last-green.log",
+  "log_sha256": "db5146b473c6ce84d0a5c5f8e83706df0873d99674806829a5de2b49f66dd2c6"
+}

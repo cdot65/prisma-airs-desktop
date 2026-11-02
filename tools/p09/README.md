@@ -148,3 +148,20 @@ The new source seal is `transition-driver-01.json`; the original `transition.jso
 and original actual build record are retained unchanged. This is an explicit
 same-application continuation, with no G7 result relabeled as current and no
 new C30 qualification.
+
+The final attempt-06 remediation uses `transition-final-01.json` and a fresh
+current build/qualification. G8's original seal, explicit driver continuation,
+all recorded results and exact full application remain historical and immutable.
+The additive LFS rules retain its two large app executables without changing
+archived bytes. G9 never reuses a G8 application/native pass.
+
+`c31_owner_completion.py` implements the committed conditional owner directive.
+It accepts only the first completed actual numeric C31 verdict after attempt-06,
+bound to the final source, evidence, transport, current qualification and audit.
+Any score below nine activates separate owner all-nine completion, including
+when blockers remain. Raw verdict/receipt/audit scores, arrays and false full-gate
+flags stay unchanged. Attempt-06, a missing verdict or a transport error cannot
+activate it. C32 predecessor, P09 member and C45 activation use that same binding;
+C32/P09 still need actual independent full-nine passes. Once activated, no further
+C31 score-chasing work or reopening those accepted findings through P09 is
+allowed. The directive itself is an explicit administrative source-seal path.

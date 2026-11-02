@@ -1,0 +1,553 @@
+diff --git a/apps/desktop/src-tauri/src/native_confirmation.rs b/apps/desktop/src-tauri/src/native_confirmation.rs
+index 9c1ba615..96159c5a 100644
+--- a/apps/desktop/src-tauri/src/native_confirmation.rs
++++ b/apps/desktop/src-tauri/src/native_confirmation.rs
+@@ -48,6 +48,10 @@ impl Registry {
+         sender.is_some_and(|tx| tx.send(accepted).is_ok())
+     }
+ 
++    pub fn is_pending(&self, nonce: u64) -> bool {
++        self.pending.lock().map(|pending| pending.contains_key(&nonce)).unwrap_or(false)
++    }
++
+     pub fn open_count(&self) -> usize {
+         self.pending.lock().map(|p| p.len()).unwrap_or(0)
+     }
+@@ -81,6 +85,66 @@ impl SecretOwnership {
+     }
+ }
+ 
++/// The same revocation check is used immediately before AppKit presentation
++/// and again in its explicit copy callback.
++#[derive(Clone)]
++pub struct SecretCopyPermit {
++    lease: desktop_core::PresentationLease,
++    generation: u64,
++}
++impl SecretCopyPermit {
++    pub fn allowed(&self, owner: &SecretOwnership) -> bool {
++        self.lease.is_current() && owner.owns(self.generation)
++    }
++}
++
++/// An admitted secret waiting for the main-thread queue; no new ownership is
++/// allocated when the callback runs. Dropping a refused task zeroizes its key.
++pub struct SecretPresentation {
++    label: String,
++    secret: zeroize::Zeroizing<String>,
++    permit: SecretCopyPermit,
++}
++impl SecretPresentation {
++    pub fn new(label: String, secret: zeroize::Zeroizing<String>, lease: desktop_core::PresentationLease, generation: u64) -> Self {
++        Self { label, secret, permit: SecretCopyPermit { lease, generation } }
++    }
++    pub fn run(self, owner: &SecretOwnership, show: impl FnOnce(String, zeroize::Zeroizing<String>, SecretCopyPermit)) -> bool {
++        if !self.permit.allowed(owner) { return false; }
++        show(self.label, self.secret, self.permit);
++        true
++    }
++}
++
++pub struct ConfirmationPermit {
++    lease: desktop_core::PresentationLease,
++    nonce: u64,
++}
++impl ConfirmationPermit {
++    pub fn complete(&self, registry: &Registry, accepted: bool) -> bool {
++        registry.complete(self.nonce, accepted && self.lease.is_current())
++    }
++}
++/// Production queue entry shared by AppKit and deterministic host regressions.
++pub struct ConfirmationPresentation {
++    nonce: u64,
++    request: desktop_core::ConfirmationRequest,
++    lease: desktop_core::PresentationLease,
++}
++impl ConfirmationPresentation {
++    pub fn new(nonce: u64, request: desktop_core::ConfirmationRequest, lease: desktop_core::PresentationLease) -> Self {
++        Self { nonce, request, lease }
++    }
++    pub fn run(self, registry: &Registry, show: impl FnOnce(u64, desktop_core::ConfirmationRequest, ConfirmationPermit)) -> bool {
++        if !self.lease.is_current() || !registry.is_pending(self.nonce) {
++            registry.complete(self.nonce, false);
++            return false;
++        }
++        show(self.nonce, self.request, ConfirmationPermit { lease: self.lease, nonce: self.nonce });
++        true
++    }
++}
++
+ /// The receiver side of a confirmation: false if it was dropped.
+ pub async fn outcome(receiver: Option<oneshot::Receiver<bool>>) -> bool {
+     match receiver {
+diff --git a/apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs b/apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs
+index 6e2bd612..550cb8ab 100644
+--- a/apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs
++++ b/apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs
+@@ -91,6 +91,9 @@ struct Desk {
+ 
+ impl Desk {
+     async fn new(delay_issuance: bool) -> Self {
++        Self::with_presenter(delay_issuance, None).await
++    }
++    async fn with_presenter(delay_issuance: bool, queued: Option<Arc<QueuedNative>>) -> Self {
+         let ca = TestCa::new("C31 renderer lifetime fixture");
+         let plane = Arc::new(Mutex::new(Plane {
+             keys: vec![
+@@ -108,7 +111,11 @@ impl Desk {
+         )
+         .await;
+         let origin = format!("https://localhost:{}", server.port);
+-        let (adapters, handles) = fixtures::adapters();
++        let (mut adapters, handles) = fixtures::adapters();
++        if let Some(queued) = queued {
++            adapters.confirmer = queued.clone();
++            adapters.secrets = queued;
++        }
+         let core = Core::new(
+             CoreConfig {
+                 management: ManagementEndpoints::at_origin(&origin),
+@@ -150,8 +157,11 @@ impl Desk {
+     }
+ 
+     fn call(&self, command: &str, body: Value) -> Result<Value, Value> {
++        Self::call_window(&self.window, command, body)
++    }
++    fn call_window(window: &WebviewWindow<MockRuntime>, command: &str, body: Value) -> Result<Value, Value> {
+         get_ipc_response(
+-            &self.window,
++            window,
+             InvokeRequest {
+                 cmd: command.into(),
+                 callback: CallbackFn(0),
+@@ -164,6 +174,12 @@ impl Desk {
+         )
+         .map(|response| response.deserialize::<Value>().expect("response JSON"))
+     }
++    fn send_thread(&mut self, intent: Value) -> std::thread::JoinHandle<Result<Value, Value>> {
++        self.sequence += 1;
++        let window = self.window.clone();
++        let body = json!({"protocol":1,"session":self.session,"sequence":self.sequence.to_string(),"intent":intent});
++        std::thread::spawn(move || Self::call_window(&window, "desktop_dispatch", body))
++    }
+     fn register(&mut self) {
+         let value = self
+             .call(
+@@ -387,3 +403,175 @@ async fn renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review(
+     assert_eq!(desk.adapters.secrets.shown().len(), 1);
+     assert_eq!(desk.writes(), 1);
+ }
++
++// Both queue adapters use the production callback guards. The unscoped fallback
++// deliberately preserves the old public adapter contract: the old core's calls
++// have no owner to revoke. This makes the old-red failures behavioral, not a
++// missing-new-API compilation failure.
++#[derive(Default)]
++struct QueuedNative {
++    registry: desktop_host::native_confirmation::Registry,
++    owner: desktop_host::native_confirmation::SecretOwnership,
++    queue_confirms: std::sync::atomic::AtomicBool,
++    confirm_entries: std::sync::atomic::AtomicUsize,
++    state: Mutex<QueuedState>,
++}
++#[derive(Default)]
++struct QueuedState {
++    secrets: Vec<SecretTask>,
++    confirmations: Vec<ConfirmationTask>,
++    shown_secrets: usize,
++    copied_secrets: usize,
++    shown_confirmations: usize,
++}
++enum SecretTask {
++    Legacy(String, zeroize::Zeroizing<String>),
++    Scoped(desktop_host::native_confirmation::SecretPresentation),
++}
++enum ConfirmationTask {
++    Legacy(u64, desktop_core::ConfirmationRequest),
++    Scoped(desktop_host::native_confirmation::ConfirmationPresentation),
++}
++impl QueuedNative {
++    fn secret_count(&self) -> usize { self.state.lock().expect("queue").secrets.len() }
++    fn confirmation_count(&self) -> usize { self.state.lock().expect("queue").confirmations.len() }
++    fn drain(&self) {
++        use desktop_host::native_confirmation::SecretPresentation;
++        let (secrets, confirmations) = {
++            let mut state = self.state.lock().expect("queue");
++            (std::mem::take(&mut state.secrets), std::mem::take(&mut state.confirmations))
++        };
++        for task in secrets {
++            let task = match task {
++                SecretTask::Legacy(label, secret) => SecretPresentation::new(label, secret, desktop_core::PresentationLease::default(), self.owner.begin()),
++                SecretTask::Scoped(task) => task,
++            };
++            task.run(&self.owner, |_, _, permit| {
++                let mut state = self.state.lock().expect("queue");
++                state.shown_secrets += 1;
++                if permit.allowed(&self.owner) { state.copied_secrets += 1; }
++            });
++        }
++        for task in confirmations {
++            match task {
++                ConfirmationTask::Legacy(nonce, _request) => {
++                    self.state.lock().expect("queue").shown_confirmations += 1;
++                    self.registry.complete(nonce, true);
++                }
++                ConfirmationTask::Scoped(task) => {
++                    task.run(&self.registry, |_, _, permit| {
++                        self.state.lock().expect("queue").shown_confirmations += 1;
++                        permit.complete(&self.registry, true);
++                    });
++                }
++            }
++        }
++    }
++}
++impl desktop_core::SecretPresenter for QueuedNative {
++    fn reveal(&self, label: String, secret: zeroize::Zeroizing<String>) {
++        self.state.lock().expect("queue").secrets.push(SecretTask::Legacy(label, secret));
++    }
++    fn reveal_scoped(&self, label: String, secret: zeroize::Zeroizing<String>, lease: desktop_core::PresentationLease) {
++        let task = desktop_host::native_confirmation::SecretPresentation::new(label, secret, lease, self.owner.begin());
++        self.state.lock().expect("queue").secrets.push(SecretTask::Scoped(task));
++    }
++    fn dismiss(&self) { self.owner.begin(); }
++}
++impl desktop_core::OperatorConfirmation for QueuedNative {
++    fn confirm(&self, nonce: u64, request: desktop_core::ConfirmationRequest) -> futures_util::future::BoxFuture<'static, bool> {
++        if !self.queue_confirms.load(std::sync::atomic::Ordering::Acquire) {
++            self.confirm_entries.fetch_add(1, std::sync::atomic::Ordering::Release);
++            return Box::pin(async { true });
++        }
++        let receiver = self.registry.open(nonce);
++        self.state.lock().expect("queue").confirmations.push(ConfirmationTask::Legacy(nonce, request));
++        self.confirm_entries.fetch_add(1, std::sync::atomic::Ordering::Release);
++        Box::pin(desktop_host::native_confirmation::outcome(receiver))
++    }
++    fn confirm_scoped(&self, nonce: u64, request: desktop_core::ConfirmationRequest, lease: desktop_core::PresentationLease) -> futures_util::future::BoxFuture<'static, bool> {
++        if !lease.is_current() {
++            self.confirm_entries.fetch_add(1, std::sync::atomic::Ordering::Release);
++            return Box::pin(async { false });
++        }
++        if !self.queue_confirms.load(std::sync::atomic::Ordering::Acquire) {
++            self.confirm_entries.fetch_add(1, std::sync::atomic::Ordering::Release);
++            return Box::pin(async { true });
++        }
++        let receiver = self.registry.open(nonce);
++        let task = desktop_host::native_confirmation::ConfirmationPresentation::new(nonce, request, lease);
++        self.state.lock().expect("queue").confirmations.push(ConfirmationTask::Scoped(task));
++        self.confirm_entries.fetch_add(1, std::sync::atomic::Ordering::Release);
++        Box::pin(desktop_host::native_confirmation::outcome(receiver))
++    }
++    fn dismiss(&self, nonce: u64) { self.registry.complete(nonce, false); }
++}
++
++async fn cross_teardown(secret: bool, before_effect: bool) {
++    let native = Arc::new(QueuedNative::default());
++    let mut desk = Desk::with_presenter(false, Some(Arc::clone(&native))).await;
++    let review = desk.review().await;
++    let original = if secret {
++        desk.apply(&review);
++        Some(desk.settled().await)
++    } else {
++        native.queue_confirms.store(true, std::sync::atomic::Ordering::Release);
++        None
++    };
++    let confirm_before = native.confirm_entries.load(std::sync::atomic::Ordering::Acquire);
++    let gate = before_effect.then(|| desk.core.operator().hold_next_native_presentation());
++    let intent = if let Some(result) = &original {
++        json!({"kind":"revealSecret","operation":result.operation})
++    } else {
++        json!({"kind":"requestApply","review":review.review,"draft":draft(),"confirmation":"CREATE"})
++    };
++    let dispatch = desk.send_thread(intent);
++    if let Some(gate) = &gate {
++        assert!(eventually(|| gate.entered()).await, "real admission completed; effect not executed");
++    } else {
++        assert!(eventually(|| if secret { native.secret_count() == 1 } else { native.confirmation_count() == 1 }).await, "real native callback queued");
++    }
++    desk.retire();
++    desk.register();
++    if let Some(gate) = gate { gate.release(); }
++    dispatch.join().expect("dispatch thread").expect("original admission receipt");
++    if !secret {
++        assert!(eventually(|| native.confirm_entries.load(std::sync::atomic::Ordering::Acquire) > confirm_before).await,
++            "native adapter has made its queue/refusal decision");
++    }
++    native.drain();
++    {
++        let state = native.state.lock().expect("queue");
++        assert_eq!(state.shown_secrets, 0, "departed page's admitted/queued key must never be presented");
++        assert_eq!(state.copied_secrets, 0, "departed page's key must never be copied");
++        assert_eq!(state.shown_confirmations, 0, "departed page's confirmation must never be presented");
++    }
++    assert_eq!(native.registry.open_count(), 0, "no stale pending nonce");
++    assert_eq!(desk.writes(), usize::from(secret), "no mutation replay");
++    if let Some(original) = original {
++        let result = &desk.snap().changes.results[0];
++        assert_eq!(result.operation, original.operation);
++        assert_eq!(result.outcome, Some(desktop_core::runtime::Outcome::Completed));
++        assert!(desk.send(json!({"kind":"revealSecret","operation":original.operation})).is_err());
++    }
++    native.queue_confirms.store(false, std::sync::atomic::Ordering::Release);
++    let fresh = desk.review().await;
++    desk.apply(&fresh);
++    let fresh = desk.settled().await;
++    assert_eq!(fresh.outcome, Some(desktop_core::runtime::Outcome::Completed));
++    assert_eq!(desk.writes(), usize::from(secret) + 1, "only explicit fresh-page work writes");
++    desk.send(json!({"kind":"revealSecret","operation":fresh.operation})).expect("fresh reveal");
++    native.drain();
++    let state = native.state.lock().expect("queue");
++    assert_eq!(state.shown_secrets, 1, "fresh-page presentation works");
++    assert_eq!(state.copied_secrets, 1, "fresh-page explicit copy works");
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_secret_admitted_before_teardown_cannot_present_after_effect_release() { cross_teardown(true, true).await; }
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_secret_queued_before_teardown_cannot_present_or_copy() { cross_teardown(true, false).await; }
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_confirmation_admitted_before_teardown_cannot_present_after_effect_release() { cross_teardown(false, true).await; }
++#[tokio::test(flavor = "multi_thread")]
++async fn scoped_confirmation_queued_before_teardown_cannot_present() { cross_teardown(false, false).await; }
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 906e815b..03920650 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -1461,6 +1461,13 @@ pub trait OperatorConfirmation: Send + Sync + 'static {
+         nonce: u64,
+         request: ConfirmationRequest,
+     ) -> futures_util::future::BoxFuture<'static, bool>;
++    /// The scoped production path carries admission-time ownership into any
++    /// deferred native callback. Asynchronous adapters must override this method.
++    fn confirm_scoped(
++        &self, nonce: u64, request: ConfirmationRequest, lease: crate::PresentationLease,
++    ) -> futures_util::future::BoxFuture<'static, bool> {
++        if lease.is_current() { self.confirm(nonce, request) } else { Box::pin(async { false }) }
++    }
+     /// Ends confirmation `nonce` if it is still shown (resolving it false).
+     /// Called with the authority locked: it must not block.
+     fn dismiss(&self, nonce: u64);
+@@ -1471,6 +1478,11 @@ pub trait SecretPresenter: Send + Sync + 'static {
+     /// Shows `secret` under `label` with an explicit copy action; the host
+     /// owns its expiry and clipboard cleanup.
+     fn reveal(&self, label: String, secret: Zeroizing<String>);
++    /// Carries admission-time ownership through deferred presentation/copy.
++    /// Asynchronous adapters must override this method and check at execution.
++    fn reveal_scoped(&self, label: String, secret: Zeroizing<String>, lease: crate::PresentationLease) {
++        if lease.is_current() { self.reveal(label, secret); }
++    }
+     /// Ends any shown secret sheet and zeroizes its copy. Must not block.
+     fn dismiss(&self);
+ }
+@@ -2794,6 +2806,8 @@ enum Effect {
+ }
+ 
+ struct Inner {
++    #[cfg(any(test, feature = "test-fixtures"))]
++    presentation_gate: Mutex<Option<Arc<crate::PresentationGate>>>,
+     state: Mutex<State>,
+     adapters: Adapters,
+     session: Arc<SessionVault>,
+@@ -2946,6 +2960,8 @@ impl Core {
+         };
+         let _ = state.reissue_context();
+         let inner = Arc::new(Inner {
++            #[cfg(any(test, feature = "test-fixtures"))]
++            presentation_gate: Mutex::default(),
+             state: Mutex::new(state),
+             adapters,
+             session: Arc::new(SessionVault::new()),
+@@ -3457,6 +3473,13 @@ impl AuthorityHandle {
+     /// Called by the native main-page lifecycle, never by a renderer intent.
+     /// Review/disclosure ownership ends with the page; admitted work and its
+     /// outcomes survive. Delivery-session recovery alone does not end a page.
++    #[cfg(any(test, feature = "test-fixtures"))]
++    pub fn hold_next_native_presentation(&self) -> Arc<crate::PresentationGate> {
++        let gate = Arc::new(crate::PresentationGate::default());
++        if let Ok(mut pending) = self.inner.presentation_gate.lock() { *pending = Some(Arc::clone(&gate)); }
++        gate
++    }
++
+     pub fn retire_renderer(&self) -> Result<(), Refusal> {
+         let mut state = lock(&self.inner)?;
+         state.operator_sessions.retire();
+@@ -5099,6 +5122,11 @@ fn intent_digest(salt: &[u8; 16], intent: &Intent) -> [u8; 32] {
+ 
+ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
+     for effect in effects {
++        #[cfg(any(test, feature = "test-fixtures"))]
++        if matches!(&effect, Effect::Confirm { .. } | Effect::RevealSecret { .. }) {
++            let gate = inner.presentation_gate.lock().ok().and_then(|mut gate| gate.take());
++            if let Some(gate) = gate { gate.pause(); }
++        }
+         match effect {
+             Effect::Harness(start) => {
+                 let inner = Arc::clone(inner);
+diff --git a/crates/desktop-core/src/lib.rs b/crates/desktop-core/src/lib.rs
+index 7d2f7c2b..91fd17f0 100644
+--- a/crates/desktop-core/src/lib.rs
++++ b/crates/desktop-core/src/lib.rs
+@@ -31,6 +31,10 @@ pub mod library;
+ pub mod management;
+ pub mod observation;
+ mod observe;
++mod presentation;
++pub use presentation::PresentationLease;
++#[cfg(any(test, feature = "test-fixtures"))]
++pub use presentation::PresentationGate;
+ pub mod offline;
+ pub mod red_team;
+ pub mod runtime;
+diff --git a/tools/native-acceptance/acceptance_c31.py b/tools/native-acceptance/acceptance_c31.py
+index ffe24e3e..f009f4df 100644
+--- a/tools/native-acceptance/acceptance_c31.py
++++ b/tools/native-acceptance/acceptance_c31.py
+@@ -146,7 +146,7 @@ def gateway_key_checks(app):
+             node = next((n for n in coverage.product_nodes(tree, "AI Gateway")
+                          if n.get("role") == "AXButton" and n.get("label") == label), None)
+             coverage.act_on_node(app, tree, node)
+-            tree, _ = app.wait_for(lambda t: bool(coverage.detail_nodes(t, "AI Gateway")), 12)
++            tree, _ = app.wait_for(lambda t: coverage.gateway_key_state(t, kind, require_detail=True)["detail_success"], 20)
+             detail = coverage.gateway_key_state(tree, kind, require_detail=True)
+             detail.update(row=label, tree=c29.save_tree(f"gateway-{slug}-detail-{index}", tree),
+                           capture=c29.capture(app, f"gateway-{slug}-detail-{index}"))
+diff --git a/tools/native-acceptance/administration_coverage.py b/tools/native-acceptance/administration_coverage.py
+index 527029b3..af014118 100644
+--- a/tools/native-acceptance/administration_coverage.py
++++ b/tools/native-acceptance/administration_coverage.py
+@@ -74,13 +74,23 @@ def gateway_key_state(tree, kind, require_detail=False):
+     forbidden = sorted({n.get("label") for n in nodes
+                         if n.get("role") in ("AXButton", "AXMenuItem", "AXLink")
+                         and (n.get("label") or "").startswith(("Issue additional key", "Finish rotation"))})
++    actions = [n.get("label") for n in detail if n.get("role") == "AXButton"]
++    name = next((n.get("label") for n in detail if n.get("role") == "AXHeading"), None)
++    words = " ".join(str(n.get("label") or n.get("value") or "") for n in detail)
++    issues = [message for message in ("Reading details", "did not find this resource",
++              "could not be read", "does not contain this item", "It is not shown") if message in words]
++    if any(n.get("role") == "AXAlert" or n.get("subrole") == "AXApplicationAlert" for n in detail):
++        issues.append("detail alert")
++    expected = {f"{verb} {name}" for verb in ("Edit", "Rotate", "Remove")} | {"Close details"}
++    success = bool(detail and name and set(actions) == expected and not issues)
+     value = {"card_present": bool(nodes), "kind": kind,
+              "table": any(n.get("role") == "AXTable" and n.get("label") == kind for n in nodes),
+              "gateway_tabs": tabs, "no_limits": "Keys" in tabs and "Limits" not in tabs,
+              "forbidden_actions": forbidden, "detail_open": bool(detail),
+-             "detail_actions": [n.get("label") for n in detail if n.get("role") == "AXButton"]}
++             "detail_actions": actions, "detail_name": name, "detail_issues": issues,
++             "detail_success": success}
+     value["ok"] = bool(nodes and value["table"] and value["no_limits"] and not forbidden
+-                       and (not require_detail or detail))
++                       and (not require_detail or success))
+     return value
+ 
+ 
+@@ -88,7 +98,7 @@ def gateway_keys_complete(value):
+     kinds = value.get("kinds", {})
+     if set(kinds) != {"Service keys", "User keys"}:
+         return False
+-    if not kinds["Service keys"].get("details"):
++    if not all(kinds[kind].get("details") for kind in ("Service keys", "User keys")):
+         return False
+     for kind, observed in kinds.items():
+         state = observed.get("list", {})
+@@ -96,13 +106,17 @@ def gateway_keys_complete(value):
+         expected = observed.get("row_labels")
+         def complete(row, require_detail):
+             tabs = row.get("gateway_tabs")
+-            return (row.get("kind") == kind and row.get("ok") is True
++            mandatory = {"kind", "ok", "card_present", "table", "no_limits", "forbidden_actions",
++                         "gateway_tabs", "detail_actions", "detail_open", "detail_name", "detail_issues", "detail_success"}
++            expected = {f"{verb} {row.get('detail_name')}" for verb in ("Edit", "Rotate", "Remove")} | {"Close details"}
++            return (mandatory <= set(row) and row.get("kind") == kind and row.get("ok") is True
+                     and row.get("card_present") is True and row.get("table") is True
+                     and row.get("no_limits") is True and row.get("forbidden_actions") == []
+                     and isinstance(tabs, list) and "Keys" in tabs and "Limits" not in tabs
+                     and isinstance(row.get("detail_actions"), list)
+                     and row.get("detail_open") is require_detail
+-                    and (not require_detail or "Close details" in row["detail_actions"]))
++                    and (not require_detail or (row.get("detail_success") is True and row.get("detail_name")
++                         and row.get("detail_issues") == [] and set(row["detail_actions"]) == expected)))
+         if (not complete(state, False) or not isinstance(expected, list)
+                 or len(set(expected)) != len(expected) or len(details) != len(expected)):
+             return False
+diff --git a/tools/native-acceptance/mgmt_server.py b/tools/native-acceptance/mgmt_server.py
+index a0482999..eaba1f39 100644
+--- a/tools/native-acceptance/mgmt_server.py
++++ b/tools/native-acceptance/mgmt_server.py
+@@ -539,6 +539,17 @@ class Handler(BaseHTTPRequestHandler):
+         if rest == "/api-keys/service":
+             return 200, listing([key(ws, 1, ["completions.write"]), key(ws, 2, ["models.read"])]
+                                 + [k for k in created["api-keys/service"] if k["workspace_id"] == ws])
++        # Listed fixture keys must also have successful detail reads. Otherwise
++        # a failed panel can masquerade as absence of forbidden row actions.
++        for workspace_id in spaces:
++            if ws is not None and ws != workspace_id:
++                continue
++            for resource, number, scopes_for_key in [('service', 1, ['completions.write']),
++                                                      ('service', 2, ['models.read']),
++                                                      ('user', 3, ['completions.write'])]:
++                item = key(workspace_id, number, scopes_for_key)
++                if rest == f"/api-keys/{resource}/{item['id']}":
++                    return 200, item
+         for k in created["api-keys/service"]:
+             if rest == f"/api-keys/service/{k['id']}":
+                 return 200, k
+diff --git a/tools/native-acceptance/test_administration_coverage.py b/tools/native-acceptance/test_administration_coverage.py
+index 9b9992de..c8e644a5 100644
+--- a/tools/native-acceptance/test_administration_coverage.py
++++ b/tools/native-acceptance/test_administration_coverage.py
+@@ -33,7 +33,8 @@ def gateway_tree(forbidden=False, detail=True, kind="Service keys"):
+             node("AXTable", kind, 3)]
+     if detail:
+         body += [node("AXGroup", "gateway-key-1", 3, subrole="AXLandmarkRegion"),
+-                 node("AXHeading", "gateway-key-1", 4), node("AXButton", "Remove…", 4)]
++                 node("AXHeading", "gateway-key-1", 4), node("AXButton", "Edit gateway-key-1", 4),
++                 node("AXButton", "Rotate gateway-key-1", 4), node("AXButton", "Remove gateway-key-1", 4)]
+         if forbidden:
+             body.append(node("AXButton", "Issue additional key…", 4))
+         body.append(node("AXButton", "Close details", 4))
+@@ -55,7 +56,7 @@ class AdministrationScoping(unittest.TestCase):
+         state = coverage.gateway_key_state(gateway_tree(), "Service keys", require_detail=True)
+         self.assertTrue(state["ok"])
+         self.assertEqual(state["forbidden_actions"], [])
+-        self.assertEqual(state["detail_actions"], ["Remove…", "Close details"])
++        self.assertEqual(state["detail_actions"], ["Edit gateway-key-1", "Rotate gateway-key-1", "Remove gateway-key-1", "Close details"])
+ 
+     def test_gateway_rotation_action_is_rejected(self):
+         state = coverage.gateway_key_state(gateway_tree(forbidden=True), "Service keys", require_detail=True)
+@@ -193,5 +194,35 @@ class GatewayWorkspacePrerequisite(unittest.TestCase):
+         self.assertEqual(app.actions[0], 'Team A · us')
+         self.assertEqual(set(result['kinds']), {'Service keys', 'User keys'})
+ 
++
++class SuccessfulGatewayDetails(unittest.TestCase):
++    def test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions(self):
++        for message in ['The service did not find this resource.', 'Reading details…',
++                        'The workspace’s complete inventory does not contain this item, so it is not shown.',
++                        'This item was not in the part of the workspace’s inventory that could be read. It is not shown, and this does not mean it is absent.']:
++            with self.subTest(message=message):
++                tree = gateway_tree()
++                tree.insert(-1, node('AXStaticText', message, 4))
++                self.assertFalse(coverage.gateway_key_state(tree, 'Service keys', require_detail=True)['ok'])
++
++    def test_every_listed_key_has_a_successful_scoped_detail_fixture(self):
++        import threading
++        from types import SimpleNamespace
++        import mgmt_server
++        handler = object.__new__(mgmt_server.Handler)
++        handler.server = SimpleNamespace(lock=threading.Lock(), gw={'workspaces': [], 'archived': set(),
++            'deleted': set(), 'created': {'api-keys/service': []}, 'renamed': {}, 'scopes': {}})
++        for resource in ['service', 'user']:
++            status, listing = handler.gateway('/ai_gw/v2/api-keys/' + resource,
++                                              {'workspace_id': mgmt_server.GW_A}, {})
++            self.assertEqual(status, 200)
++            self.assertTrue(listing['data'])
++            for item in listing['data']:
++                status, detail = handler.gateway('/ai_gw/v2/api-keys/' + resource + '/' + item['id'],
++                                                {'workspace_id': mgmt_server.GW_A}, {})
++                self.assertEqual(status, 200, (resource, item['id']))
++                self.assertEqual(detail['id'], item['id'])
++                self.assertEqual(detail['name'], item['name'])
++
+ if __name__ == "__main__":
+     unittest.main()

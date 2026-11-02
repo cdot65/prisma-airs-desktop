@@ -78,7 +78,7 @@ def evidence_inventory(root, run_path, verified):
     files.add(root / 'docs/planning/evidence/C29/live/L19-verify.json')
     files.add(root / 'docs/planning/reviews/C44/legacy-retirements.md')
     for member in verified['predecessors']:
-        for key in ['record', 'request', 'receipt', 'audit', 'owner_decision']:
+        for key in ['record', 'request', 'receipt', 'audit', 'owner_decision', 'activation']:
             if key in member:
                 files.add(root / member[key])
         if 'record' in member:
@@ -113,10 +113,13 @@ def make(root, attempt, run_path, limitations):
                          'exclusion_reason': 'Evidence and predecessor records bound separately; active native-controller Python and check-run shell sources are included despite their evidence directory. Current attempt outputs excluded from both inventories.'},
                'fingerprints': fingerprints, 'predecessors': verified['predecessors'],
                'source_transition': verified['native_acceptance']['source_transition'],
+               'owner_c31_completion': next((m for m in verified['predecessors'] if m['subject']=='C31' and m.get('owner_closed')), None),
+               'owner_c31_conditional_decision': 'docs/planning/C31-conditional-owner-override-2026-11-02.md',
                'owner_c30_score_record': OWNER_SCORE, 'owner_c30_score_record_sha256': inputs.sha(root / OWNER_SCORE),
                'commands': [{'record': str(run_path.relative_to(root)), **run}],
                'native_acceptance': verified['native_acceptance'], 'live_evidence': live,
                'limitations': [
+                   'C31 follows its bound final-review conditional owner decision. If activated, owner all9 completion satisfies membership and must not lower P09; actual final raw scores/findings/blockers/gaps/recommendation and false audit stay unchanged. The same accepted C31 findings may not be reopened as phase remediation. This is no waiver of actual independent C32/P09 full9.',
                    'C26 remains open. This is the owner-approved fresh-exec fallback, not fabricated controller completion.',
                    'The independent reviewer is a fresh read-only session in the current implementer model family; most original app implementation was Claude Code, current integration/remediation is Codex.',
                    'C30 stands at owner 9/9/9/9/9 under docs/planning/C30-owner-score-override-2026-11-02.md; its historical independent 9/9/9/8/8 fail and audit false remain unchanged. C30 is closed and must not lower P09. The explicit C31-only transition binds the new source and current qualification; the owner decision assigns no independent C31/C32/P09 score.',

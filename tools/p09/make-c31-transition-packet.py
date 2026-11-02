@@ -71,6 +71,9 @@ pred=f'C{int(subject[1:])-1:02}'
 def latest_receipt(chunk):
     if chunk == 'C30':
         return owner_closure
+    if chunk == 'C31' and (root/'docs/planning/reviews/C31/owner-activation-2026-11-02.json').exists():
+        from c31_owner_completion import verify as verify_c31_owner_completion
+        return verify_c31_owner_completion(root)
     dirs=sorted((root/f'docs/planning/reviews/{chunk}').glob('attempt-*'),key=lambda p:[int(x) if x.isdigit() else x for x in re.findall(r'\d+|[a-z]+',p.name)],reverse=True)
     for a in dirs:
         p=a/'receipt.json'
@@ -113,6 +116,9 @@ scope.update(str(p.relative_to(root)) for p in (root/'tools/p09').glob('*.py'))
 scope.add('tools/p09/README.md')
 # Bind the owner decision, unchanged raw review/acceptance and new administrative sources.
 scope.add(owner_closure['owner_decision'])
+scope.add('docs/planning/C31-conditional-owner-override-2026-11-02.md')
+if predecessor.get('subject') == 'C31' and predecessor.get('owner_closed'):
+    scope.add(predecessor['activation'])
 scope.update(str(p.relative_to(root)) for p in (root/PREFIX).rglob('*') if p.is_file())
 scope.update(str(p.relative_to(root)) for p in (root/'crates/desktop-host/tests').glob('renderer_review_lifecycle.rs'))
 scope.update(str(p.relative_to(root)) for p in (root/'apps/desktop/src-tauri/tests').glob('renderer_review_lifecycle.rs'))
@@ -123,7 +129,9 @@ scope.add('docs/planning/reviews/C41/owner-override-2026-10-31.md')
 for name in ['record', 'request', 'receipt', 'audit']:
     scope.add(owner_closure[name])
 prefixes=['apps/desktop/src/v2/wizard','docs/planning/evidence/C29/live/L19','docs/planning/evidence/C29/remediation-attempt-07','docs/planning/evidence/P09/runs']
-prefixes.extend(['docs/planning/evidence/P09/preparations','docs/planning/evidence/P09/check-remediation'])
+prefixes.extend(['docs/planning/evidence/P09/preparations','docs/planning/evidence/P09/check-remediation',
+ 'docs/planning/evidence/C31/remediation-attempt-06',
+ 'docs/planning/evidence/P09/native-history/Worf-generation-08-complete-before-C31-presentation-fix-20261102'])
 prefixes.extend(['docs/planning/evidence/P09/performance', 'docs/planning/evidence/C30/remediation-attempt-10',
                  'docs/planning/evidence/P09/bundle-boundary-advisory-20261102',
                  'docs/planning/evidence/P09/native-history/Worf-generation-05-complete-before-null-source-fix-20261102',
@@ -174,7 +182,8 @@ fps={'source':source,'dependencies':run['inputs']['before_digest'],'build_flags'
 request_id=f'{subject}-{attempt}-{int(time.time())}'
 instructions=old['review_instructions'] + '\nOwner-directed scope: C30 is complete by its exact 2026-11-02 owner exception. Its raw 9/9/9/8/8 fail verdict and closed R1/R2/E1/E2 remain disclosed limitations, not fabricated full9. Do not reopen those same C30 findings as C31/C32 remediation. Independently assess this subject and report honest scores; no C31/C32 or P09 numeric gate is waived.\n'
 notes=[
- 'CURRENT qualification binds the finally integrated C31-only production lifecycle and native-driver fixes. All changed source and administrative provenance must be inspected. The declared transition proves source outside that delta unchanged; it does not transfer historical application qualification to current bytes.',
+ 'The owner caps C31 at one actual further review after attempt06 remediation. If any of that final actual verdict scores is below9, explicit source/evidence/audit-bound owner all9 completion applies even if the raw verdict contains blockers. Raw results stay unchanged. No C31 scoring/remediation loop or re-opening accepted findings through P09 is authorized; C32/P09 still require actual independent full9.',
+ 'CURRENT qualification binds the final attempt06 C31-only native queued-presentation ownership and successful Gateway detail fixes. All changed source and administrative provenance must be inspected, including the final scoped presentation owner and successful seeded key detail fixture/checker. G8 actual all19/all18 and accepted C31attempt06 remain immutable history. The declared transition proves source outside that delta unchanged; it does not transfer historical application qualification to current bytes.',
  'C30 stands at owner9/9/9/9/9 under the bound docs/planning/C30-owner-score-override-2026-11-02.md. Its historical independent9/9/9/8/8 fail and auditfalse remain unchanged. Closed C30 findings must not lower P09 or reopen C30 as phase work. No current C30 performance/capture/coverage run was performed or claimed.',
  'C29 attempt10 actual full9 is historical G7 standing. A broad prior scope included shared authority code; only the declared C31 delta changes that code. Current C31 and cumulative P09 reviews inspect this delta; no new C29 verdict or matching-old-scope claim is made.',
  'The original G7 archive and raw C31 attempt05 failures/findings remain immutable. R1 production Host+Tauri IPC regressions reproduce original reload failures, then pass with the fix; R2 requires all unretired C31 native facts, scoped Gateway negatives and same-bundle accessibility. Current qualification must actually pass these assertions.',
@@ -183,10 +192,10 @@ notes=[
  'L19 retains actual historical verification with all3 reads charged and zero remaining. No live product endpoint, real credential access, OS permission grant, publication, signing or installation is authorized here.',
  'The read-only fresh configured gpt-6.1-sol reviewer is a separate session in the implementer model family. Hashes establish recorded consistency, not cryptographic provider/compiler authorship. Historical descriptions in prior packets apply only to their recorded generations.'
 ]
-request={'request_id':request_id,'attempt_id':attempt,'subject':subject,'base_commit':git('rev-parse','HEAD'),
+request={'c31_final_review_policy': {'decision':'docs/planning/C31-conditional-owner-override-2026-11-02.md','decision_sha256':'210576fcfce83b3c1862318df06330054cd302bfafb5e1815ec94a2938240291','last_completed_at_direction':'attempt-06'},'request_id':request_id,'attempt_id':attempt,'subject':subject,'base_commit':git('rev-parse','HEAD'),
          'transport':'fresh codex exec fallback (read-only, ephemeral, ignore-user-config, ignore-rules, stdin closed)',
          'scope':{**old['scope'],'files':sorted(scope),'removed_since_prior_request':removed,'standing_generation':'Current C31 remediation application; declared source transition and fresh qualification; historical C29/C30 evidence preserved'},
-         'predecessors':[predecessor],'owner_decisions':[owner_closure],'fingerprints':fps,'fingerprint_notes':'Canonical sorted path/hash source inventory; complete current compiled-input digest; current attempt outputs excluded to prevent self-reference.',
+         'predecessors':[predecessor],'owner_decisions':[owner_closure] + ([predecessor] if predecessor.get('owner_closed') and predecessor['subject']=='C31' else []),'fingerprints':fps,'fingerprint_notes':'Canonical sorted path/hash source inventory; complete current compiled-input digest; current attempt outputs excluded to prevent self-reference.',
          'commands':[{'record':str(run_path.relative_to(root)),**run}],
          'native_acceptance':{'prepare':str(prep_path.relative_to(root)),'prepare_sha256':sha(prep_path),'mapped_records':natives,'performance':qualification['performance'],'assertion_mapping':mapping,'live_row':str(live_path.relative_to(root)),'live_row_sha256':sha(live_path)},
          'limitations':notes,'verdict_schema':'docs/architecture/review-verdict.schema.json','verdict_path':str(out/'verdict.json'),'review_instructions':instructions}

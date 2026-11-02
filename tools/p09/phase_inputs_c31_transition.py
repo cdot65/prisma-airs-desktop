@@ -113,6 +113,10 @@ def latest_verdict(root, subject):
 def verify_members(root):
     members = []
     for subject in MEMBERS + [f'P{i:02}' for i in range(1, 8)]:
+        if subject == 'C31' and (root / 'docs/planning/reviews/C31/owner-activation-2026-11-02.json').exists():
+            from c31_owner_completion import verify as verify_c31_owner_completion
+            members.append(verify_c31_owner_completion(root))
+            continue
         if subject == 'C29':
             verify_transition(root)
             members.append(historical_c29(root))

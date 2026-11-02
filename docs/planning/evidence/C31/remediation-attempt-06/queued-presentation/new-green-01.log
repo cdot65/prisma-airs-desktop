@@ -1,0 +1,40 @@
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/desktop-core)
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 14.27s
+     Running tests/renderer_review_lifecycle.rs (target/debug/deps/renderer_review_lifecycle-13d2a3dce7eb986e)
+
+running 8 tests
+test renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review ... ok
+test renderer_reload_before_reveal_forgets_the_native_held_key ... ok
+test renderer_reload_during_confirmation_retires_the_native_review ... ok
+test renderer_reload_during_issuance_drops_the_late_key_without_replaying ... ok
+test scoped_confirmation_admitted_before_teardown_cannot_present_after_effect_release ... ok
+test scoped_confirmation_queued_before_teardown_cannot_present ... ok
+test scoped_secret_admitted_before_teardown_cannot_present_after_effect_release ... FAILED
+test scoped_secret_queued_before_teardown_cannot_present_or_copy ... FAILED
+
+failures:
+
+---- scoped_secret_admitted_before_teardown_cannot_present_after_effect_release stdout ----
+
+thread 'scoped_secret_admitted_before_teardown_cannot_present_after_effect_release' (2384262) panicked at apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs:231:9:
+assertion `left == right` failed
+  left: Failed
+ right: Ready
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- scoped_secret_queued_before_teardown_cannot_present_or_copy stdout ----
+
+thread 'scoped_secret_queued_before_teardown_cannot_present_or_copy' (2384279) panicked at apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs:231:9:
+assertion `left == right` failed
+  left: Failed
+ right: Ready
+
+
+failures:
+    scoped_secret_admitted_before_teardown_cannot_present_after_effect_release
+    scoped_secret_queued_before_teardown_cannot_present_or_copy
+
+test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.20s
+
+error: test failed, to rerun pass `-p desktop-host --test renderer_review_lifecycle`

@@ -1,0 +1,19 @@
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/desktop-core)
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13.83s
+     Running tests/renderer_review_lifecycle.rs (target/debug/deps/renderer_review_lifecycle-13d2a3dce7eb986e)
+
+running 10 tests
+test renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review ... ok
+test renderer_reload_before_reveal_forgets_the_native_held_key ... ok
+test renderer_reload_during_confirmation_retires_the_native_review ... ok
+test renderer_reload_during_issuance_drops_the_late_key_without_replaying ... ok
+test scoped_confirmation_admitted_before_teardown_cannot_present_after_effect_release ... ok
+test scoped_confirmation_queued_before_teardown_cannot_present ... ok
+test scoped_old_callbacks_drained_last_cannot_retire_fresh_page_presentation ... ok
+test scoped_review_exit_revokes_a_queued_secret_without_retiring_the_page ... ok
+test scoped_secret_admitted_before_teardown_cannot_present_after_effect_release ... ok
+test scoped_secret_queued_before_teardown_cannot_present_or_copy ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.45s
+

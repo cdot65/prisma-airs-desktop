@@ -1,0 +1,19 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "-p",
+    "desktop-host",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "renderer_review_lifecycle",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit": 101,
+  "log": "docs/planning/evidence/C31/remediation-attempt-06/queued-presentation/new-green-02.log",
+  "log_sha256": "7d9b3e17e7316a3ca0dae8672c0a9f56f5e1c3b1aa88209431df91558e7f25ca",
+  "note": "Fresh-work control uses a distinct key name; original old-red race assertions unchanged; adds review-exit and stale-last-callback controls"
+}

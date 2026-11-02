@@ -62,7 +62,11 @@ digest=subprocess.check_output(['/bin/bash',str(root/'docs/planning/evidence/P09
 assert digest==r['fingerprints']['dependencies']
 qualification=phase_inputs.verify_native(root)
 from c31_transition_policy import verify_c30_owner_closure
-assert r['owner_decisions']==[verify_c30_owner_closure(root)], 'owner/transition binding drift'
+owners=[verify_c30_owner_closure(root)]
+if subject=='C32' and (root/'docs/planning/reviews/C31/owner-activation-2026-11-02.json').exists():
+    from c31_owner_completion import verify as verify_c31_owner_completion
+    owners.append(verify_c31_owner_completion(root))
+assert r['owner_decisions']==owners, 'owner/transition binding drift'
 assert qualification['build_inputs']['input_digest']==digest
 result={'subject':subject,'attempt':attempt,'time':datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'transport':transport,

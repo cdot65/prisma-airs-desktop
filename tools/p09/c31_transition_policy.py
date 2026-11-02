@@ -11,12 +11,16 @@ import owner_closure_policy as baseline
 import phase_inputs as original
 
 PREFIX = 'docs/planning/evidence/P09/c31-transition-20261102/'
-TRANSITION_RECORD = 'transition-driver-01.json'
+TRANSITION_RECORD = 'transition-final-01.json'
 BASE_HEAD = 'e825c2f69cbcd19387142b80481faaad84690a07'
 BASE_DIGEST = 'e441459dde8a4b13403f16f16e5abf100636421ff827f9955f37740500bbdc50'
 OWNER_SCORE = 'docs/planning/C30-owner-score-override-2026-11-02.md'
 OWNER_SHA = 'c150ebb6a35d8b1bdb6965a5780b96b88f393ed2994cdd3a11da2b4d20bd1a5e'
 FIX_PATHS = {
+    'crates/desktop-core/src/lib.rs',
+    'crates/desktop-core/src/presentation.rs',
+    'apps/desktop/src-tauri/src/native_confirmation.rs',
+    'tools/native-acceptance/mgmt_server.py',
     'crates/desktop-core/src/authority.rs',
     'crates/desktop-core/src/authority/change_domain.rs',
     'crates/desktop-core/src/delivery.rs',
@@ -33,6 +37,10 @@ FIX_PATHS = {
     'tools/native-acceptance/test_administration_coverage.py',
 }
 ADMIN_PATHS = {
+    '.gitattributes',
+    'docs/planning/C31-conditional-owner-override-2026-11-02.md',
+    'tools/p09/c31_owner_completion.py',
+    'tools/p09/test_c31_owner_completion.py',
     'tools/p09/c31_transition_policy.py',
     'tools/p09/phase_inputs_c31_transition.py',
     'tools/p09/phase_packet_c31_transition.py',

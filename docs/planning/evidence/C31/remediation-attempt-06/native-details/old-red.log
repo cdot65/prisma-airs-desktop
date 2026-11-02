@@ -1,0 +1,56 @@
+test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) ... 
+  test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) (message='The service did not find this resource.') ... FAIL
+  test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) (message='Reading details…') ... FAIL
+  test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) (message='The workspace’s complete inventory does not contain this item, so it is not shown.') ... FAIL
+  test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) (message='This item was not in the part of the workspace’s inventory that could be read. It is not shown, and this does not mean it is absent.') ... FAIL
+test_every_listed_key_has_a_successful_scoped_detail_fixture (__main__.SuccessfulGatewayDetails.test_every_listed_key_has_a_successful_scoped_detail_fixture) ... FAIL
+
+======================================================================
+FAIL: test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) (message='The service did not find this resource.')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/test_administration_coverage.py", line 205, in test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions
+    self.assertFalse(coverage.gateway_key_state(tree, 'Service keys', require_detail=True)['ok'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) (message='Reading details…')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/test_administration_coverage.py", line 205, in test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions
+    self.assertFalse(coverage.gateway_key_state(tree, 'Service keys', require_detail=True)['ok'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) (message='The workspace’s complete inventory does not contain this item, so it is not shown.')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/test_administration_coverage.py", line 205, in test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions
+    self.assertFalse(coverage.gateway_key_state(tree, 'Service keys', require_detail=True)['ok'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions (__main__.SuccessfulGatewayDetails.test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions) (message='This item was not in the part of the workspace’s inventory that could be read. It is not shown, and this does not mean it is absent.')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/test_administration_coverage.py", line 205, in test_error_loading_absent_and_incomplete_details_cannot_prove_restrictions
+    self.assertFalse(coverage.gateway_key_state(tree, 'Service keys', require_detail=True)['ok'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_every_listed_key_has_a_successful_scoped_detail_fixture (__main__.SuccessfulGatewayDetails.test_every_listed_key_has_a_successful_scoped_detail_fixture)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/tools/native-acceptance/test_administration_coverage.py", line 222, in test_every_listed_key_has_a_successful_scoped_detail_fixture
+    self.assertEqual(status, 200, (resource, item['id']))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 404 != 200 : ('service', '7e3a0000-0000-4000-8000-829700000031')
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.018s
+
+FAILED (failures=5)

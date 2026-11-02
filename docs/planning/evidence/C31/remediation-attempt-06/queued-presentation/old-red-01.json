@@ -1,0 +1,19 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "-p",
+    "desktop-host",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "renderer_review_lifecycle",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit": 101,
+  "log": "docs/planning/evidence/C31/remediation-attempt-06/queued-presentation/old-red-01.log",
+  "log_sha256": "17b8056252021c0df2b0dab862a12bf41c0aff9706c15041402e4f6ecf9d66f0",
+  "baseline": "G8 production admission/effect code unchanged; additive fixture effect barrier, unused scoped adapter API and production task guard types permit behavioral regression execution"
+}
