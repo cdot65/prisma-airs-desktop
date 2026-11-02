@@ -183,6 +183,42 @@ describe('Inbox', () => {
         expect(useShellStore.getState().unconfirmed).toHaveLength(0)
     })
 
+    it.each(['unknown-first', 'snapshot-first'] as const)('retires a captured-null initial selection (%s) after another context appears', async (order) => {
+        const user = userEvent.setup()
+        // Deleting the active tenant leaves onboarding done and other tenants selectable.
+        const native = await launch({ ...fxFresh(), active: null })
+        const destination = native.current.tenants[0]!
+        const later = native.current.tenants[1]!
+        let fail: (reason: unknown) => void = () => undefined
+        native.respond = order === 'unknown-first'
+            ? () => { throw new DeliveryOutcomeUnknown('lost') }
+            : () => new Promise((_, reject) => { fail = reject })
+        await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
+        await user.click(screen.getByRole('button', { name: new RegExp(destination.label) }))
+        const selections = native.dispatched.filter((intent) => intent.kind === 'selectTenant')
+        expect(selections).toContainEqual({ kind: 'selectTenant', tenant: destination.id, resolution: null })
+        if (order === 'unknown-first') {
+            await screen.findByRole('button', { name: 'Retry' })
+            expect(useShellStore.getState().unconfirmed[0]?.context).toBeNull()
+        }
+        await native.push({ ...native.current, active: { tenant: destination.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
+        if (order === 'snapshot-first') {
+            fail(new DeliveryOutcomeUnknown('lost'))
+            await new Promise((resolve) => setTimeout(resolve, 50))
+            fail(new DeliveryOutcomeUnknown('lost'))
+            await new Promise((resolve) => setTimeout(resolve, 50))
+        }
+        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
+        expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+        // The client's bounded same-request resend has settled by now.
+        const settledSelections = native.dispatched.filter((intent) => intent.kind === 'selectTenant')
+        await native.push({ ...native.current, active: { tenant: later.id, context: 'cx-cccccccccccccccccccccccc' } })
+        expect(useShellStore.getState().unconfirmed).toHaveLength(0)
+        expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+        // Observation and retirement never re-dispatch the old destination.
+        expect(native.dispatched.filter((intent) => intent.kind === 'selectTenant')).toEqual(settledSelections)
+    })
+
     it('announces a snooze once, from the core receipt: never an old hold after a switch or a reread (I11)', async () => {
         const native = await launch(fxInbox())
         // Meridian already holds a snoozed item: switching there is not a new snooze.

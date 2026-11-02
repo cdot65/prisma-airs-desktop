@@ -1,0 +1,94 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop
+
+stderr | src/v2/inbox/inbox.test.tsx > Inbox > retires a captured-null initial selection (snapshot-first) after another context appears
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ❯ src/v2/inbox/inbox.test.tsx (26 tests | 2 failed | 24 skipped) 299ms
+   ↓ Inbox > lists the core entries in tabs with counts, opens the detail pane, and acts through core intents
+   ↓ Inbox > snoozes through the core and states the return time the core computed, the same on Home (I11)
+   ↓ Inbox > derives completion toasts from the core read status: warn when partial, ok when complete (I4)
+   ↓ Inbox > a fresh tenant shows first read pending and an empty Inbox, never sample data (I12)
+   ↓ Inbox > renders the switch guard from the refusal payload and re-dispatches with the chosen resolution (I1)
+   ↓ Inbox > retires an unconfirmed archive resolution with its native refusal, even in the same context
+   ↓ Inbox > retires an unconfirmed discard resolution with its native refusal, even in the same context
+   ↓ Inbox > never surfaces a late lost archive receipt after the source context retires
+   ↓ Inbox > never surfaces a late lost discard receipt after the source context retires
+   ↓ Inbox > also retires a late unconfirmed initial tenant selection with the context it was asked from
+   × Inbox > retires a captured-null initial selection (unknown-first) after another context appears 132ms
+     → expected [ { id: 1, …(3) } ] to have a length of +0 but got 1
+   × Inbox > retires a captured-null initial selection (snapshot-first) after another context appears 166ms
+     → expected [ { id: 2, …(3) } ] to have a length of +0 but got 1
+   ↓ Inbox > announces a snooze once, from the core receipt: never an old hold after a switch or a reread (I11)
+   ↓ Inbox > reports each action outcome for the tenant or item it names: refusal and failure as warn toasts, an unconfirmed delivery with Retry, an admitted recheck as info (DESIGN-V2 §7)
+   ↓ Inbox > a failed first read is failed, never pending or an all-clear; a failed refresh labels the kept read as older (I4)
+   ↓ Inbox > an arrival and an unconfirmed item action belong to their tenant: the next tenant inherits neither, and a retired context cannot be revived (I2)
+   ↓ Inbox > Home never claims an all-clear from unread data: in-progress, failed and partial reads are named (I4)
+   ↓ Inbox > toasts that speak for a tenant are retired on leaving it, even under Reduce Motion (I2)
+   ↓ Inbox > a notification for a scope that retired before it arrived is never surfaced: late refusal, lost delivery, late recheck (I2)
+   ↓ Inbox > a first product-only recheck refused for a role is a settled attempt, announced for when it settled, never first read pending (I4)
+   ↓ Inbox > lists the entries the core supplies before any read (a setup warning) with every action, while a truly empty fresh tenant shows pending (I12)
+   ↓ Inbox > a healthy empty read older than ten minutes is a gap, not an all-clear, on Home and in the Inbox (C12, I4)
+   ↓ Inbox > keeps the Inbox tab and item per tenant across a switch round trip (I2)
+   ↓ Inbox > draws the list card with the filter tabs and counts, rows with the severity word, product, source and time, and the footer naming the read (C37)
+   ↓ Inbox > fills the detail card from a row: severity, product and source, the title, the body, the facts grid, the entry’s own action and the holds; Why this matters only while the calls are shown (C37)
+   ↓ Inbox > offers Open role issue in the empty state when a product needs a role, opening that product in Administration (C37)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/v2/inbox/inbox.test.tsx > Inbox > retires a captured-null initial selection (unknown-first) after another context appears
+AssertionError: expected [ { id: 1, …(3) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/v2/inbox/inbox.test.tsx:211:54
+    209|             await new Promise((resolve) => setTimeout(resolve, 50))
+    210|         }
+    211|         expect(useShellStore.getState().unconfirmed).toHaveLength(0)
+       |                                                      ^
+    212|         expect(screen.queryByRole('button', { name: 'Retry' })).toBeNu…
+    213|         // The client's bounded same-request resend has settled by now.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/v2/inbox/inbox.test.tsx > Inbox > retires a captured-null initial selection (snapshot-first) after another context appears
+AssertionError: expected [ { id: 2, …(3) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/v2/inbox/inbox.test.tsx:211:54
+    209|             await new Promise((resolve) => setTimeout(resolve, 50))
+    210|         }
+    211|         expect(useShellStore.getState().unconfirmed).toHaveLength(0)
+       |                                                      ^
+    212|         expect(screen.queryByRole('button', { name: 'Retry' })).toBeNu…
+    213|         // The client's bounded same-request resend has settled by now.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 24 skipped (26)
+   Start at  04:36:36
+   Duration  1.83s (transform 832ms, setup 49ms, collect 1.25s, tests 299ms, environment 114ms, prepare 25ms)
+
+undefined
+/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.config.ts src/v2/inbox/inbox.test.tsx -t captured-null

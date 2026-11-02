@@ -11,7 +11,7 @@ import { HOME_COPY, SHELL_COPY, SNOOZE_COPY } from './copy'
 import { readLine } from './home'
 import { Home } from './home'
 import { Palette } from './palette'
-import { useShellStore } from './store'
+import { unconfirmedInContext, useShellStore } from './store'
 import { SwitchGuard } from './switch-guard'
 import { TenantSwitcher } from './tenant-switcher'
 import { Toasts } from './toasts'
@@ -83,8 +83,8 @@ export function V2Shell(props: V2ShellProps) {
     const adminNavOpen = useShellStore((s) => s.adminNavOpen)
     const setAdminNav = useShellStore((s) => s.setAdminNav)
     const unconfirmedAll = useShellStore((s) => s.unconfirmed)
-    // Only deliveries bound to the shown context, or to none (I2).
-    const unconfirmed = unconfirmedAll.filter((u) => u.context === null || u.context === (snapshot.active?.context ?? null))
+    // A captured null switch source is a scope too; only truly unbound actions survive (I2).
+    const unconfirmed = unconfirmedAll.filter((u) => unconfirmedInContext(u, snapshot.active?.context ?? null))
     const clearUnconfirmed = useShellStore((s) => s.clearUnconfirmed)
     const arrival = useShellStore((s) => s.arrival)
     const modalOpen = useModalsOpen()

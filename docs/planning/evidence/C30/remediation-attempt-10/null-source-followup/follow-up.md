@@ -1,0 +1,7 @@
+# Captured-null initial selection follow-up
+
+The supplementary root advisory was independently confirmed. Deleting the active tenant can leave onboarding Done, remaining selectable tenants and active:null. An uncertain initial SelectTenant captured null, but null was treated as globally unbound during insertion, retirement and rendering. It could therefore offer stale Retry after later B/C contexts appeared. Native refusal tokens already protect destructive resolution; this is an additional renderer navigation edge.
+
+One shared scope predicate now treats SelectTenant null as the captured absence of a context, comparing exactly. Genuinely unbound actions retain their prior behavior; normal refusal toasts and native contracts are unchanged. Both real App/DesktopClient transport orderings are covered: unknown delivery before B snapshot, and B snapshot before unknown delivery. No Retry survives B/C and retirement never dispatches the old destination. The client bounded same-request resend is distinct from explicit Retry and settles before the no-new-dispatch assertion.
+
+Final tests fail twice against original G5 product source with the exact stale-delivery assertion; after the fix the entire renderer suite passes550/550 and typecheck exits0. Intermediate mistakes/failures remain in raw logs. G5 all19native/C43full24/48/currentC30p95 25.714625ms/audit04 proof is archived immutable. These results do not transfer to changed renderer bytes; a fresh G6 generation, checks and actual reviews remain required. No live service, real credential, push or release.

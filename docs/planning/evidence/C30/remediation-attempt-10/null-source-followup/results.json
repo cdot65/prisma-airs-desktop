@@ -1,0 +1,32 @@
+{
+  "scope": "Supplementary root advisory independently reproduced; captured-null SelectTenant source must compare exactly, unlike unbound Navigation.",
+  "actual": {
+    "final_regressions_against_original_G5": "2failed, both retain1stale delivery; exit1",
+    "corrected_full_renderer": "550/550;32files;exit0",
+    "typecheck_exit": 0,
+    "intermediate_full_failures": [
+      "37failed/513passed: accidental toast check replacement, corrected",
+      "2failed/548passed: test counted bounded same-request resend, corrected post-settlement assertion; no product regression"
+    ]
+  },
+  "logs_sha256": {
+    "C30-null-source-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "C30-null-source-before-fix.log": "57542090bc370fecafe117a1ceab488a282b61d91c56b408a9f3e0c7800e05e5",
+    "C30-null-source-after-fix-full-02.log": "f2b5eefa6751b52406d7ca8968ed62312f1d5cfb7137b2b9319361ae65408bff",
+    "C30-null-source-after-fix-full-03.log": "97401bcb86ec7b777dc22272e5bb3d3f1ffaf3868bd78c60598397415354837f",
+    "C30-null-source-final-regressions-original-G5.log": "2a8140ae962caf54925da0d3541ff928d6b733a9a98df274ad10ef8d840fc603",
+    "C30-null-source-after-fix-full.log": "b3e9a9286d5a5a4fd9efd104ad9e9616f92b83942387e25e502aa160406ab31a"
+  },
+  "source_sha256": {
+    "apps/desktop/src/v2/store.ts": "87571c2f4e5dc31ca3d8f60ed48e2c231291ae56c80a2dd13191e49209e70344",
+    "apps/desktop/src/v2/v2-shell.tsx": "37160f5b4c3d17ad85ce731aa33357f7c65f2db8f96fc965084735d2fe5f1a80",
+    "apps/desktop/src/v2/inbox/inbox.test.tsx": "033bc4172d389437520b874793aa7289211fa7d58efca87ee3145964f3ddde79"
+  },
+  "pending": [
+    "freshG6prepare/native/performance",
+    "fresh18checks06",
+    "independentC29/C30/C31/C32",
+    "P09phase9"
+  ],
+  "live_calls": 0
+}

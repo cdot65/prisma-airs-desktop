@@ -60,6 +60,11 @@ export interface Unconfirmed {
     context: string | null
 }
 
+/** An initial tenant selection captures even the absence of an active context. */
+export function unconfirmedInContext(delivery: Pick<Unconfirmed, 'intent' | 'context'>, context: string | null): boolean {
+    return delivery.context === context || (delivery.context === null && delivery.intent.kind !== 'selectTenant')
+}
+
 function switchResolution(intent: Intent) {
     return intent.kind === 'selectTenant' || intent.kind === 'completeTenantSetup' ? intent.resolution : null
 }
@@ -162,7 +167,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
             scope: { tenant, context, switchReview },
             // Leaving a scope retires what spoke for it, however late it would have arrived.
             toasts: s.toasts.filter((t) => (t.tenant === null || t.tenant === tenant) && (t.context === null || t.context === context)),
-            unconfirmed: s.unconfirmed.filter((u) => (u.context === null || u.context === context) && (!switchResolution(u.intent) || switchResolution(u.intent)?.review === switchReview)),
+            unconfirmed: s.unconfirmed.filter((u) => unconfirmedInContext(u, context) && (!switchResolution(u.intent) || switchResolution(u.intent)?.review === switchReview)),
             arrival: s.arrival && s.arrival.tenant !== tenant ? null : s.arrival,
         })),
     paletteOpen: false,
@@ -202,14 +207,14 @@ export const useShellStore = create<ShellStore>((set, get) => ({
     addUnconfirmed: (what, intent, context = deliveryContext(intent)) => {
         const id = nextToast++
         // A delivery bound to a context the shell no longer shows is moot: never surfaced (I2).
-        if (context !== null && context !== get().scope.context) return id
+        if (!unconfirmedInContext({ intent, context }, get().scope.context)) return id
         const resolution = switchResolution(intent)
         if (resolution && resolution.review !== get().scope.switchReview) return id
         set((s) => ({ unconfirmed: [...s.unconfirmed, { id, what, intent, context }] }))
         return id
     },
     scopeArrival: (tenant) => set((s) => (s.arrival && s.arrival.tenant !== tenant ? { arrival: null } : {})),
-    retireUnconfirmed: (context) => set((s) => ({ unconfirmed: s.unconfirmed.filter((u) => u.context === null || u.context === context) })),
+    retireUnconfirmed: (context) => set((s) => ({ unconfirmed: s.unconfirmed.filter((u) => unconfirmedInContext(u, context)) })),
     clearUnconfirmed: (id) => set((s) => ({ unconfirmed: s.unconfirmed.filter((u) => u.id !== id) })),
     openPalette: () => set({ paletteOpen: true, switcherOpen: false }),
     closePalette: () => set({ paletteOpen: false }),
