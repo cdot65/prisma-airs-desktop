@@ -14,7 +14,7 @@ use tokio::time::Instant;
 
 use super::gateway_domain::SetupGateway;
 use super::{CredentialClass, MAX_TENANTS, Refusal, ScanCapability, State, Tenant};
-use crate::context::ContextRef;
+use crate::context::{ContextRef, WorkspaceRef};
 use crate::features::{
     OnboardingState, PackView, ProductId, SetupMode, SetupView, VerifyLine, VerifyState,
     VerifyStep, VerifyView, VerifyWarning,
@@ -58,6 +58,7 @@ pub(super) struct Completed {
     pub tenant: TenantId,
     pub first_run: bool,
     pub packs: Vec<CaseProduct>,
+    pub retired_workspace: Option<WorkspaceRef>,
 }
 
 const MAX_WARNINGS: usize = 8;
@@ -845,9 +846,9 @@ impl State {
         self.completable_setup(context, &packs)?;
         let setup = self.setup_for(context)?;
         let view = Self::verify_view(setup).ok_or(Refusal::InvalidInput)?;
-        // The draft's authority ends with it: the tenant gets a fresh active
-        // context and its own binding.
-        self.retire_setup_authority();
+        // Stage only Data before persistence. Authority retirement is
+        // irreversible and waits for the handler's successful save.
+        let retired_workspace = self.setup_workspace_reference();
         let Some(mut setup) = self.data.setup.take() else {
             return Err(Refusal::StaleContext);
         };
@@ -878,6 +879,7 @@ impl State {
             tenant: id,
             first_run,
             packs,
+            retired_workspace,
         })
     }
 
@@ -912,7 +914,16 @@ impl State {
         }) else {
             return;
         };
-        self.retire_management_binding(&context);
+        self.retire_setup_context(&context, reference.as_ref());
+    }
+
+    /// Retire a committed draft only after its state replacement succeeded.
+    pub(super) fn retire_setup_context(
+        &mut self,
+        context: &ContextRef,
+        reference: Option<&WorkspaceRef>,
+    ) {
+        self.retire_management_binding(context);
         let now = Instant::now();
         let mut starts = self.operations.retire_context(context.as_str(), now);
         if let Some(reference) = reference {

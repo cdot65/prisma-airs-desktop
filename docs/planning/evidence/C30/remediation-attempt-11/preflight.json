@@ -1,0 +1,38 @@
+{
+  "review": "docs/planning/reviews/C30/attempt-11/verdict-returned.json",
+  "actual_review_scores": {
+    "architecture": 9,
+    "behavior": 8,
+    "authority_security": 9,
+    "validation": 8,
+    "overall": 8
+  },
+  "d034_accepted": true,
+  "accepted_findings": [
+    "R1",
+    "E1"
+  ],
+  "actual_results": {
+    "original_G6_four_fault_regressions": "0passed/4failed exit101; allfail exact native-guard preservation assertion",
+    "corrected_four_fault_regressions": "4passed/0failed exit0",
+    "strict_clippy": 0,
+    "format_check": 0,
+    "harness_tools": "22/22PASS",
+    "onboarding": "10/10PASS",
+    "setup_reads": "5/5PASS"
+  },
+  "logs_sha256": {
+    "C30-save-failure-fix-01.log": "6ce3de0c52cd3f7d08da5378c777414c3464ebedae2c994c1d8dc5ad1df9e0dc",
+    "C30-save-failure-original-G6.log": "09155fa7a560ca1fb9de2fd70092b1ff051fa75778d4c3dcbc31ec9f175f133a",
+    "C30-store-order-harness-setup-01.log": "9e0fbc77dd36da3856f1a3a05db1b2d548047fd55792726441427a0c4dbd765b",
+    "C30-store-order-clippy-01.log": "2f4f616dca75338817f7d380bf494cdcdcf92515142d8fe7525ab358ba031f4d",
+    "C30-store-order-fmt-01.log": "5fcb04dce61431e03194e48dc201c4f32c352e4a96d055e73ed0191c5364579a"
+  },
+  "current_source_sha256": {
+    "crates/desktop-core/src/authority.rs": "629dec32b59a6b674aa1442ece0e3f44d9b8ab7ba1efd2b5ae1671d9b35899ab",
+    "crates/desktop-core/src/authority/inbox_domain.rs": "50841eb6f86cdf75ccc18a6a294d73c0caf4ed52616085f63cabfa55c3bf4038",
+    "crates/desktop-core/src/authority/setup_domain.rs": "882ff459974eea6aa7cd59198f23973754394dc4a7b017848fbee00e8e2c9cb3",
+    "crates/desktop-core/tests/harness_tools/main.rs": "ad88285ee7ae6b2e3ee1e7828565f50659423fd27483b10f3511eb81a18c287f"
+  },
+  "limits": "Preflight only, not fresh native/check/independent review qualification. G7/check07/C29attempt10/C30attempt12 and later full9 member/phase gates pending. Zero live calls."
+}

@@ -18,6 +18,7 @@ use crate::context::{ContextRef, ReviewId};
 use crate::features::{FeatureId, ProductId, SetupWarning};
 use crate::management::{ManagementFailure, ManagementResource};
 use crate::observation::{Fact, InboxDestination, InboxItem, Tone};
+use crate::runtime::OperationId;
 use crate::tenants::TenantId;
 
 /// How a blocked switch is resolved (I1): the pending conversation is
@@ -33,6 +34,25 @@ pub enum SwitchResolution {
         context: ContextRef,
         review: ReviewId,
     },
+}
+
+/// A validated resolution held only inside the synchronous admission lock.
+/// Persist the tenant transition before consuming it; the old context and
+/// workspace remain bound until resolution and context retirement finish.
+pub(super) enum GuardedSwitch {
+    Archive(OperationId),
+    Discard(OperationId),
+}
+
+impl GuardedSwitch {
+    pub(super) fn resolve(self, state: &mut State) -> Result<(), Refusal> {
+        match self {
+            Self::Archive(id) => state.end_harness(&id)?,
+            Self::Discard(id) => state.discard_harness(&id)?,
+        }
+        state.switch_blocked = None;
+        Ok(())
+    }
 }
 
 /// Where an Inbox entry came from.
@@ -358,7 +378,7 @@ impl State {
         to: &TenantId,
         resolution: Option<SwitchResolution>,
         target_context: Option<&ContextRef>,
-    ) -> Result<(), Refusal> {
+    ) -> Result<Option<GuardedSwitch>, Refusal> {
         if let Some(resolution) = resolution {
             let (context, review) = match &resolution {
                 SwitchResolution::Archive { context, review }
@@ -377,16 +397,17 @@ impl State {
                 return Err(Refusal::StaleContext);
             }
             let id = self.live_bound_harness().ok_or(Refusal::StaleContext)?;
-            match resolution {
-                SwitchResolution::Archive { .. } => self.end_harness(&id)?,
-                SwitchResolution::Discard { .. } => self.discard_harness(&id)?,
-            }
-            self.switch_blocked = None;
-            return Ok(());
+            // Validation alone changes no conversation, guard or history.
+            // A definite store refusal can restore Data and leave all of
+            // this unresolved work exactly as it was.
+            return Ok(Some(match resolution {
+                SwitchResolution::Archive { .. } => GuardedSwitch::Archive(id),
+                SwitchResolution::Discard { .. } => GuardedSwitch::Discard(id),
+            }));
         }
         let Some(pending) = self.pending_decision() else {
             self.switch_blocked = None;
-            return Ok(());
+            return Ok(None);
         };
         self.switch_blocked = Some(SwitchBlocked {
             to: to.clone(),

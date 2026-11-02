@@ -3748,15 +3748,22 @@ fn admit(
             // Completion makes the new tenant active: the one guarded switch
             // path (I1). A pending Harness decision refuses it, with the
             // draft, the active tenant and the decision all untouched.
-            if let Err(refusal) = state.guard_switch(&draft, resolution, Some(&context)) {
-                state.changed();
-                return Err(refusal);
-            }
-            effects.extend(state.take_history_jobs());
+            let resolution = match state.guard_switch(&draft, resolution, Some(&context)) {
+                Ok(resolution) => resolution,
+                Err(refusal) => {
+                    state.changed();
+                    return Err(refusal);
+                }
+            };
             let before = state.data.clone();
             let recorded_secs = wall_secs(state.clock_offset);
             let done = state.complete_setup(&context, packs, recorded_secs)?;
             state.save_with(&before)?;
+            if let Some(resolution) = resolution {
+                resolution.resolve(state)?;
+            }
+            effects.extend(state.take_history_jobs());
+            state.retire_setup_context(&context, done.retired_workspace.as_ref());
             effects.push(Effect::Start(state.reissue_context()));
             effects.push(Effect::Start(state.take_gateway_starts()));
             if !done.packs.is_empty() {
@@ -3830,14 +3837,20 @@ fn admit(
             }
             // The one switch path (I1): a pending Harness decision refuses
             // it until the operator resolves the conversation.
-            if let Err(refusal) = state.guard_switch(&tenant, resolution, None) {
-                state.changed();
-                return Err(refusal);
-            }
-            effects.extend(state.take_history_jobs());
+            let resolution = match state.guard_switch(&tenant, resolution, None) {
+                Ok(resolution) => resolution,
+                Err(refusal) => {
+                    state.changed();
+                    return Err(refusal);
+                }
+            };
             let before = state.data.clone();
             state.data.active = Some(tenant);
             state.save_with(&before)?;
+            if let Some(resolution) = resolution {
+                resolution.resolve(state)?;
+            }
+            effects.extend(state.take_history_jobs());
             effects.push(Effect::Start(state.reissue_context()));
             // The new tenant's Home is what a switch shows (C30, shell.md).
             if state.ui_variant() == features::UiVariant::V2 {

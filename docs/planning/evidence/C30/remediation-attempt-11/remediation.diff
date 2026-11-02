@@ -1,0 +1,356 @@
+diff --git a/crates/desktop-core/src/authority.rs b/crates/desktop-core/src/authority.rs
+index 0d865ff6..cd230256 100644
+--- a/crates/desktop-core/src/authority.rs
++++ b/crates/desktop-core/src/authority.rs
+@@ -3748,15 +3748,22 @@ fn admit(
+             // Completion makes the new tenant active: the one guarded switch
+             // path (I1). A pending Harness decision refuses it, with the
+             // draft, the active tenant and the decision all untouched.
+-            if let Err(refusal) = state.guard_switch(&draft, resolution, Some(&context)) {
+-                state.changed();
+-                return Err(refusal);
+-            }
+-            effects.extend(state.take_history_jobs());
++            let resolution = match state.guard_switch(&draft, resolution, Some(&context)) {
++                Ok(resolution) => resolution,
++                Err(refusal) => {
++                    state.changed();
++                    return Err(refusal);
++                }
++            };
+             let before = state.data.clone();
+             let recorded_secs = wall_secs(state.clock_offset);
+             let done = state.complete_setup(&context, packs, recorded_secs)?;
+             state.save_with(&before)?;
++            if let Some(resolution) = resolution {
++                resolution.resolve(state)?;
++            }
++            effects.extend(state.take_history_jobs());
++            state.retire_setup_context(&context, done.retired_workspace.as_ref());
+             effects.push(Effect::Start(state.reissue_context()));
+             effects.push(Effect::Start(state.take_gateway_starts()));
+             if !done.packs.is_empty() {
+@@ -3830,14 +3837,20 @@ fn admit(
+             }
+             // The one switch path (I1): a pending Harness decision refuses
+             // it until the operator resolves the conversation.
+-            if let Err(refusal) = state.guard_switch(&tenant, resolution, None) {
+-                state.changed();
+-                return Err(refusal);
+-            }
+-            effects.extend(state.take_history_jobs());
++            let resolution = match state.guard_switch(&tenant, resolution, None) {
++                Ok(resolution) => resolution,
++                Err(refusal) => {
++                    state.changed();
++                    return Err(refusal);
++                }
++            };
+             let before = state.data.clone();
+             state.data.active = Some(tenant);
+             state.save_with(&before)?;
++            if let Some(resolution) = resolution {
++                resolution.resolve(state)?;
++            }
++            effects.extend(state.take_history_jobs());
+             effects.push(Effect::Start(state.reissue_context()));
+             // The new tenant's Home is what a switch shows (C30, shell.md).
+             if state.ui_variant() == features::UiVariant::V2 {
+diff --git a/crates/desktop-core/src/authority/inbox_domain.rs b/crates/desktop-core/src/authority/inbox_domain.rs
+index 1f2facd6..6c103d8d 100644
+--- a/crates/desktop-core/src/authority/inbox_domain.rs
++++ b/crates/desktop-core/src/authority/inbox_domain.rs
+@@ -18,6 +18,7 @@ use crate::context::{ContextRef, ReviewId};
+ use crate::features::{FeatureId, ProductId, SetupWarning};
+ use crate::management::{ManagementFailure, ManagementResource};
+ use crate::observation::{Fact, InboxDestination, InboxItem, Tone};
++use crate::runtime::OperationId;
+ use crate::tenants::TenantId;
+ 
+ /// How a blocked switch is resolved (I1): the pending conversation is
+@@ -35,6 +36,25 @@ pub enum SwitchResolution {
+     },
+ }
+ 
++/// A validated resolution held only inside the synchronous admission lock.
++/// Persist the tenant transition before consuming it; the old context and
++/// workspace remain bound until resolution and context retirement finish.
++pub(super) enum GuardedSwitch {
++    Archive(OperationId),
++    Discard(OperationId),
++}
++
++impl GuardedSwitch {
++    pub(super) fn resolve(self, state: &mut State) -> Result<(), Refusal> {
++        match self {
++            Self::Archive(id) => state.end_harness(&id)?,
++            Self::Discard(id) => state.discard_harness(&id)?,
++        }
++        state.switch_blocked = None;
++        Ok(())
++    }
++}
++
+ /// Where an Inbox entry came from.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+ #[serde(rename_all = "camelCase")]
+@@ -358,7 +378,7 @@ impl State {
+         to: &TenantId,
+         resolution: Option<SwitchResolution>,
+         target_context: Option<&ContextRef>,
+-    ) -> Result<(), Refusal> {
++    ) -> Result<Option<GuardedSwitch>, Refusal> {
+         if let Some(resolution) = resolution {
+             let (context, review) = match &resolution {
+                 SwitchResolution::Archive { context, review }
+@@ -377,16 +397,17 @@ impl State {
+                 return Err(Refusal::StaleContext);
+             }
+             let id = self.live_bound_harness().ok_or(Refusal::StaleContext)?;
+-            match resolution {
+-                SwitchResolution::Archive { .. } => self.end_harness(&id)?,
+-                SwitchResolution::Discard { .. } => self.discard_harness(&id)?,
+-            }
+-            self.switch_blocked = None;
+-            return Ok(());
++            // Validation alone changes no conversation, guard or history.
++            // A definite store refusal can restore Data and leave all of
++            // this unresolved work exactly as it was.
++            return Ok(Some(match resolution {
++                SwitchResolution::Archive { .. } => GuardedSwitch::Archive(id),
++                SwitchResolution::Discard { .. } => GuardedSwitch::Discard(id),
++            }));
+         }
+         let Some(pending) = self.pending_decision() else {
+             self.switch_blocked = None;
+-            return Ok(());
++            return Ok(None);
+         };
+         self.switch_blocked = Some(SwitchBlocked {
+             to: to.clone(),
+diff --git a/crates/desktop-core/src/authority/setup_domain.rs b/crates/desktop-core/src/authority/setup_domain.rs
+index a2ca1271..f4bdc9b1 100644
+--- a/crates/desktop-core/src/authority/setup_domain.rs
++++ b/crates/desktop-core/src/authority/setup_domain.rs
+@@ -14,7 +14,7 @@ use tokio::time::Instant;
+ 
+ use super::gateway_domain::SetupGateway;
+ use super::{CredentialClass, MAX_TENANTS, Refusal, ScanCapability, State, Tenant};
+-use crate::context::ContextRef;
++use crate::context::{ContextRef, WorkspaceRef};
+ use crate::features::{
+     OnboardingState, PackView, ProductId, SetupMode, SetupView, VerifyLine, VerifyState,
+     VerifyStep, VerifyView, VerifyWarning,
+@@ -58,6 +58,7 @@ pub(super) struct Completed {
+     pub tenant: TenantId,
+     pub first_run: bool,
+     pub packs: Vec<CaseProduct>,
++    pub retired_workspace: Option<WorkspaceRef>,
+ }
+ 
+ const MAX_WARNINGS: usize = 8;
+@@ -845,9 +846,9 @@ impl State {
+         self.completable_setup(context, &packs)?;
+         let setup = self.setup_for(context)?;
+         let view = Self::verify_view(setup).ok_or(Refusal::InvalidInput)?;
+-        // The draft's authority ends with it: the tenant gets a fresh active
+-        // context and its own binding.
+-        self.retire_setup_authority();
++        // Stage only Data before persistence. Authority retirement is
++        // irreversible and waits for the handler's successful save.
++        let retired_workspace = self.setup_workspace_reference();
+         let Some(mut setup) = self.data.setup.take() else {
+             return Err(Refusal::StaleContext);
+         };
+@@ -878,6 +879,7 @@ impl State {
+             tenant: id,
+             first_run,
+             packs,
++            retired_workspace,
+         })
+     }
+ 
+@@ -912,7 +914,16 @@ impl State {
+         }) else {
+             return;
+         };
+-        self.retire_management_binding(&context);
++        self.retire_setup_context(&context, reference.as_ref());
++    }
++
++    /// Retire a committed draft only after its state replacement succeeded.
++    pub(super) fn retire_setup_context(
++        &mut self,
++        context: &ContextRef,
++        reference: Option<&WorkspaceRef>,
++    ) {
++        self.retire_management_binding(context);
+         let now = Instant::now();
+         let mut starts = self.operations.retire_context(context.as_str(), now);
+         if let Some(reference) = reference {
+diff --git a/crates/desktop-core/tests/harness_tools/main.rs b/crates/desktop-core/tests/harness_tools/main.rs
+index e9897f84..ed22c779 100644
+--- a/crates/desktop-core/tests/harness_tools/main.rs
++++ b/crates/desktop-core/tests/harness_tools/main.rs
+@@ -1974,3 +1974,161 @@ async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
+     );
+     std::fs::remove_dir_all(&dir).expect("cleanup");
+ }
++
++/// C30 attempt11 R1/E1: a refused state save authorizes no destructive
++/// resolution. The same native refusal remains actionable after recovery.
++async fn guarded_resolution_save_failure(completion: bool, kind: &str) {
++    let mut desk = desk().await;
++    let dir = project();
++    choose_project(&mut desk, &dir).await;
++    let id = ready(&mut desk).await;
++    desk.say(&id, "Say hello.").await.expect("sent");
++    desk.answered().await;
++    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
++    let history = desk.conversation()["historyId"]
++        .as_str()
++        .expect("history")
++        .to_owned();
++    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
++    desk.say(&id, "List the files.")
++        .await
++        .expect("pending turn");
++    answered_with(&mut desk, |c| {
++        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
++    })
++    .await;
++    let origin = desk.json()["tenants"][0]["origin"]
++        .as_str()
++        .expect("origin")
++        .to_owned();
++    let intent = if completion {
++        desk.send(json!({"kind":"beginTenantSetup","mode":"add","profile":{"label":"Tenant B","tsgId":"1234567890","destination":{"kind":"custom","origin":origin}}})).await.expect("draft");
++        let draft = desk.json()["setup"]["context"]
++            .as_str()
++            .expect("draft context")
++            .to_owned();
++        desk.send(json!({"kind":"verifyTenantSetup","context":draft}))
++            .await
++            .expect("verify");
++        assert!(settle(|| desk.json()["setup"]["verify"]["done"] == true).await);
++        json!({"kind":"completeTenantSetup","context":draft,"packs":[]})
++    } else {
++        desk.send(json!({"kind":"createTenant","profile":{"label":"Tenant B","tsgId":"1234567890","destination":{"kind":"custom","origin":origin}}})).await.expect("B");
++        let b = desk.json()["tenants"]
++            .as_array()
++            .expect("tenants")
++            .iter()
++            .find(|t| t["label"] == "Tenant B")
++            .expect("B")["id"]
++            .clone();
++        json!({"kind":"selectTenant","tenant":b})
++    };
++    let resolved = reviewed_switch(&mut desk, intent, kind).await;
++    let before = desk.json();
++    let stored = serde_json::to_value(desk.adapters.store.saved()).expect("stored document");
++    let protected: Vec<_> = files_under(&desk.history_root)
++        .into_iter()
++        .filter(|f| f.to_string_lossy().contains(&history))
++        .map(|f| {
++            let bytes = std::fs::read(&f).expect("protected transcript");
++            (f, bytes)
++        })
++        .collect();
++    assert!(
++        !protected.is_empty(),
++        "the completed first turn is protected on disk"
++    );
++    desk.adapters.store.fail_saves(true);
++    assert_eq!(
++        desk.send(resolved.clone()).await,
++        Err(desktop_core::Refusal::DeniedStore)
++    );
++    let refused = desk.json();
++    assert_eq!(
++        refused["active"], before["active"],
++        "the source remains active"
++    );
++    assert_eq!(
++        refused["switchBlocked"], before["switchBlocked"],
++        "save refusal preserves the exact native guard"
++    );
++    assert_eq!(
++        refused["setup"], before["setup"],
++        "the draft remains actionable"
++    );
++    for field in ["id", "phase", "approvals", "historyId", "savedAt"] {
++        assert_eq!(
++            refused["harness"]["conversation"][field], before["harness"]["conversation"][field],
++            "pending conversation {field} unchanged"
++        );
++    }
++    assert_eq!(
++        serde_json::to_value(desk.adapters.store.saved()).expect("saved"),
++        stored
++    );
++    for (path, bytes) in &protected {
++        assert_eq!(&std::fs::read(path).expect("still protected"), bytes);
++    }
++    // Recovery uses the same refusal binding, with a new explicit delivery.
++    desk.adapters.store.fail_saves(false);
++    desk.send(resolved.clone())
++        .await
++        .expect("one successful resolution after storage recovery");
++    assert_ne!(desk.json()["active"]["tenant"], before["active"]["tenant"]);
++    assert!(desk.json()["switchBlocked"].is_null());
++    if completion {
++        assert!(desk.json()["setup"].is_null());
++    }
++    assert_eq!(
++        desk.send(resolved).await,
++        Err(desktop_core::Refusal::StaleContext),
++        "a consumed resolution cannot run again"
++    );
++    desk.send(json!({"kind":"selectTenant","tenant":before["active"]["tenant"]}))
++        .await
++        .expect("back to source");
++    assert!(
++        settle_for(30, || {
++            let c = desk.conversation();
++            c.is_null() || c["phase"] == "ended"
++        })
++        .await
++    );
++    let mut listed = history_ids(&mut desk).await;
++    for _ in 0..60 {
++        if listed.contains(&history) == (kind == "archive") {
++            break;
++        }
++        tokio::time::sleep(Duration::from_millis(100)).await;
++        listed = history_ids(&mut desk).await;
++    }
++    assert_eq!(
++        listed.contains(&history),
++        kind == "archive",
++        "successful recovery honors the chosen history outcome"
++    );
++    assert_eq!(
++        files_under(&desk.history_root)
++            .iter()
++            .any(|f| f.to_string_lossy().contains(&history)),
++        kind == "archive"
++    );
++    std::fs::remove_dir_all(&dir).expect("cleanup");
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn select_archive_resolution_save_failure_preserves_pending_work() {
++    guarded_resolution_save_failure(false, "archive").await;
++}
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn select_discard_resolution_save_failure_preserves_pending_work() {
++    guarded_resolution_save_failure(false, "discard").await;
++}
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn setup_archive_resolution_save_failure_preserves_pending_work() {
++    guarded_resolution_save_failure(true, "archive").await;
++}
++#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
++async fn setup_discard_resolution_save_failure_preserves_pending_work() {
++    guarded_resolution_save_failure(true, "discard").await;
++}

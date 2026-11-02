@@ -1,0 +1,109 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C31",
+  "recorded_utc": "2026-11-02T05:36:23Z",
+  "method": "cua",
+  "performed_by": "Claude Code driving the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c31.py",
+  "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop v2 Fixture.app",
+    "identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+    "executable_sha256": "fd51e81755a555f0daeee52168f134254c569e84b8ae82f684c3f3f839f83d56",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C31-N01",
+      "description": "Administration renders the core's inventory: Agentic Identity and Endpoint Security show their gate and nothing else; each tab offers exactly its admitted actions with per-tab labels (Custom topics 'New topic\u2026', API keys 'New API key\u2026', no 'New application\u2026', an API key's 'Issue additional key\u2026', 'Regenerate\u2026' and 'Remove\u2026' but never 'Edit\u2026'); the Gateway tabs omit the removed Limits tab and its keys never offer 'Issue additional key\u2026' or 'Finish rotation\u2026'; Codebase scans is unavailable with its gate.",
+      "result": "fail",
+      "observation": "AIS/AES gates True; New topic\u2026 True; no New application\u2026 True; New API key\u2026 True; key actions ['Issue additional key\u2026', 'Regenerate\u2026', 'Remove\u2026']; Gateway tabs ['Overview', 'Playground', 'Security profiles', 'Custom topics', 'Applications', 'API keys', 'DLP', 'Deployment profiles', 'Overview', 'Workspaces', 'Routes', 'Providers', 'Guardrails', 'Keys', 'Integrations', 'Logs', 'MCP servers', 'Team A', 'Team B']; Gateway keys never offer a version False; Codebase scans unavailable True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C31/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/tree-admin-keys.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/admin-light-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/admin-dark-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/admin-dark-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/admin-light-200.png"
+      ]
+    },
+    {
+      "id": "C31-N02",
+      "description": "A custom topic edit opens the review sheet; Apply stays disabled until the typed name matches exactly (empty and wrong case refused); Apply opens the native confirmation titled for the topic; Return applies once; the applied panel says 'Live. The item was read back.'; Done closes the sheet.",
+      "result": "pass",
+      "observation": "review sheet True; Apply disabled empty True and wrong-case True, enabled on the exact name True; native confirmation True titled for Finance True; applied panel 'Live. The item was read back.' True; PUT writes 1; Done closed True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C31/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/tree-review-applied.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/review-applied-light-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/review-applied-dark-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/review-applied-dark-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/review-applied-light-200.png"
+      ]
+    },
+    {
+      "id": "C31-N03",
+      "description": "The staged Runtime key rotation: 'Issue additional key\u2026' reviewed with CREATE and confirmed natively issues one key and shows 'Additional key issued \u00b7 old key still active'; Reveal opens the host secret sheet with the issued key (never in the web view); Escape ends the review; the Inbox lists the distinct reminder; 'Finish rotation\u2026' resumes without any secret control; 'Application updated' records the local acknowledgement and opens the old key's removal review; its native Delete removes the key once and the panel reads 'Rotation complete \u00b7 old key removed' with both labelled timestamps.",
+      "result": "pass",
+      "observation": "additional key issued True with one POST True; Reveal opened the host sheet True showing the issued key True; Escape closed True; Inbox reminder True; Finish rotation\u2026 resumed True with no Reveal True; Application updated acknowledged True; old key removed through its review with one DELETE True \u2192 complete True; both labelled timestamps True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C31/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/tree-rotation-issued.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/tree-rotation-reminder.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/tree-rotation-complete.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/rotation-issued-light-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/rotation-issued-dark-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/rotation-issued-dark-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/rotation-issued-light-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/rotation-complete-light-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/rotation-complete-dark-100.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/rotation-complete-dark-200.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/rotation-complete-light-200.png"
+      ]
+    },
+    {
+      "id": "C31-N04",
+      "description": "The accessibility additions (DESIGN-V2 \u00a78) on the changed UI: the review sheet is the one topmost modal (the rail hidden beneath it) and Escape closes it with focus returned to the page; the rotation reminder leaves the Inbox once the old key is read back gone; Tab from a product header reaches its tabs; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Administration screen lies past the window's right edge; a focused review-sheet control shows its focus ring (pixels around it change against the unfocused capture); the applied result and the rotation's completion sit in polite status regions; with Reduce Motion on, the applied change's toast stays past 6 s until dismissed, and the system setting is restored.",
+      "result": "fail",
+      "observation": "rotation sheet topmost (rail hidden) True; Escape closed True returning focus to 'Administration' (True); reminder cleared after completion True; Tab from the Runtime header reached its tabs False; at 900\u00d7600 and 200% overflow light 0 px, dark 0 px; focus ring on the review sheet's Close 496 px changed (True); applied result in a status region True; rotation completion announced in the panel's status region True; Reduce Motion active True: the applied toast shown True, still present after 8 s True, dismissed True, setting restored True",
+      "evidence": [
+        "docs/planning/evidence/P09/native/cumulative/C31/native/observations.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/tree-reduce-motion-toast.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/tree-admin-min-200-light.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/tree-admin-min-200-dark.json",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/admin-min-200-light.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/admin-min-200-dark.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/review-ring-plain.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/review-ring-close.png",
+        "docs/planning/evidence/P09/native/cumulative/C31/native/captures/reduce-motion-toast.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the native confirmation and secret sheets are verified through the accessibility tree.",
+    "Changes run against the synthetic management endpoint (tools/native-acceptance/mgmt_server.py); the live topic review row is recorded separately under evidence/C31/live.",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "admin-dark-100.png",
+    "admin-dark-200.png",
+    "admin-light-100.png",
+    "admin-light-200.png",
+    "admin-min-200-dark.png",
+    "admin-min-200-light.png",
+    "reduce-motion-toast.png",
+    "review-applied-dark-100.png",
+    "review-applied-dark-200.png",
+    "review-applied-light-100.png",
+    "review-applied-light-200.png",
+    "review-ring-close.png",
+    "review-ring-plain.png",
+    "rotation-complete-dark-100.png",
+    "rotation-complete-dark-200.png",
+    "rotation-complete-light-100.png",
+    "rotation-complete-light-200.png",
+    "rotation-issued-dark-100.png",
+    "rotation-issued-dark-200.png",
+    "rotation-issued-light-100.png",
+    "rotation-issued-light-200.png"
+  ]
+}

@@ -1,0 +1,51 @@
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.49s
+     Running tests/harness_tools/main.rs (target/debug/deps/harness_tools-5a497df2126f0180)
+
+running 4 tests
+test select_archive_resolution_save_failure_preserves_pending_work ... FAILED
+test select_discard_resolution_save_failure_preserves_pending_work ... FAILED
+test setup_archive_resolution_save_failure_preserves_pending_work ... FAILED
+test setup_discard_resolution_save_failure_preserves_pending_work ... FAILED
+
+failures:
+
+---- select_archive_resolution_save_failure_preserves_pending_work stdout ----
+
+thread 'select_archive_resolution_save_failure_preserves_pending_work' (1508934) panicked at crates/desktop-core/tests/harness_tools/main.rs:2016:5:
+assertion `left == right` failed: save refusal preserves the exact native guard
+  left: Null
+ right: Object {"completion": Bool(false), "context": String("cx-baacdd3222bb4f2b7623b828"), "pending": Object {"conversation": String("op-2"), "decision": String("04c667fad5bd1c47a549893b")}, "review": String("rv-1379366f20346c08"), "targetContext": Null, "to": String("tn-f04cc2a6511a3175")}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- select_discard_resolution_save_failure_preserves_pending_work stdout ----
+
+thread 'select_discard_resolution_save_failure_preserves_pending_work' (1508935) panicked at crates/desktop-core/tests/harness_tools/main.rs:2016:5:
+assertion `left == right` failed: save refusal preserves the exact native guard
+  left: Null
+ right: Object {"completion": Bool(false), "context": String("cx-3be9b58a43e1d39ae6cd9230"), "pending": Object {"conversation": String("op-2"), "decision": String("c70c89c242369ea4dc270d17")}, "review": String("rv-4af2de32c4a5a712"), "targetContext": Null, "to": String("tn-5f3973a190c21bf1")}
+
+---- setup_archive_resolution_save_failure_preserves_pending_work stdout ----
+
+thread 'setup_archive_resolution_save_failure_preserves_pending_work' (1509198) panicked at crates/desktop-core/tests/harness_tools/main.rs:2016:5:
+assertion `left == right` failed: save refusal preserves the exact native guard
+  left: Null
+ right: Object {"completion": Bool(true), "context": String("cx-6ed79d9c007da4c0bea28f1a"), "pending": Object {"conversation": String("op-2"), "decision": String("ce54e5ce47c9ce174af6159e")}, "review": String("rv-896adff73c6ebc1a"), "targetContext": String("cx-c1115697302cf751daf2a21d"), "to": String("tn-ff8a4a74d85a8d43")}
+
+---- setup_discard_resolution_save_failure_preserves_pending_work stdout ----
+
+thread 'setup_discard_resolution_save_failure_preserves_pending_work' (1509203) panicked at crates/desktop-core/tests/harness_tools/main.rs:2016:5:
+assertion `left == right` failed: save refusal preserves the exact native guard
+  left: Null
+ right: Object {"completion": Bool(true), "context": String("cx-aa8f9819ac8048c0c8b82670"), "pending": Object {"conversation": String("op-2"), "decision": String("a0fedfd97baee48b14fc1b00")}, "review": String("rv-3023869f0f7a3faf"), "targetContext": String("cx-54d5b0b95a8733897cf694cd"), "to": String("tn-bbc37b1558bffe9b")}
+
+
+failures:
+    select_archive_resolution_save_failure_preserves_pending_work
+    select_discard_resolution_save_failure_preserves_pending_work
+    setup_archive_resolution_save_failure_preserves_pending_work
+    setup_discard_resolution_save_failure_preserves_pending_work
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 18 filtered out; finished in 3.64s
+
+error: test failed, to rerun pass `-p desktop-core --test harness_tools`

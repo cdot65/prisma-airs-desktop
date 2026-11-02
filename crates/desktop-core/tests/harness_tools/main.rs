@@ -1974,3 +1974,161 @@ async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
     );
     std::fs::remove_dir_all(&dir).expect("cleanup");
 }
+
+/// C30 attempt11 R1/E1: a refused state save authorizes no destructive
+/// resolution. The same native refusal remains actionable after recovery.
+async fn guarded_resolution_save_failure(completion: bool, kind: &str) {
+    let mut desk = desk().await;
+    let dir = project();
+    choose_project(&mut desk, &dir).await;
+    let id = ready(&mut desk).await;
+    desk.say(&id, "Say hello.").await.expect("sent");
+    desk.answered().await;
+    assert!(settle(|| !desk.conversation()["savedAt"].is_null()).await);
+    let history = desk.conversation()["historyId"]
+        .as_str()
+        .expect("history")
+        .to_owned();
+    tool(&desk, None, "exec_command", json!({"cmd": "ls"}));
+    desk.say(&id, "List the files.")
+        .await
+        .expect("pending turn");
+    answered_with(&mut desk, |c| {
+        c["approvals"].as_array().is_some_and(|a| !a.is_empty())
+    })
+    .await;
+    let origin = desk.json()["tenants"][0]["origin"]
+        .as_str()
+        .expect("origin")
+        .to_owned();
+    let intent = if completion {
+        desk.send(json!({"kind":"beginTenantSetup","mode":"add","profile":{"label":"Tenant B","tsgId":"1234567890","destination":{"kind":"custom","origin":origin}}})).await.expect("draft");
+        let draft = desk.json()["setup"]["context"]
+            .as_str()
+            .expect("draft context")
+            .to_owned();
+        desk.send(json!({"kind":"verifyTenantSetup","context":draft}))
+            .await
+            .expect("verify");
+        assert!(settle(|| desk.json()["setup"]["verify"]["done"] == true).await);
+        json!({"kind":"completeTenantSetup","context":draft,"packs":[]})
+    } else {
+        desk.send(json!({"kind":"createTenant","profile":{"label":"Tenant B","tsgId":"1234567890","destination":{"kind":"custom","origin":origin}}})).await.expect("B");
+        let b = desk.json()["tenants"]
+            .as_array()
+            .expect("tenants")
+            .iter()
+            .find(|t| t["label"] == "Tenant B")
+            .expect("B")["id"]
+            .clone();
+        json!({"kind":"selectTenant","tenant":b})
+    };
+    let resolved = reviewed_switch(&mut desk, intent, kind).await;
+    let before = desk.json();
+    let stored = serde_json::to_value(desk.adapters.store.saved()).expect("stored document");
+    let protected: Vec<_> = files_under(&desk.history_root)
+        .into_iter()
+        .filter(|f| f.to_string_lossy().contains(&history))
+        .map(|f| {
+            let bytes = std::fs::read(&f).expect("protected transcript");
+            (f, bytes)
+        })
+        .collect();
+    assert!(
+        !protected.is_empty(),
+        "the completed first turn is protected on disk"
+    );
+    desk.adapters.store.fail_saves(true);
+    assert_eq!(
+        desk.send(resolved.clone()).await,
+        Err(desktop_core::Refusal::DeniedStore)
+    );
+    let refused = desk.json();
+    assert_eq!(
+        refused["active"], before["active"],
+        "the source remains active"
+    );
+    assert_eq!(
+        refused["switchBlocked"], before["switchBlocked"],
+        "save refusal preserves the exact native guard"
+    );
+    assert_eq!(
+        refused["setup"], before["setup"],
+        "the draft remains actionable"
+    );
+    for field in ["id", "phase", "approvals", "historyId", "savedAt"] {
+        assert_eq!(
+            refused["harness"]["conversation"][field], before["harness"]["conversation"][field],
+            "pending conversation {field} unchanged"
+        );
+    }
+    assert_eq!(
+        serde_json::to_value(desk.adapters.store.saved()).expect("saved"),
+        stored
+    );
+    for (path, bytes) in &protected {
+        assert_eq!(&std::fs::read(path).expect("still protected"), bytes);
+    }
+    // Recovery uses the same refusal binding, with a new explicit delivery.
+    desk.adapters.store.fail_saves(false);
+    desk.send(resolved.clone())
+        .await
+        .expect("one successful resolution after storage recovery");
+    assert_ne!(desk.json()["active"]["tenant"], before["active"]["tenant"]);
+    assert!(desk.json()["switchBlocked"].is_null());
+    if completion {
+        assert!(desk.json()["setup"].is_null());
+    }
+    assert_eq!(
+        desk.send(resolved).await,
+        Err(desktop_core::Refusal::StaleContext),
+        "a consumed resolution cannot run again"
+    );
+    desk.send(json!({"kind":"selectTenant","tenant":before["active"]["tenant"]}))
+        .await
+        .expect("back to source");
+    assert!(
+        settle_for(30, || {
+            let c = desk.conversation();
+            c.is_null() || c["phase"] == "ended"
+        })
+        .await
+    );
+    let mut listed = history_ids(&mut desk).await;
+    for _ in 0..60 {
+        if listed.contains(&history) == (kind == "archive") {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        listed = history_ids(&mut desk).await;
+    }
+    assert_eq!(
+        listed.contains(&history),
+        kind == "archive",
+        "successful recovery honors the chosen history outcome"
+    );
+    assert_eq!(
+        files_under(&desk.history_root)
+            .iter()
+            .any(|f| f.to_string_lossy().contains(&history)),
+        kind == "archive"
+    );
+    std::fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn select_archive_resolution_save_failure_preserves_pending_work() {
+    guarded_resolution_save_failure(false, "archive").await;
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn select_discard_resolution_save_failure_preserves_pending_work() {
+    guarded_resolution_save_failure(false, "discard").await;
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn setup_archive_resolution_save_failure_preserves_pending_work() {
+    guarded_resolution_save_failure(true, "archive").await;
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn setup_discard_resolution_save_failure_preserves_pending_work() {
+    guarded_resolution_save_failure(true, "discard").await;
+}

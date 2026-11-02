@@ -1,0 +1,58 @@
+$ cargo test --locked -p desktop-core --features test-fixtures --test harness_tools --test ui_v2_onboarding --test ui_v2_setup_reads
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.27s
+     Running tests/harness_tools/main.rs (target/debug/deps/harness_tools-5a497df2126f0180)
+
+running 22 tests
+test a_pending_decision_refuses_a_tenant_switch_until_it_is_resolved ... ok
+test a_proposal_is_staged_never_applied_and_never_replaces_a_review ... ok
+test a_discard_whose_removal_fails_is_reported_until_the_record_is_removed ... ok
+test a_typed_read_answers_from_the_desktop_without_any_secret ... ok
+test a_tool_call_under_way_when_its_turn_is_stopped_is_never_answered ... ok
+test a_saved_conversation_needs_its_project_binding_and_replays_no_authority ... ok
+test a_save_admitted_before_a_discard_never_writes_the_discarded_transcript ... ok
+test completing_a_tenant_setup_is_the_guarded_switch_path ... ok
+test discard_and_switch_drops_the_pending_conversation ... ok
+test commands_need_a_project_and_the_operators_approval ... ok
+test select_archive_resolution_save_failure_preserves_pending_work ... ok
+test forged_unknown_or_credential_bearing_calls_run_nothing ... ok
+test discard_removes_the_saved_transcript_and_archive_keeps_it ... ok
+test setup_discard_resolution_save_failure_preserves_pending_work ... ok
+test select_discard_resolution_save_failure_preserves_pending_work ... ok
+test setup_archive_resolution_save_failure_preserves_pending_work ... ok
+test nothing_pending_survives_going_offline_and_nothing_is_resubmitted_on_reconnect ... ok
+test stale_archive_resolution_never_ends_another_pending_conversation ... ok
+test stale_discard_resolution_never_deletes_another_pending_conversation ... ok
+test the_sandbox_refuses_children_pipelines_and_other_paths ... ok
+test the_project_and_its_access_are_the_binding_and_unsafe_folders_are_refused ... ok
+test tool_work_still_queued_when_its_turn_is_stopped_is_never_sent ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.60s
+
+     Running tests/ui_v2_onboarding/main.rs (target/debug/deps/ui_v2_onboarding-49fc3ace274df73b)
+
+running 10 tests
+test a_desktop_with_a_tenant_is_never_sent_through_the_wizard ... ok
+test a_draft_id_is_never_selectable_or_deletable_as_a_tenant ... ok
+test a_draft_is_not_a_tenant_and_first_run_needs_the_scan_key_to_verify ... ok
+test add_mode_without_a_key_verifies_with_a_warning_and_completes_switching_once ... ok
+test a_relaunch_drops_the_draft_and_queues_its_credentials_for_cleanup ... ok
+test a_tenant_created_outside_the_wizard_ends_a_first_run_draft_and_the_shell_takes_over ... ok
+test add_mode_keeps_the_shell_untouched_until_completion_and_discard_cleans_up ... ok
+test changing_inputs_makes_results_stale_and_products_needing_a_client_warn ... ok
+test credentials_attach_to_the_draft_and_a_stored_key_is_never_a_pass ... ok
+test completion_commits_the_draft_once_with_products_warnings_and_onboarding ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/ui_v2_setup_reads/main.rs (target/debug/deps/ui_v2_setup_reads-44ed1efdba9885cd)
+
+running 5 tests
+test a_source_that_fails_inside_a_read_is_a_warning_that_reaches_the_tenant ... ok
+test an_optional_service_failure_is_a_warning_the_operator_may_continue_over ... ok
+test a_draft_reads_beside_the_active_tenant_without_touching_its_gateway_choice ... ok
+test a_replaced_client_authenticates_afresh_and_profile_changes_retire_the_binding ... ok
+test discarding_a_draft_cancels_its_reads_in_flight_and_leaves_the_active_tenant_alone ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
