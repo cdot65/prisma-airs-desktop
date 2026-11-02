@@ -336,9 +336,9 @@ ASSERTIONS = {
     "C31-N04": (S, ["C31-N04", "C39-N02", "C39-N04"], "C31-N04 requires the sole topmost modal, Escape focus return, cleared rotation reminder, product-header Tab reach, minimum/200% themes, review-control ring, polite applied/rotation results and Reduce Motion toast persistence/dismissal/restoration; C39-N02/N04 require current review geometry and measured board keyboard/layout facts on the same bundle"),
     # ---- C32 Harness in v2 → C38 ----
     "C32-N01": (X, ["C38-N01"], "the title band names tenant, engine and workspace; a fresh tenant's first send starts a conversation"),
-    "C32-N02": (X, ["C38-N01", "C38-N02", "C38-N03"], "a decision held in the aside; Approve once / Decline; a tenant switch while it waits meets the guard"),
-    "C32-N03": (X, ["C38-N01"], "the mcpServers read waits, is approved in the page and made once"),
-    "C32-N04": (X, ["C38-N02"], "Tab from the message box; 900×600 at 200% without horizontal scroll"),
+    "C32-N02": (S, ["C32-N02", "C38-N01", "C38-N02", "C38-N03"], "C32 current native driver requires embedded project selection, read-only command decline/approve, write-capable native Cancel/Allow and isolated three-path guard with initial/final focus; C38 retains the board checks"),
+    "C32-N03": (S, ["C32-N03", "C38-N01"], "C32 current native driver requires the approved MCP read, proposal-only typed review and review-exit follow-up, explicit End with saved transcript, ended rail/status, engine exit and next conversation"),
+    "C32-N04": (S, ["C32-N04", "C38-N02"], "C32 current native driver requires composer keyboard reach, New investigation focus ring, both minimum/200% themes and ended-toast persistence/dismissal/Reduce Motion restoration; C38 retains board geometry"),
     # ---- C33 Test Cases, API Client, Show the calls → C40, C41, C35 ----
     "C33-N01": (X, ["C40-N01"], "the starter packs with Not run; the product filter and search; Inspect for a non-Runtime case"),
     "C33-N02": (X, ["C41-N01"], "Send announces request · code · duration in the status region with the body outside it; History keeps both runs"),
