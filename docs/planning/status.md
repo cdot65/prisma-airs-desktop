@@ -1,5 +1,25 @@
 # Current state
 
+## Current Worf acceptance — 2026-11-02
+
+P09 is complete under the approved manual fresh-exec fallback: actual independent
+[P09 attempt-02](reviews/P09/attempt-02/receipt.json) scored **9/9/9/9/9**, with
+empty required fixes, blockers and evidence gaps; its post-review audit passed.
+Review commit `e13df23e` follows G11 qualification `eff50974`: all20 mapped native
+drivers and all18 repository checks passed, with18,349 inputs unchanged.
+
+C29 attempt-10, C31 attempt-07 and C32 attempt-23 retain actual independent all9.
+C30 stands at owner all9 under its explicit decision; its historical independent
+9/9/9/8/8 fail and false full-gate audit remain unchanged. C31 passed normally;
+its conditional owner override was not activated. C41's existing owner decision
+stands. Older entries below retain their historical checkpoint wording.
+
+Approved C45/P10 now proceeds in an isolated worktree, using the owner's future
+risk-based verification policy: one identity/isolation/cleanup baseline, affected
+checks and explicit evidence reuse thereafter. C26/P08 remains open; no signing,
+publication or installation is inferred. L19 remains three charged reads, zero
+remaining allowance.
+
 G00 and G01 passed (historical Claude reviews). C01–C04 and the P01 cumulative review completed on
 2026-10-17; C05–C07 and the P02 cumulative review completed on 2026-10-18;
 C08–C12 and the P03 cumulative review completed on 2026-10-19; C13–C15 and
