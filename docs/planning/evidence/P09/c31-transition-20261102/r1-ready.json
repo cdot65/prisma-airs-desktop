@@ -1,0 +1,54 @@
+{
+  "ready": true,
+  "commit": "777fdce92a4db7d869297de6cb4bb21ca8dc0448",
+  "commits": [
+    "777fdce92a4db7d869297de6cb4bb21ca8dc0448"
+  ],
+  "worktree": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix",
+  "branch": "c31-owner-reload-fix-20261102",
+  "recorded_utc": "2026-11-02T12:02:11.771897+00:00",
+  "focused_results": {
+    "original": "1passedcontrol,3failedexactreloadsymptoms",
+    "fixed": "4passed0failed1.82seconds",
+    "format": "focusedrustfmtcheck+gitdiffcheckpassed; rawlogs/diff context unchanged",
+    "no_full_suites": true
+  },
+  "log_paths": [
+    "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/old-red-build-01.log",
+    "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/new-green-01.log",
+    "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/new-green-02.log",
+    "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/focused-format-check.log",
+    "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/notes.md",
+    "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-reload-fix/docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/source-bindings.json"
+  ],
+  "touched_paths": [
+    "apps/desktop/src-tauri/Cargo.toml",
+    "apps/desktop/src-tauri/src/lib.rs",
+    "apps/desktop/src-tauri/tests/renderer_review_lifecycle.rs",
+    "crates/desktop-core/src/authority.rs",
+    "crates/desktop-core/src/authority/change_domain.rs",
+    "crates/desktop-core/src/delivery.rs",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/final-source.diff",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/fix.diff",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/focused-format-check.json",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/focused-format-check.log",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/new-green-01.json",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/new-green-01.log",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/new-green-02.json",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/new-green-02.log",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/notes.md",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/old-red-build-01.json",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/old-red-build-01.log",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/original/apps/desktop/src-tauri/src/lib.rs",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/original/crates/desktop-core/src/authority/change_domain.rs",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/original/crates/desktop-core/src/authority.rs",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/original/crates/desktop-core/src/delivery.rs",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/source-bindings.json",
+    "docs/planning/evidence/C31/remediation-attempt-05/reload-lifecycle/start.json"
+  ],
+  "owner_boundaries": [
+    "C30 is owner-scored9/9/9/9/9, no C30 work incl fresh performance measurement or captures; old C30 timing remains honestly historical under owner exception; adapt new phasequalification explicitly rather than rerunC30 to satisfy old hash gate.",
+    "C29 oldscope historical; newC31 independent+P09cumulative review covers declaredC31-onlydelta; do not reopen unchangedsubject merelysharedfile scope drift."
+  ],
+  "limitations": "Production Host lifecycle+IPC with synthetic local TLS management and scripted native adapters; no actual AppKit interaction, bundle build or native qualification performed. Test refusal-envelope correction retained honestly in green01 failed log; original3bug assertions unchanged."
+}

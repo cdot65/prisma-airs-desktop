@@ -1,0 +1,44 @@
+   Compiling desktop-core v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/crates/desktop-core)
+   Compiling desktop-host v2.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 23.04s
+     Running tests/renderer_review_lifecycle.rs (target/debug/deps/renderer_review_lifecycle-13d2a3dce7eb986e)
+
+running 4 tests
+test renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review ... FAILED
+test renderer_reload_before_reveal_forgets_the_native_held_key ... FAILED
+test renderer_reload_during_confirmation_retires_the_native_review ... FAILED
+test renderer_reload_during_issuance_drops_the_late_key_without_replaying ... FAILED
+
+failures:
+
+---- renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review stdout ----
+
+thread 'renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review' (2077754) panicked at apps/desktop/src-tauri/tests/../../../../crates/desktop-core/tests/context_credentials/support.rs:186:63:
+bind: Os { code: 1, kind: PermissionDenied, message: "Operation not permitted" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- renderer_reload_before_reveal_forgets_the_native_held_key stdout ----
+
+thread 'renderer_reload_before_reveal_forgets_the_native_held_key' (2077767) panicked at apps/desktop/src-tauri/tests/../../../../crates/desktop-core/tests/context_credentials/support.rs:186:63:
+bind: Os { code: 1, kind: PermissionDenied, message: "Operation not permitted" }
+
+---- renderer_reload_during_confirmation_retires_the_native_review stdout ----
+
+thread 'renderer_reload_during_confirmation_retires_the_native_review' (2077780) panicked at apps/desktop/src-tauri/tests/../../../../crates/desktop-core/tests/context_credentials/support.rs:186:63:
+bind: Os { code: 1, kind: PermissionDenied, message: "Operation not permitted" }
+
+---- renderer_reload_during_issuance_drops_the_late_key_without_replaying stdout ----
+
+thread 'renderer_reload_during_issuance_drops_the_late_key_without_replaying' (2077793) panicked at apps/desktop/src-tauri/tests/../../../../crates/desktop-core/tests/context_credentials/support.rs:186:63:
+bind: Os { code: 1, kind: PermissionDenied, message: "Operation not permitted" }
+
+
+failures:
+    renderer_delivery_recovery_and_other_webviews_do_not_end_a_live_review
+    renderer_reload_before_reveal_forgets_the_native_held_key
+    renderer_reload_during_confirmation_retires_the_native_review
+    renderer_reload_during_issuance_drops_the_late_key_without_replaying
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p desktop-host --test renderer_review_lifecycle`

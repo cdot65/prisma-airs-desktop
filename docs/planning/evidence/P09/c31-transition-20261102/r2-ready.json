@@ -1,0 +1,64 @@
+{
+  "ready": true,
+  "recorded_utc": "2026-11-02T12:01:54.326242+00:00",
+  "commit": "352964cbe61b1fd4a8afa45f97521c1fc5380f39",
+  "commits": [
+    "352964cbe61b1fd4a8afa45f97521c1fc5380f39"
+  ],
+  "worktree": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-native-fix",
+  "branch": "c31-native-assertions-20261102",
+  "touched_paths": [
+    "tools/native-acceptance/acceptance_c31.py",
+    "tools/native-acceptance/acceptance_c39.py",
+    "tools/native-acceptance/legacy_assertions.py",
+    "tools/native-acceptance/administration_coverage.py",
+    "tools/native-acceptance/test_administration_coverage.py",
+    "docs/planning/evidence/C31/remediation-attempt-05/R2-focused-results.json",
+    "docs/planning/evidence/C31/remediation-attempt-05/R2-native-assertions.md"
+  ],
+  "focused_results": {
+    "test_methods_passed": 9,
+    "exit": 0,
+    "reported_seconds": 0.005,
+    "syntax": "pass",
+    "diff_check": "pass"
+  },
+  "result_paths": [
+    "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-native-fix/docs/planning/evidence/C31/remediation-attempt-05/R2-focused-results.json",
+    "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c31-native-fix/docs/planning/evidence/C31/remediation-attempt-05/R2-native-assertions.md"
+  ],
+  "raw_log_note": "Full verbose unittest output is in agent tool transcript; focused-results explicitly describes that provenance, not a separately captured process log.",
+  "native_ui_run": false,
+  "app_build_run": false,
+  "rust_or_full_repository_checks_run": false,
+  "changed_map_ids": [
+    "C31-N01",
+    "C31-N04"
+  ],
+  "c30_map_unchanged": true,
+  "owner_boundaries": [
+    "C30 owner-scored all9, no C30 work including fresh performance measurement or missing matrix captures; retain old timing honestly historical under owner exception; new P09 qualification must honor explicit C30 override rather than invoke old measure_c30 hook.",
+    "No C30 map entries modified; existing raw C30 verdict untouched."
+  ],
+  "integration_notes": [
+    "This branch starts at fd649dd8; cherry-pick explicit commit into main after R1 integration, do not replace main or old evidence.",
+    "Both C31-N01 and C31-N04 are now required raw self-run checks, with C39-N01/N02/N03/N04 binding current board facts. Historical failed records remain failed.",
+    "New administration_coverage.py is a native-driver helper; include it in the new driver/helper source seal.",
+    "No C30 source/scenario/matrix/measurement change was made."
+  ],
+  "helper_input_registration": {
+    "helper": "tools/native-acceptance/administration_coverage.py",
+    "helper_sha256": "b95ff283a60d7d71281ef6cf5bd3051c30f04e645f9a966a596fdd140eefe887",
+    "inventory_procedure": "docs/planning/evidence/P09/runs/hash-inputs.sh",
+    "inventory_procedure_sha256": "0a4f9546e1aa4a812da6a946c6ee73d9a0e69c3fd4534dd3d480d5c804b53ea1",
+    "recursive_existing_registration": "DIRS already includes tools/native-acceptance; find recursively includes every .py and excludes only caches/build/dependency internals. New helper and focused regression are automatically sealed; no manifest edit required.",
+    "import_paths_verified": [
+      "acceptance_c31.py inserts its own tools/native-acceptance directory before importing administration_coverage",
+      "acceptance_c39.py inserts that same directory and imports administration_coverage; its C31 helper uses the same loaded module",
+      "P09 native-controller puts root/tools/native-acceptance on sys.path before legacy adapter and driver imports",
+      "run_on_v2.py puts tools/native-acceptance on sys.path before legacy adapter/driver imports"
+    ],
+    "new_seal_not_yet_executed": true,
+    "integration_requirement": "Cherry-pick before sealing. New input inventory must contain this helper hash; bind that current digest and current wrapper/driver sources to new native execution. Existing G7 pins remain historical; do not update old records."
+  }
+}

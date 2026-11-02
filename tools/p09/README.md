@@ -123,3 +123,15 @@ measurement remains failed evidence and must be archived before a fresh attempt;
 no result exists until this real driver runs. Fresh C30 review must assess the
 method/guest rationale. The C30 failed review and production-interface regression
 logs/original sources remain in evidence/C30/remediation-attempt-10.
+
+The additive `*_c31_transition.py` verifiers and `*-c31-transition*.py`
+entrypoints handle the explicit 2026-11-02 C31 remediation transition. They
+preserve the original G7 owner-closure verifiers and raw verdicts. The baseline
+source inventory, exact declared fix commits, complete before/after source delta
+and focused preflight are sealed by `seal-c31-transition.py`. Source outside the
+declared C31 and named administrative paths must remain unchanged. Fresh current
+preparation, 19 mapped native drivers and 18 checks qualify changed application
+bytes; G7 results are historical. No new C30 qualification is performed. C30's
+bound owner all-nine score continues; its actual low independent verdict remains
+unchanged. C29's actual full-nine G7 review stays historical. Current C31, C32
+and cumulative P09 require actual independent full-nine reviews and audits.
