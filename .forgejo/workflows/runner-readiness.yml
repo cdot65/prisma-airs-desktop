@@ -1,0 +1,132 @@
+name: AIRS runner readiness
+
+# Infrastructure probe only: no checkout, product build, native UI, signing or live APIs.
+# This exact maintainer branch is the only automatic entry point.
+on:
+  push:
+    branches: [infra/runner-readiness-20261102]
+    paths: [.forgejo/workflows/runner-readiness.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  roundtrip:
+    if: github.repository == 'cdot/prisma-airs-desktop-v2' && github.ref == 'refs/heads/infra/runner-readiness-20261102'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: airs-jadzia-arm64
+            target: aarch64-apple-darwin
+          - runner: airs-enterprise-amd64
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    env:
+      AIRS_TARGET: ${{ matrix.target }}
+    steps:
+      - name: Select project tools and check native architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$AIRS_TARGET" in
+            aarch64-apple-darwin)
+              test "$(uname -s)/$(uname -m)" = Darwin/arm64
+              /Users/cdot/.agent-workflows/airs-runner-setup-20261102/bootstrap-job.sh
+              printf '%s\n' /Users/cdot/.local/share/airs-toolchains/profiles/airs-20261102/bin /Users/cdot/.cargo/bin /opt/homebrew/bin >> "$GITHUB_PATH"
+              ;;
+            x86_64-unknown-linux-gnu)
+              test "$(uname -s)/$(uname -m)" = Linux/x86_64
+              /opt/airs/verify-toolchains
+              ;;
+            *) exit 2 ;;
+          esac
+          printf '%s\n' RUSTUP_TOOLCHAIN=1.99.0 >> "$GITHUB_ENV"
+          # Only these disposable probe directories are cleared, never source or caches.
+          rm -rf -- .airs-runner-readiness-cache airs-runner-readiness-artifact
+          mkdir .airs-runner-readiness-cache airs-runner-readiness-artifact
+
+      - name: Record only approved toolchain metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = v24.21.0
+          test "$(pnpm --version)" = 10.6.5
+          rustc --version | grep '^rustc 1\.99\.0 '
+          rustc -vV | grep -Fx "host: $AIRS_TARGET"
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json, os, subprocess
+          receipt = {
+              "kind": "runner-infrastructure-only",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "source_commit": os.environ["GITHUB_SHA"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "1"),
+              "target": os.environ["AIRS_TARGET"],
+              "node": subprocess.check_output(["node", "--version"], text=True).strip(),
+              "pnpm": subprocess.check_output(["pnpm", "--version"], text=True).strip(),
+              "rustc": subprocess.check_output(["rustc", "--version"], text=True).strip(),
+          }
+          data = (json.dumps(receipt, sort_keys=True, indent=2) + "\n").encode()
+          for directory in (".airs-runner-readiness-cache", "airs-runner-readiness-artifact"):
+              root = Path(directory)
+              (root / "receipt.json").write_bytes(data)
+              (root / "receipt.sha256").write_text(hashlib.sha256(data).hexdigest() + "\n")
+          print(data.decode(), end="")
+          PY
+
+      - name: Save the run-specific cache probe
+        uses: https://code.forgejo.org/actions/cache/save@6f8efc29b200d32929f49075959781ed54ec270c
+        with:
+          path: .airs-runner-readiness-cache
+          key: airs-runner-probe-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.target }}
+
+      - name: Upload the sanitized receipt
+        uses: https://code.forgejo.org/forgejo/upload-artifact@16871d9e8cfcf27ff31822cac382bbb5450f1e1e
+        with:
+          name: runner-readiness-${{ matrix.target }}-${{ github.run_attempt }}
+          path: airs-runner-readiness-artifact/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove local probe files before checking remote transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf -- .airs-runner-readiness-cache airs-runner-readiness-downloaded
+
+      - name: Require the exact producer cache
+        uses: https://code.forgejo.org/actions/cache/restore@6f8efc29b200d32929f49075959781ed54ec270c
+        with:
+          path: .airs-runner-readiness-cache
+          key: airs-runner-probe-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.target }}
+          fail-on-cache-miss: 'true'
+
+      - name: Download the producer artifact
+        uses: https://code.forgejo.org/forgejo/download-artifact@d8d0a99033603453ad2255e58720b460a0555e1e
+        with:
+          name: runner-readiness-${{ matrix.target }}-${{ github.run_attempt }}
+          path: airs-runner-readiness-downloaded
+
+      - name: Compare exact bytes and execution identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json, os
+          artifact = Path("airs-runner-readiness-downloaded")
+          cache = Path(".airs-runner-readiness-cache")
+          data = (artifact / "receipt.json").read_bytes()
+          assert data == (cache / "receipt.json").read_bytes(), "Artifact/cache bytes differ"
+          digest = hashlib.sha256(data).hexdigest()
+          assert digest == (artifact / "receipt.sha256").read_text().strip()
+          assert digest == (cache / "receipt.sha256").read_text().strip()
+          receipt = json.loads(data)
+          for field, variable in (("repository", "GITHUB_REPOSITORY"), ("source_commit", "GITHUB_SHA"), ("run_id", "GITHUB_RUN_ID"), ("target", "AIRS_TARGET")):
+              assert receipt[field] == os.environ[variable], field
+          assert receipt["run_attempt"] == os.environ.get("GITHUB_RUN_ATTEMPT", "1"), "run_attempt"
+          print("PASS: same-run artifact/cache roundtrip", receipt["target"], digest)
+          PY
