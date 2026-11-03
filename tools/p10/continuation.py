@@ -19,12 +19,13 @@ ALLOWED={
 
 
 def paths(base):
-    marker=base/'continuation-01.json'
-    folder=base/'continuation-01' if marker.exists() else base
+    marker=base/'continuation-02.json'
+    folder=base/'continuation-02' if marker.exists() else base/'continuation-01' if (base/'continuation-01.json').exists() else base
     return dict(folder=folder,source=folder/'source-seal.json',candidate=folder/'candidate.json',plan=folder/'required-coverage.json',stages=folder/'stages',reuse=folder/'build-reuse.json')
 
 
 def verify(root,base):
+    if (base/'continuation-02.json').exists():return verify_native_continuation(root,base)
     marker=read(base/'continuation-01.json');current=paths(base)
     require(marker['schema']=='airs-desktop/c45-test-only-continuation/1' and marker['affected_stage']=='command-C45-host-2','continuation schema/scope')
     before=read(base/'source-seal.json')['files'];after=read(current['source'])['files']
@@ -45,6 +46,13 @@ def verify(root,base):
 
 
 def retained(root,base,stage,argv):
+    if (base/'continuation-02.json').exists():
+        marker=verify_native_continuation(root,base)
+        entry=marker['retained_records'].get(stage)
+        if not entry:return None
+        folder=root/entry['folder'];state=read(folder/'completed.json')
+        require(state['argv']==argv,'retained command differs')
+        return folder,state,root/entry['candidate']['path']
     if not (base/'continuation-01.json').exists():return None
     marker=verify(root,base)
     if stage not in marker['retained_completed_stages']:return None
@@ -80,4 +88,69 @@ def prepare(root):
     verify(root,base);return marker
 
 
-if __name__=='__main__':print(json.dumps(prepare(Path.cwd().resolve()),indent=2))
+
+NATIVE_ALLOWED={
+ 'tools/native-acceptance/acceptance_c32_current.py',
+ 'tools/native-acceptance/test_c32_project_path.py',
+ 'tools/p10/candidate.py','tools/p10/continuation.py',
+ 'tools/p10/finalize.py','tools/p10/test_continuation.py',
+}
+META_ONLY={'tools/p10/candidate.py'}
+
+
+def verify_native_continuation(root,base):
+    from qualification import bound
+    marker=read(base/'continuation-02.json');layout=paths(base)
+    require(marker['schema']=='airs-desktop/c45-native-helper-continuation/1' and marker['affected_stage']=='native-c32','native continuation schema/scope')
+    before=read(bound(root,marker['source_before']))['files'];after=read(layout['source'])['files']
+    require(sha(layout['source'])==marker['source_seal_sha256'],'native continuation seal drift')
+    changed=sorted(n for n in set(before)|set(after) if before.get(n)!=after.get(n))
+    require(changed==marker['declared_changed_paths'] and set(changed)<=NATIVE_ALLOWED,'undeclared/application native continuation delta')
+    require(source_inventory(root)==after,'native continuation current source drift')
+    for stage,entry in marker['retained_records'].items():
+        require(stage!='native-c32','failed native driver cannot be retained')
+        origin=read(bound(root,entry['candidate']));prior_source=read(bound(root,entry['source']))['files']
+        require(digest(prior_source)==origin['source_inventory_sha256'],'retained origin source binding')
+        state_path=bound(root,entry['completed']);state=read(state_path)
+        require(state_path.parent==root/entry['folder'],'retained stage folder binding')
+        verify_completed(root,state_path.parent,state,state['argv'],origin['source_inventory_sha256'],entry['candidate']['sha256'])
+        if stage.startswith('native-'):
+            require(entry['disposition']=='carried_unaffected' and entry['dependencies'],'native carry rationale missing')
+            for name in entry['dependencies']:
+                require(name not in META_ONLY and prior_source[name]['sha256']==origin['helper_closure'][name]==sha(root/name),'retained native assertion/helper changed: '+name)
+    focused=marker['focused_check'];require(focused['exit_code']==0 and sha(root/focused['log'])==focused['log_sha256'] and sha(root/'tools/native-acceptance/acceptance_c32_current.py')==focused['source_sha256'],'canonical-path focused check drift')
+    return marker
+
+
+def prepare_native(root):
+    from qualification import bound
+    base=root/'docs/planning/evidence/C45/baseline-03';prior=base/'continuation-01';folder=base/'continuation-02'
+    require(not folder.exists() and not (base/'continuation-02.json').exists(),'preserve prior native continuation')
+    folder.mkdir();source=source_inventory(root);before=read(prior/'source-seal.json')['files']
+    changed=sorted(n for n in set(before)|set(source) if before.get(n)!=source.get(n));require(set(changed)<=NATIVE_ALLOWED,'production/native unrelated delta')
+    ref=lambda path:dict(path=str(path.relative_to(root)),sha256=sha(path))
+    plan=copy.deepcopy(read(prior/'required-coverage.json'));records={}
+    for origin_folder,origin_candidate,origin_source in [(base/'stages',base/'candidate.json',base/'source-seal.json'),(prior/'stages',prior/'candidate.json',prior/'source-seal.json')]:
+        for file in sorted(origin_folder.glob('*/completed.json')):
+            stage=file.parent.name
+            if stage=='native-c32':continue
+            state=read(file);origin=read(origin_candidate);verify_completed(root,file.parent,state,state['argv'],origin['source_inventory_sha256'],sha(origin_candidate))
+            records[stage]=dict(folder=str(file.parent.relative_to(root)),completed=ref(file),candidate=ref(origin_candidate),source=ref(origin_source),disposition='carried_unaffected' if stage.startswith('native-') else 'reused_exact')
+    for row in plan['requirements']:
+        stage='command-'+row['label'].replace('/','-') if row['kind']=='command' else 'native-'+row['id'].split('-')[0].lower()
+        if stage in records:
+            row.update(must_execute=False,affected=False)
+            if row['kind']=='native':
+                dependencies=[name for name in row['helper_paths'] if name not in META_ONLY]
+                row['dependencies']=dependencies;records[stage]['dependencies']=dependencies
+                row['continuation']='Only C32 owned-project alias canonicalization and provenance consumers changed. This driver, AX helpers, synthetic servers and tested application are unchanged. Administrative candidate.py guard excluded from runtime assertion closure; its declared source change is independently reviewed, not hidden as identical.'
+    plan['helper_closure']={name:sha(root/name) for name in plan['helper_closure']}
+    for name,value in [('source-seal.json',dict(files=source,source_fingerprint=digest(source))),('required-coverage.json',plan)]:(folder/name).write_text(json.dumps(value,indent=2)+'\n')
+    log=folder/'c32-canonical-project-01.log';shutil.copy2(root/'.evidence-private/worf-agent/2026-11-02-c45-p10-01/c32-canonical-project-01.log',log)
+    require('Ran 2 tests' in log.read_text() and '\nOK' in log.read_text(),'canonical-path tests not passing')
+    marker=dict(schema='airs-desktop/c45-native-helper-continuation/1',affected_stage='native-c32',source_before=ref(prior/'source-seal.json'),source_seal_sha256=sha(folder/'source-seal.json'),declared_changed_paths=changed,retained_records=records,retained_completed_stages=sorted(records),focused_check=dict(exit_code=0,log=str(log.relative_to(root)),log_sha256=sha(log),source_sha256=sha(root/'tools/native-acceptance/acceptance_c32_current.py')),reason='Actual C32 project was selected and every other mandatory fact was true; driver compared worktree target alias to canonical NSOpenPanel path. Canonicalize only driver-owned project root, keep all assertions. Preserve actual failed C32 raw and all16 repository passes/C36/C43 with original candidate/input bindings. Retry only affected C32, then first unfinished drivers. No rebuild/broad repeat.')
+    (base/'continuation-02.json').write_text(json.dumps(marker,indent=2)+'\n');verify_native_continuation(root,base);return marker
+
+if __name__=='__main__':
+    import sys
+    print(json.dumps((prepare_native if sys.argv[1:]==['native'] else prepare)(Path.cwd().resolve()),indent=2))

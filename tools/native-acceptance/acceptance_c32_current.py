@@ -92,6 +92,11 @@ def main():
         fx.clean_fixture_root()
 
 
+def native_project_root(root, run_id):
+    """Use the same canonical owned path NSOpenPanel returns for a symlinked target."""
+    return os.path.realpath(os.path.join(root, "target", f"native-c32-{run_id}"))
+
+
 def run(exercise_fn=None):
     global NATIVE
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
@@ -100,7 +105,7 @@ def run(exercise_fn=None):
     if c8.sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c32-acceptance-")
-    base = os.path.join(ROOT, "target", f"native-c32-{secrets.token_hex(6)}")
+    base = native_project_root(ROOT, secrets.token_hex(6))
     project = os.path.join(base, "agent-demo")
     os.makedirs(project)
     for n in range(3):

@@ -70,6 +70,8 @@ BUILD_REUSE_PATHS = {
     'tools/p10/finalize.py', 'tools/p10/native.py',
     'apps/desktop/src-tauri/tests/permission_manifest.rs',
     'tools/p10/continuation.py', 'tools/p10/test_continuation.py',
+    'tools/native-acceptance/acceptance_c32_current.py',
+    'tools/native-acceptance/test_c32_project_path.py',
 }
 
 

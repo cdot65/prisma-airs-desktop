@@ -1,0 +1,70 @@
+{
+  "schema": "airs-desktop/c45-test-only-continuation/1",
+  "affected_stage": "command-C45-host-2",
+  "original_candidate_sha256": "c2bc0cac8f9c8243a6914ccf0371e056c4b1f2703e7a44706318c84687fa728b",
+  "source_seal_sha256": "2e86329ff58af1a8546a45743d4fb8aa26c74fe1f83b052dac31e18d71871944",
+  "declared_changed_paths": [
+    "apps/desktop/src-tauri/tests/permission_manifest.rs",
+    "tools/p10/candidate.py",
+    "tools/p10/continuation.py",
+    "tools/p10/finalize.py",
+    "tools/p10/supervise.py",
+    "tools/p10/test_continuation.py"
+  ],
+  "retained_completed_stages": [
+    "command-C45-fixture",
+    "command-C45-host-1",
+    "command-common-1",
+    "command-common-10",
+    "command-common-11",
+    "command-common-2",
+    "command-common-3",
+    "command-common-4",
+    "command-common-5",
+    "command-common-6",
+    "command-common-7",
+    "command-common-8",
+    "command-common-9",
+    "startup-smoke"
+  ],
+  "focused_checks": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-host",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "permission_manifest"
+      ],
+      "exit_code": 0,
+      "log": "docs/planning/evidence/C45/baseline-03/continuation-01/permission-manifest-current-01.log",
+      "log_sha256": "71e1f759ddec0178524aeb2810c466cd8b98205ecc814ae990e3e99c0935a5a5",
+      "source_sha256": "e80c83f5e9176098a57a6e3c47956e186fa6baad6a5447432b610b6c71bebd49"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "desktop-host",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "permission_manifest",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "docs/planning/evidence/C45/baseline-03/continuation-01/permission-manifest-clippy-01.log",
+      "log_sha256": "5f79a2a01458b3ea5fb2029d155f7f36b102c20c4325262d3e04c71d612b4dbd",
+      "source_sha256": "e80c83f5e9176098a57a6e3c47956e186fa6baad6a5447432b610b6c71bebd49"
+    }
+  ],
+  "reason": "Real Host failure was a test still enforcing retired v2 IDs. Strengthened current1.0 names/version/old-ID exclusion; no application/config/dependency or native driver/helper behavior changed. Preserve actual failed Host record and all13 successful commands/current smoke. Execute affected Host aggregate and first remaining checks/native queue; no rebuild or unrelated repeat."
+}
