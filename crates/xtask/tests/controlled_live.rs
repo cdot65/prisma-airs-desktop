@@ -29,7 +29,7 @@ fn scratch() -> PathBuf {
 }
 
 fn keychain(account: &str) -> Value {
-    json!({"kind": "keychain", "service": "io.cdot.prisma-airs-desktop.v2.c25", "account": account})
+    json!({"kind": "keychain", "service": "io.cdot.airs-desktop.c25", "account": account})
 }
 
 /// Every family designated, the mutating ones with names and cleanup, the
@@ -346,7 +346,20 @@ fn secrets_are_referenced_never_written() {
 }
 
 #[test]
-fn secret_references_stay_in_v2_test_storage_outside_the_repository() {
+fn secret_references_stay_in_current_test_storage_outside_the_repository() {
+    // These are reference strings only. No old Keychain item is opened.
+    for retired in [
+        "io.cdot.prisma-airs-desktop.v2.c25",
+        "io.cdot.prisma-airs-desktop.alpha.c25",
+    ] {
+        rejected(
+            |v| {
+                v["families"]["L01"]["credentials"]["primary"] =
+                    json!({"kind": "keychain", "service": retired, "account": "x"});
+            },
+            "only io.cdot.airs-desktop.* test items",
+        );
+    }
     rejected(
         |v| {
             v["families"]["L01"]["credentials"]["primary"] = json!({"kind": "keychain", "service": "io.cdot.prisma-airs-desktop", "account": "x"})
@@ -358,7 +371,7 @@ fn secret_references_stay_in_v2_test_storage_outside_the_repository() {
             v["families"]["L01"]["credentials"]["primary"] =
                 json!({"kind": "keychain", "service": "com.example.other", "account": "x"})
         },
-        "only io.cdot.prisma-airs-desktop.v2.* test items",
+        "only io.cdot.airs-desktop.* test items",
     );
     rejected(
         |v| v["families"]["L01"]["credentials"]["primary"]["account"] = json!(""),
@@ -470,7 +483,7 @@ fn every_required_row_reports_its_access() {
     assert_eq!(l01.environment_kind.as_deref(), Some("staging"));
     assert_eq!(
         l01.credentials[0].reference,
-        "keychain:io.cdot.prisma-airs-desktop.v2.c25/L01-a"
+        "keychain:io.cdot.airs-desktop.c25/L01-a"
     );
 
     let mut partial = baseline();

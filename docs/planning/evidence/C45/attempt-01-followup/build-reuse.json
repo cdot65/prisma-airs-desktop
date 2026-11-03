@@ -1,0 +1,43 @@
+{
+  "schema": "airs-desktop/c45-helper-only-build-reuse/1",
+  "original_candidate": {
+    "path": "docs/planning/evidence/C45/baseline-02/candidate.json",
+    "sha256": "4727744473b204ac2851b975daeea4d1292292af460af4279d5684645e33f7bd"
+  },
+  "original_source": {
+    "path": "docs/planning/evidence/C45/baseline-02/source-seal.json",
+    "sha256": "30cd28c25f915b8c2205d13b6dbbb579336d1e3c84672c6e5f536aae3628ad9f"
+  },
+  "current_source": {
+    "path": "docs/planning/evidence/C45/attempt-01-followup/source-seal.json",
+    "sha256": "74bbeabe9b8671dfea75378b5018bed073c8f74d3d5b7c6bd55daf068e0b2a5f"
+  },
+  "original_build_stage": {
+    "path": "docs/planning/evidence/C45/baseline-02/stages/build/completed.json",
+    "sha256": "a513ea3607a0459a8815394159679b38aba50c56ac7050e6e32929a74d460874"
+  },
+  "declared_changed_paths": [
+    "apps/desktop/src-tauri/tests/permission_manifest.rs",
+    "crates/xtask/examples/c45_baseline.rs",
+    "crates/xtask/tests/controlled_live.rs",
+    "crates/xtask/tests/live_run/common.rs",
+    "tools/native-acceptance/acceptance_c04.py",
+    "tools/native-acceptance/acceptance_c32_current.py",
+    "tools/native-acceptance/acceptance_c45.py",
+    "tools/native-acceptance/test_c04_current_frame.py",
+    "tools/native-acceptance/test_c32_project_path.py",
+    "tools/p10/candidate.py",
+    "tools/p10/continuation.py",
+    "tools/p10/finalize.py",
+    "tools/p10/followup.py",
+    "tools/p10/native.py",
+    "tools/p10/packet.py",
+    "tools/p10/seal.py",
+    "tools/p10/supervise.py",
+    "tools/p10/test_build_reuse.py",
+    "tools/p10/test_continuation.py",
+    "tools/p10/test_followup.py"
+  ],
+  "reason": "Actual C45attempt01 synthetic fixture namespace remediation plus focused Runner/proof consumers only; exact application/config/dependencies/native helpers unchanged. No rebuild.",
+  "checks_to_execute": "Only affected synthetic controlled_live/live_run tests, their Clippy and formatting. Original142 baseline results retained unchanged."
+}

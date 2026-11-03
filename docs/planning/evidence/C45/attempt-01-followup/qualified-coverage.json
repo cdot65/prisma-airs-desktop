@@ -1,0 +1,90 @@
+{
+  "schema": "airs-desktop/c45-affected-followup/1",
+  "baseline_qualification": {
+    "path": "docs/planning/evidence/C45/qualified-coverage.json",
+    "sha256": "0258915771d27226e947e29ae2ca72a076adb5096645f541387a44466321c074"
+  },
+  "candidate": {
+    "path": "docs/planning/evidence/C45/attempt-01-followup/candidate.json",
+    "sha256": "271826842fcf3bfdcf079be206058476aa8916d73afbe0a89835af6580b8e801"
+  },
+  "source_before": {
+    "path": "docs/planning/evidence/C45/baseline-03/continuation-04/source-seal.json",
+    "sha256": "2660f2061331949023685549cded53366bac9ef13084de7fa8e659d670d2e2eb"
+  },
+  "source_after": {
+    "path": "docs/planning/evidence/C45/attempt-01-followup/source-seal.json",
+    "sha256": "74bbeabe9b8671dfea75378b5018bed073c8f74d3d5b7c6bd55daf068e0b2a5f"
+  },
+  "source_inventory_sha256": "34a65d2c17cda1c9e61febdc1f91de26f6c8b9ca411260b48660e3c327d25d7e",
+  "declared_changed_paths": [
+    "crates/xtask/examples/c45_baseline.rs",
+    "crates/xtask/tests/controlled_live.rs",
+    "crates/xtask/tests/live_run/common.rs",
+    "tools/p10/candidate.py",
+    "tools/p10/followup.py",
+    "tools/p10/packet.py",
+    "tools/p10/test_followup.py"
+  ],
+  "focused_run": {
+    "path": "docs/planning/evidence/C45/runs/test-20261103T033520Z-70ce8e/run.json",
+    "sha256": "1fcd4f1a41de10f3473038ad96e80f705c780938afe11addcf6d38e5ec197bb4"
+  },
+  "old_red": [
+    {
+      "path": "docs/planning/evidence/C45/attempt-01-followup/c45-live-fixtures-old-red-01.log",
+      "sha256": "e38dfa1e703c6bfa97e7816db6e57dbbb28322b5f17dcd33ef6dfbe5abf923d2",
+      "exit_code": 101,
+      "meaning": "Original controlled_live old-namespace fixtures: five real namespace assertion failures."
+    },
+    {
+      "path": "docs/planning/evidence/C45/attempt-01-followup/c45-live-run-old-red-01.log",
+      "sha256": "5ffd7ea7e7f5acdb22e91d803435042fb360fdf087ff6ce14473ec524e74ebb2",
+      "exit_code": 101,
+      "meaning": "Original live_run: two validation failures and53 sandbox loopback-bind failures; not claimed all namespace failures."
+    }
+  ],
+  "actual_previous_review": {
+    "request.json": {
+      "path": "docs/planning/reviews/C45/attempt-01/request.json",
+      "sha256": "dd5ee77d0646e354b09e4d5a15caa89deb75e42744bfda44b516f25687fc1b1d"
+    },
+    "verdict-returned.json": {
+      "path": "docs/planning/reviews/C45/attempt-01/verdict-returned.json",
+      "sha256": "cea11bacaa02f471ddf765ebfca1ba662c55cb97afaa1ba3127dc54200511d27"
+    },
+    "post-review-audit.json": {
+      "path": "docs/planning/reviews/C45/attempt-01/post-review-audit.json",
+      "sha256": "5702dc94df78283d4d6ddab829817232e9fee63054b32c4be3fbf3ed4a8d9674"
+    },
+    "receipt.json": {
+      "path": "docs/planning/reviews/C45/attempt-01/receipt.json",
+      "sha256": "29a2bcbc1a3e2b3ce8b72cdb906fa90ebd26ffeaef0d7990a8814888783f1a19"
+    },
+    "acceptance.md": {
+      "path": "docs/planning/reviews/C45/attempt-01/acceptance.md",
+      "sha256": "79a1cdca0cd9b636d001ead38d2a33c4a85b547867d2e514d1f4fb1434518c50"
+    },
+    "source-inventory.json": {
+      "path": "docs/planning/reviews/C45/attempt-01/source-inventory.json",
+      "sha256": "2660f2061331949023685549cded53366bac9ef13084de7fa8e659d670d2e2eb"
+    },
+    "evidence-inventory.json": {
+      "path": "docs/planning/reviews/C45/attempt-01/evidence-inventory.json",
+      "sha256": "97a96c63569d2c94733a0c59b376f9909d8f060fa9fa47bbc8a38b9c9d37aab7"
+    },
+    "invocation.json": {
+      "path": "docs/planning/reviews/C45/attempt-01/invocation.json",
+      "sha256": "0c6c5a4eaf26fb98e268dc794ee4e3b96a1706979dcd3b9e8555f28f835888d4"
+    },
+    "thread-reply.log": {
+      "path": "docs/planning/reviews/C45/attempt-01/thread-reply.log",
+      "sha256": "4622ec0ab260aae92c084ab5638d7b25cbaf7c2c61c59df4845dc2d578322e73"
+    },
+    "feature-probe.log": {
+      "path": "docs/planning/reviews/C45/attempt-01/feature-probe.log",
+      "sha256": "bb4d01d583993c8e3c431e0437092e6c288e9b5da919595063853d37e2d89862"
+    }
+  },
+  "reason": "Actual C45attempt01 required synthetic live-tool namespace fixtures and omitted affected targets. Updated test references/diagnostic expectations; retains explicit retired alpha/v2 reference rejection. New actual72 synthetic tests, focused Clippy and formatting passed. All application/config/dependency/native source outside the exact named test/administrative delta unchanged, exact app and baseline142 rawbindings preserved. No private manifest or product endpoint touched; no native/broad suite reexecution inferred."
+}

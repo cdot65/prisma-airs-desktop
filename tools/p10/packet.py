@@ -14,6 +14,9 @@ from phase_inputs import full_gate
 
 def qualification(root,path,current=True):
     record=read(path)
+    if record.get('schema')=='airs-desktop/c45-affected-followup/1':
+        from followup import verify as verify_followup
+        return {'record':str(path.relative_to(root)),'sha256':sha(path),'verified':verify_followup(root,record,current=current)}
     from seal import verify_plan
     verify_plan(root,read(bound(root,record['plan'])))
     result=verify(root,record)
@@ -37,7 +40,8 @@ def make(root,subject,attempt):
     require(subject in ['C45','P10'] and attempt.startswith('attempt-') and attempt[8:].isdigit(),'review subject/attempt')
     out=root/'docs/planning/reviews'/subject/attempt
     require(not out.exists(),'preserve old attempt')
-    qualified=qualification(root,root/'docs/planning/evidence/C45/qualified-coverage.json')
+    followup=root/'docs/planning/evidence/C45/attempt-01-followup/qualified-coverage.json'
+    qualified=qualification(root,followup if followup.exists() else root/'docs/planning/evidence/C45/qualified-coverage.json')
     standing=prerequisites(root,subject)
     source=source_inventory(root)
     folder=root/'docs/planning/evidence/C45'

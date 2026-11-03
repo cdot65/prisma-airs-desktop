@@ -52,7 +52,7 @@ pub fn secrets(pairs: &[(&str, &str)]) -> Secrets {
 }
 
 pub fn keychain(account: &str) -> Value {
-    json!({"kind": "keychain", "service": "io.cdot.prisma-airs-desktop.v2.c25", "account": account})
+    json!({"kind": "keychain", "service": "io.cdot.airs-desktop.c25", "account": account})
 }
 
 type Prompted = dyn Fn(&str, Option<&url::Url>) + Send + Sync;

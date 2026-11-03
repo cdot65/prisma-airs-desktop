@@ -1,0 +1,24 @@
+test_actual_focused_test_lint_format_command_membership (test_followup.FollowupTests) ... ok
+test_named_synthetic_tests_may_change (test_followup.FollowupTests) ... ok
+test_no_tests_or_drifted_log_cannot_pass (test_followup.FollowupTests) ... ok
+test_production_or_unlisted_source_cannot_be_carried (test_followup.FollowupTests) ... ok
+test_runner_source_and_dependency_fingerprint_must_match (test_followup.FollowupTests) ... ok
+test_test_target_cannot_be_omitted_or_replaced (test_followup.FollowupTests) ... FAIL
+test_undeclared_changed_test_is_rejected (test_followup.FollowupTests) ... ok
+
+======================================================================
+FAIL: test_test_target_cannot_be_omitted_or_replaced (test_followup.FollowupTests)
+----------------------------------------------------------------------
+ValueError: affected command membership
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/.work/c45-p10-20261102/tools/p10/test_followup.py", line 36, in test_test_target_cannot_be_omitted_or_replaced
+    with self.assertRaisesRegex(ValueError,'mismatch'):self.verify()
+AssertionError: "mismatch" does not match "affected command membership"
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.007s
+
+FAILED (failures=1)

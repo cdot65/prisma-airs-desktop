@@ -1,0 +1,197 @@
+{
+  "plist": {
+    "CFBundleDevelopmentRegion": "English",
+    "CFBundleDisplayName": "Prisma AIRS Desktop Fixture",
+    "CFBundleExecutable": "prisma-airs-desktop",
+    "CFBundleIdentifier": "io.cdot.airs-desktop.fixture",
+    "CFBundleInfoDictionaryVersion": "6.0",
+    "CFBundleName": "Prisma AIRS Desktop Fixture",
+    "CFBundlePackageType": "APPL",
+    "CFBundleShortVersionString": "1.0.0",
+    "CFBundleVersion": "1.0.0",
+    "CSResourcesFileMapped": true,
+    "LSApplicationCategoryType": "public.app-category.developer-tools",
+    "LSMinimumSystemVersion": "13.0",
+    "CFBundleIconFile": "icon.icns",
+    "LSRequiresCarbon": true,
+    "NSHighResolutionCapable": true,
+    "NSHumanReadableCopyright": "Copyright 2026 cdot"
+  },
+  "production_config": {
+    "$schema": "https://schema.tauri.app/config/2",
+    "productName": "Prisma AIRS Desktop",
+    "version": "1.0.0",
+    "identifier": "io.cdot.airs-desktop",
+    "build": {
+      "frontendDist": "../dist",
+      "beforeBuildCommand": ""
+    },
+    "app": {
+      "withGlobalTauri": false,
+      "windows": [],
+      "security": {
+        "csp": {
+          "default-src": "'self'",
+          "script-src": "'self'",
+          "style-src": "'self'",
+          "img-src": "'self' data:",
+          "font-src": "'self' data:",
+          "connect-src": "ipc: http://ipc.localhost",
+          "object-src": "'none'",
+          "base-uri": "'none'",
+          "form-action": "'none'",
+          "frame-ancestors": "'none'",
+          "frame-src": "'none'",
+          "worker-src": "'none'"
+        },
+        "dangerousDisableAssetCspModification": false,
+        "freezePrototype": true,
+        "capabilities": [
+          "main-window"
+        ]
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": [
+        "app",
+        "dmg"
+      ],
+      "category": "DeveloperTool",
+      "copyright": "Copyright 2026 cdot",
+      "license": "Apache-2.0",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.png"
+      ],
+      "macOS": {
+        "minimumSystemVersion": "13.0",
+        "hardenedRuntime": true
+      }
+    }
+  },
+  "controlled_prior_before": [
+    [
+      "alpha/approvals.canary",
+      38,
+      1793676032345800394,
+      "2cf06d96d90cf2eeb0c3e55a0fc0e3363361a328c80a574802927dfdf343c8a4"
+    ],
+    [
+      "alpha/credentials.canary",
+      40,
+      1793676032345859519,
+      "1d39f510cf6e8643dcf0d6549055bbde549f9ba2fae645c668f2704e6d6403f7"
+    ],
+    [
+      "alpha/sessions.canary",
+      37,
+      1793676032345729061,
+      "f70797ee1d791391b67fb01fcbf0852aee3b1667c1b4aa79a208ec9d98b8ce34"
+    ],
+    [
+      "alpha/state.json",
+      32,
+      1793676032345668103,
+      "57db231f2c8f351d60e3478ae6318d6b80a0c7f19c659f20fb14fc22da341dd7"
+    ],
+    [
+      "v2/approvals.canary",
+      35,
+      1793676032346065352,
+      "0cf09c4effd21ebeb5842809e5670d3ffe35e352ccddb893fe37fa7f9abb71ca"
+    ],
+    [
+      "v2/credentials.canary",
+      37,
+      1793676032346115394,
+      "c1a5eaeb7cd2a0bfa02be694d7548e3ac16f2ae5edf874f5284c91953c7a7496"
+    ],
+    [
+      "v2/sessions.canary",
+      34,
+      1793676032346009310,
+      "89ea83fbc8b48dd38ac389a2bd4f3d8cb87ce51c5890960a54c21e61b7b223c3"
+    ],
+    [
+      "v2/state.json",
+      29,
+      1793676032345951477,
+      "fe71f560e8ca17651aff5955e84fde18610130aa69e7897103fbbe77fbe8a2ae"
+    ]
+  ],
+  "scope": "Only generated prior-installation canaries; actual old roots and login Keychain are never read.",
+  "wizard": "docs/planning/evidence/C45/baseline-03/identity/fresh-wizard.json",
+  "actual_native_application_menu": "Prisma AIRS Desktop Fixture",
+  "about": "docs/planning/evidence/C45/baseline-03/identity/about.json",
+  "fresh_relaunch": "docs/planning/evidence/C45/baseline-03/identity/fresh-relaunch.json",
+  "owned_processes": {
+    "schema": "airs-desktop/candidate-processes/1",
+    "bundle": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app",
+    "app": {
+      "pid": 54112,
+      "executable": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app/Contents/MacOS/prisma-airs-desktop",
+      "birth": [
+        1793676039,
+        170947
+      ],
+      "parent": 53703
+    },
+    "engines": [],
+    "meaning": "Observed exact executable/PID birth identities owned by this driver; no process-name or installed-app lookup."
+  },
+  "controlled_prior_after": [
+    [
+      "alpha/approvals.canary",
+      38,
+      1793676032345800394,
+      "2cf06d96d90cf2eeb0c3e55a0fc0e3363361a328c80a574802927dfdf343c8a4"
+    ],
+    [
+      "alpha/credentials.canary",
+      40,
+      1793676032345859519,
+      "1d39f510cf6e8643dcf0d6549055bbde549f9ba2fae645c668f2704e6d6403f7"
+    ],
+    [
+      "alpha/sessions.canary",
+      37,
+      1793676032345729061,
+      "f70797ee1d791391b67fb01fcbf0852aee3b1667c1b4aa79a208ec9d98b8ce34"
+    ],
+    [
+      "alpha/state.json",
+      32,
+      1793676032345668103,
+      "57db231f2c8f351d60e3478ae6318d6b80a0c7f19c659f20fb14fc22da341dd7"
+    ],
+    [
+      "v2/approvals.canary",
+      35,
+      1793676032346065352,
+      "0cf09c4effd21ebeb5842809e5670d3ffe35e352ccddb893fe37fa7f9abb71ca"
+    ],
+    [
+      "v2/credentials.canary",
+      37,
+      1793676032346115394,
+      "c1a5eaeb7cd2a0bfa02be694d7548e3ac16f2ae5edf874f5284c91953c7a7496"
+    ],
+    [
+      "v2/sessions.canary",
+      34,
+      1793676032346009310,
+      "89ea83fbc8b48dd38ac389a2bd4f3d8cb87ce51c5890960a54c21e61b7b223c3"
+    ],
+    [
+      "v2/state.json",
+      29,
+      1793676032345951477,
+      "fe71f560e8ca17651aff5955e84fde18610130aa69e7897103fbbe77fbe8a2ae"
+    ]
+  ],
+  "log": []
+}

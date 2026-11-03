@@ -1,0 +1,154 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "test-20261103T033520Z-70ce8e",
+  "subject": "C45",
+  "kind": "test",
+  "started_utc": "2026-11-03T03:35:20Z",
+  "finished_utc": "2026-11-03T03:36:02Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/admin/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "f7c7e11eb2e07f006e532a8aaac77b32f4527d305ac386c0c633ca6133d35ca9"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/admin/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "f7c7e11eb2e07f006e532a8aaac77b32f4527d305ac386c0c633ca6133d35ca9"
+    },
+    {
+      "name": "node",
+      "path": "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/.work/c45-p10-20261102/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LC_ALL": "C.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/.work/c45-p10-20261102/.tools/bin:/Users/admin/.cargo/bin:/Users/admin/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "RUST_TEST_THREADS": "4",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/"
+  },
+  "inputs_before": {
+    "source": "fb1f96fa1d001182ba57160a588157a2a15e64a95879e799c17a70e4c997377b",
+    "dependencies": "672e93cbbd8981425b794c284c3c70a406fbd1ee1c36d25c1e7bfe112e5b93da",
+    "build_flags": "2297ceee449ef48451ba25e8889ab79330fb560b3d0ce9c390be01fd259d6017"
+  },
+  "inputs_after": {
+    "source": "fb1f96fa1d001182ba57160a588157a2a15e64a95879e799c17a70e4c997377b",
+    "dependencies": "672e93cbbd8981425b794c284c3c70a406fbd1ee1c36d25c1e7bfe112e5b93da",
+    "build_flags": "2297ceee449ef48451ba25e8889ab79330fb560b3d0ce9c390be01fd259d6017"
+  },
+  "commands": [
+    {
+      "label": "C45/followup-live",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "controlled_live",
+        "--test",
+        "live_run"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 30069,
+      "output_sha256": "869f79e8bcac2d577ed59783567b7a3f549f2379342f162d5066b5efd26f3c99",
+      "log": "logs/C45-followup-live.log",
+      "tests": {
+        "passed": 72,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C45/followup-live-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "xtask",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "controlled_live",
+        "--test",
+        "live_run",
+        "--example",
+        "c45_baseline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 8769,
+      "output_sha256": "a6e403a14cf6ed700f97c8c355145e502d93acc5af5739765b7a0887b355bd5d",
+      "log": "logs/C45-followup-live-clippy.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C45/followup-fmt",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 692,
+      "output_sha256": "d8760763be63067f00789fcf42648cb7e89259b37690e733415676ec0b8b6596",
+      "log": "logs/C45-followup-fmt.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "artifacts": []
+}

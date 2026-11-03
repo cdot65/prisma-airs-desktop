@@ -1,0 +1,50 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C45",
+  "method": "cua",
+  "performed_by": "Codex",
+  "host": "macOS-26.6.2-arm64-arm-64bit",
+  "recorded_utc": "2026-11-03T03:20:42Z",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app",
+    "identifier": "io.cdot.airs-desktop.fixture",
+    "executable_sha256": "4cdca217bdf315f6688047f9b5ad8f84dbc03e4b07cb13e3dcdaa1524efaf661",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C45-N01",
+      "result": "pass",
+      "observation": "Exact renamed fixture/config1.0.0, native About product/version and fresh launch/relaunch are observed. Home-first catalogue, Settings/Sessions focus and headings are required by the same candidate C44/C11 and shell-port baseline, not inferred here.",
+      "evidence": [
+        "docs/planning/evidence/C45/baseline-03/identity/observations.json",
+        "docs/planning/evidence/C45/baseline-03/identity/fresh-wizard.json",
+        "docs/planning/evidence/C45/baseline-03/identity/about.json"
+      ],
+      "description": "Prepared real fixture is Prisma AIRS Desktop Fixture1.0.0, identifierio.cdot.airs-desktop.fixture, binaryprisma-airs-desktop. Production config independently names Prisma AIRS Desktop1.0.0/io.cdot.airs-desktop. Native About/menu/title and Home-first catalogue agree; startup/settings/sessions focus and headings use the one presentation. Exact candidate process identity, executable and complete bundle are bound."
+    },
+    {
+      "id": "C45-N02",
+      "result": "pass",
+      "observation": "Fresh wizard and fresh relaunch expose no controlled prior canary, and controlled alpha/v2 canaries remain byte-identical across fixture cleanup/relaunch. Actual FileStore setup/restart/reset and four service isolation are separate required production-interface checks in qualification.",
+      "evidence": [
+        "docs/planning/evidence/C45/baseline-03/identity/observations.json",
+        "docs/planning/evidence/C45/baseline-03/identity/fresh-relaunch.json"
+      ],
+      "description": "Fresh synthetic setup starts with the wizard and no adopted tenants, credentials, sessions or approvals. Controlled prior alpha/v2 root/service canaries remain byte-identical across setup/relaunch/reset. Old real application roots, login Keychain and live endpoints are never inspected. Namespace isolation and non-adoption require passing production-interface FileStore/authority and disposable-file Keychain regressions, not only absence of UI."
+    },
+    {
+      "id": "C45-N03",
+      "result": "pass",
+      "observation": "The current same-candidate mapped native suite and production-interface/frontend regressions are separately required by qualification for ordinary collections, active helpers, removed intents and all current native assertions. This row explicitly binds their required aggregate rather than claiming they ran within this driver.",
+      "evidence": [
+        "docs/planning/evidence/C45/baseline-03/native-acceptance.json",
+        "docs/planning/evidence/C45/baseline-03/identity/observations.json"
+      ],
+      "description": "No alternate presentation selector or alpha/tenant-profile/API-profile-adoption surface or native intent remains. Ordinary current-format collection open/create/import/editor behavior is retained, along with active Settings/Sessions/Diagnostics/Academy behavior and C44 scope/commit-phase guards. Every current mapped legacy/modern target is accounted by the same candidate baseline or explicit valid coverage proof; no assertion disappears via omission."
+    }
+  ],
+  "limitations": [
+    "No actual prior user data or login Keychain accessed; no product calls. Non-adoption/reset/services are separately qualified production-interface regressions. Spoken VoiceOver/signing/installation not claimed."
+  ]
+}

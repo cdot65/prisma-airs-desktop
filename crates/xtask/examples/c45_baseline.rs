@@ -1,6 +1,7 @@
 //! C45 selected baseline using the existing manifest, environment and runner.
 //! No new controller completion or review transport. Dependencies were prepared
 //! offline before this run; setup is not repeated or claimed as newly executed.
+use xtask::manifest::Command;
 use xtask::runner::{RunKind, Runner, Status};
 use xtask::{Repo, Subject};
 
@@ -16,6 +17,76 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "build_flags": xtask::fingerprint::build_flags(&repo, &manifest, Subject::Chunk(45))?
         });
         println!("{}", serde_json::to_string_pretty(&fingerprints)?);
+        return Ok(());
+    }
+    // Actual C45 attempt-01 required these omitted synthetic integration targets.
+    // This additive affected check does not modify the frozen broad baseline or
+    // application build flags. No resolver uses a real credential or endpoint.
+    if args.as_slice() == ["followup-live"] {
+        let commands: Vec<_> = [
+            (
+                "C45/followup-live",
+                vec![
+                    "cargo",
+                    "test",
+                    "--locked",
+                    "-p",
+                    "xtask",
+                    "--features",
+                    "test-fixtures",
+                    "--test",
+                    "controlled_live",
+                    "--test",
+                    "live_run",
+                ],
+                true,
+            ),
+            (
+                "C45/followup-live-clippy",
+                vec![
+                    "cargo",
+                    "clippy",
+                    "--locked",
+                    "-p",
+                    "xtask",
+                    "--features",
+                    "test-fixtures",
+                    "--test",
+                    "controlled_live",
+                    "--test",
+                    "live_run",
+                    "--example",
+                    "c45_baseline",
+                    "--",
+                    "-D",
+                    "warnings",
+                ],
+                false,
+            ),
+            (
+                "C45/followup-fmt",
+                vec!["cargo", "fmt", "--all", "--", "--check"],
+                false,
+            ),
+        ]
+        .into_iter()
+        .map(|(label, argv, expects_tests)| Command {
+            label: label.to_owned(),
+            argv: argv.into_iter().map(str::to_owned).collect(),
+            expects_tests,
+        })
+        .collect();
+        let runner = Runner {
+            repo: &repo,
+            manifest: &manifest,
+            env: &env,
+            subject: Subject::Chunk(45),
+        };
+        let record = runner.run(RunKind::Test, &commands, &|_| Ok(()))?;
+        println!("{}", serde_json::to_string_pretty(&record)?);
+        if record.status != Status::Passed {
+            return Err("affected C45 followup failed; preserve actual raw result".into());
+        }
         return Ok(());
     }
     let kind = match args.first().map(String::as_str) {

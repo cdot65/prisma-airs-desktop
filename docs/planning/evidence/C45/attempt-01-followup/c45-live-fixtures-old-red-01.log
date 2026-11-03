@@ -1,0 +1,64 @@
+   Compiling xtask v1.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/.work/c45-p10-20261102/crates/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.31s
+     Running tests/controlled_live.rs (target/debug/deps/controlled_live-f820a1587b5b3dd7)
+
+running 15 tests
+test a_complete_private_manifest_passes ... FAILED
+test a_designated_family_names_its_environment_and_operations ... ok
+test isolation_needs_its_own_environment_and_credentials ... ok
+test every_required_row_reports_its_access ... ok
+test consuming_families_need_a_budget ... ok
+test every_family_is_present_and_a_blocked_one_says_why ... FAILED
+test l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults ... FAILED
+test l19_rejects_scope_expansion_and_incomplete_credentials ... FAILED
+test production_is_never_an_environment ... ok
+test secret_references_stay_in_v2_test_storage_outside_the_repository ... FAILED
+test mutating_families_need_disposable_names_and_cleanup ... ok
+test the_template_parses_but_is_not_approved ... ok
+test the_manifest_must_be_approved_and_current ... ok
+test secrets_are_referenced_never_written ... ok
+test the_manifest_file_is_private_and_strict ... ok
+
+failures:
+
+---- a_complete_private_manifest_passes stdout ----
+
+thread 'a_complete_private_manifest_passes' (3752055) panicked at crates/xtask/tests/controlled_live.rs:97:5:
+assertion `left == right` failed
+  left: ["L01 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L02 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L03 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L04 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L05 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L06 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L07 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L08 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L09 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L10 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L11 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L12 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L13 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L14 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L15 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L16 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L17 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L18 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items"]
+ right: []
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- every_family_is_present_and_a_blocked_one_says_why stdout ----
+
+thread 'every_family_is_present_and_a_blocked_one_says_why' (3752058) panicked at crates/xtask/tests/controlled_live.rs:152:5:
+assertion `left == right` failed
+  left: ["L01 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L02 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L03 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L04 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L05 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L07 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L08 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L09 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L10 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L11 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L12 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L13 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L14 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L15 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L16 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L17 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L18 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items"]
+ right: []
+
+---- l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults stdout ----
+
+thread 'l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults' (3752061) panicked at crates/xtask/tests/controlled_live.rs:171:5:
+existing 18-family manifests remain valid
+
+---- l19_rejects_scope_expansion_and_incomplete_credentials stdout ----
+
+thread 'l19_rejects_scope_expansion_and_incomplete_credentials' (3752062) panicked at crates/xtask/tests/controlled_live.rs:199:5:
+positive control
+
+---- secret_references_stay_in_v2_test_storage_outside_the_repository stdout ----
+
+thread 'secret_references_stay_in_v2_test_storage_outside_the_repository' (3752065) panicked at crates/xtask/tests/controlled_live.rs:76:5:
+expected a failure containing "only io.cdot.prisma-airs-desktop.v2.* test items", got ["L01 credential primary names Keychain service com.example.other; only io.cdot.airs-desktop.* test items", "L02 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L03 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L04 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L05 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L06 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L07 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L08 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L09 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L10 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L11 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L12 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L13 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L14 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L15 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L16 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L17 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items", "L18 credential primary names Keychain service io.cdot.prisma-airs-desktop.v2.c25; only io.cdot.airs-desktop.* test items"]
+
+
+failures:
+    a_complete_private_manifest_passes
+    every_family_is_present_and_a_blocked_one_says_why
+    l19_is_an_optional_explicit_wizard_designation_without_changing_c25_defaults
+    l19_rejects_scope_expansion_and_incomplete_credentials
+    secret_references_stay_in_v2_test_storage_outside_the_repository
+
+test result: FAILED. 10 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p xtask --test controlled_live`

@@ -64,6 +64,10 @@ def verify_candidate(root, value):
 # No application/config/dependency path is permitted. Old raw build and failed
 # smoke remain immutable; this is not a new execution of that build.
 BUILD_REUSE_PATHS = {
+    'crates/xtask/tests/controlled_live.rs',
+    'crates/xtask/tests/live_run/common.rs',
+    'crates/xtask/examples/c45_baseline.rs',
+    'tools/p10/packet.py','tools/p10/followup.py','tools/p10/test_followup.py',
     'tools/native-acceptance/acceptance_c04.py',
     'tools/native-acceptance/test_c04_current_frame.py',
     'tools/native-acceptance/acceptance_c45.py',

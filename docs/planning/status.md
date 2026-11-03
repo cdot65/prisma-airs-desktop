@@ -140,3 +140,7 @@ Historical C01 checkpoint only — shared Academy input then: branch `v2/desktop
 
 This state file, `reviews/` and `evidence/` are the narrow mutable exclusions
 from the source fingerprint; evidence is hashed separately per subject.
+
+C45 attempt-01 actual independent returned scores {"architecture": 9, "authority_security": 9, "behavior": 9, "overall": 8, "validation": 8}; audit pending. Raw verdict retained at docs/planning/reviews/C45/attempt-01/verdict-returned.json.
+
+C45 attempt-01 audit complete: actual full_gate_pass=False, D034 eligible=True. P10 actual independent phase review remains; no controller completion or owner score override inferred.
