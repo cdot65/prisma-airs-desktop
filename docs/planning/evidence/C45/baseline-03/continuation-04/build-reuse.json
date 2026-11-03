@@ -1,0 +1,37 @@
+{
+  "schema": "airs-desktop/c45-helper-only-build-reuse/1",
+  "original_candidate": {
+    "path": "docs/planning/evidence/C45/baseline-02/candidate.json",
+    "sha256": "4727744473b204ac2851b975daeea4d1292292af460af4279d5684645e33f7bd"
+  },
+  "original_source": {
+    "path": "docs/planning/evidence/C45/baseline-02/source-seal.json",
+    "sha256": "30cd28c25f915b8c2205d13b6dbbb579336d1e3c84672c6e5f536aae3628ad9f"
+  },
+  "current_source": {
+    "path": "docs/planning/evidence/C45/baseline-03/continuation-04/source-seal.json",
+    "sha256": "2660f2061331949023685549cded53366bac9ef13084de7fa8e659d670d2e2eb"
+  },
+  "original_build_stage": {
+    "path": "docs/planning/evidence/C45/baseline-02/stages/build/completed.json",
+    "sha256": "a513ea3607a0459a8815394159679b38aba50c56ac7050e6e32929a74d460874"
+  },
+  "declared_changed_paths": [
+    "apps/desktop/src-tauri/tests/permission_manifest.rs",
+    "tools/native-acceptance/acceptance_c04.py",
+    "tools/native-acceptance/acceptance_c32_current.py",
+    "tools/native-acceptance/acceptance_c45.py",
+    "tools/native-acceptance/test_c04_current_frame.py",
+    "tools/native-acceptance/test_c32_project_path.py",
+    "tools/p10/candidate.py",
+    "tools/p10/continuation.py",
+    "tools/p10/finalize.py",
+    "tools/p10/native.py",
+    "tools/p10/seal.py",
+    "tools/p10/supervise.py",
+    "tools/p10/test_build_reuse.py",
+    "tools/p10/test_continuation.py"
+  ],
+  "reason": "C04 sign-in control was fully inside actual minimum-size window; retired legacy decorative fade clearance was inapplicable to the one presentation. Require Tab reach and full actual window/WebView bounds, including negative clipping regressions. Preserve actual failed C04 raw and all16 repository/eight native passes; their runtime helper closures exclude C04. Retry affected C04 then unfinished queue. Same exact app, no rebuild or broad repeat.",
+  "checks_to_execute": "Only C04 current-frame helper retry followed by first unfinished native flows/new C45 checks. Sixteen repository commands and eight other native drivers retained with original bindings; no rebuild."
+}

@@ -70,6 +70,32 @@ class NativeContinuationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'failed native driver'):self.verify()
 
 
+class FrameContinuationTests(NativeContinuationTests):
+    def setUp(self):
+        super().setUp()
+        old=self.folder;self.folder=self.base/'continuation-04';old.rename(self.folder)
+        old_source=self.root/self.changed
+        self.changed='tools/native-acceptance/acceptance_c04.py'
+        target=self.root/self.changed;target.write_text('current frame containment')
+        previous=self.before.pop('tools/native-acceptance/acceptance_c32_current.py')
+        self.before[self.changed]=previous
+        self.after=copy.deepcopy(self.before);self.after[self.changed]['sha256']=sha(target)
+        self.write('before.json',{'files':self.before})
+        self.marker['source_before']['sha256']=sha(self.root/'before.json')
+        self.write('baseline/continuation-04/source-seal.json',{'files':self.after})
+        self.marker.update(affected_stage='native-c04',declared_changed_paths=[self.changed],source_seal_sha256=sha(self.folder/'source-seal.json'))
+        self.marker['focused_check'].update(log='baseline/continuation-04/focused.log',source_path=self.changed,source_sha256=sha(target))
+        # Original retained stage has the original source, independent of current helper.
+        origin=self.root/'origin-candidate.json';value=json.loads(origin.read_text());value['source_inventory_sha256']=digest(self.before);origin.write_text(json.dumps(value))
+        entry=self.marker['retained_records']['native-c36'];entry['candidate']['sha256']=sha(origin)
+        state=self.root/'old-native-stage/completed.json';value=json.loads(state.read_text());value.update(source_fingerprint=digest(self.before),candidate_sha256=sha(origin));state.write_text(json.dumps(value));entry['completed']['sha256']=sha(state)
+        self.write('baseline/continuation-04.json',self.marker)
+
+    def test_failed_c32_cannot_be_retained(self):
+        self.marker['retained_records']['native-c04']=self.marker['retained_records'].pop('native-c36');self.write('baseline/continuation-04.json',self.marker)
+        with self.assertRaisesRegex(ValueError,'failed native driver'):self.verify()
+
+
 class AdapterInvocationTests(unittest.TestCase):
     def test_current_plan_matches_actual_retained_g11_without_running_it(self):
         import seal

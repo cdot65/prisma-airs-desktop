@@ -261,20 +261,41 @@ def run():
     return evaluate(prepared, obs)
 
 
+def current_frame_clear(found, window, viewport):
+    """The one presentation has no legacy fade; require full native bounds."""
+    if not found or not viewport:
+        return False
+    for frame in (window, viewport):
+        for axis in (0, 1):
+            if found["pos"][axis] < frame["pos"][axis] - 1:
+                return False
+            if found["pos"][axis] + found["size"][axis] > frame["pos"][axis] + frame["size"][axis] + 1:
+                return False
+    return True
+
+
 def reach(app, zoom):
-    """Tabs until an Academy sign-in button has focus; it must lie inside the
-    window and end above the 60 CSS px bottom fade."""
-    window = next(n for n in app.tree() if n.get("role") == "AXWindow")
-    bottom = window["pos"][1] + window["size"][1]
+    """Tab to the sign-in control and inspect the actual one-presentation frame.
+
+    The old 60 CSS px decorative fade belonged to the removed legacy shell.
+    This uses the same current-frame rule the retained legacy_v2 C08 adapter
+    already applies, with additional horizontal and WebView containment.
+    """
     found = None
+    tree = app.tree()
     for _ in range(60):
         app.keycode(48)
-        f = app.focused(app.tree())
-        if f and f.get("role") == "AXButton" and f.get("label") in ("Sign in again", "Sign in to Academy"):
-            found = {"label": f["label"], "pos": f["pos"], "size": f["size"]}
+        tree = app.tree()
+        focused = app.focused(tree)
+        if focused and focused.get("role") == "AXButton" and focused.get("label") in ("Sign in again", "Sign in to Academy"):
+            found = {"label": focused["label"], "pos": focused["pos"], "size": focused["size"]}
             break
-    clear = bool(found) and found["pos"][1] >= window["pos"][1] and found["pos"][1] + found["size"][1] <= bottom - 60 * zoom
-    return {"zoom": zoom, "window": {"pos": window["pos"], "size": window["size"]}, "found": found, "clear": clear}
+    window = next(node for node in tree if node.get("role") == "AXWindow")
+    viewport = next((node for node in tree if node.get("role") == "AXWebArea" and node.get("pos") and node.get("size")), None)
+    bounds = lambda node: {"pos": node["pos"], "size": node["size"]} if node else None
+    return {"zoom": zoom, "window": bounds(window), "viewport": bounds(viewport), "found": found,
+            "clear": current_frame_clear(found, window, viewport),
+            "criterion": "keyboard-reached control fully inside actual window and WebView; one presentation has no legacy decorative bottom fade"}
 
 
 def evaluate(prepared, o):
@@ -321,7 +342,7 @@ def evaluate(prepared, o):
         f"Tab reached 'Sign in to Academy' and Space started sign-in: {o['keyboard_reached_sign_in'] and o['awaiting']}; Tab reached 'Open sign-in page' and 'Cancel sign-in': {o['keyboard_open_and_cancel']}; live status regions in the group: {o['status_regions']}",
         [o["tree_awaiting"]])
     add("C04-N11", o["zoom"]["clear"] and o["min_size"]["clear"],
-        f"200% zoom: {o['zoom']['found']} in window {o['zoom']['window']}, clear: {o['zoom']['clear']}; minimum size: {o['min_size']['found']} in window {o['min_size']['window']}, clear: {o['min_size']['clear']}", [])
+        f"200% zoom: {o['zoom']}; minimum size: {o['min_size']}; Tab reach and full actual window/WebView containment required, no legacy decorative fade in the one presentation", [])
     add("C04-N12", o["signed_in_again"] and len(o["academy_items_before_reset"]) == 1 and o["reset_signed_out"] and o["academy_items_after_reset"] == [],
         f"signed in before reset with {len(o['academy_items_before_reset'])} learner item(s); after reset 'Not signed in to Academy.': {o['reset_signed_out']}; learner namespace items {o['academy_items_after_reset']}", [])
 

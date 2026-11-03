@@ -64,6 +64,8 @@ def verify_candidate(root, value):
 # No application/config/dependency path is permitted. Old raw build and failed
 # smoke remain immutable; this is not a new execution of that build.
 BUILD_REUSE_PATHS = {
+    'tools/native-acceptance/acceptance_c04.py',
+    'tools/native-acceptance/test_c04_current_frame.py',
     'tools/native-acceptance/acceptance_c45.py',
     'tools/p10/candidate.py', 'tools/p10/test_build_reuse.py',
     'tools/p10/supervise.py', 'tools/p10/seal.py',

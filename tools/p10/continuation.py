@@ -19,13 +19,13 @@ ALLOWED={
 
 
 def paths(base):
-    marker=base/'continuation-03.json'
-    folder=base/'continuation-03' if marker.exists() else base/'continuation-02' if (base/'continuation-02.json').exists() else base/'continuation-01' if (base/'continuation-01.json').exists() else base
+    marker=base/'continuation-04.json'
+    folder=base/'continuation-04' if marker.exists() else base/'continuation-03' if (base/'continuation-03.json').exists() else base/'continuation-02' if (base/'continuation-02.json').exists() else base/'continuation-01' if (base/'continuation-01.json').exists() else base
     return dict(folder=folder,source=folder/'source-seal.json',candidate=folder/'candidate.json',plan=folder/'required-coverage.json',stages=folder/'stages',reuse=folder/'build-reuse.json')
 
 
 def verify(root,base):
-    if (base/'continuation-03.json').exists() or (base/'continuation-02.json').exists():return verify_native_continuation(root,base)
+    if any((base/('continuation-%02d.json'%n)).exists() for n in (4,3,2)):return verify_native_continuation(root,base)
     marker=read(base/'continuation-01.json');current=paths(base)
     require(marker['schema']=='airs-desktop/c45-test-only-continuation/1' and marker['affected_stage']=='command-C45-host-2','continuation schema/scope')
     before=read(base/'source-seal.json')['files'];after=read(current['source'])['files']
@@ -46,7 +46,7 @@ def verify(root,base):
 
 
 def retained(root,base,stage,argv):
-    if (base/'continuation-03.json').exists() or (base/'continuation-02.json').exists():
+    if any((base/('continuation-%02d.json'%n)).exists() for n in (4,3,2)):
         marker=verify_native_continuation(root,base)
         entry=marker['retained_records'].get(stage)
         if not entry:return None
@@ -95,15 +95,17 @@ NATIVE_ALLOWED={
  'tools/p10/candidate.py','tools/p10/continuation.py',
  'tools/p10/finalize.py','tools/p10/test_continuation.py',
 }
+FRAME_ALLOWED={'tools/native-acceptance/acceptance_c04.py','tools/native-acceptance/test_c04_current_frame.py','tools/p10/candidate.py','tools/p10/continuation.py','tools/p10/test_continuation.py'}
 META_ONLY={'tools/p10/candidate.py'}
 
 
 def verify_native_continuation(root,base):
     from qualification import bound
-    adapter=(base/'continuation-03.json').exists()
-    marker=read(base/('continuation-03.json' if adapter else 'continuation-02.json'));layout=paths(base)
-    affected='native-c31' if adapter else 'native-c32'
-    allowed={'tools/p10/seal.py','tools/p10/continuation.py','tools/p10/test_continuation.py'} if adapter else NATIVE_ALLOWED
+    frame=(base/'continuation-04.json').exists()
+    adapter=(base/'continuation-03.json').exists() and not frame
+    marker=read(base/('continuation-04.json' if frame else 'continuation-03.json' if adapter else 'continuation-02.json'));layout=paths(base)
+    affected='native-c04' if frame else 'native-c31' if adapter else 'native-c32'
+    allowed=FRAME_ALLOWED if frame else {'tools/p10/seal.py','tools/p10/continuation.py','tools/p10/test_continuation.py'} if adapter else NATIVE_ALLOWED
     require(marker['schema']=='airs-desktop/c45-native-helper-continuation/1' and marker['affected_stage']==affected,'native continuation schema/scope')
     before=read(bound(root,marker['source_before']))['files'];after=read(layout['source'])['files']
     require(sha(layout['source'])==marker['source_seal_sha256'],'native continuation seal drift')
@@ -125,22 +127,23 @@ def verify_native_continuation(root,base):
     return marker
 
 
-def prepare_native(root,adapter=False):
+def prepare_native(root,adapter=False,frame=False):
     from qualification import bound
-    base=root/'docs/planning/evidence/C45/baseline-03';prior=base/('continuation-02' if adapter else 'continuation-01');folder=base/('continuation-03' if adapter else 'continuation-02')
-    affected='native-c31' if adapter else 'native-c32'
-    marker_name='continuation-03.json' if adapter else 'continuation-02.json'
+    base=root/'docs/planning/evidence/C45/baseline-03';prior=base/('continuation-03' if frame else 'continuation-02' if adapter else 'continuation-01');folder=base/('continuation-04' if frame else 'continuation-03' if adapter else 'continuation-02')
+    affected='native-c04' if frame else 'native-c31' if adapter else 'native-c32'
+    marker_name='continuation-04.json' if frame else 'continuation-03.json' if adapter else 'continuation-02.json'
     require(not folder.exists() and not (base/marker_name).exists(),'preserve prior native continuation')
     folder.mkdir();source=source_inventory(root);before=read(prior/'source-seal.json')['files']
     changed=sorted(n for n in set(before)|set(source) if before.get(n)!=source.get(n))
-    allowed={'tools/p10/seal.py','tools/p10/continuation.py','tools/p10/test_continuation.py'} if adapter else NATIVE_ALLOWED
+    allowed=FRAME_ALLOWED if frame else {'tools/p10/seal.py','tools/p10/continuation.py','tools/p10/test_continuation.py'} if adapter else NATIVE_ALLOWED
     require(set(changed)<=allowed,'production/native unrelated delta')
     ref=lambda path:dict(path=str(path.relative_to(root)),sha256=sha(path))
     plan=copy.deepcopy(read(prior/'required-coverage.json'));records={}
     if adapter:
         for row in plan['requirements']:
             if row['id'].startswith('C31-'):row['argv']=['python3','tools/p10/native.py','c31','legacy']
-    for origin_folder,origin_candidate,origin_source in [(base/'stages',base/'candidate.json',base/'source-seal.json'),(base/'continuation-01/stages',base/'continuation-01/candidate.json',base/'continuation-01/source-seal.json'),(base/'continuation-02/stages',base/'continuation-02/candidate.json',base/'continuation-02/source-seal.json')] if adapter else [(base/'stages',base/'candidate.json',base/'source-seal.json'),(prior/'stages',prior/'candidate.json',prior/'source-seal.json')]:
+    origins=[base]+[base/('continuation-%02d'%n) for n in range(1,4 if frame else 3 if adapter else 2)]
+    for origin_folder,origin_candidate,origin_source in [(origin/'stages',origin/'candidate.json',origin/'source-seal.json') for origin in origins]:
         for file in sorted(origin_folder.glob('*/completed.json')):
             stage=file.parent.name
             if stage==affected:continue
@@ -153,12 +156,16 @@ def prepare_native(root,adapter=False):
             if row['kind']=='native':
                 dependencies=[name for name in row['helper_paths'] if name not in META_ONLY]
                 row['dependencies']=dependencies;records[stage]['dependencies']=dependencies
-                row['continuation']=('Only restored retained G11 C31 adapter invocation and named provenance consumers changed.' if adapter else 'Only C32 owned-project alias canonicalization and provenance consumers changed.') + ' This driver, AX helpers, synthetic servers and tested application are unchanged. Administrative candidate.py guard excluded from runtime assertion closure; its declared source change is independently reviewed, not hidden as identical.'
+                row['continuation']=('Only C04 current window/WebView measurement and named provenance consumers changed.' if frame else 'Only restored retained G11 C31 adapter invocation and named provenance consumers changed.' if adapter else 'Only C32 owned-project alias canonicalization and provenance consumers changed.') + ' This driver, AX helpers, synthetic servers and tested application are unchanged. Administrative candidate.py guard excluded from runtime assertion closure; its declared source change is independently reviewed, not hidden as identical.'
                 # Retain the exact original source and result, never relabel its execution.
     plan['helper_closure']={name:sha(root/name) for name in plan['helper_closure']}
     for name,value in [('source-seal.json',dict(files=source,source_fingerprint=digest(source))),('required-coverage.json',plan)]:(folder/name).write_text(json.dumps(value,indent=2)+'\n')
-    log=folder/('g11-adapter-invocations.log' if adapter else 'c32-canonical-project-01.log')
-    if adapter:
+    log=folder/('c04-current-frame-01.log' if frame else 'g11-adapter-invocations.log' if adapter else 'c32-canonical-project-01.log')
+    if frame:
+        shutil.copy2(root/'.evidence-private/worf-agent/2026-11-02-c45-p10-01/c04-current-frame-01.log',log)
+        require('Ran 5 tests' in log.read_text() and '\nOK' in log.read_text(),'current-frame focused checks not passing')
+        focused_source='tools/native-acceptance/acceptance_c04.py'
+    elif adapter:
         from seal import verify_historical_invocations
         approved=verify_historical_invocations(root)
         log.write_text(json.dumps(approved,indent=2)+'\n')
@@ -169,8 +176,9 @@ def prepare_native(root,adapter=False):
         focused_source='tools/native-acceptance/acceptance_c32_current.py'
     marker=dict(schema='airs-desktop/c45-native-helper-continuation/1',affected_stage=affected,source_before=ref(prior/'source-seal.json'),source_seal_sha256=sha(folder/'source-seal.json'),declared_changed_paths=changed,retained_records=records,retained_completed_stages=sorted(records),focused_check=dict(exit_code=0,log=str(log.relative_to(root)),log_sha256=sha(log),source_path=focused_source,source_sha256=sha(root/focused_source)),reason='Actual C32 project was selected and every other mandatory fact was true; driver compared worktree target alias to canonical NSOpenPanel path. Canonicalize only driver-owned project root, keep all assertions. Preserve actual failed C32 raw and all16 repository passes/C36/C43 with original candidate/input bindings. Retry only affected C32, then first unfinished drivers. No rebuild/broad repeat.')
     if adapter:marker['reason']='Restore exact retained G11 invocation: C31 requires the existing legacy_v2 setup adapter. No C31 production/assertion changes or closed finding reopened. Retain all16 repository passes and C36/C43/C32 native passes; actual C31 setup exception archived unchanged. Retry only its corrected invocation then unfinished queue, with no rebuild.'
+    if frame:marker['reason']='C04 sign-in control was fully inside actual minimum-size window; retired legacy decorative fade clearance was inapplicable to the one presentation. Require Tab reach and full actual window/WebView bounds, including negative clipping regressions. Preserve actual failed C04 raw and all16 repository/eight native passes; their runtime helper closures exclude C04. Retry affected C04 then unfinished queue. Same exact app, no rebuild or broad repeat.'
     (base/marker_name).write_text(json.dumps(marker,indent=2)+'\n');verify_native_continuation(root,base);return marker
 
 if __name__=='__main__':
     import sys
-    print(json.dumps(prepare_native(Path.cwd().resolve(),adapter=True) if sys.argv[1:]==['adapter'] else (prepare_native if sys.argv[1:]==['native'] else prepare)(Path.cwd().resolve()),indent=2))
+    print(json.dumps(prepare_native(Path.cwd().resolve(),frame=True) if sys.argv[1:]==['frame'] else prepare_native(Path.cwd().resolve(),adapter=True) if sys.argv[1:]==['adapter'] else (prepare_native if sys.argv[1:]==['native'] else prepare)(Path.cwd().resolve()),indent=2))

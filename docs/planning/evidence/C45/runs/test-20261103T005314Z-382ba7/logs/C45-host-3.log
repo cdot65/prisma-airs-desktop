@@ -1,0 +1,86 @@
+
+running 24 tests
+test budgets::tests::the_cumulative_chunk_carries_every_workload_under_its_measuring_chunk ... ok
+test budgets::tests::a_budget_fails_over_its_limit_short_of_samples_or_in_another_unit ... ok
+test budgets::tests::the_phase_containing_the_cumulative_chunk_measures_every_budget_itself ... ok
+test budgets::tests::nearest_rank_statistics ... ok
+test ledger::record_tests::a_rows_chunks_and_live_status_are_read_exactly ... ok
+test live_academy::assertions::tests::equality_does_not_confuse_missing_null_or_boolean_shape_with_a_verdict ... ok
+test live_academy::assertions::tests::dependencies_preserve_json_types_and_values_never_enter_receipts ... ok
+test live_academy::assertions::tests::pointers_and_dependencies_are_validated_before_dispatch ... ok
+test live_academy::assertions::tests::membership_accepts_only_the_designated_graded_outcomes ... ok
+test live_academy::assertions::tests::receipt_templates_and_membership_never_publish_authored_answers ... ok
+test budgets::tests::the_registered_workload_table_parses_exactly ... ok
+test live_academy::contracts::tests::every_mandatory_outcome_assertion_is_required_individually ... ok
+test live_academy::contracts::tests::identity_references_and_critical_occurrences_cannot_be_weakened ... ok
+test review::tests::a_phase_diff_starts_at_the_previous_phase ... ok
+test sdk::tests::exactly_one_registry_entry_is_accepted ... ok
+test signing::tests::a_real_identity_is_timestamped_and_an_ad_hoc_one_is_not ... ok
+test notices::tests::legacy_and_reviewed_file_licenses_count_only_when_exact ... ok
+test manifest::c45_plan_tests::p10_uses_the_current_baseline_without_private_keychain_replay ... ok
+test signing::tests::the_release_plan_signs_inside_out_never_re_signs_the_engine_and_staples_both ... ok
+test subject::tests::accepts_registered_range_only ... ok
+test subject::tests::only_the_specification_chunk_is_documentation_only ... ok
+test fingerprint::tests::every_installed_academy_package_is_fingerprinted_and_verified ... ok
+test signing::tests::the_engine_is_signed_once_from_its_pinned_unsigned_bytes ... ok
+test signing::tests::release_signing_keeps_the_pinned_engine_and_refuses_another ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+
+running 46 tests
+test consistent_attempt_passes ... ok
+test approved_manifest_parses_with_codex_threshold_nine ... ok
+test changed_or_missing_prepared_bytes_invalidate_native_acceptance ... ok
+test completion_ledger_is_append_only_and_requires_predecessors ... ok
+test d034_phases_need_nine_and_every_eight_chunk_is_raised_before_sign_off ... ok
+test edited_verdict_after_receipt_is_rejected ... ok
+test documentation_only_chunk_is_exempt_from_native_gates_but_not_from_the_threshold ... ok
+test edited_packet_and_raw_output_are_rejected ... ok
+test expired_attempts_cannot_advance ... ok
+test d058_specification_chunk_is_never_completed_or_recognised_below_nine ... ok
+test flag_verification_refuses_unadvertised_flags ... ok
+test failed_or_incomplete_reviewer_turns_cannot_complete ... ok
+test fresh_exec_with_forbidden_tool_use_is_rejected ... ok
+test inputs_changing_during_review_are_rejected ... ok
+test fresh_exec_requires_a_completed_turn_whose_final_message_is_the_verdict ... ok
+test edits_to_consumed_shared_source_are_detected ... ok
+test edits_to_the_web_consumer_scratch_tree_are_detected ... ok
+test malformed_verdicts_are_rejected ... ok
+test mismatched_request_or_fingerprints_are_rejected ... ok
+test ledger_generations_invalidation_and_receipt_integrity ... ok
+test missing_failed_or_mismatched_runs_are_rejected ... ok
+test missing_or_failing_native_proof_is_rejected ... ok
+test native_status_and_completion_resolve_phase_members_alike ... ok
+test owner_acceptance_takes_only_the_threshold_and_is_honored_only_when_recorded ... ok
+test native_record_must_match_the_required_inventory_and_identity ... ok
+test on_disk_attempt_round_trips_and_detects_tampering ... ok
+test queue_acknowledgement_without_verdict_is_rejected ... ok
+test receipt_scores_must_match_the_verdict ... ok
+test phases_require_integrated_native_runs_and_acceptance ... ok
+test receipt_self_reported_pass_is_not_trusted ... ok
+test prepared_bundle_bytes_path_and_identifier_are_bound ... ok
+test run_ids_must_match_their_references ... ok
+test required_fix_blocker_or_gap_rejects_despite_nines ... ok
+test run_records_must_cover_the_exact_approved_plan ... ok
+test score_eight_in_any_dimension_is_rejected ... ok
+test shared_prepare_rejects_escapes_before_touching_anything ... ok
+test shared_staging_paths_cannot_escape_their_roots ... ok
+test run_identity_exit_status_tests_and_logs_are_verified ... ok
+test test_output_parsing_rejects_zero_test_targets ... ok
+test thread_wait_requires_a_completed_turn_not_progress ... ok
+test transport_argv_substitutes_only_validated_values ... ok
+test verdict_parser_rejects_scores_out_of_range ... ok
+test workflow_ledger_matches_markdown_with_live_requirements ... ok
+test stale_inputs_are_rejected ... ok
+test manifest_rejects_unlisted_programs_placeholders_and_weakened_review ... ok
+test source_fingerprint_detects_edits_modes_untracked_files_and_git_config ... ok
+
+test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+
+--- stderr ---
+   Compiling xtask v1.0.0 (/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/.work/c45-p10-20261102/crates/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.22s
+     Running unittests src/lib.rs (target/debug/deps/xtask-0b1df180eb6cd959)
+     Running tests/shell_controller.rs (target/debug/deps/shell_controller-2a464393f5a5f6af)
