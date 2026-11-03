@@ -34,7 +34,7 @@ jobs:
             aarch64-apple-darwin)
               test "$(uname -s)/$(uname -m)" = Darwin/arm64
               /Users/cdot/.agent-workflows/airs-runner-setup-20261102/bootstrap-job.sh
-              printf '%s\n' /Users/cdot/.local/share/airs-toolchains/profiles/airs-20261102/bin /Users/cdot/.cargo/bin /opt/homebrew/bin >> "$GITHUB_PATH"
+              printf '%s\n' /Users/cdot/.local/share/airs-toolchains/profiles/airs-20261102/bin >> "$GITHUB_PATH"
               ;;
             x86_64-unknown-linux-gnu)
               test "$(uname -s)/$(uname -m)" = Linux/x86_64
@@ -51,8 +51,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(node --version)" = v24.21.0
-          test "$(pnpm --version)" = 10.6.5
+          node_version=$(node --version)
+          pnpm_version=$(pnpm --version)
+          printf 'Selected Node %s, pnpm %s\n' "$node_version" "$pnpm_version"
+          test "$node_version" = v24.21.0
+          test "$pnpm_version" = 10.6.5
           rustc --version | grep '^rustc 1\.99\.0 '
           rustc -vV | grep -Fx "host: $AIRS_TARGET"
           python3 - <<'PY'
