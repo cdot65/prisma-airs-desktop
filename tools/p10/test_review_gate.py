@@ -6,6 +6,12 @@ import review_gate
 
 
 class ReleaseProofTests(unittest.TestCase):
+    def test_isolated_release_interpreter_can_load_qualification_siblings(self):
+        import subprocess
+        root=Path(__file__).resolve().parents[2]
+        result=subprocess.run(["/usr/bin/python3","-I","-c","import runpy;runpy.run_path('tools/p10/review_gate.py');from packet import qualification;assert callable(qualification)"],cwd=root,capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+
     def test_missing_actual_p10_proof_blocks_release(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)

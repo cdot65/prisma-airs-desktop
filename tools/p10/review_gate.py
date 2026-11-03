@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "p09"))
 from phase_packet import file_identity, digest, validate
 from phase_inputs import full_gate, require, read, sha, REVIEW_DISABLED
