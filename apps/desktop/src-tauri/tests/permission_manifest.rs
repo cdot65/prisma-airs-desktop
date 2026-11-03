@@ -158,8 +158,9 @@ fn the_harness_overlay_only_bundles_the_sealed_engine() {
 #[test]
 fn identities_are_independent_and_fixture_config_relaxes_nothing() {
     let conf = json("tauri.conf.json");
-    assert_eq!(conf["identifier"], "io.cdot.prisma-airs-desktop.v2");
-    assert_eq!(conf["productName"], "Prisma AIRS Desktop v2");
+    assert_eq!(conf["identifier"], "io.cdot.airs-desktop");
+    assert_eq!(conf["productName"], "Prisma AIRS Desktop");
+    assert_eq!(conf["version"], "1.0.0");
     let fixture = json("tauri.fixture.conf.json");
     let keys: BTreeSet<&str> = fixture
         .as_object()
@@ -172,18 +173,23 @@ fn identities_are_independent_and_fixture_config_relaxes_nothing() {
         BTreeSet::from(["identifier", "productName"]),
         "fixture overlay may only rename the identity"
     );
-    assert_eq!(
-        fixture["identifier"],
-        "io.cdot.prisma-airs-desktop.v2.fixture"
-    );
+    assert_eq!(fixture["identifier"], "io.cdot.airs-desktop.fixture");
+    assert_eq!(fixture["productName"], "Prisma AIRS Desktop Fixture");
     assert_ne!(fixture["identifier"], conf["identifier"]);
-    assert!(
-        !conf["identifier"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("prisma-airs-desktop\""),
-        "v1 identity is not reused"
-    );
+    for retired in [
+        "io.cdot.prisma-airs-desktop",
+        "io.cdot.prisma-airs-desktop.v2",
+        "io.cdot.prisma-airs-desktop.v2.fixture",
+    ] {
+        assert_ne!(
+            conf["identifier"], retired,
+            "retired identity is not reused"
+        );
+        assert_ne!(
+            fixture["identifier"], retired,
+            "retired identity is not reused"
+        );
+    }
 }
 
 #[test]

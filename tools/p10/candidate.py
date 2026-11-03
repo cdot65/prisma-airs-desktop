@@ -68,6 +68,8 @@ BUILD_REUSE_PATHS = {
     'tools/p10/candidate.py', 'tools/p10/test_build_reuse.py',
     'tools/p10/supervise.py', 'tools/p10/seal.py',
     'tools/p10/finalize.py', 'tools/p10/native.py',
+    'apps/desktop/src-tauri/tests/permission_manifest.rs',
+    'tools/p10/continuation.py', 'tools/p10/test_continuation.py',
 }
 
 

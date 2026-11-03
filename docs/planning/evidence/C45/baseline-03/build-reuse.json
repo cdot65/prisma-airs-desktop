@@ -1,0 +1,30 @@
+{
+  "schema": "airs-desktop/c45-helper-only-build-reuse/1",
+  "original_candidate": {
+    "path": "docs/planning/evidence/C45/baseline-02/candidate.json",
+    "sha256": "4727744473b204ac2851b975daeea4d1292292af460af4279d5684645e33f7bd"
+  },
+  "original_source": {
+    "path": "docs/planning/evidence/C45/baseline-02/source-seal.json",
+    "sha256": "30cd28c25f915b8c2205d13b6dbbb579336d1e3c84672c6e5f536aae3628ad9f"
+  },
+  "current_source": {
+    "path": "docs/planning/evidence/C45/baseline-03/source-seal.json",
+    "sha256": "40651ffea62d892a51c32e185c769157ea15f001ab089c212cd292f2af3455d7"
+  },
+  "original_build_stage": {
+    "path": "docs/planning/evidence/C45/baseline-02/stages/build/completed.json",
+    "sha256": "a513ea3607a0459a8815394159679b38aba50c56ac7050e6e32929a74d460874"
+  },
+  "declared_changed_paths": [
+    "tools/native-acceptance/acceptance_c45.py",
+    "tools/p10/candidate.py",
+    "tools/p10/finalize.py",
+    "tools/p10/native.py",
+    "tools/p10/seal.py",
+    "tools/p10/supervise.py",
+    "tools/p10/test_build_reuse.py"
+  ],
+  "reason": "Correct C45 About selector from hard-coded production label to guarded actual fixture application menu. Other declared paths only move fresh generation pointers and enforce transparent build reuse; application/config/dependency source is unchanged. Failed startup smoke retained; no repository or mapped native driver has executed yet.",
+  "checks_to_execute": "Affected corrected identity smoke, then first16 repository/current20+C45 baseline on retained exact app bytes. No build result relabeled as a new execution."
+}

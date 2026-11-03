@@ -13,6 +13,7 @@ from candidate import verify_source,verify_candidate,helper_closure,bundle_hash,
 from qualification import read,sha,require,digest
 from seal import DRIVERS,LEGACY,verify_plan
 from stages import collect,verify_completed,verify_conditions
+import continuation
 BASE=ROOT/'docs/planning/evidence/C45/baseline-03'
 RUN=ROOT/'.evidence-private/worf-agent/2026-11-02-c45-p10-01'
 ENV=os.environ.copy()
@@ -52,15 +53,24 @@ def foreground():
     return value
 
 
-def source_guard():return verify_source(ROOT,'docs/planning/evidence/C45/baseline-03/source-seal.json')
+def source_guard():
+    if (BASE/'continuation-01.json').exists():continuation.verify(ROOT,BASE)
+    return verify_source(ROOT,str(continuation.paths(BASE)['source'].relative_to(ROOT)))
+
+def candidate_path():return continuation.paths(BASE)['candidate']
 
 
 def execute(stage,argv,candidate=None):
-    source=source_guard();folder=BASE/'stages'/stage;folder.mkdir(parents=True,exist_ok=True)
+    source=source_guard()
+    prior=continuation.retained(ROOT,BASE,stage,argv)
+    if prior:
+        status('retained original passing stage under explicit test-only proof; not reexecuted',stage=stage)
+        return prior[1]
+    folder=continuation.paths(BASE)['stages']/stage;folder.mkdir(parents=True,exist_ok=True)
     done=folder/'completed.json'
     if done.exists():
         old=read(done)
-        verify_completed(ROOT,folder,old,argv,source,sha(BASE/'candidate.json') if candidate else None)
+        verify_completed(ROOT,folder,old,argv,source,sha(candidate_path()) if candidate else None)
         status('retained valid completed stage',stage=stage);return old
     require(not (folder/'started.json').exists(),'partial prior stage; inspect actual ownership/results before recovery')
     if candidate:
@@ -74,7 +84,7 @@ def execute(stage,argv,candidate=None):
         code=child.wait()
     require(source_guard()==source,'source changed while stage ran')
     result={'execution_id':stage+'-'+started,'argv':argv,'exit_code':code,'source_fingerprint':source,'started_utc':started,'finished_utc':now(),'stdout_sha256':sha(folder/'stdout.log'),'stderr_sha256':sha(folder/'stderr.log')}
-    if candidate:result['candidate_sha256']=sha(BASE/'candidate.json')
+    if candidate:result['candidate_sha256']=sha(candidate_path())
     if stage.startswith('command-') and code==0:
         raw=read(folder/'stdout.log');require(raw['schema']=='airs-v2/run/1' and raw['status']=='passed','existing runner did not return passing raw RunRecord')
         raw_path=ROOT/'docs/planning/evidence/C45/runs'/raw['run_id']/'run.json'
@@ -91,27 +101,27 @@ def main():
     BASE.mkdir(exist_ok=True)
     lock=open('/private/tmp/prisma-airs-desktop-native-writer.lock','a+')
     fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-    chain=ancestry();source=source_guard();plan=read(BASE/'required-coverage.json');verify_plan(ROOT,plan)
+    chain=ancestry();source=source_guard();plan=read(continuation.paths(BASE)['plan']);verify_plan(ROOT,plan)
     owner=RUN/'qualification-owner.json'
     if owner.exists():require(read(owner)['supervisor_sha256']==sha(__file__),'supervisor changed during recovery')
     write(owner,{'pid':os.getpid(),'time':now(),'source_fingerprint':source,'supervisor_sha256':sha(__file__),'terminal_ancestry':chain,'global_ui_lock':'/private/tmp/prisma-airs-desktop-native-writer.lock'})
     status('C45 one-generation qualification active',source_fingerprint=source,foreground=foreground())
     reuse=None
-    if (BASE/'build-reuse.json').exists():
+    if continuation.paths(BASE)['reuse'].exists():
         current=json.loads(subprocess.check_output(['cargo','run','--locked','-q','-p','xtask','--example','c45_baseline','--','identity'],cwd=ROOT,env=ENV,text=True))
-        reuse=verify_build_reuse(ROOT,read(BASE/'build-reuse.json'),current,platform.platform(),platform.node())
-        write(BASE/'build-reuse-audit.json',reuse)
+        reuse=verify_build_reuse(ROOT,read(continuation.paths(BASE)['reuse']),current,platform.platform(),platform.node())
+        write(continuation.paths(BASE)['folder']/'build-reuse-audit.json',reuse)
         status('retained exact actual baseline02 build; no rebuild executed',build_reuse=reuse)
     else:
         execute('build',['cargo','run','--locked','-p','xtask','--','native-prepare','--chunk','C45','--target','aarch64-apple-darwin','--features','test-fixtures'])
     if not (BASE/'native-prepare.json').exists():shutil.copy2(ROOT/'docs/planning/evidence/C45/native-prepare.json',BASE/'native-prepare.json')
-    if not (BASE/'candidate.json').exists():
+    if not (candidate_path()).exists():
         prepared=read(BASE/'native-prepare.json')
         fp=json.loads(subprocess.check_output(['cargo','run','--locked','-q','-p','xtask','--example','c45_baseline','--','identity'],cwd=ROOT,env=ENV,text=True))
         candidate={'schema':'airs-desktop/candidate/1','execution_root':str(ROOT),'source_inventory_sha256':source,'executable_sha256':prepared['executable_sha256'],'bundle_sha256':prepared['bundle_sha256'],'prepare':{'path':str((BASE/'native-prepare.json').relative_to(ROOT)),'sha256':sha(BASE/'native-prepare.json')},'helper_closure':plan['helper_closure'],'build_flags':{'features':prepared['features'],'target':prepared['target'],'commands':prepared['commands'],'manifest_sha256':sha(ROOT/'docs/architecture/checks.json')},'conditions':{'platform':platform.platform(),'hostname':platform.node(),'guest':'Worf VM','synthetic_only':True,'RUST_TEST_THREADS':'4','fixture_identifier':prepared['identifier'],'ui_writer':'one guest Terminal-owned exact-PID/birth fixture driver'},'dependency_fingerprint':fp['dependencies'],'runner_inputs':{k:fp[k] for k in ['source','dependencies','build_flags']}}
-        if reuse:candidate['build_origin']={'record':'docs/planning/evidence/C45/baseline-03/build-reuse.json','sha256':sha(BASE/'build-reuse.json'),'audit':reuse}
-        verify_candidate(ROOT,candidate);write(BASE/'candidate.json',candidate)
-    candidate=read(BASE/'candidate.json');verify_candidate(ROOT,candidate)
+        if reuse:candidate['build_origin']={'record':str(continuation.paths(BASE)['reuse'].relative_to(ROOT)),'sha256':sha(continuation.paths(BASE)['reuse']),'audit':reuse}
+        verify_candidate(ROOT,candidate);write(candidate_path(),candidate)
+    candidate=read(candidate_path());verify_candidate(ROOT,candidate)
     current=json.loads(subprocess.check_output(['cargo','run','--locked','-q','-p','xtask','--example','c45_baseline','--','identity'],cwd=ROOT,env=ENV,text=True))
     verify_conditions(candidate,current,platform.platform(),platform.node())
     ENV['AIRS_NATIVE_PREPARE']=str(BASE/'native-prepare.json');ENV['AIRS_NATIVE_PROCESS_RECORD']=str(BASE/'startup-smoke-owned-processes.json')
