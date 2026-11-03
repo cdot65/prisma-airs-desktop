@@ -1,0 +1,55 @@
+name: AIRS unsigned macOS builder
+
+# Maintainer-only infrastructure branch. No PR, release, install or native UI jobs.
+on:
+  push:
+    branches: [infra/macos-builder-20261103]
+    paths:
+      - .forgejo/workflows/macos-builder.yml
+      - crates/xtask/examples/ci_macos_build.rs
+      - tools/ci/macos_builder.py
+      - tools/ci/test_macos_builder.py
+      - docs/planning/ci/macos-builder.md
+
+permissions:
+  contents: read
+
+jobs:
+  unsigned-app:
+    if: github.repository == 'cdot/prisma-airs-desktop-v2' && github.ref == 'refs/heads/infra/macos-builder-20261103'
+    runs-on: airs-jadzia-arm64
+    timeout-minutes: 90
+    steps:
+      - name: Verify isolated project tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -s)/$(uname -m)" = Darwin/arm64
+          /Users/cdot/.agent-workflows/airs-runner-setup-20261102/bootstrap-job.sh
+          printf '%s\n' /Users/cdot/.local/share/airs-toolchains/profiles/airs-20261102/bin >> "$GITHUB_PATH"
+          printf '%s\n' RUSTUP_TOOLCHAIN=1.99.0 >> "$GITHUB_ENV"
+
+      - name: Checkout the immutable CI commit without release evidence LFS
+        uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          lfs: false
+          submodules: false
+          persist-credentials: false
+          set-safe-directory: false
+          show-progress: false
+
+      - name: Compile and archive the production app without signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 -I tools/ci/macos_builder.py
+
+      - name: Retain the internal unsigned build and provenance
+        uses: https://code.forgejo.org/forgejo/upload-artifact@16871d9e8cfcf27ff31822cac382bbb5450f1e1e
+        with:
+          name: internal-unsigned-macos-arm64-${{ github.sha }}-${{ github.run_attempt }}
+          path: target/ci-macos-build/
+          if-no-files-found: error
+          retention-days: 7
