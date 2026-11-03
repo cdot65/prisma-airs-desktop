@@ -10,8 +10,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manifest = xtask::manifest::Manifest::load(&repo.manifest())?;
     let env = xtask::env::Environment::prepare(&repo)?.with("RUST_TEST_THREADS", "4");
     if args.as_slice() == ["identity"] {
-        let fingerprints =
-            xtask::fingerprint::all(&repo, &manifest, Subject::Chunk(45), &env.toolchain_hash())?;
+        let fingerprints = serde_json::json!({
+            "source": xtask::fingerprint::source(&repo)?,
+            "dependencies": xtask::fingerprint::dependencies(&repo, &env.toolchain_hash())?,
+            "build_flags": xtask::fingerprint::build_flags(&repo, &manifest, Subject::Chunk(45))?
+        });
         println!("{}", serde_json::to_string_pretty(&fingerprints)?);
         return Ok(());
     }

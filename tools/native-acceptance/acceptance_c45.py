@@ -5,14 +5,14 @@ separately required by the qualified-coverage consumer. This driver does not
 read actual prior installations or infer those regressions from UI absence.
 """
 from pathlib import Path
-import json,os,plistlib,shutil,sys,tempfile,time
+import json,os,platform,plistlib,shutil,sys,tempfile,time
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import fixture_app as fx
 import acceptance_c29 as c29
 import v2_setup as setup
 
 ROOT=Path.cwd().resolve()
-BASE=ROOT/'docs/planning/evidence/C45/baseline-01'
+BASE=ROOT/'docs/planning/evidence/C45/baseline-02'
 LOG=[]
 
 
@@ -69,7 +69,9 @@ end tell'''
                 {'id':'C45-N02','result':'pass','observation':'Fresh wizard and fresh relaunch expose no controlled prior canary, and controlled alpha/v2 canaries remain byte-identical across fixture cleanup/relaunch. Actual FileStore setup/restart/reset and four service isolation are separate required production-interface checks in qualification.','evidence':[str(obs.relative_to(ROOT)),observations['fresh_relaunch']]},
                 {'id':'C45-N03','result':'pass','observation':'The current same-candidate mapped native suite and production-interface/frontend regressions are separately required by qualification for ordinary collections, active helpers, removed intents and all current native assertions. This row explicitly binds their required aggregate rather than claiming they ran within this driver.','evidence':[str((BASE/'native-acceptance.json').relative_to(ROOT)),str(obs.relative_to(ROOT))]}]
         aggregate=json.loads((BASE/'native-acceptance.json').read_text());assert aggregate['app']['executable_sha256']==prepared['executable_sha256'] and all(c['result']=='pass' for c in aggregate['checks'])
-        (out/'native-acceptance.json').write_text(json.dumps({'schema':'airs-v2/native-acceptance/1','subject':'C45','recorded_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'app':{'bundle':prepared['bundle'],'identifier':prepared['identifier'],'executable_sha256':prepared['executable_sha256'],'fixture':True},'checks':checks,'limitations':['No actual prior user data or login Keychain accessed; no product calls. Non-adoption/reset/services are separately qualified production-interface regressions. Spoken VoiceOver/signing/installation not claimed.']},indent=2)+'\n')
+        inventory={row['id']:row['check'] for row in json.loads((ROOT/'docs/architecture/native-checks.json').read_text())['chunks']['C45']}
+        for check in checks:check['description']=inventory[check['id']]
+        (out/'native-acceptance.json').write_text(json.dumps({'schema':'airs-v2/native-acceptance/1','subject':'C45','method':'cua','performed_by':os.environ['AIRS_NATIVE_ORCHESTRATOR'],'host':platform.platform(),'recorded_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'app':{'bundle':prepared['bundle'],'identifier':prepared['identifier'],'executable_sha256':prepared['executable_sha256'],'fixture':True},'checks':checks,'limitations':['No actual prior user data or login Keychain accessed; no product calls. Non-adoption/reset/services are separately qualified production-interface regressions. Spoken VoiceOver/signing/installation not claimed.']},indent=2)+'\n')
         return 0
     finally:
         fx.stop_app();fx.stop_engines();shutil.rmtree(work,ignore_errors=True)
